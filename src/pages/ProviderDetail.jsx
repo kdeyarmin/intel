@@ -1,224 +1,144 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { User, MapPin, Phone, Award, TrendingUp } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import BasicProfile from '../components/providers/BasicProfile';
+import UtilizationInsights from '../components/providers/UtilizationInsights';
+import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
+import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoodSignals';
+import TerritoryIntelligence from '../components/providers/TerritoryIntelligence';
+import WhyThisProvider from '../components/providers/WhyThisProvider';
 import ScoreBreakdown from '../components/providers/ScoreBreakdown';
 
 export default function ProviderDetail() {
-  const [provider, setProvider] = useState(null);
-  const [score, setScore] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [utilization, setUtilization] = useState(null);
-  const [referrals, setReferrals] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(window.location.search);
+  const npi = searchParams.get('npi');
 
-  useEffect(() => {
-    const loadData = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const npi = params.get('npi');
-      
-      if (!npi) return;
+  const { data: providers = [], isLoading: loadingProvider } = useQuery({
+    queryKey: ['provider', npi],
+    queryFn: () => base44.entities.Provider.filter({ npi }),
+    enabled: !!npi,
+  });
 
-      const [providerData, scoreData, locationData, utilizationData, referralData] = await Promise.all([
-        base44.entities.Provider.filter({ npi }),
-        base44.entities.LeadScore.filter({ npi }),
-        base44.entities.ProviderLocation.filter({ npi }),
-        base44.entities.CMSUtilization.filter({ npi }),
-        base44.entities.CMSReferral.filter({ npi }),
-      ]);
+  const { data: scores = [], isLoading: loadingScore } = useQuery({
+    queryKey: ['providerScore', npi],
+    queryFn: () => base44.entities.LeadScore.filter({ npi }),
+    enabled: !!npi,
+  });
 
-      setProvider(providerData[0]);
-      setScore(scoreData[0]);
-      setLocation(locationData[0]);
-      setUtilization(utilizationData[0]);
-      setReferrals(referralData[0]);
-      setLoading(false);
-    };
+  const { data: locations = [], isLoading: loadingLocations } = useQuery({
+    queryKey: ['providerLocations', npi],
+    queryFn: () => base44.entities.ProviderLocation.filter({ npi }),
+    enabled: !!npi,
+  });
 
-    loadData();
-  }, []);
+  const { data: taxonomies = [], isLoading: loadingTaxonomies } = useQuery({
+    queryKey: ['providerTaxonomies', npi],
+    queryFn: () => base44.entities.ProviderTaxonomy.filter({ npi }),
+    enabled: !!npi,
+  });
 
-  if (loading) {
+  const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
+    queryKey: ['providerUtil', npi],
+    queryFn: () => base44.entities.CMSUtilization.filter({ npi }),
+    enabled: !!npi,
+  });
+
+  const { data: referrals = [], isLoading: loadingRef } = useQuery({
+    queryKey: ['providerRef', npi],
+    queryFn: () => base44.entities.CMSReferral.filter({ npi }),
+    enabled: !!npi,
+  });
+
+  if (loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies) {
     return (
-      <div className="p-8">
-        <Skeleton className="h-10 w-64 mb-8" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-64" />)}
+      <div className="p-8 max-w-7xl mx-auto">
+        <Skeleton className="h-10 w-32 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-64" />)}
+          </div>
+          <div className="space-y-6">
+            {[1, 2].map(i => <Skeleton key={i} className="h-48" />)}
+          </div>
         </div>
       </div>
     );
   }
 
+  const provider = providers?.[0];
+  const score = scores?.[0];
+  const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
+  const utilization = utilizations?.[0];
+  const referral = referrals?.[0];
+
   if (!provider) {
     return (
       <div className="p-8">
-        <p className="text-gray-500">Provider not found</p>
+        <p className="text-gray-600">Provider not found</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
-            <User className="w-8 h-8 text-teal-600" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {provider.entity_type === 'Individual' 
-                ? `${provider.first_name} ${provider.last_name}, ${provider.credential || ''}`
-                : provider.organization_name}
-            </h1>
-            <p className="text-gray-600">NPI: {provider.npi}</p>
-          </div>
-        </div>
-      </div>
+    <div className="p-8 max-w-7xl mx-auto">
+      <Button
+        variant="ghost"
+        className="mb-6"
+        onClick={() => navigate(-1)}
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Score Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-teal-600" />
-              CareMetric Fit Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {score ? (
-              <div className="text-center">
-                <div className="text-5xl font-bold text-teal-600 mb-2">
-                  {score.score?.toFixed(0)}
-                  <span className="text-2xl text-gray-400">/100</span>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Last updated: {new Date(score.score_date).toLocaleDateString()}
-                </p>
-              </div>
-            ) : (
-              <p className="text-gray-500">No score available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Score Breakdown */}
-        {score?.score_breakdown && (
-          <ScoreBreakdown 
-            breakdown={score.score_breakdown} 
-            reasons={score.reasons}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Profile & Intelligence */}
+        <div className="lg:col-span-2 space-y-6">
+          <BasicProfile 
+            provider={provider} 
+            taxonomy={taxonomies} 
+            locations={locations} 
           />
-        )}
 
-        {/* Practice Info Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-blue-600" />
-              Practice Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {location ? (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500">Address</p>
-                  <p className="font-medium">{location.address_1}</p>
-                  {location.address_2 && <p className="font-medium">{location.address_2}</p>}
-                  <p className="font-medium">
-                    {location.city}, {location.state} {location.zip}
-                  </p>
-                </div>
-                {location.phone && (
-                  <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <p className="font-medium">{location.phone}</p>
-                  </div>
-                )}
-                {location.fax && (
-                  <div>
-                    <p className="text-sm text-gray-500">Fax</p>
-                    <p className="font-medium">{location.fax}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500">No location data available</p>
-            )}
-          </CardContent>
-        </Card>
+          <WhyThisProvider 
+            score={score}
+            utilization={utilization}
+            referrals={referral}
+            taxonomy={taxonomies}
+          />
 
-        {/* CMS Utilization Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-              Medicare Utilization
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {utilization ? (
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Services</span>
-                  <span className="font-semibold">{utilization.total_services?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Medicare Beneficiaries</span>
-                  <span className="font-semibold">{utilization.total_medicare_beneficiaries?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Medicare Payment</span>
-                  <span className="font-semibold">
-                    ${utilization.total_medicare_payment?.toLocaleString() || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Year</span>
-                  <Badge>{utilization.year}</Badge>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">No utilization data available</p>
-            )}
-          </CardContent>
-        </Card>
+          {score && (
+            <ScoreBreakdown 
+              score={score.score}
+              breakdown={score.score_breakdown} 
+              reasons={score.reasons} 
+            />
+          )}
 
-        {/* CMS Referrals Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Referral Patterns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {referrals ? (
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Referrals</span>
-                  <span className="font-semibold">{referrals.total_referrals?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Home Health</span>
-                  <span className="font-semibold">{referrals.home_health_referrals?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Hospice</span>
-                  <span className="font-semibold">{referrals.hospice_referrals?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">SNF</span>
-                  <span className="font-semibold">{referrals.snf_referrals?.toLocaleString() || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Imaging</span>
-                  <span className="font-semibold">{referrals.imaging_referrals?.toLocaleString() || 0}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500">No referral data available</p>
-            )}
-          </CardContent>
-        </Card>
+          <UtilizationInsights utilization={utilization} />
+
+          <PatientPopulationFingerprint
+            provider={provider}
+            taxonomy={taxonomies}
+            utilization={utilization}
+            referrals={referral}
+          />
+        </div>
+
+        {/* Right Column - Signals & Territory */}
+        <div className="space-y-6">
+          <ReferralLikelihoodSignals
+            utilization={utilization}
+            referrals={referral}
+            taxonomy={taxonomies}
+          />
+
+          <TerritoryIntelligence location={primaryLocation} />
+        </div>
       </div>
     </div>
   );
