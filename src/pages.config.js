@@ -56,6 +56,7 @@ import ScoringRules from './pages/ScoringRules';
 import AuditLog from './pages/AuditLog';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
+import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "AuditLog": AuditLog,
     "LeadListBuilder": LeadListBuilder,
     "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
+    "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
 }
 
 export const pagesConfig = {
