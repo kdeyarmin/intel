@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Activity, MapPin, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -111,7 +112,7 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Top States by Provider Count</CardTitle>
@@ -169,6 +170,8 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        <DataQualityWidget />
       </div>
     </div>
   );

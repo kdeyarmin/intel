@@ -158,16 +158,31 @@ export default function DataImports() {
       for (const row of data) {
         try {
           const existing = await base44.entities.Provider.filter({ npi: row.npi });
+          
+          const providerData = {
+            npi: row.npi,
+            entity_type: row['Entity Type Code'] === '1' ? 'Individual' : 'Organization',
+            first_name: row['Provider First Name'],
+            last_name: row['Provider Last Name (Legal Name)'],
+            credential: row['Provider Credential Text'],
+            status: 'Active',
+            last_update_date: new Date().toISOString(),
+            needs_nppes_enrichment: false,
+          };
+
           if (existing.length === 0) {
-            await base44.entities.Provider.create({
-              npi: row.npi,
-              entity_type: row['Entity Type Code'] === '1' ? 'Individual' : 'Organization',
-              first_name: row['Provider First Name'],
-              last_name: row['Provider Last Name (Legal Name)'],
-              credential: row['Provider Credential Text'],
-              status: 'Active',
-            });
+            await base44.entities.Provider.create(providerData);
             importedCount++;
+          } else {
+            // Dedupe: keep latest
+            const current = existing[0];
+            const currentDate = current.last_update_date ? new Date(current.last_update_date) : new Date(0);
+            const newDate = new Date(providerData.last_update_date);
+            
+            if (newDate > currentDate) {
+              await base44.entities.Provider.update(current.id, providerData);
+              importedCount++;
+            }
           }
         } catch (error) {
           console.error('Failed to import provider', error);
@@ -176,13 +191,35 @@ export default function DataImports() {
     } else if (importType === 'cms_part_b_utilization') {
       for (const row of data) {
         try {
-          await base44.entities.CMSUtilization.create({
+          // Check if provider exists, create placeholder if not
+          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
+          if (existingProvider.length === 0) {
+            await base44.entities.Provider.create({
+              npi: row.npi,
+              status: 'Active',
+              needs_nppes_enrichment: true,
+            });
+          }
+
+          // Dedupe utilization by NPI + year
+          const existingUtil = await base44.entities.CMSUtilization.filter({ 
+            npi: row.npi, 
+            year: parseInt(row['Year'] || '2023') 
+          });
+
+          const utilData = {
             npi: row.npi,
             year: parseInt(row['Year'] || '2023'),
             total_services: parseFloat(row['Total Services'] || 0),
             total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
             total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
-          });
+          };
+
+          if (existingUtil.length === 0) {
+            await base44.entities.CMSUtilization.create(utilData);
+          } else {
+            await base44.entities.CMSUtilization.update(existingUtil[0].id, utilData);
+          }
           importedCount++;
         } catch (error) {
           console.error('Failed to import utilization', error);
@@ -191,13 +228,35 @@ export default function DataImports() {
     } else if (importType === 'cms_referrals') {
       for (const row of data) {
         try {
-          await base44.entities.CMSReferral.create({
+          // Check if provider exists, create placeholder if not
+          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
+          if (existingProvider.length === 0) {
+            await base44.entities.Provider.create({
+              npi: row.npi,
+              status: 'Active',
+              needs_nppes_enrichment: true,
+            });
+          }
+
+          // Dedupe referrals by NPI + year
+          const existingRef = await base44.entities.CMSReferral.filter({ 
+            npi: row.npi, 
+            year: parseInt(row['Year'] || '2023') 
+          });
+
+          const refData = {
             npi: row.npi,
             year: parseInt(row['Year'] || '2023'),
             total_referrals: parseFloat(row['Total Referrals'] || 0),
             home_health_referrals: parseFloat(row['Home Health Referrals'] || 0),
             hospice_referrals: parseFloat(row['Hospice Referrals'] || 0),
-          });
+          };
+
+          if (existingRef.length === 0) {
+            await base44.entities.CMSReferral.create(refData);
+          } else {
+            await base44.entities.CMSReferral.update(existingRef[0].id, refData);
+          }
           importedCount++;
         } catch (error) {
           console.error('Failed to import referral', error);
