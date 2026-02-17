@@ -54,6 +54,7 @@ import ProviderDetail from './pages/ProviderDetail';
 import LeadLists from './pages/LeadLists';
 import ScoringRules from './pages/ScoringRules';
 import AuditLog from './pages/AuditLog';
+import LeadListBuilder from './pages/LeadListBuilder';
 import __Layout from './Layout.jsx';
 
 
@@ -65,6 +66,7 @@ export const PAGES = {
     "LeadLists": LeadLists,
     "ScoringRules": ScoringRules,
     "AuditLog": AuditLog,
+    "LeadListBuilder": LeadListBuilder,
 }
 
 export const pagesConfig = {
