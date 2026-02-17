@@ -57,6 +57,7 @@ import AuditLog from './pages/AuditLog';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
+import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import __Layout from './Layout.jsx';
 
 
@@ -71,6 +72,7 @@ export const PAGES = {
     "LeadListBuilder": LeadListBuilder,
     "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
+    "TerritoryIntelligence": TerritoryIntelligence,
 }
 
 export const pagesConfig = {
