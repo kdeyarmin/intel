@@ -4,9 +4,9 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     const { npi } = await req.json();
@@ -15,52 +15,135 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'NPI required' }, { status: 400 });
     }
 
-    // Fetch scoring rules
-    const rules = await base44.entities.ScoringRule.filter({ enabled: true });
-    
     // Fetch provider data
     const [provider] = await base44.entities.Provider.filter({ npi });
     if (!provider) {
       return Response.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    const [utilization] = await base44.entities.CMSUtilization.filter({ npi });
-    const [referrals] = await base44.entities.CMSReferral.filter({ npi });
-    const locations = await base44.entities.ProviderLocation.filter({ npi });
-    const taxonomies = await base44.entities.ProviderTaxonomy.filter({ npi });
+    const [taxonomies, utilizations, locations, scoringRules] = await Promise.all([
+      base44.entities.ProviderTaxonomy.filter({ npi }),
+      base44.entities.CMSUtilization.filter({ npi }),
+      base44.entities.ProviderLocation.filter({ npi }),
+      base44.entities.ScoringRule.filter({ enabled: true })
+    ]);
 
-    // Get weights from rules
-    const getWeight = (category) => {
-      const rule = rules.find(r => r.category === category);
-      return rule ? rule.weight : 0;
-    };
+    const utilization = utilizations[0];
+    const primaryTaxonomy = taxonomies.find(t => t.primary_flag) || taxonomies[0];
+    const primaryLocation = locations.find(l => l.is_primary) || locations[0];
 
-    // Calculate components
-    const breakdown = {
-      specialty_match: calculateSpecialtyMatch(taxonomies, getWeight('specialty')),
-      medicare_status: calculateMedicareStatus(provider, getWeight('enrollment')),
-      patient_volume: calculatePatientVolume(utilization, getWeight('volume')),
-      referral_signals: calculateReferralSignals(referrals, getWeight('referrals')),
-      group_size: calculateGroupSize(locations, getWeight('group_size')),
-      geography: calculateGeography(locations, getWeight('geography')),
-    };
+    // Get weights from scoring rules
+    const weights = {};
+    scoringRules.forEach(rule => {
+      weights[rule.category] = rule.weight / 100;
+    });
 
-    // Calculate total score
-    const totalScore = Object.values(breakdown).reduce((sum, component) => 
-      sum + component.contribution, 0
-    );
+    const scores = {};
+    const reasons = [];
 
-    // Generate reasons
-    const reasons = generateReasons(breakdown, utilization, referrals);
+    // 1. Specialty Match (20%)
+    const targetSpecialties = ['family medicine', 'internal medicine', 'nurse practitioner', 'geriatric', 'psychiatry'];
+    const taxonomyDesc = (primaryTaxonomy?.taxonomy_description || '').toLowerCase();
+    const specialtyMatch = targetSpecialties.some(s => taxonomyDesc.includes(s));
+    scores.specialty_match = specialtyMatch ? 100 : 40;
+    if (specialtyMatch) {
+      reasons.push(`Primary specialty (${primaryTaxonomy.taxonomy_description}) aligns with target profile`);
+    }
 
-    // Save or update score
+    // 2. Medicare Participation (15%)
+    const hasMedicareData = !!utilization;
+    scores.medicare_participation = hasMedicareData ? 100 : 0;
+    if (hasMedicareData) {
+      reasons.push('Active Medicare participation confirmed');
+    }
+
+    // 3. Patient Volume (20%)
+    const patientVolume = utilization?.total_medicare_beneficiaries || 0;
+    let volumeScore = 0;
+    if (patientVolume >= 500) {
+      volumeScore = 100;
+      reasons.push(`High patient volume (${patientVolume} Medicare beneficiaries)`);
+    } else if (patientVolume >= 200) {
+      volumeScore = 75;
+      reasons.push(`Moderate patient volume (${patientVolume} beneficiaries)`);
+    } else if (patientVolume >= 50) {
+      volumeScore = 50;
+    } else if (patientVolume > 0) {
+      volumeScore = 25;
+    }
+    scores.patient_volume = volumeScore;
+
+    // 4. Part D Prescribing Signals (15%)
+    const servicesPerPatient = patientVolume > 0 
+      ? (utilization?.total_services || 0) / patientVolume 
+      : 0;
+    let partDScore = 0;
+    if (servicesPerPatient >= 12) {
+      partDScore = 100;
+      reasons.push('High service intensity indicates complex care management');
+    } else if (servicesPerPatient >= 8) {
+      partDScore = 70;
+    } else if (servicesPerPatient >= 4) {
+      partDScore = 40;
+    }
+    scores.part_d_signals = partDScore;
+
+    // 5. Geographic Priority (10%)
+    const isPennsylvania = primaryLocation?.state === 'PA';
+    scores.geographic_priority = isPennsylvania ? 100 : 20;
+    if (isPennsylvania) {
+      reasons.push(`Located in Pennsylvania (${primaryLocation.city})`);
+    }
+
+    // 6. Practice Type (10%)
+    const locationCount = locations.length;
+    let practiceScore = 0;
+    if (locationCount === 1) {
+      practiceScore = 100;
+      reasons.push('Solo practice or single location');
+    } else if (locationCount <= 3) {
+      practiceScore = 80;
+      reasons.push('Small group practice');
+    } else if (locationCount <= 5) {
+      practiceScore = 60;
+    } else {
+      practiceScore = 30;
+    }
+    scores.practice_type = practiceScore;
+
+    // 7. Behavioral Health Referral Potential (10%)
+    const behavioralSpecialties = ['psychiatry', 'psychology', 'behavioral health', 'mental health'];
+    const isBehavioral = behavioralSpecialties.some(s => taxonomyDesc.includes(s));
+    scores.behavioral_health = isBehavioral ? 100 : 50;
+    if (isBehavioral) {
+      reasons.push('Behavioral health specialty increases referral potential');
+    }
+
+    // Calculate weighted final score
+    let finalScore = 0;
+    const breakdown = {};
+
+    Object.keys(scores).forEach(category => {
+      const weight = weights[category] || 0;
+      const contribution = (scores[category] * weight);
+      finalScore += contribution;
+      breakdown[category] = {
+        value: scores[category],
+        weight: weight * 100,
+        contribution: Math.round(contribution)
+      };
+    });
+
+    finalScore = Math.round(finalScore);
+
+    // Store the score
     const existingScores = await base44.entities.LeadScore.filter({ npi });
     const scoreData = {
       npi,
-      score: Math.round(totalScore),
+      score: finalScore,
       score_date: new Date().toISOString(),
       score_breakdown: breakdown,
-      reasons,
+      reasons
     };
 
     if (existingScores.length > 0) {
@@ -69,135 +152,19 @@ Deno.serve(async (req) => {
       await base44.entities.LeadScore.create(scoreData);
     }
 
-    return Response.json({ 
-      score: Math.round(totalScore),
+    return Response.json({
+      success: true,
+      npi,
+      score: finalScore,
       breakdown,
-      reasons 
+      reasons
     });
 
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('Score calculation error:', error);
+    return Response.json({ 
+      error: 'Failed to calculate score', 
+      details: error.message 
+    }, { status: 500 });
   }
 });
-
-function calculateSpecialtyMatch(taxonomies, weight) {
-  const targetSpecialties = ['208D00000X', '163W00000X', '2084P0800X']; // Psychiatry, Nurse Practitioner, Behavioral Health
-  const hasMatch = taxonomies.some(t => targetSpecialties.includes(t.taxonomy_code));
-  const value = hasMatch ? 100 : 50;
-  
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function calculateMedicareStatus(provider, weight) {
-  const isActive = provider.status === 'Active' && !provider.needs_nppes_enrichment;
-  const value = isActive ? 100 : 30;
-  
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function calculatePatientVolume(utilization, weight) {
-  if (!utilization || !utilization.total_medicare_beneficiaries) {
-    return { value: 0, weight, contribution: 0 };
-  }
-
-  const beneficiaries = utilization.total_medicare_beneficiaries;
-  let value = 0;
-  
-  if (beneficiaries >= 500) value = 100;
-  else if (beneficiaries >= 250) value = 80;
-  else if (beneficiaries >= 100) value = 60;
-  else if (beneficiaries >= 50) value = 40;
-  else value = 20;
-
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function calculateReferralSignals(referrals, weight) {
-  if (!referrals) {
-    return { value: 0, weight, contribution: 0 };
-  }
-
-  const homeHealth = referrals.home_health_referrals || 0;
-  const hospice = referrals.hospice_referrals || 0;
-  const total = homeHealth + hospice;
-
-  let value = 0;
-  if (total >= 50) value = 100;
-  else if (total >= 25) value = 80;
-  else if (total >= 10) value = 60;
-  else if (total >= 5) value = 40;
-  else value = 20;
-
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function calculateGroupSize(locations, weight) {
-  const locationCount = locations.length;
-  let value = 0;
-  
-  if (locationCount >= 5) value = 100;
-  else if (locationCount >= 3) value = 80;
-  else if (locationCount >= 2) value = 60;
-  else value = 40;
-
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function calculateGeography(locations, weight) {
-  const priorityStates = ['CA', 'TX', 'FL', 'NY', 'PA'];
-  const hasMatch = locations.some(l => priorityStates.includes(l.state));
-  const value = hasMatch ? 100 : 50;
-
-  return {
-    value,
-    weight,
-    contribution: (value / 100) * weight,
-  };
-}
-
-function generateReasons(breakdown, utilization, referrals) {
-  const reasons = [];
-
-  if (breakdown.patient_volume.value >= 80) {
-    reasons.push(`High Medicare patient volume (${utilization?.total_medicare_beneficiaries || 0} beneficiaries)`);
-  }
-
-  if (breakdown.referral_signals.value >= 80) {
-    const total = (referrals?.home_health_referrals || 0) + (referrals?.hospice_referrals || 0);
-    reasons.push(`Strong referral activity (${total} home health/hospice referrals)`);
-  }
-
-  if (breakdown.specialty_match.value === 100) {
-    reasons.push('Specialty aligns with target focus areas');
-  }
-
-  if (breakdown.geography.value === 100) {
-    reasons.push('Located in priority geography');
-  }
-
-  if (breakdown.group_size.value >= 80) {
-    reasons.push('Multi-location practice');
-  }
-
-  return reasons;
-}

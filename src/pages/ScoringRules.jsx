@@ -28,7 +28,27 @@ export default function ScoringRules() {
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['scoringRules'],
-    queryFn: () => base44.entities.ScoringRule.list(),
+    queryFn: async () => {
+      const existing = await base44.entities.ScoringRule.list();
+      
+      // Initialize default rules if none exist
+      if (existing.length === 0) {
+        const defaultRules = [
+          { rule_name: 'Specialty Match', category: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
+          { rule_name: 'Medicare Participation', category: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
+          { rule_name: 'Patient Volume', category: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
+          { rule_name: 'Part D Prescribing Signals', category: 'part_d_signals', weight: 15, description: 'Geriatric/complex care medication indicators' },
+          { rule_name: 'Geographic Priority', category: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
+          { rule_name: 'Practice Type', category: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
+          { rule_name: 'Behavioral Health Potential', category: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' }
+        ];
+        
+        await Promise.all(defaultRules.map(rule => base44.entities.ScoringRule.create(rule)));
+        return await base44.entities.ScoringRule.list();
+      }
+      
+      return existing;
+    },
   });
 
   const updateMutation = useMutation({
