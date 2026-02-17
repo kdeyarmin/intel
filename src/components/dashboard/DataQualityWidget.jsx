@@ -61,6 +61,14 @@ export default function DataQualityWidget() {
 
   const needsEnrichment = providers.filter(p => p.needs_nppes_enrichment).length;
 
+  // Calculate unmatched NPIs (in CMS data but not in Provider table)
+  const unmatchedUtil = [...utilizationNPIs].filter(npi => !providerNPIs.has(npi)).length;
+  const unmatchedRef = [...referralNPIs].filter(npi => !providerNPIs.has(npi)).length;
+  const totalUnmatched = new Set([...utilizationNPIs, ...referralNPIs].filter(npi => !providerNPIs.has(npi))).size;
+
+  // Calculate providers with multiple locations
+  const multipleLocations = locations.length - locationNPIs.size;
+
   const getStatusColor = (rate) => {
     if (rate >= 90) return 'text-green-600 bg-green-50';
     if (rate >= 70) return 'text-yellow-600 bg-yellow-50';
@@ -77,7 +85,7 @@ export default function DataQualityWidget() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Database className="w-5 h-5 text-teal-600" />
-          Data Quality
+          Data Quality & Provider Linking
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -112,16 +120,42 @@ export default function DataQualityWidget() {
         </div>
 
         {needsEnrichment > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              <span className="font-semibold">{needsEnrichment}</span> providers need NPPES enrichment
+          <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+            <p className="text-sm text-orange-800">
+              <span className="font-semibold">{needsEnrichment}</span> placeholder provider{needsEnrichment !== 1 ? 's' : ''} created from CMS data need NPPES enrichment
             </p>
           </div>
         )}
 
-        <div className="mt-4 pt-3 border-t text-xs text-gray-600">
-          <p>Total Providers: {providers.length}</p>
-          <p>Unique NPIs in CMS data: {new Set([...utilizationNPIs, ...referralNPIs]).size}</p>
+        {totalUnmatched > 0 && (
+          <div className="mt-2 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-sm text-red-800">
+              <span className="font-semibold">{totalUnmatched}</span> unmatched NPI{totalUnmatched !== 1 ? 's' : ''} found in CMS datasets
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 pt-3 border-t space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-600">Total Providers</span>
+            <span className="font-medium">{providers.length}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-600">Unique NPIs</span>
+            <span className="font-medium">{providerNPIs.size}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-600">Multiple Locations</span>
+            <span className="font-medium">{multipleLocations}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-600">Needs Enrichment</span>
+            <span className="font-medium text-orange-600">{needsEnrichment}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-600">Unmatched NPIs</span>
+            <span className="font-medium text-red-600">{totalUnmatched}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
