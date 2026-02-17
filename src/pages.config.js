@@ -51,6 +51,9 @@ import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
 import Providers from './pages/Providers';
 import ProviderDetail from './pages/ProviderDetail';
+import LeadLists from './pages/LeadLists';
+import ScoringRules from './pages/ScoringRules';
+import AuditLog from './pages/AuditLog';
 import __Layout from './Layout.jsx';
 
 
@@ -59,6 +62,9 @@ export const PAGES = {
     "DataImports": DataImports,
     "Providers": Providers,
     "ProviderDetail": ProviderDetail,
+    "LeadLists": LeadLists,
+    "ScoringRules": ScoringRules,
+    "AuditLog": AuditLog,
 }
 
 export const pagesConfig = {
