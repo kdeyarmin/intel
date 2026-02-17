@@ -12,6 +12,7 @@ import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoo
 import TerritoryIntelligence from '../components/providers/TerritoryIntelligence';
 import WhyThisProvider from '../components/providers/WhyThisProvider';
 import ScoreBreakdown from '../components/providers/ScoreBreakdown';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -94,6 +95,10 @@ export default function ProviderDetail() {
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back
       </Button>
+
+      <div className="mb-6">
+        <ComplianceDisclaimer />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Profile & Intelligence */}
