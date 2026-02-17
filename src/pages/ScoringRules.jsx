@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Calculator, Save, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import PackageSelector from '../components/scoring/PackageSelector';
 
 export default function ScoringRules() {
   const [user, setUser] = useState(null);
@@ -40,6 +41,27 @@ export default function ScoringRules() {
 
   const handleSave = (rule) => {
     updateMutation.mutate({ id: rule.id, data: editingRule });
+  };
+
+  const handleApplyPackage = (weights) => {
+    const categoryMap = {
+      specialty: 'specialty',
+      enrollment: 'enrollment',
+      volume: 'volume',
+      referrals: 'referrals',
+      group_size: 'group_size',
+      geography: 'geography',
+    };
+
+    rules.forEach(rule => {
+      const newWeight = weights[categoryMap[rule.category]];
+      if (newWeight !== undefined) {
+        updateMutation.mutate({ 
+          id: rule.id, 
+          data: { ...rule, weight: newWeight } 
+        });
+      }
+    });
   };
 
   const handleRecalculate = async () => {
@@ -152,6 +174,10 @@ export default function ScoringRules() {
           <Calculator className="w-4 h-4 mr-2" />
           {calculating ? 'Calculating...' : 'Recalculate All Scores'}
         </Button>
+      </div>
+
+      <div className="mb-6">
+        <PackageSelector onApply={handleApplyPackage} />
       </div>
 
       <Card>

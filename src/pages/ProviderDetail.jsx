@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User, MapPin, Phone, Award, TrendingUp } from 'lucide-react';
+import ScoreBreakdown from '../components/providers/ScoreBreakdown';
 
 export default function ProviderDetail() {
   const [provider, setProvider] = useState(null);
@@ -87,37 +88,28 @@ export default function ProviderDetail() {
           </CardHeader>
           <CardContent>
             {score ? (
-              <div>
-                <div className="text-5xl font-bold text-teal-600 mb-4">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-teal-600 mb-2">
                   {score.score?.toFixed(0)}
                   <span className="text-2xl text-gray-400">/100</span>
                 </div>
-                <div className="space-y-3">
-                  <p className="font-semibold text-gray-700">Score Breakdown:</p>
-                  {score.reasons?.map((reason, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-teal-500 mt-1.5" />
-                      <p className="text-sm text-gray-600">{reason}</p>
-                    </div>
-                  ))}
-                  {score.contributions && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="font-semibold text-gray-700 mb-2">Feature Contributions:</p>
-                      {Object.entries(score.contributions).map(([key, value]) => (
-                        <div key={key} className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
-                          <span className="font-medium">+{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <p className="text-xs text-gray-500">
+                  Last updated: {new Date(score.score_date).toLocaleDateString()}
+                </p>
               </div>
             ) : (
               <p className="text-gray-500">No score available</p>
             )}
           </CardContent>
         </Card>
+
+        {/* Score Breakdown */}
+        {score?.score_breakdown && (
+          <ScoreBreakdown 
+            breakdown={score.score_breakdown} 
+            reasons={score.reasons}
+          />
+        )}
 
         {/* Practice Info Card */}
         <Card>
