@@ -85,62 +85,105 @@ export default function ScoringRules() {
   };
 
   const handleRecalculate = async () => {
-    if (!confirm('Recalculate scores for all providers? This may take a few minutes.')) return;
+    if (!confirm('Recalculate CareMetric Referral Propensity Scores for all providers? This may take several minutes.')) return;
     
     setCalculating(true);
     try {
       const providers = await base44.entities.Provider.list();
       const utilizations = await base44.entities.CMSUtilization.list();
       const referrals = await base44.entities.CMSReferral.list();
+      const locations = await base44.entities.ProviderLocation.list();
+      const taxonomies = await base44.entities.ProviderTaxonomy.list();
       const currentRules = rules.filter(r => r.enabled);
 
-      for (const provider of providers.slice(0, 50)) {
+      // Validate total weight
+      const totalWeight = currentRules.reduce((sum, r) => sum + r.weight, 0);
+      if (Math.abs(totalWeight - 100) > 1) {
+        alert(`Warning: Total weights = ${totalWeight}%. Recommended: 100%`);
+      }
+
+      for (const provider of providers.slice(0, 100)) {
         const util = utilizations.find(u => u.npi === provider.npi);
         const ref = referrals.find(r => r.npi === provider.npi);
+        const providerLocs = locations.filter(l => l.npi === provider.npi);
+        const providerTax = taxonomies.filter(t => t.npi === provider.npi);
+        const primaryTax = providerTax.find(t => t.primary_flag) || providerTax[0];
 
-        let score = 0;
-        const contributions = {};
+        const scores = {};
+        const breakdown = {};
         const reasons = [];
 
-        // Medicare volume scoring
-        const medicareRule = currentRules.find(r => r.rule_name === 'medicare_volume');
-        if (medicareRule && util?.total_medicare_beneficiaries) {
-          const medicareScore = Math.min((util.total_medicare_beneficiaries / 500) * 25, 25);
-          score += medicareScore * medicareRule.weight;
-          contributions.medicare_volume = medicareScore;
-          if (util.total_medicare_beneficiaries >= medicareRule.threshold) {
-            reasons.push(`High Medicare volume (${util.total_medicare_beneficiaries} beneficiaries)`);
-          }
-        }
+        // 1. Specialty Match
+        const targetSpecialties = ['family medicine', 'internal medicine', 'nurse practitioner', 'geriatric', 'psychiatry'];
+        const taxonomyDesc = (primaryTax?.taxonomy_description || '').toLowerCase();
+        const specialtyMatch = targetSpecialties.some(s => taxonomyDesc.includes(s));
+        scores.specialty_match = specialtyMatch ? 100 : 40;
+        if (specialtyMatch) reasons.push(`Specialty: ${primaryTax?.taxonomy_description}`);
 
-        // Home health referrals scoring
-        const hhRule = currentRules.find(r => r.rule_name === 'home_health_referrals');
-        if (hhRule && ref?.home_health_referrals) {
-          const hhScore = Math.min((ref.home_health_referrals / 100) * 25, 25);
-          score += hhScore * hhRule.weight;
-          contributions.home_health_referrals = hhScore;
-          if (ref.home_health_referrals >= hhRule.threshold) {
-            reasons.push(`Active home health referrer (${ref.home_health_referrals} referrals)`);
-          }
-        }
+        // 2. Medicare Participation
+        scores.medicare_participation = util ? 100 : 0;
+        if (util) reasons.push('Active Medicare participation');
+
+        // 3. Patient Volume
+        const volume = util?.total_medicare_beneficiaries || 0;
+        scores.patient_volume = volume >= 500 ? 100 : volume >= 200 ? 75 : volume >= 50 ? 50 : volume > 0 ? 25 : 0;
+        if (volume > 0) reasons.push(`${volume} Medicare beneficiaries`);
+
+        // 4. Part D Signals
+        const intensity = volume > 0 ? (util?.total_services || 0) / volume : 0;
+        scores.part_d_signals = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
+        if (intensity >= 8) reasons.push('High service intensity');
+
+        // 5. Geographic Priority
+        const primaryLoc = providerLocs.find(l => l.is_primary) || providerLocs[0];
+        const isPa = primaryLoc?.state === 'PA';
+        scores.geographic_priority = isPa ? 100 : 20;
+        if (isPa) reasons.push(`PA Location: ${primaryLoc?.city}`);
+
+        // 6. Practice Type
+        const locCount = providerLocs.length;
+        scores.practice_type = locCount === 1 ? 100 : locCount <= 3 ? 80 : locCount <= 5 ? 60 : 30;
+        if (locCount <= 3) reasons.push(`${locCount === 1 ? 'Solo' : 'Small group'} practice`);
+
+        // 7. Behavioral Health
+        const behavioralTerms = ['psychiatry', 'psychology', 'behavioral', 'mental health'];
+        const isBehavioral = behavioralTerms.some(t => taxonomyDesc.includes(t));
+        scores.behavioral_health = isBehavioral ? 100 : 50;
+        if (isBehavioral) reasons.push('Behavioral health specialty');
+
+        // Calculate final score
+        let finalScore = 0;
+        Object.keys(scores).forEach(category => {
+          const rule = currentRules.find(r => r.category === category);
+          if (!rule) return;
+
+          const weight = rule.weight / 100;
+          const contribution = (scores[category] * weight);
+          finalScore += contribution;
+
+          breakdown[category] = {
+            value: scores[category],
+            weight: rule.weight,
+            contribution: Math.round(contribution)
+          };
+        });
+
+        finalScore = Math.round(finalScore);
 
         // Save score
         const existingScore = await base44.entities.LeadScore.filter({ npi: provider.npi });
+        const scoreData = {
+          npi: provider.npi,
+          score: finalScore,
+          score_date: new Date().toISOString(),
+          score_breakdown: breakdown,
+          reasons,
+        };
+
         if (existingScore.length > 0) {
-          await base44.entities.LeadScore.update(existingScore[0].id, {
-            score: Math.min(score, 100),
-            score_date: new Date().toISOString(),
-            reasons,
-            contributions,
-          });
+          await base44.entities.LeadScore.update(existingScore[0].id, scoreData);
         } else {
-          await base44.entities.LeadScore.create({
-            npi: provider.npi,
-            score: Math.min(score, 100),
-            score_date: new Date().toISOString(),
-            reasons,
-            contributions,
-          });
+          await base44.entities.LeadScore.create(scoreData);
         }
       }
 
@@ -183,8 +226,11 @@ export default function ScoringRules() {
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Scoring Rules</h1>
-          <p className="text-gray-600 mt-1">Configure CareMetric Fit Score calculation</p>
+          <h1 className="text-3xl font-bold text-gray-900">Scoring Configuration</h1>
+          <p className="text-gray-600 mt-1">CareMetric Referral Propensity Score (0-100)</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Configure weights for each factor. Total should equal 100%.
+          </p>
         </div>
         <Button
           onClick={handleRecalculate}
@@ -196,9 +242,24 @@ export default function ScoringRules() {
         </Button>
       </div>
 
-      <div className="mb-6">
-        <PackageSelector onApply={handleApplyPackage} />
-      </div>
+      <Card className="mb-6 bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-1">Scoring Methodology</h3>
+              <p className="text-sm text-blue-700">
+                Each provider receives a score based on weighted factors. Adjust weights to match your targeting strategy.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-900">
+                {rules.reduce((sum, r) => sum + (r.weight || 0), 0)}%
+              </p>
+              <p className="text-xs text-blue-600">Total Weight</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -226,22 +287,24 @@ export default function ScoringRules() {
                     {rule.description || '-'}
                   </TableCell>
                   <TableCell>
-                    {editingRule?.id === rule.id ? (
-                      <Input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="1"
-                        value={editingRule.weight}
-                        onChange={(e) => setEditingRule({
-                          ...editingRule,
-                          weight: parseFloat(e.target.value)
-                        })}
-                        className="w-20"
-                      />
-                    ) : (
-                      <Badge variant="outline">{rule.weight}</Badge>
-                    )}
+                   {editingRule?.id === rule.id ? (
+                     <div className="flex items-center gap-1">
+                       <Input
+                         type="number"
+                         min="0"
+                         max="100"
+                         value={editingRule.weight}
+                         onChange={(e) => setEditingRule({
+                           ...editingRule,
+                           weight: parseFloat(e.target.value)
+                         })}
+                         className="w-20"
+                       />
+                       <span className="text-sm text-gray-500">%</span>
+                     </div>
+                   ) : (
+                     <Badge variant="outline">{rule.weight}%</Badge>
+                   )}
                   </TableCell>
                   <TableCell>
                     {editingRule?.id === rule.id ? (
