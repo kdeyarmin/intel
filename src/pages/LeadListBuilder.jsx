@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Save, Download, Users } from 'lucide-react';
 import LeadListFilters from '../components/leadlists/LeadListFilters';
 import LeadResultsTable from '../components/leadlists/LeadResultsTable';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function LeadListBuilder() {
   const [filters, setFilters] = useState({
@@ -187,7 +188,21 @@ export default function LeadListBuilder() {
     setListDescription('');
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    // Log export to audit trail
+    const user = await base44.auth.me();
+    await base44.entities.AuditEvent.create({
+      event_type: 'export',
+      user_email: user.email,
+      details: {
+        action: 'csv_export',
+        entity: 'lead_list',
+        row_count: filteredResults.length,
+        file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
+        filters: filters,
+      },
+    });
+
     const headers = ['NPI', 'Name', 'Specialty', 'City', 'State', 'ZIP', 'Phone', 'Score', 'Patient Fingerprint'];
     const rows = filteredResults.map(result => {
       const { provider, location, taxonomy, score, utilization } = result;
@@ -253,11 +268,12 @@ export default function LeadListBuilder() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Lead List Builder</h1>
-          <p className="text-gray-600 mt-1">Build targeted provider lists with advanced filters</p>
-        </div>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Lead List Builder</h1>
+            <p className="text-gray-600 mt-1">Build targeted provider lists with advanced filters</p>
+          </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />
@@ -301,6 +317,8 @@ export default function LeadListBuilder() {
             </DialogContent>
           </Dialog>
         </div>
+        </div>
+        <ComplianceDisclaimer />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

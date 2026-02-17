@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Users, Activity } from 'lucide-react';
+import { suppressSmallCell } from '../compliance/complianceUtils';
 
 export default function UtilizationInsights({ utilization }) {
   if (!utilization) {
@@ -20,11 +21,14 @@ export default function UtilizationInsights({ utilization }) {
     );
   }
 
-  const patientVolume = utilization.total_medicare_beneficiaries || 0;
-  const totalServices = utilization.total_services || 0;
-  const servicesPerPatient = patientVolume > 0 ? (totalServices / patientVolume).toFixed(1) : 0;
+  const rawPatientVolume = utilization.total_medicare_beneficiaries || 0;
+  const rawTotalServices = utilization.total_services || 0;
+  const patientVolume = suppressSmallCell(rawPatientVolume);
+  const totalServices = suppressSmallCell(rawTotalServices);
+  const servicesPerPatient = (patientVolume !== '<11' && patientVolume > 0) ? (totalServices / patientVolume).toFixed(1) : 0;
 
   const getVolumeIndicator = () => {
+    if (patientVolume === '<11') return { label: 'Low Volume', color: 'bg-gray-100 text-gray-800' };
     if (patientVolume >= 1000) return { label: 'Very High', color: 'bg-purple-100 text-purple-800' };
     if (patientVolume >= 500) return { label: 'High', color: 'bg-blue-100 text-blue-800' };
     if (patientVolume >= 200) return { label: 'Moderate', color: 'bg-green-100 text-green-800' };
@@ -55,7 +59,9 @@ export default function UtilizationInsights({ utilization }) {
               <Users className="h-4 w-4 text-blue-600" />
               <p className="text-xs text-blue-600 font-medium">Patient Volume</p>
             </div>
-            <p className="text-2xl font-bold text-blue-900">{patientVolume.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-900">
+              {patientVolume === '<11' ? '<11' : patientVolume.toLocaleString()}
+            </p>
             <p className="text-xs text-blue-700">Medicare beneficiaries ({utilization.year})</p>
           </div>
 
@@ -84,7 +90,9 @@ export default function UtilizationInsights({ utilization }) {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <p className="text-gray-500">Total Services</p>
-              <p className="font-medium">{totalServices.toLocaleString()}</p>
+              <p className="font-medium">
+                {totalServices === '<11' ? '<11' : totalServices.toLocaleString()}
+              </p>
             </div>
             <div>
               <p className="text-gray-500">Medicare Payments</p>

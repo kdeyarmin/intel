@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Activity, MapPin, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({

@@ -47,31 +47,31 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AuditLog from './pages/AuditLog';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
-import Providers from './pages/Providers';
-import ProviderDetail from './pages/ProviderDetail';
-import LeadLists from './pages/LeadLists';
-import ScoringRules from './pages/ScoringRules';
-import AuditLog from './pages/AuditLog';
-import LeadListBuilder from './pages/LeadListBuilder';
 import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
+import LeadListBuilder from './pages/LeadListBuilder';
+import LeadLists from './pages/LeadLists';
+import ProviderDetail from './pages/ProviderDetail';
+import Providers from './pages/Providers';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
+import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AuditLog": AuditLog,
     "Dashboard": Dashboard,
     "DataImports": DataImports,
-    "Providers": Providers,
-    "ProviderDetail": ProviderDetail,
-    "LeadLists": LeadLists,
-    "ScoringRules": ScoringRules,
-    "AuditLog": AuditLog,
-    "LeadListBuilder": LeadListBuilder,
     "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
+    "LeadListBuilder": LeadListBuilder,
+    "LeadLists": LeadLists,
+    "ProviderDetail": ProviderDetail,
+    "Providers": Providers,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
+    "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
 }
 

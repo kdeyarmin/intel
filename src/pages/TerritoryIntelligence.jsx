@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, TrendingUp, Heart, Building2 } from 'lucide-react';
 import CountyDensityMap from '../components/territory/CountyDensityMap';
 import ProviderClusterList from '../components/territory/ProviderClusterList';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function TerritoryIntelligence() {
   const [filters, setFilters] = useState({
@@ -153,6 +154,10 @@ export default function TerritoryIntelligence() {
         <p className="text-gray-600">
           Geographic analysis of provider density, clusters, and market opportunities
         </p>
+      </div>
+
+      <div className="mb-6">
+        <ComplianceDisclaimer />
       </div>
 
       <Card className="mb-6">
