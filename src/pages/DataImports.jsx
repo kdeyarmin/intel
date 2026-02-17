@@ -187,8 +187,8 @@ export default function DataImports() {
           const providerData = {
             npi: row.npi,
             entity_type: row['Entity Type Code'] === '1' ? 'Individual' : 'Organization',
-            first_name: row['Provider First Name'],
-            last_name: row['Provider Last Name (Legal Name)'],
+            first_name: normalize(row['Provider First Name']),
+            last_name: normalize(row['Provider Last Name (Legal Name)']),
             credential: row['Provider Credential Text'],
             status: 'Active',
             last_update_date: new Date().toISOString(),
@@ -312,7 +312,7 @@ export default function DataImports() {
           const providerData = {
             npi: row.npi,
             entity_type: 'Organization',
-            organization_name: row['Agency Name'] || row['Provider Name'],
+            organization_name: normalize(row['Agency Name'] || row['Provider Name']),
             status: 'Active',
             last_update_date: new Date().toISOString(),
           };
