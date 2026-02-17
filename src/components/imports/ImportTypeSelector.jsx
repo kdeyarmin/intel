@@ -5,32 +5,46 @@ import { FileText, Database, TrendingUp, Activity } from 'lucide-react';
 
 const importTypes = [
   {
-    id: 'nppes',
-    name: 'NPPES Bulk File',
+    id: 'nppes_monthly',
+    name: 'NPPES Monthly Download',
     description: 'National Provider Identifier registry data',
     icon: FileText,
-    requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name', 'Provider Credential Text'],
+    requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'],
   },
   {
-    id: 'cms_physician_compare',
-    name: 'CMS Physician Compare',
-    description: 'Provider directory and quality measures',
-    icon: Database,
-    requiredColumns: ['NPI', 'First Name', 'Last Name', 'Organization Legal Name', 'Credential'],
-  },
-  {
-    id: 'cms_part_b_utilization',
-    name: 'CMS Part B Utilization',
-    description: 'Medicare claims and payment data',
+    id: 'cms_utilization',
+    name: 'CMS Provider Utilization',
+    description: 'Medicare Part B utilization and payment data',
     icon: TrendingUp,
-    requiredColumns: ['NPI', 'Year', 'Total Services', 'Medicare Beneficiaries', 'Medicare Payment Amount'],
+    requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'],
   },
   {
-    id: 'cms_referrals',
-    name: 'CMS Referral Data',
-    description: 'Home health, hospice, SNF referral patterns',
+    id: 'cms_part_d',
+    name: 'CMS Part D Prescriber',
+    description: 'Medicare prescription drug claims data',
     icon: Activity,
+    requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'],
+  },
+  {
+    id: 'cms_order_referring',
+    name: 'Order & Referring Providers',
+    description: 'Medicare ordering and referring provider data',
+    icon: Database,
     requiredColumns: ['NPI', 'Year', 'Total Referrals', 'Home Health Referrals', 'Hospice Referrals'],
+  },
+  {
+    id: 'pa_home_health',
+    name: 'PA Home Health Agencies',
+    description: 'Pennsylvania home health agency provider list',
+    icon: FileText,
+    requiredColumns: ['NPI', 'Agency Name', 'City', 'State', 'License Number'],
+  },
+  {
+    id: 'hospice_providers',
+    name: 'Hospice Provider List',
+    description: 'Medicare-certified hospice providers',
+    icon: Database,
+    requiredColumns: ['NPI', 'Provider Name', 'City', 'State', 'Certification Date'],
   },
 ];
 

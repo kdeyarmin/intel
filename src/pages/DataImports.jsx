@@ -77,10 +77,16 @@ export default function DataImports() {
       
       let validRows = 0;
       let invalidRows = 0;
+      let duplicateRows = 0;
       const errorSamples = [];
       const validData = [];
+      const seenNPIs = new Set();
 
-      for (let i = 1; i < Math.min(lines.length, 1000); i++) {
+      // Get existing NPIs for deduplication check
+      const existingProviders = await base44.entities.Provider.list();
+      const existingNPIs = new Set(existingProviders.map(p => p.npi));
+
+      for (let i = 1; i < lines.length && i < 10001; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
         const row = {};
         headers.forEach((h, idx) => { row[h] = values[idx]; });
@@ -104,25 +110,37 @@ export default function DataImports() {
               message: 'Invalid NPI format (must be 10 digits)',
             });
           }
+        } else if (seenNPIs.has(npi)) {
+          duplicateRows++;
         } else {
+          seenNPIs.add(npi);
           validRows++;
-          validData.push({ ...mappedData, npi });
+          validData.push({ 
+            ...mappedData, 
+            npi,
+            isDuplicate: existingNPIs.has(npi)
+          });
         }
       }
 
       // Update batch with results
       await base44.entities.ImportBatch.update(batch.id, {
-        status: 'completed',
+        status: dryRun ? 'completed' : 'processing',
         total_rows: lines.length - 1,
         valid_rows: validRows,
         invalid_rows: invalidRows,
+        duplicate_rows: duplicateRows,
         error_samples: errorSamples,
-        completed_at: new Date().toISOString(),
       });
 
       // If not dry run, import data
       if (!dryRun && validData.length > 0) {
         await importData(selectedType.id, validData, batch.id);
+      } else {
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        });
       }
 
       // Reload batch
@@ -153,8 +171,9 @@ export default function DataImports() {
 
   const importData = async (importType, data, batchId) => {
     let importedCount = 0;
+    let updatedCount = 0;
 
-    if (importType === 'nppes') {
+    if (importType === 'nppes_monthly') {
       for (const row of data) {
         try {
           const existing = await base44.entities.Provider.filter({ npi: row.npi });
@@ -181,14 +200,14 @@ export default function DataImports() {
             
             if (newDate > currentDate) {
               await base44.entities.Provider.update(current.id, providerData);
-              importedCount++;
+              updatedCount++;
             }
           }
         } catch (error) {
           console.error('Failed to import provider', error);
         }
       }
-    } else if (importType === 'cms_part_b_utilization') {
+    } else if (importType === 'cms_utilization') {
       for (const row of data) {
         try {
           // Check if provider exists, create placeholder if not
@@ -217,15 +236,16 @@ export default function DataImports() {
 
           if (existingUtil.length === 0) {
             await base44.entities.CMSUtilization.create(utilData);
+            importedCount++;
           } else {
             await base44.entities.CMSUtilization.update(existingUtil[0].id, utilData);
+            updatedCount++;
           }
-          importedCount++;
         } catch (error) {
           console.error('Failed to import utilization', error);
         }
       }
-    } else if (importType === 'cms_referrals') {
+    } else if (importType === 'cms_order_referring') {
       for (const row of data) {
         try {
           // Check if provider exists, create placeholder if not
@@ -254,18 +274,77 @@ export default function DataImports() {
 
           if (existingRef.length === 0) {
             await base44.entities.CMSReferral.create(refData);
+            importedCount++;
           } else {
             await base44.entities.CMSReferral.update(existingRef[0].id, refData);
+            updatedCount++;
+          }
+        } catch (error) {
+          console.error('Failed to import referral', error);
+        }
+      }
+    } else if (importType === 'cms_part_d') {
+      for (const row of data) {
+        try {
+          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
+          if (existingProvider.length === 0) {
+            await base44.entities.Provider.create({
+              npi: row.npi,
+              status: 'Active',
+              needs_nppes_enrichment: true,
+            });
           }
           importedCount++;
         } catch (error) {
-          console.error('Failed to import referral', error);
+          console.error('Failed to import Part D data', error);
+        }
+      }
+    } else if (importType === 'pa_home_health' || importType === 'hospice_providers') {
+      for (const row of data) {
+        try {
+          const existing = await base44.entities.Provider.filter({ npi: row.npi });
+          const providerData = {
+            npi: row.npi,
+            entity_type: 'Organization',
+            organization_name: row['Agency Name'] || row['Provider Name'],
+            status: 'Active',
+            last_update_date: new Date().toISOString(),
+          };
+
+          if (existing.length === 0) {
+            await base44.entities.Provider.create(providerData);
+            importedCount++;
+          } else {
+            await base44.entities.Provider.update(existing[0].id, providerData);
+            updatedCount++;
+          }
+
+          // Add location if available
+          if (row['City'] && row['State']) {
+            const existingLoc = await base44.entities.ProviderLocation.filter({ npi: row.npi });
+            const locationData = {
+              npi: row.npi,
+              location_type: 'Practice',
+              is_primary: true,
+              city: row['City'],
+              state: row['State'],
+            };
+
+            if (existingLoc.length === 0) {
+              await base44.entities.ProviderLocation.create(locationData);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to import provider', error);
         }
       }
     }
 
     await base44.entities.ImportBatch.update(batchId, {
+      status: 'completed',
       imported_rows: importedCount,
+      updated_rows: updatedCount,
+      completed_at: new Date().toISOString(),
     });
   };
 

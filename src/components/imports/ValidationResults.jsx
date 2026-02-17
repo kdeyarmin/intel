@@ -17,7 +17,7 @@ export default function ValidationResults({ batch }) {
         <CardTitle>Validation Results</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <p className="text-2xl font-bold text-blue-600">{batch.total_rows}</p>
             <p className="text-sm text-gray-600">Total Rows</p>
@@ -25,6 +25,10 @@ export default function ValidationResults({ batch }) {
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <p className="text-2xl font-bold text-green-600">{batch.valid_rows}</p>
             <p className="text-sm text-gray-600">Valid Rows</p>
+          </div>
+          <div className="text-center p-4 bg-yellow-50 rounded-lg">
+            <p className="text-2xl font-bold text-yellow-600">{batch.duplicate_rows || 0}</p>
+            <p className="text-sm text-gray-600">Duplicates</p>
           </div>
           <div className="text-center p-4 bg-red-50 rounded-lg">
             <p className="text-2xl font-bold text-red-600">{batch.invalid_rows}</p>
@@ -69,7 +73,7 @@ export default function ValidationResults({ batch }) {
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              Import completed successfully. {batch.imported_rows} records imported.
+              Import completed: {batch.imported_rows} new records, {batch.updated_rows || 0} updated.
             </AlertDescription>
           </Alert>
         )}
