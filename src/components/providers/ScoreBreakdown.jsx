@@ -12,15 +12,23 @@ const componentLabels = {
   geography: 'Geography',
 };
 
-export default function ScoreBreakdown({ breakdown, reasons }) {
+export default function ScoreBreakdown({ score, breakdown, reasons }) {
   if (!breakdown) return null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Score Breakdown</CardTitle>
+        <CardTitle>CareMetric Fit Score</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {score && (
+          <div className="flex items-center gap-4 pb-4 border-b">
+            <div className="text-5xl font-bold text-teal-600">{score}</div>
+            <div className="text-gray-600">
+              <p className="text-sm">Out of 100</p>
+            </div>
+          </div>
+        )}
         {Object.entries(breakdown).map(([key, data]) => {
           const percentage = (data.contribution / data.weight) * 100;
           
