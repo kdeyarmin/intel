@@ -169,6 +169,12 @@ export default function DataImports() {
     }
   };
 
+  // Normalize text for matching
+  const normalize = (text) => {
+    if (!text) return '';
+    return text.toLowerCase().trim().replace(/[^\w\s]/g, '');
+  };
+
   const importData = async (importType, data, batchId) => {
     let importedCount = 0;
     let updatedCount = 0;
@@ -321,17 +327,30 @@ export default function DataImports() {
 
           // Add location if available
           if (row['City'] && row['State']) {
-            const existingLoc = await base44.entities.ProviderLocation.filter({ npi: row.npi });
+            const existingLoc = await base44.entities.ProviderLocation.filter({ 
+              npi: row.npi,
+              location_type: 'Practice'
+            });
             const locationData = {
               npi: row.npi,
               location_type: 'Practice',
-              is_primary: true,
-              city: row['City'],
-              state: row['State'],
+              is_primary: existingLoc.length === 0, // First location is primary
+              city: normalize(row['City']),
+              state: row['State']?.toUpperCase(),
+              address_1: row['Address'] || '',
             };
 
             if (existingLoc.length === 0) {
               await base44.entities.ProviderLocation.create(locationData);
+            } else {
+              // Check for duplicate by normalized address
+              const isDuplicate = existingLoc.some(loc => 
+                normalize(loc.city) === normalize(row['City']) && 
+                loc.state === row['State']?.toUpperCase()
+              );
+              if (!isDuplicate) {
+                await base44.entities.ProviderLocation.create(locationData);
+              }
             }
           }
         } catch (error) {
