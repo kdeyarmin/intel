@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity } from 'lucide-react';
+import { Activity, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
+import ExportDialog from '../components/exports/ExportDialog';
 
 export default function Utilization() {
   const [search, setSearch] = useState('');
@@ -46,9 +47,29 @@ export default function Utilization() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Utilization</h1>
-        <p className="text-gray-600 mt-1">{utilization.length} utilization records</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Utilization</h1>
+          <p className="text-gray-600 mt-1">{utilization.length} utilization records</p>
+        </div>
+        <ExportDialog
+          data={filtered.map(u => ({
+            npi: u.npi, year: u.year || '', total_services: u.total_services ?? '',
+            beneficiaries: u.total_medicare_beneficiaries ?? '', submitted_charges: u.total_submitted_charges ?? '',
+            medicare_allowed: u.total_medicare_allowed ?? '', medicare_payment: u.total_medicare_payment ?? '',
+            drug_services: u.drug_services ?? '', created_date: u.created_date || '',
+          }))}
+          fields={[
+            { key: 'npi', label: 'NPI' }, { key: 'year', label: 'Year' }, { key: 'total_services', label: 'Services' },
+            { key: 'beneficiaries', label: 'Beneficiaries' }, { key: 'submitted_charges', label: 'Submitted Charges' },
+            { key: 'medicare_allowed', label: 'Medicare Allowed' }, { key: 'medicare_payment', label: 'Medicare Payment' },
+            { key: 'drug_services', label: 'Drug Services' },
+          ]}
+          fileName="utilization"
+          title="CMS Utilization"
+          dateField="created_date"
+          trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+        />
       </div>
 
       <Card className="mb-6 bg-white">

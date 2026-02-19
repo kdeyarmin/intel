@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin } from 'lucide-react';
+import { MapPin, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
+import ExportDialog from '../components/exports/ExportDialog';
 
 export default function Locations() {
   const [search, setSearch] = useState('');
@@ -55,9 +56,27 @@ export default function Locations() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
-        <p className="text-gray-600 mt-1">{locations.length} total locations</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
+          <p className="text-gray-600 mt-1">{locations.length} total locations</p>
+        </div>
+        <ExportDialog
+          data={filtered.map(l => ({
+            npi: l.npi, address: l.address_1 || '', city: l.city || '', state: l.state || '',
+            zip: l.zip || '', phone: l.phone || '', fax: l.fax || '',
+            type: l.location_type || '', primary: l.is_primary ? 'Yes' : 'No', created_date: l.created_date || '',
+          }))}
+          fields={[
+            { key: 'npi', label: 'NPI' }, { key: 'address', label: 'Address' }, { key: 'city', label: 'City' },
+            { key: 'state', label: 'State' }, { key: 'zip', label: 'ZIP' }, { key: 'phone', label: 'Phone' },
+            { key: 'fax', label: 'Fax' }, { key: 'type', label: 'Type' }, { key: 'primary', label: 'Primary' },
+          ]}
+          fileName="locations"
+          title="Locations"
+          dateField="created_date"
+          trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+        />
       </div>
 
       <Card className="mb-6 bg-white">

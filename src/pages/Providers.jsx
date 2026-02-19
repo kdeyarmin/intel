@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save } from 'lucide-react';
+import { Save, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
+import ExportDialog from '../components/exports/ExportDialog';
 
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,10 +96,38 @@ export default function Providers() {
           <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
           <p className="text-gray-600 mt-1">{providers.length} total providers</p>
         </div>
-        <Button onClick={handleSaveList} className="bg-blue-600 hover:bg-blue-700">
-          <Save className="w-4 h-4 mr-2" />
-          Save as Lead List
-        </Button>
+        <div className="flex gap-2">
+          <ExportDialog
+            data={filteredProviders.map(p => ({
+              npi: p.npi,
+              name: p.entity_type === 'Individual' ? `${p.last_name}, ${p.first_name}` : p.organization_name || '',
+              credential: p.credential || '',
+              entity_type: p.entity_type || '',
+              status: p.status || '',
+              gender: p.gender || '',
+              enumeration_date: p.enumeration_date || '',
+              score: getScore(p.npi)?.toFixed(0) || '',
+            }))}
+            fields={[
+              { key: 'npi', label: 'NPI' },
+              { key: 'name', label: 'Name' },
+              { key: 'credential', label: 'Credential' },
+              { key: 'entity_type', label: 'Type' },
+              { key: 'status', label: 'Status' },
+              { key: 'gender', label: 'Gender' },
+              { key: 'enumeration_date', label: 'Enumeration Date' },
+              { key: 'score', label: 'Score' },
+            ]}
+            fileName="providers"
+            title="Providers"
+            dateField="enumeration_date"
+            trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+          />
+          <Button onClick={handleSaveList} className="bg-blue-600 hover:bg-blue-700">
+            <Save className="w-4 h-4 mr-2" />
+            Save as Lead List
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6 bg-white">

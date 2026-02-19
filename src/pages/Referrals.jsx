@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
+import ExportDialog from '../components/exports/ExportDialog';
 
 export default function Referrals() {
   const [search, setSearch] = useState('');
@@ -51,9 +52,27 @@ export default function Referrals() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Referrals</h1>
-        <p className="text-gray-600 mt-1">{referrals.length} referral records</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Referrals</h1>
+          <p className="text-gray-600 mt-1">{referrals.length} referral records</p>
+        </div>
+        <ExportDialog
+          data={filtered.map(r => ({
+            npi: r.npi, year: r.year || '', total_referrals: r.total_referrals ?? '',
+            home_health: r.home_health_referrals ?? '', hospice: r.hospice_referrals ?? '',
+            snf: r.snf_referrals ?? '', dme: r.dme_referrals ?? '', created_date: r.created_date || '',
+          }))}
+          fields={[
+            { key: 'npi', label: 'NPI' }, { key: 'year', label: 'Year' }, { key: 'total_referrals', label: 'Total' },
+            { key: 'home_health', label: 'Home Health' }, { key: 'hospice', label: 'Hospice' },
+            { key: 'snf', label: 'SNF' }, { key: 'dme', label: 'DME' },
+          ]}
+          fileName="referrals"
+          title="CMS Referrals"
+          dateField="created_date"
+          trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+        />
       </div>
 
       <Card className="mb-6 bg-white">

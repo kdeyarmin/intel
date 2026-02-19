@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Download, Trash2, Eye } from 'lucide-react';
+import { Plus, Download, Trash2, Eye, FileDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import FilterBuilder from '../components/leadlists/FilterBuilder';
 import LeadListTable from '../components/leadlists/LeadListTable';
+import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
 
 export default function LeadLists() {
   const [creating, setCreating] = useState(false);
@@ -119,7 +120,9 @@ export default function LeadLists() {
     setNewList({ name: '', description: '', filters: {} });
   };
 
-  const handleExport = async (listId) => {
+  const [exportFormat, setExportFormat] = useState('csv');
+
+  const buildExportRows = async (listId) => {
     const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
     const providers = await base44.entities.Provider.list();
     const scores = await base44.entities.LeadScore.list();
@@ -127,46 +130,50 @@ export default function LeadLists() {
     const utilizations = await base44.entities.CMSUtilization.list();
     const referrals = await base44.entities.CMSReferral.list();
 
-    const rows = members.map(member => {
+    return members.map(member => {
       const provider = providers.find(p => p.npi === member.npi);
       const score = scores.find(s => s.npi === member.npi);
       const location = locations.find(l => l.npi === member.npi && l.is_primary);
       const util = utilizations.find(u => u.npi === member.npi);
       const ref = referrals.find(r => r.npi === member.npi);
-
       return {
-        NPI: member.npi,
-        Name: provider?.entity_type === 'Individual' 
-          ? `${provider.first_name} ${provider.last_name}`
-          : provider?.organization_name,
-        Score: score?.score || '',
-        City: location?.city || '',
-        State: location?.state || '',
-        Phone: location?.phone || '',
-        Beneficiaries: util?.total_medicare_beneficiaries || 0,
-        Referrals: ref?.total_referrals || 0,
-        Status: member.status || 'New',
-        Notes: member.notes || '',
+        npi: member.npi,
+        name: provider?.entity_type === 'Individual'
+          ? `${provider?.first_name} ${provider?.last_name}`
+          : provider?.organization_name || '',
+        score: score?.score ?? '',
+        city: location?.city || '',
+        state: location?.state || '',
+        phone: location?.phone || '',
+        beneficiaries: util?.total_medicare_beneficiaries ?? 0,
+        referrals: ref?.total_referrals ?? 0,
+        status: member.status || 'New',
+        notes: member.notes || '',
       };
     });
+  };
 
-    const csv = [
-      Object.keys(rows[0]).join(','),
-      ...rows.map(row => Object.values(row).join(','))
-    ].join('\n');
+  const LEAD_FIELDS = [
+    { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'score', label: 'Score' },
+    { key: 'city', label: 'City' }, { key: 'state', label: 'State' }, { key: 'phone', label: 'Phone' },
+    { key: 'beneficiaries', label: 'Beneficiaries' }, { key: 'referrals', label: 'Referrals' },
+    { key: 'status', label: 'Status' }, { key: 'notes', label: 'Notes' },
+  ];
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lead-list-${listId}.csv`;
-    a.click();
+  const handleExport = async (listId, format = 'csv') => {
+    const rows = await buildExportRows(listId);
+    const list = lists.find(l => l.id === listId);
+    const name = `lead-list-${(list?.name || listId).replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}`;
+
+    if (format === 'csv') exportCSV(rows, LEAD_FIELDS, name);
+    else if (format === 'excel') exportExcel(rows, LEAD_FIELDS, name);
+    else if (format === 'pdf') exportPDF(rows, LEAD_FIELDS, name, list?.name || 'Lead List');
 
     const user = await base44.auth.me();
     await base44.entities.AuditEvent.create({
       event_type: 'export',
       user_email: user.email,
-      details: { action: 'Export Lead List', row_count: rows.length },
+      details: { action: 'Export Lead List', format, row_count: rows.length },
       timestamp: new Date().toISOString(),
     });
   };
@@ -344,10 +351,11 @@ export default function LeadLists() {
                             <ViewListDialog listId={list.id} />
                           </DialogContent>
                         </Dialog>
-                        <Button size="sm" variant="outline" onClick={() => handleExport(list.id)}>
-                          <Download className="w-4 h-4 mr-1" />
-                          Export
-                        </Button>
+                        <div className="flex items-center border rounded-md overflow-hidden">
+                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'csv')} className="rounded-none text-xs px-2">CSV</Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'excel')} className="rounded-none border-x text-xs px-2">XLS</Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'pdf')} className="rounded-none text-xs px-2">PDF</Button>
+                        </div>
                         <Button 
                           size="sm" 
                           variant="outline" 
