@@ -35,18 +35,26 @@ export default function NPPESCrawler() {
   const runningRef = useRef(false);
   const queryClient = useQueryClient();
 
-  // Fetch current status
+  // Fetch current status (poll during both manual and auto modes)
   const { data: crawlStatus, refetch: refetchStatus } = useQuery({
     queryKey: ['crawlerStatus'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('nppesStateCrawler', { action: 'status' });
+      const res = await base44.functions.invoke('nppesAutoChainCrawler', { action: 'status' });
       return res.data;
     },
-    refetchInterval: running ? 10000 : false,
+    refetchInterval: (running || autoMode) ? 10000 : 30000,
   });
 
   useEffect(() => {
-    if (crawlStatus) setStatus(crawlStatus);
+    if (crawlStatus) {
+      setStatus(crawlStatus);
+      // Detect if auto-chain is active on page load
+      if (crawlStatus.auto_chain_active && !autoMode && !running) {
+        setAutoMode(true);
+      } else if (!crawlStatus.auto_chain_active && autoMode && crawlStatus.pending === 0) {
+        setAutoMode(false);
+      }
+    }
   }, [crawlStatus]);
 
   const addLog = (message, type = 'info') => {
