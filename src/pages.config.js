@@ -47,8 +47,10 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
 import AutoImports from './pages/AutoImports';
+import BulkEmailExport from './pages/BulkEmailExport';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
 import ErrorReports from './pages/ErrorReports';
@@ -57,25 +59,26 @@ import ImportSchedule from './pages/ImportSchedule';
 import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
+import LocationAnalytics from './pages/LocationAnalytics';
+import Locations from './pages/Locations';
 import ProviderDetail from './pages/ProviderDetail';
+import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import Providers from './pages/Providers';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
+import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import Analytics from './pages/Analytics';
-import Locations from './pages/Locations';
 import Utilization from './pages/Utilization';
-import Referrals from './pages/Referrals';
-import ProviderLocationMatching from './pages/ProviderLocationMatching';
-import LocationAnalytics from './pages/LocationAnalytics';
-import BulkEmailExport from './pages/BulkEmailExport';
+import NPPESImport from './pages/NPPESImport';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "Analytics": Analytics,
     "AuditLog": AuditLog,
     "AutoImports": AutoImports,
+    "BulkEmailExport": BulkEmailExport,
     "Dashboard": Dashboard,
     "DataImports": DataImports,
     "ErrorReports": ErrorReports,
@@ -84,19 +87,18 @@ export const PAGES = {
     "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
+    "LocationAnalytics": LocationAnalytics,
+    "Locations": Locations,
     "ProviderDetail": ProviderDetail,
+    "ProviderLocationMatching": ProviderLocationMatching,
     "Providers": Providers,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
+    "Referrals": Referrals,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "Analytics": Analytics,
-    "Locations": Locations,
     "Utilization": Utilization,
-    "Referrals": Referrals,
-    "ProviderLocationMatching": ProviderLocationMatching,
-    "LocationAnalytics": LocationAnalytics,
-    "BulkEmailExport": BulkEmailExport,
+    "NPPESImport": NPPESImport,
 }
 
 export const pagesConfig = {
