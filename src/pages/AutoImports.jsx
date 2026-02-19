@@ -40,18 +40,38 @@ export default function AutoImports() {
 
     setProcessing(true);
     try {
-      const result = await base44.functions.invoke('autoImportCMSData', {
-        import_type: importType,
-        file_url: fileUrl,
-        year: parseInt(year),
-        dry_run: dryRun,
-      });
+      let result;
+      if (importType === 'medicare_hha_stats') {
+        const res = await base44.functions.invoke('importMedicareHHA', {
+          action: 'import',
+          year: parseInt(year),
+          custom_url: fileUrl || undefined,
+          dry_run: dryRun,
+        });
+        result = res.data;
+      } else {
+        const res = await base44.functions.invoke('autoImportCMSData', {
+          import_type: importType,
+          file_url: fileUrl,
+          year: parseInt(year),
+          dry_run: dryRun,
+        });
+        result = res.data;
+      }
 
-      alert(
-        dryRun 
-          ? `Validation complete: ${result.valid_rows} valid rows, ${result.invalid_rows} invalid`
-          : `Import complete: ${result.imported_rows} imported, ${result.updated_rows} updated`
-      );
+      if (importType === 'medicare_hha_stats') {
+        alert(
+          dryRun 
+            ? `Validation complete: ${result.total_records} records from ${result.sheets_parsed?.length || 0} sheets`
+            : `Import complete: ${result.imported} records from ${result.sheets_parsed?.length || 0} sheets`
+        );
+      } else {
+        alert(
+          dryRun 
+            ? `Validation complete: ${result.valid_rows} valid rows, ${result.invalid_rows} invalid`
+            : `Import complete: ${result.imported_rows} imported, ${result.updated_rows} updated`
+        );
+      }
 
       setFileUrl('');
       queryClient.invalidateQueries(['recentImports']);
@@ -90,6 +110,7 @@ export default function AutoImports() {
                   <SelectItem value="cms_utilization">CMS Utilization</SelectItem>
                   <SelectItem value="cms_order_referring">CMS Order/Referring</SelectItem>
                   <SelectItem value="cms_part_d">CMS Part D</SelectItem>
+                  <SelectItem value="medicare_hha_stats">Medicare HHA Use & Payments</SelectItem>
                 </SelectContent>
               </Select>
             </div>
