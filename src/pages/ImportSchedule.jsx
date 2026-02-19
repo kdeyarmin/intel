@@ -106,6 +106,27 @@ export default function ImportSchedule() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['importSchedules'] }),
   });
 
+  const [runningScheduleId, setRunningScheduleId] = useState(null);
+
+  const runNowMutation = useMutation({
+    mutationFn: async (schedule) => {
+      setRunningScheduleId(schedule.id);
+      await base44.functions.invoke('autoImportCMSData', {
+        import_type: schedule.import_type,
+        file_url: schedule.api_url,
+        year: new Date().getFullYear(),
+        dry_run: false,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['importBatches'] });
+      setRunningScheduleId(null);
+    },
+    onError: () => {
+      setRunningScheduleId(null);
+    },
+  });
+
   const handleEdit = (schedule) => {
     setEditingSchedule(schedule);
     setImportType(schedule.import_type);
