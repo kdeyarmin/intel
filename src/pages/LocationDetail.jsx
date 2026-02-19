@@ -21,10 +21,7 @@ export default function LocationDetail() {
 
   const { data: allLocations = [], isLoading: loadingLoc } = useQuery({
     queryKey: ['locationDetail', locationId],
-    queryFn: async () => {
-      const all = await base44.entities.ProviderLocation.list('-created_date', 500);
-      return all.filter(l => l.id === locationId);
-    },
+    queryFn: () => base44.entities.ProviderLocation.filter({ id: locationId }),
     enabled: !!locationId,
   });
 
@@ -45,7 +42,7 @@ export default function LocationDetail() {
 
   // Fetch those providers
   const { data: allProviders = [] } = useQuery({
-    queryKey: ['providers-for-location'],
+    queryKey: ['locDetailProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
   });
@@ -74,7 +71,7 @@ export default function LocationDetail() {
 
   // Fetch all locations for geo insights
   const { data: allLocationsForGeo = [] } = useQuery({
-    queryKey: ['allLocsGeo'],
+    queryKey: ['locDetailGeo'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
     staleTime: 120000,
   });

@@ -31,7 +31,7 @@ export default function DataImports() {
   const queryClient = useQueryClient();
 
   const { data: batches = [] } = useQuery({
-    queryKey: ['importBatches'],
+    queryKey: ['dataImportsBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 20),
   });
 

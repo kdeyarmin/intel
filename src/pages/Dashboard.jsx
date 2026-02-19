@@ -12,25 +12,25 @@ import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
-    queryKey: ['providers'],
+    queryKey: ['dashProviders'],
     queryFn: () => base44.entities.Provider.list(),
     staleTime: 60000,
   });
 
   const { data: utilization = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['utilization'],
+    queryKey: ['dashUtilization'],
     queryFn: () => base44.entities.CMSUtilization.list(),
     staleTime: 60000,
   });
 
   const { data: locations = [] } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['dashLocations'],
     queryFn: () => base44.entities.ProviderLocation.list(),
     staleTime: 60000,
   });
 
   const { data: referrals = [] } = useQuery({
-    queryKey: ['referrals'],
+    queryKey: ['dashReferrals'],
     queryFn: () => base44.entities.CMSReferral.list(),
     staleTime: 60000,
   });

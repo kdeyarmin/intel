@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { GitBranch, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
@@ -16,7 +17,7 @@ export default function Referrals() {
   const [typeFilter, setTypeFilter] = useState('all');
 
   const { data: referrals = [], isLoading } = useQuery({
-    queryKey: ['referrals'],
+    queryKey: ['referralsPage'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 200),
     staleTime: 60000,
   });

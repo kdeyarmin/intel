@@ -25,8 +25,9 @@ export default function ReferralPathwayAnalysis() {
   const queryClient = useQueryClient();
 
   const { data: providers = [] } = useQuery({
-    queryKey: ['providers'],
-    queryFn: () => base44.entities.Provider.list(),
+    queryKey: ['rpaProviders'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const { data: analyses = [], isLoading: loadingAnalyses } = useQuery({

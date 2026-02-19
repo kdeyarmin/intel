@@ -92,13 +92,14 @@ export default function LeadLists() {
       provider_count: filtered.length,
     });
 
-    // Add members
-    for (const provider of filtered) {
-      await base44.entities.LeadListMember.create({
-        lead_list_id: list.id,
-        npi: provider.npi,
-        status: 'New',
-      });
+    // Add members in bulk
+    const memberBatch = filtered.map(provider => ({
+      lead_list_id: list.id,
+      npi: provider.npi,
+      status: 'New',
+    }));
+    for (let i = 0; i < memberBatch.length; i += 25) {
+      await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
     }
 
     // Log audit
@@ -119,8 +120,6 @@ export default function LeadLists() {
     setCreating(false);
     setNewList({ name: '', description: '', filters: {} });
   };
-
-  const [exportFormat, setExportFormat] = useState('csv');
 
   const buildExportRows = async (listId) => {
     const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
@@ -182,9 +181,7 @@ export default function LeadLists() {
     if (!confirm('Delete this lead list?')) return;
     
     const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-    for (const member of members) {
-      await base44.entities.LeadListMember.delete(member.id);
-    }
+    await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
     
     deleteMutation.mutate(listId);
   };

@@ -19,28 +19,33 @@ export default function TerritoryIntelligence() {
   });
 
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
-    queryKey: ['providers'],
-    queryFn: () => base44.entities.Provider.list(),
+    queryKey: ['tiProviders'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const { data: locations = [], isLoading: loadingLocations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.ProviderLocation.list(),
+    queryKey: ['tiLocations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const { data: taxonomies = [], isLoading: loadingTaxonomies } = useQuery({
-    queryKey: ['taxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list(),
+    queryKey: ['tiTaxonomies'],
+    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const { data: scores = [], isLoading: loadingScores } = useQuery({
-    queryKey: ['scores'],
-    queryFn: () => base44.entities.LeadScore.list(),
+    queryKey: ['tiScores'],
+    queryFn: () => base44.entities.LeadScore.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['utilizations'],
-    queryFn: () => base44.entities.CMSUtilization.list(),
+    queryKey: ['tiUtilizations'],
+    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const isLoading = loadingProviders || loadingLocations || loadingTaxonomies || loadingScores || loadingUtil;

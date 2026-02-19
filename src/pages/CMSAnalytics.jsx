@@ -40,13 +40,13 @@ export default function CMSAnalytics() {
   });
 
   const { data: utilization = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['cmsUtilization'],
+    queryKey: ['cmsAnalyticsUtil'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
     staleTime: 120000,
   });
 
   const { data: referrals = [], isLoading: loadingRef } = useQuery({
-    queryKey: ['cmsReferrals'],
+    queryKey: ['cmsAnalyticsRef'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
     staleTime: 120000,
   });
@@ -64,7 +64,7 @@ export default function CMSAnalytics() {
   });
 
   const { data: importBatches = [] } = useQuery({
-    queryKey: ['importBatches'],
+    queryKey: ['cmsAnalyticsBatches'],
     queryFn: () => base44.entities.ImportBatch.filter({ status: 'completed' }, '-created_date', 50),
     staleTime: 120000,
   });

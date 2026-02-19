@@ -24,9 +24,9 @@ export default function ImportMonitoring() {
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
-    queryKey: ['importBatches'],
+    queryKey: ['importMonitoringBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
-    refetchInterval: 30000, // Refresh every 30 seconds to avoid rate limits
+    refetchInterval: 30000,
   });
 
   const getStatusIcon = (status) => {

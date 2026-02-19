@@ -40,7 +40,7 @@ export default function Locations() {
   const currentFilters = { search, stateFilter, typeFilter, primaryFilter };
 
   const { data: locations = [], isLoading } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['locationsPage'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 200),
     staleTime: 60000,
   });

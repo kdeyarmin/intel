@@ -43,12 +43,12 @@ export default function Providers() {
   const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter };
 
   const { data: providers = [], isLoading } = useQuery({
-    queryKey: ['providers'],
+    queryKey: ['providersPage'],
     queryFn: () => base44.entities.Provider.list('-created_date', 100),
   });
 
   const { data: scores = [] } = useQuery({
-    queryKey: ['scores'],
+    queryKey: ['providersPageScores'],
     queryFn: () => base44.entities.LeadScore.list(),
   });
 
@@ -95,11 +95,12 @@ export default function Providers() {
       provider_count: filteredProviders.length,
     });
 
-    for (const provider of filteredProviders.slice(0, 50)) {
-      await base44.entities.LeadListMember.create({
-        lead_list_id: newList.id,
-        npi: provider.npi,
-      });
+    const memberBatch = filteredProviders.slice(0, 50).map(provider => ({
+      lead_list_id: newList.id,
+      npi: provider.npi,
+    }));
+    for (let i = 0; i < memberBatch.length; i += 25) {
+      await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
     }
 
     await base44.entities.AuditEvent.create({

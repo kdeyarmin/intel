@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -42,12 +42,16 @@ const NAV_SECTIONS = [
       { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
       { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
       { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
+      { name: 'Referral Pathways', icon: GitBranch, page: 'ReferralPathwayAnalysis', roles: ['admin', 'sales_rep'] },
+      { name: 'Territory Intel', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
     label: 'Sales Tools',
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
+      { name: 'Lead Builder', icon: Users, page: 'LeadListBuilder', roles: ['admin', 'sales_rep'] },
+      { name: 'Lead Copilot', icon: Bot, page: 'LeadDiscoveryCopilot', roles: ['admin', 'sales_rep'] },
       { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
       { name: 'Bulk Email Export', icon: Mail, page: 'BulkEmailExport', roles: ['admin'] },
       { name: 'Provider Outreach', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },

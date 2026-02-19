@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Activity, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
@@ -15,7 +16,7 @@ export default function Utilization() {
   const [minPayment, setMinPayment] = useState('');
 
   const { data: utilization = [], isLoading } = useQuery({
-    queryKey: ['utilization'],
+    queryKey: ['utilizationPage'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 200),
     staleTime: 60000,
   });

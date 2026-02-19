@@ -13,19 +13,19 @@ import TopLocationsTable from '../components/locationAnalytics/TopLocationsTable
 
 export default function LocationAnalytics() {
   const { data: locations = [], isLoading: loadingLoc } = useQuery({
-    queryKey: ['allLocations'],
+    queryKey: ['locAnalyticsLocations'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
     staleTime: 60000,
   });
 
   const { data: referrals = [], isLoading: loadingRef } = useQuery({
-    queryKey: ['allReferrals'],
+    queryKey: ['locAnalyticsReferrals'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
     staleTime: 60000,
   });
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['allUtilizations'],
+    queryKey: ['locAnalyticsUtilizations'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
     staleTime: 60000,
   });
