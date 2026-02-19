@@ -48,14 +48,50 @@ Deno.serve(async (req) => {
             let columnMapping = {};
 
             if (contentType.includes('application/json') || text.trim().startsWith('[')) {
-                // CMS API returns JSON arrays
-                const jsonData = JSON.parse(text);
-                if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                // CMS API returns JSON arrays — paginate to get all data
+                const firstPage = JSON.parse(text);
+                if (!Array.isArray(firstPage) || firstPage.length === 0) {
                     throw new Error('No data returned from API');
                 }
-                headers = Object.keys(jsonData[0]);
-                rows = jsonData;
+                headers = Object.keys(firstPage[0]);
                 columnMapping = detectCMSColumns(headers, import_type);
+                rows = [...firstPage];
+
+                // CMS Data API default page size is 1000. Keep fetching until we get less than 1000.
+                const PAGE_SIZE = 1000;
+                let offset = PAGE_SIZE;
+                if (firstPage.length >= PAGE_SIZE) {
+                    console.log(`First page returned ${firstPage.length} rows, fetching more pages...`);
+                    while (true) {
+                        const separator = file_url.includes('?') ? '&' : '?';
+                        const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
+                        console.log(`Fetching page at offset ${offset}...`);
+                        const pageResponse = await fetch(pageUrl);
+                        if (!pageResponse.ok) {
+                            console.error(`Page fetch failed at offset ${offset}: ${pageResponse.statusText}`);
+                            break;
+                        }
+                        const pageText = await pageResponse.text();
+                        let pageData;
+                        try {
+                            pageData = JSON.parse(pageText);
+                        } catch (e) {
+                            console.error(`Failed to parse page at offset ${offset}`);
+                            break;
+                        }
+                        if (!Array.isArray(pageData) || pageData.length === 0) {
+                            console.log(`No more data at offset ${offset}, pagination complete.`);
+                            break;
+                        }
+                        rows = rows.concat(pageData);
+                        console.log(`Fetched ${pageData.length} rows at offset ${offset}, total so far: ${rows.length}`);
+                        if (pageData.length < PAGE_SIZE) {
+                            break;
+                        }
+                        offset += PAGE_SIZE;
+                    }
+                }
+                console.log(`Total rows fetched across all pages: ${rows.length}`);
             } else {
                 // Legacy CSV handling
                 const lines = text.split('\n').filter(l => l.trim());
