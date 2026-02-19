@@ -264,11 +264,27 @@ Deno.serve(async (req) => {
                 throw new Error(`No zip prefixes configured for state ${stateToProcess} — cannot crawl without additional search criteria`);
             }
 
+            // Time guard: abort gracefully if approaching the function timeout (170s safety margin)
+            const crawlStartTime = Date.now();
+            const MAX_CRAWL_MS = 160000; // 160s — leave headroom for saving results
+            let timedOut = false;
+
+            function checkTimeout() {
+                if (Date.now() - crawlStartTime > MAX_CRAWL_MS) {
+                    timedOut = true;
+                    return true;
+                }
+                return false;
+            }
+
             for (const enumType of enumTypes) {
+                if (timedOut) break;
                 const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
                 console.log(`[${stateToProcess}] ${typeLabel}: crawling ${zipPrefixes.length} zip prefixes`);
 
                 for (const zipPrefix of zipPrefixes) {
+                    if (checkTimeout()) break;
+
                     // Query with 2-digit zip prefix
                     const params = new URLSearchParams();
                     params.set('version', '2.1');
@@ -282,12 +298,13 @@ Deno.serve(async (req) => {
                     const beforeCount = allResults.length;
                     addUniqueResults(results);
 
-                    if (hitLimit) {
+                    if (hitLimit && !checkTimeout()) {
                         // Subdivide into 3-digit zip prefixes (e.g. "350*"-"359*")
                         queriesOverLimit++;
                         console.log(`[${stateToProcess}] ${typeLabel} zip=${zipPrefix}*: HIT LIMIT (${results.length}), expanding to 3-digit`);
 
                         for (let d = 0; d <= 9; d++) {
+                            if (checkTimeout()) break;
                             const zip3 = `${zipPrefix}${d}`;
                             const subParams = new URLSearchParams();
                             subParams.set('version', '2.1');
@@ -300,10 +317,11 @@ Deno.serve(async (req) => {
                             const subResult = await fetchAllPages(subParams, stateToProcess);
                             addUniqueResults(subResult.results);
 
-                            if (subResult.hitLimit) {
+                            if (subResult.hitLimit && !checkTimeout()) {
                                 // Subdivide further into 4-digit zip prefixes
                                 console.log(`[${stateToProcess}] ${typeLabel} zip=${zip3}*: STILL AT LIMIT, expanding to 4-digit`);
                                 for (let d2 = 0; d2 <= 9; d2++) {
+                                    if (checkTimeout()) break;
                                     const zip4 = `${zip3}${d2}`;
                                     const deepParams = new URLSearchParams();
                                     deepParams.set('version', '2.1');
@@ -319,11 +337,11 @@ Deno.serve(async (req) => {
                                     if (deepResult.hitLimit) {
                                         console.warn(`[${stateToProcess}] ${typeLabel} zip=${zip4}*: STILL AT LIMIT — some records may be missed`);
                                     }
-                                    await new Promise(r => setTimeout(r, 100));
+                                    await new Promise(r => setTimeout(r, 50));
                                 }
                             }
 
-                            await new Promise(r => setTimeout(r, 100));
+                            await new Promise(r => setTimeout(r, 50));
                         }
                     }
 
@@ -339,7 +357,11 @@ Deno.serve(async (req) => {
                     await new Promise(r => setTimeout(r, API_DELAY_MS));
                 }
 
-                console.log(`[${stateToProcess}] ${typeLabel} zip crawl done: ${allResults.length} unique NPIs`);
+                console.log(`[${stateToProcess}] ${typeLabel} zip crawl done: ${allResults.length} unique NPIs${timedOut ? ' (TIMED OUT — partial)' : ''}`);
+            }
+
+            if (timedOut) {
+                console.warn(`[${stateToProcess}] Hit time limit after ${Math.round((Date.now() - crawlStartTime) / 1000)}s — saving ${allResults.length} records collected so far`);
             }
 
             if (queriesOverLimit > 0) {
