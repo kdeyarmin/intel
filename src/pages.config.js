@@ -74,6 +74,7 @@ import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import DataQuality from './pages/DataQuality';
 import CMSAnalytics from './pages/CMSAnalytics';
+import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -105,6 +106,7 @@ export const PAGES = {
     "Utilization": Utilization,
     "DataQuality": DataQuality,
     "CMSAnalytics": CMSAnalytics,
+    "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
 }
 
 export const pagesConfig = {

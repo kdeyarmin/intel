@@ -26,6 +26,7 @@ const NAV_SECTIONS = [
       { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
       { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
+      { name: 'Crawler Dashboard', icon: BarChart3, page: 'NPPESCrawlerDashboard', roles: ['admin'] },
       { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
     ]
   },
