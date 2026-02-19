@@ -95,7 +95,7 @@ export default function Referrals() {
                   <TableHead className="text-right">Hospice</TableHead>
                   <TableHead className="text-right">SNF</TableHead>
                   <TableHead className="text-right">DME</TableHead>
-                  <TableHead className="text-right">Imaging</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,7 +117,7 @@ export default function Referrals() {
                       <TableCell className="text-right">{r.hospice_referrals > 0 ? <Badge className="bg-purple-100 text-purple-700">{fmt(r.hospice_referrals)}</Badge> : '0'}</TableCell>
                       <TableCell className="text-right">{fmt(r.snf_referrals)}</TableCell>
                       <TableCell className="text-right">{fmt(r.dme_referrals)}</TableCell>
-                      <TableCell className="text-right">{fmt(r.imaging_referrals)}</TableCell>
+
                     </TableRow>
                   ))
                 )}
