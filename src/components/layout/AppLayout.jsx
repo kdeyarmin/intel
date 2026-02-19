@@ -110,7 +110,7 @@ export default function AppLayout({ children, currentPageName }) {
               />
               <div>
                 <h1 className="text-sm font-bold text-slate-800 leading-tight tracking-tight">CareMetric <span className="text-red-500">AI</span></h1>
-                <p className="text-[10px] text-slate-400 font-medium">Intel</p>
+                <p className="text-xs text-slate-400 font-medium">Intel</p>
               </div>
             </div>
           ) : (
