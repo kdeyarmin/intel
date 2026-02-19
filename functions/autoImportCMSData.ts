@@ -446,7 +446,9 @@ function parseDate(dateStr) {
     return '';
 }
 
-// Bulk importer
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Bulk importer with rate limit handling
 async function importChunk(base44, importType, records, startTime) {
     let imported = 0, updated = 0, skipped = 0;
 
@@ -465,22 +467,27 @@ async function importChunk(base44, importType, records, startTime) {
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
         const chunk = records.slice(i, i + BULK_SIZE);
-        try {
-            await entity.bulkCreate(chunk);
-            imported += chunk.length;
-        } catch (e) {
-            console.warn(`Bulk create failed for chunk at ${i}: ${e.message}`);
-            // Try one-by-one as fallback
-            for (const record of chunk) {
-                if (isTimeUp(startTime)) break;
-                try {
-                    await entity.create(record);
-                    imported++;
-                } catch (e2) {
-                    console.warn(`Single create failed: ${e2.message}`);
-                    skipped++;
+        let retries = 0;
+        while (retries < 3) {
+            try {
+                await entity.bulkCreate(chunk);
+                imported += chunk.length;
+                break;
+            } catch (e) {
+                if (e.message && e.message.includes('Rate limit') && retries < 2) {
+                    retries++;
+                    console.warn(`Rate limited, waiting ${retries * 2}s before retry...`);
+                    await delay(retries * 2000);
+                } else {
+                    console.warn(`Bulk create failed at ${i}: ${e.message}`);
+                    skipped += chunk.length;
+                    break;
                 }
             }
+        }
+        // Small delay between batches to avoid rate limits
+        if (i + BULK_SIZE < records.length) {
+            await delay(200);
         }
     }
 
