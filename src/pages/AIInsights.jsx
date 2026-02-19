@@ -5,6 +5,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles } from 'lucide-react';
 
 import NetworkHealthWidget from '../components/aiInsights/NetworkHealthWidget';
+import HighReferralPotentialWidget from '../components/aiInsights/HighReferralPotentialWidget';
+import DataQualityIssuesWidget from '../components/aiInsights/DataQualityIssuesWidget';
+import ProviderSummaryWidget from '../components/aiInsights/ProviderSummaryWidget';
 import MarketInsightsWidget from '../components/aiInsights/MarketInsightsWidget';
 import CampaignPredictionWidget from '../components/aiInsights/CampaignPredictionWidget';
 import LeadScoringTrendsWidget from '../components/aiInsights/LeadScoringTrendsWidget';
@@ -72,11 +75,11 @@ export default function AIInsights() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">AI Insights</h1>
-          <p className="text-sm text-slate-500">Consolidated AI-driven intelligence across your provider network</p>
+          <p className="text-sm text-slate-500">AI-driven intelligence across your provider network — identify trends, leads, and data issues</p>
         </div>
       </div>
 
-      {/* Network Health */}
+      {/* Network Health overview */}
       <NetworkHealthWidget
         providers={providers}
         locations={locations}
@@ -86,7 +89,35 @@ export default function AIInsights() {
         campaigns={campaigns}
       />
 
-      {/* Main insights row */}
+      {/* NEW: Provider Summary — full width */}
+      <ProviderSummaryWidget
+        providers={providers}
+        locations={locations}
+        taxonomies={taxonomies}
+        referrals={referrals}
+        utilizations={utilizations}
+      />
+
+      {/* NEW: Referral Potential + Data Quality side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <HighReferralPotentialWidget
+          providers={providers}
+          referrals={referrals}
+          utilizations={utilizations}
+          locations={locations}
+          taxonomies={taxonomies}
+          scores={scores}
+        />
+        <DataQualityIssuesWidget
+          providers={providers}
+          locations={locations}
+          taxonomies={taxonomies}
+          referrals={referrals}
+          utilizations={utilizations}
+        />
+      </div>
+
+      {/* Market Intelligence + Campaign Prediction */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MarketInsightsWidget
           providers={providers}
@@ -98,7 +129,7 @@ export default function AIInsights() {
         <CampaignPredictionWidget campaigns={campaigns} />
       </div>
 
-      {/* Bottom row */}
+      {/* Lead Scoring + Connections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LeadScoringTrendsWidget scores={scores} providers={providers} />
         <ConnectionsWidget
