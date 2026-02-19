@@ -93,8 +93,7 @@ export default function AppLayout({ children, currentPageName }) {
         .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 3px; }
         .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.55); }
         .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.35) transparent; }
-        .logo-no-bg { background: #334155; border-radius: 0.5rem; overflow: hidden; }
-        .logo-no-bg img { mix-blend-mode: multiply; filter: brightness(1.1) contrast(1.2); }
+
       `}</style>
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-800 text-slate-300 transition-all duration-300 flex flex-col`}>
@@ -102,12 +101,8 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="p-4 flex items-center justify-between border-b border-slate-600/30 bg-slate-700/40">
           {sidebarOpen ? (
             <div className="flex items-center gap-2.5">
-              <div className="logo-no-bg w-8 h-8 flex-shrink-0">
-                <img
-                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
-                  alt="CareMetric AI"
-                  className="w-8 h-8"
-                />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
+                <Activity className="w-4 h-4 text-white" />
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-red-400">AI</span></h1>
@@ -115,12 +110,8 @@ export default function AppLayout({ children, currentPageName }) {
               </div>
             </div>
           ) : (
-            <div className="logo-no-bg w-8 h-8 mx-auto">
-              <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
-                alt="CareMetric AI"
-                className="w-8 h-8"
-              />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center mx-auto">
+              <Activity className="w-4 h-4 text-white" />
             </div>
           )}
           <Button
@@ -220,13 +211,8 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-100/60 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded overflow-hidden" style={{ background: '#e2e8f0' }}>
-                <img
-                  src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
-                  alt="CareMetric AI"
-                  className="w-4 h-4"
-                  style={{ mixBlendMode: 'multiply' }}
-                />
+              <div className="w-4 h-4 rounded bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                <Activity className="w-2.5 h-2.5 text-white" />
               </div>
               <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
               <span className="text-[11px] text-slate-300">•</span>
