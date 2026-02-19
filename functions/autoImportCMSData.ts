@@ -903,81 +903,69 @@ function mapCMSData(row, columnMapping, importType, year) {
 async function importCMSData(base44, importType, validData, year) {
     let imported = 0;
     let updated = 0;
+    const BULK_SIZE = 50;
+
+    // Helper: bulk create with chunking
+    async function bulkCreateEntity(entityRef, records) {
+        let count = 0;
+        for (let i = 0; i < records.length; i += BULK_SIZE) {
+            const chunk = records.slice(i, i + BULK_SIZE);
+            await entityRef.bulkCreate(chunk);
+            count += chunk.length;
+        }
+        return count;
+    }
 
     if (importType === 'cms_utilization') {
-        for (const row of validData) {
+        // Bulk create all utilization records directly
+        const utilRecords = validData.map(row => ({
+            npi: row.npi,
+            year: parseInt(row.Year || year),
+            total_services: parseFloat(row['Total Services'] || 0),
+            total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
+            total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSUtilization, utilRecords);
+
+        // Bulk create provider placeholders for new NPIs
+        const providerPlaceholders = validData.map(row => ({
+            npi: row.npi,
+            status: 'Active',
+            needs_nppes_enrichment: true,
+        }));
+        // Best effort — duplicates will fail silently
+        for (let i = 0; i < providerPlaceholders.length; i += BULK_SIZE) {
             try {
-                // Create provider placeholder if doesn't exist
-                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: row.npi });
-                if (existingProvider.length === 0) {
-                    await base44.asServiceRole.entities.Provider.create({
-                        npi: row.npi,
-                        status: 'Active',
-                        needs_nppes_enrichment: true,
-                    });
-                }
-
-                const utilData = {
-                    npi: row.npi,
-                    year: parseInt(row.Year || year),
-                    total_services: parseFloat(row['Total Services'] || 0),
-                    total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
-                    total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
-                };
-
-                const existingUtil = await base44.asServiceRole.entities.CMSUtilization.filter({
-                    npi: row.npi,
-                    year: utilData.year
-                });
-
-                if (existingUtil.length === 0) {
-                    await base44.asServiceRole.entities.CMSUtilization.create(utilData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.CMSUtilization.update(existingUtil[0].id, utilData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import utilization record:', error);
+                await base44.asServiceRole.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + BULK_SIZE));
+            } catch (e) {
+                // Some may already exist, that's ok
             }
         }
     } else if (importType === 'cms_order_referring') {
-        for (const row of validData) {
+        // Bulk create all referral records directly
+        const refRecords = validData.map(row => ({
+            npi: row.npi,
+            year: parseInt(row.year),
+            total_referrals: parseInt(row.total_referrals),
+            home_health_referrals: parseInt(row.home_health_referrals),
+            hospice_referrals: parseInt(row.hospice_referrals),
+            snf_referrals: parseInt(row.snf_referrals || 0),
+            dme_referrals: parseInt(row.dme_referrals || 0),
+            imaging_referrals: parseInt(row.imaging_referrals || 0),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSReferral, refRecords);
+
+        // Bulk create provider placeholders
+        const providerPlaceholders = validData.map(row => ({
+            npi: row.npi,
+            status: 'Active',
+            needs_nppes_enrichment: true,
+        }));
+        for (let i = 0; i < providerPlaceholders.length; i += BULK_SIZE) {
             try {
-                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: row.npi });
-                if (existingProvider.length === 0) {
-                    await base44.asServiceRole.entities.Provider.create({
-                        npi: row.npi,
-                        status: 'Active',
-                        needs_nppes_enrichment: true,
-                    });
-                }
-
-                const refData = {
-                    npi: row.npi,
-                    year: parseInt(row.year),
-                    total_referrals: parseInt(row.total_referrals),
-                    home_health_referrals: parseInt(row.home_health_referrals),
-                    hospice_referrals: parseInt(row.hospice_referrals),
-                    snf_referrals: parseInt(row.snf_referrals || 0),
-                    dme_referrals: parseInt(row.dme_referrals || 0),
-                    imaging_referrals: parseInt(row.imaging_referrals || 0),
-                };
-
-                const existingRef = await base44.asServiceRole.entities.CMSReferral.filter({
-                    npi: row.npi,
-                    year: refData.year
-                });
-
-                if (existingRef.length === 0) {
-                    await base44.asServiceRole.entities.CMSReferral.create(refData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.CMSReferral.update(existingRef[0].id, refData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import referral record:', error);
+                await base44.asServiceRole.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + BULK_SIZE));
+            } catch (e) {
+                // Some may already exist
             }
         }
     } else if (importType === 'nursing_home_chains') {
