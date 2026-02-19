@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, MapPin, Phone, Printer, Users, Building2, ExternalLink, Shield, Activity, GitBranch } from 'lucide-react';
 import LocationGeoInsights from '../components/locations/LocationGeoInsights';
 import ContactEnrichmentStatus from '../components/locations/ContactEnrichmentStatus';
+import AIContactEnrichment from '../components/ai/AIContactEnrichment';
+import AILocationInsights from '../components/ai/AILocationInsights';
 
 export default function LocationDetail() {
   const navigate = useNavigate();
@@ -277,6 +279,17 @@ export default function LocationDetail() {
         <div className="space-y-6">
           <LocationGeoInsights location={location} coProviders={coProviders} allLocations={allLocationsForGeo} />
           <ContactEnrichmentStatus location={location} provider={associatedProvider} />
+
+          <AIContactEnrichment provider={associatedProvider || {}} location={location} taxonomies={locTaxonomies} />
+
+          <AILocationInsights
+            location={location}
+            coProviders={coProviders}
+            associatedProvider={associatedProvider}
+            taxonomies={locTaxonomies}
+            utilizations={utilizations}
+            referrals={referrals}
+          />
 
           {/* DQ Alerts summary */}
           {openDQAlerts.length > 0 && (

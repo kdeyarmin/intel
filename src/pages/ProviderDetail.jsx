@@ -25,6 +25,9 @@ import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer'
 import UtilizationSummaryCard from '../components/providers/UtilizationSummaryCard';
 import ReferralSummaryCard from '../components/providers/ReferralSummaryCard';
 import DataQualityInsightsCard from '../components/providers/DataQualityInsightsCard';
+import AIContactEnrichment from '../components/ai/AIContactEnrichment';
+import AIRelatedProviders from '../components/ai/AIRelatedProviders';
+import AIMarketInsights from '../components/ai/AIMarketInsights';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -71,6 +74,23 @@ export default function ProviderDetail() {
     queryKey: ['providerServiceUtil', npi],
     queryFn: () => base44.entities.ProviderServiceUtilization.filter({ npi }),
     enabled: !!npi,
+  });
+
+  // Data for AI Related Providers
+  const { data: allProviders = [] } = useQuery({
+    queryKey: ['allProvsForAI'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 500),
+    staleTime: 120000,
+  });
+  const { data: allLocations = [] } = useQuery({
+    queryKey: ['allLocsForAI'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    staleTime: 120000,
+  });
+  const { data: allTaxonomies = [] } = useQuery({
+    queryKey: ['allTaxForAI'],
+    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
@@ -200,6 +220,27 @@ export default function ProviderDetail() {
           <RelatedLocations npi={npi} />
 
           <DataQualityInsightsCard npi={npi} provider={provider} />
+
+          <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
+
+          <AIRelatedProviders
+            provider={provider}
+            location={primaryLocation}
+            taxonomies={taxonomies}
+            referrals={latestRef}
+            allProviders={allProviders}
+            allLocations={allLocations}
+            allTaxonomies={allTaxonomies}
+          />
+
+          <AIMarketInsights
+            provider={provider}
+            location={primaryLocation}
+            taxonomies={taxonomies}
+            utilizations={utilizations}
+            referrals={referrals}
+            score={score}
+          />
 
           <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
         </div>
