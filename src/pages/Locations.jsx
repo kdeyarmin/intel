@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -11,12 +11,33 @@ import { Button } from '@/components/ui/button';
 import { MapPin, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
+import SavedFilterBar from '../components/filters/SavedFilterBar';
 
 export default function Locations() {
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [primaryFilter, setPrimaryFilter] = useState('all');
+
+  const { data: savedFilters = [] } = useQuery({
+    queryKey: ['savedFilters', 'Locations'],
+    queryFn: () => base44.entities.SavedFilter.filter({ page: 'Locations' }),
+    staleTime: 30000,
+  });
+
+  useEffect(() => {
+    const def = savedFilters.find(f => f.is_default);
+    if (def?.filters) applyFilter(def.filters);
+  }, [savedFilters.length]);
+
+  const applyFilter = (filters) => {
+    setSearch(filters.search || '');
+    setStateFilter(filters.stateFilter || 'all');
+    setTypeFilter(filters.typeFilter || 'all');
+    setPrimaryFilter(filters.primaryFilter || 'all');
+  };
+
+  const currentFilters = { search, stateFilter, typeFilter, primaryFilter };
 
   const { data: locations = [], isLoading } = useQuery({
     queryKey: ['locations'],
@@ -83,7 +104,12 @@ export default function Locations() {
       </div>
 
       <Card className="mb-6 bg-white">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-3">
+          <SavedFilterBar
+            page="Locations"
+            currentFilters={currentFilters}
+            onApplyFilter={applyFilter}
+          />
           <SearchFilterBar
             searchTerm={search}
             onSearchChange={setSearch}

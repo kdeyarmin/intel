@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { Save, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
+import SavedFilterBar from '../components/filters/SavedFilterBar';
 
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +19,28 @@ export default function Providers() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [credentialFilter, setCredentialFilter] = useState('all');
   const [enrichmentFilter, setEnrichmentFilter] = useState('all');
+
+  // Load default saved filter
+  const { data: savedFilters = [] } = useQuery({
+    queryKey: ['savedFilters', 'Providers'],
+    queryFn: () => base44.entities.SavedFilter.filter({ page: 'Providers' }),
+    staleTime: 30000,
+  });
+
+  useEffect(() => {
+    const def = savedFilters.find(f => f.is_default);
+    if (def?.filters) applyFilter(def.filters);
+  }, [savedFilters.length]);
+
+  const applyFilter = (filters) => {
+    setSearchTerm(filters.searchTerm || '');
+    setEntityTypeFilter(filters.entityTypeFilter || 'all');
+    setStatusFilter(filters.statusFilter || 'all');
+    setCredentialFilter(filters.credentialFilter || 'all');
+    setEnrichmentFilter(filters.enrichmentFilter || 'all');
+  };
+
+  const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter };
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['providers'],
@@ -131,7 +154,12 @@ export default function Providers() {
       </div>
 
       <Card className="mb-6 bg-white">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-3">
+          <SavedFilterBar
+            page="Providers"
+            currentFilters={currentFilters}
+            onApplyFilter={applyFilter}
+          />
           <SearchFilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
