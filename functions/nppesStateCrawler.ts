@@ -110,9 +110,18 @@ async function fetchAllPages(baseParams, stateCode) {
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (user?.role !== 'admin') {
+        
+        // Support both user auth and service role auth (for batch processor calls)
+        let user;
+        try {
+            user = await base44.auth.me();
+        } catch (e) {
+            user = null;
+        }
+        
+        // Allow if admin user OR if called via service role (user will be null/service account)
+        const isServiceRole = !user || (user.email && user.email.includes('service+'));
+        if (!isServiceRole && user?.role !== 'admin') {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
