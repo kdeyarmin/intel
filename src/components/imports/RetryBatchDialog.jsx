@@ -39,46 +39,53 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
   const handleRetry = async () => {
     setIsRetrying(true);
-    const retryParams = {
-      mode: retryMode,
-      skip_validation: skipValidation,
-    };
+    try {
+      const retryParams = {
+        mode: retryMode,
+        skip_validation: skipValidation,
+      };
 
-    if (retryMode === 'row_range') {
-      retryParams.row_offset = rowOffset ? Number(rowOffset) : 0;
-      retryParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
-    } else if (retryMode === 'failed_only') {
-      retryParams.failed_rows_only = true;
-    } else if (retryMode === 'criteria') {
-      retryParams.npi_filter = npiFilter || undefined;
-      retryParams.state_filter = stateFilter || undefined;
-    } else if (retryMode === 'resume') {
-      retryParams.row_offset = batch.imported_rows || 0;
-      retryParams.resume_from = batch.imported_rows || 0;
+      if (retryMode === 'row_range') {
+        retryParams.row_offset = rowOffset ? Number(rowOffset) : 0;
+        retryParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
+      } else if (retryMode === 'failed_only') {
+        retryParams.failed_rows_only = true;
+      } else if (retryMode === 'criteria') {
+        retryParams.npi_filter = npiFilter || undefined;
+        retryParams.state_filter = stateFilter || undefined;
+      } else if (retryMode === 'resume') {
+        retryParams.row_offset = batch.imported_rows || 0;
+        retryParams.resume_from = batch.imported_rows || 0;
+      }
+
+      await base44.entities.ImportBatch.create({
+        import_type: batch.import_type,
+        file_name: batch.file_name,
+        file_url: batch.file_url,
+        status: 'validating',
+        dry_run: dryRun,
+        retry_of: batch.id,
+        retry_count: (batch.retry_count || 0) + 1,
+        retry_params: retryParams,
+        tags: [...(batch.tags || []), 'retry'],
+        category: batch.category,
+      });
+
+      try {
+        await base44.functions.invoke('triggerImport', {
+          import_type: batch.import_type,
+          file_url: batch.file_url,
+          dry_run: dryRun,
+        });
+      } catch (e) {
+        console.warn('triggerImport call failed, batch was still created:', e.message);
+      }
+
+      onRetryStarted?.();
+    } finally {
+      setIsRetrying(false);
+      onOpenChange(false);
     }
-
-    await base44.entities.ImportBatch.create({
-      import_type: batch.import_type,
-      file_name: batch.file_name,
-      file_url: batch.file_url,
-      status: 'validating',
-      dry_run: dryRun,
-      retry_of: batch.id,
-      retry_count: (batch.retry_count || 0) + 1,
-      retry_params: retryParams,
-      tags: [...(batch.tags || []), 'retry'],
-      category: batch.category,
-    });
-
-    await base44.functions.invoke('triggerImport', {
-      import_type: batch.import_type,
-      file_url: batch.file_url,
-      dry_run: dryRun,
-    });
-
-    setIsRetrying(false);
-    onOpenChange(false);
-    onRetryStarted?.();
   };
 
   return (
