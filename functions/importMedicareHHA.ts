@@ -276,6 +276,20 @@ Deno.serve(async (req) => {
       completed_at: new Date().toISOString(),
     });
 
+    // Update schedule config last run
+    try {
+      const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_hha_stats' });
+      if (configs.length > 0) {
+        await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, {
+          last_run_at: new Date().toISOString(),
+          last_run_status: 'success',
+          last_run_summary: `Imported ${imported} records from ${sheetSummaries.length} sheets for year ${year}`,
+        });
+      }
+    } catch (e) {
+      console.warn('Could not update schedule config:', e.message);
+    }
+
     // Audit
     await base44.asServiceRole.entities.AuditEvent.create({
       event_type: 'import',
