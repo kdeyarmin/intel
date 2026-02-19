@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -58,6 +58,7 @@ const NAV_SECTIONS = [
       { name: 'MA Inpatient', icon: Building2, page: 'MAInpatientDashboard', roles: ['admin', 'sales_rep'] },
       { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'Custom Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
+      { name: 'Scheduled Reports', icon: Calendar, page: 'ScheduledReports', roles: ['admin', 'sales_rep'] },
       { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
     ]
