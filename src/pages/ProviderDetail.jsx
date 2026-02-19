@@ -13,6 +13,8 @@ import TerritoryIntelligence from '../components/providers/TerritoryIntelligence
 import WhyThisProvider from '../components/providers/WhyThisProvider';
 import ScoreBreakdown from '../components/providers/ScoreBreakdown';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import AISummary from '../components/providers/AISummary';
+import RelatedLocations from '../components/providers/RelatedLocations';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -124,6 +126,15 @@ export default function ProviderDetail() {
             />
           )}
 
+          <AISummary
+            provider={provider}
+            taxonomies={taxonomies}
+            utilization={utilization}
+            referral={referral}
+            locations={locations}
+            score={score}
+          />
+
           <UtilizationInsights utilization={utilization} />
 
           <PatientPopulationFingerprint
@@ -143,6 +154,8 @@ export default function ProviderDetail() {
           />
 
           <TerritoryIntelligence location={primaryLocation} />
+
+          <RelatedLocations npi={npi} />
         </div>
       </div>
     </div>
