@@ -51,8 +51,10 @@ import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
 import AutoImports from './pages/AutoImports';
 import BulkEmailExport from './pages/BulkEmailExport';
+import CMSAnalytics from './pages/CMSAnalytics';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
+import DataQuality from './pages/DataQuality';
 import ErrorReports from './pages/ErrorReports';
 import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
@@ -62,6 +64,8 @@ import LeadLists from './pages/LeadLists';
 import LocationAnalytics from './pages/LocationAnalytics';
 import Locations from './pages/Locations';
 import NPPESCrawler from './pages/NPPESCrawler';
+import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
+import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
 import NPPESImport from './pages/NPPESImport';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
@@ -72,10 +76,6 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import DataQuality from './pages/DataQuality';
-import CMSAnalytics from './pages/CMSAnalytics';
-import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
-import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
 import CustomReports from './pages/CustomReports';
 import __Layout from './Layout.jsx';
 
@@ -85,8 +85,10 @@ export const PAGES = {
     "AuditLog": AuditLog,
     "AutoImports": AutoImports,
     "BulkEmailExport": BulkEmailExport,
+    "CMSAnalytics": CMSAnalytics,
     "Dashboard": Dashboard,
     "DataImports": DataImports,
+    "DataQuality": DataQuality,
     "ErrorReports": ErrorReports,
     "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
@@ -96,6 +98,8 @@ export const PAGES = {
     "LocationAnalytics": LocationAnalytics,
     "Locations": Locations,
     "NPPESCrawler": NPPESCrawler,
+    "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
+    "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "NPPESImport": NPPESImport,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
@@ -106,10 +110,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "DataQuality": DataQuality,
-    "CMSAnalytics": CMSAnalytics,
-    "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
-    "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "CustomReports": CustomReports,
 }
 

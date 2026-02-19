@@ -325,7 +325,7 @@ export default function NPPESCrawler() {
           {autoMode && (
             <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2">
               <Zap className="w-4 h-4" />
-              <span><strong>Auto-crawler is running server-side.</strong> It will process all states automatically, even if you close this page. You'll receive email notifications on failures and completion.</span>
+              <span><strong>Auto-crawler is running server-side.</strong></span>
             </div>
           )}
         </CardContent>
