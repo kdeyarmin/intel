@@ -47,7 +47,7 @@ export default function AppLayout({ children, currentPageName }) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-blue-600 to-blue-800 text-white transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-56' : 'w-16'} bg-gradient-to-b from-blue-600 to-blue-800 text-white transition-all duration-300 flex flex-col`}>
         <div className="p-4 flex items-center justify-between">
           {sidebarOpen && (
             <div>
@@ -105,7 +105,7 @@ export default function AppLayout({ children, currentPageName }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-blue-50/40">
+      <main className="flex-1 overflow-auto bg-blue-50/20">
         {children}
       </main>
     </div>
