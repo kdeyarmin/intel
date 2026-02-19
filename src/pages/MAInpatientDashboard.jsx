@@ -6,6 +6,7 @@ import { Building2 } from 'lucide-react';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import MAInpatientKPIs from '../components/maInpatient/MAInpatientKPIs';
 import MAInpatientFilters from '../components/maInpatient/MAInpatientFilters';
+import ExportCSVButton from '../components/maInpatient/ExportCSVButton';
 import DischargeTrendChart from '../components/maInpatient/DischargeTrendChart';
 import ALOSTrendChart from '../components/maInpatient/ALOSTrendChart';
 import EnrolleeTrendChart from '../components/maInpatient/EnrolleeTrendChart';
@@ -25,6 +26,12 @@ export default function MAInpatientDashboard() {
     staleTime: 120000,
   });
 
+  const { data: recentBatches = [] } = useQuery({
+    queryKey: ['ma-import-batches'],
+    queryFn: () => base44.entities.ImportBatch.filter({ import_type: 'medicare_ma_inpatient' }, '-created_date', 10),
+    staleTime: 120000,
+  });
+
   const filteredData = useMemo(() => {
     return rawData.filter(r => {
       if (filters.table_name !== 'all' && r.table_name !== filters.table_name) return false;
@@ -37,14 +44,17 @@ export default function MAInpatientDashboard() {
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-lg bg-blue-50">
-          <Building2 className="w-6 h-6 text-blue-600" />
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-blue-50">
+            <Building2 className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Medicare Advantage Inpatient</h1>
+            <p className="text-sm text-slate-500">Hospital utilization trends, discharge patterns & data health</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Medicare Advantage Inpatient</h1>
-          <p className="text-sm text-slate-500">Hospital utilization trends, discharge patterns & data health</p>
-        </div>
+        <ExportCSVButton data={filteredData} />
       </div>
 
       {/* Filters */}
@@ -73,7 +83,7 @@ export default function MAInpatientDashboard() {
 
       {/* Data Health */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DataHealthPanel data={filteredData} />
+        <DataHealthPanel data={filteredData} recentBatches={recentBatches} />
       </div>
 
       <DataSourcesFooter />
