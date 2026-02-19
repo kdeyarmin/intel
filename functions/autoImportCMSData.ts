@@ -302,11 +302,18 @@ Deno.serve(async (req) => {
                 const result = await importCMSData(base44, import_type, validData, year);
                 importedCount = result.imported;
                 updatedCount = result.updated;
+                const skippedCount = result.skipped || 0;
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     status: 'completed',
                     imported_rows: importedCount,
                     updated_rows: updatedCount,
+                    skipped_rows: skippedCount,
+                    dedup_summary: {
+                        created: importedCount,
+                        updated: updatedCount,
+                        skipped: skippedCount,
+                    },
                     completed_at: new Date().toISOString(),
                 });
             } else {
@@ -1135,5 +1142,5 @@ async function importCMSData(base44, importType, validData, year) {
         imported = await bulkCreateEntity(base44.asServiceRole.entities.OptOutPhysician, records);
     }
 
-    return { imported, updated };
+    return { imported, updated, skipped };
 }
