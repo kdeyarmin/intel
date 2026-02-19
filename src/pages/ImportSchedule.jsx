@@ -92,7 +92,7 @@ export default function ImportSchedule() {
 
       if (editingSchedule) {
         // Update existing automation
-        const updateResponse = await fetch(`/.well-known/base44/automations/${editingSchedule.id}`, {
+        const updateResponse = await fetch(`/api/automations/${editingSchedule.id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ export default function ImportSchedule() {
         return await updateResponse.json();
       } else {
         // Create new automation
-        const createResponse = await fetch(`/.well-known/base44/automations`, {
+        const createResponse = await fetch(`/api/automations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
