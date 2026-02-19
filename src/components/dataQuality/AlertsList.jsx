@@ -8,6 +8,7 @@ import { AlertTriangle, CheckCircle, XCircle, Sparkles, ChevronDown, ChevronRigh
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import BulkAlertActions from './BulkAlertActions';
+import AlertAIAnalysis from './AlertAIAnalysis';
 
 const severityColors = {
   low: 'bg-blue-100 text-blue-700',
@@ -223,6 +224,9 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
               )}
             </div>
           )}
+
+          {/* AI Root Cause & Solutions */}
+          <AlertAIAnalysis alert={alert} />
 
           {alert.status === 'open' && (
             <div className="flex gap-2 pt-1">
