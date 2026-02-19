@@ -34,7 +34,7 @@ async function loadConfig(base44) {
             RETRY_BACKOFF_MS = c.retry_backoff_ms || 2000;
             REQUEST_TIMEOUT_MS = c.request_timeout_ms || 15000;
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
-            MAX_CRAWL_MS = (c.max_crawl_duration_sec || 160) * 1000;
+            MAX_CRAWL_MS = Math.min((c.max_crawl_duration_sec || 55) * 1000, 55000);
             MAX_PAGES_PER_QUERY = Math.floor(MAX_SKIP / BATCH_LIMIT) + 1;
             console.log(`[Config] Loaded: batch=${BATCH_LIMIT}, bulk=${BULK_SIZE}, retries=${MAX_RETRIES}, delay=${API_DELAY_MS}ms, timeout=${REQUEST_TIMEOUT_MS}ms, types=${CRAWL_ENTITY_TYPES.join(',')}, maxDuration=${MAX_CRAWL_MS/1000}s`);
         } else {
