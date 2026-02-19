@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 const MAX_EXEC_MS = 50000;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
+function elapsed() { return Date.now() - execStart; }
 
 const CMS_MA_INPT_URLS = {
   2021: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip',
@@ -12,6 +13,47 @@ const CMS_MA_INPT_URLS = {
   2017: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202017.zip',
   2016: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202016.zip',
 };
+
+const MAX_NETWORK_RETRIES = 3;
+const RETRY_BACKOFF_MS = 2000;
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Fetch with automatic retry for transient network errors
+async function fetchWithRetry(url, options = {}, label = 'fetch') {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_NETWORK_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 30000);
+      const resp = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeout);
+      if (resp.ok) return resp;
+      // Non-retryable HTTP errors
+      if (resp.status >= 400 && resp.status < 500) {
+        throw new Error(`${label}: HTTP ${resp.status} ${resp.statusText} (non-retryable)`);
+      }
+      // Server errors (5xx) are retryable
+      lastError = new Error(`${label}: HTTP ${resp.status} ${resp.statusText}`);
+      console.warn(`${label} attempt ${attempt}/${MAX_NETWORK_RETRIES} failed: ${lastError.message}`);
+    } catch (e) {
+      lastError = e;
+      const isAbort = e.name === 'AbortError';
+      const isNetwork = e.message?.includes('fetch') || e.message?.includes('network') || isAbort;
+      if (!isNetwork && !e.message?.includes('HTTP 5')) {
+        // Non-retryable error
+        throw new Error(`${label}: ${e.message}`);
+      }
+      console.warn(`${label} attempt ${attempt}/${MAX_NETWORK_RETRIES} failed: ${isAbort ? 'timeout' : e.message}`);
+    }
+    if (attempt < MAX_NETWORK_RETRIES) {
+      const wait = RETRY_BACKOFF_MS * attempt;
+      console.log(`${label}: retrying in ${wait}ms...`);
+      await delay(wait);
+    }
+  }
+  throw new Error(`${label}: Failed after ${MAX_NETWORK_RETRIES} attempts. Last error: ${lastError?.message || 'unknown'}`);
+}
 
 function classifyTable(sheetName) {
   const name = sheetName.toUpperCase().replace(/\s+/g, ' ');
@@ -28,30 +70,35 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
-function mapRowToRecord(row, tableName, dataYear) {
+function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
   const headers = Object.keys(row);
   const record = { table_name: tableName, data_year: dataYear, raw_data: row };
-  for (const h of headers) {
-    const hl = h.toLowerCase();
-    if (!record.category && (hl.includes('type of hospital') || hl.includes('type of entitlement') || hl.includes('demographic') || hl.includes('category') || hl.includes('state') || hl.includes('area of residence') || hl.includes('sex') || hl.includes('race') || hl.includes('age') || hl === headers[0].toLowerCase())) {
-      record.category = String(row[h] || '').trim();
+  try {
+    for (const h of headers) {
+      const hl = h.toLowerCase();
+      if (!record.category && (hl.includes('type of hospital') || hl.includes('type of entitlement') || hl.includes('demographic') || hl.includes('category') || hl.includes('state') || hl.includes('area of residence') || hl.includes('sex') || hl.includes('race') || hl.includes('age') || hl === headers[0].toLowerCase())) {
+        record.category = String(row[h] || '').trim();
+      }
+      if (hl.includes('discharge') && !hl.includes('per')) record.total_discharges = safeNum(row[h]);
+      if (hl.includes('covered day') && !hl.includes('per')) record.total_covered_days = safeNum(row[h]);
+      if (hl.includes('stay') && !hl.includes('length') && !hl.includes('per')) record.total_stays = safeNum(row[h]);
+      if (hl.includes('person') && (hl.includes('served') || hl.includes('utilization') || hl.includes('use'))) record.persons_served = safeNum(row[h]);
+      if (hl.includes('average length') || (hl.includes('avg') && hl.includes('stay'))) record.avg_length_of_stay = safeNum(row[h]);
+      if (hl.includes('covered day') && hl.includes('per') && hl.includes('1,000')) record.covered_days_per_1000 = safeNum(row[h]);
+      if (hl.includes('discharge') && hl.includes('per') && hl.includes('1,000')) record.discharges_per_1000 = safeNum(row[h]);
+      if (hl.includes('enrollee') || hl.includes('enrollment')) record.total_enrollees = safeNum(row[h]);
     }
-    if (hl.includes('discharge') && !hl.includes('per')) record.total_discharges = safeNum(row[h]);
-    if (hl.includes('covered day') && !hl.includes('per')) record.total_covered_days = safeNum(row[h]);
-    if (hl.includes('stay') && !hl.includes('length') && !hl.includes('per')) record.total_stays = safeNum(row[h]);
-    if (hl.includes('person') && (hl.includes('served') || hl.includes('utilization') || hl.includes('use'))) record.persons_served = safeNum(row[h]);
-    if (hl.includes('average length') || (hl.includes('avg') && hl.includes('stay'))) record.avg_length_of_stay = safeNum(row[h]);
-    if (hl.includes('covered day') && hl.includes('per') && hl.includes('1,000')) record.covered_days_per_1000 = safeNum(row[h]);
-    if (hl.includes('discharge') && hl.includes('per') && hl.includes('1,000')) record.discharges_per_1000 = safeNum(row[h]);
-    if (hl.includes('enrollee') || hl.includes('enrollment')) record.total_enrollees = safeNum(row[h]);
-  }
-  if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
-  if (tableName === 'MA4') record.hospital_type = record.category;
-  if (tableName === 'MA5') record.entitlement_type = record.category;
-  if (tableName === 'MA6') record.demographic_group = record.category;
-  if (tableName === 'MA7') {
-    const cat = record.category || '';
-    if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat;
+    if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
+    if (tableName === 'MA4') record.hospital_type = record.category;
+    if (tableName === 'MA5') record.entitlement_type = record.category;
+    if (tableName === 'MA6') record.demographic_group = record.category;
+    if (tableName === 'MA7') {
+      const cat = record.category || '';
+      if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat;
+    }
+  } catch (e) {
+    console.error(`Row mapping error in sheet "${sheetName}" row ${rowIndex}: ${e.message}`, JSON.stringify(row).substring(0, 200));
+    return { _error: true, _errorMsg: `Sheet "${sheetName}" row ${rowIndex}: ${e.message}`, _row: row };
   }
   return record;
 }
@@ -60,10 +107,10 @@ Deno.serve(async (req) => {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
-  if (user?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  if (user?.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
-  const { action = 'import', year = 2021, dry_run = false, custom_url } = payload;
+  const { action = 'import', year = 2021, dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
 
   if (action === 'list_years') {
     return Response.json({
@@ -73,7 +120,13 @@ Deno.serve(async (req) => {
   }
 
   const downloadUrl = custom_url || CMS_MA_INPT_URLS[year];
-  if (!downloadUrl) return Response.json({ error: `No URL for year ${year}` }, { status: 400 });
+  if (!downloadUrl) {
+    return Response.json({
+      error: `No download URL configured for year ${year}`,
+      available_years: Object.keys(CMS_MA_INPT_URLS).map(Number),
+      hint: 'Provide a custom_url or choose an available year',
+    }, { status: 400 });
+  }
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
     import_type: 'medicare_ma_inpatient',
@@ -81,121 +134,308 @@ Deno.serve(async (req) => {
     file_url: downloadUrl,
     status: 'validating',
     dry_run,
+    retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
   });
 
+  const errorSamples = [];
+  const addError = (phase, detail, context) => {
+    const entry = { phase, detail: String(detail).substring(0, 500), timestamp: new Date().toISOString(), ...context };
+    console.error(`[${phase}] ${detail}`, context ? JSON.stringify(context) : '');
+    if (errorSamples.length < 25) errorSamples.push(entry);
+  };
+
   try {
-    // Step 1: Download ZIP
-    console.log(`Downloading: ${downloadUrl}`);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    const resp = await fetch(downloadUrl, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+    // === Step 1: Download ZIP with retry ===
+    console.log(`[download] Fetching: ${downloadUrl}`);
+    const resp = await fetchWithRetry(downloadUrl, { timeoutMs: 30000 }, 'ZIP download');
     const arrayBuffer = await resp.arrayBuffer();
-    console.log(`Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)}MB`);
+    const sizeMB = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1);
+    console.log(`[download] Complete: ${sizeMB}MB in ${elapsed()}ms`);
 
-    // Step 2: Extract ZIP (lazy import)
-    const JSZip = (await import('npm:jszip@3.10.1')).default;
-    const zip = await JSZip.loadAsync(arrayBuffer);
-    const fileNames = Object.keys(zip.files);
-    const xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
-    if (!xlsxFileName) throw new Error(`No XLSX in ZIP`);
-    console.log(`Extracting: ${xlsxFileName}`);
-    const xlsxData = await zip.files[xlsxFileName].async('uint8array');
-
-    // Step 3: Parse XLSX (lazy import)
-    const XLSX = await import('npm:xlsx@0.18.5');
-    const workbook = XLSX.read(xlsxData, { type: 'array' });
-    console.log(`Sheets: ${workbook.SheetNames.join(', ')}`);
-
-    const allRecords = [];
-    const sheetSummaries = [];
-
-    for (const sheetName of workbook.SheetNames) {
-      const tableName = classifyTable(sheetName);
-      if (!tableName) continue;
-      
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet) continue;
-      const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      if (rawData.length < 2) continue;
-      
-      let headerIdx = 0;
-      for (let i = 0; i < Math.min(rawData.length, 15); i++) {
-        if (rawData[i].filter(c => c !== '' && c !== null && c !== undefined).length >= 3) { headerIdx = i; break; }
-      }
-      const headers = rawData[headerIdx].map(h => String(h || '').trim());
-      
-      let rowCount = 0;
-      for (let i = headerIdx + 1; i < rawData.length; i++) {
-        const row = rawData[i];
-        if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
-        const obj = {};
-        headers.forEach((h, idx) => { if (h) obj[h] = row[idx] !== undefined ? row[idx] : ''; });
-        const record = mapRowToRecord(obj, tableName, year);
-        if (record.category) { allRecords.push(record); rowCount++; }
-      }
-      console.log(`${sheetName} -> ${tableName}: ${rowCount} rows`);
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount });
+    if (arrayBuffer.byteLength < 1000) {
+      throw new Error(`Downloaded file too small (${arrayBuffer.byteLength} bytes) — likely not a valid ZIP. Check the URL.`);
     }
 
-    console.log(`Total records: ${allRecords.length}`);
-
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      total_rows: allRecords.length, valid_rows: allRecords.length, invalid_rows: 0,
-      status: dry_run ? 'completed' : 'processing',
-      column_mapping: { sheets: sheetSummaries },
-    });
-
-    let imported = 0;
-    if (!dry_run && allRecords.length > 0) {
-      const CHUNK = 50;
-      for (let i = 0; i < allRecords.length; i += CHUNK) {
-        if (isTimeUp()) { console.warn(`Time limit at ${imported}/${allRecords.length}`); break; }
-        const chunk = allRecords.slice(i, i + CHUNK);
-        await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
-        imported += chunk.length;
-      }
-    }
-
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: 'completed', imported_rows: imported, completed_at: new Date().toISOString(),
-    });
-
+    // === Step 2: Extract ZIP ===
+    let zip, xlsxData, xlsxFileName;
     try {
-      const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
-      if (configs.length > 0) {
-        await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, {
-          last_run_at: new Date().toISOString(), last_run_status: 'success',
-          last_run_summary: `Imported ${imported} records from ${sheetSummaries.length} sheets for year ${year}`,
-        });
+      const JSZip = (await import('npm:jszip@3.10.1')).default;
+      zip = await JSZip.loadAsync(arrayBuffer);
+      const fileNames = Object.keys(zip.files);
+      console.log(`[extract] ZIP contains: ${fileNames.join(', ')}`);
+      xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
+      if (!xlsxFileName) {
+        throw new Error(`No XLSX/XLS file found in ZIP. Files found: ${fileNames.join(', ')}`);
       }
-    } catch (e) {}
+      console.log(`[extract] Extracting: ${xlsxFileName}`);
+      xlsxData = await zip.files[xlsxFileName].async('uint8array');
+      console.log(`[extract] XLSX size: ${(xlsxData.length / 1024).toFixed(0)}KB`);
+    } catch (e) {
+      if (e.message.includes('No XLSX')) throw e;
+      throw new Error(`ZIP extraction failed: ${e.message}. The file may be corrupted or not a valid ZIP archive.`);
+    }
 
-    await base44.asServiceRole.entities.AuditEvent.create({
-      event_type: 'import', user_email: user.email,
-      details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported },
-      timestamp: new Date().toISOString(),
-    });
+    // === Step 3: Parse XLSX ===
+    let workbook;
+    try {
+      const XLSX = await import('npm:xlsx@0.18.5');
+      workbook = XLSX.read(xlsxData, { type: 'array' });
+      console.log(`[parse] Sheets found: ${workbook.SheetNames.join(', ')}`);
 
-    return Response.json({
-      success: true, batch_id: batch.id, year, dry_run, sheets_parsed: sheetSummaries,
-      total_records: allRecords.length, imported, elapsed_ms: Date.now() - execStart,
-    });
+      // Apply sheet filter if provided (e.g. ["MA4", "MA5"])
+      const targetSheets = sheet_filter
+        ? workbook.SheetNames.filter(s => {
+            const t = classifyTable(s);
+            return t && sheet_filter.includes(t);
+          })
+        : workbook.SheetNames;
+
+      const allRecords = [];
+      const sheetSummaries = [];
+      const sheetErrors = {};
+
+      for (const sheetName of targetSheets) {
+        const tableName = classifyTable(sheetName);
+        if (!tableName) {
+          console.log(`[parse] Skipping unrecognized sheet: "${sheetName}"`);
+          continue;
+        }
+
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) {
+          addError('parse', `Sheet "${sheetName}" exists but has no data`, { sheet: sheetName, table: tableName });
+          continue;
+        }
+
+        let rawData;
+        try {
+          rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        } catch (e) {
+          addError('parse', `Failed to parse sheet "${sheetName}": ${e.message}`, { sheet: sheetName, table: tableName });
+          sheetErrors[sheetName] = e.message;
+          continue;
+        }
+
+        if (rawData.length < 2) {
+          addError('parse', `Sheet "${sheetName}" has insufficient data rows (${rawData.length})`, { sheet: sheetName, table: tableName });
+          continue;
+        }
+
+        let headerIdx = 0;
+        for (let i = 0; i < Math.min(rawData.length, 15); i++) {
+          if (rawData[i].filter(c => c !== '' && c !== null && c !== undefined).length >= 3) { headerIdx = i; break; }
+        }
+        const headers = rawData[headerIdx].map(h => String(h || '').trim());
+        console.log(`[parse] ${sheetName} -> ${tableName}: headers at row ${headerIdx}, columns: ${headers.filter(Boolean).join(', ').substring(0, 200)}`);
+
+        let rowCount = 0;
+        let sheetRowErrors = 0;
+        for (let i = headerIdx + 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+          const obj = {};
+          headers.forEach((h, idx) => { if (h) obj[h] = row[idx] !== undefined ? row[idx] : ''; });
+          const record = mapRowToRecord(obj, tableName, year, i, sheetName);
+          if (record._error) {
+            sheetRowErrors++;
+            addError('mapping', record._errorMsg, { sheet: sheetName, table: tableName, row_index: i });
+            continue;
+          }
+          if (record.category) { allRecords.push(record); rowCount++; }
+        }
+        console.log(`[parse] ${sheetName} -> ${tableName}: ${rowCount} valid rows, ${sheetRowErrors} errors`);
+        sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount, errors: sheetRowErrors });
+        if (sheetRowErrors > 0) sheetErrors[sheetName] = `${sheetRowErrors} row mapping errors`;
+      }
+
+      console.log(`[parse] Total records: ${allRecords.length}, parse errors: ${errorSamples.length}`);
+
+      // Apply row_offset/row_limit for range-based retries
+      let recordsToProcess = allRecords;
+      const effectiveOffset = row_offset || 0;
+      if (effectiveOffset > 0 || row_limit) {
+        const end = row_limit ? effectiveOffset + row_limit : allRecords.length;
+        recordsToProcess = allRecords.slice(effectiveOffset, end);
+        console.log(`[range] Processing rows ${effectiveOffset} to ${Math.min(end, allRecords.length)} of ${allRecords.length}`);
+      }
+
+      await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+        total_rows: allRecords.length,
+        valid_rows: recordsToProcess.length,
+        invalid_rows: errorSamples.length,
+        status: dry_run ? 'completed' : 'processing',
+        column_mapping: { sheets: sheetSummaries, sheet_errors: Object.keys(sheetErrors).length ? sheetErrors : undefined },
+        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+      });
+
+      // === Step 4: Import with retry per chunk ===
+      let imported = 0;
+      let chunkErrors = 0;
+      const CHUNK = 50;
+
+      if (!dry_run && recordsToProcess.length > 0) {
+        for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
+          if (isTimeUp()) {
+            console.warn(`[import] Time limit reached at ${imported}/${recordsToProcess.length} (${elapsed()}ms)`);
+            break;
+          }
+          const chunk = recordsToProcess.slice(i, i + CHUNK);
+          let chunkImported = false;
+
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
+              imported += chunk.length;
+              chunkImported = true;
+              break;
+            } catch (e) {
+              const isRateLimit = e.message?.includes('Rate limit');
+              if (isRateLimit && attempt < 3) {
+                console.warn(`[import] Rate limited at chunk ${i}, waiting ${attempt * 2}s...`);
+                await delay(attempt * 2000);
+              } else if (attempt < 3 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
+                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/3): ${e.message}`);
+                await delay(attempt * 1000);
+              } else {
+                addError('import', `Chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
+                  chunk_start: i + effectiveOffset,
+                  chunk_size: chunk.length,
+                  attempts: attempt,
+                  first_record_category: chunk[0]?.category,
+                  first_record_table: chunk[0]?.table_name,
+                });
+                chunkErrors++;
+                break;
+              }
+            }
+          }
+
+          // Small delay between successful chunks to avoid rate limits
+          if (chunkImported && i + CHUNK < recordsToProcess.length) {
+            await delay(150);
+          }
+        }
+      }
+
+      const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
+      const finalStatus = dry_run ? 'completed'
+        : timedOut ? 'paused'
+        : chunkErrors > 0 && imported === 0 ? 'failed'
+        : chunkErrors > 0 ? 'completed'
+        : 'completed';
+
+      await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+        status: finalStatus,
+        imported_rows: imported,
+        skipped_rows: chunkErrors * CHUNK,
+        completed_at: new Date().toISOString(),
+        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        ...(timedOut ? {
+          paused_at: new Date().toISOString(),
+          cancel_reason: `Time limit reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
+        } : {}),
+      });
+
+      // Update schedule config
+      try {
+        const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
+        if (configs.length > 0) {
+          await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, {
+            last_run_at: new Date().toISOString(),
+            last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success',
+            last_run_summary: `${dry_run ? 'Validated' : 'Imported'} ${dry_run ? recordsToProcess.length : imported} records from ${sheetSummaries.length} sheets for year ${year}${chunkErrors > 0 ? `, ${chunkErrors} chunk errors` : ''}${timedOut ? ' (timed out, resumable)' : ''}`,
+          });
+        }
+      } catch (e) { console.warn('[schedule] Config update failed:', e.message); }
+
+      await base44.asServiceRole.entities.AuditEvent.create({
+        event_type: 'import', user_email: user.email,
+        details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
+        timestamp: new Date().toISOString(),
+      });
+
+      return Response.json({
+        success: true,
+        batch_id: batch.id,
+        year,
+        dry_run,
+        status: finalStatus,
+        sheets_parsed: sheetSummaries,
+        total_records: allRecords.length,
+        records_in_range: recordsToProcess.length,
+        imported,
+        chunk_errors: chunkErrors,
+        parse_errors: errorSamples.filter(e => e.phase !== 'import').length,
+        import_errors: errorSamples.filter(e => e.phase === 'import').length,
+        elapsed_ms: elapsed(),
+        ...(timedOut ? {
+          timed_out: true,
+          resume_offset: effectiveOffset + imported,
+          remaining: recordsToProcess.length - imported,
+          hint: `Re-run with row_offset=${effectiveOffset + imported} to resume`,
+        } : {}),
+        ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
+      });
+
+    } catch (parseError) {
+      throw new Error(`XLSX parsing failed: ${parseError.message}`);
+    }
 
   } catch (error) {
-    console.error('Import error:', error.message);
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: 'failed', error_samples: [{ message: error.message }],
-    });
+    const errorMessage = error.message || 'Unknown error';
+    const errorPhase = errorMessage.includes('download') || errorMessage.includes('ZIP download') ? 'download'
+      : errorMessage.includes('extract') || errorMessage.includes('ZIP') ? 'extraction'
+      : errorMessage.includes('XLSX') || errorMessage.includes('parse') ? 'parsing'
+      : errorMessage.includes('Rate limit') ? 'rate_limit'
+      : 'unknown';
+
+    console.error(`[fatal:${errorPhase}] ${errorMessage}`);
+
+    const isRetryable = errorPhase === 'download' || errorPhase === 'rate_limit' || errorMessage.includes('timeout');
+    const batchStatus = isRetryable ? 'paused' : 'failed';
+
+    try {
+      await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+        status: batchStatus,
+        error_samples: [...errorSamples, { phase: errorPhase, detail: errorMessage, timestamp: new Date().toISOString(), retryable: isRetryable }],
+        ...(isRetryable ? { paused_at: new Date().toISOString(), cancel_reason: `${errorPhase} error (retryable): ${errorMessage}` } : {}),
+      });
+    } catch (e) { console.error('[fatal] Batch status update failed:', e.message); }
+
+    // Create error report for non-retryable failures
+    if (!isRetryable) {
+      try {
+        await base44.asServiceRole.entities.ErrorReport.create({
+          error_type: 'import_failure',
+          severity: 'high',
+          source: batch.id,
+          title: `Medicare MA Inpatient import failed at ${errorPhase} phase`,
+          description: errorMessage,
+          error_samples: errorSamples.slice(0, 10),
+          context: { import_type: 'medicare_ma_inpatient', year, phase: errorPhase, batch_id: batch.id, url: downloadUrl },
+          status: 'new',
+        });
+      } catch (e) { console.error('[fatal] Error report creation failed:', e.message); }
+    }
+
     try {
       const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
       if (configs.length > 0) {
         await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, {
-          last_run_at: new Date().toISOString(), last_run_status: 'failed', last_run_summary: `Failed: ${error.message}`,
+          last_run_at: new Date().toISOString(), last_run_status: 'failed', last_run_summary: `Failed at ${errorPhase}: ${errorMessage.substring(0, 200)}`,
         });
       }
     } catch (e) {}
-    return Response.json({ error: error.message, batch_id: batch.id }, { status: 500 });
+
+    return Response.json({
+      error: errorMessage,
+      error_phase: errorPhase,
+      retryable: isRetryable,
+      batch_id: batch.id,
+      error_samples: errorSamples.slice(0, 5),
+      hint: isRetryable
+        ? 'This error is transient. Wait a few minutes and retry the import.'
+        : `The import failed during the ${errorPhase} phase. Check the error details and batch error log for specifics.`,
+    }, { status: 500 });
   }
 });
