@@ -60,6 +60,7 @@ import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import AutoImports from './pages/AutoImports';
+import ImportSchedule from './pages/ImportSchedule';
 import __Layout from './Layout.jsx';
 
 
@@ -77,6 +78,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "AutoImports": AutoImports,
+    "ImportSchedule": ImportSchedule,
 }
 
 export const pagesConfig = {
