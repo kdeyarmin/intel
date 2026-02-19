@@ -90,35 +90,39 @@ export default function AppLayout({ children, currentPageName }) {
       <style>{`
         .scrollbar-dark::-webkit-scrollbar { width: 6px; }
         .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 3px; }
-        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.55); }
-        .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.35) transparent; }
+        .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 3px; }
+        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.6); }
+        .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.4) transparent; }
 
       `}</style>
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-800 text-slate-300 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-50 text-slate-600 border-r border-slate-200 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-600/30 bg-slate-700/40">
+        <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white/60">
           {sidebarOpen ? (
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
-                <Activity className="w-4 h-4 text-white" />
-              </div>
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+                alt="CareMetric AI"
+                className="w-8 h-8 rounded-lg flex-shrink-0"
+              />
               <div>
-                <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-red-400">AI</span></h1>
-                <p className="text-[10px] text-slate-500 font-medium">Intel</p>
+                <h1 className="text-sm font-bold text-slate-800 leading-tight tracking-tight">CareMetric <span className="text-red-500">AI</span></h1>
+                <p className="text-[10px] text-slate-400 font-medium">Intel</p>
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center mx-auto">
-              <Activity className="w-4 h-4 text-white" />
-            </div>
+            <img
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+              alt="CareMetric AI"
+              className="w-8 h-8 rounded-lg mx-auto"
+            />
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-slate-400 hover:text-white hover:bg-slate-700 h-7 w-7"
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 h-7 w-7"
           >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
@@ -128,13 +132,13 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-2 py-2">
           <button
             onClick={() => setSearchOpen(true)}
-            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-700/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
           >
             <Search className="w-4 h-4 shrink-0" />
             {sidebarOpen && (
               <>
                 <span className="flex-1 text-left">Search...</span>
-                <kbd className="text-[10px] text-slate-500 border border-slate-600 rounded px-1 py-0.5">⌘K</kbd>
+                <kbd className="text-[10px] text-slate-400 border border-slate-300 rounded px-1 py-0.5">⌘K</kbd>
               </>
             )}
           </button>
@@ -152,7 +156,7 @@ export default function AppLayout({ children, currentPageName }) {
                 {sidebarOpen && (
                   <button
                     onClick={() => toggleSection(section.label)}
-                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     {section.label}
                     {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -168,8 +172,8 @@ export default function AppLayout({ children, currentPageName }) {
                       title={item.name}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
                         isActive
-                          ? 'bg-blue-600/20 text-blue-400 font-medium border-l-2 border-blue-400 ml-0.5'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
+                          ? 'bg-blue-50 text-blue-600 font-medium border-l-2 border-blue-500 ml-0.5'
+                          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
                       }`}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
@@ -183,17 +187,17 @@ export default function AppLayout({ children, currentPageName }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-slate-600/30">
+        <div className="p-3 border-t border-slate-200">
           {user && sidebarOpen && (
             <div className="mb-2 px-2">
-              <p className="text-xs font-medium text-slate-200 truncate">{user.full_name || user.email}</p>
-              <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>
+              <p className="text-xs font-medium text-slate-700 truncate">{user.full_name || user.email}</p>
+              <p className="text-[10px] text-slate-400 capitalize">{user.role?.replace('_', ' ')}</p>
             </div>
           )}
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-slate-400 hover:text-white hover:bg-slate-700 justify-start h-8 text-xs"
+            className="w-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />
             {sidebarOpen && <span className="ml-2">Sign Out</span>}
@@ -211,9 +215,11 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-100/60 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                <Activity className="w-2.5 h-2.5 text-white" />
-              </div>
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+                alt="CareMetric AI"
+                className="w-4 h-4 rounded"
+              />
               <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
               <span className="text-[11px] text-slate-300">•</span>
               <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-500 hover:underline">www.CareMetric.ai</a>
