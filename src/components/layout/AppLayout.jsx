@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AppLayout({ children, currentPageName }) {
@@ -35,6 +35,7 @@ export default function AppLayout({ children, currentPageName }) {
     { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
     { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
     { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
+    { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
     { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
     { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
     { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
