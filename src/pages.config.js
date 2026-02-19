@@ -79,6 +79,7 @@ import Utilization from './pages/Utilization';
 import CustomReports from './pages/CustomReports';
 import LocationDetail from './pages/LocationDetail';
 import OrganizationDetail from './pages/OrganizationDetail';
+import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -115,6 +116,7 @@ export const PAGES = {
     "CustomReports": CustomReports,
     "LocationDetail": LocationDetail,
     "OrganizationDetail": OrganizationDetail,
+    "AdvancedAnalytics": AdvancedAnalytics,
 }
 
 export const pagesConfig = {
