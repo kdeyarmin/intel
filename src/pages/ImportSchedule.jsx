@@ -66,21 +66,53 @@ export default function ImportSchedule() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const response = await base44.functions.invoke('createImportSchedule', {
-        import_type: importType,
-        schedule_type: scheduleType,
-        schedule_time: scheduleTime,
-      });
+      let scheduleConfig = {
+        automation_type: 'scheduled',
+        name: scheduleName,
+        function_name: 'autoImportCMSData',
+        function_args: {
+          import_type: importType,
+          file_url: fileUrl,
+          year: new Date().getFullYear(),
+          dry_run: false,
+        },
+        is_active: true,
+      };
 
-      if (response.data.error) {
-        throw new Error(response.data.error);
+      if (scheduleType === 'daily') {
+        scheduleConfig.repeat_interval = 1;
+        scheduleConfig.repeat_unit = 'days';
+        scheduleConfig.start_time = scheduleTime;
+      } else if (scheduleType === 'weekly') {
+        scheduleConfig.repeat_unit = 'weeks';
+        scheduleConfig.repeat_on_days = [1];
+        scheduleConfig.start_time = scheduleTime;
+      } else if (scheduleType === 'monthly') {
+        scheduleConfig.repeat_unit = 'months';
+        scheduleConfig.repeat_on_day_of_month = 1;
+        scheduleConfig.start_time = scheduleTime;
       }
 
-      return response.data;
+      const response = await fetch('/.well-known/base44/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scheduleConfig),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['importAutomations']);
       setOpen(false);
+    },
+    onError: (error) => {
+      console.error('Failed to create schedule:', error);
+      alert('Failed to create schedule: ' + error.message);
     },
   });
 
