@@ -374,8 +374,11 @@ Deno.serve(async (req) => {
             target_state = '',
         } = payload;
 
+        // Normalize action: 'process_next' is equivalent to 'start'
+        const effectiveAction = (action === 'process_next') ? 'start' : action;
+
         // STATUS
-        if (action === 'status') {
+        if (effectiveAction === 'status') {
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
                 { import_type: 'nppes_registry' }, '-created_date', 200
             );
