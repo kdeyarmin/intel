@@ -81,10 +81,6 @@ export default function Dashboard() {
         <p className="text-gray-600 mt-1">CareMetric Provider Intelligence Overview</p>
       </div>
 
-      <div className="mb-6">
-        <ComplianceDisclaimer />
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
@@ -179,7 +175,10 @@ export default function Dashboard() {
         <DataQualityWidget />
       </div>
 
-      <div className="mt-8 pt-6 border-t border-gray-200">
+      <div className="mt-12 pt-8 border-t border-gray-200 space-y-6">
+        <div className="mb-6">
+          <ComplianceDisclaimer />
+        </div>
         <p className="text-xs text-gray-500 text-center leading-relaxed">
           <strong>Data Sources:</strong> All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. 
           Insights are estimates based on public data patterns and do not represent confirmed referral relationships. 
