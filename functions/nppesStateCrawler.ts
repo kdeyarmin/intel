@@ -20,9 +20,12 @@ async function fetchNPPESPage(params, retries = MAX_RETRIES) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-            const response = await fetch(apiUrl);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            const response = await fetch(apiUrl, { signal: controller.signal });
+            clearTimeout(timeout);
+
             if (response.status === 429 || response.status >= 500) {
-                // Rate limited or server error — wait and retry
                 const backoff = attempt * 2000;
                 console.log(`[NPPES] HTTP ${response.status}, retry ${attempt}/${retries} in ${backoff}ms`);
                 await new Promise(r => setTimeout(r, backoff));
@@ -34,10 +37,16 @@ async function fetchNPPESPage(params, retries = MAX_RETRIES) {
             const data = await response.json();
             if (data.Errors && data.Errors.length > 0) {
                 const errMsg = data.Errors.map(e => e.description).join('; ');
-                return { error: errMsg, results: [], result_count: 0 };
+                // Don't retry "no results" style errors
+                return { error: errMsg, results: [], result_count: 0, noResults: true };
             }
             return { results: data.results || [], result_count: data.result_count || 0, error: null };
         } catch (e) {
+            if (e.name === 'AbortError') {
+                if (attempt === retries) return { error: 'Request timeout', results: [], result_count: 0 };
+                await new Promise(r => setTimeout(r, attempt * 1000));
+                continue;
+            }
             if (attempt === retries) return { error: e.message, results: [], result_count: 0 };
             await new Promise(r => setTimeout(r, attempt * 1500));
         }
