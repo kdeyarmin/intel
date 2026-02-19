@@ -9,9 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor } from 'lucide-react';
+import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Layers } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import CrawlerLog from '../components/nppes/CrawlerLog';
+import BatchProcessPanel from '../components/nppes/BatchProcessPanel';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -329,6 +330,15 @@ export default function NPPESCrawler() {
           )}
         </CardContent>
       </Card>
+
+      {/* Batch Process */}
+      <BatchProcessPanel
+        taxonomyFilter={taxonomyFilter}
+        entityType={entityType}
+        dryRun={dryRun}
+        onLog={addLog}
+        onRefresh={refetchStatus}
+      />
 
       {/* Progress */}
       <Card>
