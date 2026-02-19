@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Megaphone, Plus, Send, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 import CampaignKPIs from '../components/outreach/CampaignKPIs';
 import CampaignTable from '../components/outreach/CampaignTable';
@@ -293,8 +294,6 @@ export default function ProviderOutreach() {
 
 // Inline engagement metrics component
 function EngagementMetrics({ campaigns }) {
-  const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } = require('recharts');
-
   const data = campaigns
     .filter(c => c.sent_count > 0)
     .sort((a, b) => new Date(a.created_date) - new Date(b.created_date))
