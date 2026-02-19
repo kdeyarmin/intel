@@ -15,6 +15,7 @@ import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
+import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -423,20 +424,7 @@ export default function ImportMonitoring() {
                               </div>
                             )}
                             {batch.error_samples?.length > 0 && (
-                              <div>
-                                <h4 className="font-semibold mb-2 flex items-center gap-2 text-red-700 text-sm">
-                                  <AlertCircle className="w-4 h-4" /> Errors ({batch.error_samples.length})
-                                </h4>
-                                <div className="bg-red-50 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                                  {batch.error_samples.slice(0, 10).map((error, idx) => (
-                                    <div key={idx} className="text-sm">
-                                      {error.row != null && <span className="font-medium text-red-700">Row {error.row}: </span>}
-                                      <span className="text-red-600">{error.message}</span>
-                                      {error.npi && <span className="text-gray-600"> (NPI: {error.npi})</span>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
+                              <ErrorCategoryDisplay errors={batch.error_samples} />
                             )}
                           </div>
                         </DialogContent>
@@ -461,11 +449,18 @@ export default function ImportMonitoring() {
                     </div>
                   )}
 
+                  {/* Error summary for failed batches */}
+                  {batch.status === 'failed' && batch.error_samples?.length > 0 && (
+                    <div className="mb-2">
+                      <ErrorCategoryDisplay errors={batch.error_samples} />
+                    </div>
+                  )}
+
                   {/* Row 3: Stats */}
                   <div className="flex gap-6 text-sm flex-wrap">
-                    {batch.status === 'failed' && (!batch.total_rows || batch.total_rows === 0) ? (
+                    {batch.status === 'failed' && (!batch.total_rows || batch.total_rows === 0) && !batch.error_samples?.length ? (
                       <div className="text-red-600 text-xs">
-                        {batch.error_samples?.[0]?.message || 'Import failed before data could be processed'}
+                        Import failed before data could be processed
                       </div>
                     ) : (
                       <>
