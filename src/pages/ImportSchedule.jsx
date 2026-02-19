@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, Plus, Trash2, Power, PowerOff } from 'lucide-react';
+import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, ChevronDown, ChevronUp, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const importTypeOptions = [
   { 
@@ -46,10 +47,12 @@ const importTypeOptions = [
 
 export default function ImportSchedule() {
   const [open, setOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
   const [importType, setImportType] = useState('cms_utilization');
   const [scheduleType, setScheduleType] = useState('daily');
   const [scheduleTime, setScheduleTime] = useState('02:00');
   const [runNow, setRunNow] = useState(true);
+  const [expandedHistory, setExpandedHistory] = useState({});
 
   const selectedImportType = importTypeOptions.find(opt => opt.value === importType);
   const scheduleName = `Auto Import - ${selectedImportType?.label || ''}`;
@@ -64,6 +67,12 @@ export default function ImportSchedule() {
       const data = await response.json();
       return data.filter(a => a.function_name === 'autoImportCMSData');
     },
+  });
+
+  const { data: importBatches = [] } = useQuery({
+    queryKey: ['importBatches'],
+    queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
+    initialData: [],
   });
 
   const createMutation = useMutation({
@@ -81,28 +90,45 @@ export default function ImportSchedule() {
 
       const scheduleConfig = response.data.config;
 
-      // Create automation via Base44 API
-      const appId = window.location.hostname.split('.')[0];
-      const createResponse = await fetch(`/.well-known/base44/automations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(scheduleConfig),
-      });
+      if (editingSchedule) {
+        // Update existing automation
+        const updateResponse = await fetch(`/.well-known/base44/automations/${editingSchedule.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(scheduleConfig),
+        });
 
-      if (!createResponse.ok) {
-        const error = await createResponse.text();
-        throw new Error(`Failed to create automation: ${error}`);
+        if (!updateResponse.ok) {
+          const error = await updateResponse.text();
+          throw new Error(`Failed to update automation: ${error}`);
+        }
+
+        return await updateResponse.json();
+      } else {
+        // Create new automation
+        const createResponse = await fetch(`/.well-known/base44/automations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(scheduleConfig),
+        });
+
+        if (!createResponse.ok) {
+          const error = await createResponse.text();
+          throw new Error(`Failed to create automation: ${error}`);
+        }
+
+        return await createResponse.json();
       }
-
-      return await createResponse.json();
     },
     onSuccess: async () => {
       queryClient.invalidateQueries(['importAutomations']);
       
-      // If "Run Now" is checked, trigger the import immediately
-      if (runNow) {
+      // If "Run Now" is checked and creating new schedule, trigger import immediately
+      if (runNow && !editingSchedule) {
         try {
           await base44.functions.invoke('autoImportCMSData', {
             import_type: importType,
@@ -116,10 +142,11 @@ export default function ImportSchedule() {
           alert('Schedule created but immediate import failed: ' + error.message);
         }
       } else {
-        alert('Schedule created successfully!');
+        alert(editingSchedule ? 'Schedule updated successfully!' : 'Schedule created successfully!');
       }
       
       setOpen(false);
+      setEditingSchedule(null);
     },
     onError: (error) => {
       console.error('Failed to create schedule:', error);
@@ -159,6 +186,31 @@ export default function ImportSchedule() {
     return 'Custom';
   };
 
+  const handleEdit = (automation) => {
+    setEditingSchedule(automation);
+    const scheduleTypeMap = {
+      'days': 'daily',
+      'weeks': 'weekly',
+      'months': 'monthly'
+    };
+    setImportType(automation.function_args?.import_type || 'cms_utilization');
+    setScheduleType(scheduleTypeMap[automation.repeat_unit] || 'daily');
+    setScheduleTime(automation.start_time || '02:00');
+    setRunNow(false);
+    setOpen(true);
+  };
+
+  const getScheduleHistory = (importType) => {
+    return importBatches.filter(batch => batch.import_type === importType);
+  };
+
+  const toggleHistory = (automationId) => {
+    setExpandedHistory(prev => ({
+      ...prev,
+      [automationId]: !prev[automationId]
+    }));
+  };
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
@@ -166,7 +218,13 @@ export default function ImportSchedule() {
           <h1 className="text-3xl font-bold text-gray-900">Import Schedules</h1>
           <p className="text-gray-600 mt-1">Configure automated data import schedules</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) {
+            setEditingSchedule(null);
+            setRunNow(true);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-teal-600 hover:bg-teal-700">
               <Plus className="w-4 h-4 mr-2" />
@@ -175,7 +233,7 @@ export default function ImportSchedule() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Import Schedule</DialogTitle>
+              <DialogTitle>{editingSchedule ? 'Edit Import Schedule' : 'Create Import Schedule'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="space-y-2">
@@ -222,27 +280,29 @@ export default function ImportSchedule() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="space-y-0.5">
-                    <Label>Run import immediately</Label>
-                    <p className="text-xs text-gray-500">
-                      Start the import now and schedule for recurring imports
-                    </p>
+              {!editingSchedule && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="space-y-0.5">
+                      <Label>Run import immediately</Label>
+                      <p className="text-xs text-gray-500">
+                        Start the import now and schedule for recurring imports
+                      </p>
+                    </div>
+                    <Switch checked={runNow} onCheckedChange={setRunNow} />
                   </div>
-                  <Switch checked={runNow} onCheckedChange={setRunNow} />
                 </div>
-                <p className="text-xs text-gray-500">
-                  The schedule will automatically import new data from CMS at the specified time.
-                </p>
-              </div>
+              )}
+              <p className="text-xs text-gray-500">
+                The schedule will automatically import new data from CMS at the specified time.
+              </p>
 
               <Button
                 onClick={() => createMutation.mutate()}
                 disabled={createMutation.isPending}
                 className="w-full bg-teal-600 hover:bg-teal-700"
               >
-                {runNow ? 'Create Schedule & Import Now' : 'Create Schedule'}
+                {editingSchedule ? 'Update Schedule' : (runNow ? 'Create Schedule & Import Now' : 'Create Schedule')}
               </Button>
             </div>
           </DialogContent>
@@ -265,54 +325,142 @@ export default function ImportSchedule() {
             </div>
           ) : (
             <div className="space-y-3">
-              {automations.map((auto) => (
-                <div
-                  key={auto.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold">{auto.name}</h3>
-                      <Badge variant={auto.is_active ? 'default' : 'outline'}>
-                        {auto.is_active ? 'Active' : 'Paused'}
-                      </Badge>
+              {automations.map((auto) => {
+                const history = getScheduleHistory(auto.function_args?.import_type);
+                const isExpanded = expandedHistory[auto.id];
+                
+                return (
+                  <Card key={auto.id} className="border-2">
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold">{auto.name}</h3>
+                          <Badge variant={auto.is_active ? 'default' : 'outline'}>
+                            {auto.is_active ? 'Active' : 'Paused'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <p>Import Type: {auto.function_args?.import_type?.replace(/_/g, ' ')}</p>
+                          <p>Frequency: {getScheduleDescription(auto)} at {auto.start_time || 'N/A'}</p>
+                          {history.length > 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Last run: {new Date(history[0].created_date).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleEdit(auto)}
+                          title="Edit schedule"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => toggleHistory(auto.id)}
+                          title="View history"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => toggleMutation.mutate(auto.id)}
+                          disabled={toggleMutation.isPending}
+                          title={auto.is_active ? "Pause" : "Activate"}
+                        >
+                          {auto.is_active ? (
+                            <PowerOff className="w-4 h-4" />
+                          ) : (
+                            <Power className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm('Delete this schedule?')) {
+                              deleteMutation.mutate(auto.id);
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>Import Type: {auto.function_args?.import_type?.replace(/_/g, ' ')}</p>
-                      <p>Frequency: {getScheduleDescription(auto)} at {auto.start_time || 'N/A'}</p>
-                      {auto.function_args?.file_url && (
-                        <p className="text-xs truncate max-w-md">URL: {auto.function_args.file_url}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => toggleMutation.mutate(auto.id)}
-                      disabled={toggleMutation.isPending}
-                    >
-                      {auto.is_active ? (
-                        <PowerOff className="w-4 h-4" />
-                      ) : (
-                        <Power className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        if (confirm('Delete this schedule?')) {
-                          deleteMutation.mutate(auto.id);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+
+                    {isExpanded && (
+                      <div className="border-t px-4 py-3 bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-sm">Import History</h4>
+                          <Badge variant="outline">{history.length} runs</Badge>
+                        </div>
+                        {history.length === 0 ? (
+                          <p className="text-sm text-gray-500 text-center py-4">No import history yet</p>
+                        ) : (
+                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {history.map((batch) => (
+                              <div key={batch.id} className="bg-white p-3 rounded-lg border">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    {batch.status === 'completed' ? (
+                                      <CheckCircle className="w-4 h-4 text-green-600" />
+                                    ) : batch.status === 'failed' ? (
+                                      <XCircle className="w-4 h-4 text-red-600" />
+                                    ) : (
+                                      <Clock className="w-4 h-4 text-yellow-600" />
+                                    )}
+                                    <Badge 
+                                      variant={batch.status === 'completed' ? 'default' : batch.status === 'failed' ? 'destructive' : 'outline'}
+                                    >
+                                      {batch.status}
+                                    </Badge>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(batch.created_date).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="text-sm space-y-1">
+                                  <p className="text-gray-700">{batch.file_name}</p>
+                                  {batch.total_rows && (
+                                    <div className="flex gap-4 text-xs text-gray-600">
+                                      <span>Total: {batch.total_rows}</span>
+                                      <span className="text-green-600">Valid: {batch.valid_rows || 0}</span>
+                                      <span className="text-red-600">Invalid: {batch.invalid_rows || 0}</span>
+                                      {batch.imported_rows !== undefined && (
+                                        <span className="text-blue-600">Imported: {batch.imported_rows}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {batch.error_samples && batch.error_samples.length > 0 && (
+                                    <div className="mt-2 p-2 bg-red-50 rounded text-xs">
+                                      <p className="font-medium text-red-800 mb-1">Errors:</p>
+                                      <ul className="space-y-1 text-red-700">
+                                        {batch.error_samples.slice(0, 3).map((error, idx) => (
+                                          <li key={idx}>• {error.error || JSON.stringify(error)}</li>
+                                        ))}
+                                        {batch.error_samples.length > 3 && (
+                                          <li className="text-red-600">+ {batch.error_samples.length - 3} more errors</li>
+                                        )}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardContent>
