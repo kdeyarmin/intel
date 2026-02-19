@@ -8,9 +8,9 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
-  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw
+  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
@@ -64,6 +64,8 @@ export default function ImportMonitoring() {
   const [errorLogBatch, setErrorLogBatch] = useState(null);
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
+  const [deletingBatchId, setDeletingBatchId] = useState(null);
+  const [confirmDeleteBatch, setConfirmDeleteBatch] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -432,6 +434,15 @@ export default function ImportMonitoring() {
                           Error Log
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                        disabled={deletingBatchId === batch.id}
+                        onClick={() => setConfirmDeleteBatch(batch)}
+                      >
+                        {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                      </Button>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm" className="h-7 text-xs">Details</Button>
@@ -526,6 +537,43 @@ export default function ImportMonitoring() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!confirmDeleteBatch} onOpenChange={(open) => { if (!open) setConfirmDeleteBatch(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Import Batch</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this import record? This only removes the batch log entry — it does not delete any imported data.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmDeleteBatch && (
+            <div className="text-sm bg-gray-50 rounded-lg p-3 space-y-1">
+              <p><span className="text-gray-500">Type:</span> <span className="font-medium">{IMPORT_TYPE_LABELS[confirmDeleteBatch.import_type] || confirmDeleteBatch.import_type}</span></p>
+              <p><span className="text-gray-500">File:</span> <span className="font-medium">{confirmDeleteBatch.file_name}</span></p>
+              <p><span className="text-gray-500">Status:</span> <Badge className={statusColors[confirmDeleteBatch.status] || ''}>{confirmDeleteBatch.status}</Badge></p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteBatch(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deletingBatchId === confirmDeleteBatch?.id}
+              onClick={async () => {
+                const id = confirmDeleteBatch.id;
+                setDeletingBatchId(id);
+                await base44.entities.ImportBatch.delete(id);
+                setConfirmDeleteBatch(null);
+                setDeletingBatchId(null);
+                refreshBatches();
+              }}
+            >
+              {deletingBatchId === confirmDeleteBatch?.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Error Log Dialog */}
       <ErrorLogDialog
