@@ -53,6 +53,13 @@ const importTypes = [
     icon: TrendingUp,
     requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'],
   },
+  {
+    id: 'hospice_enrollments',
+    name: 'Hospice Enrollments',
+    description: 'CMS hospice provider enrollment data',
+    icon: Database,
+    requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
