@@ -21,6 +21,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
       { name: 'Import Monitoring', icon: BarChart3, page: 'ImportMonitoring', roles: ['admin'] },
+      { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Error Reports', icon: Shield, page: 'ErrorReports', roles: ['admin'] },
       { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
       { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
