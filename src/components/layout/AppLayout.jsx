@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -36,6 +36,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
+      { name: 'Organizations', icon: Building2, page: 'OrganizationDetail', roles: ['admin', 'sales_rep'] },
       { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
       { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
     ]
