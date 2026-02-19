@@ -1010,102 +1010,44 @@ async function importCMSData(base44, importType, validData, year) {
             }
         }
     } else if (importType === 'hospice_enrollments') {
-        for (const row of validData) {
-            try {
-                // Create provider placeholder if doesn't exist
-                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: row.npi });
-                if (existingProvider.length === 0 && row.npi) {
-                    await base44.asServiceRole.entities.Provider.create({
-                        npi: row.npi,
-                        organization_name: row.organization_name,
-                        entity_type: 'Organization',
-                        status: 'Active',
-                        needs_nppes_enrichment: true,
-                    });
-                }
-
-                const hospiceData = {
-                    enrollment_id: row.enrollment_id,
-                    npi: row.npi,
-                    ccn: row.ccn,
-                    organization_name: row.organization_name,
-                    doing_business_as: row.doing_business_as,
-                    incorporation_date: row.incorporation_date,
-                    incorporation_state: row.incorporation_state,
-                    organization_type: row.organization_type,
-                    proprietary_nonprofit: row.proprietary_nonprofit,
-                    address_1: row.address_1,
-                    address_2: row.address_2,
-                    city: row.city,
-                    state: row.state,
-                    zip: row.zip,
-                    enrollment_state: row.enrollment_state,
-                };
-
-                const existingHospice = await base44.asServiceRole.entities.HospiceEnrollment.filter({
-                    enrollment_id: row.enrollment_id
-                });
-
-                if (existingHospice.length === 0) {
-                    await base44.asServiceRole.entities.HospiceEnrollment.create(hospiceData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.HospiceEnrollment.update(existingHospice[0].id, hospiceData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import hospice enrollment record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            enrollment_id: row.enrollment_id,
+            npi: row.npi,
+            ccn: row.ccn,
+            organization_name: row.organization_name,
+            doing_business_as: row.doing_business_as,
+            incorporation_date: row.incorporation_date,
+            incorporation_state: row.incorporation_state,
+            organization_type: row.organization_type,
+            proprietary_nonprofit: row.proprietary_nonprofit,
+            address_1: row.address_1,
+            address_2: row.address_2,
+            city: row.city,
+            state: row.state,
+            zip: row.zip,
+            enrollment_state: row.enrollment_state,
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.HospiceEnrollment, records);
     } else if (importType === 'home_health_enrollments') {
-        for (const row of validData) {
-            try {
-                // Create provider placeholder if doesn't exist
-                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: row.npi });
-                if (existingProvider.length === 0 && row.npi) {
-                    await base44.asServiceRole.entities.Provider.create({
-                        npi: row.npi,
-                        organization_name: row.organization_name,
-                        entity_type: 'Organization',
-                        status: 'Active',
-                        needs_nppes_enrichment: true,
-                    });
-                }
-
-                const homeHealthData = {
-                    enrollment_id: row.enrollment_id,
-                    npi: row.npi,
-                    ccn: row.ccn,
-                    organization_name: row.organization_name,
-                    doing_business_as: row.doing_business_as,
-                    incorporation_date: row.incorporation_date,
-                    incorporation_state: row.incorporation_state,
-                    organization_type: row.organization_type,
-                    proprietary_nonprofit: row.proprietary_nonprofit,
-                    address_1: row.address_1,
-                    address_2: row.address_2,
-                    city: row.city,
-                    state: row.state,
-                    zip: row.zip,
-                    enrollment_state: row.enrollment_state,
-                    practice_location_type: row.practice_location_type,
-                };
-
-                const existingHomeHealth = await base44.asServiceRole.entities.HomeHealthEnrollment.filter({
-                    enrollment_id: row.enrollment_id
-                });
-
-                if (existingHomeHealth.length === 0) {
-                    await base44.asServiceRole.entities.HomeHealthEnrollment.create(homeHealthData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.HomeHealthEnrollment.update(existingHomeHealth[0].id, homeHealthData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import home health enrollment record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            enrollment_id: row.enrollment_id,
+            npi: row.npi,
+            ccn: row.ccn,
+            organization_name: row.organization_name,
+            doing_business_as: row.doing_business_as,
+            incorporation_date: row.incorporation_date,
+            incorporation_state: row.incorporation_state,
+            organization_type: row.organization_type,
+            proprietary_nonprofit: row.proprietary_nonprofit,
+            address_1: row.address_1,
+            address_2: row.address_2,
+            city: row.city,
+            state: row.state,
+            zip: row.zip,
+            enrollment_state: row.enrollment_state,
+            practice_location_type: row.practice_location_type,
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthEnrollment, records);
     } else if (importType === 'home_health_cost_reports') {
         for (const row of validData) {
             try {
