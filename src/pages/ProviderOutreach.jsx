@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Megaphone, Plus, Send, BarChart3 } from 'lucide-react';
+import { Megaphone, Plus, Send, BarChart3, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 import CampaignKPIs from '../components/outreach/CampaignKPIs';
@@ -18,6 +18,7 @@ import CampaignDetailPanel from '../components/outreach/CampaignDetailPanel';
 import TargetListBuilder from '../components/outreach/TargetListBuilder';
 import TemplateEditor from '../components/outreach/TemplateEditor';
 import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
+import FollowUpManager from '../components/outreach/FollowUpManager';
 
 export default function ProviderOutreach() {
   const [tab, setTab] = useState('campaigns');
@@ -271,6 +272,9 @@ export default function ProviderOutreach() {
               <TabsTrigger value="campaigns" className="text-xs gap-1.5">
                 <Megaphone className="w-3.5 h-3.5" /> All Campaigns
               </TabsTrigger>
+              <TabsTrigger value="follow_ups" className="text-xs gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5" /> Follow-Ups
+              </TabsTrigger>
               <TabsTrigger value="metrics" className="text-xs gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5" /> Engagement Metrics
               </TabsTrigger>
@@ -288,6 +292,10 @@ export default function ProviderOutreach() {
                 onDelete={(id) => { if (confirm('Delete this campaign and all its messages?')) deleteMutation.mutate(id); }}
                 onToggle={(c, status) => toggleMutation.mutate({ id: c.id, status })}
               />
+            </TabsContent>
+
+            <TabsContent value="follow_ups" className="mt-4">
+              <FollowUpManager campaigns={campaigns} providers={providers} />
             </TabsContent>
 
             <TabsContent value="metrics" className="mt-4">
