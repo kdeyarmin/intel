@@ -1,14 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-/**
- * Data Quality Auto-Fix Engine
- * 
- * Actions:
- * - auto_fix_eligible: Find and auto-fix low-severity, high-confidence alerts
- * - analyze_patterns: AI root-cause analysis of recurring DQ issues
- * - assistant_query: Conversational AI assistant for DQ questions
- */
-
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
@@ -26,7 +17,6 @@ Deno.serve(async (req) => {
       { status: 'open' }, '-created_date', 500
     );
 
-    // Eligible = low or medium severity + has suggested_value + has entity_id + has field_name
     const eligible = openAlerts.filter(a =>
       (a.severity === 'low' || a.severity === 'medium') &&
       a.suggested_value &&
@@ -44,7 +34,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Ask AI for confidence assessment on each fix
     const fixSummaries = eligible.slice(0, 30).map((a, i) =>
       `${i + 1}. Entity: ${a.entity_type}, NPI: ${a.npi || 'N/A'}, Field: ${a.field_name}, Current: "${a.current_value || '(empty)'}", Suggested: "${a.suggested_value}", Rule: ${a.rule_name}, Severity: ${a.severity}`
     ).join('\n');
@@ -63,7 +52,7 @@ For each fix, return:
 - confidence (0-100): how confident you are the fix is correct
 - reason: brief explanation
 
-Be conservative - only approve fixes that are clearly correct (e.g., formatting corrections, obvious missing values that can be inferred).`,
+Be conservative - only approve fixes that are clearly correct.`,
         response_json_schema: {
           type: "object",
           properties: {
@@ -84,11 +73,9 @@ Be conservative - only approve fixes that are clearly correct (e.g., formatting 
       });
       confidenceResults = aiRes?.assessments || [];
     } catch (e) {
-      console.error('AI confidence check failed:', e.message);
       return Response.json({ success: false, error: 'AI confidence check failed', detail: e.message });
     }
 
-    // Apply only safe, high-confidence fixes
     const entityMap = {
       'Provider': base44.asServiceRole.entities.Provider,
       'ProviderLocation': base44.asServiceRole.entities.ProviderLocation,
@@ -144,7 +131,6 @@ Be conservative - only approve fixes that are clearly correct (e.g., formatting 
   if (action === 'analyze_patterns') {
     const alerts = await base44.asServiceRole.entities.DataQualityAlert.list('-created_date', 500);
 
-    // Group by rule_id
     const ruleGroups = {};
     for (const a of alerts) {
       if (!ruleGroups[a.rule_id]) ruleGroups[a.rule_id] = { rule_name: a.rule_name, category: a.category, severity: a.severity, count: 0, open: 0, fixed: 0, dismissed: 0, entity_type: a.entity_type, field: a.field_name };
@@ -160,12 +146,11 @@ Be conservative - only approve fixes that are clearly correct (e.g., formatting 
       .map(([id, g]) => `Rule: ${g.rule_name} | Category: ${g.category} | Severity: ${g.severity} | Total: ${g.count} (Open:${g.open}, Fixed:${g.fixed}, Dismissed:${g.dismissed}) | Entity: ${g.entity_type || 'N/A'} | Field: ${g.field || 'N/A'}`)
       .join('\n');
 
-    // Get scan history for trend analysis
     const scans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 10);
     const scanTrend = scans.map(s => `${s.created_date}: Overall=${s.scores?.overall || 'N/A'}%, Alerts=${s.alerts_generated || 0}`).join('\n');
 
     const aiRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare data quality analyst. Perform a root-cause analysis of recurring data quality issues based on alert patterns and scan history.
+      prompt: `You are a healthcare data quality analyst. Perform a root-cause analysis of recurring data quality issues.
 
 ALERT PATTERNS (grouped by rule, sorted by frequency):
 ${patternSummary}
@@ -176,11 +161,11 @@ ${scanTrend}
 TOTAL ALERTS: ${alerts.length} (Open: ${alerts.filter(a => a.status === 'open').length}, Fixed: ${alerts.filter(a => a.status === 'accepted' || a.status === 'auto_fixed').length})
 
 Provide:
-1. Top 5 recurring patterns with root cause analysis (why do they keep happening?)
-2. Systemic issues — are there upstream data pipeline problems causing multiple rule failures?
-3. Trend analysis — is data quality improving or degrading over time?
-4. Prioritized action plan: what should the admin fix FIRST for maximum impact?
-5. Prediction: which issues are likely to worsen if not addressed?`,
+1. Top 5 recurring patterns with root cause analysis
+2. Systemic issues from upstream data pipelines
+3. Trend analysis — improving or degrading?
+4. Prioritized action plan for maximum impact
+5. Predictions of issues likely to worsen`,
       response_json_schema: {
         type: "object",
         properties: {
@@ -236,7 +221,6 @@ Provide:
     const { question } = payload;
     if (!question) return Response.json({ error: 'question required' }, { status: 400 });
 
-    // Gather context
     const [alerts, scans, providers, locations, taxonomies] = await Promise.all([
       base44.asServiceRole.entities.DataQualityAlert.list('-created_date', 200),
       base44.asServiceRole.entities.DataQualityScan.list('-created_date', 5),
@@ -249,24 +233,19 @@ Provide:
     const autoFixable = openAlerts.filter(a => (a.severity === 'low' || a.severity === 'medium') && a.suggested_value && a.entity_id);
     const latestScan = scans[0];
 
-    // Group open alerts by category
     const catCounts = {};
     openAlerts.forEach(a => { catCounts[a.category] = (catCounts[a.category] || 0) + 1; });
-
-    // Group by severity
     const sevCounts = {};
     openAlerts.forEach(a => { sevCounts[a.severity] = (sevCounts[a.severity] || 0) + 1; });
 
-    const context = `
-DATA QUALITY CONTEXT:
+    const context = `DATA QUALITY CONTEXT:
 - Total alerts: ${alerts.length} (Open: ${openAlerts.length})
 - Auto-fixable (low/medium + suggested value): ${autoFixable.length}
-- By category: ${Object.entries(catCounts).map(([k,v]) => `${k}:${v}`).join(', ')}
-- By severity: ${Object.entries(sevCounts).map(([k,v]) => `${k}:${v}`).join(', ')}
-- Latest scan: ${latestScan ? `Overall ${latestScan.scores?.overall || 'N/A'}%, ${latestScan.alerts_generated || 0} alerts, ${latestScan.completed_at || 'running'}` : 'No scans yet'}
+- By category: ${Object.entries(catCounts).map(([k,v]) => `${k}:${v}`).join(', ') || 'none'}
+- By severity: ${Object.entries(sevCounts).map(([k,v]) => `${k}:${v}`).join(', ') || 'none'}
+- Latest scan: ${latestScan ? `Overall ${latestScan.scores?.overall || 'N/A'}%, ${latestScan.alerts_generated || 0} alerts` : 'No scans yet'}
 - Database: ${providers.length} providers, ${locations.length} locations, ${taxonomies.length} taxonomies
-- Top open issues: ${openAlerts.slice(0, 5).map(a => a.summary).join('; ')}
-`;
+- Top open issues: ${openAlerts.slice(0, 5).map(a => a.summary).join('; ') || 'none'}`;
 
     const aiRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are CareMetric's AI Data Quality Assistant. You help healthcare data administrators understand and fix data quality issues.
@@ -275,7 +254,7 @@ ${context}
 
 USER QUESTION: ${question}
 
-Respond helpfully. If the user asks to fix something, explain what CAN be auto-fixed vs what needs manual review. Reference specific alert counts, categories, and scan scores. Be concise and actionable. If suggesting an action, reference the specific UI buttons/tabs they should use.`,
+Respond helpfully. Reference specific alert counts, categories, and scan scores. Be concise and actionable.`,
       response_json_schema: {
         type: "object",
         properties: {
