@@ -79,7 +79,16 @@ export default function ImportMonitoring() {
     return date.toLocaleString();
   };
 
-  const runningBatches = batches.filter(b => b.status === 'processing' || b.status === 'validating');
+  const STALE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+  const isStale = (batch) => {
+    if (batch.status !== 'processing' && batch.status !== 'validating') return false;
+    const updated = new Date(batch.updated_date || batch.created_date);
+    return (Date.now() - updated.getTime()) > STALE_THRESHOLD_MS;
+  };
+
+  const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
+  const staleBatches = batches.filter(b => isStale(b));
   const completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
 
