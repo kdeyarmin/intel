@@ -116,23 +116,34 @@ export default function FileParser({ onParsed, selectedType }) {
         }, 300);
 
       } else {
-        // CSV / TXT / TSV
+        // CSV / TXT / TSV — read headers locally from the file (no upload needed yet)
         const delimiter = ext === 'tsv' ? '\t' : ',';
 
-        // Read first 5KB to detect headers
-        const response = await fetch(file_url, { headers: { Range: 'bytes=0-5000' } });
-        const text = await response.text();
+        // Read just the first 10KB of the file locally to extract headers
+        const slice = selectedFile.slice(0, 10000);
+        const text = await slice.text();
         setProgress(70);
 
         const firstLine = text.split('\n')[0];
         const headers = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
         setProgress(100);
 
-        setTimeout(() => {
-          onParsed({ headers, file: selectedFile, file_url, parseMode: 'csv', delimiter });
-          setUploading(false);
-          setProgress(0);
-        }, 300);
+        // For large files (>50MB), skip the upload here — it will be done during import
+        const isLargeFile = selectedFile.size > 50 * 1024 * 1024;
+
+        if (isLargeFile) {
+          setTimeout(() => {
+            onParsed({ headers, file: selectedFile, file_url: null, parseMode: 'csv_large', delimiter });
+            setUploading(false);
+            setProgress(0);
+          }, 300);
+        } else {
+          setTimeout(() => {
+            onParsed({ headers, file: selectedFile, file_url, parseMode: 'csv', delimiter });
+            setUploading(false);
+            setProgress(0);
+          }, 300);
+        }
       }
     } catch (err) {
       setError('Error parsing file: ' + err.message);
