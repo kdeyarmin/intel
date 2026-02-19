@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { Mail, Loader2, Search, AlertTriangle, Copy, Check } from 'lucide-react';
+import EmailValidationBadge from '../emailBot/EmailValidationBadge';
 import { toast } from 'sonner';
 
 export default function AIEmailFinder({ provider, locations, taxonomies }) {
@@ -63,18 +64,71 @@ IMPORTANT: Be honest about confidence levels. Mark as "low" if you're guessing.`
       }
     });
 
+    const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
+
+    // Validate emails
+    let validations = [];
+    if (emails.length > 0) {
+      const name = provider.entity_type === 'Individual'
+        ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
+        : provider.organization_name || '';
+      const valRes = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are an email deliverability expert. Validate these emails for healthcare provider "${name}" (NPI: ${provider.npi}).
+
+EMAILS:
+${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
+
+CONTEXT: Type=${provider.entity_type}, Org=${provider.organization_name || 'N/A'}, Credential=${provider.credential || 'N/A'}
+
+For each email assign:
+- "valid" = high likelihood of being deliverable and correct
+- "risky" = might work but has concerns (role-based, catch-all, pattern mismatch)
+- "invalid" = likely undeliverable (bad format, fake domain, wrong person)`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            validations: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  email: { type: "string" },
+                  status: { type: "string", enum: ["valid", "risky", "invalid"] },
+                  reason: { type: "string" }
+                }
+              }
+            }
+          }
+        }
+      });
+      validations = valRes.validations || [];
+    }
+
+    // Merge validations into results
+    const enrichedEmails = (res.emails || []).map(e => {
+      const v = validations.find(v => v.email === e.email);
+      return { ...e, validation_status: v?.status || 'unknown', validation_reason: v?.reason || '' };
+    });
+    res.emails = enrichedEmails;
+
     setResults(res);
     setLoading(false);
 
     // Auto-save the best email to the provider record
-    const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
     if (emails.length > 0 && provider?.id) {
-      const best = emails[0];
+      const best = enrichedEmails[0];
       await base44.entities.Provider.update(provider.id, {
         email: best.email,
         email_confidence: best.confidence,
         email_source: best.source || '',
-        additional_emails: emails.slice(1),
+        email_validation_status: best.validation_status || 'unknown',
+        email_validation_reason: best.validation_reason || '',
+        additional_emails: enrichedEmails.slice(1).map(e => ({
+          email: e.email,
+          confidence: e.confidence,
+          source: e.source,
+          validation_status: e.validation_status,
+        })),
         email_searched_at: new Date().toISOString(),
       });
     }
@@ -129,11 +183,16 @@ IMPORTANT: Be honest about confidence levels. Mark as "low" if you're guessing.`
                 {results.emails.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-gray-900 truncate">{item.email}</span>
                         <Badge className={confColors[item.confidence] + ' text-xs'}>
                           {item.confidence}
                         </Badge>
+                        <EmailValidationBadge
+                          status={item.validation_status}
+                          reason={item.validation_reason}
+                          size="sm"
+                        />
                       </div>
                       {item.source && (
                         <p className="text-xs text-gray-500 mt-0.5 truncate">{item.source}</p>
