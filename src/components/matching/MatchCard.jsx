@@ -13,7 +13,7 @@ const STATUS_STYLES = {
   override: 'bg-blue-100 text-blue-800',
 };
 
-export default function MatchCard({ match, onUpdateStatus }) {
+export default function MatchCard({ match, onUpdateStatus, selected, onToggleSelect }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(match.override_notes || '');
   const [saving, setSaving] = useState(false);
@@ -27,9 +27,18 @@ export default function MatchCard({ match, onUpdateStatus }) {
   const confidenceColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
 
   return (
-    <Card className="bg-white border shadow-sm">
+    <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            {onToggleSelect && (
+              <input
+                type="checkbox"
+                checked={!!selected}
+                onChange={() => onToggleSelect(match.id)}
+                className="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+              />
+            )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-gray-900">{match.provider_name || match.npi}</span>
@@ -41,6 +50,7 @@ export default function MatchCard({ match, onUpdateStatus }) {
               <span className={`text-lg font-bold ${confidenceColor}`}>{match.confidence_score}%</span>
               <span className="text-xs text-gray-400">confidence</span>
             </div>
+          </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {match.status !== 'approved' && (

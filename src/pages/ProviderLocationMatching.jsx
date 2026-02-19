@@ -1,19 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Search, Loader2, CheckCircle, XCircle, Clock, RotateCcw } from 'lucide-react';
+import { Sparkles, Search, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import MatchCard from '../components/matching/MatchCard';
+import BulkActionsBar from '../components/matching/BulkActionsBar';
+import FeedbackStatsCard from '../components/matching/FeedbackStatsCard';
 
 export default function ProviderLocationMatching() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('confidence');
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const queryClient = useQueryClient();
 
   const { data: matches = [], isLoading } = useQuery({
@@ -32,6 +35,28 @@ export default function ProviderLocationMatching() {
     const updateData = { status };
     if (notes !== undefined) updateData.override_notes = notes;
     await base44.entities.ProviderLocationMatch.update(id, updateData);
+    queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+  };
+
+  const handleToggleSelect = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map(m => m.id)));
+  }, []);
+
+  const handleBulkAction = async (status) => {
+    const ids = [...selectedIds];
+    await Promise.all(ids.map(id =>
+      base44.entities.ProviderLocationMatch.update(id, { status })
+    ));
+    setSelectedIds(new Set());
     queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
   };
 
@@ -77,7 +102,7 @@ export default function ProviderLocationMatching() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Provider-Location Matching</h1>
-          <p className="text-gray-600 mt-1">AI-powered matching with manual override controls</p>
+          <p className="text-gray-600 mt-1">AI-powered matching with feedback learning &amp; bulk controls</p>
         </div>
         <Button
           onClick={() => runMatchingMutation.mutate()}
@@ -98,7 +123,7 @@ export default function ProviderLocationMatching() {
         {statCards.map(s => {
           const Icon = s.icon;
           return (
-            <Card key={s.label} className="bg-white">
+            <Card key={s.label} className="bg-gray-100">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${s.bg}`}>
                   <Icon className={`w-5 h-5 ${s.color}`} />
@@ -113,9 +138,12 @@ export default function ProviderLocationMatching() {
         })}
       </div>
 
+      {/* Feedback Learning Stats */}
+      <FeedbackStatsCard matches={matches} />
+
       {/* Avg Confidence */}
       {matches.length > 0 && (
-        <Card className="mb-6 bg-white">
+        <Card className="mb-6 bg-gray-100">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-600">Average Confidence Score</span>
@@ -131,7 +159,7 @@ export default function ProviderLocationMatching() {
       )}
 
       {/* Filters */}
-      <Card className="mb-6 bg-white">
+      <Card className="mb-6 bg-gray-100">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
@@ -164,9 +192,31 @@ export default function ProviderLocationMatching() {
                 <SelectItem value="newest">Newest First</SelectItem>
               </SelectContent>
             </Select>
+            {filtered.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (selectedIds.size === filtered.length) {
+                    setSelectedIds(new Set());
+                  } else {
+                    setSelectedIds(new Set(filtered.map(m => m.id)));
+                  }
+                }}
+              >
+                {selectedIds.size === filtered.length ? 'Deselect All' : `Select All (${filtered.length})`}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        onBulkAction={handleBulkAction}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
 
       {/* Match Results */}
       {isLoading ? (
@@ -174,7 +224,7 @@ export default function ProviderLocationMatching() {
           {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-white">
+        <Card className="bg-gray-100">
           <CardContent className="py-16 text-center">
             <Sparkles className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 font-medium">No matches found</p>
@@ -184,7 +234,13 @@ export default function ProviderLocationMatching() {
       ) : (
         <div className="space-y-3">
           {filtered.map(match => (
-            <MatchCard key={match.id} match={match} onUpdateStatus={handleUpdateStatus} />
+            <MatchCard
+              key={match.id}
+              match={match}
+              onUpdateStatus={handleUpdateStatus}
+              selected={selectedIds.has(match.id)}
+              onToggleSelect={handleToggleSelect}
+            />
           ))}
           {filtered.length < matches.length && (
             <p className="text-xs text-gray-400 text-center pt-2">
