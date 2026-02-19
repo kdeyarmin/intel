@@ -7,10 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Loader2, Wand2, BarChart3, Mail, Copy, Check, RefreshCw, Users, ListOrdered } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, BarChart3, Mail, Copy, Check, RefreshCw, Users, ListOrdered, Lightbulb, FlaskConical, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
 import AudienceAnalysisTab from './AudienceAnalysisTab';
 import FollowUpSequenceTab from './FollowUpSequenceTab';
+import AIStrategyTab from './AIStrategyTab';
+import AIABTestingTab from './AIABTestingTab';
+import AISegmentationTab from './AISegmentationTab';
 
 const TONES = [
   { value: 'professional', label: 'Professional' },
@@ -41,7 +44,7 @@ export default function AICampaignAssistant({
   locations = [],
   taxonomies = [],
 }) {
-  const [tab, setTab] = useState('naming');
+  const [tab, setTab] = useState('strategy');
   const [tone, setTone] = useState('professional');
   const [goal, setGoal] = useState('partnership');
   const [audience, setAudience] = useState('');
@@ -246,14 +249,27 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-violet-100/60 h-7">
+          <TabsList className="bg-violet-100/60 h-7 flex-wrap">
+            <TabsTrigger value="strategy" className="text-[10px] h-6 gap-1"><Lightbulb className="w-3 h-3" /> Strategy</TabsTrigger>
             <TabsTrigger value="naming" className="text-[10px] h-6 gap-1"><Wand2 className="w-3 h-3" /> Names</TabsTrigger>
             <TabsTrigger value="templates" className="text-[10px] h-6 gap-1"><Mail className="w-3 h-3" /> Templates</TabsTrigger>
+            <TabsTrigger value="ab_test" className="text-[10px] h-6 gap-1"><FlaskConical className="w-3 h-3" /> A/B Test</TabsTrigger>
+            <TabsTrigger value="segments" className="text-[10px] h-6 gap-1"><PieChart className="w-3 h-3" /> Segments</TabsTrigger>
             <TabsTrigger value="predict" className="text-[10px] h-6 gap-1"><BarChart3 className="w-3 h-3" /> Predict</TabsTrigger>
             <TabsTrigger value="audience" className="text-[10px] h-6 gap-1"><Users className="w-3 h-3" /> Audience</TabsTrigger>
             <TabsTrigger value="sequence" className="text-[10px] h-6 gap-1"><ListOrdered className="w-3 h-3" /> Sequence</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="strategy" className="mt-2">
+            <AIStrategyTab
+              campaigns={campaigns}
+              providers={providers}
+              scores={scores}
+              referrals={referrals}
+              locations={locations}
+              taxonomies={taxonomies}
+            />
+          </TabsContent>
           <TabsContent value="naming" className="mt-2">
             <NamingTab
               loading={loading}
@@ -272,6 +288,25 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
               onGenerate={generateTemplates}
               onApplySubject={onApplySubject}
               onApplyBody={onApplyBody}
+            />
+          </TabsContent>
+          <TabsContent value="ab_test" className="mt-2">
+            <AIABTestingTab
+              onApplySubject={onApplySubject}
+              onApplyBody={onApplyBody}
+              campaigns={campaigns}
+              tone={tone}
+              goal={goal}
+            />
+          </TabsContent>
+          <TabsContent value="segments" className="mt-2">
+            <AISegmentationTab
+              campaigns={campaigns}
+              providers={providers}
+              scores={scores}
+              referrals={referrals}
+              locations={locations}
+              taxonomies={taxonomies}
             />
           </TabsContent>
           <TabsContent value="predict" className="mt-2">
