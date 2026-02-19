@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// This function orchestrates the NPPES state crawler by processing one state,
+// Orchestrates the NPPES state crawler by processing one state,
 // then automatically calling itself to process the next state.
-// It includes error handling, admin notifications, and graceful stop controls.
+// Includes error handling, admin notifications, circuit-breaker, and graceful stop controls.
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 
