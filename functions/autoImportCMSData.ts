@@ -85,6 +85,8 @@ Deno.serve(async (req) => {
             const existingProviders = await base44.asServiceRole.entities.Provider.list();
             const existingNPIs = new Set(existingProviders.map(p => p.npi));
 
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
                 // Get identifier based on import type
                 let identifier;
                 if (import_type === 'nursing_home_chains') {
@@ -234,12 +236,12 @@ Deno.serve(async (req) => {
                     }
                     validData.push(mappedData);
                 }
-            }
+            } // end for loop
 
             // Update batch with validation results
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: dry_run ? 'completed' : 'processing',
-                total_rows: lines.length - 1,
+                total_rows: rows.length,
                 valid_rows: validRows,
                 invalid_rows: invalidRows,
                 duplicate_rows: duplicateRows,
@@ -286,7 +288,7 @@ Deno.serve(async (req) => {
             return Response.json({
                 success: true,
                 batch_id: batch.id,
-                total_rows: lines.length - 1,
+                total_rows: rows.length,
                 valid_rows: validRows,
                 invalid_rows: invalidRows,
                 duplicate_rows: duplicateRows,
