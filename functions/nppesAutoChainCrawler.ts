@@ -47,10 +47,45 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, message: 'Stop signal set. Crawler will halt after current state completes.' });
         }
 
-        // --- STATUS: just delegate to the underlying crawler ---
+        // --- STATUS: query directly ---
         if (action === 'status') {
-            const statusRes = await base44.functions.invoke('nppesStateCrawler', { action: 'status' });
-            return Response.json(statusRes.data);
+            const US_STATES = [
+                'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
+                'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
+                'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
+            ];
+            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
+                { import_type: 'nppes_registry' }, '-created_date', 200
+            );
+            const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_') && b.file_name !== 'crawler_auto_stop_signal');
+            const completedStates = [], failedStates = [], processingStates = [];
+            for (const b of crawlerBatches) {
+                const st = b.file_name.split('_')[1];
+                if (b.status === 'completed') completedStates.push(st);
+                else if (b.status === 'failed') failedStates.push(st);
+                else processingStates.push(st);
+            }
+            const doneSet = new Set([...completedStates, ...failedStates]);
+            const pendingStates = US_STATES.filter(s => !doneSet.has(s));
+
+            // Check if auto-chain is active (stop signal NOT present = running)
+            const stopSignalActive = crawlBatches.some(
+                b => b.file_name === 'crawler_auto_stop_signal' && b.status === 'validating'
+            );
+
+            return Response.json({
+                total_states: US_STATES.length,
+                completed: completedStates.length,
+                failed: failedStates.length,
+                processing: processingStates.length,
+                pending: pendingStates.length,
+                completed_states: completedStates,
+                failed_states: failedStates,
+                processing_states: processingStates,
+                pending_states: pendingStates,
+                auto_chain_active: processingStates.length > 0 && !stopSignalActive,
+                batches: crawlerBatches.slice(0, 60),
+            });
         }
 
         // --- START / CONTINUE: process one state then chain ---
