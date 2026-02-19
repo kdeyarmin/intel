@@ -15,6 +15,7 @@ import ScoreBreakdown from '../components/providers/ScoreBreakdown';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import AISummary from '../components/providers/AISummary';
 import RelatedLocations from '../components/providers/RelatedLocations';
+import AIEmailFinder from '../components/providers/AIEmailFinder';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -156,6 +157,8 @@ export default function ProviderDetail() {
           <TerritoryIntelligence location={primaryLocation} />
 
           <RelatedLocations npi={npi} />
+
+          <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
         </div>
       </div>
     </div>
