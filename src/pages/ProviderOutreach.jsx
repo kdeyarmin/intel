@@ -293,7 +293,7 @@ export default function ProviderOutreach() {
 
 // Inline engagement metrics component
 function EngagementMetrics({ campaigns }) {
-  const { BarChart: RBarChart, Bar, XAxis: RXAxis, YAxis: RYAxis, Tooltip: RTooltip, ResponsiveContainer: RRC } = require('recharts');
+  const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } = require('recharts');
 
   const data = campaigns
     .filter(c => c.sent_count > 0)
@@ -317,16 +317,16 @@ function EngagementMetrics({ campaigns }) {
     <div className="bg-white rounded-xl border p-6">
       <h3 className="text-sm font-medium text-slate-700 mb-4">Campaign Engagement Comparison</h3>
       <div className="h-72">
-        <RRC width="100%" height="100%">
-          <RBarChart data={data}>
-            <RXAxis dataKey="name" tick={{ fontSize: 10 }} />
-            <RYAxis tick={{ fontSize: 10 }} />
-            <RTooltip />
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <Tooltip />
             <Bar dataKey="Sent" fill="#94a3b8" radius={[2, 2, 0, 0]} />
             <Bar dataKey="Opened" fill="#10b981" radius={[2, 2, 0, 0]} />
             <Bar dataKey="Responded" fill="#8b5cf6" radius={[2, 2, 0, 0]} />
-          </RBarChart>
-        </RRC>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
