@@ -1,0 +1,63 @@
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { base44 } from '@/api/base44Client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react';
+
+export default function BulkAlertActions({ selectedIds = [], alerts = [], onClear }) {
+  const queryClient = useQueryClient();
+  const [processing, setProcessing] = useState(false);
+
+  const selectedAlerts = alerts.filter(a => selectedIds.includes(a.id));
+  const withSuggestions = selectedAlerts.filter(a => a.suggested_value);
+
+  const bulkAction = async (action) => {
+    setProcessing(true);
+    for (const id of selectedIds) {
+      await base44.functions.invoke('runDataQualityScan', { action, alert_id: id });
+    }
+    queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
+    setProcessing(false);
+    onClear();
+  };
+
+  if (selectedIds.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-slate-100 border rounded-lg">
+      <Badge variant="outline" className="text-xs">{selectedIds.length} selected</Badge>
+      <div className="flex gap-2 ml-auto">
+        {withSuggestions.length > 0 && (
+          <Button
+            size="sm"
+            disabled={processing}
+            onClick={() => bulkAction('apply_fix')}
+            className="bg-green-600 hover:bg-green-700 text-xs h-7 gap-1"
+          >
+            {processing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            Apply {withSuggestions.length} Fix{withSuggestions.length > 1 ? 'es' : ''}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={processing}
+          onClick={() => bulkAction('dismiss')}
+          className="text-xs h-7 gap-1"
+        >
+          {processing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+          Dismiss All
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onClear}
+          className="text-xs h-7"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
