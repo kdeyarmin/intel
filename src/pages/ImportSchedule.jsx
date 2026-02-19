@@ -11,8 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, Loader2, Play } from 'lucide-react';
 import ImportHistoryPanel from '../components/imports/ImportHistoryPanel';
+import NPPESScheduleForm from '../components/imports/NPPESScheduleForm';
 
 const importTypeOptions = [
+  { value: 'nppes_registry', label: 'NPPES Registry (Providers)', apiUrl: '' },
   { value: 'cms_utilization', label: 'CMS Provider Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data' },
   { value: 'cms_order_referring', label: 'Order & Referring Providers', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data' },
   { value: 'opt_out_physicians', label: 'Medicare Opt-Out Physicians', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data' },
@@ -29,6 +31,9 @@ export default function ImportSchedule() {
   const [scheduleTime, setScheduleTime] = useState('02:00');
   const [runNow, setRunNow] = useState(true);
   const [expandedHistory, setExpandedHistory] = useState({});
+  const [nppesConfig, setNppesConfig] = useState({
+    state: '', taxonomy_description: '', entity_type: '', city: '', postal_code: '', crawl_all_states: true,
+  });
 
   const queryClient = useQueryClient();
 
@@ -53,15 +58,33 @@ export default function ImportSchedule() {
       nextRun.setDate(nextRun.getDate() + 1);
       nextRun.setHours(hours, minutes, 0, 0);
 
+      const isNppes = importType === 'nppes_registry';
+      const label = isNppes
+        ? `NPPES Registry${nppesConfig.crawl_all_states ? ' (All States)' : nppesConfig.state ? ` - ${nppesConfig.state}` : ''}${nppesConfig.taxonomy_description ? ` - ${nppesConfig.taxonomy_description}` : ''}`
+        : selected.label;
+
       const data = {
         import_type: importType,
-        label: selected.label,
+        label,
         api_url: selected.apiUrl,
         schedule_frequency: scheduleFrequency,
         schedule_time: scheduleTime,
         is_active: true,
         next_run_at: nextRun.toISOString(),
+        notify_on_complete: true,
+        notify_on_failure: true,
       };
+
+      if (isNppes) {
+        data.nppes_config = {
+          state: nppesConfig.state || '',
+          taxonomy_description: nppesConfig.taxonomy_description || '',
+          entity_type: nppesConfig.entity_type || '',
+          city: nppesConfig.city || '',
+          postal_code: nppesConfig.postal_code || '',
+          crawl_all_states: nppesConfig.crawl_all_states || false,
+        };
+      }
 
       if (editingSchedule) {
         await base44.entities.ImportScheduleConfig.update(editingSchedule.id, data);
@@ -69,9 +92,9 @@ export default function ImportSchedule() {
         await base44.entities.ImportScheduleConfig.create(data);
       }
 
-      return { selected, now };
+      return { selected, now, isNppes };
     },
-    onSuccess: ({ selected, now }) => {
+    onSuccess: ({ selected, now, isNppes }) => {
       queryClient.invalidateQueries({ queryKey: ['importSchedules'] });
       queryClient.invalidateQueries({ queryKey: ['importBatches'] });
       setOpen(false);
@@ -79,16 +102,33 @@ export default function ImportSchedule() {
 
       // Fire-and-forget: trigger immediate import in background
       if (runNow && !editingSchedule) {
-        base44.functions.invoke('autoImportCMSData', {
-          import_type: importType,
-          file_url: selected.apiUrl,
-          year: now.getFullYear(),
-          dry_run: false,
-        }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['importBatches'] });
-        }).catch((err) => {
-          console.error('Background import failed:', err);
-        });
+        if (isNppes) {
+          if (nppesConfig.crawl_all_states) {
+            base44.functions.invoke('nppesStateCrawler', {
+              action: 'process_next',
+              taxonomy_description: nppesConfig.taxonomy_description || '',
+              entity_type: nppesConfig.entity_type || '',
+              dry_run: false,
+            }).catch(err => console.error('Background NPPES crawl failed:', err));
+          } else {
+            base44.functions.invoke('importNPPESRegistry', {
+              state: nppesConfig.state || '',
+              taxonomy_description: nppesConfig.taxonomy_description || '',
+              entity_type: nppesConfig.entity_type || '',
+              city: nppesConfig.city || '',
+              postal_code: nppesConfig.postal_code || '',
+              dry_run: false,
+            }).catch(err => console.error('Background NPPES import failed:', err));
+          }
+        } else {
+          base44.functions.invoke('autoImportCMSData', {
+            import_type: importType,
+            file_url: selected.apiUrl,
+            year: now.getFullYear(),
+            dry_run: false,
+          }).catch(err => console.error('Background import failed:', err));
+        }
+        setTimeout(() => queryClient.invalidateQueries({ queryKey: ['importBatches'] }), 5000);
       }
     },
   });
@@ -134,6 +174,11 @@ export default function ImportSchedule() {
     setScheduleFrequency(schedule.schedule_frequency);
     setScheduleTime(schedule.schedule_time || '02:00');
     setRunNow(false);
+    if (schedule.nppes_config) {
+      setNppesConfig(schedule.nppes_config);
+    } else {
+      setNppesConfig({ state: '', taxonomy_description: '', entity_type: '', city: '', postal_code: '', crawl_all_states: true });
+    }
     setOpen(true);
   };
 
