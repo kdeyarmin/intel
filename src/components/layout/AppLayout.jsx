@@ -26,6 +26,7 @@ export default function AppLayout({ children, currentPageName }) {
   const navigation = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
     { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
+    { name: 'Import Monitoring', icon: LayoutDashboard, page: 'ImportMonitoring', roles: ['admin'] },
     { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
     { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
     { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },

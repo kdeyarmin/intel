@@ -61,6 +61,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import AutoImports from './pages/AutoImports';
 import ImportSchedule from './pages/ImportSchedule';
+import ImportMonitoring from './pages/ImportMonitoring';
 import __Layout from './Layout.jsx';
 
 
@@ -79,6 +80,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "AutoImports": AutoImports,
     "ImportSchedule": ImportSchedule,
+    "ImportMonitoring": ImportMonitoring,
 }
 
 export const pagesConfig = {
