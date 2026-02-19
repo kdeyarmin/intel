@@ -95,7 +95,8 @@ export default function NPPESImport() {
     }
   };
 
-  const hasAnyFilter = state || taxonomyDescription || customTaxonomy || entityType || city || postalCode || firstName || lastName || organizationName;
+  // NPPES API requires substantive search criteria beyond just entity type
+  const hasAnyFilter = state || taxonomyDescription || customTaxonomy || city || postalCode || firstName || lastName || organizationName;
 
   const handleReset = () => {
     setState('');
