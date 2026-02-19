@@ -11,29 +11,47 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 
 const importTypeOptions = [
-  { value: 'cms_utilization', label: 'CMS Provider Utilization' },
-  { value: 'cms_order_referring', label: 'Order & Referring Providers' },
-  { value: 'cms_part_d', label: 'CMS Part D Prescriber' },
-  { value: 'nursing_home_chains', label: 'Nursing Home Chains' },
-  { value: 'hospice_enrollments', label: 'Hospice Enrollments' },
-  { value: 'home_health_enrollments', label: 'Home Health Enrollments' },
-  { value: 'home_health_cost_reports', label: 'Home Health Cost Reports' },
-  { value: 'cms_service_utilization', label: 'Medicare Service Utilization' },
-  { value: 'provider_service_utilization', label: 'Provider Service Utilization' },
-  { value: 'home_health_pdgm', label: 'Home Health PDGM' },
-  { value: 'inpatient_drg', label: 'Inpatient DRG' },
-  { value: 'provider_ownership', label: 'Provider Ownership' },
-  { value: 'opt_out_physicians', label: 'Medicare Opt-Out Physicians' },
+  { 
+    value: 'cms_utilization', 
+    label: 'CMS Provider Utilization',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/4c394e8d-c6b0-4e9f-8e98-3f85c1ea5d12/data'
+  },
+  { 
+    value: 'cms_order_referring', 
+    label: 'Order & Referring Providers',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/26e73b72-9e86-4af7-bd35-dedb33f1e986/data'
+  },
+  { 
+    value: 'opt_out_physicians', 
+    label: 'Medicare Opt-Out Physicians',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/6bd6b1dd-208c-4f9c-88b8-b15fec6db548/data'
+  },
+  { 
+    value: 'provider_service_utilization', 
+    label: 'Provider Service Utilization',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/e38967e5-4acc-4f3c-a0dd-8c0d038e2b51/data'
+  },
+  { 
+    value: 'home_health_enrollments', 
+    label: 'Home Health Enrollments',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/8c52eb6b-1cce-4913-a16d-c2fa59c6ca67/data'
+  },
+  { 
+    value: 'hospice_enrollments', 
+    label: 'Hospice Enrollments',
+    apiUrl: 'https://data.cms.gov/data-api/v1/dataset/41f3f9fb-1d06-4b69-b8e2-f3d8c3c9b6a1/data'
+  },
 ];
 
 export default function ImportSchedule() {
   const [open, setOpen] = useState(false);
-  const [scheduleName, setScheduleName] = useState('');
   const [importType, setImportType] = useState('cms_utilization');
-  const [fileUrl, setFileUrl] = useState('');
-  const [year, setYear] = useState('2023');
   const [scheduleType, setScheduleType] = useState('daily');
   const [scheduleTime, setScheduleTime] = useState('02:00');
+
+  const selectedImportType = importTypeOptions.find(opt => opt.value === importType);
+  const scheduleName = `Auto Import - ${selectedImportType?.label || ''}`;
+  const fileUrl = selectedImportType?.apiUrl || '';
 
   const queryClient = useQueryClient();
 
@@ -57,7 +75,7 @@ export default function ImportSchedule() {
         function_args: {
           import_type: importType,
           file_url: fileUrl,
-          year: parseInt(year),
+          year: new Date().getFullYear(),
           dry_run: false,
         },
         is_active: true,
@@ -89,8 +107,6 @@ export default function ImportSchedule() {
     onSuccess: () => {
       queryClient.invalidateQueries(['importAutomations']);
       setOpen(false);
-      setScheduleName('');
-      setFileUrl('');
     },
   });
 
@@ -146,15 +162,6 @@ export default function ImportSchedule() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label>Schedule Name</Label>
-                <Input
-                  placeholder="e.g., Daily CMS Utilization Import"
-                  value={scheduleName}
-                  onChange={(e) => setScheduleName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label>Import Type</Label>
                 <Select value={importType} onValueChange={setImportType}>
                   <SelectTrigger>
@@ -168,29 +175,12 @@ export default function ImportSchedule() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>File URL</Label>
-                <Input
-                  placeholder="https://data.cms.gov/..."
-                  value={fileUrl}
-                  onChange={(e) => setFileUrl(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">URL to the CMS data file or API endpoint</p>
+                <p className="text-xs text-gray-500">
+                  Schedule name: {scheduleName}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Data Year</Label>
-                  <Input
-                    type="number"
-                    placeholder="2023"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label>Schedule Frequency</Label>
                   <Select value={scheduleType} onValueChange={setScheduleType}>
@@ -204,21 +194,26 @@ export default function ImportSchedule() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Run Time</Label>
+                  <Input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Run Time</Label>
-                <Input
-                  type="time"
-                  value={scheduleTime}
-                  onChange={(e) => setScheduleTime(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">Time in your local timezone (America/New_York)</p>
+                <p className="text-xs text-gray-500">
+                  The schedule will check for updates and automatically import new data from CMS at the specified time.
+                </p>
               </div>
 
               <Button
                 onClick={() => createMutation.mutate()}
-                disabled={!scheduleName || !fileUrl || createMutation.isPending}
+                disabled={createMutation.isPending}
                 className="w-full bg-teal-600 hover:bg-teal-700"
               >
                 Create Schedule
