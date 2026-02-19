@@ -19,6 +19,7 @@ export default function Providers() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [credentialFilter, setCredentialFilter] = useState('all');
   const [enrichmentFilter, setEnrichmentFilter] = useState('all');
+  const [emailFilter, setEmailFilter] = useState('all');
 
   // Load default saved filter
   const { data: savedFilters = [] } = useQuery({
@@ -38,9 +39,10 @@ export default function Providers() {
     setStatusFilter(filters.statusFilter || 'all');
     setCredentialFilter(filters.credentialFilter || 'all');
     setEnrichmentFilter(filters.enrichmentFilter || 'all');
+    setEmailFilter(filters.emailFilter || 'all');
   };
 
-  const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter };
+  const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter, emailFilter };
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['providersPage'],
@@ -50,6 +52,18 @@ export default function Providers() {
   const { data: scores = [] } = useQuery({
     queryKey: ['providersPageScores'],
     queryFn: () => base44.entities.LeadScore.list(),
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['providersPageLocations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    staleTime: 120000,
+  });
+
+  const { data: taxonomies = [] } = useQuery({
+    queryKey: ['providersPageTaxonomies'],
+    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const getScore = (npi) => {
@@ -80,9 +94,16 @@ export default function Providers() {
         if (enrichmentFilter === 'yes' && !p.needs_nppes_enrichment) return false;
         if (enrichmentFilter === 'no' && p.needs_nppes_enrichment) return false;
       }
+      if (emailFilter !== 'all') {
+        if (emailFilter === 'has_email' && !p.email) return false;
+        if (emailFilter === 'no_email' && p.email) return false;
+        if (emailFilter === 'high' && p.email_confidence !== 'high') return false;
+        if (emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
+        if (emailFilter === 'not_searched' && p.email_searched_at) return false;
+      }
       return true;
     });
-  }, [providers, searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter]);
+  }, [providers, searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter, emailFilter]);
 
   const handleSaveList = async () => {
     const user = await base44.auth.me();
@@ -122,25 +143,41 @@ export default function Providers() {
         </div>
         <div className="flex gap-2">
           <ExportDialog
-            data={filteredProviders.map(p => ({
-              npi: p.npi,
-              name: p.entity_type === 'Individual' ? `${p.last_name}, ${p.first_name}` : p.organization_name || '',
-              credential: p.credential || '',
-              entity_type: p.entity_type || '',
-              status: p.status || '',
-              gender: p.gender || '',
-              enumeration_date: p.enumeration_date || '',
-              score: getScore(p.npi)?.toFixed(0) || '',
-            }))}
+            data={filteredProviders.map(p => {
+              const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+              const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+              return {
+                npi: p.npi,
+                name: p.entity_type === 'Individual' ? `${p.last_name}, ${p.first_name}` : p.organization_name || '',
+                credential: p.credential || '',
+                entity_type: p.entity_type || '',
+                specialty: tax?.taxonomy_description || '',
+                status: p.status || '',
+                email: p.email || '',
+                email_confidence: p.email_confidence || '',
+                email_source: p.email_source || '',
+                city: loc?.city || '',
+                state: loc?.state || '',
+                zip: loc?.zip || '',
+                phone: loc?.phone || '',
+                score: getScore(p.npi)?.toFixed(0) || '',
+              };
+            })}
             fields={[
               { key: 'npi', label: 'NPI' },
               { key: 'name', label: 'Name' },
               { key: 'credential', label: 'Credential' },
               { key: 'entity_type', label: 'Type' },
-              { key: 'status', label: 'Status' },
-              { key: 'gender', label: 'Gender' },
-              { key: 'enumeration_date', label: 'Enumeration Date' },
+              { key: 'specialty', label: 'Specialty' },
+              { key: 'email', label: 'Email' },
+              { key: 'email_confidence', label: 'Email Confidence' },
+              { key: 'city', label: 'City' },
+              { key: 'state', label: 'State' },
+              { key: 'zip', label: 'ZIP' },
+              { key: 'phone', label: 'Phone' },
               { key: 'score', label: 'Score' },
+              { key: 'status', label: 'Status' },
+              { key: 'email_source', label: 'Email Source' },
             ]}
             fileName="providers"
             title="Providers"
@@ -164,11 +201,12 @@ export default function Providers() {
           <SearchFilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            onReset={() => { setSearchTerm(''); setEntityTypeFilter('all'); setStatusFilter('all'); setCredentialFilter('all'); setEnrichmentFilter('all'); }}
+            onReset={() => { setSearchTerm(''); setEntityTypeFilter('all'); setStatusFilter('all'); setCredentialFilter('all'); setEnrichmentFilter('all'); setEmailFilter('all'); }}
             filters={[
               { key: 'entityType', type: 'select', label: 'Type', value: entityTypeFilter, onChange: setEntityTypeFilter, options: [{ value: 'Individual', label: 'Individual' }, { value: 'Organization', label: 'Organization' }] },
               { key: 'status', type: 'select', label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'Active', label: 'Active' }, { value: 'Deactivated', label: 'Deactivated' }] },
               { key: 'credential', type: 'select', label: 'Credential', value: credentialFilter, onChange: setCredentialFilter, options: credentials },
+              { key: 'email', type: 'select', label: 'Email Status', value: emailFilter, onChange: setEmailFilter, options: [{ value: 'has_email', label: 'Has Email' }, { value: 'no_email', label: 'No Email' }, { value: 'high', label: 'High Confidence' }, { value: 'medium', label: 'Medium Confidence' }, { value: 'not_searched', label: 'Not Searched' }] },
               { key: 'enrichment', type: 'select', label: 'Needs Enrichment', value: enrichmentFilter, onChange: setEnrichmentFilter, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
             ]}
           />
@@ -191,6 +229,7 @@ export default function Providers() {
                   <TableHead>Name</TableHead>
                   <TableHead>Credential</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -203,13 +242,14 @@ export default function Providers() {
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredProviders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No providers found
                     </TableCell>
                   </TableRow>
@@ -230,9 +270,25 @@ export default function Providers() {
                         </TableCell>
                         <TableCell>{provider.credential || '-'}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{provider.entity_type}</Badge>
-                        </TableCell>
-                        <TableCell>
+                           <Badge variant="outline">{provider.entity_type}</Badge>
+                         </TableCell>
+                         <TableCell>
+                           {provider.email ? (
+                             <div className="flex items-center gap-1.5">
+                               <span className="text-xs text-slate-700 truncate max-w-[160px]">{provider.email}</span>
+                               {provider.email_confidence && (
+                                 <Badge className={`text-[10px] ${
+                                   provider.email_confidence === 'high' ? 'bg-green-100 text-green-700' :
+                                   provider.email_confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                   'bg-red-100 text-red-700'
+                                 }`}>{provider.email_confidence}</Badge>
+                               )}
+                             </div>
+                           ) : (
+                             <span className="text-gray-300 text-xs">—</span>
+                           )}
+                         </TableCell>
+                         <TableCell>
                           {score !== null ? (
                             <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                               {score.toFixed(0)}

@@ -3,8 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Bot, Mail, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
@@ -22,6 +23,18 @@ export default function EmailSearchBot() {
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
+  });
+
+  const { data: allLocations = [] } = useQuery({
+    queryKey: ['emailBotLocations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    staleTime: 120000,
+  });
+
+  const { data: allTaxonomies = [] } = useQuery({
+    queryKey: ['emailBotTaxonomies'],
+    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    staleTime: 120000,
   });
 
   const stats = useMemo(() => {
@@ -51,6 +64,32 @@ export default function EmailSearchBot() {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  // Full export CSV
+  const downloadFullEmailCSV = () => {
+    const withEmail = providers.filter(p => p.email);
+    if (withEmail.length === 0) { toast.error('No providers with emails to export'); return; }
+
+    const headers = ['NPI','Name','Credential','Type','Specialty','Email','Email Confidence','Email Source','City','State','ZIP','Phone'];
+    const rows = withEmail.map(p => {
+      const name = p.entity_type === 'Individual' ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : p.organization_name || '';
+      const loc = allLocations.find(l => l.npi === p.npi && l.is_primary) || allLocations.find(l => l.npi === p.npi);
+      const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag) || allTaxonomies.find(t => t.npi === p.npi);
+      return [p.npi, name, p.credential||'', p.entity_type||'', tax?.taxonomy_description||'', p.email, p.email_confidence||'', p.email_source||'', loc?.city||'', loc?.state||'', loc?.zip||'', loc?.phone||''];
+    });
+
+    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `all_provider_emails_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    a.remove();
+    toast.success(`Exported ${withEmail.length} provider emails to CSV`);
   };
 
   // Recent email finds from provider data
@@ -89,8 +128,8 @@ export default function EmailSearchBot() {
 
       <ComplianceDisclaimer />
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Stats Overview + Export */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="bg-slate-50">
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
@@ -113,6 +152,19 @@ export default function EmailSearchBot() {
           <CardContent className="p-4 text-center">
             <div className="text-2xl font-bold text-amber-700">{stats.remaining}</div>
             <div className="text-xs text-amber-600">Remaining</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-2 border-blue-200 flex items-center justify-center">
+          <CardContent className="p-4 text-center">
+            <Button
+              onClick={downloadFullEmailCSV}
+              disabled={stats.withEmail === 0}
+              className="bg-blue-600 hover:bg-blue-700 gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export All Emails CSV
+            </Button>
+            <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail} providers ready</div>
           </CardContent>
         </Card>
       </div>

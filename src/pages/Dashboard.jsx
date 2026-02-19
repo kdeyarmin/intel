@@ -9,6 +9,7 @@ import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import AIAnalysisPanel from '../components/dashboard/AIAnalysisPanel';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
+import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -118,11 +119,10 @@ export default function Dashboard() {
         <RecentActivityCard events={auditEvents} />
       </div>
 
-      {/* Data Quality */}
+      {/* Email Coverage + Data Quality */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2">
-          <DataQualityWidget />
-        </div>
+        <EmailCoverageWidget providers={providers} />
+        <DataQualityWidget />
         <DQQuickStatus />
       </div>
 
