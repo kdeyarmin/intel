@@ -71,7 +71,7 @@ export default function DataQuality() {
           {latestScan?.completed_at && (
             <span className="text-xs text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              Last scan: {new Date(latestScan.completed_at).toLocaleString()}
+              Last scan: {new Date(latestScan.completed_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
             </span>
           )}
           <Button

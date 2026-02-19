@@ -60,7 +60,7 @@ export default function NPPESCrawler() {
   }, [crawlStatus]);
 
   const addLog = (message, type = 'info') => {
-    setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString() }].slice(-100));
+    setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) }].slice(-100));
   };
 
   const processNextState = async () => {
