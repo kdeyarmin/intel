@@ -49,6 +49,14 @@ export default function AutoImports() {
           dry_run: dryRun,
         });
         result = res.data;
+      } else if (importType === 'medicare_ma_inpatient') {
+        const res = await base44.functions.invoke('importMedicareMAInpatient', {
+          action: 'import',
+          year: parseInt(year),
+          custom_url: fileUrl || undefined,
+          dry_run: dryRun,
+        });
+        result = res.data;
       } else {
         const res = await base44.functions.invoke('autoImportCMSData', {
           import_type: importType,
@@ -59,7 +67,7 @@ export default function AutoImports() {
         result = res.data;
       }
 
-      if (importType === 'medicare_hha_stats') {
+      if (importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') {
         alert(
           dryRun 
             ? `Validation complete: ${result.total_records} records from ${result.sheets_parsed?.length || 0} sheets`
@@ -111,14 +119,15 @@ export default function AutoImports() {
                   <SelectItem value="cms_order_referring">CMS Order/Referring</SelectItem>
                   <SelectItem value="cms_part_d">CMS Part D</SelectItem>
                   <SelectItem value="medicare_hha_stats">Medicare HHA Use & Payments</SelectItem>
+                  <SelectItem value="medicare_ma_inpatient">Medicare Advantage Inpatient Hospital</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>File URL {importType === 'medicare_hha_stats' ? '(optional — auto-detected by year)' : ''}</Label>
+              <Label>File URL {(importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') ? '(optional — auto-detected by year)' : ''}</Label>
               <Input
-                placeholder={importType === 'medicare_hha_stats' ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
+                placeholder={(importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
                 value={fileUrl}
                 onChange={(e) => setFileUrl(e.target.value)}
               />
@@ -144,7 +153,7 @@ export default function AutoImports() {
 
             <Button
               onClick={handleImport}
-              disabled={processing || (importType !== 'medicare_hha_stats' && !fileUrl)}
+              disabled={processing || (importType !== 'medicare_hha_stats' && importType !== 'medicare_ma_inpatient' && !fileUrl)}
               className="w-full bg-teal-600 hover:bg-teal-700"
             >
               {processing ? (
