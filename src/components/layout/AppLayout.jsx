@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AppLayout({ children, currentPageName }) {
@@ -39,6 +39,7 @@ export default function AppLayout({ children, currentPageName }) {
     { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
     { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
     { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
+    { name: 'Bulk Email Export', icon: Mail, page: 'BulkEmailExport', roles: ['admin'] },
     { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
   ];
 
