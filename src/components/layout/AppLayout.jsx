@@ -23,14 +23,9 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
       { name: 'Import Monitoring', icon: BarChart3, page: 'ImportMonitoring', roles: ['admin'] },
-      { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
-      { name: 'Error Reports', icon: Shield, page: 'ErrorReports', roles: ['admin'] },
-      { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
-      { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
+      { name: 'Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
-      { name: 'Crawler Dashboard', icon: BarChart3, page: 'NPPESCrawlerDashboard', roles: ['admin'] },
-      { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
-      { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
+      { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
     ]
   },
   {
@@ -42,7 +37,6 @@ const NAV_SECTIONS = [
       { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
       { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
       { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
-      { name: 'Referral Pathways', icon: GitBranch, page: 'ReferralPathwayAnalysis', roles: ['admin', 'sales_rep'] },
       { name: 'Territory Intel', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'sales_rep'] },
     ]
   },
@@ -52,19 +46,16 @@ const NAV_SECTIONS = [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
       { name: 'Lead Builder', icon: Users, page: 'LeadListBuilder', roles: ['admin', 'sales_rep'] },
       { name: 'Lead Copilot', icon: Bot, page: 'LeadDiscoveryCopilot', roles: ['admin', 'sales_rep'] },
-      { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
-      { name: 'Bulk Email Export', icon: Mail, page: 'BulkEmailExport', roles: ['admin'] },
-      { name: 'Provider Outreach', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
+      { name: 'Outreach', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
     label: 'Analytics & Config',
     items: [
-      { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
-      { name: 'Advanced Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'sales_rep'] },
+      { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'CMS Analytics', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
+      { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'Custom Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
-      { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
     ]
