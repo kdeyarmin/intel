@@ -23,6 +23,7 @@ const importTypeOptions = [
   { value: 'home_health_pdgm', label: 'Home Health PDGM' },
   { value: 'inpatient_drg', label: 'Inpatient DRG' },
   { value: 'provider_ownership', label: 'Provider Ownership' },
+  { value: 'opt_out_physicians', label: 'Medicare Opt-Out Physicians' },
 ];
 
 export default function ImportSchedule() {

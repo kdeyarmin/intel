@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership', 'opt_out_physicians'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -174,12 +174,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'opt_out_physicians') {
+                    const npiColumn = columnMapping['NPI'] || 'NPI';
+                    identifier = row[npiColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing NPI',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && import_type !== 'opt_out_physicians' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -196,10 +209,10 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && import_type !== 'opt_out_physicians') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
-                    } else if (import_type === 'provider_service_utilization') {
+                    } else if (import_type === 'provider_service_utilization' || import_type === 'opt_out_physicians') {
                         mappedData.npi = identifier;
                     }
                     validData.push(mappedData);
@@ -586,6 +599,22 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'opt_out_physicians') {
+        const patterns = {
+            'NPI': ['npi'],
+            'LAST_NAME': ['last_name', 'lastname'],
+            'FIRST_NAME': ['first_name', 'firstname'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -769,6 +798,10 @@ function mapCMSData(row, columnMapping, importType, year) {
         
         const ownershipPct = row[columnMapping['PERCENTAGE OWNERSHIP']];
         mappedData.percentage_ownership = ownershipPct && ownershipPct.trim() !== '' ? parseFloat(ownershipPct) : null;
+    } else if (importType === 'opt_out_physicians') {
+        mappedData.npi = row[columnMapping['NPI']] || '';
+        mappedData.last_name = row[columnMapping['LAST_NAME']] || '';
+        mappedData.first_name = row[columnMapping['FIRST_NAME']] || '';
     }
 
     return mappedData;
@@ -1233,6 +1266,30 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import ownership record:', error);
+            }
+        }
+    } else if (importType === 'opt_out_physicians') {
+        for (const row of validData) {
+            try {
+                const optOutData = {
+                    npi: row.npi,
+                    last_name: row.last_name,
+                    first_name: row.first_name,
+                };
+
+                const existing = await base44.asServiceRole.entities.OptOutPhysician.filter({
+                    npi: row.npi
+                });
+
+                if (existing.length === 0) {
+                    await base44.asServiceRole.entities.OptOutPhysician.create(optOutData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.OptOutPhysician.update(existing[0].id, optOutData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import opt-out physician record:', error);
             }
         }
     }
