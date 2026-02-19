@@ -432,26 +432,55 @@ export default function ImportMonitoring() {
                   )}
 
                   {/* Stats */}
-                  <div className="flex gap-6 text-sm">
-                    <div>
-                      <span className="text-gray-600">Total: </span>
-                      <span className="font-semibold">{batch.total_rows?.toLocaleString() || 0}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Valid: </span>
-                      <span className="font-semibold text-green-600">{batch.valid_rows?.toLocaleString() || 0}</span>
-                    </div>
-                    {batch.imported_rows > 0 && (
-                      <div>
-                        <span className="text-gray-600">Imported: </span>
-                        <span className="font-semibold text-blue-600">{batch.imported_rows?.toLocaleString()}</span>
+                  <div className="flex gap-6 text-sm flex-wrap">
+                    {batch.status === 'failed' && (!batch.total_rows || batch.total_rows === 0) ? (
+                      <div className="text-red-600 text-xs">
+                        {batch.error_samples?.[0]?.message || 'Import failed before data could be processed'}
                       </div>
-                    )}
-                    {batch.invalid_rows > 0 && (
-                      <div>
-                        <span className="text-gray-600">Invalid: </span>
-                        <span className="font-semibold text-red-600">{batch.invalid_rows?.toLocaleString()}</span>
-                      </div>
+                    ) : (
+                      <>
+                        {(batch.total_rows != null && batch.total_rows > 0) && (
+                          <div>
+                            <span className="text-gray-600">Total: </span>
+                            <span className="font-semibold">{batch.total_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {(batch.valid_rows != null && batch.valid_rows > 0) && (
+                          <div>
+                            <span className="text-gray-600">Validated: </span>
+                            <span className="font-semibold text-green-600">{batch.valid_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {batch.imported_rows > 0 && (
+                          <div>
+                            <span className="text-gray-600">Imported: </span>
+                            <span className="font-semibold text-blue-600">{batch.imported_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {batch.updated_rows > 0 && (
+                          <div>
+                            <span className="text-gray-600">Updated: </span>
+                            <span className="font-semibold text-purple-600">{batch.updated_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {batch.skipped_rows > 0 && (
+                          <div>
+                            <span className="text-gray-600">Skipped: </span>
+                            <span className="font-semibold text-gray-500">{batch.skipped_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {batch.invalid_rows > 0 && (
+                          <div>
+                            <span className="text-gray-600">Invalid: </span>
+                            <span className="font-semibold text-red-600">{batch.invalid_rows.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {batch.status === 'failed' && batch.valid_rows > 0 && !batch.imported_rows && (
+                          <div className="text-xs text-amber-600 italic">
+                            Validated but failed during import
+                          </div>
+                        )}
+                      </>
                     )}
                     <div className="ml-auto text-gray-500">
                       {formatTimestamp(batch.created_date)}
