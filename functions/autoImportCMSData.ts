@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership', 'opt_out_physicians'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership', 'opt_out_physicians', 'medicare_hha_stats'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
