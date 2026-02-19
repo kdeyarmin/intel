@@ -86,7 +86,7 @@ export default function AppLayout({ children, currentPageName }) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-100">
       <style>{`
         .scrollbar-dark::-webkit-scrollbar { width: 6px; }
         .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
@@ -95,9 +95,9 @@ export default function AppLayout({ children, currentPageName }) {
         .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.35) transparent; }
       `}</style>
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-800 text-slate-300 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-700/50">
+        <div className="p-4 flex items-center justify-between border-b border-slate-600/30 bg-slate-700/40">
           {sidebarOpen ? (
             <div className="flex items-center gap-2.5">
               <img
@@ -121,7 +121,7 @@ export default function AppLayout({ children, currentPageName }) {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-slate-400 hover:text-white hover:bg-slate-800 h-7 w-7"
+            className="text-slate-400 hover:text-white hover:bg-slate-700 h-7 w-7"
           >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
@@ -131,7 +131,7 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-2 py-2">
           <button
             onClick={() => setSearchOpen(true)}
-            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-700/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
           >
             <Search className="w-4 h-4 shrink-0" />
             {sidebarOpen && (
@@ -172,7 +172,7 @@ export default function AppLayout({ children, currentPageName }) {
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
                         isActive
                           ? 'bg-blue-600/20 text-blue-400 font-medium border-l-2 border-blue-400 ml-0.5'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-700/60'
                       }`}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
@@ -186,7 +186,7 @@ export default function AppLayout({ children, currentPageName }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-slate-700/50">
+        <div className="p-3 border-t border-slate-600/30">
           {user && sidebarOpen && (
             <div className="mb-2 px-2">
               <p className="text-xs font-medium text-slate-200 truncate">{user.full_name || user.email}</p>
@@ -196,7 +196,7 @@ export default function AppLayout({ children, currentPageName }) {
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-slate-400 hover:text-white hover:bg-slate-800 justify-start h-8 text-xs"
+            className="w-full text-slate-400 hover:text-white hover:bg-slate-700 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />
             {sidebarOpen && <span className="ml-2">Sign Out</span>}
@@ -207,11 +207,11 @@ export default function AppLayout({ children, currentPageName }) {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-slate-50 flex flex-col">
+      <main className="flex-1 overflow-auto bg-transparent flex flex-col">
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-2.5 border-t border-slate-200 bg-white/80 backdrop-blur-sm">
+        <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-100/60 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
