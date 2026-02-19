@@ -279,21 +279,31 @@ Deno.serve(async (req) => {
 
         } catch (error) {
             console.error(`Import error for ${import_type}:`, error.message);
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: 'failed', error_samples: [{ message: error.message }],
-            });
-
-            // Create error report (don't try to send email notification - it can fail and cascade)
+            // If it's a rate limit error, mark as paused (retryable) not failed
+            const isRateLimit = error.message && error.message.includes('Rate limit');
             try {
-                await base44.asServiceRole.entities.ErrorReport.create({
-                    error_type: 'import_failure', severity: 'high', source: batch.id,
-                    title: `Import failed: ${import_type}`,
-                    description: error.message,
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                    status: isRateLimit ? 'paused' : 'failed',
                     error_samples: [{ message: error.message }],
-                    context: { import_type, file_url, batch_id: batch.id, year },
-                    status: 'new',
+                    ...(isRateLimit ? {
+                        paused_at: new Date().toISOString(),
+                        cancel_reason: 'Rate limited by platform. Wait a few minutes and resume.',
+                    } : {}),
                 });
-            } catch (e) { console.error('Error report creation failed:', e.message); }
+            } catch (e) { console.error('Batch update failed:', e.message); }
+
+            if (!isRateLimit) {
+                try {
+                    await base44.asServiceRole.entities.ErrorReport.create({
+                        error_type: 'import_failure', severity: 'high', source: batch.id,
+                        title: `Import failed: ${import_type}`,
+                        description: error.message,
+                        error_samples: [{ message: error.message }],
+                        context: { import_type, file_url, batch_id: batch.id, year },
+                        status: 'new',
+                    });
+                } catch (e) { console.error('Error report creation failed:', e.message); }
+            }
 
             throw error;
         }
