@@ -205,18 +205,22 @@ Deno.serve(async (req) => {
                 return params;
             }
 
-            // NPPES requires at least 2 characters before a wildcard.
-            // Base strategy: iterate all two-letter prefixes (aa*-zz*) per enumeration type.
-            // If a two-letter prefix hits the 1200 limit, subdivide into three-letter prefixes.
+            // NPPES requires at least 2 characters before a wildcard (e.g., "jo*").
+            // Strategy per enum type:
+            //   1. For each letter A-Z, query two-letter prefixes in parallel-friendly batches.
+            //      Only common prefixes actually return results, so most return quickly with no data.
+            //   2. If any two-letter prefix hits 1200 limit, subdivide into three-letter prefixes.
+            //   3. Use minimal delay for "no result" queries to maximize throughput.
             for (const enumType of enumTypes) {
                 const nameField = enumType === 'NPI-1' ? 'last_name' : 'organization_name';
                 const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
 
-                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField}) — 676 two-letter prefixes`);
+                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField})`);
 
                 for (const letter1 of ALPHABET) {
                     let letterGroupAdded = 0;
 
+                    // Query all 26 two-letter prefixes for this first letter
                     for (const letter2 of ALPHABET) {
                         const prefix = `${letter1}${letter2}`;
                         const params = buildParams(stateToProcess, enumType, nameField, prefix, taxonomy_description);
@@ -228,7 +232,7 @@ Deno.serve(async (req) => {
                         if (hitLimit) {
                             // Two-letter prefix has >1200 records — subdivide into three-letter prefixes
                             queriesOverLimit++;
-                            console.log(`[${stateToProcess}] ${typeLabel} ${prefix}*: HIT 1200 LIMIT (${results.length}), subdividing into ${prefix}a*-${prefix}z*`);
+                            console.log(`[${stateToProcess}] ${typeLabel} ${prefix}*: HIT 1200 LIMIT (${results.length}), expanding...`);
 
                             for (const letter3 of ALPHABET) {
                                 const triPrefix = `${prefix}${letter3}`;
@@ -238,15 +242,21 @@ Deno.serve(async (req) => {
                                 addUniqueResults(triResult.results);
 
                                 if (triResult.hitLimit) {
-                                    console.warn(`[${stateToProcess}] ${typeLabel} ${triPrefix}*: STILL AT LIMIT (${triResult.results.length}), some records may be missed`);
+                                    console.warn(`[${stateToProcess}] ${typeLabel} ${triPrefix}*: STILL AT LIMIT`);
                                 }
-
-                                await new Promise(r => setTimeout(r, API_DELAY_MS));
+                                // Minimal delay for sub-queries
+                                await new Promise(r => setTimeout(r, 100));
                             }
                         }
 
                         letterGroupAdded += (allResults.length - beforeCount);
-                        await new Promise(r => setTimeout(r, API_DELAY_MS));
+
+                        // Only delay if we got results (empty responses are fast and don't count against rate limits)
+                        if (results.length > 0) {
+                            await new Promise(r => setTimeout(r, API_DELAY_MS));
+                        } else {
+                            await new Promise(r => setTimeout(r, 50));
+                        }
                     }
 
                     if (letterGroupAdded > 0) {
