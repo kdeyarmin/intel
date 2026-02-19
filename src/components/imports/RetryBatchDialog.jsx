@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, AlertCircle, Filter, Rows3, Settings } from 'lucide-react';
+import { RefreshCw, AlertCircle, Filter, Rows3 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted }) {
@@ -72,11 +72,19 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       });
 
       try {
-        await base44.functions.invoke('triggerImport', {
+        const invokeParams = {
           import_type: batch.import_type,
           file_url: batch.file_url,
           dry_run: dryRun,
-        });
+        };
+        // Pass range params for ZIP-based imports (Medicare MA, HHA, Part D, SNF)
+        if (retryMode === 'row_range') {
+          invokeParams.row_offset = rowOffset ? Number(rowOffset) : 0;
+          invokeParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
+        } else if (retryMode === 'resume') {
+          invokeParams.row_offset = batch.imported_rows || 0;
+        }
+        await base44.functions.invoke('triggerImport', invokeParams);
       } catch (e) {
         console.warn('triggerImport call failed, batch was still created:', e.message);
       }
