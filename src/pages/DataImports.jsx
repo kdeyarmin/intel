@@ -11,11 +11,14 @@ import { Upload, ArrowLeft, Loader2 } from 'lucide-react';
 import ImportTypeSelector, { importTypes } from '../components/imports/ImportTypeSelector';
 import ColumnMapper from '../components/imports/ColumnMapper';
 import ValidationResults from '../components/imports/ValidationResults';
+import FileParser from '../components/imports/FileParser';
 
 export default function DataImports() {
   const [step, setStep] = useState('select'); // select, upload, map, validate, complete
   const [selectedType, setSelectedType] = useState(null);
   const [file, setFile] = useState(null);
+  const [fileUrl, setFileUrl] = useState(null);
+  const [parseMode, setParsedMode] = useState(null);
   const [csvColumns, setCsvColumns] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
   const [dryRun, setDryRun] = useState(true);
@@ -38,60 +41,25 @@ export default function DataImports() {
     return cleaned.length === 10;
   };
 
-  const handleFileSelect = (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
+  const handleFileParsed = ({ headers, file: parsedFile, file_url, parseMode }) => {
+    setFile(parsedFile);
+    setFileUrl(file_url);
+    setParsedMode(parseMode);
+    setCsvColumns(headers);
 
-    setFile(selectedFile);
-    setUploadingFile(true);
-    setUploadProgress(20);
-    
-    // Read only first 5000 bytes to extract headers (much faster for large files)
-    const reader = new FileReader();
-    const blob = selectedFile.slice(0, 5000);
-    
-    reader.onload = (event) => {
-      try {
-        setUploadProgress(60);
-        const text = event.target.result;
-        const firstLine = text.split('\n')[0];
-        const headers = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
-        
-        setCsvColumns(headers);
-        
-        // Auto-map columns that match exactly (case-insensitive)
-        const autoMapping = {};
-        const normalizedRequired = selectedType.requiredColumns.map(col => col.toLowerCase());
-        const normalizedHeaders = headers.map((h, idx) => ({ original: headers[idx], normalized: h.toLowerCase() }));
-        
-        selectedType.requiredColumns.forEach(requiredCol => {
-          const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase());
-          if (match) {
-            autoMapping[requiredCol] = match.original;
-          }
-        });
-        
-        setColumnMapping(autoMapping);
-        setUploadProgress(100);
-        setTimeout(() => {
-          setStep('map');
-          setUploadingFile(false);
-          setUploadProgress(0);
-        }, 300);
-      } catch (error) {
-        alert('Error parsing file headers: ' + error.message);
-        setUploadingFile(false);
-        setUploadProgress(0);
+    // Auto-map columns that match exactly (case-insensitive)
+    const autoMapping = {};
+    const normalizedHeaders = headers.map((h) => ({ original: h, normalized: h.toLowerCase() }));
+
+    selectedType.requiredColumns.forEach(requiredCol => {
+      const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase());
+      if (match) {
+        autoMapping[requiredCol] = match.original;
       }
-    };
-    
-    reader.onerror = () => {
-      alert('Error reading file. Please try selecting the file again.');
-      setUploadingFile(false);
-      setUploadProgress(0);
-    };
-    
-    reader.readAsText(blob);
+    });
+
+    setColumnMapping(autoMapping);
+    setStep('map');
   };
 
   const handleValidate = async () => {
@@ -102,8 +70,8 @@ export default function DataImports() {
     try {
       const user = await base44.auth.me();
       
-      // Upload file
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      // Use already-uploaded file URL from FileParser, or upload now
+      const file_url = fileUrl || (await base44.integrations.Core.UploadFile({ file })).file_url;
       setProcessingStatus('Creating import batch...');
       
       // Create batch record
@@ -424,6 +392,8 @@ export default function DataImports() {
     setStep('select');
     setSelectedType(null);
     setFile(null);
+    setFileUrl(null);
+    setParsedMode(null);
     setCsvColumns([]);
     setColumnMapping({});
     setCurrentBatch(null);
@@ -492,24 +462,7 @@ export default function DataImports() {
             <CardTitle>{selectedType?.name}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Upload CSV File</Label>
-              <Input
-                type="file"
-                accept=".csv"
-                onChange={handleFileSelect}
-                disabled={uploadingFile}
-              />
-              {uploadingFile && (
-                <div className="space-y-2 pt-4">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-                    <span className="text-sm text-gray-600">Reading file...</span>
-                  </div>
-                  <Progress value={uploadProgress} className="h-2" />
-                </div>
-              )}
-            </div>
+            <FileParser onParsed={handleFileParsed} selectedType={selectedType} />
           </CardContent>
         </Card>
       )}
