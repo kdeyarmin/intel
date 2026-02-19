@@ -40,17 +40,15 @@ export default function AutoImports() {
 
     setProcessing(true);
     try {
+      const zipFunctionMap = {
+        medicare_hha_stats: 'importMedicareHHA',
+        medicare_ma_inpatient: 'importMedicareMAInpatient',
+        medicare_part_d_stats: 'importMedicarePartD',
+        medicare_snf_stats: 'importMedicareSNF',
+      };
       let result;
-      if (importType === 'medicare_hha_stats') {
-        const res = await base44.functions.invoke('importMedicareHHA', {
-          action: 'import',
-          year: parseInt(year),
-          custom_url: fileUrl || undefined,
-          dry_run: dryRun,
-        });
-        result = res.data;
-      } else if (importType === 'medicare_ma_inpatient') {
-        const res = await base44.functions.invoke('importMedicareMAInpatient', {
+      if (zipFunctionMap[importType]) {
+        const res = await base44.functions.invoke(zipFunctionMap[importType], {
           action: 'import',
           year: parseInt(year),
           custom_url: fileUrl || undefined,
@@ -67,7 +65,8 @@ export default function AutoImports() {
         result = res.data;
       }
 
-      if (importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') {
+      const zipImportTypes = ['medicare_hha_stats', 'medicare_ma_inpatient', 'medicare_part_d_stats', 'medicare_snf_stats'];
+      if (zipImportTypes.includes(importType)) {
         alert(
           dryRun 
             ? `Validation complete: ${result.total_records} records from ${result.sheets_parsed?.length || 0} sheets`
@@ -120,14 +119,16 @@ export default function AutoImports() {
                   <SelectItem value="cms_part_d">CMS Part D</SelectItem>
                   <SelectItem value="medicare_hha_stats">Medicare HHA Use & Payments</SelectItem>
                   <SelectItem value="medicare_ma_inpatient">Medicare Advantage Inpatient Hospital</SelectItem>
+                  <SelectItem value="medicare_part_d_stats">Medicare Part D Use & Payments</SelectItem>
+                  <SelectItem value="medicare_snf_stats">Medicare SNF Use & Payments</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>File URL {(importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') ? '(optional — auto-detected by year)' : ''}</Label>
+              <Label>File URL {['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) ? '(optional — auto-detected by year)' : ''}</Label>
               <Input
-                placeholder={(importType === 'medicare_hha_stats' || importType === 'medicare_ma_inpatient') ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
+                placeholder={['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
                 value={fileUrl}
                 onChange={(e) => setFileUrl(e.target.value)}
               />
@@ -153,7 +154,7 @@ export default function AutoImports() {
 
             <Button
               onClick={handleImport}
-              disabled={processing || (importType !== 'medicare_hha_stats' && importType !== 'medicare_ma_inpatient' && !fileUrl)}
+              disabled={processing || (!['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) && !fileUrl)}
               className="w-full bg-teal-600 hover:bg-teal-700"
             >
               {processing ? (
