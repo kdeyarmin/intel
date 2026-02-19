@@ -483,72 +483,229 @@ Deno.serve(async (req) => {
             });
 
             let importedProviders = 0;
+            let updatedProviders = 0;
+            let skippedProviders = 0;
             let importedLocations = 0;
+            let updatedLocations = 0;
+            let skippedLocations = 0;
             let importedTaxonomies = 0;
+            let updatedTaxonomies = 0;
+            let skippedTaxonomies = 0;
+
+            // Helper: check if incoming record has more complete data than existing
+            function isMoreComplete(incoming, existing, fields) {
+                let incomingFilled = 0;
+                let existingFilled = 0;
+                for (const f of fields) {
+                    if (incoming[f] && String(incoming[f]).trim()) incomingFilled++;
+                    if (existing[f] && String(existing[f]).trim()) existingFilled++;
+                }
+                return incomingFilled > existingFilled;
+            }
+
+            // Helper: check if incoming record is newer based on last_update_date
+            function isNewer(incoming, existing) {
+                const inDate = incoming.last_update_date || incoming.enumeration_date || '';
+                const exDate = existing.last_update_date || existing.enumeration_date || '';
+                if (!inDate) return false;
+                if (!exDate) return true;
+                return inDate > exDate;
+            }
+
+            // Helper: check if two records are effectively identical on key fields
+            function isIdentical(incoming, existing, fields) {
+                for (const f of fields) {
+                    const a = (incoming[f] ?? '').toString().trim();
+                    const b = (existing[f] ?? '').toString().trim();
+                    if (a !== b) return false;
+                }
+                return true;
+            }
 
             if (!dry_run && providerRecords.length > 0) {
-                // Bulk create providers
+                // --- PROVIDERS: smart upsert ---
+                const PROVIDER_KEY_FIELDS = ['first_name','last_name','organization_name','credential','gender','status','entity_type','enumeration_date','last_update_date'];
+
                 for (let i = 0; i < providerRecords.length; i += BULK_SIZE) {
                     const chunk = providerRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.Provider.bulkCreate(chunk);
-                        importedProviders += chunk.length;
-                    } catch (e) {
-                        for (const p of chunk) {
+                    // Batch-lookup existing providers by NPI
+                    const npisInChunk = chunk.map(p => p.npi);
+                    let existingMap = {};
+                    for (const npi of npisInChunk) {
+                        try {
+                            const found = await base44.asServiceRole.entities.Provider.filter({ npi });
+                            if (found.length > 0) existingMap[npi] = found[0];
+                        } catch (e) {}
+                    }
+
+                    const toCreate = [];
+                    for (const p of chunk) {
+                        const existing = existingMap[p.npi];
+                        if (!existing) {
+                            toCreate.push(p);
+                        } else if (isIdentical(p, existing, PROVIDER_KEY_FIELDS)) {
+                            skippedProviders++;
+                        } else if (isNewer(p, existing) || isMoreComplete(p, existing, PROVIDER_KEY_FIELDS)) {
+                            // Merge: keep existing values for empty incoming fields
+                            const merged = { ...p };
+                            for (const f of PROVIDER_KEY_FIELDS) {
+                                if (!merged[f] && existing[f]) merged[f] = existing[f];
+                            }
+                            merged.needs_nppes_enrichment = false;
                             try {
-                                await base44.asServiceRole.entities.Provider.create(p);
-                                importedProviders++;
-                            } catch (innerErr) {
+                                await base44.asServiceRole.entities.Provider.update(existing.id, merged);
+                                updatedProviders++;
+                            } catch (e) {
+                                console.error(`Failed to update provider ${p.npi}:`, e.message);
+                            }
+                        } else {
+                            skippedProviders++;
+                        }
+                    }
+
+                    if (toCreate.length > 0) {
+                        try {
+                            await base44.asServiceRole.entities.Provider.bulkCreate(toCreate);
+                            importedProviders += toCreate.length;
+                        } catch (e) {
+                            for (const p of toCreate) {
                                 try {
-                                    const existing = await base44.asServiceRole.entities.Provider.filter({ npi: p.npi });
-                                    if (existing.length > 0) {
-                                        await base44.asServiceRole.entities.Provider.update(existing[0].id, p);
-                                        importedProviders++;
-                                    }
-                                } catch (updateErr) {
-                                    console.error(`Failed to upsert provider ${p.npi}:`, updateErr.message);
+                                    await base44.asServiceRole.entities.Provider.create(p);
+                                    importedProviders++;
+                                } catch (createErr) {
+                                    console.error(`Failed to create provider ${p.npi}:`, createErr.message);
                                 }
                             }
                         }
                     }
                 }
 
-                // Bulk create locations
+                // --- LOCATIONS: deduplicate by NPI + location_type + address_1 + zip ---
+                const LOC_COMPARE_FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
+
                 for (let i = 0; i < locationRecords.length; i += BULK_SIZE) {
                     const chunk = locationRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.ProviderLocation.bulkCreate(chunk);
-                        importedLocations += chunk.length;
-                    } catch (e) {
-                        for (const loc of chunk) {
+                    // Group by NPI for batch lookup
+                    const npiSet = new Set(chunk.map(l => l.npi));
+                    let existingLocMap = {}; // npi -> array of existing locations
+                    for (const npi of npiSet) {
+                        try {
+                            const found = await base44.asServiceRole.entities.ProviderLocation.filter({ npi });
+                            if (found.length > 0) existingLocMap[npi] = found;
+                        } catch (e) {}
+                    }
+
+                    const toCreate = [];
+                    for (const loc of chunk) {
+                        const existingLocs = existingLocMap[loc.npi] || [];
+                        // Match on NPI + location_type + normalized address_1
+                        const match = existingLocs.find(ex =>
+                            ex.location_type === loc.location_type &&
+                            (ex.address_1 || '').trim().toLowerCase() === (loc.address_1 || '').trim().toLowerCase() &&
+                            (ex.zip || '').substring(0, 5) === (loc.zip || '').substring(0, 5)
+                        );
+
+                        if (!match) {
+                            toCreate.push(loc);
+                        } else if (isIdentical(loc, match, LOC_COMPARE_FIELDS)) {
+                            skippedLocations++;
+                        } else {
+                            // Update with newer data, keep existing non-empty fields
+                            const merged = { ...loc };
+                            for (const f of LOC_COMPARE_FIELDS) {
+                                if (!merged[f] && match[f]) merged[f] = match[f];
+                            }
                             try {
-                                await base44.asServiceRole.entities.ProviderLocation.create(loc);
-                                importedLocations++;
-                            } catch (locErr) {}
+                                await base44.asServiceRole.entities.ProviderLocation.update(match.id, merged);
+                                updatedLocations++;
+                            } catch (e) {
+                                console.error(`Failed to update location for ${loc.npi}:`, e.message);
+                            }
+                        }
+                    }
+
+                    if (toCreate.length > 0) {
+                        try {
+                            await base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate);
+                            importedLocations += toCreate.length;
+                        } catch (e) {
+                            for (const loc of toCreate) {
+                                try {
+                                    await base44.asServiceRole.entities.ProviderLocation.create(loc);
+                                    importedLocations++;
+                                } catch (locErr) {}
+                            }
                         }
                     }
                 }
 
-                // Bulk create taxonomies
+                // --- TAXONOMIES: deduplicate by NPI + taxonomy_code ---
+                const TAX_COMPARE_FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
+
                 for (let i = 0; i < taxonomyRecords.length; i += BULK_SIZE) {
                     const chunk = taxonomyRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(chunk);
-                        importedTaxonomies += chunk.length;
-                    } catch (e) {
-                        for (const tax of chunk) {
+                    const npiSet = new Set(chunk.map(t => t.npi));
+                    let existingTaxMap = {}; // npi -> array
+                    for (const npi of npiSet) {
+                        try {
+                            const found = await base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi });
+                            if (found.length > 0) existingTaxMap[npi] = found;
+                        } catch (e) {}
+                    }
+
+                    const toCreate = [];
+                    for (const tax of chunk) {
+                        const existingTaxes = existingTaxMap[tax.npi] || [];
+                        const match = existingTaxes.find(ex =>
+                            (ex.taxonomy_code || '').trim() === (tax.taxonomy_code || '').trim()
+                        );
+
+                        if (!match) {
+                            toCreate.push(tax);
+                        } else if (isIdentical(tax, match, TAX_COMPARE_FIELDS)) {
+                            skippedTaxonomies++;
+                        } else {
+                            const merged = { ...tax };
+                            for (const f of TAX_COMPARE_FIELDS) {
+                                if (!merged[f] && match[f]) merged[f] = match[f];
+                            }
                             try {
-                                await base44.asServiceRole.entities.ProviderTaxonomy.create(tax);
-                                importedTaxonomies++;
-                            } catch (taxErr) {}
+                                await base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged);
+                                updatedTaxonomies++;
+                            } catch (e) {
+                                console.error(`Failed to update taxonomy for ${tax.npi}:`, e.message);
+                            }
+                        }
+                    }
+
+                    if (toCreate.length > 0) {
+                        try {
+                            await base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate);
+                            importedTaxonomies += toCreate.length;
+                        } catch (e) {
+                            for (const tax of toCreate) {
+                                try {
+                                    await base44.asServiceRole.entities.ProviderTaxonomy.create(tax);
+                                    importedTaxonomies++;
+                                } catch (taxErr) {}
+                            }
                         }
                     }
                 }
+
+                const dedupSummary = {
+                    providers: { created: importedProviders, updated: updatedProviders, skipped: skippedProviders },
+                    locations: { created: importedLocations, updated: updatedLocations, skipped: skippedLocations },
+                    taxonomies: { created: importedTaxonomies, updated: updatedTaxonomies, skipped: skippedTaxonomies },
+                };
+                console.log(`[${stateToProcess}] Dedup summary:`, JSON.stringify(dedupSummary));
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     status: 'completed',
                     imported_rows: importedProviders,
-                    updated_rows: 0,
+                    updated_rows: updatedProviders + updatedLocations + updatedTaxonomies,
+                    skipped_rows: skippedProviders + skippedLocations + skippedTaxonomies,
+                    dedup_summary: dedupSummary,
                     completed_at: new Date().toISOString(),
                 });
             } else {
