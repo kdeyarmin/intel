@@ -40,10 +40,10 @@ Deno.serve(async (req) => {
         if (last_name) params.set('last_name', last_name);
         if (organization_name) params.set('organization_name', organization_name);
 
-        // Require at least one search criteria
-        const hasFilter = state || taxonomy_description || entity_type || city || postal_code || first_name || last_name || organization_name;
-        if (!hasFilter) {
-            return Response.json({ error: 'At least one search criteria is required' }, { status: 400 });
+        // Require at least one substantive search criteria (NPPES API requires more than just enumeration_type)
+        const hasSubstantiveFilter = state || taxonomy_description || city || postal_code || first_name || last_name || organization_name;
+        if (!hasSubstantiveFilter) {
+            return Response.json({ error: 'At least one search criteria beyond Provider Type is required (e.g., State, Specialty, City, Name)' }, { status: 400 });
         }
 
         // Create import batch
@@ -74,6 +74,14 @@ Deno.serve(async (req) => {
                 }
 
                 const data = await response.json();
+                
+                // Check for NPPES API errors
+                if (data.Errors && data.Errors.length > 0) {
+                    const errMsg = data.Errors.map(e => e.description).join('; ');
+                    console.error(`NPPES API returned errors: ${errMsg}`);
+                    throw new Error(`NPPES API error: ${errMsg}`);
+                }
+                
                 const resultCount = data.result_count || 0;
                 const results = data.results || [];
 
