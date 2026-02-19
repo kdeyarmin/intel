@@ -233,75 +233,99 @@ Deno.serve(async (req) => {
                 return params;
             }
 
-            // NPPES requires at least 2 characters before a wildcard (e.g., "jo*").
-            // Strategy per enum type:
-            //   1. For each letter A-Z, query two-letter prefixes in parallel-friendly batches.
-            //      Only common prefixes actually return results, so most return quickly with no data.
-            //   2. If any two-letter prefix hits 1200 limit, subdivide into three-letter prefixes.
-            //   3. Use minimal delay for "no result" queries to maximize throughput.
+            // NPPES API Strategy:
+            // "state" alone gives "requires additional search criteria" error.
+            // Solution: use postal_code 2-digit wildcard (e.g. "35*") as the additional criterion.
+            //   - Each state has only ~2-5 two-digit zip prefixes → very few queries needed.
+            //   - If a zip prefix returns 1200+ results (the API skip limit), subdivide into
+            //     3-digit zip prefixes (e.g. "350*", "351*", ... "359*").
+            //   - We query BOTH enum types per zip prefix in a single pass.
+            // This is much faster than iterating 676 name prefixes.
+            const zipPrefixes = STATE_ZIP_PREFIXES[stateToProcess] || [];
+            if (zipPrefixes.length === 0) {
+                console.warn(`[${stateToProcess}] No zip prefixes configured — falling back to name-based crawl`);
+            }
+
             for (const enumType of enumTypes) {
-                const nameField = enumType === 'NPI-1' ? 'last_name' : 'organization_name';
                 const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
+                console.log(`[${stateToProcess}] ${typeLabel}: crawling ${zipPrefixes.length} zip prefixes`);
 
-                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField})`);
+                for (const zipPrefix of zipPrefixes) {
+                    // Query with 2-digit zip prefix
+                    const params = new URLSearchParams();
+                    params.set('version', '2.1');
+                    params.set('limit', String(BATCH_LIMIT));
+                    params.set('state', stateToProcess);
+                    params.set('enumeration_type', enumType);
+                    params.set('postal_code', `${zipPrefix}*`);
+                    if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
 
-                for (const letter1 of ALPHABET) {
-                    let letterGroupAdded = 0;
+                    const { results, hitLimit } = await fetchAllPages(params, stateToProcess);
+                    const beforeCount = allResults.length;
+                    addUniqueResults(results);
 
-                    // Query all 26 two-letter prefixes for this first letter
-                    for (const letter2 of ALPHABET) {
-                        const prefix = `${letter1}${letter2}`;
-                        const params = buildParams(stateToProcess, enumType, nameField, prefix, taxonomy_description);
+                    if (hitLimit) {
+                        // Subdivide into 3-digit zip prefixes (e.g. "350*"-"359*")
+                        queriesOverLimit++;
+                        console.log(`[${stateToProcess}] ${typeLabel} zip=${zipPrefix}*: HIT LIMIT (${results.length}), expanding to 3-digit`);
 
-                        const { results, hitLimit } = await fetchAllPages(params, stateToProcess);
-                        const beforeCount = allResults.length;
-                        addUniqueResults(results);
+                        for (let d = 0; d <= 9; d++) {
+                            const zip3 = `${zipPrefix}${d}`;
+                            const subParams = new URLSearchParams();
+                            subParams.set('version', '2.1');
+                            subParams.set('limit', String(BATCH_LIMIT));
+                            subParams.set('state', stateToProcess);
+                            subParams.set('enumeration_type', enumType);
+                            subParams.set('postal_code', `${zip3}*`);
+                            if (taxonomy_description) subParams.set('taxonomy_description', taxonomy_description);
 
-                        if (hitLimit) {
-                            // Two-letter prefix has >1200 records — subdivide into three-letter prefixes
-                            queriesOverLimit++;
-                            console.log(`[${stateToProcess}] ${typeLabel} ${prefix}*: HIT 1200 LIMIT (${results.length}), expanding...`);
+                            const subResult = await fetchAllPages(subParams, stateToProcess);
+                            addUniqueResults(subResult.results);
 
-                            for (const letter3 of ALPHABET) {
-                                const triPrefix = `${prefix}${letter3}`;
-                                const triParams = buildParams(stateToProcess, enumType, nameField, triPrefix, taxonomy_description);
+                            if (subResult.hitLimit) {
+                                // Subdivide further into 4-digit zip prefixes
+                                console.log(`[${stateToProcess}] ${typeLabel} zip=${zip3}*: STILL AT LIMIT, expanding to 4-digit`);
+                                for (let d2 = 0; d2 <= 9; d2++) {
+                                    const zip4 = `${zip3}${d2}`;
+                                    const deepParams = new URLSearchParams();
+                                    deepParams.set('version', '2.1');
+                                    deepParams.set('limit', String(BATCH_LIMIT));
+                                    deepParams.set('state', stateToProcess);
+                                    deepParams.set('enumeration_type', enumType);
+                                    deepParams.set('postal_code', `${zip4}*`);
+                                    if (taxonomy_description) deepParams.set('taxonomy_description', taxonomy_description);
 
-                                const triResult = await fetchAllPages(triParams, stateToProcess);
-                                addUniqueResults(triResult.results);
+                                    const deepResult = await fetchAllPages(deepParams, stateToProcess);
+                                    addUniqueResults(deepResult.results);
 
-                                if (triResult.hitLimit) {
-                                    console.warn(`[${stateToProcess}] ${typeLabel} ${triPrefix}*: STILL AT LIMIT`);
+                                    if (deepResult.hitLimit) {
+                                        console.warn(`[${stateToProcess}] ${typeLabel} zip=${zip4}*: STILL AT LIMIT — some records may be missed`);
+                                    }
+                                    await new Promise(r => setTimeout(r, 100));
                                 }
-                                // Minimal delay for sub-queries
-                                await new Promise(r => setTimeout(r, 100));
                             }
-                        }
 
-                        letterGroupAdded += (allResults.length - beforeCount);
-
-                        // Only delay if we got results (empty responses are fast and don't count against rate limits)
-                        if (results.length > 0) {
-                            await new Promise(r => setTimeout(r, API_DELAY_MS));
-                        } else {
-                            await new Promise(r => setTimeout(r, 50));
+                            await new Promise(r => setTimeout(r, 100));
                         }
                     }
 
-                    if (letterGroupAdded > 0) {
-                        console.log(`[${stateToProcess}] ${typeLabel} ${letter1}**: +${letterGroupAdded} unique (total: ${allResults.length})`);
+                    const added = allResults.length - beforeCount;
+                    if (added > 0) {
+                        console.log(`[${stateToProcess}] ${typeLabel} zip=${zipPrefix}*: +${added} unique (total: ${allResults.length})`);
                     }
 
-                    // Update batch progress after each first-letter group
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         total_rows: allResults.length,
                     });
+
+                    await new Promise(r => setTimeout(r, API_DELAY_MS));
                 }
 
-                console.log(`[${stateToProcess}] ${typeLabel} crawl done: ${allResults.length} unique NPIs so far`);
+                console.log(`[${stateToProcess}] ${typeLabel} zip crawl done: ${allResults.length} unique NPIs`);
             }
 
             if (queriesOverLimit > 0) {
-                console.log(`[${stateToProcess}] ${queriesOverLimit} prefix(es) required three-letter subdivision`);
+                console.log(`[${stateToProcess}] ${queriesOverLimit} zip prefix(es) required subdivision`);
             }
 
             console.log(`[${stateToProcess}] Total fetched: ${allResults.length}`);
