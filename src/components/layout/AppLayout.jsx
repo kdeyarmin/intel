@@ -8,6 +8,7 @@ import {
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import GlobalSearchDialog from '../search/GlobalSearchDialog';
 
 const NAV_SECTIONS = [
   {
@@ -66,6 +67,7 @@ export default function AppLayout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [collapsedSections, setCollapsedSections] = useState({});
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -116,6 +118,22 @@ export default function AppLayout({ children, currentPageName }) {
           >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
+        </div>
+
+        {/* Search Button */}
+        <div className="px-2 py-2">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
+          >
+            <Search className="w-4 h-4 shrink-0" />
+            {sidebarOpen && (
+              <>
+                <span className="flex-1 text-left">Search...</span>
+                <kbd className="text-[10px] text-slate-500 border border-slate-600 rounded px-1 py-0.5">⌘K</kbd>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Nav */}
@@ -178,6 +196,8 @@ export default function AppLayout({ children, currentPageName }) {
           </Button>
         </div>
       </aside>
+
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* Main content */}
       <main className="flex-1 overflow-auto bg-slate-50 flex flex-col">
