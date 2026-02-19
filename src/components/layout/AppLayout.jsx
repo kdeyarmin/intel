@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail, Search } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail, Search, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function AppLayout({ children, currentPageName }) {
@@ -30,6 +30,7 @@ export default function AppLayout({ children, currentPageName }) {
     { name: 'Error Reports', icon: Shield, page: 'ErrorReports', roles: ['admin'] },
     { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
     { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
+    { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
     { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
     { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
     { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
