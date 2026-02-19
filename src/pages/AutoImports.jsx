@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, Upload, Calendar, CheckCircle2, XCircle, Clock, AlertTriangle, PauseCircle, RefreshCw } from 'lucide-react';
 
 export default function AutoImports() {
   const [importType, setImportType] = useState('cms_order_referring');
@@ -16,6 +16,8 @@ export default function AutoImports() {
   const [year, setYear] = useState('2023');
   const [dryRun, setDryRun] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [lastError, setLastError] = useState(null);
+  const [lastResult, setLastResult] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -43,8 +45,9 @@ export default function AutoImports() {
     }
 
     setProcessing(true);
+    setLastError(null);
+    setLastResult(null);
     try {
-      // Use triggerImport which routes to the right handler and has built-in URLs
       const res = await base44.functions.invoke('triggerImport', {
         import_type: importType,
         file_url: fileUrl || undefined,
@@ -53,28 +56,29 @@ export default function AutoImports() {
       });
       const result = res.data?.result || res.data;
 
-      if (isZip) {
-        alert(
-          dryRun 
-            ? `Validation complete: ${result.total_records || 0} records from ${result.sheets_parsed?.length || 0} sheets`
-            : `Import complete: ${result.imported || 0} records from ${result.sheets_parsed?.length || 0} sheets`
-        );
-      } else if (result.partial) {
-        alert(
-          `Partial import: ${result.imported_rows || 0} imported so far, will resume at offset ${result.next_offset}. Run again to continue.`
-        );
-      } else {
-        alert(
-          dryRun 
-            ? `Validation complete: ${result.valid_rows || 0} valid, ${result.invalid_rows || 0} invalid, ${result.duplicate_rows || 0} duplicates`
-            : `Import complete: ${result.imported_rows || 0} new, ${result.updated_rows || 0} updated, ${result.skipped_rows || 0} skipped`
-        );
+      // Check if result contains error info passed through from sub-function
+      if (result?.error) {
+        setLastError(result);
+        queryClient.invalidateQueries(['recentImports']);
+        return;
       }
 
+      setLastResult(result);
       setFileUrl('');
       queryClient.invalidateQueries(['recentImports']);
     } catch (error) {
-      alert('Import failed: ' + error.message);
+      // Extract detailed error from the response
+      const errorData = error.response?.data || {};
+      setLastError({
+        error: errorData.error || error.message || 'Unknown error',
+        error_phase: errorData.error_phase || 'unknown',
+        retryable: errorData.retryable || false,
+        batch_id: errorData.batch_id,
+        error_samples: errorData.error_samples,
+        hint: errorData.hint,
+        import_type: importType,
+      });
+      queryClient.invalidateQueries(['recentImports']);
     } finally {
       setProcessing(false);
     }
@@ -162,6 +166,73 @@ export default function AutoImports() {
                 </>
               )}
             </Button>
+
+            {/* Success result */}
+            {lastResult && !lastError && (
+              <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4 text-sm space-y-2">
+                <div className="flex items-center gap-2 text-green-700 font-medium">
+                  <CheckCircle2 className="w-4 h-4" />
+                  {lastResult.status === 'paused' ? 'Partial Import (Timed Out)' : dryRun ? 'Validation Complete' : 'Import Complete'}
+                </div>
+                <div className="text-green-600 space-y-1">
+                  {lastResult.total_records != null && <p>Total records: {lastResult.total_records?.toLocaleString()}</p>}
+                  {lastResult.imported != null && <p>Imported: {lastResult.imported?.toLocaleString()}</p>}
+                  {lastResult.records_in_range != null && lastResult.records_in_range !== lastResult.total_records && (
+                    <p>Records in range: {lastResult.records_in_range?.toLocaleString()}</p>
+                  )}
+                  {lastResult.sheets_parsed?.length > 0 && (
+                    <p>Sheets: {lastResult.sheets_parsed.map(s => `${s.table} (${s.rows} rows${s.errors ? `, ${s.errors} errors` : ''})`).join(', ')}</p>
+                  )}
+                  {lastResult.chunk_errors > 0 && (
+                    <p className="text-amber-600">Chunk errors: {lastResult.chunk_errors} (some data may not have imported)</p>
+                  )}
+                  {lastResult.timed_out && (
+                    <p className="text-amber-600 font-medium">
+                      Timed out — resume from offset {lastResult.resume_offset} ({lastResult.remaining?.toLocaleString()} rows remaining)
+                    </p>
+                  )}
+                </div>
+                {lastResult.batch_id && <p className="text-xs text-green-500">Batch: {lastResult.batch_id}</p>}
+              </div>
+            )}
+
+            {/* Error result */}
+            {lastError && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm space-y-3">
+                <div className="flex items-center gap-2 text-red-700 font-medium">
+                  {lastError.retryable ? <AlertTriangle className="w-4 h-4 text-amber-500" /> : <XCircle className="w-4 h-4" />}
+                  Import Failed {lastError.error_phase && lastError.error_phase !== 'unknown' ? `(${lastError.error_phase} phase)` : ''}
+                </div>
+                <p className="text-red-600">{lastError.error}</p>
+                {lastError.hint && (
+                  <p className="text-gray-600 bg-white rounded p-2 text-xs">{lastError.hint}</p>
+                )}
+                {lastError.retryable && (
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-300">Retryable</Badge>
+                    <Button size="sm" variant="outline" onClick={handleImport} disabled={processing}>
+                      <RefreshCw className="w-3 h-3 mr-1" /> Retry Now
+                    </Button>
+                  </div>
+                )}
+                {lastError.error_samples?.length > 0 && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-red-500 hover:text-red-700">
+                      Error details ({lastError.error_samples.length} sample{lastError.error_samples.length > 1 ? 's' : ''})
+                    </summary>
+                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                      {lastError.error_samples.map((s, i) => (
+                        <div key={i} className="bg-white rounded p-2 border border-red-100">
+                          <span className="font-medium text-red-600">[{s.phase}]</span> {s.detail}
+                          {s.chunk_start != null && <span className="text-gray-400 ml-1">(rows {s.chunk_start}-{s.chunk_start + (s.chunk_size || 50)})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+                {lastError.batch_id && <p className="text-xs text-red-400">Batch: {lastError.batch_id}</p>}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -214,6 +285,8 @@ export default function AutoImports() {
                       <CheckCircle2 className="w-5 h-5 text-green-600" />
                     ) : batch.status === 'failed' ? (
                       <XCircle className="w-5 h-5 text-red-600" />
+                    ) : batch.status === 'paused' ? (
+                      <PauseCircle className="w-5 h-5 text-amber-500" />
                     ) : (
                       <Clock className="w-5 h-5 text-yellow-600" />
                     )}
