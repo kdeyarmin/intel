@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Loader2, Wand2, BarChart3, Mail, Copy, Check, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, BarChart3, Mail, Copy, Check, RefreshCw, Users, ListOrdered } from 'lucide-react';
 import { toast } from 'sonner';
+import AudienceAnalysisTab from './AudienceAnalysisTab';
+import FollowUpSequenceTab from './FollowUpSequenceTab';
 
 const TONES = [
   { value: 'professional', label: 'Professional' },
@@ -36,6 +38,8 @@ export default function AICampaignAssistant({
   providers = [],
   scores = [],
   referrals = [],
+  locations = [],
+  taxonomies = [],
 }) {
   const [tab, setTab] = useState('naming');
   const [tone, setTone] = useState('professional');
@@ -246,6 +250,8 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
             <TabsTrigger value="naming" className="text-[10px] h-6 gap-1"><Wand2 className="w-3 h-3" /> Names</TabsTrigger>
             <TabsTrigger value="templates" className="text-[10px] h-6 gap-1"><Mail className="w-3 h-3" /> Templates</TabsTrigger>
             <TabsTrigger value="predict" className="text-[10px] h-6 gap-1"><BarChart3 className="w-3 h-3" /> Predict</TabsTrigger>
+            <TabsTrigger value="audience" className="text-[10px] h-6 gap-1"><Users className="w-3 h-3" /> Audience</TabsTrigger>
+            <TabsTrigger value="sequence" className="text-[10px] h-6 gap-1"><ListOrdered className="w-3 h-3" /> Sequence</TabsTrigger>
           </TabsList>
 
           <TabsContent value="naming" className="mt-2">
@@ -274,6 +280,28 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
               results={predictionResults}
               onGenerate={predictPerformance}
               targetConfig={targetConfig}
+            />
+          </TabsContent>
+          <TabsContent value="audience" className="mt-2">
+            <AudienceAnalysisTab
+              loading={loading}
+              targetConfig={targetConfig}
+              providers={providers}
+              locations={locations}
+              taxonomies={taxonomies}
+              scores={scores}
+              referrals={referrals}
+            />
+          </TabsContent>
+          <TabsContent value="sequence" className="mt-2">
+            <FollowUpSequenceTab
+              loading={loading}
+              tone={tone}
+              goal={goal}
+              audience={audience}
+              targetConfig={targetConfig}
+              onApplySubject={onApplySubject}
+              onApplyBody={onApplyBody}
             />
           </TabsContent>
         </Tabs>
