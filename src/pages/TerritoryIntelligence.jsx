@@ -12,6 +12,7 @@ import MapStatsBar from '../components/territory/MapStatsBar';
 import CountyDensityMap from '../components/territory/CountyDensityMap';
 import ProviderClusterList from '../components/territory/ProviderClusterList';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const DEFAULT_FILTERS = {
   specialty: 'all',
@@ -276,6 +277,8 @@ export default function TerritoryIntelligence() {
           </CardContent>
         </Card>
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import NetworkGraph from '../components/referralNetwork/NetworkGraph';
 import HubAnalysisTable from '../components/referralNetwork/HubAnalysisTable';
 import ReferralFlowSankey from '../components/referralNetwork/ReferralFlowSankey';
 import NodeDetailPanel from '../components/referralNetwork/NodeDetailPanel';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const HUB_THRESHOLD_PERCENTILE = 0.85;
 
@@ -299,6 +300,8 @@ export default function ReferralNetworkIntelligence() {
           </Tabs>
         </>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }

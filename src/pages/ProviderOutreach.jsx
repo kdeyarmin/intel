@@ -19,6 +19,7 @@ import TargetListBuilder from '../components/outreach/TargetListBuilder';
 import TemplateEditor from '../components/outreach/TemplateEditor';
 import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
 import FollowUpManager from '../components/outreach/FollowUpManager';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function ProviderOutreach() {
   const [tab, setTab] = useState('campaigns');
@@ -310,6 +311,8 @@ export default function ProviderOutreach() {
           </Tabs>
         </>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }

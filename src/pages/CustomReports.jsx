@@ -8,6 +8,7 @@ import ReportChart, { aggregateData } from '../components/customReports/ReportCh
 import ReportDataTable from '../components/customReports/ReportDataTable';
 import SavedReportsList from '../components/customReports/SavedReportsList';
 import { DATASET_CONFIG } from '../components/customReports/reportConfig';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const EMPTY_CONFIG = { name: '', dataset: '', metrics: [], group_by: '', chart_type: 'bar', filters: {} };
 
@@ -126,6 +127,8 @@ export default function CustomReports() {
           )}
         </div>
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

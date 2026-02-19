@@ -15,6 +15,7 @@ import RuleResultsTable from '../components/dataQuality/RuleResultsTable';
 import AlertsList from '../components/dataQuality/AlertsList';
 import ScanHistoryPanel from '../components/dataQuality/ScanHistoryPanel';
 import AlertTrendChart from '../components/dataQuality/AlertTrendChart';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function DataQuality() {
   const queryClient = useQueryClient();
@@ -184,6 +185,8 @@ export default function DataQuality() {
           <ScanHistoryPanel scans={scans} />
         </TabsContent>
       </Tabs>
+
+      <DataSourcesFooter />
     </div>
   );
 }

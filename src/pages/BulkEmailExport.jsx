@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, Play, Square, Mail, Users, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const BATCH_SIZE = 25;
 
@@ -263,6 +264,8 @@ export default function BulkEmailExport() {
           <strong>Disclaimer:</strong> Email addresses are AI-generated suggestions based on web searches and domain pattern inference. They are not verified. Always confirm before sending outreach. This process uses AI credits for each batch of {BATCH_SIZE} providers.
         </p>
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

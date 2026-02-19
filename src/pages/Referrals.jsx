@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { GitBranch, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Referrals() {
   const [search, setSearch] = useState('');
@@ -147,6 +148,8 @@ export default function Referrals() {
           {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
         </CardContent>
       </Card>
+
+      <DataSourcesFooter />
     </div>
   );
 }

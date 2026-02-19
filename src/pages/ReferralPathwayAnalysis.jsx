@@ -18,6 +18,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function ReferralPathwayAnalysis() {
   const [searchNPI, setSearchNPI] = useState('');
@@ -387,6 +388,8 @@ export default function ReferralPathwayAnalysis() {
           </CardContent>
         </Card>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }

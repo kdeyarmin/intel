@@ -12,6 +12,7 @@ import { MapPin, Download } from 'lucide-react';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Locations() {
   const [search, setSearch] = useState('');
@@ -180,6 +181,8 @@ export default function Locations() {
           {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
         </CardContent>
       </Card>
+
+      <DataSourcesFooter />
     </div>
   );
 }

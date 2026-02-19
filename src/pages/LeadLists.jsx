@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import FilterBuilder from '../components/leadlists/FilterBuilder';
 import LeadListTable from '../components/leadlists/LeadListTable';
 import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function LeadLists() {
   const [creating, setCreating] = useState(false);
@@ -369,6 +370,8 @@ export default function LeadLists() {
           )}
         </CardContent>
       </Card>
+
+      <DataSourcesFooter />
     </div>
   );
 }

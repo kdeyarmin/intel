@@ -13,6 +13,7 @@ import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Lay
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import CrawlerLog from '../components/nppes/CrawlerLog';
 import BatchProcessPanel from '../components/nppes/BatchProcessPanel';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -377,6 +378,8 @@ export default function NPPESCrawler() {
 
       {/* Log */}
       <CrawlerLog logs={logs} />
+
+      <DataSourcesFooter />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import HHAStatsChart from '../components/cmsAnalytics/HHAStatsChart';
 import PartDStatsChart from '../components/cmsAnalytics/PartDStatsChart';
 import SNFStatsChart from '../components/cmsAnalytics/SNFStatsChart';
 import DatasetOverview from '../components/cmsAnalytics/DatasetOverview';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function CMSAnalytics() {
   const [selectedYear, setSelectedYear] = useState('all');
@@ -180,6 +181,8 @@ export default function CMSAnalytics() {
           <SNFStatsChart data={filteredSNF} loading={loadingSNF} />
         )}
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

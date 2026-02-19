@@ -7,6 +7,7 @@ import ProviderGrowthChart from '../components/analytics/ProviderGrowthChart';
 import DataCompletenessChart from '../components/analytics/DataCompletenessChart';
 import ImportActivityChart from '../components/analytics/ImportActivityChart';
 import PredictiveAlerts from '../components/analytics/PredictiveAlerts';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Analytics() {
   const queryClient = useQueryClient();
@@ -81,6 +82,8 @@ export default function Analytics() {
           </p>
         </>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }

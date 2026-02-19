@@ -9,6 +9,7 @@ import MarketInsightsWidget from '../components/aiInsights/MarketInsightsWidget'
 import CampaignPredictionWidget from '../components/aiInsights/CampaignPredictionWidget';
 import LeadScoringTrendsWidget from '../components/aiInsights/LeadScoringTrendsWidget';
 import ConnectionsWidget from '../components/aiInsights/ConnectionsWidget';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function AIInsights() {
   const { data: providers = [], isLoading: lp } = useQuery({
@@ -108,6 +109,8 @@ export default function AIInsights() {
           scores={scores}
         />
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

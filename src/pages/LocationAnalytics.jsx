@@ -10,6 +10,7 @@ import ReferralVolumeChart from '../components/locationAnalytics/ReferralVolumeC
 import LocationTypeBreakdown from '../components/locationAnalytics/LocationTypeBreakdown';
 import LocationInsightsPanel from '../components/locationAnalytics/LocationInsightsPanel';
 import TopLocationsTable from '../components/locationAnalytics/TopLocationsTable';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function LocationAnalytics() {
   const { data: locations = [], isLoading: loadingLoc } = useQuery({
@@ -190,6 +191,8 @@ export default function LocationAnalytics() {
 
       {/* Top Locations Table */}
       <TopLocationsTable locations={cityData} />
+
+      <DataSourcesFooter />
     </div>
   );
 }

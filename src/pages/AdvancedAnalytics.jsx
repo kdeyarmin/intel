@@ -10,6 +10,7 @@ import ComparativeAnalysisPanel from '../components/advancedAnalytics/Comparativ
 import PredictiveAnalyticsPanel from '../components/advancedAnalytics/PredictiveAnalyticsPanel';
 import DrillDownTable from '../components/advancedAnalytics/DrillDownTable';
 import DashboardBuilder from '../components/advancedAnalytics/DashboardBuilder';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -174,6 +175,8 @@ export default function AdvancedAnalytics() {
           )}
         </TabsContent>
       </Tabs>
+
+      <DataSourcesFooter />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import ImportTypeSelector, { importTypes } from '../components/imports/ImportTyp
 import ColumnMapper from '../components/imports/ColumnMapper';
 import ValidationResults from '../components/imports/ValidationResults';
 import FileParser from '../components/imports/FileParser';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function DataImports() {
   const [step, setStep] = useState('select'); // select, upload, map, validate, complete
@@ -524,6 +525,8 @@ export default function DataImports() {
           <ValidationResults batch={currentBatch} />
         </div>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }

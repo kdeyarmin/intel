@@ -10,6 +10,7 @@ import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import AIAnalysisPanel from '../components/dashboard/AIAnalysisPanel';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -140,6 +141,8 @@ export default function Dashboard() {
       <div className="mb-6">
         <AIAnalysisPanel />
       </div>
+
+      <DataSourcesFooter />
     </div>
   );
 }

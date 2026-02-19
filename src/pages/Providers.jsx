@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -318,6 +319,8 @@ export default function Providers() {
           </div>
         </CardContent>
       </Card>
+
+      <DataSourcesFooter />
     </div>
   );
 }
