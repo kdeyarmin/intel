@@ -562,10 +562,15 @@ Deno.serve(async (req) => {
         status: finalStatus,
         sheets_parsed: sheetSummaries,
         total_records: allRecords.length,
+        records_validated: validRecords.length,
+        records_rejected: validation.invalid,
         records_in_range: recordsToProcess.length,
         imported,
         chunk_errors: chunkErrors,
-        parse_errors: errorSamples.filter(e => e.phase !== 'import').length,
+        parse_errors: errorSamples.filter(e => e.phase !== 'import' && e.phase !== 'validation').length,
+        validation_errors: validation.error_count,
+        validation_warnings: validation.warning_count,
+        validation_rule_summary: validation.rule_summary,
         import_errors: errorSamples.filter(e => e.phase === 'import').length,
         elapsed_ms: elapsed(),
         ...(timedOut ? {
@@ -574,6 +579,8 @@ Deno.serve(async (req) => {
           remaining: recordsToProcess.length - imported,
           hint: `Re-run with row_offset=${effectiveOffset + imported} to resume`,
         } : {}),
+        ...(validation.errors.length > 0 ? { validation_error_samples: validation.errors.slice(0, 15) } : {}),
+        ...(validation.warnings.length > 0 ? { validation_warning_samples: validation.warnings.slice(0, 10) } : {}),
         ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
       });
 
