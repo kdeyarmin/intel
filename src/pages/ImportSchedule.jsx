@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, CheckCircle, XCircle, Clock, Loader2, Play } from 'lucide-react';
+import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, Loader2, Play } from 'lucide-react';
+import ImportHistoryPanel from '../components/imports/ImportHistoryPanel';
 
 const importTypeOptions = [
   { value: 'cms_utilization', label: 'CMS Provider Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data' },
@@ -288,44 +289,7 @@ export default function ImportSchedule() {
                     </div>
 
                     {isExpanded && (
-                      <div className="border-t px-4 py-3 bg-gray-50">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-sm">Import History</h4>
-                          <Badge variant="outline">{history.length} runs</Badge>
-                        </div>
-                        {history.length === 0 ? (
-                          <p className="text-sm text-gray-500 text-center py-4">No import history yet</p>
-                        ) : (
-                          <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {history.map((batch) => (
-                              <div key={batch.id} className="bg-white p-3 rounded-lg border">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    {batch.status === 'completed' ? <CheckCircle className="w-4 h-4 text-green-600" /> :
-                                     batch.status === 'failed' ? <XCircle className="w-4 h-4 text-red-600" /> :
-                                     <Clock className="w-4 h-4 text-yellow-600" />}
-                                    <Badge variant={batch.status === 'completed' ? 'default' : batch.status === 'failed' ? 'destructive' : 'outline'}>
-                                      {batch.status}
-                                    </Badge>
-                                  </div>
-                                  <span className="text-xs text-gray-500">{new Date(batch.created_date).toLocaleString()}</span>
-                                </div>
-                                <div className="text-sm space-y-1">
-                                  <p className="text-gray-700">{batch.file_name}</p>
-                                  {batch.total_rows && (
-                                    <div className="flex gap-4 text-xs text-gray-600">
-                                      <span>Total: {batch.total_rows}</span>
-                                      <span className="text-green-600">Valid: {batch.valid_rows || 0}</span>
-                                      <span className="text-red-600">Invalid: {batch.invalid_rows || 0}</span>
-                                      {batch.imported_rows !== undefined && <span className="text-blue-600">Imported: {batch.imported_rows}</span>}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <ImportHistoryPanel batches={history} />
                     )}
                   </Card>
                 );
