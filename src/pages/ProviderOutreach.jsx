@@ -17,6 +17,7 @@ import CampaignTable from '../components/outreach/CampaignTable';
 import CampaignDetailPanel from '../components/outreach/CampaignDetailPanel';
 import TargetListBuilder from '../components/outreach/TargetListBuilder';
 import TemplateEditor from '../components/outreach/TemplateEditor';
+import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
 
 export default function ProviderOutreach() {
   const [tab, setTab] = useState('campaigns');
@@ -203,7 +204,7 @@ export default function ProviderOutreach() {
             <DialogHeader>
               <DialogTitle>Create Outreach Campaign</DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
               <div className="space-y-4">
                 <div>
                   <Label>Campaign Name</Label>
@@ -231,6 +232,19 @@ export default function ProviderOutreach() {
               </div>
               <div>
                 <TemplateEditor subject={subject} onSubjectChange={setSubject} body={body} onBodyChange={setBody} />
+              </div>
+              <div>
+                <AICampaignAssistant
+                  onApplyName={setCampaignName}
+                  onApplyDescription={setCampaignDesc}
+                  onApplySubject={setSubject}
+                  onApplyBody={setBody}
+                  targetConfig={targetConfig}
+                  campaigns={campaigns}
+                  providers={providers}
+                  scores={scores}
+                  referrals={referrals}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
