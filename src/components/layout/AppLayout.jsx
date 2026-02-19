@@ -36,6 +36,7 @@ export default function AppLayout({ children, currentPageName }) {
     { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
     { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
     { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
+    { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
     { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
     { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
     { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
