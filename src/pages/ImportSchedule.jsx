@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, CheckCircle, XCircle, Clock, Loader2, Play } from 'lucide-react';
 
 const importTypeOptions = [
   { value: 'cms_utilization', label: 'CMS Provider Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data' },
