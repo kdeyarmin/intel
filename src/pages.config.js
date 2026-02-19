@@ -48,8 +48,12 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AuditLog from './pages/AuditLog';
+import AutoImports from './pages/AutoImports';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
+import ErrorReports from './pages/ErrorReports';
+import ImportMonitoring from './pages/ImportMonitoring';
+import ImportSchedule from './pages/ImportSchedule';
 import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
@@ -59,17 +63,17 @@ import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import AutoImports from './pages/AutoImports';
-import ImportSchedule from './pages/ImportSchedule';
-import ImportMonitoring from './pages/ImportMonitoring';
-import ErrorReports from './pages/ErrorReports';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AuditLog": AuditLog,
+    "AutoImports": AutoImports,
     "Dashboard": Dashboard,
     "DataImports": DataImports,
+    "ErrorReports": ErrorReports,
+    "ImportMonitoring": ImportMonitoring,
+    "ImportSchedule": ImportSchedule,
     "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
@@ -79,10 +83,6 @@ export const PAGES = {
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "AutoImports": AutoImports,
-    "ImportSchedule": ImportSchedule,
-    "ImportMonitoring": ImportMonitoring,
-    "ErrorReports": ErrorReports,
 }
 
 export const pagesConfig = {
