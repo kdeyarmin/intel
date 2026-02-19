@@ -1,0 +1,282 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Play, Pause, RotateCcw, CheckCircle2, XCircle, Clock, Globe, MapPin, Bot } from 'lucide-react';
+import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
+import CrawlerLog from '../components/nppes/CrawlerLog';
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
+  'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
+  'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
+];
+
+export default function NPPESCrawler() {
+  const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [dryRun, setDryRun] = useState(false);
+  const [taxonomyFilter, setTaxonomyFilter] = useState('');
+  const [entityType, setEntityType] = useState('');
+  const [currentState, setCurrentState] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [status, setStatus] = useState(null);
+  const pausedRef = useRef(false);
+  const runningRef = useRef(false);
+  const queryClient = useQueryClient();
+
+  // Fetch current status
+  const { data: crawlStatus, refetch: refetchStatus } = useQuery({
+    queryKey: ['crawlerStatus'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('nppesStateCrawler', { action: 'status' });
+      return res.data;
+    },
+    refetchInterval: running ? 10000 : false,
+  });
+
+  useEffect(() => {
+    if (crawlStatus) setStatus(crawlStatus);
+  }, [crawlStatus]);
+
+  const addLog = (message, type = 'info') => {
+    setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString() }].slice(-100));
+  };
+
+  const processNextState = async () => {
+    if (pausedRef.current || !runningRef.current) return false;
+
+    try {
+      const res = await base44.functions.invoke('nppesStateCrawler', {
+        action: 'process_next',
+        taxonomy_description: taxonomyFilter,
+        entity_type: entityType,
+        dry_run: dryRun,
+      });
+
+      const data = res.data;
+
+      if (data.done && data.success !== false && !data.state) {
+        addLog('All states have been processed!', 'success');
+        return false;
+      }
+
+      setCurrentState(data.state);
+
+      if (data.success) {
+        addLog(
+          `✓ ${data.state}: ${data.valid_rows} valid, ${data.imported_providers || 0} imported${dryRun ? ' (dry run)' : ''}`,
+          'success'
+        );
+      } else {
+        addLog(`✗ ${data.state}: ${data.error}`, 'error');
+      }
+
+      refetchStatus();
+      queryClient.invalidateQueries(['nppesImportBatches']);
+
+      if (data.done) {
+        addLog('All states have been processed!', 'success');
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      addLog(`Error: ${err.message}`, 'error');
+      return false;
+    }
+  };
+
+  const startCrawl = async () => {
+    setRunning(true);
+    setPaused(false);
+    runningRef.current = true;
+    pausedRef.current = false;
+    addLog(`Starting NPPES state crawler${dryRun ? ' (DRY RUN)' : ''}...`, 'info');
+    addLog(`Filters: ${taxonomyFilter || 'All specialties'}, ${entityType || 'All types'}`, 'info');
+
+    let hasMore = true;
+    while (hasMore && runningRef.current && !pausedRef.current) {
+      hasMore = await processNextState();
+      // Small delay between states to avoid hammering the API
+      if (hasMore) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    if (!pausedRef.current) {
+      setRunning(false);
+      runningRef.current = false;
+      addLog('Crawler finished.', 'info');
+    }
+  };
+
+  const pauseCrawl = () => {
+    setPaused(true);
+    pausedRef.current = true;
+    addLog('Crawler paused.', 'info');
+  };
+
+  const resumeCrawl = async () => {
+    setPaused(false);
+    pausedRef.current = false;
+    addLog('Crawler resumed.', 'info');
+
+    let hasMore = true;
+    while (hasMore && runningRef.current && !pausedRef.current) {
+      hasMore = await processNextState();
+      if (hasMore) await new Promise(r => setTimeout(r, 2000));
+    }
+
+    if (!pausedRef.current) {
+      setRunning(false);
+      runningRef.current = false;
+      addLog('Crawler finished.', 'info');
+    }
+  };
+
+  const stopCrawl = () => {
+    setRunning(false);
+    setPaused(false);
+    runningRef.current = false;
+    pausedRef.current = false;
+    setCurrentState(null);
+    addLog('Crawler stopped.', 'info');
+  };
+
+  const completedCount = status?.completed || 0;
+  const failedCount = status?.failed || 0;
+  const totalStates = US_STATES.length;
+  const progress = ((completedCount + failedCount) / totalStates) * 100;
+
+  return (
+    <div className="p-8 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <Bot className="w-8 h-8 text-teal-600" />
+          NPPES State Crawler
+        </h1>
+        <p className="text-gray-600 mt-1">
+          Automatically pull all providers from the NPPES registry, one state at a time
+        </p>
+      </div>
+
+      {/* Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Crawler Controls</CardTitle>
+          <CardDescription>Configure filters and start the crawl. The bot processes one state at a time sequentially.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Specialty Filter (optional)</Label>
+              <Input
+                placeholder="e.g., Internal Medicine"
+                value={taxonomyFilter}
+                onChange={(e) => setTaxonomyFilter(e.target.value)}
+                disabled={running}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Provider Type</Label>
+              <Select value={entityType} onValueChange={setEntityType} disabled={running}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>All Types</SelectItem>
+                  <SelectItem value="NPI-1">Individual (NPI-1)</SelectItem>
+                  <SelectItem value="NPI-2">Organization (NPI-2)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Mode</Label>
+              <div className="flex items-center gap-3 h-9">
+                <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={running} />
+                <span className="text-sm text-gray-600">{dryRun ? 'Dry Run (validate only)' : 'Live Import'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            {!running ? (
+              <Button onClick={startCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2">
+                <Play className="w-4 h-4" />
+                Start Crawl
+              </Button>
+            ) : (
+              <>
+                {paused ? (
+                  <Button onClick={resumeCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2">
+                    <Play className="w-4 h-4" />
+                    Resume
+                  </Button>
+                ) : (
+                  <Button onClick={pauseCrawl} variant="outline" className="gap-2">
+                    <Pause className="w-4 h-4" />
+                    Pause
+                  </Button>
+                )}
+                <Button onClick={stopCrawl} variant="destructive" className="gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Stop
+                </Button>
+              </>
+            )}
+            <Button onClick={refetchStatus} variant="outline" className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Refresh Status
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Progress */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-teal-600" />
+              Progress
+            </span>
+            <div className="flex gap-2">
+              <Badge className="bg-green-100 text-green-800">{completedCount} completed</Badge>
+              {failedCount > 0 && <Badge className="bg-red-100 text-red-800">{failedCount} failed</Badge>}
+              <Badge variant="outline">{status?.pending || 0} pending</Badge>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{completedCount + failedCount} / {totalStates} states</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-3" />
+          </div>
+
+          {currentState && running && (
+            <div className="flex items-center gap-2 text-sm text-teal-700 bg-teal-50 p-3 rounded-lg">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Currently processing: <strong>{currentState}</strong>
+            </div>
+          )}
+
+          <StateCrawlerGrid status={status} currentState={currentState} running={running} />
+        </CardContent>
+      </Card>
+
+      {/* Log */}
+      <CrawlerLog logs={logs} />
+    </div>
+  );
+}

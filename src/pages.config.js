@@ -71,6 +71,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import NPPESImport from './pages/NPPESImport';
+import NPPESCrawler from './pages/NPPESCrawler';
 import __Layout from './Layout.jsx';
 
 
@@ -99,6 +100,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "NPPESImport": NPPESImport,
+    "NPPESCrawler": NPPESCrawler,
 }
 
 export const pagesConfig = {
