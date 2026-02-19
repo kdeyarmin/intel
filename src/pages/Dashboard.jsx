@@ -17,30 +17,35 @@ export default function Dashboard() {
     queryKey: ['providers'],
     queryFn: () => base44.entities.Provider.list('-created_date', 10000),
     staleTime: 60000,
+    refetchInterval: 300000,
   });
 
   const { data: utilization = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['utilization'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000),
     staleTime: 60000,
+    refetchInterval: 300000,
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
     staleTime: 60000,
+    refetchInterval: 300000,
   });
 
   const { data: referrals = [] } = useQuery({
     queryKey: ['referrals'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 10000),
     staleTime: 60000,
+    refetchInterval: 300000,
   });
 
   const { data: auditEvents = [] } = useQuery({
     queryKey: ['auditEvents'],
     queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
     staleTime: 60000,
+    refetchInterval: 300000,
   });
 
   const loading = loadingProviders || loadingUtil;

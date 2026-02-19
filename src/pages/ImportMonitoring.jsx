@@ -63,7 +63,7 @@ export default function ImportMonitoring() {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importMonitoringBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
-    refetchInterval: 30000,
+    refetchInterval: 300000,
   });
 
   const refreshBatches = () => queryClient.invalidateQueries({ queryKey: ['importMonitoringBatches'] });
