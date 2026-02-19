@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Upload, ArrowLeft } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, ArrowLeft, Loader2 } from 'lucide-react';
 import ImportTypeSelector, { importTypes } from '../components/imports/ImportTypeSelector';
 import ColumnMapper from '../components/imports/ColumnMapper';
 import ValidationResults from '../components/imports/ValidationResults';
@@ -20,6 +21,9 @@ export default function DataImports() {
   const [dryRun, setDryRun] = useState(true);
   const [currentBatch, setCurrentBatch] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -39,25 +43,42 @@ export default function DataImports() {
     if (!selectedFile) return;
 
     setFile(selectedFile);
+    setUploadingFile(true);
+    setUploadProgress(10);
     
-    // Parse CSV to get columns
-    const text = await selectedFile.text();
-    const lines = text.split('\n').filter(l => l.trim());
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    
-    setCsvColumns(headers);
-    setStep('map');
+    try {
+      // Parse CSV to get columns
+      setUploadProgress(40);
+      const text = await selectedFile.text();
+      setUploadProgress(70);
+      const lines = text.split('\n').filter(l => l.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      setCsvColumns(headers);
+      setUploadProgress(100);
+      setTimeout(() => {
+        setStep('map');
+        setUploadingFile(false);
+        setUploadProgress(0);
+      }, 500);
+    } catch (error) {
+      alert('Error reading file: ' + error.message);
+      setUploadingFile(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleValidate = async () => {
     if (!file) return;
 
     setProcessing(true);
+    setProcessingStatus('Uploading file...');
     try {
       const user = await base44.auth.me();
       
       // Upload file
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setProcessingStatus('Creating import batch...');
       
       // Create batch record
       const batch = await base44.entities.ImportBatch.create({
@@ -70,10 +91,13 @@ export default function DataImports() {
       });
 
       // Parse and validate CSV
+      setProcessingStatus('Parsing CSV file...');
       const response = await fetch(file_url);
       const text = await response.text();
       const lines = text.split('\n').filter(l => l.trim());
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      setProcessingStatus(`Validating ${lines.length - 1} rows...`);
       
       let validRows = 0;
       let invalidRows = 0;
@@ -135,8 +159,10 @@ export default function DataImports() {
 
       // If not dry run, import data
       if (!dryRun && validData.length > 0) {
+        setProcessingStatus(`Importing ${validData.length} records...`);
         await importData(selectedType.id, validData, batch.id);
       } else {
+        setProcessingStatus('Finalizing...');
         await base44.entities.ImportBatch.update(batch.id, {
           status: 'completed',
           completed_at: new Date().toISOString(),
@@ -166,6 +192,7 @@ export default function DataImports() {
       alert('Import failed: ' + error.message);
     } finally {
       setProcessing(false);
+      setProcessingStatus('');
     }
   };
 
@@ -445,7 +472,17 @@ export default function DataImports() {
                 type="file"
                 accept=".csv"
                 onChange={handleFileSelect}
+                disabled={uploadingFile}
               />
+              {uploadingFile && (
+                <div className="space-y-2 pt-4">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                    <span className="text-sm text-gray-600">Reading file...</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -470,13 +507,33 @@ export default function DataImports() {
                 <Switch checked={dryRun} onCheckedChange={setDryRun} />
               </div>
 
+              {processing && processingStatus && (
+                <div className="space-y-2 p-4 bg-teal-50 rounded-lg border border-teal-200">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+                    <span className="text-sm font-medium text-teal-900">{processingStatus}</span>
+                  </div>
+                  <Progress value={45} className="h-2" />
+                  <p className="text-xs text-teal-700">This may take several minutes for large files...</p>
+                </div>
+              )}
+
               <Button
                 onClick={handleValidate}
                 disabled={!isMappingComplete || processing}
                 className="w-full bg-teal-600 hover:bg-teal-700"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                {processing ? 'Processing...' : dryRun ? 'Validate Data' : 'Import Data'}
+                {processing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {dryRun ? 'Validate Data' : 'Import Data'}
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
