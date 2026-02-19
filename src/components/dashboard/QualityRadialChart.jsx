@@ -22,8 +22,8 @@ export default function QualityRadialChart({ score, label, size = 80 }) {
 
   return (
     <div className="flex flex-col items-center">
-      <div style={{ width: size, height: size }} className="relative">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ width: size, height: size, minWidth: size, minHeight: size }} className="relative">
+        <ResponsiveContainer width={size} height={size} minWidth={size} minHeight={size}>
           <PieChart>
             <Pie
               data={data}
