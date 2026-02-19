@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, CheckCircle, XCircle, Sparkles, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import BulkAlertActions from './BulkAlertActions';
 
 const severityColors = {
   low: 'bg-blue-100 text-blue-700',
@@ -33,7 +35,21 @@ export default function AlertsList({ alerts = [] }) {
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('open');
   const [expandedId, setExpandedId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const queryClient = useQueryClient();
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleAll = (filtered) => {
+    const openIds = filtered.filter(a => a.status === 'open').map(a => a.id);
+    if (openIds.every(id => selectedIds.includes(id))) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(openIds);
+    }
+  };
 
   const applyFixMutation = useMutation({
     mutationFn: async (alertId) => {
@@ -98,7 +114,23 @@ export default function AlertsList({ alerts = [] }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <BulkAlertActions
+          selectedIds={selectedIds}
+          alerts={alerts}
+          onClear={() => setSelectedIds([])}
+        />
+
+        {filtered.length > 0 && filtered.some(a => a.status === 'open') && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
+              onCheckedChange={() => toggleAll(filtered)}
+            />
+            <span className="text-xs text-slate-500">Select all open alerts</span>
+          </div>
+        )}
+
         {filtered.length === 0 ? (
           <div className="text-center py-8 text-slate-400">
             <CheckCircle className="w-10 h-10 mx-auto mb-2 opacity-40" />
@@ -115,6 +147,8 @@ export default function AlertsList({ alerts = [] }) {
                 onApplyFix={() => applyFixMutation.mutate(alert.id)}
                 onDismiss={() => dismissMutation.mutate(alert.id)}
                 isFixing={applyFixMutation.isPending}
+                selected={selectedIds.includes(alert.id)}
+                onSelect={() => toggleSelect(alert.id)}
               />
             ))}
             {individualAlerts.map(alert => (
@@ -126,6 +160,8 @@ export default function AlertsList({ alerts = [] }) {
                 onApplyFix={() => applyFixMutation.mutate(alert.id)}
                 onDismiss={() => dismissMutation.mutate(alert.id)}
                 isFixing={applyFixMutation.isPending}
+                selected={selectedIds.includes(alert.id)}
+                onSelect={() => toggleSelect(alert.id)}
               />
             ))}
           </div>
@@ -135,10 +171,19 @@ export default function AlertsList({ alerts = [] }) {
   );
 }
 
-function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing }) {
+function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, selected, onSelect }) {
   return (
-    <div className={`border rounded-lg transition-colors ${alert.status === 'open' ? 'bg-white' : 'bg-slate-50 opacity-70'}`}>
-      <button onClick={onToggle} className="w-full flex items-center gap-3 px-4 py-3 text-left">
+    <div className={`border rounded-lg transition-colors ${selected ? 'ring-2 ring-blue-300' : ''} ${alert.status === 'open' ? 'bg-white' : 'bg-slate-50 opacity-70'}`}>
+      <div className="flex items-center gap-1 px-2 py-3">
+        {alert.status === 'open' && (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onSelect}
+            onClick={(e) => e.stopPropagation()}
+            className="ml-1"
+          />
+        )}
+        <button onClick={onToggle} className="flex-1 flex items-center gap-3 px-2 text-left">
         {statusIcons[alert.status]}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -154,7 +199,8 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing }
           </div>
         </div>
         {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-      </button>
+        </button>
+      </div>
 
       {expanded && (
         <div className="px-4 pb-4 border-t bg-slate-50/50 space-y-3">
