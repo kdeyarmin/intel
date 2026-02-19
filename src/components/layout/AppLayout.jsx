@@ -104,7 +104,7 @@ export default function AppLayout({ children, currentPageName }) {
           {sidebarOpen ? (
             <div className="flex items-center gap-2.5">
               <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
                 className="w-8 h-8 rounded-lg flex-shrink-0"
               />
@@ -115,7 +115,7 @@ export default function AppLayout({ children, currentPageName }) {
             </div>
           ) : (
             <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
               alt="CareMetric AI"
               className="w-8 h-8 rounded-lg mx-auto"
             />
@@ -218,7 +218,7 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/b02c6f6b7_caremetric_ai_logo-removebg-preview.png"
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
                 className="w-4 h-4 rounded"
               />
