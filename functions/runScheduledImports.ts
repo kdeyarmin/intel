@@ -117,8 +117,7 @@ Deno.serve(async (req) => {
             });
 
             // Send notification emails
-            const shouldNotify = (runStatus === 'success' && schedule.notify_on_complete !== false) ||
-                                 (runStatus !== 'success' && schedule.notify_on_failure !== false);
+            const shouldNotify = (runStatus === 'success' && schedule.notify_on_complete !== false);
 
             if (shouldNotify) {
                 try {
