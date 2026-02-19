@@ -55,6 +55,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'CMS Analytics', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
+      { name: 'MA Inpatient', icon: Building2, page: 'MAInpatientDashboard', roles: ['admin', 'sales_rep'] },
       { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'Custom Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
       { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
