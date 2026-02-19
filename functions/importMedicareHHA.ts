@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as XLSX from 'npm:xlsx@0.18.5';
+import JSZip from 'npm:jszip@3.10.1';
 
 const CMS_HHA_URLS = {
   2023: 'https://data.cms.gov/sites/default/files/2026-01/MDCR%20HHA_CPS_07UHH_2023.zip',
@@ -15,21 +16,23 @@ async function downloadAndParseZip(url) {
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
   
   const arrayBuffer = await resp.arrayBuffer();
-  const data = new Uint8Array(arrayBuffer);
   
-  // Read ZIP with xlsx (it can handle zip files with xlsx inside)
-  // First try reading directly as xlsx
-  let workbook;
-  try {
-    workbook = XLSX.read(data, { type: 'array' });
-    console.log(`Parsed workbook with sheets: ${workbook.SheetNames.join(', ')}`);
-  } catch (e) {
-    console.log('Direct XLSX parse failed, trying as ZIP...');
-    // The ZIP contains an xlsx file - we need to extract it
-    // xlsx library can read from zip if the file is an xlsx (which is itself a zip)
-    // Let's try a different approach - find the xlsx within
-    throw new Error(`Could not parse downloaded file: ${e.message}. The file may require manual extraction.`);
+  // Extract XLSX from the ZIP archive
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const fileNames = Object.keys(zip.files);
+  console.log(`ZIP contains files: ${fileNames.join(', ')}`);
+  
+  // Find the xlsx file inside the zip
+  const xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
+  if (!xlsxFileName) {
+    throw new Error(`No XLSX/XLS file found in ZIP. Files: ${fileNames.join(', ')}`);
   }
+  
+  console.log(`Extracting: ${xlsxFileName}`);
+  const xlsxData = await zip.files[xlsxFileName].async('uint8array');
+  
+  const workbook = XLSX.read(xlsxData, { type: 'array' });
+  console.log(`Parsed workbook with sheets: ${workbook.SheetNames.join(', ')}`);
   
   return workbook;
 }
