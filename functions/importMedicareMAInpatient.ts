@@ -70,6 +70,176 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+// ============================================================
+// Validation Rules
+// ============================================================
+const VALIDATION_RULES = {
+  // Required fields per table type
+  required_fields: {
+    MA4: ['category', 'hospital_type'],
+    MA5: ['category', 'entitlement_type'],
+    MA6: ['category', 'demographic_group'],
+    MA7: ['category'],
+  },
+  // Fields that must be numeric when present (non-null)
+  numeric_fields: [
+    'total_discharges', 'total_covered_days', 'total_stays', 'persons_served',
+    'avg_length_of_stay', 'covered_days_per_1000', 'discharges_per_1000', 'total_enrollees',
+  ],
+  // Cross-field consistency checks
+  consistency_checks: [
+    {
+      name: 'discharges_vs_persons',
+      check: (r) => {
+        if (r.total_discharges != null && r.persons_served != null && r.persons_served > 0) {
+          return r.total_discharges >= r.persons_served;
+        }
+        return true;
+      },
+      message: 'total_discharges should be >= persons_served (a person can have multiple discharges)',
+      severity: 'warning',
+    },
+    {
+      name: 'avg_los_range',
+      check: (r) => {
+        if (r.avg_length_of_stay != null) {
+          return r.avg_length_of_stay > 0 && r.avg_length_of_stay < 365;
+        }
+        return true;
+      },
+      message: 'avg_length_of_stay should be between 0 and 365 days',
+      severity: 'error',
+    },
+    {
+      name: 'covered_days_vs_stays',
+      check: (r) => {
+        if (r.total_covered_days != null && r.total_stays != null && r.total_stays > 0) {
+          return r.total_covered_days >= r.total_stays;
+        }
+        return true;
+      },
+      message: 'total_covered_days should be >= total_stays (each stay has at least 1 day)',
+      severity: 'warning',
+    },
+    {
+      name: 'per_1000_range',
+      check: (r) => {
+        if (r.discharges_per_1000 != null) return r.discharges_per_1000 >= 0 && r.discharges_per_1000 <= 5000;
+        if (r.covered_days_per_1000 != null) return r.covered_days_per_1000 >= 0 && r.covered_days_per_1000 <= 50000;
+        return true;
+      },
+      message: 'Per-1,000 rates are outside plausible range',
+      severity: 'warning',
+    },
+    {
+      name: 'negative_values',
+      check: (r) => {
+        for (const f of ['total_discharges', 'total_covered_days', 'total_stays', 'persons_served', 'total_enrollees']) {
+          if (r[f] != null && r[f] < 0) return false;
+        }
+        return true;
+      },
+      message: 'Count fields should not be negative',
+      severity: 'error',
+    },
+    {
+      name: 'ma7_state_code',
+      check: (r) => {
+        if (r.table_name !== 'MA7' || !r.state) return true;
+        return /^[A-Z]{2}$/.test(r.state);
+      },
+      message: 'MA7 state code should be a 2-letter abbreviation',
+      severity: 'error',
+    },
+  ],
+};
+
+// Validate a single record, returns { valid, errors[], warnings[] }
+function validateRecord(record, rowIndex, sheetName) {
+  const errors = [];
+  const warnings = [];
+  const table = record.table_name;
+
+  // 1. Required fields
+  const requiredFields = VALIDATION_RULES.required_fields[table] || ['category'];
+  for (const field of requiredFields) {
+    const val = record[field];
+    if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+      errors.push({ rule: 'required_field', field, message: `Missing required field "${field}"`, row: rowIndex, sheet: sheetName });
+    }
+  }
+
+  // 2. Data year sanity
+  if (record.data_year != null && (record.data_year < 2000 || record.data_year > 2030)) {
+    errors.push({ rule: 'data_year_range', field: 'data_year', message: `data_year ${record.data_year} is outside 2000-2030`, row: rowIndex, sheet: sheetName });
+  }
+
+  // 3. Numeric type checks
+  for (const field of VALIDATION_RULES.numeric_fields) {
+    const val = record[field];
+    if (val !== undefined && val !== null) {
+      if (typeof val !== 'number' || !isFinite(val)) {
+        errors.push({ rule: 'numeric_type', field, message: `"${field}" has non-numeric value: ${JSON.stringify(val)}`, row: rowIndex, sheet: sheetName });
+      }
+    }
+  }
+
+  // 4. At least one numeric metric should be present
+  const hasAnyMetric = VALIDATION_RULES.numeric_fields.some(f => record[f] != null);
+  if (!hasAnyMetric) {
+    warnings.push({ rule: 'no_metrics', field: null, message: 'Row has no numeric metric values — may be a header/footer/note row', row: rowIndex, sheet: sheetName });
+  }
+
+  // 5. Cross-field consistency
+  for (const check of VALIDATION_RULES.consistency_checks) {
+    if (!check.check(record)) {
+      const entry = { rule: check.name, field: null, message: check.message, row: rowIndex, sheet: sheetName };
+      if (check.severity === 'error') errors.push(entry);
+      else warnings.push(entry);
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+// Validate all records, returns summary + detailed issues
+function validateAllRecords(records) {
+  const allErrors = [];
+  const allWarnings = [];
+  const ruleCounts = {};
+  let validCount = 0;
+  let invalidCount = 0;
+
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    const result = validateRecord(r, i, r.table_name);
+    if (result.valid) {
+      validCount++;
+    } else {
+      invalidCount++;
+    }
+    for (const e of result.errors) {
+      ruleCounts[e.rule] = (ruleCounts[e.rule] || 0) + 1;
+      if (allErrors.length < 50) allErrors.push(e);
+    }
+    for (const w of result.warnings) {
+      ruleCounts[w.rule] = (ruleCounts[w.rule] || 0) + 1;
+      if (allWarnings.length < 50) allWarnings.push(w);
+    }
+  }
+
+  return {
+    total: records.length,
+    valid: validCount,
+    invalid: invalidCount,
+    error_count: allErrors.length,
+    warning_count: allWarnings.length,
+    rule_summary: ruleCounts,
+    errors: allErrors,
+    warnings: allWarnings,
+  };
+}
+
 function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
   const headers = Object.keys(row);
   const record = { table_name: tableName, data_year: dataYear, raw_data: row };
