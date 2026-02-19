@@ -107,50 +107,82 @@ Deno.serve(async (req) => {
         });
 
         try {
-            // Build NPPES params
-            const params = new URLSearchParams();
-            params.set('version', '2.1');
-            params.set('limit', String(BATCH_LIMIT));
-            params.set('state', stateToProcess);
-            if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
-            if (entity_type) params.set('enumeration_type', entity_type);
-
-            // Fetch all pages
+            // NPPES API requires additional criteria beyond just state.
+            // We use last_name wildcard (a*-z*) for individuals and organization_name wildcard for orgs.
+            // Each wildcard query allows skip up to 1000 (max 1200 results).
+            const enumTypes = entity_type ? [entity_type] : ['NPI-1', 'NPI-2'];
             let allResults = [];
-            let skip = 0;
+            const seenNPIsInFetch = new Set();
 
-            for (let page = 0; page < MAX_PAGES; page++) {
-                params.set('skip', String(skip));
-                const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
-                console.log(`[${stateToProcess}] Fetching page ${page + 1}, skip=${skip}...`);
+            for (const enumType of enumTypes) {
+                const nameField = enumType === 'NPI-1' ? 'last_name' : 'organization_name';
 
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`NPPES API error: ${response.status} ${response.statusText}`);
+                for (const letter of ALPHABET) {
+                    const params = new URLSearchParams();
+                    params.set('version', '2.1');
+                    params.set('limit', String(BATCH_LIMIT));
+                    params.set('state', stateToProcess);
+                    params.set('enumeration_type', enumType);
+                    params.set(nameField, `${letter}*`);
+                    if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
+
+                    let skip = 0;
+                    let letterResults = 0;
+
+                    // Max 6 pages per letter (skip max 1000)
+                    for (let page = 0; page < 6; page++) {
+                        params.set('skip', String(skip));
+                        const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
+                        console.log(`[${stateToProcess}] ${enumType} ${nameField}=${letter}* skip=${skip}...`);
+
+                        const response = await fetch(apiUrl);
+                        if (!response.ok) {
+                            console.error(`[${stateToProcess}] API HTTP error: ${response.status}`);
+                            break;
+                        }
+
+                        const data = await response.json();
+
+                        if (data.Errors && data.Errors.length > 0) {
+                            // "No results" type errors are ok, just skip
+                            const errMsg = data.Errors.map(e => e.description).join('; ');
+                            console.log(`[${stateToProcess}] ${letter}*: ${errMsg}`);
+                            break;
+                        }
+
+                        const results = data.results || [];
+                        if (results.length === 0) break;
+
+                        // Deduplicate
+                        for (const r of results) {
+                            const npi = String(r.number || '');
+                            if (npi && !seenNPIsInFetch.has(npi)) {
+                                seenNPIsInFetch.add(npi);
+                                allResults.push(r);
+                            }
+                        }
+
+                        letterResults += results.length;
+
+                        if (results.length < BATCH_LIMIT) break;
+                        skip += BATCH_LIMIT;
+                        if (skip > MAX_SKIP) {
+                            console.log(`[${stateToProcess}] ${letter}*: Hit max skip, some records may be missed`);
+                            break;
+                        }
+                    }
+
+                    if (letterResults > 0) {
+                        console.log(`[${stateToProcess}] ${enumType} ${letter}*: ${letterResults} fetched (unique total: ${allResults.length})`);
+                    }
+
+                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                        total_rows: allResults.length,
+                    });
+
+                    // Small delay between letter queries
+                    await new Promise(r => setTimeout(r, 300));
                 }
-
-                const data = await response.json();
-
-                if (data.Errors && data.Errors.length > 0) {
-                    const errMsg = data.Errors.map(e => e.description).join('; ');
-                    throw new Error(`NPPES API error: ${errMsg}`);
-                }
-
-                const results = data.results || [];
-                if (results.length === 0) {
-                    console.log(`[${stateToProcess}] No more results at skip=${skip}. Done.`);
-                    break;
-                }
-
-                allResults = allResults.concat(results);
-                console.log(`[${stateToProcess}] Got ${results.length} results (total: ${allResults.length})`);
-
-                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    total_rows: data.result_count || allResults.length,
-                });
-
-                if (results.length < BATCH_LIMIT) break;
-                skip += BATCH_LIMIT;
             }
 
             console.log(`[${stateToProcess}] Total fetched: ${allResults.length}`);
