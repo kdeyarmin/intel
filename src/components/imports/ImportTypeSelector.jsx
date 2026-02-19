@@ -60,6 +60,13 @@ const importTypes = [
     icon: Database,
     requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
   },
+  {
+    id: 'home_health_enrollments',
+    name: 'Home Health Enrollments',
+    description: 'CMS home health agency enrollment data',
+    icon: Database,
+    requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {

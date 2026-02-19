@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
-                } else if (import_type === 'hospice_enrollments') {
+                } else if (import_type === 'hospice_enrollments' || import_type === 'home_health_enrollments') {
                     const enrollmentColumn = columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID';
                     identifier = row[enrollmentColumn];
                     if (!identifier || identifier.trim() === '') {
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     }
@@ -312,6 +312,35 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'home_health_enrollments') {
+        const patterns = {
+            'ENROLLMENT ID': ['enrollment id'],
+            'NPI': ['npi'],
+            'CCN': ['ccn'],
+            'ORGANIZATION NAME': ['organization name'],
+            'DOING BUSINESS AS NAME': ['doing business as name'],
+            'INCORPORATION DATE': ['incorporation date'],
+            'INCORPORATION STATE': ['incorporation state'],
+            'ORGANIZATION TYPE STRUCTURE': ['organization type structure'],
+            'PROPRIETARY_NONPROFIT': ['proprietary_nonprofit'],
+            'ADDRESS LINE 1': ['address line 1'],
+            'ADDRESS LINE 2': ['address line 2'],
+            'CITY': ['city'],
+            'STATE': ['state'],
+            'ZIP CODE': ['zip code'],
+            'ENROLLMENT STATE': ['enrollment state'],
+            'PRACTICE LOCATION TYPE': ['practice location type'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -374,6 +403,23 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.state = row[columnMapping['STATE']] || '';
         mappedData.zip = row[columnMapping['ZIP CODE']] || '';
         mappedData.enrollment_state = row[columnMapping['ENROLLMENT STATE']] || '';
+    } else if (importType === 'home_health_enrollments') {
+        mappedData.enrollment_id = row[columnMapping['ENROLLMENT ID']] || '';
+        mappedData.npi = row[columnMapping['NPI']] || '';
+        mappedData.ccn = row[columnMapping['CCN']] || '';
+        mappedData.organization_name = row[columnMapping['ORGANIZATION NAME']] || '';
+        mappedData.doing_business_as = row[columnMapping['DOING BUSINESS AS NAME']] || '';
+        mappedData.incorporation_date = row[columnMapping['INCORPORATION DATE']] || '';
+        mappedData.incorporation_state = row[columnMapping['INCORPORATION STATE']] || '';
+        mappedData.organization_type = row[columnMapping['ORGANIZATION TYPE STRUCTURE']] || '';
+        mappedData.proprietary_nonprofit = row[columnMapping['PROPRIETARY_NONPROFIT']] || '';
+        mappedData.address_1 = row[columnMapping['ADDRESS LINE 1']] || '';
+        mappedData.address_2 = row[columnMapping['ADDRESS LINE 2']] || '';
+        mappedData.city = row[columnMapping['CITY']] || '';
+        mappedData.state = row[columnMapping['STATE']] || '';
+        mappedData.zip = row[columnMapping['ZIP CODE']] || '';
+        mappedData.enrollment_state = row[columnMapping['ENROLLMENT STATE']] || '';
+        mappedData.practice_location_type = row[columnMapping['PRACTICE LOCATION TYPE']] || '';
     }
 
     return mappedData;
@@ -546,6 +592,55 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import hospice enrollment record:', error);
+            }
+        }
+    } else if (importType === 'home_health_enrollments') {
+        for (const row of validData) {
+            try {
+                // Create provider placeholder if doesn't exist
+                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: row.npi });
+                if (existingProvider.length === 0 && row.npi) {
+                    await base44.asServiceRole.entities.Provider.create({
+                        npi: row.npi,
+                        organization_name: row.organization_name,
+                        entity_type: 'Organization',
+                        status: 'Active',
+                        needs_nppes_enrichment: true,
+                    });
+                }
+
+                const homeHealthData = {
+                    enrollment_id: row.enrollment_id,
+                    npi: row.npi,
+                    ccn: row.ccn,
+                    organization_name: row.organization_name,
+                    doing_business_as: row.doing_business_as,
+                    incorporation_date: row.incorporation_date,
+                    incorporation_state: row.incorporation_state,
+                    organization_type: row.organization_type,
+                    proprietary_nonprofit: row.proprietary_nonprofit,
+                    address_1: row.address_1,
+                    address_2: row.address_2,
+                    city: row.city,
+                    state: row.state,
+                    zip: row.zip,
+                    enrollment_state: row.enrollment_state,
+                    practice_location_type: row.practice_location_type,
+                };
+
+                const existingHomeHealth = await base44.asServiceRole.entities.HomeHealthEnrollment.filter({
+                    enrollment_id: row.enrollment_id
+                });
+
+                if (existingHomeHealth.length === 0) {
+                    await base44.asServiceRole.entities.HomeHealthEnrollment.create(homeHealthData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.HomeHealthEnrollment.update(existingHomeHealth[0].id, homeHealthData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import home health enrollment record:', error);
             }
         }
     }
