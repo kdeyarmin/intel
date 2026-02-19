@@ -16,6 +16,11 @@ import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import EnrichProviderButton from '../components/providers/EnrichProviderButton';
+import AINPIFinder from '../components/providers/AINPIFinder';
+import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
+import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Copy, Globe, List } from 'lucide-react';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -39,6 +44,7 @@ export default function Providers() {
   const [sortField, setSortField] = useState('default');
   const [sortDir, setSortDir] = useState('asc');
   const [selectedNpis, setSelectedNpis] = useState(new Set());
+  const [activeTab, setActiveTab] = useState('directory');
 
   const queryClient = useQueryClient();
 
@@ -401,6 +407,32 @@ export default function Providers() {
         </div>
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="h-9 mb-4">
+          <TabsTrigger value="directory" className="text-xs gap-1.5"><List className="w-3.5 h-3.5" /> Directory</TabsTrigger>
+          <TabsTrigger value="npi-finder" className="text-xs gap-1.5"><Search className="w-3.5 h-3.5" /> NPI Finder</TabsTrigger>
+          <TabsTrigger value="augment" className="text-xs gap-1.5"><Globe className="w-3.5 h-3.5" /> Profile Augmenter</TabsTrigger>
+          <TabsTrigger value="duplicates" className="text-xs gap-1.5"><Copy className="w-3.5 h-3.5" /> Duplicate Detector</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="npi-finder">
+          <AINPIFinder onProviderAdded={() => queryClient.invalidateQueries({ queryKey: ['providersPage'] })} />
+        </TabsContent>
+
+        <TabsContent value="augment">
+          <AIProfileAugmenter
+            providers={selectedProviders.length > 0 ? selectedProviders : filteredProviders.slice(0, 15)}
+            locations={locations}
+            taxonomies={taxonomies}
+            onComplete={() => queryClient.invalidateQueries({ queryKey: ['providersPage'] })}
+          />
+        </TabsContent>
+
+        <TabsContent value="duplicates">
+          <AIDuplicateDetector providers={providers} locations={locations} taxonomies={taxonomies} />
+        </TabsContent>
+
+        <TabsContent value="directory">
       <Card className="mb-6 bg-white">
         <CardContent className="pt-6 space-y-3">
           <SavedFilterBar
@@ -566,6 +598,8 @@ export default function Providers() {
       </Card>
 
       <DataSourcesFooter />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

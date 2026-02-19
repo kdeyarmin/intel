@@ -9,6 +9,7 @@ import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck } from 'l
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
+import AICampaignAssistant from '../components/emailBot/AICampaignAssistant';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
@@ -358,6 +359,13 @@ export default function EmailSearchBot() {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Campaign Assistant */}
+      <AICampaignAssistant
+        providers={providers}
+        locations={allLocations}
+        taxonomies={allTaxonomies}
+      />
 
       {/* Disclaimer */}
       <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
