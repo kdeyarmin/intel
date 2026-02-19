@@ -111,8 +111,16 @@ export default function ImportMonitoring() {
           <h1 className="text-3xl font-bold text-gray-900">Import Monitoring</h1>
           <p className="text-gray-600 mt-1">Real-time overview of all import jobs</p>
         </div>
-        <Button onClick={() => refetch()} variant="outline">
-          <Activity className="w-4 h-4 mr-2" />
+        <Button 
+          onClick={async () => {
+            setIsRefreshing(true);
+            await refetch();
+            setIsRefreshing(false);
+          }} 
+          variant="outline"
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
           Refresh
         </Button>
       </div>
