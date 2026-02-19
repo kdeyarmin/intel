@@ -208,22 +208,7 @@ Deno.serve(async (req) => {
             console.log(`[BatchProcessor] Wave done. Completed: ${statesCompleted}, Failed: ${statesFailed}, Imported: ${totalImported}`);
         }
 
-        // Send completion email
         const statusText = stopped ? 'stopped by admin' : 'completed';
-        try {
-            await base44.asServiceRole.integrations.Core.SendEmail({
-                to: user.email,
-                subject: `[CareMetric] NPPES Batch Process ${statusText}`,
-                body: `NPPES batch processor has ${statusText}.\n\n` +
-                    `States processed: ${statesCompleted + statesFailed} / ${targetStates.length}\n` +
-                    `Completed: ${statesCompleted}\n` +
-                    `Failed: ${statesFailed}\n` +
-                    `Total providers imported: ${totalImported}\n` +
-                    `Dry run: ${dry_run}`,
-            });
-        } catch (e) {
-            console.error('[BatchProcessor] Email failed:', e.message);
-        }
 
         // Audit log
         await base44.asServiceRole.entities.AuditEvent.create({
