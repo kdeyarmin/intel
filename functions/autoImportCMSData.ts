@@ -115,11 +115,12 @@ Deno.serve(async (req) => {
             let duplicateRows = 0;
             const errorSamples = [];
             const validData = [];
-            const seenNPIs = new Set();
+            const seenIdentifiers = new Set();
 
-            // Get existing NPIs
-            const existingProviders = await base44.asServiceRole.entities.Provider.list();
-            const existingNPIs = new Set(existingProviders.map(p => p.npi));
+            // Update batch with total rows immediately so UI shows progress
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                total_rows: rows.length,
+            });
 
             for (let i = 0; i < rows.length; i++) {
                 const row = rows[i];
