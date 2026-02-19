@@ -88,6 +88,13 @@ const importTypes = [
     icon: Activity,
     requiredColumns: ['Rndrng_NPI', 'HCPCS_Cd', 'HCPCS_Desc', 'Tot_Benes'],
   },
+  {
+    id: 'home_health_pdgm',
+    name: 'Home Health PDGM Data',
+    description: 'Patient-Driven Groupings Model utilization by provider',
+    icon: TrendingUp,
+    requiredColumns: ['PRVDR_ID', 'GRPNG', 'GRPNG_DESC', 'BENE_DSTNCT_CNT'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {

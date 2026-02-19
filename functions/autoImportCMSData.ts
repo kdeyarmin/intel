@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -135,12 +135,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'home_health_pdgm') {
+                    const providerColumn = columnMapping['PRVDR_ID'] || 'PRVDR_ID';
+                    identifier = row[providerColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing provider ID',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -157,7 +170,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     } else if (import_type === 'provider_service_utilization') {
@@ -467,6 +480,35 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'home_health_pdgm') {
+        const patterns = {
+            'PRVDR_ID': ['prvdr_id'],
+            'PRVDR_NAME': ['prvdr_name'],
+            'PRVDR_CITY': ['prvdr_city'],
+            'STATE': ['state'],
+            'PRVDR_ZIP': ['prvdr_zip'],
+            'GRPNG': ['grpng'],
+            'GRPNG_DESC': ['grpng_desc'],
+            'BENE_DSTNCT_CNT': ['bene_dstnct_cnt'],
+            'TOT_EPSD_STAY_CNT': ['tot_epsd_stay_cnt'],
+            'TOT_SRVC_DAYS': ['tot_srvc_days'],
+            'AVG_CHRG_PER_EPSD': ['avg_chrg_per_epsd'],
+            'AVG_ALOWD_AMT_PER_EPSD': ['avg_alowd_amt_per_epsd'],
+            'AVG_PYMT_AMT_PER_EPSD': ['avg_pymt_amt_per_epsd'],
+            'PT_VISITS_CNT': ['pt_visits_cnt'],
+            'OT_VISITS_CNT': ['ot_visits_cnt'],
+            'SLP_VISITS_CNT': ['slp_visits_cnt'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -596,6 +638,24 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
         mappedData.avg_medicare_allowed = parseFloat(row[columnMapping['Avg_Mdcr_Alowd_Amt']] || 0);
         mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
+        mappedData.data_year = year;
+    } else if (importType === 'home_health_pdgm') {
+        mappedData.provider_id = row[columnMapping['PRVDR_ID']] || '';
+        mappedData.provider_name = row[columnMapping['PRVDR_NAME']] || '';
+        mappedData.city = row[columnMapping['PRVDR_CITY']] || '';
+        mappedData.state = row[columnMapping['STATE']] || '';
+        mappedData.zip = row[columnMapping['PRVDR_ZIP']] || '';
+        mappedData.grouping_code = row[columnMapping['GRPNG']] || '';
+        mappedData.grouping_description = row[columnMapping['GRPNG_DESC']] || '';
+        mappedData.beneficiaries = parseFloat(row[columnMapping['BENE_DSTNCT_CNT']] || 0);
+        mappedData.total_episodes = parseFloat(row[columnMapping['TOT_EPSD_STAY_CNT']] || 0);
+        mappedData.total_service_days = parseFloat(row[columnMapping['TOT_SRVC_DAYS']] || 0);
+        mappedData.avg_charge_per_episode = parseFloat(row[columnMapping['AVG_CHRG_PER_EPSD']] || 0);
+        mappedData.avg_allowed_per_episode = parseFloat(row[columnMapping['AVG_ALOWD_AMT_PER_EPSD']] || 0);
+        mappedData.avg_payment_per_episode = parseFloat(row[columnMapping['AVG_PYMT_AMT_PER_EPSD']] || 0);
+        mappedData.pt_visits = parseFloat(row[columnMapping['PT_VISITS_CNT']] || 0);
+        mappedData.ot_visits = parseFloat(row[columnMapping['OT_VISITS_CNT']] || 0);
+        mappedData.slp_visits = parseFloat(row[columnMapping['SLP_VISITS_CNT']] || 0);
         mappedData.data_year = year;
     }
 
@@ -945,6 +1005,46 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import provider service utilization record:', error);
+            }
+        }
+    } else if (importType === 'home_health_pdgm') {
+        for (const row of validData) {
+            try {
+                const pdgmData = {
+                    provider_id: row.provider_id,
+                    provider_name: row.provider_name,
+                    city: row.city,
+                    state: row.state,
+                    zip: row.zip,
+                    grouping_code: row.grouping_code,
+                    grouping_description: row.grouping_description,
+                    beneficiaries: row.beneficiaries,
+                    total_episodes: row.total_episodes,
+                    total_service_days: row.total_service_days,
+                    avg_charge_per_episode: row.avg_charge_per_episode,
+                    avg_allowed_per_episode: row.avg_allowed_per_episode,
+                    avg_payment_per_episode: row.avg_payment_per_episode,
+                    pt_visits: row.pt_visits,
+                    ot_visits: row.ot_visits,
+                    slp_visits: row.slp_visits,
+                    data_year: parseInt(year),
+                };
+
+                const existingPDGM = await base44.asServiceRole.entities.HomeHealthPDGM.filter({
+                    provider_id: row.provider_id,
+                    grouping_code: row.grouping_code,
+                    data_year: parseInt(year)
+                });
+
+                if (existingPDGM.length === 0) {
+                    await base44.asServiceRole.entities.HomeHealthPDGM.create(pdgmData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.HomeHealthPDGM.update(existingPDGM[0].id, pdgmData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import PDGM record:', error);
             }
         }
     }
