@@ -76,8 +76,8 @@ export default function AutoImports() {
       } else {
         alert(
           dryRun 
-            ? `Validation complete: ${result.valid_rows} valid rows, ${result.invalid_rows} invalid`
-            : `Import complete: ${result.imported_rows} imported, ${result.updated_rows} updated`
+            ? `Validation complete: ${result.valid_rows} valid rows, ${result.invalid_rows} invalid, ${result.duplicate_rows || 0} duplicates in source`
+            : `Import complete: ${result.imported_rows || 0} new, ${result.updated_rows || 0} updated, ${result.skipped_rows || 0} skipped (identical)`
         );
       }
 
@@ -228,8 +228,9 @@ export default function AutoImports() {
                       <p className="text-sm text-gray-600">
                         {batch.import_type?.replace(/_/g, ' ')} • 
                         {batch.valid_rows} valid rows
-                        {batch.imported_rows > 0 && ` • ${batch.imported_rows} imported`}
+                        {batch.imported_rows > 0 && ` • ${batch.imported_rows} new`}
                         {batch.updated_rows > 0 && ` • ${batch.updated_rows} updated`}
+                        {batch.skipped_rows > 0 && ` • ${batch.skipped_rows} skipped`}
                       </p>
                     </div>
                   </div>
