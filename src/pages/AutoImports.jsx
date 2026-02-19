@@ -116,9 +116,9 @@ export default function AutoImports() {
             </div>
 
             <div className="space-y-2">
-              <Label>File URL</Label>
+              <Label>File URL {importType === 'medicare_hha_stats' ? '(optional — auto-detected by year)' : ''}</Label>
               <Input
-                placeholder="https://example.com/cms-data.csv"
+                placeholder={importType === 'medicare_hha_stats' ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
                 value={fileUrl}
                 onChange={(e) => setFileUrl(e.target.value)}
               />
@@ -144,7 +144,7 @@ export default function AutoImports() {
 
             <Button
               onClick={handleImport}
-              disabled={processing || !fileUrl}
+              disabled={processing || (importType !== 'medicare_hha_stats' && !fileUrl)}
               className="w-full bg-teal-600 hover:bg-teal-700"
             >
               {processing ? (
