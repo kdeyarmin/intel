@@ -176,10 +176,11 @@ Deno.serve(async (req) => {
             console.log(`[BatchProcessor] Wave ${Math.floor(i / effectiveConcurrency) + 1}: processing ${wave.join(', ')}`);
 
             // Fire all states in this wave concurrently
-            // Use asServiceRole so the nested function call has admin privileges
+            // Use the user-scoped client (which has admin auth) so the nested
+            // function call inherits the admin user's authentication
             const wavePromises = wave.map(async (stateCode) => {
                 try {
-                    const res = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
+                    const res = await base44.functions.invoke('nppesStateCrawler', {
                         action: 'start',
                         target_state: stateCode,
                         taxonomy_description,
