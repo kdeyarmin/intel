@@ -1,18 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download } from 'lucide-react';
+import { Save, Download, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import EnrichProviderButton from '../components/providers/EnrichProviderButton';
 
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +22,25 @@ export default function Providers() {
   const [credentialFilter, setCredentialFilter] = useState('all');
   const [enrichmentFilter, setEnrichmentFilter] = useState('all');
   const [emailFilter, setEmailFilter] = useState('all');
+  const [selectedNpis, setSelectedNpis] = useState(new Set());
+
+  const toggleSelect = (npi) => {
+    setSelectedNpis(prev => {
+      const next = new Set(prev);
+      if (next.has(npi)) next.delete(npi); else next.add(npi);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedNpis.size === filteredProviders.length) {
+      setSelectedNpis(new Set());
+    } else {
+      setSelectedNpis(new Set(filteredProviders.map(p => p.npi)));
+    }
+  };
+
+  const selectedProviders = providers.filter(p => selectedNpis.has(p.npi));
 
   // Load default saved filter
   const { data: savedFilters = [] } = useQuery({
@@ -44,6 +64,8 @@ export default function Providers() {
   };
 
   const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter, emailFilter };
+
+  const queryClient = useQueryClient();
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['providersPage'],
@@ -185,6 +207,17 @@ export default function Providers() {
             dateField="enumeration_date"
             trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
           />
+          <EnrichProviderButton
+            providers={selectedProviders.length > 0 ? selectedProviders : filteredProviders.slice(0, 20)}
+            locations={locations}
+            taxonomies={taxonomies}
+            onComplete={() => {
+              queryClient.invalidateQueries({ queryKey: ['providersPage'] });
+              queryClient.invalidateQueries({ queryKey: ['providersPageLocations'] });
+              queryClient.invalidateQueries({ queryKey: ['providersPageTaxonomies'] });
+              setSelectedNpis(new Set());
+            }}
+          />
           <Button onClick={handleSaveList} className="bg-blue-600 hover:bg-blue-700">
             <Save className="w-4 h-4 mr-2" />
             Save as Lead List
@@ -218,7 +251,12 @@ export default function Providers() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Provider Directory</span>
-            <span className="text-sm font-normal text-gray-500">{filteredProviders.length} results</span>
+            <span className="text-sm font-normal text-gray-500">
+              {filteredProviders.length} results
+              {selectedNpis.size > 0 && (
+                <Badge className="ml-2 bg-violet-100 text-violet-700 text-[10px]">{selectedNpis.size} selected</Badge>
+              )}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -226,6 +264,13 @@ export default function Providers() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <input type="checkbox"
+                      checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-slate-300"
+                    />
+                  </TableHead>
                   <TableHead>NPI</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Credential</TableHead>
@@ -258,7 +303,14 @@ export default function Providers() {
                   filteredProviders.map(provider => {
                     const score = getScore(provider.npi);
                     return (
-                      <TableRow key={provider.id}>
+                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-violet-50/50' : ''}>
+                        <TableCell>
+                          <input type="checkbox"
+                            checked={selectedNpis.has(provider.npi)}
+                            onChange={() => toggleSelect(provider.npi)}
+                            className="rounded border-slate-300"
+                          />
+                        </TableCell>
                         <TableCell className="font-mono text-sm">{provider.npi}</TableCell>
                         <TableCell>
                           {provider.entity_type === 'Individual' ? (

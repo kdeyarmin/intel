@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, Trash2, Play, Pause } from 'lucide-react';
+import { Eye, Trash2, Play, Pause, Sparkles } from 'lucide-react';
 
 const statusColors = {
   draft: 'bg-slate-100 text-slate-700',
@@ -21,7 +21,7 @@ const sourceLabels = {
   custom: 'Custom',
 };
 
-export default function CampaignTable({ campaigns = [], onView, onDelete, onToggle }) {
+export default function CampaignTable({ campaigns = [], onView, onDelete, onToggle, onAnalyze }) {
   if (campaigns.length === 0) {
     return (
       <Card>
@@ -82,6 +82,9 @@ export default function CampaignTable({ campaigns = [], onView, onDelete, onTogg
                       )}
                       {c.status === 'sending' && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-600" onClick={() => onToggle(c, 'paused')}><Pause className="w-3.5 h-3.5" /></Button>
+                      )}
+                      {c.status === 'completed' && onAnalyze && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-violet-500 hover:text-violet-700" onClick={() => onAnalyze(c)} title="AI Performance Analysis"><Sparkles className="w-3.5 h-3.5" /></Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600" onClick={() => onDelete(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>

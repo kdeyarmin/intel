@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import CampaignKPIs from '../components/outreach/CampaignKPIs';
 import CampaignTable from '../components/outreach/CampaignTable';
 import CampaignDetailPanel from '../components/outreach/CampaignDetailPanel';
+import CampaignPerformanceAnalysis from '../components/outreach/CampaignPerformanceAnalysis';
 import TargetListBuilder from '../components/outreach/TargetListBuilder';
 import TemplateEditor from '../components/outreach/TemplateEditor';
 import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
@@ -31,6 +32,7 @@ export default function ProviderOutreach() {
   const [body, setBody] = useState('');
   const [targetConfig, setTargetConfig] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [analyzingCampaign, setAnalyzingCampaign] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch data
@@ -294,7 +296,16 @@ export default function ProviderOutreach() {
                 onView={(c) => setViewing(c)}
                 onDelete={(id) => { if (confirm('Delete this campaign and all its messages?')) deleteMutation.mutate(id); }}
                 onToggle={(c, status) => toggleMutation.mutate({ id: c.id, status })}
+                onAnalyze={(c) => setAnalyzingCampaign(c)}
               />
+              {analyzingCampaign && (
+                <div className="mt-4">
+                  <CampaignPerformanceAnalysis
+                    campaign={analyzingCampaign}
+                    onClose={() => setAnalyzingCampaign(null)}
+                  />
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="follow_ups" className="mt-4">
