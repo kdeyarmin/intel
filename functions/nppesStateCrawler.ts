@@ -205,61 +205,65 @@ Deno.serve(async (req) => {
                 return params;
             }
 
+            // NPPES requires at least 2 characters before a wildcard.
+            // Base strategy: iterate all two-letter prefixes (aa*-zz*) per enumeration type.
+            // If a two-letter prefix hits the 1200 limit, subdivide into three-letter prefixes.
             for (const enumType of enumTypes) {
                 const nameField = enumType === 'NPI-1' ? 'last_name' : 'organization_name';
                 const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
 
-                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField})`);
+                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField}) — 676 two-letter prefixes`);
 
-                for (const letter of ALPHABET) {
-                    // First pass: single-letter prefix
-                    const params = buildParams(stateToProcess, enumType, nameField, letter, taxonomy_description);
-                    console.log(`[${stateToProcess}] ${typeLabel} ${letter}*`);
+                for (const letter1 of ALPHABET) {
+                    let letterGroupAdded = 0;
 
-                    const { results, hitLimit } = await fetchAllPages(params, stateToProcess);
-                    const beforeCount = allResults.length;
-                    addUniqueResults(results);
+                    for (const letter2 of ALPHABET) {
+                        const prefix = `${letter1}${letter2}`;
+                        const params = buildParams(stateToProcess, enumType, nameField, prefix, taxonomy_description);
 
-                    if (hitLimit) {
-                        // This letter has >1200 records — subdivide into two-letter prefixes
-                        queriesOverLimit++;
-                        console.log(`[${stateToProcess}] ${typeLabel} ${letter}*: HIT 1200 LIMIT (got ${results.length}), subdividing into ${letter}a*-${letter}z*`);
+                        const { results, hitLimit } = await fetchAllPages(params, stateToProcess);
+                        const beforeCount = allResults.length;
+                        addUniqueResults(results);
 
-                        for (const letter2 of ALPHABET) {
-                            const subPrefix = `${letter}${letter2}`;
-                            const subParams = buildParams(stateToProcess, enumType, nameField, subPrefix, taxonomy_description);
-                            console.log(`[${stateToProcess}] ${typeLabel} ${subPrefix}*`);
+                        if (hitLimit) {
+                            // Two-letter prefix has >1200 records — subdivide into three-letter prefixes
+                            queriesOverLimit++;
+                            console.log(`[${stateToProcess}] ${typeLabel} ${prefix}*: HIT 1200 LIMIT (${results.length}), subdividing into ${prefix}a*-${prefix}z*`);
 
-                            const subResult = await fetchAllPages(subParams, stateToProcess);
-                            addUniqueResults(subResult.results);
+                            for (const letter3 of ALPHABET) {
+                                const triPrefix = `${prefix}${letter3}`;
+                                const triParams = buildParams(stateToProcess, enumType, nameField, triPrefix, taxonomy_description);
 
-                            if (subResult.hitLimit) {
-                                // Even two-letter prefix hit the limit — very rare, log warning
-                                console.warn(`[${stateToProcess}] ${typeLabel} ${subPrefix}*: STILL AT LIMIT (${subResult.results.length}), some records may be missed`);
+                                const triResult = await fetchAllPages(triParams, stateToProcess);
+                                addUniqueResults(triResult.results);
+
+                                if (triResult.hitLimit) {
+                                    console.warn(`[${stateToProcess}] ${typeLabel} ${triPrefix}*: STILL AT LIMIT (${triResult.results.length}), some records may be missed`);
+                                }
+
+                                await new Promise(r => setTimeout(r, API_DELAY_MS));
                             }
-
-                            await new Promise(r => setTimeout(r, API_DELAY_MS));
                         }
+
+                        letterGroupAdded += (allResults.length - beforeCount);
+                        await new Promise(r => setTimeout(r, API_DELAY_MS));
                     }
 
-                    const added = allResults.length - beforeCount;
-                    if (added > 0) {
-                        console.log(`[${stateToProcess}] ${typeLabel} ${letter}*: +${added} unique (total: ${allResults.length})`);
+                    if (letterGroupAdded > 0) {
+                        console.log(`[${stateToProcess}] ${typeLabel} ${letter1}**: +${letterGroupAdded} unique (total: ${allResults.length})`);
                     }
 
-                    // Update batch progress periodically
+                    // Update batch progress after each first-letter group
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         total_rows: allResults.length,
                     });
-
-                    await new Promise(r => setTimeout(r, API_DELAY_MS));
                 }
 
                 console.log(`[${stateToProcess}] ${typeLabel} crawl done: ${allResults.length} unique NPIs so far`);
             }
 
             if (queriesOverLimit > 0) {
-                console.log(`[${stateToProcess}] ${queriesOverLimit} letter(s) required two-letter subdivision`);
+                console.log(`[${stateToProcess}] ${queriesOverLimit} prefix(es) required three-letter subdivision`);
             }
 
             console.log(`[${stateToProcess}] Total fetched: ${allResults.length}`);
