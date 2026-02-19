@@ -1,46 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Activity, MapPin, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
-import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
     queryKey: ['providers'],
     queryFn: () => base44.entities.Provider.list(),
+    staleTime: 60000,
   });
 
   const { data: utilization = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['utilization'],
     queryFn: () => base44.entities.CMSUtilization.list(),
+    staleTime: 60000,
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.ProviderLocation.list(),
+    staleTime: 60000,
   });
 
   const { data: auditEvents = [] } = useQuery({
     queryKey: ['auditEvents'],
-    queryFn: () => base44.entities.AuditEvent.list('-created_date', 1),
+    queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
+    staleTime: 60000,
   });
 
   const totalProviders = providers.length;
   const activeMedicare = utilization.filter(u => u.total_medicare_beneficiaries > 0).length;
   
-  const stateCount = {};
-  providers.forEach(p => {
-    const locations = [];
-    base44.entities.ProviderLocation.filter({ npi: p.npi }).then(locs => {
-      locs.forEach(loc => {
-        if (loc.state) {
-          stateCount[loc.state] = (stateCount[loc.state] || 0) + 1;
-        }
-      });
+  const topStates = useMemo(() => {
+    const stateCount = {};
+    locations.forEach(loc => {
+      if (loc.state) {
+        stateCount[loc.state] = (stateCount[loc.state] || 0) + 1;
+      }
     });
-  });
-
-  const topStates = Object.entries(stateCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+    return Object.entries(stateCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [locations]);
 
   const lastRefresh = auditEvents[0]?.created_date 
     ? new Date(auditEvents[0].created_date).toLocaleDateString() 
