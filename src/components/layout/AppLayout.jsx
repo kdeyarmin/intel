@@ -27,6 +27,7 @@ export default function AppLayout({ children, currentPageName }) {
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
     { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
     { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
+    { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
     { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
     { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
     { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
