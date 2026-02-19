@@ -130,11 +130,11 @@ export default function DataQualityWidget() {
   const overallColor = scores.overall >= 80 ? 'bg-green-100 text-green-700' : scores.overall >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
 
   return (
-    <Card className="col-span-1 lg:col-span-3">
+    <Card className="bg-white border-slate-200/80 shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-teal-600" />
+          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <Database className="w-4 h-4 text-teal-500" />
             Data Quality Overview
           </CardTitle>
           <Badge className={overallColor}>
