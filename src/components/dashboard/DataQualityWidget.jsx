@@ -24,27 +24,27 @@ const VALID_STATES = new Set([
 export default function DataQualityWidget() {
   const { data: providers = [], isLoading: lp } = useQuery({
     queryKey: ['providers'],
-    queryFn: () => base44.entities.Provider.list(),
+    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
     staleTime: 60000,
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['utilization'],
-    queryFn: () => base44.entities.CMSUtilization.list(),
+    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000),
     staleTime: 60000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['referrals'],
-    queryFn: () => base44.entities.CMSReferral.list(),
+    queryFn: () => base44.entities.CMSReferral.list('-created_date', 10000),
     staleTime: 60000,
   });
   const { data: locations = [], isLoading: ll } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => base44.entities.ProviderLocation.list(),
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
     staleTime: 60000,
   });
   const { data: taxonomies = [], isLoading: lt } = useQuery({
     queryKey: ['taxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list(),
+    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 10000),
     staleTime: 60000,
   });
   const { data: batches = [] } = useQuery({

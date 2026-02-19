@@ -14,26 +14,26 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
-    queryKey: ['dashProviders'],
-    queryFn: () => base44.entities.Provider.list(),
+    queryKey: ['providers'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
     staleTime: 60000,
   });
 
   const { data: utilization = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['dashUtilization'],
-    queryFn: () => base44.entities.CMSUtilization.list(),
+    queryKey: ['utilization'],
+    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000),
     staleTime: 60000,
   });
 
   const { data: locations = [] } = useQuery({
-    queryKey: ['dashLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list(),
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
     staleTime: 60000,
   });
 
   const { data: referrals = [] } = useQuery({
-    queryKey: ['dashReferrals'],
-    queryFn: () => base44.entities.CMSReferral.list(),
+    queryKey: ['referrals'],
+    queryFn: () => base44.entities.CMSReferral.list('-created_date', 10000),
     staleTime: 60000,
   });
 
