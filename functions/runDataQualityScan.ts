@@ -24,7 +24,7 @@ const QUALITY_RULES = [
     check: (p) => { const c = String(p.npi || '').replace(/\D/g, ''); return c.length !== 10; },
     field: 'npi', entityType: 'Provider' },
   { id: 'invalid_zip', name: 'Invalid ZIP Code Format', category: 'accuracy', severity: 'medium',
-    check: (l) => l.zip && !/^\d{5}(-\d{4})?$/.test(l.zip.trim()),
+    check: (l) => l.zip && !/^\d{5}(-?\d{4})?$/.test(l.zip.trim()),
     field: 'zip', entityType: 'ProviderLocation' },
   { id: 'invalid_state', name: 'Invalid State Code', category: 'accuracy', severity: 'high',
     check: (l) => {
