@@ -903,6 +903,7 @@ function mapCMSData(row, columnMapping, importType, year) {
 async function importCMSData(base44, importType, validData, year) {
     let imported = 0;
     let updated = 0;
+    let skipped = 0;
     const BULK_SIZE = 50;
 
     // Helper: bulk create with chunking
@@ -916,8 +917,58 @@ async function importCMSData(base44, importType, validData, year) {
         return count;
     }
 
+    // Helper: upsert NPI-keyed records — find existing by NPI+year, update if changed, create if new
+    async function upsertByNpiAndYear(entityRef, records, yearField, compareFields) {
+        let created = 0, updatedCount = 0, skippedCount = 0;
+        for (let i = 0; i < records.length; i += BULK_SIZE) {
+            const chunk = records.slice(i, i + BULK_SIZE);
+            for (const rec of chunk) {
+                const filter = { npi: rec.npi };
+                if (yearField) filter[yearField] = rec[yearField];
+                let existing = [];
+                try { existing = await entityRef.filter(filter); } catch (e) {}
+                if (existing.length === 0) {
+                    try { await entityRef.create(rec); created++; } catch (e) {
+                        // May already exist from a concurrent import
+                        skippedCount++;
+                    }
+                } else {
+                    // Check if data actually changed
+                    const ex = existing[0];
+                    let changed = false;
+                    for (const f of compareFields) {
+                        const newVal = rec[f] ?? '';
+                        const oldVal = ex[f] ?? '';
+                        if (String(newVal) !== String(oldVal)) { changed = true; break; }
+                    }
+                    if (changed) {
+                        try { await entityRef.update(ex.id, rec); updatedCount++; } catch (e) { skippedCount++; }
+                    } else {
+                        skippedCount++;
+                    }
+                }
+            }
+        }
+        return { created, updated: updatedCount, skipped: skippedCount };
+    }
+
+    // Helper: upsert provider placeholders — only create if NPI doesn't exist
+    async function upsertProviderPlaceholders(npis) {
+        for (let i = 0; i < npis.length; i += BULK_SIZE) {
+            const chunk = npis.slice(i, i + BULK_SIZE);
+            for (const npi of chunk) {
+                let existing = [];
+                try { existing = await base44.asServiceRole.entities.Provider.filter({ npi }); } catch (e) {}
+                if (existing.length === 0) {
+                    try {
+                        await base44.asServiceRole.entities.Provider.create({ npi, status: 'Active', needs_nppes_enrichment: true });
+                    } catch (e) {}
+                }
+            }
+        }
+    }
+
     if (importType === 'cms_utilization') {
-        // Bulk create all utilization records directly
         const utilRecords = validData.map(row => ({
             npi: row.npi,
             year: parseInt(row.Year || year),
@@ -925,24 +976,13 @@ async function importCMSData(base44, importType, validData, year) {
             total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
             total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
         }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSUtilization, utilRecords);
-
-        // Bulk create provider placeholders for new NPIs
-        const providerPlaceholders = validData.map(row => ({
-            npi: row.npi,
-            status: 'Active',
-            needs_nppes_enrichment: true,
-        }));
-        // Best effort — duplicates will fail silently
-        for (let i = 0; i < providerPlaceholders.length; i += BULK_SIZE) {
-            try {
-                await base44.asServiceRole.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + BULK_SIZE));
-            } catch (e) {
-                // Some may already exist, that's ok
-            }
-        }
+        const result = await upsertByNpiAndYear(
+            base44.asServiceRole.entities.CMSUtilization, utilRecords, 'year',
+            ['total_services', 'total_medicare_beneficiaries', 'total_medicare_payment']
+        );
+        imported = result.created; updated = result.updated; skipped = result.skipped;
+        await upsertProviderPlaceholders(validData.map(r => r.npi));
     } else if (importType === 'cms_order_referring') {
-        // Bulk create all referral records directly
         const refRecords = validData.map(row => ({
             npi: row.npi,
             year: parseInt(row.year),
@@ -953,21 +993,12 @@ async function importCMSData(base44, importType, validData, year) {
             dme_referrals: parseInt(row.dme_referrals || 0),
             imaging_referrals: parseInt(row.imaging_referrals || 0),
         }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSReferral, refRecords);
-
-        // Bulk create provider placeholders
-        const providerPlaceholders = validData.map(row => ({
-            npi: row.npi,
-            status: 'Active',
-            needs_nppes_enrichment: true,
-        }));
-        for (let i = 0; i < providerPlaceholders.length; i += BULK_SIZE) {
-            try {
-                await base44.asServiceRole.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + BULK_SIZE));
-            } catch (e) {
-                // Some may already exist
-            }
-        }
+        const result = await upsertByNpiAndYear(
+            base44.asServiceRole.entities.CMSReferral, refRecords, 'year',
+            ['total_referrals', 'home_health_referrals', 'hospice_referrals', 'dme_referrals']
+        );
+        imported = result.created; updated = result.updated; skipped = result.skipped;
+        await upsertProviderPlaceholders(validData.map(r => r.npi));
     } else if (importType === 'nursing_home_chains') {
         const records = validData.map(row => ({
             chain_name: row.chain_name, chain_id: row.chain_id,
