@@ -15,6 +15,7 @@ const NAV_SECTIONS = [
     label: 'Overview',
     items: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
+      { name: 'AI Insights', icon: Sparkles, page: 'AIInsights', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
