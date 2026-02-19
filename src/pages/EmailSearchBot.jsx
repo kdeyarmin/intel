@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
+import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 
 export default function EmailSearchBot() {
   const [batchSize, setBatchSize] = useState(10);
@@ -47,7 +48,11 @@ export default function EmailSearchBot() {
     const withEmail = providers.filter(p => p.email).length;
     const searched = providers.filter(p => p.email_searched_at).length;
     const remaining = total - searched;
-    return { total, withEmail, searched, remaining };
+    const validated = providers.filter(p => p.email_validation_status && p.email_validation_status !== '').length;
+    const valid = providers.filter(p => p.email_validation_status === 'valid').length;
+    const risky = providers.filter(p => p.email_validation_status === 'risky').length;
+    const invalid = providers.filter(p => p.email_validation_status === 'invalid').length;
+    return { total, withEmail, searched, remaining, validated, valid, risky, invalid };
   }, [providers]);
 
   const runSearch = async (mode, npi) => {
@@ -135,12 +140,12 @@ export default function EmailSearchBot() {
     const withEmail = providers.filter(p => p.email);
     if (withEmail.length === 0) { toast.error('No providers with emails to export'); return; }
 
-    const headers = ['NPI','Name','Credential','Type','Specialty','Email','Email Confidence','Email Source','City','State','ZIP','Phone'];
+    const headers = ['NPI','Name','Credential','Type','Specialty','Email','Email Confidence','Validation','Validation Reason','Email Source','City','State','ZIP','Phone'];
     const rows = withEmail.map(p => {
       const name = p.entity_type === 'Individual' ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : p.organization_name || '';
       const loc = allLocations.find(l => l.npi === p.npi && l.is_primary) || allLocations.find(l => l.npi === p.npi);
       const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag) || allTaxonomies.find(t => t.npi === p.npi);
-      return [p.npi, name, p.credential||'', p.entity_type||'', tax?.taxonomy_description||'', p.email, p.email_confidence||'', p.email_source||'', loc?.city||'', loc?.state||'', loc?.zip||'', loc?.phone||''];
+      return [p.npi, name, p.credential||'', p.entity_type||'', tax?.taxonomy_description||'', p.email, p.email_confidence||'', p.email_validation_status||'', p.email_validation_reason||'', p.email_source||'', loc?.city||'', loc?.state||'', loc?.zip||'', loc?.phone||''];
     });
 
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(','))].join('\n');
@@ -233,6 +238,33 @@ export default function EmailSearchBot() {
         </Card>
       </div>
 
+      {/* Validation Stats */}
+      {stats.validated > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-3 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <ShieldCheck className="w-4 h-4 text-green-600" />
+                <span className="text-lg font-bold text-green-700">{stats.valid}</span>
+              </div>
+              <div className="text-[10px] text-green-600">Valid Emails</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="p-3 text-center">
+              <div className="text-lg font-bold text-amber-700">{stats.risky}</div>
+              <div className="text-[10px] text-amber-600">Risky Emails</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-3 text-center">
+              <div className="text-lg font-bold text-red-700">{stats.invalid}</div>
+              <div className="text-[10px] text-red-600">Invalid Emails</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Controls */}
       <EmailBotControls
         batchSize={batchSize}
@@ -309,7 +341,16 @@ export default function EmailSearchBot() {
                       <div className="text-sm font-medium text-slate-900 truncate">{name}</div>
                       <div className="text-xs text-slate-500">{p.email}</div>
                     </div>
-                    <Badge className={`${confColor} text-[10px] shrink-0`}>{p.email_confidence}</Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {p.email_validation_status && p.email_validation_status !== '' && (
+                        <EmailValidationBadge
+                          status={p.email_validation_status}
+                          reason={p.email_validation_reason}
+                          size="sm"
+                        />
+                      )}
+                      <Badge className={`${confColor} text-[10px]`}>{p.email_confidence}</Badge>
+                    </div>
                   </div>
                 );
               })}

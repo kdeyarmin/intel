@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import EmailValidationBadge from './EmailValidationBadge';
 
 const confColors = {
   high: 'bg-green-100 text-green-800',
@@ -22,6 +23,7 @@ export default function EmailBotResults({ results }) {
             <TableHead className="text-xs">Name</TableHead>
             <TableHead className="text-xs">Email Found</TableHead>
             <TableHead className="text-xs">Confidence</TableHead>
+            <TableHead className="text-xs">Validation</TableHead>
             <TableHead className="text-xs">Total Found</TableHead>
           </TableRow>
         </TableHeader>
@@ -43,6 +45,14 @@ export default function EmailBotResults({ results }) {
               <TableCell>
                 {r.confidence && (
                   <Badge className={`${confColors[r.confidence]} text-[10px]`}>{r.confidence}</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {r.best_email && (
+                  <EmailValidationBadge
+                    status={r.validation_status}
+                    reason={r.validation_reason}
+                  />
                 )}
               </TableCell>
               <TableCell className="text-sm text-center">{r.emails_found}</TableCell>
