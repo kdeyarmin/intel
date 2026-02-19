@@ -16,6 +16,7 @@ import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
 import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
+import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -431,6 +432,9 @@ export default function ImportMonitoring() {
                               </div>
                             )}
                             {batch.error_samples?.length > 0 && (
+                              <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} />
+                            )}
+                            {batch.error_samples?.length > 0 && (
                               <ErrorCategoryDisplay errors={batch.error_samples} />
                             )}
                           </div>
@@ -459,7 +463,7 @@ export default function ImportMonitoring() {
                   {/* Error summary for failed batches */}
                   {batch.status === 'failed' && batch.error_samples?.length > 0 && (
                     <div className="mb-2">
-                      <ErrorCategoryDisplay errors={batch.error_samples} />
+                      <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} compact />
                     </div>
                   )}
 
