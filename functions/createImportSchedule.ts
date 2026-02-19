@@ -59,23 +59,10 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        const response = await fetch(`${Deno.env.get('BASE44_API_URL')}/.well-known/base44/automations`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${req.headers.get('authorization')?.replace('Bearer ', '')}`,
-            },
-            body: JSON.stringify(scheduleConfig),
-        });
+        // Use the base44 SDK to create automation via internal API
+        const automation = await base44.asServiceRole.functions.invoke('_internal_create_automation', scheduleConfig);
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Failed to create schedule: ${error}`);
-        }
-
-        const result = await response.json();
-
-        return Response.json({ success: true, automation: result });
+        return Response.json({ success: true, automation });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
