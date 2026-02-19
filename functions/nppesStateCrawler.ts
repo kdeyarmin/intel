@@ -174,82 +174,92 @@ Deno.serve(async (req) => {
         });
 
         try {
-            // NPPES API requires additional criteria beyond just state.
-            // We use last_name wildcard (a*-z*) for individuals and organization_name wildcard for orgs.
-            // Each wildcard query allows skip up to 1000 (max 1200 results).
+            // NPPES API: "state" alone triggers "Field state requires additional search criteria".
+            // Strategy: iterate A-Z on last_name (NPI-1) and organization_name (NPI-2).
+            // Each single-letter wildcard (e.g. "s*") can return max 1200 records (skip caps at 1000).
+            // If a single letter hits the 1200 limit, we auto-subdivide into two-letter prefixes
+            // (e.g. "sa*", "sb*", ... "sz*") to capture all records for that letter.
             const enumTypes = entity_type ? [entity_type] : ['NPI-1', 'NPI-2'];
             let allResults = [];
             const seenNPIsInFetch = new Set();
+            let queriesOverLimit = 0;
+
+            function addUniqueResults(results) {
+                for (const r of results) {
+                    const npi = String(r.number || '');
+                    if (npi && !seenNPIsInFetch.has(npi)) {
+                        seenNPIsInFetch.add(npi);
+                        allResults.push(r);
+                    }
+                }
+            }
+
+            function buildParams(stateCode, enumType, nameField, prefix, taxDesc) {
+                const params = new URLSearchParams();
+                params.set('version', '2.1');
+                params.set('limit', String(BATCH_LIMIT));
+                params.set('state', stateCode);
+                params.set('enumeration_type', enumType);
+                params.set(nameField, `${prefix}*`);
+                if (taxDesc) params.set('taxonomy_description', taxDesc);
+                return params;
+            }
 
             for (const enumType of enumTypes) {
                 const nameField = enumType === 'NPI-1' ? 'last_name' : 'organization_name';
+                const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
+
+                console.log(`[${stateToProcess}] Starting ${typeLabel} crawl (${nameField})`);
 
                 for (const letter of ALPHABET) {
-                    const params = new URLSearchParams();
-                    params.set('version', '2.1');
-                    params.set('limit', String(BATCH_LIMIT));
-                    params.set('state', stateToProcess);
-                    params.set('enumeration_type', enumType);
-                    params.set(nameField, `${letter}*`);
-                    if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
+                    // First pass: single-letter prefix
+                    const params = buildParams(stateToProcess, enumType, nameField, letter, taxonomy_description);
+                    console.log(`[${stateToProcess}] ${typeLabel} ${letter}*`);
 
-                    let skip = 0;
-                    let letterResults = 0;
+                    const { results, hitLimit } = await fetchAllPages(params, stateToProcess);
+                    const beforeCount = allResults.length;
+                    addUniqueResults(results);
 
-                    // Max 6 pages per letter (skip max 1000)
-                    for (let page = 0; page < 6; page++) {
-                        params.set('skip', String(skip));
-                        const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
-                        console.log(`[${stateToProcess}] ${enumType} ${nameField}=${letter}* skip=${skip}...`);
+                    if (hitLimit) {
+                        // This letter has >1200 records — subdivide into two-letter prefixes
+                        queriesOverLimit++;
+                        console.log(`[${stateToProcess}] ${typeLabel} ${letter}*: HIT 1200 LIMIT (got ${results.length}), subdividing into ${letter}a*-${letter}z*`);
 
-                        const response = await fetch(apiUrl);
-                        if (!response.ok) {
-                            console.error(`[${stateToProcess}] API HTTP error: ${response.status}`);
-                            break;
-                        }
+                        for (const letter2 of ALPHABET) {
+                            const subPrefix = `${letter}${letter2}`;
+                            const subParams = buildParams(stateToProcess, enumType, nameField, subPrefix, taxonomy_description);
+                            console.log(`[${stateToProcess}] ${typeLabel} ${subPrefix}*`);
 
-                        const data = await response.json();
+                            const subResult = await fetchAllPages(subParams, stateToProcess);
+                            addUniqueResults(subResult.results);
 
-                        if (data.Errors && data.Errors.length > 0) {
-                            // "No results" type errors are ok, just skip
-                            const errMsg = data.Errors.map(e => e.description).join('; ');
-                            console.log(`[${stateToProcess}] ${letter}*: ${errMsg}`);
-                            break;
-                        }
-
-                        const results = data.results || [];
-                        if (results.length === 0) break;
-
-                        // Deduplicate
-                        for (const r of results) {
-                            const npi = String(r.number || '');
-                            if (npi && !seenNPIsInFetch.has(npi)) {
-                                seenNPIsInFetch.add(npi);
-                                allResults.push(r);
+                            if (subResult.hitLimit) {
+                                // Even two-letter prefix hit the limit — very rare, log warning
+                                console.warn(`[${stateToProcess}] ${typeLabel} ${subPrefix}*: STILL AT LIMIT (${subResult.results.length}), some records may be missed`);
                             }
-                        }
 
-                        letterResults += results.length;
-
-                        if (results.length < BATCH_LIMIT) break;
-                        skip += BATCH_LIMIT;
-                        if (skip > MAX_SKIP) {
-                            console.log(`[${stateToProcess}] ${letter}*: Hit max skip, some records may be missed`);
-                            break;
+                            await new Promise(r => setTimeout(r, API_DELAY_MS));
                         }
                     }
 
-                    if (letterResults > 0) {
-                        console.log(`[${stateToProcess}] ${enumType} ${letter}*: ${letterResults} fetched (unique total: ${allResults.length})`);
+                    const added = allResults.length - beforeCount;
+                    if (added > 0) {
+                        console.log(`[${stateToProcess}] ${typeLabel} ${letter}*: +${added} unique (total: ${allResults.length})`);
                     }
 
+                    // Update batch progress periodically
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         total_rows: allResults.length,
                     });
 
-                    // Small delay between letter queries
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, API_DELAY_MS));
                 }
+
+                console.log(`[${stateToProcess}] ${typeLabel} crawl done: ${allResults.length} unique NPIs so far`);
+            }
+
+            if (queriesOverLimit > 0) {
+                console.log(`[${stateToProcess}] ${queriesOverLimit} letter(s) required two-letter subdivision`);
             }
 
             console.log(`[${stateToProcess}] Total fetched: ${allResults.length}`);
