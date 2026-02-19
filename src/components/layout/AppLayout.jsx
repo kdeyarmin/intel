@@ -103,18 +103,20 @@ export default function AppLayout({ children, currentPageName }) {
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
                 alt="CareMetric AI"
-                className="w-8 h-8 rounded-lg"
+                className="w-8 h-8 rounded-lg bg-transparent"
+                style={{ mixBlendMode: 'screen' }}
               />
               <div>
                 <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-red-400">AI</span></h1>
-                <p className="text-[10px] text-slate-500 font-medium">Provider Intelligence</p>
+                <p className="text-[10px] text-slate-500 font-medium">Intel</p>
               </div>
             </div>
           ) : (
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
               alt="CareMetric AI"
-              className="w-8 h-8 rounded-lg mx-auto"
+              className="w-8 h-8 rounded-lg mx-auto bg-transparent"
+              style={{ mixBlendMode: 'screen' }}
             />
           )}
           <Button
