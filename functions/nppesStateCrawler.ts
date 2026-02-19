@@ -8,8 +8,9 @@ const US_STATES = [
 
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 const BATCH_LIMIT = 200;
-const MAX_PAGES = 50; // 50 * 200 = 10,000 max per state per call
+const MAX_SKIP = 1000; // NPPES API allows skip up to 1000, so max 1200 records per query
 const BULK_SIZE = 50;
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
 Deno.serve(async (req) => {
     try {
