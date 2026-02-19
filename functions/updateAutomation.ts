@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing automation_id or config in request body' }, { status: 400 });
     }
 
-    const automation = await base44.asServiceRole.automations.update(automation_id, config);
+    const automation = await base44.asServiceRole.updateAutomation(automation_id, config);
 
     return Response.json({ success: true, automation });
   } catch (error) {
