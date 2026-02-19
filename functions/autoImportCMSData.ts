@@ -966,16 +966,22 @@ function mapCMSData(row, columnMapping, importType, year) {
     return mappedData;
 }
 
-async function importCMSData(base44, importType, validData, year) {
+async function importCMSData(base44, importType, validData, year, startTime) {
     let imported = 0;
     let updated = 0;
     let skipped = 0;
+    let partial = false;
     const BULK_SIZE = 50;
 
-    // Helper: bulk create with chunking
+    // Helper: bulk create with chunking + time check
     async function bulkCreateEntity(entityRef, records) {
         let count = 0;
         for (let i = 0; i < records.length; i += BULK_SIZE) {
+            if (isTimeUp(startTime)) {
+                console.warn(`Time limit reached during bulk create at record ${i}/${records.length}`);
+                partial = true;
+                break;
+            }
             const chunk = records.slice(i, i + BULK_SIZE);
             await entityRef.bulkCreate(chunk);
             count += chunk.length;
@@ -987,6 +993,11 @@ async function importCMSData(base44, importType, validData, year) {
     async function upsertByNpiAndYear(entityRef, records, yearField, compareFields) {
         let created = 0, updatedCount = 0, skippedCount = 0;
         for (let i = 0; i < records.length; i += BULK_SIZE) {
+            if (isTimeUp(startTime)) {
+                console.warn(`Time limit reached during upsert at record ${i}/${records.length}`);
+                partial = true;
+                break;
+            }
             const chunk = records.slice(i, i + BULK_SIZE);
             for (const rec of chunk) {
                 const filter = { npi: rec.npi };
