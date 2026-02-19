@@ -127,8 +127,19 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-4 border-t border-gray-200 bg-white/60">
-          <p className="text-xs text-gray-500 text-center leading-relaxed">
+        <div className="px-8 py-3 border-t border-gray-200 bg-white/60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
+                alt="CareMetric AI"
+                className="w-5 h-5 rounded"
+              />
+              <span className="text-xs text-gray-500 font-medium">CareMetric AI</span>
+              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">www.CareMetric.ai</a>
+            </div>
+          </div>
+          <p className="text-[10px] text-gray-400 text-center mt-1 leading-relaxed">
             <strong>Data Sources:</strong> All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships. Small cell counts (&lt;11) are suppressed for privacy compliance.
           </p>
         </div>
