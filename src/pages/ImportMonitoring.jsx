@@ -256,7 +256,32 @@ export default function ImportMonitoring() {
       {/* Import Jobs List */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Import Jobs</CardTitle>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle>Recent Import Jobs</CardTitle>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <select 
+                  className="text-xs border rounded-md px-2 py-1.5 bg-white"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={showOnlyLatest} 
+                  onChange={(e) => setShowOnlyLatest(e.target.checked)}
+                  className="rounded"
+                />
+                Latest per source only
+              </label>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -264,7 +289,7 @@ export default function ImportMonitoring() {
               <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
               <p>Loading import jobs...</p>
             </div>
-          ) : batches.length === 0 ? (
+          ) : displayBatches.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">No import jobs yet</p>
@@ -272,7 +297,7 @@ export default function ImportMonitoring() {
             </div>
           ) : (
             <div className="space-y-4">
-              {batches.map((batch) => (
+              {displayBatches.map((batch) => (
                 <div
                   key={batch.id}
                   className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
