@@ -63,7 +63,7 @@ export default function ImportSchedule() {
   const { data: automations = [], isLoading } = useQuery({
     queryKey: ['importAutomations'],
     queryFn: async () => {
-      const response = await fetch('/.well-known/base44/automations');
+      const response = await fetch('/api/automations');
       const data = await response.json();
       return data.filter(a => a.function_name === 'autoImportCMSData');
     },
