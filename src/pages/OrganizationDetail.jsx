@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell } from 'recharts';
 import { ArrowLeft, Building2, Users, MapPin, DollarSign, Activity, Stethoscope, GitBranch } from 'lucide-react';
+import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 
 const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#06b6d4', '#f97316'];
 
@@ -67,6 +68,7 @@ export default function OrganizationDetail() {
     staleTime: 60000,
   });
 
+  const queryClient = useQueryClient();
   const provider = providers?.[0];
   const score = scores?.[0];
 
@@ -301,6 +303,21 @@ export default function OrganizationDetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Enrichment */}
+      <div className="mb-6">
+        <AIDataEnrichmentPanel
+          provider={provider}
+          location={locations[0]}
+          taxonomies={taxonomies}
+          entityType="organization"
+          onDataUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ['orgProvider', npi] });
+            queryClient.invalidateQueries({ queryKey: ['orgLocations', npi] });
+            queryClient.invalidateQueries({ queryKey: ['orgTaxonomies', npi] });
+          }}
+        />
+      </div>
 
       {/* Affiliated Providers */}
       {affiliatedProviders.length > 0 && (

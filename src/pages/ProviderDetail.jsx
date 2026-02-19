@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
@@ -28,6 +28,7 @@ import DataQualityInsightsCard from '../components/providers/DataQualityInsights
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AIRelatedProviders from '../components/ai/AIRelatedProviders';
 import AIMarketInsights from '../components/ai/AIMarketInsights';
+import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -93,6 +94,7 @@ export default function ProviderDetail() {
     staleTime: 120000,
   });
 
+  const queryClient = useQueryClient();
   const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
 
   if (loading) {
@@ -220,6 +222,18 @@ export default function ProviderDetail() {
           <RelatedLocations npi={npi} />
 
           <DataQualityInsightsCard npi={npi} provider={provider} />
+
+          <AIDataEnrichmentPanel
+            provider={provider}
+            location={primaryLocation}
+            taxonomies={taxonomies}
+            entityType={provider.entity_type === 'Organization' ? 'organization' : 'provider'}
+            onDataUpdated={() => {
+              queryClient.invalidateQueries({ queryKey: ['provider', npi] });
+              queryClient.invalidateQueries({ queryKey: ['providerLocations', npi] });
+              queryClient.invalidateQueries({ queryKey: ['providerTaxonomies', npi] });
+            }}
+          />
 
           <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
 

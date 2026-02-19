@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -13,6 +13,7 @@ import LocationGeoInsights from '../components/locations/LocationGeoInsights';
 import ContactEnrichmentStatus from '../components/locations/ContactEnrichmentStatus';
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AILocationInsights from '../components/ai/AILocationInsights';
+import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 
 export default function LocationDetail() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function LocationDetail() {
     enabled: !!location?.npi,
   });
 
+  const queryClient = useQueryClient();
   const associatedProvider = providerForLoc[0];
   const openDQAlerts = dqAlerts.filter(a => a.status === 'open');
 
@@ -276,6 +278,18 @@ export default function LocationDetail() {
         <div className="space-y-6">
           <LocationGeoInsights location={location} coProviders={coProviders} allLocations={allLocationsForGeo} />
           <ContactEnrichmentStatus location={location} provider={associatedProvider} />
+
+          <AIDataEnrichmentPanel
+            provider={associatedProvider || { npi: location.npi }}
+            location={location}
+            taxonomies={locTaxonomies}
+            entityType="location"
+            onDataUpdated={() => {
+              queryClient.invalidateQueries({ queryKey: ['locationDetail', locationId] });
+              queryClient.invalidateQueries({ queryKey: ['provForLoc', location?.npi] });
+              queryClient.invalidateQueries({ queryKey: ['locTax', location?.npi] });
+            }}
+          />
 
           <AIContactEnrichment provider={associatedProvider || {}} location={location} taxonomies={locTaxonomies} />
 
