@@ -25,26 +25,32 @@ export default function DataQualityWidget() {
   const { data: providers = [], isLoading: lp } = useQuery({
     queryKey: ['providers'],
     queryFn: () => base44.entities.Provider.list(),
+    staleTime: 60000,
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['utilization'],
     queryFn: () => base44.entities.CMSUtilization.list(),
+    staleTime: 60000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['referrals'],
     queryFn: () => base44.entities.CMSReferral.list(),
+    staleTime: 60000,
   });
   const { data: locations = [], isLoading: ll } = useQuery({
     queryKey: ['locations'],
     queryFn: () => base44.entities.ProviderLocation.list(),
+    staleTime: 60000,
   });
   const { data: taxonomies = [], isLoading: lt } = useQuery({
     queryKey: ['taxonomies'],
     queryFn: () => base44.entities.ProviderTaxonomy.list(),
+    staleTime: 60000,
   });
   const { data: batches = [] } = useQuery({
     queryKey: ['importBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
+    staleTime: 60000,
   });
 
   const isLoading = lp || lu || lr || ll || lt;
