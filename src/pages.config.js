@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AIInsights from './pages/AIInsights';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
@@ -57,6 +58,7 @@ import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
+import EmailSearchBot from './pages/EmailSearchBot';
 import ErrorReports from './pages/ErrorReports';
 import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
@@ -73,6 +75,7 @@ import NPPESImport from './pages/NPPESImport';
 import OrganizationDetail from './pages/OrganizationDetail';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
+import ProviderOutreach from './pages/ProviderOutreach';
 import Providers from './pages/Providers';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
@@ -80,13 +83,11 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import ProviderOutreach from './pages/ProviderOutreach';
-import AIInsights from './pages/AIInsights';
-import EmailSearchBot from './pages/EmailSearchBot';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AIInsights": AIInsights,
     "AdvancedAnalytics": AdvancedAnalytics,
     "Analytics": Analytics,
     "AuditLog": AuditLog,
@@ -97,6 +98,7 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "DataImports": DataImports,
     "DataQuality": DataQuality,
+    "EmailSearchBot": EmailSearchBot,
     "ErrorReports": ErrorReports,
     "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
@@ -113,6 +115,7 @@ export const PAGES = {
     "OrganizationDetail": OrganizationDetail,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
+    "ProviderOutreach": ProviderOutreach,
     "Providers": Providers,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
@@ -120,9 +123,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "ProviderOutreach": ProviderOutreach,
-    "AIInsights": AIInsights,
-    "EmailSearchBot": EmailSearchBot,
 }
 
 export const pagesConfig = {

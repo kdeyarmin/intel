@@ -246,6 +246,8 @@ export default function ProviderOutreach() {
                   providers={providers}
                   scores={scores}
                   referrals={referrals}
+                  locations={locations}
+                  taxonomies={taxonomies}
                 />
               </div>
             </div>
