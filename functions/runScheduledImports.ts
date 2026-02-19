@@ -65,14 +65,14 @@ Deno.serve(async (req) => {
                         runStatus = 'success';
                     }
                 } else {
-                    // CMS data import — fire and let it handle its own partial/resume
-                    const res = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
+                    // CMS data import — use triggerImport which has built-in URLs
+                    const res = await base44.asServiceRole.functions.invoke('triggerImport', {
                         import_type: schedule.import_type,
-                        file_url: schedule.api_url,
+                        file_url: schedule.api_url || undefined,
                         year: now.getFullYear(),
                         dry_run: false,
                     });
-                    const data = res.data || res;
+                    const data = res.data?.result || res.data || res;
                     if (data.partial) {
                         runSummary = `Partial: imported ${data.imported_rows || 0} rows, paused at offset ${data.next_offset}. Will resume on next run.`;
                         runStatus = 'partial';
