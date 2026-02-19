@@ -1,0 +1,131 @@
+import React, { useState, useMemo } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MapPin } from 'lucide-react';
+import SearchFilterBar from '../components/filters/SearchFilterBar';
+
+export default function Locations() {
+  const [search, setSearch] = useState('');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [primaryFilter, setPrimaryFilter] = useState('all');
+
+  const { data: locations = [], isLoading } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 200),
+    staleTime: 60000,
+  });
+
+  const states = useMemo(() => {
+    const s = new Set(locations.map(l => l.state).filter(Boolean));
+    return [...s].sort().map(st => ({ value: st, label: st }));
+  }, [locations]);
+
+  const filtered = useMemo(() => {
+    return locations.filter(loc => {
+      if (search) {
+        const q = search.toLowerCase();
+        const match = (loc.npi || '').includes(q) ||
+          (loc.city || '').toLowerCase().includes(q) ||
+          (loc.address_1 || '').toLowerCase().includes(q) ||
+          (loc.zip || '').includes(q) ||
+          (loc.phone || '').includes(q);
+        if (!match) return false;
+      }
+      if (stateFilter !== 'all' && loc.state !== stateFilter) return false;
+      if (typeFilter !== 'all' && loc.location_type !== typeFilter) return false;
+      if (primaryFilter !== 'all') {
+        if (primaryFilter === 'yes' && !loc.is_primary) return false;
+        if (primaryFilter === 'no' && loc.is_primary) return false;
+      }
+      return true;
+    });
+  }, [locations, search, stateFilter, typeFilter, primaryFilter]);
+
+  const resetFilters = () => {
+    setSearch('');
+    setStateFilter('all');
+    setTypeFilter('all');
+    setPrimaryFilter('all');
+  };
+
+  return (
+    <div className="p-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
+        <p className="text-gray-600 mt-1">{locations.length} total locations</p>
+      </div>
+
+      <Card className="mb-6 bg-white">
+        <CardContent className="pt-6">
+          <SearchFilterBar
+            searchTerm={search}
+            onSearchChange={setSearch}
+            onReset={resetFilters}
+            filters={[
+              { key: 'state', type: 'select', label: 'State', value: stateFilter, onChange: setStateFilter, options: states },
+              { key: 'type', type: 'select', label: 'Type', value: typeFilter, onChange: setTypeFilter, options: [{ value: 'Practice', label: 'Practice' }, { value: 'Mailing', label: 'Mailing' }] },
+              { key: 'primary', type: 'select', label: 'Primary', value: primaryFilter, onChange: setPrimaryFilter, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
+            ]}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2"><MapPin className="w-5 h-5" /> Location Directory</span>
+            <span className="text-sm font-normal text-gray-500">{filtered.length} results</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>NPI</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>ZIP</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Primary</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array(8).fill(0).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}
+                    </TableRow>
+                  ))
+                ) : filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">No locations found</TableCell></TableRow>
+                ) : (
+                  filtered.slice(0, 100).map(loc => (
+                    <TableRow key={loc.id}>
+                      <TableCell className="font-mono text-sm">{loc.npi}</TableCell>
+                      <TableCell>{loc.address_1 || '-'}</TableCell>
+                      <TableCell>{loc.city || '-'}</TableCell>
+                      <TableCell>{loc.state || '-'}</TableCell>
+                      <TableCell>{loc.zip || '-'}</TableCell>
+                      <TableCell>{loc.phone || '-'}</TableCell>
+                      <TableCell><Badge variant="outline">{loc.location_type || '-'}</Badge></TableCell>
+                      <TableCell>{loc.is_primary ? <Badge className="bg-blue-100 text-blue-700">Primary</Badge> : '-'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

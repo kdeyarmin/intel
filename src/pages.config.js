@@ -64,6 +64,9 @@ import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Analytics from './pages/Analytics';
+import Locations from './pages/Locations';
+import Utilization from './pages/Utilization';
+import Referrals from './pages/Referrals';
 import __Layout from './Layout.jsx';
 
 
@@ -85,6 +88,9 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Analytics": Analytics,
+    "Locations": Locations,
+    "Utilization": Utilization,
+    "Referrals": Referrals,
 }
 
 export const pagesConfig = {
