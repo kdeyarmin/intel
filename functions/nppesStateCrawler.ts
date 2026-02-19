@@ -112,23 +112,22 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         
         // Authenticate — support both admin users and service-role calls (from batch processor)
-        let user = null;
+        let auditEmail = 'system@service';
         try {
-            const authResult = await base44.auth.me();
-            if (authResult) user = authResult;
+            const user = await base44.auth.me();
+            if (user) {
+                auditEmail = user.email || auditEmail;
+                // If user is authenticated but not admin and not a service account, block
+                const isServiceAccount = user.email && user.email.includes('service+');
+                if (!isServiceAccount && user.role !== 'admin') {
+                    return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+                }
+            }
+            // If user is null/undefined, it's a service role call — allow it
         } catch (e) {
-            // auth.me() may throw for service-role calls — that's OK
+            // auth.me() threw — likely a service-role invocation, allow it
+            console.log('[StateCrawler] Service role call detected');
         }
-        
-        // For service-role calls, user may be a service account or null
-        const isService = !user || (user.email && user.email.startsWith('service+'));
-        
-        if (!isService && user?.role !== 'admin') {
-            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-        }
-        
-        // Ensure we have a user object for audit logging
-        const auditEmail = user?.email || 'system@service';
 
         const payload = await req.json();
         const {
