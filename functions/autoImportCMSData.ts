@@ -1,6 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Max execution time before we save progress and exit (150s to leave buffer before platform timeout)
+const MAX_EXEC_MS = 150_000;
+const FETCH_TIMEOUT_MS = 20_000;
+
+function isTimeUp(startTime) {
+    return Date.now() - startTime > MAX_EXEC_MS;
+}
+
+async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        return res;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 Deno.serve(async (req) => {
+    const startTime = Date.now();
+
     try {
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
@@ -35,7 +56,7 @@ Deno.serve(async (req) => {
 
         try {
             // Fetch data (supports both JSON API and CSV files)
-            const response = await fetch(file_url);
+            const response = await fetchWithTimeout(file_url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch file: ${response.statusText}`);
             }
@@ -62,11 +83,17 @@ Deno.serve(async (req) => {
                 let offset = PAGE_SIZE;
                 if (firstPage.length >= PAGE_SIZE) {
                     console.log(`First page returned ${firstPage.length} rows, fetching more pages...`);
-                    while (true) {
+                    while (!isTimeUp(startTime)) {
                         const separator = file_url.includes('?') ? '&' : '?';
                         const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
                         console.log(`Fetching page at offset ${offset}...`);
-                        const pageResponse = await fetch(pageUrl);
+                        let pageResponse;
+                        try {
+                            pageResponse = await fetchWithTimeout(pageUrl);
+                        } catch (fetchErr) {
+                            console.error(`Page fetch timed out at offset ${offset}: ${fetchErr.message}`);
+                            break;
+                        }
                         if (!pageResponse.ok) {
                             console.error(`Page fetch failed at offset ${offset}: ${pageResponse.statusText}`);
                             break;
@@ -89,6 +116,9 @@ Deno.serve(async (req) => {
                             break;
                         }
                         offset += PAGE_SIZE;
+                    }
+                    if (isTimeUp(startTime)) {
+                        console.warn(`Time limit reached during pagination. Proceeding with ${rows.length} rows fetched so far.`);
                     }
                 }
                 console.log(`Total rows fetched across all pages: ${rows.length}`);
