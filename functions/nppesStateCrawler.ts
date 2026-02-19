@@ -512,7 +512,7 @@ Deno.serve(async (req) => {
             // Audit
             await base44.asServiceRole.entities.AuditEvent.create({
                 event_type: 'import',
-                user_email: user.email,
+                user_email: auditEmail,
                 details: {
                     action: 'NPPES State Crawler',
                     entity: 'nppes_registry',
