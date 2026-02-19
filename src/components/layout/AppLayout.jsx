@@ -88,7 +88,7 @@ export default function AppLayout({ children, currentPageName }) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100">
+    <div className="flex h-screen bg-slate-50">
       <style>{`
         .scrollbar-dark::-webkit-scrollbar { width: 6px; }
         .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
@@ -210,11 +210,11 @@ export default function AppLayout({ children, currentPageName }) {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-transparent flex flex-col">
+      <main className="flex-1 overflow-auto bg-slate-100/50 flex flex-col">
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-100/60 backdrop-blur-sm">
+        <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
