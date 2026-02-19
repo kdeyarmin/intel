@@ -68,18 +68,35 @@ export default function ImportSchedule() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      // Get config from backend function
       const response = await base44.functions.invoke('createImportSchedule', {
         import_type: importType,
         schedule_type: scheduleType,
         schedule_time: scheduleTime,
-        runNow: runNow,
       });
 
       if (response.data.error) {
         throw new Error(response.data.error);
       }
 
-      return response.data;
+      const scheduleConfig = response.data.config;
+
+      // Create automation via Base44 API
+      const appId = window.location.hostname.split('.')[0];
+      const createResponse = await fetch(`/.well-known/base44/automations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scheduleConfig),
+      });
+
+      if (!createResponse.ok) {
+        const error = await createResponse.text();
+        throw new Error(`Failed to create automation: ${error}`);
+      }
+
+      return await createResponse.json();
     },
     onSuccess: async () => {
       queryClient.invalidateQueries(['importAutomations']);
@@ -98,6 +115,8 @@ export default function ImportSchedule() {
           console.error('Failed to start immediate import:', error);
           alert('Schedule created but immediate import failed: ' + error.message);
         }
+      } else {
+        alert('Schedule created successfully!');
       }
       
       setOpen(false);
