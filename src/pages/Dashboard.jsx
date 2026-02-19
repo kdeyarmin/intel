@@ -8,6 +8,7 @@ import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import AIAnalysisPanel from '../components/dashboard/AIAnalysisPanel';
+import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -123,6 +124,16 @@ export default function Dashboard() {
           <DataQualityWidget />
         </div>
         <DQQuickStatus />
+      </div>
+
+      {/* Proactive Insights */}
+      <div className="mb-6">
+        <ProactiveAlerts
+          providers={providers}
+          utilizations={utilization}
+          referrals={referrals}
+          locations={locations}
+        />
       </div>
 
       {/* AI Analysis */}
