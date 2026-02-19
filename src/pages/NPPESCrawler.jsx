@@ -248,36 +248,77 @@ export default function NPPESCrawler() {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            {!running ? (
-              <Button onClick={startCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2">
-                <Play className="w-4 h-4" />
-                Start Crawl
-              </Button>
-            ) : (
-              <>
-                {paused ? (
-                  <Button onClick={resumeCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2">
-                    <Play className="w-4 h-4" />
-                    Resume
-                  </Button>
-                ) : (
-                  <Button onClick={pauseCrawl} variant="outline" className="gap-2">
-                    <Pause className="w-4 h-4" />
-                    Pause
-                  </Button>
-                )}
-                <Button onClick={stopCrawl} variant="destructive" className="gap-2">
-                  <XCircle className="w-4 h-4" />
-                  Stop
+          <div className="flex flex-wrap gap-3 pt-2">
+            {/* Manual (browser-based) controls */}
+            <div className="flex gap-2 items-center">
+              <Monitor className="w-4 h-4 text-gray-400" />
+              <span className="text-xs text-gray-500 mr-1">Manual:</span>
+              {!running ? (
+                <Button onClick={startCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2" disabled={autoMode}>
+                  <Play className="w-4 h-4" />
+                  Start Crawl
                 </Button>
-              </>
-            )}
+              ) : (
+                <>
+                  {paused ? (
+                    <Button onClick={resumeCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2">
+                      <Play className="w-4 h-4" />
+                      Resume
+                    </Button>
+                  ) : (
+                    <Button onClick={pauseCrawl} variant="outline" className="gap-2">
+                      <Pause className="w-4 h-4" />
+                      Pause
+                    </Button>
+                  )}
+                  <Button onClick={stopCrawl} variant="destructive" className="gap-2">
+                    <XCircle className="w-4 h-4" />
+                    Stop
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <div className="w-px bg-gray-200 mx-1 self-stretch" />
+
+            {/* Automated (server-side) controls */}
+            <div className="flex gap-2 items-center">
+              <Zap className="w-4 h-4 text-amber-500" />
+              <span className="text-xs text-gray-500 mr-1">Auto:</span>
+              {!autoMode ? (
+                <Button
+                  onClick={startAutoChain}
+                  disabled={running || autoStarting}
+                  className="bg-amber-600 hover:bg-amber-700 gap-2"
+                >
+                  {autoStarting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                  Start Auto-Crawler
+                </Button>
+              ) : (
+                <Button
+                  onClick={stopAutoChain}
+                  disabled={autoStopping}
+                  variant="destructive"
+                  className="gap-2"
+                >
+                  {autoStopping ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  Stop Auto-Crawler
+                </Button>
+              )}
+            </div>
+
             <Button onClick={refetchStatus} variant="outline" className="gap-2">
               <RotateCcw className="w-4 h-4" />
               Refresh Status
             </Button>
           </div>
+
+          {autoMode && (
+            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2">
+              <Zap className="w-4 h-4" />
+              <span><strong>Auto-crawler is running server-side.</strong> It will process all states automatically, even if you close this page. You'll receive email notifications on failures and completion.</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
