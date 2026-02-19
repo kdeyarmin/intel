@@ -134,7 +134,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card className="bg-white border-gray-200/80 shadow-sm">
+        <Card className="bg-gray-100 border-gray-200/80 shadow-sm">
           <CardHeader>
             <CardTitle>Top States by Provider Count</CardTitle>
           </CardHeader>
@@ -165,7 +165,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-gray-200/80 shadow-sm">
+        <Card className="bg-gray-100 border-gray-200/80 shadow-sm">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
