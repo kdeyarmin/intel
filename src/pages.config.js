@@ -84,6 +84,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import MAInpatientDashboard from './pages/MAInpatientDashboard';
+import ScheduledReports from './pages/ScheduledReports';
 import __Layout from './Layout.jsx';
 
 
@@ -125,6 +126,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "MAInpatientDashboard": MAInpatientDashboard,
+    "ScheduledReports": ScheduledReports,
 }
 
 export const pagesConfig = {
