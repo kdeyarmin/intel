@@ -65,6 +65,19 @@ IMPORTANT: Be honest about confidence levels. Mark as "low" if you're guessing.`
 
     setResults(res);
     setLoading(false);
+
+    // Auto-save the best email to the provider record
+    const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
+    if (emails.length > 0 && provider?.id) {
+      const best = emails[0];
+      await base44.entities.Provider.update(provider.id, {
+        email: best.email,
+        email_confidence: best.confidence,
+        email_source: best.source || '',
+        additional_emails: emails.slice(1),
+        email_searched_at: new Date().toISOString(),
+      });
+    }
   };
 
   const copyEmail = (email, idx) => {
