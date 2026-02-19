@@ -29,7 +29,10 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
   const selectAll = () => setSelectedFields(fields.map(f => f.key));
   const selectNone = () => setSelectedFields([]);
 
-  const handleExport = () => {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
     let rows = data;
     if (dateField) {
       rows = filterByDateRange(rows, dateField, startDate, endDate);
@@ -41,8 +44,9 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
 
     if (format === 'csv') exportCSV(picked, activeFields, name);
     else if (format === 'excel') exportExcel(picked, activeFields, name);
-    else if (format === 'pdf') exportPDF(picked, activeFields, name, title);
+    else if (format === 'pdf') await exportPDF(picked, activeFields, name, title);
 
+    setExporting(false);
     setOpen(false);
   };
 
@@ -127,8 +131,8 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
             <span className="text-sm text-gray-500">
               {data.length} records{selectedFields.length < fields.length ? ` • ${selectedFields.length}/${fields.length} fields` : ''}
             </span>
-            <Button onClick={handleExport} disabled={selectedFields.length === 0} className="bg-blue-600 hover:bg-blue-700">
-              <Download className="w-4 h-4 mr-2" /> Export {format.toUpperCase()}
+            <Button onClick={handleExport} disabled={selectedFields.length === 0 || exporting} className="bg-blue-600 hover:bg-blue-700">
+              <Download className="w-4 h-4 mr-2" /> {exporting ? 'Exporting...' : `Export ${format.toUpperCase()}`}
             </Button>
           </div>
         </div>
