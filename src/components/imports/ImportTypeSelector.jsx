@@ -95,6 +95,13 @@ const importTypes = [
     icon: TrendingUp,
     requiredColumns: ['PRVDR_ID', 'GRPNG', 'GRPNG_DESC', 'BENE_DSTNCT_CNT'],
   },
+  {
+    id: 'inpatient_drg',
+    name: 'Inpatient DRG Data',
+    description: 'Hospital inpatient DRG utilization and payment data',
+    icon: TrendingUp,
+    requiredColumns: ['Rndrng_Prvdr_CCN', 'DRG_Cd', 'DRG_Desc', 'Tot_Dschrgs'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {

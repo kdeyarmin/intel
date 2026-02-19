@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -148,12 +148,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'inpatient_drg') {
+                    const ccnColumn = columnMapping['Rndrng_Prvdr_CCN'] || 'Rndrng_Prvdr_CCN';
+                    identifier = row[ccnColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing provider CCN',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -170,7 +183,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     } else if (import_type === 'provider_service_utilization') {
@@ -509,6 +522,30 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'inpatient_drg') {
+        const patterns = {
+            'Rndrng_Prvdr_CCN': ['rndrng_prvdr_ccn'],
+            'Rndrng_Prvdr_Org_Name': ['rndrng_prvdr_org_name'],
+            'Rndrng_Prvdr_City': ['rndrng_prvdr_city'],
+            'Rndrng_Prvdr_State_Abrvtn': ['rndrng_prvdr_state_abrvtn'],
+            'Rndrng_Prvdr_Zip5': ['rndrng_prvdr_zip5'],
+            'DRG_Cd': ['drg_cd'],
+            'DRG_Desc': ['drg_desc'],
+            'Tot_Dschrgs': ['tot_dschrgs'],
+            'Avg_Submtd_Cvrd_Chrg': ['avg_submtd_cvrd_chrg'],
+            'Avg_Tot_Pymt_Amt': ['avg_tot_pymt_amt'],
+            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -656,6 +693,19 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.pt_visits = parseFloat(row[columnMapping['PT_VISITS_CNT']] || 0);
         mappedData.ot_visits = parseFloat(row[columnMapping['OT_VISITS_CNT']] || 0);
         mappedData.slp_visits = parseFloat(row[columnMapping['SLP_VISITS_CNT']] || 0);
+        mappedData.data_year = year;
+    } else if (importType === 'inpatient_drg') {
+        mappedData.provider_ccn = row[columnMapping['Rndrng_Prvdr_CCN']] || '';
+        mappedData.provider_name = row[columnMapping['Rndrng_Prvdr_Org_Name']] || '';
+        mappedData.city = row[columnMapping['Rndrng_Prvdr_City']] || '';
+        mappedData.state = row[columnMapping['Rndrng_Prvdr_State_Abrvtn']] || '';
+        mappedData.zip = row[columnMapping['Rndrng_Prvdr_Zip5']] || '';
+        mappedData.drg_code = row[columnMapping['DRG_Cd']] || '';
+        mappedData.drg_description = row[columnMapping['DRG_Desc']] || '';
+        mappedData.total_discharges = parseFloat(row[columnMapping['Tot_Dschrgs']] || 0);
+        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Submtd_Cvrd_Chrg']] || 0);
+        mappedData.avg_total_payment = parseFloat(row[columnMapping['Avg_Tot_Pymt_Amt']] || 0);
+        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
         mappedData.data_year = year;
     }
 
@@ -1045,6 +1095,41 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import PDGM record:', error);
+            }
+        }
+    } else if (importType === 'inpatient_drg') {
+        for (const row of validData) {
+            try {
+                const drgData = {
+                    provider_ccn: row.provider_ccn,
+                    provider_name: row.provider_name,
+                    city: row.city,
+                    state: row.state,
+                    zip: row.zip,
+                    drg_code: row.drg_code,
+                    drg_description: row.drg_description,
+                    total_discharges: row.total_discharges,
+                    avg_submitted_charge: row.avg_submitted_charge,
+                    avg_total_payment: row.avg_total_payment,
+                    avg_medicare_payment: row.avg_medicare_payment,
+                    data_year: parseInt(year),
+                };
+
+                const existingDRG = await base44.asServiceRole.entities.InpatientDRG.filter({
+                    provider_ccn: row.provider_ccn,
+                    drg_code: row.drg_code,
+                    data_year: parseInt(year)
+                });
+
+                if (existingDRG.length === 0) {
+                    await base44.asServiceRole.entities.InpatientDRG.create(drgData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.InpatientDRG.update(existingDRG[0].id, drgData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import inpatient DRG record:', error);
             }
         }
     }
