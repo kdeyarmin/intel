@@ -257,21 +257,30 @@ Deno.serve(async (req) => {
                             message: 'Invalid NPI format (must be 10 digits)',
                         });
                     }
-                } else if (seenNPIs.has(identifier)) {
+                } else if (seenIdentifiers.has(identifier)) {
                     duplicateRows++;
                 } else {
-                    seenNPIs.add(identifier);
+                    seenIdentifiers.add(identifier);
                     validRows++;
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
                     if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && import_type !== 'opt_out_physicians') {
                         mappedData.npi = identifier;
-                        mappedData.isDuplicate = existingNPIs.has(identifier);
                     } else if (import_type === 'provider_service_utilization' || import_type === 'opt_out_physicians') {
                         mappedData.npi = identifier;
                     }
                     validData.push(mappedData);
+                }
+
+                // Update progress periodically (every 5000 rows)
+                if (i > 0 && i % 5000 === 0) {
+                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                        valid_rows: validRows,
+                        invalid_rows: invalidRows,
+                        duplicate_rows: duplicateRows,
+                    });
+                    console.log(`Validation progress: ${i}/${rows.length} rows processed, ${validRows} valid`);
                 }
             } // end for loop
 
