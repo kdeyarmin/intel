@@ -58,6 +58,20 @@ export default function DataImports() {
         const headers = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
         
         setCsvColumns(headers);
+        
+        // Auto-map columns that match exactly (case-insensitive)
+        const autoMapping = {};
+        const normalizedRequired = selectedType.requiredColumns.map(col => col.toLowerCase());
+        const normalizedHeaders = headers.map((h, idx) => ({ original: headers[idx], normalized: h.toLowerCase() }));
+        
+        selectedType.requiredColumns.forEach(requiredCol => {
+          const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase());
+          if (match) {
+            autoMapping[requiredCol] = match.original;
+          }
+        });
+        
+        setColumnMapping(autoMapping);
         setUploadProgress(100);
         setTimeout(() => {
           setStep('map');

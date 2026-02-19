@@ -56,9 +56,9 @@ import LeadLists from './pages/LeadLists';
 import ProviderDetail from './pages/ProviderDetail';
 import Providers from './pages/Providers';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
+import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import __Layout from './Layout.jsx';
 
 
@@ -72,9 +72,9 @@ export const PAGES = {
     "ProviderDetail": ProviderDetail,
     "Providers": Providers,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
+    "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
 }
 
 export const pagesConfig = {
