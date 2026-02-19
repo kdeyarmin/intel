@@ -73,7 +73,7 @@ export default function CampaignTable({ campaigns = [], onView, onDelete, onTogg
                   <TableCell className="text-right font-mono text-xs text-emerald-600">{c.opened_count || 0}</TableCell>
                   <TableCell className="text-right font-mono text-xs text-violet-600">{c.responded_count || 0}</TableCell>
                   <TableCell className="text-right font-mono text-xs">{openRate}%</TableCell>
-                  <TableCell className="text-xs text-slate-500">{new Date(c.created_date).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs text-slate-500">{new Date(c.created_date).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onView(c)}><Eye className="w-3.5 h-3.5" /></Button>

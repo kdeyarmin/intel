@@ -254,7 +254,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
 
           {alert.resolved_at && (
             <p className="text-[10px] text-slate-400">
-              {alert.status === 'accepted' ? 'Fixed' : 'Dismissed'} by {alert.resolved_by || 'system'} on {new Date(alert.resolved_at).toLocaleString()}
+              {alert.status === 'accepted' ? 'Fixed' : 'Dismissed'} by {alert.resolved_by || 'system'} on {new Date(alert.resolved_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
             </p>
           )}
         </div>

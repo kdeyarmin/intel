@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { formatDateTimeET } from '../utils/dateUtils';
 import { CheckCircle, XCircle, Loader2, Clock } from 'lucide-react';
 
 export default function ScanHistoryPanel({ scans = [] }) {
@@ -33,7 +33,7 @@ export default function ScanHistoryPanel({ scans = [] }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium text-slate-700">
-                    {scan.completed_at ? format(new Date(scan.completed_at), 'MMM d, yyyy h:mm a') : 'Running...'}
+                    {scan.completed_at ? formatDateTimeET(scan.completed_at) : 'Running...'}
                   </span>
                   <Badge variant="secondary" className="text-[10px]">{scan.status}</Badge>
                 </div>
