@@ -30,7 +30,7 @@ const importTypes = [
     name: 'Order & Referring Providers',
     description: 'Medicare ordering and referring provider data',
     icon: Database,
-    requiredColumns: ['Rndrng_NPI', 'Tot_Srvcs', 'Tot_Benes', 'Avg_Mdcr_Alowd_Amt', 'Avg_Mdcr_Pymt_Amt'],
+    requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'],
   },
   {
     id: 'pa_home_health',

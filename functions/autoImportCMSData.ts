@@ -206,15 +206,16 @@ function detectCMSColumns(headers, importType) {
         });
     } else if (importType === 'cms_order_referring') {
         const patterns = {
-            'Year': ['year', 'data_year'],
-            'Total Referrals': ['total_referrals', 'referral_count'],
-            'Home Health Referrals': ['hha_referrals', 'home_health'],
-            'Hospice Referrals': ['hospice_referrals', 'hospice'],
+            'HHA': ['hha'],
+            'HOSPICE': ['hospice'],
+            'DME': ['dme'],
+            'PARTB': ['partb'],
+            'PMD': ['pmd'],
         };
 
         Object.entries(patterns).forEach(([key, patterns]) => {
             for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h.includes(pattern));
+                const idx = normalizedHeaders.findIndex(h => h === pattern);
                 if (idx !== -1) {
                     mapping[key] = headers[idx];
                     break;
@@ -235,10 +236,18 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData['Medicare Beneficiaries'] = row[columnMapping['Medicare Beneficiaries']] || '0';
         mappedData['Medicare Payment Amount'] = row[columnMapping['Medicare Payment Amount']] || '0';
     } else if (importType === 'cms_order_referring') {
-        mappedData.Year = row[columnMapping['Year']] || String(year);
-        mappedData['Total Referrals'] = row[columnMapping['Total Referrals']] || '0';
-        mappedData['Home Health Referrals'] = row[columnMapping['Home Health Referrals']] || '0';
-        mappedData['Hospice Referrals'] = row[columnMapping['Hospice Referrals']] || '0';
+        const hha = row[columnMapping['HHA']] === 'Y' ? 1 : 0;
+        const hospice = row[columnMapping['HOSPICE']] === 'Y' ? 1 : 0;
+        const dme = row[columnMapping['DME']] === 'Y' ? 1 : 0;
+        const pmd = row[columnMapping['PMD']] === 'Y' ? 1 : 0;
+        
+        mappedData.year = year;
+        mappedData.total_referrals = hha + hospice + dme + pmd;
+        mappedData.home_health_referrals = hha;
+        mappedData.hospice_referrals = hospice;
+        mappedData.dme_referrals = dme;
+        mappedData.snf_referrals = 0;
+        mappedData.imaging_referrals = 0;
     }
 
     return mappedData;
@@ -299,10 +308,13 @@ async function importCMSData(base44, importType, validData, year) {
 
                 const refData = {
                     npi: row.npi,
-                    year: parseInt(row.Year || year),
-                    total_referrals: parseFloat(row['Total Referrals'] || 0),
-                    home_health_referrals: parseFloat(row['Home Health Referrals'] || 0),
-                    hospice_referrals: parseFloat(row['Hospice Referrals'] || 0),
+                    year: parseInt(row.year),
+                    total_referrals: parseInt(row.total_referrals),
+                    home_health_referrals: parseInt(row.home_health_referrals),
+                    hospice_referrals: parseInt(row.hospice_referrals),
+                    snf_referrals: parseInt(row.snf_referrals || 0),
+                    dme_referrals: parseInt(row.dme_referrals || 0),
+                    imaging_referrals: parseInt(row.imaging_referrals || 0),
                 };
 
                 const existingRef = await base44.asServiceRole.entities.CMSReferral.filter({
