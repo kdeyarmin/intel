@@ -105,7 +105,7 @@ export default function AppLayout({ children, currentPageName }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-blue-50/20">
+      <main className="flex-1 overflow-auto bg-blue-50">
         {children}
       </main>
     </div>
