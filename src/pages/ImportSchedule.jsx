@@ -152,12 +152,33 @@ export default function ImportSchedule() {
   const runNowMutation = useMutation({
     mutationFn: async (schedule) => {
       setRunningScheduleId(schedule.id);
-      await base44.functions.invoke('autoImportCMSData', {
-        import_type: schedule.import_type,
-        file_url: schedule.api_url,
-        year: new Date().getFullYear(),
-        dry_run: false,
-      });
+      if (schedule.import_type === 'nppes_registry') {
+        const cfg = schedule.nppes_config || {};
+        if (cfg.crawl_all_states) {
+          await base44.functions.invoke('nppesStateCrawler', {
+            action: 'process_next',
+            taxonomy_description: cfg.taxonomy_description || '',
+            entity_type: cfg.entity_type || '',
+            dry_run: false,
+          });
+        } else {
+          await base44.functions.invoke('importNPPESRegistry', {
+            state: cfg.state || '',
+            taxonomy_description: cfg.taxonomy_description || '',
+            entity_type: cfg.entity_type || '',
+            city: cfg.city || '',
+            postal_code: cfg.postal_code || '',
+            dry_run: false,
+          });
+        }
+      } else {
+        await base44.functions.invoke('autoImportCMSData', {
+          import_type: schedule.import_type,
+          file_url: schedule.api_url,
+          year: new Date().getFullYear(),
+          dry_run: false,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['importBatches'] });
@@ -247,8 +268,12 @@ export default function ImportSchedule() {
                 </div>
               )}
 
+              {importType === 'nppes_registry' && (
+                <NPPESScheduleForm config={nppesConfig} onChange={setNppesConfig} />
+              )}
+
               <p className="text-xs text-gray-500">
-                The schedule will automatically import new data from CMS at the specified time.
+                The schedule will automatically import data at the specified time. {importType === 'nppes_registry' ? 'NPPES crawls may take several hours for all states.' : ''}
               </p>
 
               <Button
@@ -301,10 +326,26 @@ export default function ImportSchedule() {
                         <div className="text-sm text-gray-600 space-y-1">
                           <p>Frequency: {schedule.schedule_frequency} at {schedule.schedule_time}</p>
                           {schedule.last_run_at && (
-                            <p className="text-xs text-gray-500">Last run: {new Date(schedule.last_run_at).toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">
+                              Last run: {new Date(schedule.last_run_at).toLocaleString()}
+                              {schedule.last_run_status && (
+                                <Badge variant={schedule.last_run_status === 'success' ? 'default' : schedule.last_run_status === 'partial' ? 'secondary' : 'destructive'} className="ml-2 text-[10px] px-1 py-0">
+                                  {schedule.last_run_status}
+                                </Badge>
+                              )}
+                            </p>
+                          )}
+                          {schedule.last_run_summary && (
+                            <p className="text-xs text-gray-400">{schedule.last_run_summary}</p>
                           )}
                           {schedule.next_run_at && (
                             <p className="text-xs text-gray-500">Next run: {new Date(schedule.next_run_at).toLocaleString()}</p>
+                          )}
+                          {schedule.nppes_config && (
+                            <p className="text-xs text-blue-600">
+                              NPPES: {schedule.nppes_config.crawl_all_states ? 'All states' : schedule.nppes_config.state || 'Any'}
+                              {schedule.nppes_config.taxonomy_description ? ` • ${schedule.nppes_config.taxonomy_description}` : ''}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -318,6 +359,7 @@ export default function ImportSchedule() {
                         >
                           {runningScheduleId === schedule.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 text-green-600" />}
                         </Button>
+
                         <Button variant="outline" size="icon" onClick={() => handleEdit(schedule)} title="Edit">
                           <Edit className="w-4 h-4" />
                         </Button>
