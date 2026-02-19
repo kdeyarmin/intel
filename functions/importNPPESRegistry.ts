@@ -1,8 +1,184 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
-const BATCH_LIMIT = 200; // NPPES API max per request
-const MAX_PAGES = 50; // Safety limit: 50 * 200 = 10,000 providers max per run
+const BATCH_LIMIT = 200;
+const MAX_PAGES = 50;
+const BULK_SIZE = 50;
+const WRITE_CONCURRENCY = 5;
+
+// Run promise-returning fns in batches of N
+async function runConcurrent(tasks, concurrency) {
+    const results = [];
+    for (let i = 0; i < tasks.length; i += concurrency) {
+        const batch = tasks.slice(i, i + concurrency);
+        const batchResults = await Promise.all(batch.map(fn => fn()));
+        results.push(...batchResults);
+    }
+    return results;
+}
+
+// Batch-lookup existing records by NPI using parallel queries
+async function batchLookupByNPI(entity, npis, base44) {
+    const resultMap = {};
+    const lookupTasks = npis.map(npi => async () => {
+        try {
+            const found = await base44.asServiceRole.entities[entity].filter({ npi });
+            if (found.length > 0) resultMap[npi] = found;
+        } catch (e) { /* ignore */ }
+    });
+    await runConcurrent(lookupTasks, WRITE_CONCURRENCY);
+    return resultMap;
+}
+
+function isIdentical(incoming, existing, fields) {
+    for (const f of fields) {
+        const a = (incoming[f] ?? '').toString().trim();
+        const b = (existing[f] ?? '').toString().trim();
+        if (a !== b) return false;
+    }
+    return true;
+}
+
+function isNewer(incoming, existing) {
+    const inDate = incoming.last_update_date || incoming.enumeration_date || '';
+    const exDate = existing.last_update_date || existing.enumeration_date || '';
+    if (!inDate) return false;
+    if (!exDate) return true;
+    return inDate > exDate;
+}
+
+async function upsertProviders(records, base44) {
+    const KEY_FIELDS = ['first_name','last_name','organization_name','credential','gender','status','entity_type','enumeration_date','last_update_date'];
+    let imported = 0, updated = 0, skipped = 0;
+
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = [...new Set(chunk.map(p => p.npi))];
+        const existingMap = await batchLookupByNPI('Provider', npis, base44);
+
+        const toCreate = [];
+        const updateTasks = [];
+
+        for (const p of chunk) {
+            const existing = existingMap[p.npi]?.[0];
+            if (!existing) {
+                toCreate.push(p);
+            } else if (isIdentical(p, existing, KEY_FIELDS)) {
+                skipped++;
+            } else if (isNewer(p, existing)) {
+                const merged = { ...p };
+                for (const f of KEY_FIELDS) { if (!merged[f] && existing[f]) merged[f] = existing[f]; }
+                merged.needs_nppes_enrichment = false;
+                updateTasks.push(async () => {
+                    try { await base44.asServiceRole.entities.Provider.update(existing.id, merged); } catch (e) {}
+                });
+            } else {
+                skipped++;
+            }
+        }
+
+        if (updateTasks.length > 0) {
+            await runConcurrent(updateTasks, WRITE_CONCURRENCY);
+            updated += updateTasks.length;
+        }
+
+        if (toCreate.length > 0) {
+            try {
+                await base44.asServiceRole.entities.Provider.bulkCreate(toCreate);
+                imported += toCreate.length;
+            } catch (e) {
+                const tasks = toCreate.map(p => async () => {
+                    try { await base44.asServiceRole.entities.Provider.create(p); imported++; } catch (err) {}
+                });
+                await runConcurrent(tasks, WRITE_CONCURRENCY);
+            }
+        }
+        if (i > 0 && i % 500 === 0) console.log(`[Providers] ${i}/${records.length}`);
+    }
+    return { imported, updated, skipped };
+}
+
+async function upsertLocations(records, base44) {
+    const FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
+    let imported = 0, updated = 0, skipped = 0;
+
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = [...new Set(chunk.map(l => l.npi))];
+        const existingMap = await batchLookupByNPI('ProviderLocation', npis, base44);
+
+        const toCreate = [];
+        const updateTasks = [];
+
+        for (const loc of chunk) {
+            const matches = existingMap[loc.npi] || [];
+            const match = matches.find(ex =>
+                ex.location_type === loc.location_type &&
+                (ex.address_1 || '').trim().toLowerCase() === (loc.address_1 || '').trim().toLowerCase() &&
+                (ex.zip || '').substring(0, 5) === (loc.zip || '').substring(0, 5)
+            );
+            if (!match) {
+                toCreate.push(loc);
+            } else if (isIdentical(loc, match, FIELDS)) {
+                skipped++;
+            } else {
+                const merged = { ...loc };
+                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                updateTasks.push(async () => {
+                    try { await base44.asServiceRole.entities.ProviderLocation.update(match.id, merged); } catch (e) {}
+                });
+            }
+        }
+
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, WRITE_CONCURRENCY); updated += updateTasks.length; }
+        if (toCreate.length > 0) {
+            try { await base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate); imported += toCreate.length; } catch (e) {
+                const tasks = toCreate.map(l => async () => { try { await base44.asServiceRole.entities.ProviderLocation.create(l); imported++; } catch (err) {} });
+                await runConcurrent(tasks, WRITE_CONCURRENCY);
+            }
+        }
+    }
+    return { imported, updated, skipped };
+}
+
+async function upsertTaxonomies(records, base44) {
+    const FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
+    let imported = 0, updated = 0, skipped = 0;
+
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = [...new Set(chunk.map(t => t.npi))];
+        const existingMap = await batchLookupByNPI('ProviderTaxonomy', npis, base44);
+
+        const toCreate = [];
+        const updateTasks = [];
+
+        for (const tax of chunk) {
+            const matches = existingMap[tax.npi] || [];
+            const match = matches.find(ex => (ex.taxonomy_code || '').trim() === (tax.taxonomy_code || '').trim());
+            if (!match) {
+                toCreate.push(tax);
+            } else if (isIdentical(tax, match, FIELDS)) {
+                skipped++;
+            } else {
+                const merged = { ...tax };
+                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                updateTasks.push(async () => {
+                    try { await base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged); } catch (e) {}
+                });
+            }
+        }
+
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, WRITE_CONCURRENCY); updated += updateTasks.length; }
+        if (toCreate.length > 0) {
+            try { await base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate); imported += toCreate.length; } catch (e) {
+                const tasks = toCreate.map(t => async () => { try { await base44.asServiceRole.entities.ProviderTaxonomy.create(t); imported++; } catch (err) {} });
+                await runConcurrent(tasks, WRITE_CONCURRENCY);
+            }
+        }
+    }
+    return { imported, updated, skipped };
+}
 
 Deno.serve(async (req) => {
     try {
@@ -15,19 +191,11 @@ Deno.serve(async (req) => {
 
         const payload = await req.json();
         const {
-            state = '',
-            taxonomy_description = '',
-            entity_type = '', // 'NPI-1' (Individual) or 'NPI-2' (Organization)
-            city = '',
-            postal_code = '',
-            first_name = '',
-            last_name = '',
-            organization_name = '',
-            dry_run = false,
-            max_pages = MAX_PAGES,
+            state = '', taxonomy_description = '', entity_type = '',
+            city = '', postal_code = '', first_name = '', last_name = '',
+            organization_name = '', dry_run = false, max_pages = MAX_PAGES,
         } = payload;
 
-        // Build NPPES API query params
         const params = new URLSearchParams();
         params.set('version', '2.1');
         params.set('limit', String(BATCH_LIMIT));
@@ -40,13 +208,11 @@ Deno.serve(async (req) => {
         if (last_name) params.set('last_name', last_name);
         if (organization_name) params.set('organization_name', organization_name);
 
-        // Require at least one substantive search criteria (NPPES API requires more than just enumeration_type)
         const hasSubstantiveFilter = state || taxonomy_description || city || postal_code || first_name || last_name || organization_name;
         if (!hasSubstantiveFilter) {
-            return Response.json({ error: 'At least one search criteria beyond Provider Type is required (e.g., State, Specialty, City, Name)' }, { status: 400 });
+            return Response.json({ error: 'At least one search criteria beyond Provider Type is required' }, { status: 400 });
         }
 
-        // Create import batch
         const batch = await base44.asServiceRole.entities.ImportBatch.create({
             import_type: 'nppes_registry',
             file_name: `nppes_api_${state || 'all'}_${taxonomy_description || 'all'}_${Date.now()}`,
@@ -55,10 +221,10 @@ Deno.serve(async (req) => {
             dry_run,
         });
 
-        console.log(`Starting NPPES Registry import. Filters: state=${state}, taxonomy=${taxonomy_description}, entity_type=${entity_type}`);
+        console.log(`Starting NPPES import. state=${state}, taxonomy=${taxonomy_description}, entity_type=${entity_type}`);
 
         try {
-            // Fetch all pages from NPPES API
+            // Fetch all pages
             let allResults = [];
             let skip = 0;
             const pageLimit = Math.min(max_pages, MAX_PAGES);
@@ -69,80 +235,49 @@ Deno.serve(async (req) => {
                 console.log(`Fetching page ${page + 1}, skip=${skip}...`);
 
                 const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error(`NPPES API error: ${response.status} ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`NPPES API error: ${response.status} ${response.statusText}`);
 
                 const data = await response.json();
-                
-                // Check for NPPES API errors
                 if (data.Errors && data.Errors.length > 0) {
-                    const errMsg = data.Errors.map(e => e.description).join('; ');
-                    console.error(`NPPES API returned errors: ${errMsg}`);
-                    throw new Error(`NPPES API error: ${errMsg}`);
+                    throw new Error(`NPPES API error: ${data.Errors.map(e => e.description).join('; ')}`);
                 }
-                
-                const resultCount = data.result_count || 0;
+
                 const results = data.results || [];
-
-                if (results.length === 0) {
-                    console.log(`No more results at skip=${skip}. Done.`);
-                    break;
-                }
-
+                if (results.length === 0) break;
                 allResults = allResults.concat(results);
-                console.log(`Got ${results.length} results (total so far: ${allResults.length})`);
+                console.log(`Got ${results.length} results (total: ${allResults.length})`);
 
-                // Update batch progress
-                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    total_rows: resultCount || allResults.length,
-                });
-
-                if (results.length < BATCH_LIMIT) {
-                    break; // Last page
-                }
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, { total_rows: data.result_count || allResults.length });
+                if (results.length < BATCH_LIMIT) break;
                 skip += BATCH_LIMIT;
             }
 
             console.log(`Total NPPES results fetched: ${allResults.length}`);
 
-            // Transform NPPES results to provider data
-            let validRows = 0;
-            let invalidRows = 0;
-            let duplicateRows = 0;
+            // Transform
+            let validRows = 0, invalidRows = 0, duplicateRows = 0;
             const seenNPIs = new Set();
-            const providerRecords = [];
-            const locationRecords = [];
-            const taxonomyRecords = [];
-            const errorSamples = [];
+            const providerRecords = [], locationRecords = [], taxonomyRecords = [], errorSamples = [];
 
             for (const result of allResults) {
                 const npi = String(result.number || '');
                 if (!npi || npi.length !== 10) {
                     invalidRows++;
-                    if (errorSamples.length < 10) {
-                        errorSamples.push({ npi: npi || 'missing', message: 'Invalid NPI' });
-                    }
+                    if (errorSamples.length < 10) errorSamples.push({ npi: npi || 'missing', message: 'Invalid NPI' });
                     continue;
                 }
-                if (seenNPIs.has(npi)) {
-                    duplicateRows++;
-                    continue;
-                }
+                if (seenNPIs.has(npi)) { duplicateRows++; continue; }
                 seenNPIs.add(npi);
                 validRows++;
 
                 const basic = result.basic || {};
                 const isIndividual = result.enumeration_type === 'NPI-1';
-
-                // Build provider record
                 const provider = {
                     npi,
                     entity_type: isIndividual ? 'Individual' : 'Organization',
                     status: basic.status === 'A' ? 'Active' : 'Deactivated',
                     needs_nppes_enrichment: false,
                 };
-
                 if (isIndividual) {
                     provider.first_name = (basic.first_name || '').trim();
                     provider.last_name = (basic.last_name || '').trim();
@@ -152,19 +287,11 @@ Deno.serve(async (req) => {
                 } else {
                     provider.organization_name = (basic.organization_name || '').trim();
                 }
-
-                if (basic.enumeration_date) {
-                    provider.enumeration_date = basic.enumeration_date;
-                }
-                if (basic.last_updated) {
-                    provider.last_update_date = basic.last_updated;
-                }
-
+                if (basic.enumeration_date) provider.enumeration_date = basic.enumeration_date;
+                if (basic.last_updated) provider.last_update_date = basic.last_updated;
                 providerRecords.push(provider);
 
-                // Build location records from addresses
-                const addresses = result.addresses || [];
-                for (const addr of addresses) {
+                for (const addr of (result.addresses || [])) {
                     locationRecords.push({
                         npi,
                         location_type: addr.address_purpose === 'MAILING' ? 'Mailing' : 'Practice',
@@ -179,9 +306,7 @@ Deno.serve(async (req) => {
                     });
                 }
 
-                // Build taxonomy records
-                const taxonomies = result.taxonomies || [];
-                for (const tax of taxonomies) {
+                for (const tax of (result.taxonomies || [])) {
                     taxonomyRecords.push({
                         npi,
                         taxonomy_code: (tax.code || '').trim(),
@@ -193,7 +318,6 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // Update batch with validation results
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: dry_run ? 'completed' : 'processing',
                 total_rows: allResults.length,
@@ -203,88 +327,31 @@ Deno.serve(async (req) => {
                 error_samples: errorSamples,
             });
 
-            let importedProviders = 0;
-            let importedLocations = 0;
-            let importedTaxonomies = 0;
+            let provResult = { imported: 0, updated: 0, skipped: 0 };
+            let locResult = { imported: 0, updated: 0, skipped: 0 };
+            let taxResult = { imported: 0, updated: 0, skipped: 0 };
 
             if (!dry_run && providerRecords.length > 0) {
-                const BULK_SIZE = 50;
+                console.log(`Parallel write: ${providerRecords.length} providers, ${locationRecords.length} locations, ${taxonomyRecords.length} taxonomies`);
 
-                // Bulk create providers
-                console.log(`Importing ${providerRecords.length} providers...`);
-                for (let i = 0; i < providerRecords.length; i += BULK_SIZE) {
-                    const chunk = providerRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.Provider.bulkCreate(chunk);
-                        importedProviders += chunk.length;
-                    } catch (e) {
-                        // Some may already exist — try individual creates/updates
-                        for (const p of chunk) {
-                            try {
-                                await base44.asServiceRole.entities.Provider.create(p);
-                                importedProviders++;
-                            } catch (innerErr) {
-                                // Try update if create fails (likely duplicate NPI)
-                                try {
-                                    const existing = await base44.asServiceRole.entities.Provider.filter({ npi: p.npi });
-                                    if (existing.length > 0) {
-                                        await base44.asServiceRole.entities.Provider.update(existing[0].id, p);
-                                        importedProviders++;
-                                    }
-                                } catch (updateErr) {
-                                    console.error(`Failed to upsert provider ${p.npi}:`, updateErr.message);
-                                }
-                            }
-                        }
-                    }
-                    if (i % 500 === 0 && i > 0) {
-                        console.log(`Provider import progress: ${i}/${providerRecords.length}`);
-                    }
-                }
+                [provResult, locResult, taxResult] = await Promise.all([
+                    upsertProviders(providerRecords, base44),
+                    upsertLocations(locationRecords, base44),
+                    upsertTaxonomies(taxonomyRecords, base44),
+                ]);
 
-                // Bulk create locations
-                console.log(`Importing ${locationRecords.length} locations...`);
-                for (let i = 0; i < locationRecords.length; i += BULK_SIZE) {
-                    const chunk = locationRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.ProviderLocation.bulkCreate(chunk);
-                        importedLocations += chunk.length;
-                    } catch (e) {
-                        // Best effort
-                        for (const loc of chunk) {
-                            try {
-                                await base44.asServiceRole.entities.ProviderLocation.create(loc);
-                                importedLocations++;
-                            } catch (locErr) {
-                                // Skip duplicates
-                            }
-                        }
-                    }
-                }
-
-                // Bulk create taxonomies
-                console.log(`Importing ${taxonomyRecords.length} taxonomies...`);
-                for (let i = 0; i < taxonomyRecords.length; i += BULK_SIZE) {
-                    const chunk = taxonomyRecords.slice(i, i + BULK_SIZE);
-                    try {
-                        await base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(chunk);
-                        importedTaxonomies += chunk.length;
-                    } catch (e) {
-                        for (const tax of chunk) {
-                            try {
-                                await base44.asServiceRole.entities.ProviderTaxonomy.create(tax);
-                                importedTaxonomies++;
-                            } catch (taxErr) {
-                                // Skip duplicates
-                            }
-                        }
-                    }
-                }
+                console.log(`Write complete: Prov(${provResult.imported}c/${provResult.updated}u/${provResult.skipped}s) Loc(${locResult.imported}c/${locResult.updated}u/${locResult.skipped}s) Tax(${taxResult.imported}c/${taxResult.updated}u/${taxResult.skipped}s)`);
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     status: 'completed',
-                    imported_rows: importedProviders,
-                    updated_rows: 0,
+                    imported_rows: provResult.imported,
+                    updated_rows: provResult.updated + locResult.updated + taxResult.updated,
+                    skipped_rows: provResult.skipped + locResult.skipped + taxResult.skipped,
+                    dedup_summary: {
+                        providers: provResult,
+                        locations: locResult,
+                        taxonomies: taxResult,
+                    },
                     completed_at: new Date().toISOString(),
                 });
             } else {
@@ -294,7 +361,6 @@ Deno.serve(async (req) => {
                 });
             }
 
-            // Log audit
             await base44.asServiceRole.entities.AuditEvent.create({
                 event_type: 'import',
                 user_email: user.email,
@@ -302,11 +368,12 @@ Deno.serve(async (req) => {
                     action: 'NPPES Registry API Import',
                     entity: 'nppes_registry',
                     row_count: validRows,
-                    imported_providers: importedProviders,
-                    imported_locations: importedLocations,
-                    imported_taxonomies: importedTaxonomies,
+                    imported_providers: provResult.imported,
+                    updated_providers: provResult.updated,
+                    imported_locations: locResult.imported,
+                    imported_taxonomies: taxResult.imported,
                     filters: { state, taxonomy_description, entity_type, city, postal_code },
-                    message: dry_run ? 'Dry run validation completed' : 'Import completed successfully',
+                    message: dry_run ? 'Dry run completed' : 'Import completed',
                 },
                 timestamp: new Date().toISOString(),
             });
@@ -318,9 +385,11 @@ Deno.serve(async (req) => {
                 valid_rows: validRows,
                 invalid_rows: invalidRows,
                 duplicate_rows: duplicateRows,
-                imported_providers: importedProviders,
-                imported_locations: importedLocations,
-                imported_taxonomies: importedTaxonomies,
+                imported_providers: provResult.imported,
+                updated_providers: provResult.updated,
+                skipped_providers: provResult.skipped,
+                imported_locations: locResult.imported,
+                imported_taxonomies: taxResult.imported,
                 dry_run,
             });
 
@@ -345,7 +414,6 @@ Deno.serve(async (req) => {
             } catch (notifErr) {
                 console.error('Failed to create error report:', notifErr);
             }
-
             throw error;
         }
 
