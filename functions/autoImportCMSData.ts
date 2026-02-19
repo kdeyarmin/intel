@@ -303,16 +303,23 @@ Deno.serve(async (req) => {
                     validData.push(mappedData);
                 }
 
-                // Update progress periodically (every 5000 rows)
-                if (i > 0 && i % 5000 === 0) {
+                // Update progress periodically (every 2000 rows) and check time
+                if (i > 0 && i % 2000 === 0) {
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         valid_rows: validRows,
                         invalid_rows: invalidRows,
                         duplicate_rows: duplicateRows,
                     });
                     console.log(`Validation progress: ${i}/${rows.length} rows processed, ${validRows} valid`);
+
+                    if (isTimeUp(startTime)) {
+                        console.warn(`Time limit reached during validation at row ${i}/${rows.length}. Saving partial progress.`);
+                        break;
+                    }
                 }
             } // end for loop
+
+            const validationTimedOut = isTimeUp(startTime) && validData.length < validRows;
 
             // Update batch with validation results
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
@@ -327,15 +334,19 @@ Deno.serve(async (req) => {
             // Import data if not dry run
             let importedCount = 0;
             let updatedCount = 0;
+            let partialImport = false;
 
-            if (!dry_run && validData.length > 0) {
-                const result = await importCMSData(base44, import_type, validData, year);
+            if (!dry_run && validData.length > 0 && !isTimeUp(startTime)) {
+                const result = await importCMSData(base44, import_type, validData, year, startTime);
                 importedCount = result.imported;
                 updatedCount = result.updated;
                 const skippedCount = result.skipped || 0;
+                partialImport = result.partial || false;
+
+                const finalStatus = partialImport ? 'paused' : 'completed';
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    status: 'completed',
+                    status: finalStatus,
                     imported_rows: importedCount,
                     updated_rows: updatedCount,
                     skipped_rows: skippedCount,
@@ -344,8 +355,21 @@ Deno.serve(async (req) => {
                         updated: updatedCount,
                         skipped: skippedCount,
                     },
-                    completed_at: new Date().toISOString(),
+                    ...(partialImport ? {
+                        paused_at: new Date().toISOString(),
+                        cancel_reason: `Auto-paused: time limit reached after importing ${importedCount} of ${validData.length} records`,
+                    } : {
+                        completed_at: new Date().toISOString(),
+                    }),
                 });
+            } else if (isTimeUp(startTime)) {
+                // Ran out of time before even starting import
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                    status: 'paused',
+                    paused_at: new Date().toISOString(),
+                    cancel_reason: `Auto-paused: time limit reached during validation (${validRows} validated of ${rows.length})`,
+                });
+                partialImport = true;
             } else {
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     status: 'completed',
@@ -363,13 +387,17 @@ Deno.serve(async (req) => {
                     row_count: validRows,
                     imported_count: importedCount,
                     updated_count: updatedCount,
-                    message: dry_run ? 'Dry run validation completed' : 'Import completed successfully'
+                    partial: partialImport,
+                    message: partialImport
+                        ? `Partial import — paused after ${importedCount} records due to time limit`
+                        : dry_run ? 'Dry run validation completed' : 'Import completed successfully'
                 },
                 timestamp: new Date().toISOString(),
             });
 
             return Response.json({
                 success: true,
+                partial: partialImport,
                 batch_id: batch.id,
                 total_rows: rows.length,
                 valid_rows: validRows,
@@ -378,6 +406,7 @@ Deno.serve(async (req) => {
                 imported_rows: importedCount,
                 updated_rows: updatedCount,
                 dry_run,
+                elapsed_ms: Date.now() - startTime,
             });
 
         } catch (error) {
