@@ -12,12 +12,12 @@ import { Switch } from '@/components/ui/switch';
 import { Calendar, Plus, Trash2, Power, PowerOff, Edit, History, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 
 const importTypeOptions = [
-  { value: 'cms_utilization', label: 'CMS Provider Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/4c394e8d-c6b0-4e9f-8e98-3f85c1ea5d12/data' },
-  { value: 'cms_order_referring', label: 'Order & Referring Providers', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/26e73b72-9e86-4af7-bd35-dedb33f1e986/data' },
-  { value: 'opt_out_physicians', label: 'Medicare Opt-Out Physicians', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/6bd6b1dd-208c-4f9c-88b8-b15fec6db548/data' },
-  { value: 'provider_service_utilization', label: 'Provider Service Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/e38967e5-4acc-4f3c-a0dd-8c0d038e2b51/data' },
-  { value: 'home_health_enrollments', label: 'Home Health Enrollments', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/8c52eb6b-1cce-4913-a16d-c2fa59c6ca67/data' },
-  { value: 'hospice_enrollments', label: 'Hospice Enrollments', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/41f3f9fb-1d06-4b69-b8e2-f3d8c3c9b6a1/data' },
+  { value: 'cms_utilization', label: 'CMS Provider Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data' },
+  { value: 'cms_order_referring', label: 'Order & Referring Providers', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/939226be-b107-476e-8777-f199a840138a/data' },
+  { value: 'opt_out_physicians', label: 'Medicare Opt-Out Physicians', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data' },
+  { value: 'provider_service_utilization', label: 'Provider Service Utilization', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data' },
+  { value: 'home_health_enrollments', label: 'Home Health Enrollments', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data' },
+  { value: 'hospice_enrollments', label: 'Hospice Enrollments', apiUrl: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data' },
 ];
 
 export default function ImportSchedule() {
