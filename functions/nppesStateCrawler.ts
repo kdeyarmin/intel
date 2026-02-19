@@ -188,19 +188,18 @@ Deno.serve(async (req) => {
         let stateToProcess = target_state;
 
         if (!stateToProcess) {
-            // Find first pending state
+            // Find first pending state — skip completed, failed, processing, and validating
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
                 { import_type: 'nppes_registry' },
                 '-created_date',
                 200
             );
-            const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_'));
+            const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_') && !b.file_name.includes('stop_signal'));
             const doneStates = new Set();
             for (const b of crawlerBatches) {
                 const st = b.file_name.split('_')[1];
-                if (b.status === 'completed' || b.status === 'processing' || b.status === 'validating') {
-                    doneStates.add(st);
-                }
+                // Skip ANY state that already has a batch record (completed, failed, processing, validating)
+                doneStates.add(st);
             }
             stateToProcess = US_STATES.find(s => !doneStates.has(s));
         }
@@ -262,7 +261,7 @@ Deno.serve(async (req) => {
             // This is much faster than iterating 676 name prefixes.
             const zipPrefixes = STATE_ZIP_PREFIXES[stateToProcess] || [];
             if (zipPrefixes.length === 0) {
-                console.warn(`[${stateToProcess}] No zip prefixes configured — falling back to name-based crawl`);
+                throw new Error(`No zip prefixes configured for state ${stateToProcess} — cannot crawl without additional search criteria`);
             }
 
             for (const enumType of enumTypes) {
