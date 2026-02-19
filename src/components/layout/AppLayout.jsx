@@ -52,32 +52,32 @@ export default function AppLayout({ children, currentPageName }) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56' : 'w-16'} bg-gradient-to-b from-blue-600 to-blue-800 text-white transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-56' : 'w-16'} bg-gradient-to-b from-gray-100 to-gray-200 text-gray-800 transition-all duration-300 flex flex-col border-r border-gray-300`}>
         <div className="p-4 flex items-center justify-between">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
                 alt="CareMetric AI"
-                className="w-9 h-9 rounded-lg"
+                className="w-9 h-9 rounded-lg bg-transparent mix-blend-multiply"
               />
               <div>
                 <h1 className="text-lg font-bold leading-tight">CareMetric <span className="text-red-400">AI</span></h1>
-                <p className="text-[10px] text-blue-200">Provider Intel</p>
+                <p className="text-[10px] text-gray-500">Provider Intel</p>
               </div>
             </div>
           ) : (
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
               alt="CareMetric AI"
-              className="w-8 h-8 rounded-lg"
+              className="w-8 h-8 rounded-lg bg-transparent mix-blend-multiply"
             />
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-white hover:bg-blue-500"
+            className="text-gray-600 hover:bg-gray-300"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
@@ -93,8 +93,8 @@ export default function AppLayout({ children, currentPageName }) {
                 to={createPageUrl(item.page)}
                 className={`flex items-center px-3 py-3 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-blue-900 text-white'
-                    : 'text-blue-50 hover:bg-blue-500'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
@@ -104,17 +104,17 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-blue-500">
+        <div className="p-4 border-t border-gray-300">
           {user && sidebarOpen && (
             <div className="mb-3">
-              <p className="text-sm font-medium text-white">{user.full_name || user.email}</p>
-              <p className="text-xs text-blue-200 capitalize">{user.role?.replace('_', ' ')}</p>
+              <p className="text-sm font-medium text-gray-800">{user.full_name || user.email}</p>
+              <p className="text-xs text-gray-500 capitalize">{user.role?.replace('_', ' ')}</p>
             </div>
           )}
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-white hover:bg-blue-500 justify-start"
+            className="w-full text-gray-700 hover:bg-gray-300 justify-start"
           >
             <LogOut className="w-5 h-5" />
             {sidebarOpen && <span className="ml-3">Logout</span>}
