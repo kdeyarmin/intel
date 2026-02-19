@@ -55,26 +55,26 @@ export default function Dashboard() {
       title: 'Total Providers',
       value: totalProviders.toLocaleString(),
       icon: Users,
-      color: 'bg-teal-500',
+      gradient: 'bg-gradient-to-br from-blue-500 to-blue-700',
     },
     {
       title: 'Active Medicare',
       value: activeMedicare.toLocaleString(),
       icon: Activity,
-      color: 'bg-blue-500',
+      gradient: 'bg-gradient-to-br from-blue-400 to-indigo-600',
     },
     {
       title: 'Top State',
       value: topStates[0]?.[0] || 'N/A',
       subtitle: topStates[0]?.[1] ? `${topStates[0][1]} providers` : '',
       icon: MapPin,
-      color: 'bg-purple-500',
+      gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
     },
     {
       title: 'Last Refresh',
       value: lastRefresh,
       icon: Calendar,
-      color: 'bg-orange-500',
+      gradient: 'bg-gradient-to-br from-indigo-400 to-blue-600',
     },
   ];
 
@@ -89,25 +89,25 @@ export default function Dashboard() {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.title} className="overflow-hidden">
+            <Card key={kpi.title} className={`overflow-hidden border-0 shadow-md ${kpi.gradient} text-white`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-gray-600">
+                  <CardTitle className="text-sm font-medium text-white/80">
                     {kpi.title}
                   </CardTitle>
-                  <div className={`${kpi.color} p-3 rounded-lg`}>
+                  <div className="bg-white/20 p-2.5 rounded-lg">
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {loadingProviders || loadingUtil ? (
-                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-24 bg-white/20" />
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-gray-900">{kpi.value}</div>
+                    <div className="text-3xl font-bold text-white">{kpi.value}</div>
                     {kpi.subtitle && (
-                      <p className="text-sm text-gray-500 mt-1">{kpi.subtitle}</p>
+                      <p className="text-sm text-white/70 mt-1">{kpi.subtitle}</p>
                     )}
                   </>
                 )}
@@ -118,7 +118,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card>
+        <Card className="bg-white border-gray-200/80 shadow-sm">
           <CardHeader>
             <CardTitle>Top States by Provider Count</CardTitle>
           </CardHeader>
@@ -133,7 +133,7 @@ export default function Dashboard() {
                   topStates.map(([state, count], index) => (
                     <div key={state} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold">
                           {index + 1}
                         </div>
                         <span className="font-medium text-gray-900">{state}</span>
@@ -149,7 +149,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white border-gray-200/80 shadow-sm">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
@@ -158,7 +158,7 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {auditEvents.slice(0, 5).map((event) => (
                   <div key={event.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-teal-500 mt-2" />
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900 capitalize">
                         {event.event_type?.replace('_', ' ')}

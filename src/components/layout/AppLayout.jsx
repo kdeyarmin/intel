@@ -44,7 +44,7 @@ export default function AppLayout({ children, currentPageName }) {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-teal-600 to-teal-700 text-white transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-blue-600 to-blue-800 text-white transition-all duration-300 flex flex-col`}>
         <div className="p-4 flex items-center justify-between">
           {sidebarOpen && (
             <div>
@@ -56,7 +56,7 @@ export default function AppLayout({ children, currentPageName }) {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-white hover:bg-teal-500"
+            className="text-white hover:bg-blue-500"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </Button>
@@ -72,8 +72,8 @@ export default function AppLayout({ children, currentPageName }) {
                 to={createPageUrl(item.page)}
                 className={`flex items-center px-3 py-3 rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-teal-800 text-white'
-                    : 'text-teal-50 hover:bg-teal-500'
+                    ? 'bg-blue-900 text-white'
+                    : 'text-blue-50 hover:bg-blue-500'
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
@@ -83,17 +83,17 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-teal-500">
+        <div className="p-4 border-t border-blue-500">
           {user && sidebarOpen && (
             <div className="mb-3">
               <p className="text-sm font-medium text-white">{user.full_name || user.email}</p>
-              <p className="text-xs text-teal-200 capitalize">{user.role?.replace('_', ' ')}</p>
+              <p className="text-xs text-blue-200 capitalize">{user.role?.replace('_', ' ')}</p>
             </div>
           )}
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-white hover:bg-teal-500 justify-start"
+            className="w-full text-white hover:bg-blue-500 justify-start"
           >
             <LogOut className="w-5 h-5" />
             {sidebarOpen && <span className="ml-3">Logout</span>}
@@ -102,7 +102,7 @@ export default function AppLayout({ children, currentPageName }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-blue-50/40">
         {children}
       </main>
     </div>
