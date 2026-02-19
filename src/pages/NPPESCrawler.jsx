@@ -68,7 +68,7 @@ export default function NPPESCrawler() {
 
     try {
       const res = await base44.functions.invoke('nppesStateCrawler', {
-        action: 'process_next',
+        action: 'start',
         taxonomy_description: taxonomyFilter,
         entity_type: entityType,
         dry_run: dryRun,
