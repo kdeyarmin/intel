@@ -175,10 +175,7 @@ export default function Dashboard() {
         <DataQualityWidget />
       </div>
 
-      <div className="mt-12 pt-8 border-t border-gray-200 space-y-6">
-        <div className="mb-6">
-          <ComplianceDisclaimer />
-        </div>
+      <div className="mt-12 pt-8 border-t border-gray-200">
         <p className="text-xs text-gray-500 text-center leading-relaxed">
           <strong>Data Sources:</strong> All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. 
           Insights are estimates based on public data patterns and do not represent confirmed referral relationships. 
