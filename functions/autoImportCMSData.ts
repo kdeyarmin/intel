@@ -1,8 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// Max execution time before we save progress and exit (150s to leave buffer before platform timeout)
-const MAX_EXEC_MS = 150_000;
-const FETCH_TIMEOUT_MS = 20_000;
+// Strict time budget: 45s to leave buffer before platform kills us
+const MAX_EXEC_MS = 45_000;
+const FETCH_TIMEOUT_MS = 15_000;
+const PAGE_SIZE = 1000;
+const BULK_SIZE = 50;
 
 function isTimeUp(startTime) {
     return Date.now() - startTime > MAX_EXEC_MS;
@@ -31,417 +33,258 @@ Deno.serve(async (req) => {
         }
 
         const payload = await req.json();
-        const { import_type, file_url, year = 2023, dry_run = false } = payload;
+        const { import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null } = payload;
 
-        // Validate import type
         const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership', 'opt_out_physicians', 'medicare_hha_stats'];
         if (!validTypes.includes(import_type)) {
-            return Response.json({ 
-                error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
-            }, { status: 400 });
+            return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
         }
 
         if (!file_url) {
             return Response.json({ error: 'file_url is required' }, { status: 400 });
         }
 
-        // Create import batch
-        const batch = await base44.asServiceRole.entities.ImportBatch.create({
-            import_type,
-            file_name: `auto_import_${import_type}_${year}_${Date.now()}.csv`,
-            file_url,
-            status: 'validating',
-            dry_run,
-        });
+        // Create or resume batch
+        let batch;
+        if (batch_id) {
+            const existing = await base44.asServiceRole.entities.ImportBatch.filter({ id: batch_id });
+            batch = existing[0];
+            if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+        } else {
+            batch = await base44.asServiceRole.entities.ImportBatch.create({
+                import_type,
+                file_name: `auto_import_${import_type}_${year}_${Date.now()}.csv`,
+                file_url,
+                status: 'validating',
+                dry_run,
+            });
+        }
 
         try {
-            // Fetch data (supports both JSON API and CSV files)
-            const response = await fetchWithTimeout(file_url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch file: ${response.statusText}`);
-            }
+            // Detect if JSON API or CSV
+            const probeResp = await fetchWithTimeout(file_url + (file_url.includes('?') ? '&' : '?') + '$limit=1');
+            if (!probeResp.ok) throw new Error(`Failed to fetch file: ${probeResp.statusText}`);
+            const probeText = await probeResp.text();
+            const isJsonApi = probeText.trim().startsWith('[');
 
-            const contentType = response.headers.get('content-type') || '';
-            const text = await response.text();
-
-            let rows = [];
-            let headers = [];
-            let columnMapping = {};
-
-            if (contentType.includes('application/json') || text.trim().startsWith('[')) {
-                // CMS API returns JSON arrays — paginate to get all data
-                const firstPage = JSON.parse(text);
-                if (!Array.isArray(firstPage) || firstPage.length === 0) {
-                    throw new Error('No data returned from API');
-                }
-                headers = Object.keys(firstPage[0]);
-                columnMapping = detectCMSColumns(headers, import_type);
-                rows = [...firstPage];
-
-                // CMS Data API default page size is 1000. Keep fetching until we get less than 1000.
-                const PAGE_SIZE = 1000;
-                let offset = PAGE_SIZE;
-                if (firstPage.length >= PAGE_SIZE) {
-                    console.log(`First page returned ${firstPage.length} rows, fetching more pages...`);
-                    while (!isTimeUp(startTime)) {
-                        const separator = file_url.includes('?') ? '&' : '?';
-                        const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
-                        console.log(`Fetching page at offset ${offset}...`);
-                        let pageResponse;
-                        try {
-                            pageResponse = await fetchWithTimeout(pageUrl);
-                        } catch (fetchErr) {
-                            console.error(`Page fetch timed out at offset ${offset}: ${fetchErr.message}`);
-                            break;
-                        }
-                        if (!pageResponse.ok) {
-                            console.error(`Page fetch failed at offset ${offset}: ${pageResponse.statusText}`);
-                            break;
-                        }
-                        const pageText = await pageResponse.text();
-                        let pageData;
-                        try {
-                            pageData = JSON.parse(pageText);
-                        } catch (e) {
-                            console.error(`Failed to parse page at offset ${offset}`);
-                            break;
-                        }
-                        if (!Array.isArray(pageData) || pageData.length === 0) {
-                            console.log(`No more data at offset ${offset}, pagination complete.`);
-                            break;
-                        }
-                        rows = rows.concat(pageData);
-                        console.log(`Fetched ${pageData.length} rows at offset ${offset}, total so far: ${rows.length}`);
-                        if (pageData.length < PAGE_SIZE) {
-                            break;
-                        }
-                        offset += PAGE_SIZE;
-                    }
-                    if (isTimeUp(startTime)) {
-                        console.warn(`Time limit reached during pagination. Proceeding with ${rows.length} rows fetched so far.`);
-                    }
-                }
-                console.log(`Total rows fetched across all pages: ${rows.length}`);
-            } else {
-                // Legacy CSV handling
-                const lines = text.split('\n').filter(l => l.trim());
-                headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-                columnMapping = detectCMSColumns(headers, import_type);
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                    const row = {};
-                    headers.forEach((h, idx) => { row[h] = values[idx]; });
-                    rows.push(row);
-                }
-            }
-
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                column_mapping: columnMapping
-            });
-
-            // Validate and process data
+            let totalProcessed = 0;
             let validRows = 0;
             let invalidRows = 0;
             let duplicateRows = 0;
+            let importedCount = 0;
+            let updatedCount = 0;
+            let skippedCount = 0;
             const errorSamples = [];
-            const validData = [];
-            const seenIdentifiers = new Set();
+            let columnMapping = {};
+            let offset = resume_offset;
+            let reachedEnd = false;
 
-            // Update batch with total rows immediately so UI shows progress
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                total_rows: rows.length,
-            });
+            if (isJsonApi) {
+                // === STREAMING PAGE-BY-PAGE APPROACH ===
+                // Fetch one page, validate, import, then fetch next page
+                // This avoids loading entire dataset in memory
+                
+                while (!isTimeUp(startTime) && !reachedEnd) {
+                    const separator = file_url.includes('?') ? '&' : '?';
+                    const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
+                    console.log(`Fetching page at offset ${offset}...`);
+                    
+                    let pageResponse;
+                    try {
+                        pageResponse = await fetchWithTimeout(pageUrl);
+                    } catch (e) {
+                        console.warn(`Fetch timeout at offset ${offset}: ${e.message}`);
+                        break;
+                    }
+                    if (!pageResponse.ok) {
+                        console.warn(`Fetch failed at offset ${offset}: ${pageResponse.statusText}`);
+                        break;
+                    }
+                    
+                    const pageText = await pageResponse.text();
+                    let pageData;
+                    try { pageData = JSON.parse(pageText); } catch (e) { break; }
+                    if (!Array.isArray(pageData) || pageData.length === 0) {
+                        reachedEnd = true;
+                        break;
+                    }
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                // Get identifier based on import type
-                let identifier;
-                if (import_type === 'nursing_home_chains') {
-                    const chainColumn = columnMapping['Chain'] || 'Chain';
-                    identifier = row[chainColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing chain name',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'hospice_enrollments' || import_type === 'home_health_enrollments') {
-                    const enrollmentColumn = columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID';
-                    identifier = row[enrollmentColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing enrollment ID',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'home_health_cost_reports') {
-                    const rptColumn = columnMapping['rpt_rec_num'] || 'rpt_rec_num';
-                    identifier = row[rptColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing report record number',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'cms_service_utilization') {
-                    const hcpcsColumn = columnMapping['HCPCS_Cd'] || 'HCPCS_Cd';
-                    identifier = row[hcpcsColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing HCPCS code',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'provider_service_utilization') {
-                    const npiColumn = columnMapping['Rndrng_NPI'] || 'Rndrng_NPI';
-                    identifier = row[npiColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing NPI',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'home_health_pdgm') {
-                    const providerColumn = columnMapping['PRVDR_ID'] || 'PRVDR_ID';
-                    identifier = row[providerColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing provider ID',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'inpatient_drg') {
-                    const ccnColumn = columnMapping['Rndrng_Prvdr_CCN'] || 'Rndrng_Prvdr_CCN';
-                    identifier = row[ccnColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing provider CCN',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'provider_ownership') {
-                    const enrollmentColumn = columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID';
-                    identifier = row[enrollmentColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing enrollment ID',
-                            });
-                        }
-                        continue;
-                    }
-                } else if (import_type === 'opt_out_physicians') {
-                    const npiColumn = columnMapping['NPI'] || 'NPI';
-                    identifier = row[npiColumn];
-                    if (!identifier || identifier.trim() === '') {
-                        invalidRows++;
-                        if (errorSamples.length < 10) {
-                            errorSamples.push({
-                                row: i + 1,
-                                message: 'Missing NPI',
-                            });
-                        }
-                        continue;
-                    }
-                } else {
-                    const npiColumn = columnMapping['NPI'] || 'NPI';
-                    identifier = row[npiColumn];
-                }
-
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && import_type !== 'opt_out_physicians' && !validateNPI(identifier)) {
-                    invalidRows++;
-                    if (errorSamples.length < 10) {
-                        errorSamples.push({
-                            row: i + 1,
-                            npi: identifier || 'missing',
-                            message: 'Invalid NPI format (must be 10 digits)',
+                    // Detect columns from first page
+                    if (offset === resume_offset && pageData.length > 0) {
+                        const headers = Object.keys(pageData[0]);
+                        columnMapping = detectCMSColumns(headers, import_type);
+                        await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                            column_mapping: columnMapping, status: 'processing',
                         });
                     }
-                } else if (seenIdentifiers.has(identifier)) {
-                    duplicateRows++;
-                } else {
-                    seenIdentifiers.add(identifier);
-                    validRows++;
-                    
-                    // Map data based on import type
-                    const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && import_type !== 'opt_out_physicians') {
-                        mappedData.npi = identifier;
-                    } else if (import_type === 'provider_service_utilization' || import_type === 'opt_out_physicians') {
-                        mappedData.npi = identifier;
-                    }
-                    validData.push(mappedData);
-                }
 
-                // Update progress periodically (every 2000 rows) and check time
-                if (i > 0 && i % 2000 === 0) {
+                    // Validate + map this page
+                    const validDataChunk = [];
+                    const seenInPage = new Set();
+                    
+                    for (const row of pageData) {
+                        totalProcessed++;
+                        const identifier = getIdentifier(row, columnMapping, import_type);
+                        
+                        if (!identifier) {
+                            invalidRows++;
+                            if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Missing identifier' });
+                            continue;
+                        }
+
+                        if (needsNpiValidation(import_type) && !validateNPI(identifier)) {
+                            invalidRows++;
+                            if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, npi: identifier, message: 'Invalid NPI' });
+                            continue;
+                        }
+
+                        if (seenInPage.has(identifier)) { duplicateRows++; continue; }
+                        seenInPage.add(identifier);
+                        validRows++;
+
+                        const mapped = mapCMSData(row, columnMapping, import_type, year);
+                        if (needsNpiField(import_type)) mapped.npi = identifier;
+                        validDataChunk.push(mapped);
+                    }
+
+                    // Import this chunk immediately (don't accumulate)
+                    if (!dry_run && validDataChunk.length > 0 && !isTimeUp(startTime)) {
+                        const result = await importChunk(base44, import_type, validDataChunk, year, startTime);
+                        importedCount += result.imported;
+                        updatedCount += result.updated;
+                        skippedCount += result.skipped;
+                    }
+
+                    offset += pageData.length;
+                    
+                    if (pageData.length < PAGE_SIZE) {
+                        reachedEnd = true;
+                    }
+
+                    // Update progress
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                        total_rows: offset,
                         valid_rows: validRows,
                         invalid_rows: invalidRows,
                         duplicate_rows: duplicateRows,
+                        imported_rows: importedCount,
+                        updated_rows: updatedCount,
+                        skipped_rows: skippedCount,
                     });
-                    console.log(`Validation progress: ${i}/${rows.length} rows processed, ${validRows} valid`);
+                }
+            } else {
+                // CSV handling - load all at once (CSVs are typically smaller)
+                const fullResp = await fetchWithTimeout(file_url, 30000);
+                if (!fullResp.ok) throw new Error(`Failed to fetch: ${fullResp.statusText}`);
+                const text = await fullResp.text();
+                const lines = text.split('\n').filter(l => l.trim());
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                columnMapping = detectCMSColumns(headers, import_type);
 
-                    if (isTimeUp(startTime)) {
-                        console.warn(`Time limit reached during validation at row ${i}/${rows.length}. Saving partial progress.`);
-                        break;
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                    column_mapping: columnMapping, total_rows: lines.length - 1, status: 'processing',
+                });
+
+                const validDataChunk = [];
+                const seenIds = new Set();
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (isTimeUp(startTime)) break;
+                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    const row = {};
+                    headers.forEach((h, idx) => { row[h] = values[idx]; });
+                    totalProcessed++;
+
+                    const identifier = getIdentifier(row, columnMapping, import_type);
+                    if (!identifier) { invalidRows++; continue; }
+                    if (needsNpiValidation(import_type) && !validateNPI(identifier)) { invalidRows++; continue; }
+                    if (seenIds.has(identifier)) { duplicateRows++; continue; }
+                    seenIds.add(identifier);
+                    validRows++;
+
+                    const mapped = mapCMSData(row, columnMapping, import_type, year);
+                    if (needsNpiField(import_type)) mapped.npi = identifier;
+                    validDataChunk.push(mapped);
+
+                    // Import in batches of 200 to avoid memory buildup
+                    if (validDataChunk.length >= 200 && !dry_run) {
+                        const result = await importChunk(base44, import_type, validDataChunk.splice(0), year, startTime);
+                        importedCount += result.imported;
+                        updatedCount += result.updated;
+                        skippedCount += result.skipped;
+                        validDataChunk.length = 0;
                     }
                 }
-            } // end for loop
 
-            const validationTimedOut = isTimeUp(startTime) && validData.length < validRows;
+                // Import remaining
+                if (!dry_run && validDataChunk.length > 0 && !isTimeUp(startTime)) {
+                    const result = await importChunk(base44, import_type, validDataChunk, year, startTime);
+                    importedCount += result.imported;
+                    updatedCount += result.updated;
+                    skippedCount += result.skipped;
+                }
 
-            // Update batch with validation results
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: dry_run ? 'completed' : 'processing',
-                total_rows: rows.length,
-                valid_rows: validRows,
-                invalid_rows: invalidRows,
-                duplicate_rows: duplicateRows,
-                error_samples: errorSamples,
-            });
-
-            // Import data if not dry run
-            let importedCount = 0;
-            let updatedCount = 0;
-            let partialImport = false;
-
-            if (!dry_run && validData.length > 0 && !isTimeUp(startTime)) {
-                const result = await importCMSData(base44, import_type, validData, year, startTime);
-                importedCount = result.imported;
-                updatedCount = result.updated;
-                const skippedCount = result.skipped || 0;
-                partialImport = result.partial || false;
-
-                const finalStatus = partialImport ? 'paused' : 'completed';
-
-                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    status: finalStatus,
-                    imported_rows: importedCount,
-                    updated_rows: updatedCount,
-                    skipped_rows: skippedCount,
-                    dedup_summary: {
-                        created: importedCount,
-                        updated: updatedCount,
-                        skipped: skippedCount,
-                    },
-                    ...(partialImport ? {
-                        paused_at: new Date().toISOString(),
-                        cancel_reason: `Auto-paused: time limit reached after importing ${importedCount} of ${validData.length} records`,
-                    } : {
-                        completed_at: new Date().toISOString(),
-                    }),
-                });
-            } else if (isTimeUp(startTime)) {
-                // Ran out of time before even starting import
-                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    status: 'paused',
-                    paused_at: new Date().toISOString(),
-                    cancel_reason: `Auto-paused: time limit reached during validation (${validRows} validated of ${rows.length})`,
-                });
-                partialImport = true;
-            } else {
-                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                });
+                reachedEnd = totalProcessed >= lines.length - 1;
             }
 
-            // Log audit event
-            await base44.asServiceRole.entities.AuditEvent.create({
-                event_type: 'import',
-                user_email: user.email,
-                details: {
-                    action: 'Automated CMS Data Import',
-                    entity: import_type,
-                    row_count: validRows,
-                    imported_count: importedCount,
-                    updated_count: updatedCount,
-                    partial: partialImport,
-                    message: partialImport
-                        ? `Partial import — paused after ${importedCount} records due to time limit`
-                        : dry_run ? 'Dry run validation completed' : 'Import completed successfully'
-                },
-                timestamp: new Date().toISOString(),
-            });
+            const partial = !reachedEnd;
+            const finalStatus = dry_run ? 'completed' : partial ? 'paused' : 'completed';
 
-            return Response.json({
-                success: true,
-                partial: partialImport,
-                batch_id: batch.id,
-                total_rows: rows.length,
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                status: finalStatus,
+                total_rows: offset || totalProcessed,
                 valid_rows: validRows,
                 invalid_rows: invalidRows,
                 duplicate_rows: duplicateRows,
                 imported_rows: importedCount,
                 updated_rows: updatedCount,
-                dry_run,
+                skipped_rows: skippedCount,
+                error_samples: errorSamples,
+                dedup_summary: { created: importedCount, updated: updatedCount, skipped: skippedCount },
+                ...(partial ? {
+                    paused_at: new Date().toISOString(),
+                    cancel_reason: `Auto-paused at offset ${offset}: time limit. Resume with resume_offset=${offset}`,
+                    retry_params: { resume_offset: offset },
+                } : {
+                    completed_at: new Date().toISOString(),
+                }),
+            });
+
+            // Audit
+            await base44.asServiceRole.entities.AuditEvent.create({
+                event_type: 'import', user_email: user.email,
+                details: { action: 'CMS Data Import', entity: import_type, imported: importedCount, updated: updatedCount, partial },
+                timestamp: new Date().toISOString(),
+            });
+
+            return Response.json({
+                success: true, partial, batch_id: batch.id,
+                total_processed: totalProcessed, valid_rows: validRows,
+                imported_rows: importedCount, updated_rows: updatedCount,
+                next_offset: partial ? offset : null,
                 elapsed_ms: Date.now() - startTime,
             });
 
         } catch (error) {
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: 'failed',
-                error_samples: [{ message: error.message }],
+                status: 'failed', error_samples: [{ message: error.message }],
             });
-            
-            // Create error report and send notification
+
             try {
                 const errorReport = await base44.asServiceRole.entities.ErrorReport.create({
-                    error_type: 'import_failure',
-                    severity: 'high',
-                    source: batch.id,
+                    error_type: 'import_failure', severity: 'high', source: batch.id,
                     title: `Import failed: ${import_type}`,
-                    description: `Automated import for ${import_type} failed with error: ${error.message}`,
-                    error_samples: [{ message: error.message, stack: error.stack }],
-                    context: {
-                        import_type,
-                        file_url,
-                        batch_id: batch.id,
-                        year,
-                    },
+                    description: `Automated import for ${import_type} failed: ${error.message}`,
+                    error_samples: [{ message: error.message }],
+                    context: { import_type, file_url, batch_id: batch.id, year },
                     status: 'new',
                 });
-
-                // Send notification to admins
                 await base44.asServiceRole.functions.invoke('sendErrorNotification', {
-                    error_report_id: errorReport.id,
-                    batch_id: batch.id,
+                    error_report_id: errorReport.id, batch_id: batch.id,
                 });
-            } catch (notifError) {
-                console.error('Failed to send error notification:', notifError);
-            }
-            
+            } catch (e) { console.error('Notification failed:', e.message); }
+
             throw error;
         }
 
@@ -450,767 +293,164 @@ Deno.serve(async (req) => {
     }
 });
 
+// === HELPERS ===
+
 function validateNPI(npi) {
     if (!npi) return false;
-    const cleaned = String(npi).replace(/\D/g, '');
-    return cleaned.length === 10;
+    return String(npi).replace(/\D/g, '').length === 10;
+}
+
+function needsNpiValidation(importType) {
+    return !['nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership', 'opt_out_physicians'].includes(importType);
+}
+
+function needsNpiField(importType) {
+    return ['cms_utilization', 'cms_order_referring', 'provider_service_utilization', 'opt_out_physicians'].includes(importType);
+}
+
+function getIdentifier(row, mapping, importType) {
+    const idFields = {
+        'nursing_home_chains': 'Chain',
+        'hospice_enrollments': 'ENROLLMENT ID',
+        'home_health_enrollments': 'ENROLLMENT ID',
+        'home_health_cost_reports': 'rpt_rec_num',
+        'cms_service_utilization': 'HCPCS_Cd',
+        'provider_service_utilization': 'Rndrng_NPI',
+        'home_health_pdgm': 'PRVDR_ID',
+        'inpatient_drg': 'Rndrng_Prvdr_CCN',
+        'provider_ownership': 'ENROLLMENT ID',
+        'opt_out_physicians': 'NPI',
+    };
+    const field = idFields[importType] || 'NPI';
+    const col = mapping[field] || field;
+    const val = row[col];
+    return val && String(val).trim() !== '' ? String(val).trim() : null;
+}
+
+// Lightweight chunk importer — no upsert for bulk types, just bulkCreate
+async function importChunk(base44, importType, records, year, startTime) {
+    let imported = 0, updated = 0, skipped = 0;
+
+    const entityMap = {
+        'cms_utilization': 'CMSUtilization',
+        'cms_order_referring': 'CMSReferral',
+        'nursing_home_chains': 'NursingHomeChain',
+        'hospice_enrollments': 'HospiceEnrollment',
+        'home_health_enrollments': 'HomeHealthEnrollment',
+        'home_health_cost_reports': 'HomeHealthCostReport',
+        'cms_service_utilization': 'CMSServiceUtilization',
+        'provider_service_utilization': 'ProviderServiceUtilization',
+        'home_health_pdgm': 'HomeHealthPDGM',
+        'inpatient_drg': 'InpatientDRG',
+        'provider_ownership': 'ProviderOwnership',
+        'opt_out_physicians': 'OptOutPhysician',
+    };
+
+    const entityName = entityMap[importType];
+    if (!entityName) return { imported: 0, updated: 0, skipped: 0 };
+    const entity = base44.asServiceRole.entities[entityName];
+
+    // For large datasets, just bulkCreate (no upsert) for speed
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        if (isTimeUp(startTime)) break;
+        const chunk = records.slice(i, i + BULK_SIZE);
+        await entity.bulkCreate(chunk);
+        imported += chunk.length;
+    }
+
+    return { imported, updated, skipped };
 }
 
 function detectCMSColumns(headers, importType) {
     const mapping = {};
-    const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+    const nh = headers.map(h => h.toLowerCase().trim());
 
-    // Common NPI column names
-    const npiPatterns = ['npi', 'national_provider_identifier', 'provider_npi'];
-    for (const pattern of npiPatterns) {
-        const idx = normalizedHeaders.findIndex(h => h.includes(pattern));
-        if (idx !== -1) {
-            mapping['NPI'] = headers[idx];
-            break;
+    // NPI
+    for (const p of ['npi', 'national_provider_identifier', 'provider_npi']) {
+        const idx = nh.findIndex(h => h.includes(p));
+        if (idx !== -1) { mapping['NPI'] = headers[idx]; break; }
+    }
+
+    const patterns = {
+        'cms_utilization': { 'Year': ['year'], 'Total Services': ['number_of_services', 'total_services', 'line_srvc_cnt'], 'Medicare Beneficiaries': ['number_of_medicare_beneficiaries', 'bene_unique_cnt'], 'Medicare Payment Amount': ['average_medicare_payment_amt', 'total_medicare_payment'] },
+        'cms_order_referring': { 'HHA': ['hha'], 'HOSPICE': ['hospice'], 'DME': ['dme'], 'PMD': ['pmd'] },
+        'nursing_home_chains': { 'Chain': ['chain'], 'Chain ID': ['chain id'], 'Number of facilities': ['number of facilities'] },
+        'hospice_enrollments': { 'ENROLLMENT ID': ['enrollment id'], 'NPI': ['npi'], 'CCN': ['ccn'], 'ORGANIZATION NAME': ['organization name'], 'DOING BUSINESS AS NAME': ['doing business as name'], 'CITY': ['city'], 'STATE': ['state'], 'ZIP CODE': ['zip code'], 'ENROLLMENT STATE': ['enrollment state'] },
+        'home_health_enrollments': { 'ENROLLMENT ID': ['enrollment id'], 'NPI': ['npi'], 'CCN': ['ccn'], 'ORGANIZATION NAME': ['organization name'], 'DOING BUSINESS AS NAME': ['doing business as name'], 'CITY': ['city'], 'STATE': ['state'], 'ZIP CODE': ['zip code'], 'ENROLLMENT STATE': ['enrollment state'], 'PRACTICE LOCATION TYPE': ['practice location type'] },
+        'home_health_cost_reports': { 'rpt_rec_num': ['rpt_rec_num'], 'Provider CCN': ['provider ccn'], 'HHA Name': ['hha name'], 'City': ['city'], 'State Code': ['state code'] },
+        'cms_service_utilization': { 'Rndrng_Prvdr_Geo_Lvl': ['rndrng_prvdr_geo_lvl'], 'HCPCS_Cd': ['hcpcs_cd'], 'HCPCS_Desc': ['hcpcs_desc'], 'Tot_Srvcs': ['tot_srvcs'], 'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'] },
+        'provider_service_utilization': { 'Rndrng_NPI': ['rndrng_npi'], 'HCPCS_Cd': ['hcpcs_cd'], 'HCPCS_Desc': ['hcpcs_desc'], 'Tot_Benes': ['tot_benes'], 'Tot_Srvcs': ['tot_srvcs'], 'Avg_Sbmtd_Chrg': ['avg_sbmtd_chrg'], 'Avg_Mdcr_Alowd_Amt': ['avg_mdcr_alowd_amt'], 'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'] },
+        'home_health_pdgm': { 'PRVDR_ID': ['prvdr_id'], 'PRVDR_NAME': ['prvdr_name'], 'STATE': ['state'], 'GRPNG': ['grpng'] },
+        'inpatient_drg': { 'Rndrng_Prvdr_CCN': ['rndrng_prvdr_ccn'], 'DRG_Cd': ['drg_cd'], 'Tot_Dschrgs': ['tot_dschrgs'], 'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'] },
+        'provider_ownership': { 'ENROLLMENT ID': ['enrollment id'], 'ASSOCIATE ID': ['associate id'], 'ORGANIZATION NAME': ['organization name'] },
+        'opt_out_physicians': { 'NPI': ['npi'], 'LAST_NAME': ['last_name'], 'FIRST_NAME': ['first_name'] },
+    };
+
+    const typePatterns = patterns[importType] || {};
+    for (const [key, pats] of Object.entries(typePatterns)) {
+        for (const pat of pats) {
+            const idx = nh.findIndex(h => h.includes(pat.toLowerCase()));
+            if (idx !== -1) { mapping[key] = headers[idx]; break; }
         }
     }
-
-    if (importType === 'cms_utilization') {
-        const patterns = {
-            'Year': ['year', 'data_year', 'cy'],
-            'Total Services': ['number_of_services', 'total_services', 'line_srvc_cnt'],
-            'Medicare Beneficiaries': ['number_of_medicare_beneficiaries', 'bene_unique_cnt', 'beneficiaries'],
-            'Medicare Payment Amount': ['average_medicare_payment_amt', 'total_medicare_payment', 'medicare_payment'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h.includes(pattern));
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'cms_order_referring') {
-        const patterns = {
-            'HHA': ['hha'],
-            'HOSPICE': ['hospice'],
-            'DME': ['dme'],
-            'PARTB': ['partb'],
-            'PMD': ['pmd'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern);
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'nursing_home_chains') {
-        const patterns = {
-            'Chain': ['chain'],
-            'Chain ID': ['chain id', 'chain_id'],
-            'Number of facilities': ['number of facilities', 'facilities'],
-            'Average overall 5-star rating': ['average overall 5-star rating', 'overall rating'],
-            'Average health inspection rating': ['average health inspection rating'],
-            'Average staffing rating': ['average staffing rating'],
-            'Average quality rating': ['average quality rating'],
-            'Average total nurse hours per resident day': ['average total nurse hours per resident day'],
-            'Average total Registered Nurse hours per resident day': ['average total registered nurse hours per resident day'],
-            'Average total nursing staff turnover percentage': ['average total nursing staff turnover percentage'],
-            'Average Registered Nurse turnover percentage': ['average registered nurse turnover percentage'],
-            'Total number of fines': ['total number of fines'],
-            'Total amount of fines in dollars': ['total amount of fines in dollars'],
-            'Average percentage of short-stay residents who were re-hospitalized after a nursing home admission': ['average percentage of short-stay residents who were re-hospitalized'],
-            'Average percentage of long-stay residents who received an antipsychotic medication': ['average percentage of long-stay residents who received an antipsychotic medication'],
-            'Average percentage of long-stay residents experiencing one or more falls with major injury': ['average percentage of long-stay residents experiencing one or more falls with major injury'],
-            'Average percentage of long-stay residents with pressure ulcers': ['average percentage of long-stay residents with pressure ulcers'],
-            'Average percentage of long-stay residents with a urinary tract infection': ['average percentage of long-stay residents with a urinary tract infection'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h.includes(pattern.toLowerCase()));
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'hospice_enrollments') {
-        const patterns = {
-            'ENROLLMENT ID': ['enrollment id'],
-            'NPI': ['npi'],
-            'CCN': ['ccn'],
-            'ORGANIZATION NAME': ['organization name'],
-            'DOING BUSINESS AS NAME': ['doing business as name'],
-            'INCORPORATION DATE': ['incorporation date'],
-            'INCORPORATION STATE': ['incorporation state'],
-            'ORGANIZATION TYPE STRUCTURE': ['organization type structure'],
-            'PROPRIETARY_NONPROFIT': ['proprietary_nonprofit'],
-            'ADDRESS LINE 1': ['address line 1'],
-            'ADDRESS LINE 2': ['address line 2'],
-            'CITY': ['city'],
-            'STATE': ['state'],
-            'ZIP CODE': ['zip code'],
-            'ENROLLMENT STATE': ['enrollment state'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'home_health_enrollments') {
-        const patterns = {
-            'ENROLLMENT ID': ['enrollment id'],
-            'NPI': ['npi'],
-            'CCN': ['ccn'],
-            'ORGANIZATION NAME': ['organization name'],
-            'DOING BUSINESS AS NAME': ['doing business as name'],
-            'INCORPORATION DATE': ['incorporation date'],
-            'INCORPORATION STATE': ['incorporation state'],
-            'ORGANIZATION TYPE STRUCTURE': ['organization type structure'],
-            'PROPRIETARY_NONPROFIT': ['proprietary_nonprofit'],
-            'ADDRESS LINE 1': ['address line 1'],
-            'ADDRESS LINE 2': ['address line 2'],
-            'CITY': ['city'],
-            'STATE': ['state'],
-            'ZIP CODE': ['zip code'],
-            'ENROLLMENT STATE': ['enrollment state'],
-            'PRACTICE LOCATION TYPE': ['practice location type'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'home_health_cost_reports') {
-        const patterns = {
-            'rpt_rec_num': ['rpt_rec_num'],
-            'Provider CCN': ['provider ccn'],
-            'HHA Name': ['hha name'],
-            'Street Address': ['street address'],
-            'City': ['city'],
-            'State Code': ['state code'],
-            'Zip Code': ['zip code'],
-            'Type of Control': ['type of control'],
-            'Fiscal Year Begin Date': ['fiscal year begin date'],
-            'Fiscal Year End Date': ['fiscal year end date'],
-            'Total, Medicare Title XVIII Visits': ['total, medicare title xviii visits'],
-            'Total, Medicaid Title XIX Visits': ['total, medicaid title xix visits'],
-            'Total, Total Visits': ['total, total visits'],
-            'Total Episodes-Total Visits': ['total episodes-total visits'],
-            'Total Episodes-Total Charges': ['total episodes-total charges'],
-            'Total Cost': ['total cost'],
-            'Net Patient Revenues (line 1 minus line 2) XVIII Medicare': ['net patient revenues (line 1 minus line 2) xviii medicare'],
-            'Net Patient Revenues (line 1 minus line 2) XIX Medicaid': ['net patient revenues (line 1 minus line 2) xix medicaid'],
-            'Net Patient Revenues (line 1 minus line 2) Total': ['net patient revenues (line 1 minus line 2) total'],
-            'Less Total Operating Expenses (sum of lines 4 through 16)': ['less total operating expenses'],
-            'Net Income or Loss for the period (line 18 plus line 32)': ['net income or loss for the period'],
-            'Total Assets': ['total assets'],
-            'Total Liabilities': ['total liabilities'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'cms_service_utilization') {
-        const patterns = {
-            'Rndrng_Prvdr_Geo_Lvl': ['rndrng_prvdr_geo_lvl'],
-            'Rndrng_Prvdr_Geo_Cd': ['rndrng_prvdr_geo_cd'],
-            'Rndrng_Prvdr_Geo_Desc': ['rndrng_prvdr_geo_desc'],
-            'HCPCS_Cd': ['hcpcs_cd'],
-            'HCPCS_Desc': ['hcpcs_desc'],
-            'HCPCS_Drug_Ind': ['hcpcs_drug_ind'],
-            'Place_Of_Srvc': ['place_of_srvc'],
-            'Tot_Rndrng_Prvdrs': ['tot_rndrng_prvdrs'],
-            'Tot_Benes': ['tot_benes'],
-            'Tot_Srvcs': ['tot_srvcs'],
-            'Avg_Sbmtd_Chrg': ['avg_sbmtd_chrg'],
-            'Avg_Mdcr_Alowd_Amt': ['avg_mdcr_alowd_amt'],
-            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'provider_service_utilization') {
-        const patterns = {
-            'Rndrng_NPI': ['rndrng_npi'],
-            'HCPCS_Cd': ['hcpcs_cd'],
-            'HCPCS_Desc': ['hcpcs_desc'],
-            'HCPCS_Drug_Ind': ['hcpcs_drug_ind'],
-            'Place_Of_Srvc': ['place_of_srvc'],
-            'Tot_Benes': ['tot_benes'],
-            'Tot_Srvcs': ['tot_srvcs'],
-            'Avg_Sbmtd_Chrg': ['avg_sbmtd_chrg'],
-            'Avg_Mdcr_Alowd_Amt': ['avg_mdcr_alowd_amt'],
-            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'home_health_pdgm') {
-        const patterns = {
-            'PRVDR_ID': ['prvdr_id'],
-            'PRVDR_NAME': ['prvdr_name'],
-            'PRVDR_CITY': ['prvdr_city'],
-            'STATE': ['state'],
-            'PRVDR_ZIP': ['prvdr_zip'],
-            'GRPNG': ['grpng'],
-            'GRPNG_DESC': ['grpng_desc'],
-            'BENE_DSTNCT_CNT': ['bene_dstnct_cnt'],
-            'TOT_EPSD_STAY_CNT': ['tot_epsd_stay_cnt'],
-            'TOT_SRVC_DAYS': ['tot_srvc_days'],
-            'AVG_CHRG_PER_EPSD': ['avg_chrg_per_epsd'],
-            'AVG_ALOWD_AMT_PER_EPSD': ['avg_alowd_amt_per_epsd'],
-            'AVG_PYMT_AMT_PER_EPSD': ['avg_pymt_amt_per_epsd'],
-            'PT_VISITS_CNT': ['pt_visits_cnt'],
-            'OT_VISITS_CNT': ['ot_visits_cnt'],
-            'SLP_VISITS_CNT': ['slp_visits_cnt'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'inpatient_drg') {
-        const patterns = {
-            'Rndrng_Prvdr_CCN': ['rndrng_prvdr_ccn'],
-            'Rndrng_Prvdr_Org_Name': ['rndrng_prvdr_org_name'],
-            'Rndrng_Prvdr_City': ['rndrng_prvdr_city'],
-            'Rndrng_Prvdr_State_Abrvtn': ['rndrng_prvdr_state_abrvtn'],
-            'Rndrng_Prvdr_Zip5': ['rndrng_prvdr_zip5'],
-            'DRG_Cd': ['drg_cd'],
-            'DRG_Desc': ['drg_desc'],
-            'Tot_Dschrgs': ['tot_dschrgs'],
-            'Avg_Submtd_Cvrd_Chrg': ['avg_submtd_cvrd_chrg'],
-            'Avg_Tot_Pymt_Amt': ['avg_tot_pymt_amt'],
-            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'provider_ownership') {
-        const patterns = {
-            'ENROLLMENT ID': ['enrollment id'],
-            'ASSOCIATE ID': ['associate id'],
-            'ORGANIZATION NAME': ['organization name'],
-            'ASSOCIATE ID - OWNER': ['associate id - owner'],
-            'TYPE - OWNER': ['type - owner'],
-            'ROLE CODE - OWNER': ['role code - owner'],
-            'ROLE TEXT - OWNER': ['role text - owner'],
-            'ASSOCIATION DATE - OWNER': ['association date - owner'],
-            'FIRST NAME - OWNER': ['first name - owner'],
-            'MIDDLE NAME - OWNER': ['middle name - owner'],
-            'LAST NAME - OWNER': ['last name - owner'],
-            'TITLE - OWNER': ['title - owner'],
-            'ORGANIZATION NAME - OWNER': ['organization name - owner'],
-            'PERCENTAGE OWNERSHIP': ['percentage ownership'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    } else if (importType === 'opt_out_physicians') {
-        const patterns = {
-            'NPI': ['npi'],
-            'LAST_NAME': ['last_name', 'lastname'],
-            'FIRST_NAME': ['first_name', 'firstname'],
-        };
-
-        Object.entries(patterns).forEach(([key, patterns]) => {
-            for (const pattern of patterns) {
-                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
-                if (idx !== -1) {
-                    mapping[key] = headers[idx];
-                    break;
-                }
-            }
-        });
-    }
-
     return mapping;
 }
 
-function mapCMSData(row, columnMapping, importType, year) {
-    const mappedData = {};
+function mapCMSData(row, cm, importType, year) {
+    const m = {};
+    const g = (k) => row[cm[k]] || row[k] || '';
+    const n = (k) => { const v = g(k); return v ? parseFloat(String(v).replace(/[,$%\s]/g, '')) || 0 : 0; };
 
     if (importType === 'cms_utilization') {
-        mappedData.Year = row[columnMapping['Year']] || String(year);
-        mappedData['Total Services'] = row[columnMapping['Total Services']] || '0';
-        mappedData['Medicare Beneficiaries'] = row[columnMapping['Medicare Beneficiaries']] || '0';
-        mappedData['Medicare Payment Amount'] = row[columnMapping['Medicare Payment Amount']] || '0';
+        m.year = parseInt(g('Year') || year);
+        m.total_services = n('Total Services');
+        m.total_medicare_beneficiaries = n('Medicare Beneficiaries');
+        m.total_medicare_payment = n('Medicare Payment Amount');
     } else if (importType === 'cms_order_referring') {
-        const hha = row[columnMapping['HHA']] === 'Y' ? 1 : 0;
-        const hospice = row[columnMapping['HOSPICE']] === 'Y' ? 1 : 0;
-        const dme = row[columnMapping['DME']] === 'Y' ? 1 : 0;
-        const pmd = row[columnMapping['PMD']] === 'Y' ? 1 : 0;
-        
-        mappedData.year = year;
-        mappedData.total_referrals = hha + hospice + dme + pmd;
-        mappedData.home_health_referrals = hha;
-        mappedData.hospice_referrals = hospice;
-        mappedData.dme_referrals = dme;
-        mappedData.snf_referrals = 0;
-        mappedData.imaging_referrals = 0;
+        m.year = year;
+        const hha = g('HHA') === 'Y' ? 1 : 0, hospice = g('HOSPICE') === 'Y' ? 1 : 0, dme = g('DME') === 'Y' ? 1 : 0, pmd = g('PMD') === 'Y' ? 1 : 0;
+        m.total_referrals = hha + hospice + dme + pmd;
+        m.home_health_referrals = hha; m.hospice_referrals = hospice; m.dme_referrals = dme;
+        m.snf_referrals = 0; m.imaging_referrals = 0;
     } else if (importType === 'nursing_home_chains') {
-        mappedData.chain_name = row[columnMapping['Chain']] || '';
-        mappedData.chain_id = row[columnMapping['Chain ID']] || '';
-        mappedData.number_of_facilities = parseFloat(row[columnMapping['Number of facilities']] || 0);
-        mappedData.avg_overall_rating = parseFloat(row[columnMapping['Average overall 5-star rating']] || 0);
-        mappedData.avg_health_inspection_rating = parseFloat(row[columnMapping['Average health inspection rating']] || 0);
-        mappedData.avg_staffing_rating = parseFloat(row[columnMapping['Average staffing rating']] || 0);
-        mappedData.avg_quality_rating = parseFloat(row[columnMapping['Average quality rating']] || 0);
-        mappedData.avg_nurse_hours_per_resident_day = parseFloat(row[columnMapping['Average total nurse hours per resident day']] || 0);
-        mappedData.avg_rn_hours_per_resident_day = parseFloat(row[columnMapping['Average total Registered Nurse hours per resident day']] || 0);
-        mappedData.avg_staff_turnover_percentage = parseFloat(row[columnMapping['Average total nursing staff turnover percentage']] || 0);
-        mappedData.avg_rn_turnover_percentage = parseFloat(row[columnMapping['Average Registered Nurse turnover percentage']] || 0);
-        mappedData.total_fines = parseFloat(row[columnMapping['Total number of fines']] || 0);
-        mappedData.total_fines_amount = parseFloat(row[columnMapping['Total amount of fines in dollars']] || 0);
-        mappedData.avg_rehospitalization_rate = parseFloat(row[columnMapping['Average percentage of short-stay residents who were re-hospitalized after a nursing home admission']] || 0);
-        mappedData.avg_antipsychotic_use = parseFloat(row[columnMapping['Average percentage of long-stay residents who received an antipsychotic medication']] || 0);
-        mappedData.avg_falls_with_injury = parseFloat(row[columnMapping['Average percentage of long-stay residents experiencing one or more falls with major injury']] || 0);
-        mappedData.avg_pressure_ulcers = parseFloat(row[columnMapping['Average percentage of long-stay residents with pressure ulcers']] || 0);
-        mappedData.avg_uti_rate = parseFloat(row[columnMapping['Average percentage of long-stay residents with a urinary tract infection']] || 0);
-        mappedData.data_year = year;
+        m.chain_name = g('Chain'); m.chain_id = g('Chain ID');
+        m.number_of_facilities = n('Number of facilities');
+        m.data_year = parseInt(year);
     } else if (importType === 'hospice_enrollments') {
-        mappedData.enrollment_id = row[columnMapping['ENROLLMENT ID']] || '';
-        mappedData.npi = row[columnMapping['NPI']] || '';
-        mappedData.ccn = row[columnMapping['CCN']] || '';
-        mappedData.organization_name = row[columnMapping['ORGANIZATION NAME']] || '';
-        mappedData.doing_business_as = row[columnMapping['DOING BUSINESS AS NAME']] || '';
-        mappedData.incorporation_date = row[columnMapping['INCORPORATION DATE']] || '';
-        mappedData.incorporation_state = row[columnMapping['INCORPORATION STATE']] || '';
-        mappedData.organization_type = row[columnMapping['ORGANIZATION TYPE STRUCTURE']] || '';
-        mappedData.proprietary_nonprofit = row[columnMapping['PROPRIETARY_NONPROFIT']] || '';
-        mappedData.address_1 = row[columnMapping['ADDRESS LINE 1']] || '';
-        mappedData.address_2 = row[columnMapping['ADDRESS LINE 2']] || '';
-        mappedData.city = row[columnMapping['CITY']] || '';
-        mappedData.state = row[columnMapping['STATE']] || '';
-        mappedData.zip = row[columnMapping['ZIP CODE']] || '';
-        mappedData.enrollment_state = row[columnMapping['ENROLLMENT STATE']] || '';
+        m.enrollment_id = g('ENROLLMENT ID'); m.npi = g('NPI'); m.ccn = g('CCN');
+        m.organization_name = g('ORGANIZATION NAME'); m.doing_business_as = g('DOING BUSINESS AS NAME');
+        m.city = g('CITY'); m.state = g('STATE'); m.zip = g('ZIP CODE');
+        m.enrollment_state = g('ENROLLMENT STATE');
     } else if (importType === 'home_health_enrollments') {
-        mappedData.enrollment_id = row[columnMapping['ENROLLMENT ID']] || '';
-        mappedData.npi = row[columnMapping['NPI']] || '';
-        mappedData.ccn = row[columnMapping['CCN']] || '';
-        mappedData.organization_name = row[columnMapping['ORGANIZATION NAME']] || '';
-        mappedData.doing_business_as = row[columnMapping['DOING BUSINESS AS NAME']] || '';
-        mappedData.incorporation_date = row[columnMapping['INCORPORATION DATE']] || '';
-        mappedData.incorporation_state = row[columnMapping['INCORPORATION STATE']] || '';
-        mappedData.organization_type = row[columnMapping['ORGANIZATION TYPE STRUCTURE']] || '';
-        mappedData.proprietary_nonprofit = row[columnMapping['PROPRIETARY_NONPROFIT']] || '';
-        mappedData.address_1 = row[columnMapping['ADDRESS LINE 1']] || '';
-        mappedData.address_2 = row[columnMapping['ADDRESS LINE 2']] || '';
-        mappedData.city = row[columnMapping['CITY']] || '';
-        mappedData.state = row[columnMapping['STATE']] || '';
-        mappedData.zip = row[columnMapping['ZIP CODE']] || '';
-        mappedData.enrollment_state = row[columnMapping['ENROLLMENT STATE']] || '';
-        mappedData.practice_location_type = row[columnMapping['PRACTICE LOCATION TYPE']] || '';
+        m.enrollment_id = g('ENROLLMENT ID'); m.npi = g('NPI'); m.ccn = g('CCN');
+        m.organization_name = g('ORGANIZATION NAME'); m.doing_business_as = g('DOING BUSINESS AS NAME');
+        m.city = g('CITY'); m.state = g('STATE'); m.zip = g('ZIP CODE');
+        m.enrollment_state = g('ENROLLMENT STATE'); m.practice_location_type = g('PRACTICE LOCATION TYPE');
     } else if (importType === 'home_health_cost_reports') {
-        mappedData.rpt_rec_num = row[columnMapping['rpt_rec_num']] || '';
-        mappedData.ccn = row[columnMapping['Provider CCN']] || '';
-        mappedData.hha_name = row[columnMapping['HHA Name']] || '';
-        mappedData.street_address = row[columnMapping['Street Address']] || '';
-        mappedData.city = row[columnMapping['City']] || '';
-        mappedData.state = row[columnMapping['State Code']] || '';
-        mappedData.zip = row[columnMapping['Zip Code']] || '';
-        mappedData.type_of_control = row[columnMapping['Type of Control']] || '';
-        mappedData.fiscal_year_begin = row[columnMapping['Fiscal Year Begin Date']] || '';
-        mappedData.fiscal_year_end = row[columnMapping['Fiscal Year End Date']] || '';
-        mappedData.total_medicare_visits = parseFloat(row[columnMapping['Total, Medicare Title XVIII Visits']] || 0);
-        mappedData.total_medicaid_visits = parseFloat(row[columnMapping['Total, Medicaid Title XIX Visits']] || 0);
-        mappedData.total_visits = parseFloat(row[columnMapping['Total, Total Visits']] || 0);
-        mappedData.total_episodes = parseFloat(row[columnMapping['Total Episodes-Total Visits']] || 0);
-        mappedData.total_charges = parseFloat(row[columnMapping['Total Episodes-Total Charges']] || 0);
-        mappedData.total_cost = parseFloat(row[columnMapping['Total Cost']] || 0);
-        mappedData.net_patient_revenue_medicare = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) XVIII Medicare']] || 0);
-        mappedData.net_patient_revenue_medicaid = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) XIX Medicaid']] || 0);
-        mappedData.net_patient_revenue_total = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) Total']] || 0);
-        mappedData.total_operating_expenses = parseFloat(row[columnMapping['Less Total Operating Expenses (sum of lines 4 through 16)']] || 0);
-        mappedData.net_income = parseFloat(row[columnMapping['Net Income or Loss for the period (line 18 plus line 32)']] || 0);
-        mappedData.total_assets = parseFloat(row[columnMapping['Total Assets']] || 0);
-        mappedData.total_liabilities = parseFloat(row[columnMapping['Total Liabilities']] || 0);
+        m.rpt_rec_num = g('rpt_rec_num'); m.ccn = g('Provider CCN'); m.hha_name = g('HHA Name');
+        m.city = g('City'); m.state = g('State Code'); m.zip = g('Zip Code');
     } else if (importType === 'cms_service_utilization') {
-        mappedData.geo_level = row[columnMapping['Rndrng_Prvdr_Geo_Lvl']] || '';
-        mappedData.geo_code = row[columnMapping['Rndrng_Prvdr_Geo_Cd']] || '';
-        mappedData.geo_description = row[columnMapping['Rndrng_Prvdr_Geo_Desc']] || '';
-        mappedData.hcpcs_code = row[columnMapping['HCPCS_Cd']] || '';
-        mappedData.hcpcs_description = row[columnMapping['HCPCS_Desc']] || '';
-        mappedData.drug_indicator = row[columnMapping['HCPCS_Drug_Ind']] || '';
-        mappedData.place_of_service = row[columnMapping['Place_Of_Srvc']] || '';
-        mappedData.total_providers = parseFloat(row[columnMapping['Tot_Rndrng_Prvdrs']] || 0);
-        mappedData.total_beneficiaries = parseFloat(row[columnMapping['Tot_Benes']] || 0);
-        mappedData.total_services = parseFloat(row[columnMapping['Tot_Srvcs']] || 0);
-        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
-        mappedData.avg_medicare_allowed = parseFloat(row[columnMapping['Avg_Mdcr_Alowd_Amt']] || 0);
-        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
-        mappedData.data_year = year;
+        m.geo_level = g('Rndrng_Prvdr_Geo_Lvl'); m.hcpcs_code = g('HCPCS_Cd');
+        m.hcpcs_description = g('HCPCS_Desc'); m.total_services = n('Tot_Srvcs');
+        m.avg_medicare_payment = n('Avg_Mdcr_Pymt_Amt'); m.data_year = parseInt(year);
     } else if (importType === 'provider_service_utilization') {
-        mappedData.npi = row[columnMapping['Rndrng_NPI']] || '';
-        mappedData.hcpcs_code = row[columnMapping['HCPCS_Cd']] || '';
-        mappedData.hcpcs_description = row[columnMapping['HCPCS_Desc']] || '';
-        mappedData.drug_indicator = row[columnMapping['HCPCS_Drug_Ind']] || '';
-        mappedData.place_of_service = row[columnMapping['Place_Of_Srvc']] || '';
-        mappedData.total_beneficiaries = parseFloat(row[columnMapping['Tot_Benes']] || 0);
-        mappedData.total_services = parseFloat(row[columnMapping['Tot_Srvcs']] || 0);
-        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
-        mappedData.avg_medicare_allowed = parseFloat(row[columnMapping['Avg_Mdcr_Alowd_Amt']] || 0);
-        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
-        mappedData.data_year = year;
+        m.npi = g('Rndrng_NPI'); m.hcpcs_code = g('HCPCS_Cd'); m.hcpcs_description = g('HCPCS_Desc');
+        m.drug_indicator = g('HCPCS_Drug_Ind'); m.place_of_service = g('Place_Of_Srvc');
+        m.total_beneficiaries = n('Tot_Benes'); m.total_services = n('Tot_Srvcs');
+        m.avg_submitted_charge = n('Avg_Sbmtd_Chrg'); m.avg_medicare_allowed = n('Avg_Mdcr_Alowd_Amt');
+        m.avg_medicare_payment = n('Avg_Mdcr_Pymt_Amt'); m.data_year = parseInt(year);
     } else if (importType === 'home_health_pdgm') {
-        mappedData.provider_id = row[columnMapping['PRVDR_ID']] || '';
-        mappedData.provider_name = row[columnMapping['PRVDR_NAME']] || '';
-        mappedData.city = row[columnMapping['PRVDR_CITY']] || '';
-        mappedData.state = row[columnMapping['STATE']] || '';
-        mappedData.zip = row[columnMapping['PRVDR_ZIP']] || '';
-        mappedData.grouping_code = row[columnMapping['GRPNG']] || '';
-        mappedData.grouping_description = row[columnMapping['GRPNG_DESC']] || '';
-        mappedData.beneficiaries = parseFloat(row[columnMapping['BENE_DSTNCT_CNT']] || 0);
-        mappedData.total_episodes = parseFloat(row[columnMapping['TOT_EPSD_STAY_CNT']] || 0);
-        mappedData.total_service_days = parseFloat(row[columnMapping['TOT_SRVC_DAYS']] || 0);
-        mappedData.avg_charge_per_episode = parseFloat(row[columnMapping['AVG_CHRG_PER_EPSD']] || 0);
-        mappedData.avg_allowed_per_episode = parseFloat(row[columnMapping['AVG_ALOWD_AMT_PER_EPSD']] || 0);
-        mappedData.avg_payment_per_episode = parseFloat(row[columnMapping['AVG_PYMT_AMT_PER_EPSD']] || 0);
-        mappedData.pt_visits = parseFloat(row[columnMapping['PT_VISITS_CNT']] || 0);
-        mappedData.ot_visits = parseFloat(row[columnMapping['OT_VISITS_CNT']] || 0);
-        mappedData.slp_visits = parseFloat(row[columnMapping['SLP_VISITS_CNT']] || 0);
-        mappedData.data_year = year;
+        m.provider_id = g('PRVDR_ID'); m.provider_name = g('PRVDR_NAME');
+        m.state = g('STATE'); m.grouping_code = g('GRPNG'); m.data_year = parseInt(year);
     } else if (importType === 'inpatient_drg') {
-        mappedData.provider_ccn = row[columnMapping['Rndrng_Prvdr_CCN']] || '';
-        mappedData.provider_name = row[columnMapping['Rndrng_Prvdr_Org_Name']] || '';
-        mappedData.city = row[columnMapping['Rndrng_Prvdr_City']] || '';
-        mappedData.state = row[columnMapping['Rndrng_Prvdr_State_Abrvtn']] || '';
-        mappedData.zip = row[columnMapping['Rndrng_Prvdr_Zip5']] || '';
-        mappedData.drg_code = row[columnMapping['DRG_Cd']] || '';
-        mappedData.drg_description = row[columnMapping['DRG_Desc']] || '';
-        mappedData.total_discharges = parseFloat(row[columnMapping['Tot_Dschrgs']] || 0);
-        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Submtd_Cvrd_Chrg']] || 0);
-        mappedData.avg_total_payment = parseFloat(row[columnMapping['Avg_Tot_Pymt_Amt']] || 0);
-        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
-        mappedData.data_year = year;
+        m.provider_ccn = g('Rndrng_Prvdr_CCN'); m.drg_code = g('DRG_Cd');
+        m.total_discharges = n('Tot_Dschrgs'); m.avg_medicare_payment = n('Avg_Mdcr_Pymt_Amt');
+        m.data_year = parseInt(year);
     } else if (importType === 'provider_ownership') {
-        mappedData.enrollment_id = row[columnMapping['ENROLLMENT ID']] || '';
-        mappedData.associate_id = row[columnMapping['ASSOCIATE ID']] || '';
-        mappedData.organization_name = row[columnMapping['ORGANIZATION NAME']] || '';
-        mappedData.owner_associate_id = row[columnMapping['ASSOCIATE ID - OWNER']] || '';
-        mappedData.owner_type = row[columnMapping['TYPE - OWNER']] || '';
-        mappedData.owner_role_code = row[columnMapping['ROLE CODE - OWNER']] || '';
-        mappedData.owner_role_text = row[columnMapping['ROLE TEXT - OWNER']] || '';
-        
-        const assocDate = row[columnMapping['ASSOCIATION DATE - OWNER']];
-        if (assocDate && assocDate.trim() !== '') {
-            mappedData.association_date = assocDate;
-        }
-        
-        mappedData.owner_first_name = row[columnMapping['FIRST NAME - OWNER']] || '';
-        mappedData.owner_middle_name = row[columnMapping['MIDDLE NAME - OWNER']] || '';
-        mappedData.owner_last_name = row[columnMapping['LAST NAME - OWNER']] || '';
-        mappedData.owner_title = row[columnMapping['TITLE - OWNER']] || '';
-        mappedData.owner_organization_name = row[columnMapping['ORGANIZATION NAME - OWNER']] || '';
-        
-        const ownershipPct = row[columnMapping['PERCENTAGE OWNERSHIP']];
-        mappedData.percentage_ownership = ownershipPct && ownershipPct.trim() !== '' ? parseFloat(ownershipPct) : null;
+        m.enrollment_id = g('ENROLLMENT ID'); m.associate_id = g('ASSOCIATE ID');
+        m.organization_name = g('ORGANIZATION NAME');
     } else if (importType === 'opt_out_physicians') {
-        mappedData.npi = row[columnMapping['NPI']] || '';
-        mappedData.last_name = row[columnMapping['LAST_NAME']] || '';
-        mappedData.first_name = row[columnMapping['FIRST_NAME']] || '';
+        m.npi = g('NPI'); m.last_name = g('LAST_NAME'); m.first_name = g('FIRST_NAME');
     }
-
-    return mappedData;
-}
-
-async function importCMSData(base44, importType, validData, year, startTime) {
-    let imported = 0;
-    let updated = 0;
-    let skipped = 0;
-    let partial = false;
-    const BULK_SIZE = 50;
-
-    // Helper: bulk create with chunking + time check
-    async function bulkCreateEntity(entityRef, records) {
-        let count = 0;
-        for (let i = 0; i < records.length; i += BULK_SIZE) {
-            if (isTimeUp(startTime)) {
-                console.warn(`Time limit reached during bulk create at record ${i}/${records.length}`);
-                partial = true;
-                break;
-            }
-            const chunk = records.slice(i, i + BULK_SIZE);
-            await entityRef.bulkCreate(chunk);
-            count += chunk.length;
-        }
-        return count;
-    }
-
-    // Helper: upsert NPI-keyed records — find existing by NPI+year, update if changed, create if new
-    async function upsertByNpiAndYear(entityRef, records, yearField, compareFields) {
-        let created = 0, updatedCount = 0, skippedCount = 0;
-        for (let i = 0; i < records.length; i += BULK_SIZE) {
-            if (isTimeUp(startTime)) {
-                console.warn(`Time limit reached during upsert at record ${i}/${records.length}`);
-                partial = true;
-                break;
-            }
-            const chunk = records.slice(i, i + BULK_SIZE);
-            for (const rec of chunk) {
-                const filter = { npi: rec.npi };
-                if (yearField) filter[yearField] = rec[yearField];
-                let existing = [];
-                try { existing = await entityRef.filter(filter); } catch (e) {}
-                if (existing.length === 0) {
-                    try { await entityRef.create(rec); created++; } catch (e) {
-                        // May already exist from a concurrent import
-                        skippedCount++;
-                    }
-                } else {
-                    // Check if data actually changed
-                    const ex = existing[0];
-                    let changed = false;
-                    for (const f of compareFields) {
-                        const newVal = rec[f] ?? '';
-                        const oldVal = ex[f] ?? '';
-                        if (String(newVal) !== String(oldVal)) { changed = true; break; }
-                    }
-                    if (changed) {
-                        try { await entityRef.update(ex.id, rec); updatedCount++; } catch (e) { skippedCount++; }
-                    } else {
-                        skippedCount++;
-                    }
-                }
-            }
-        }
-        return { created, updated: updatedCount, skipped: skippedCount };
-    }
-
-    // Helper: upsert provider placeholders — only create if NPI doesn't exist
-    async function upsertProviderPlaceholders(npis) {
-        for (let i = 0; i < npis.length; i += BULK_SIZE) {
-            const chunk = npis.slice(i, i + BULK_SIZE);
-            for (const npi of chunk) {
-                let existing = [];
-                try { existing = await base44.asServiceRole.entities.Provider.filter({ npi }); } catch (e) {}
-                if (existing.length === 0) {
-                    try {
-                        await base44.asServiceRole.entities.Provider.create({ npi, status: 'Active', needs_nppes_enrichment: true });
-                    } catch (e) {}
-                }
-            }
-        }
-    }
-
-    if (importType === 'cms_utilization') {
-        const utilRecords = validData.map(row => ({
-            npi: row.npi,
-            year: parseInt(row.Year || year),
-            total_services: parseFloat(row['Total Services'] || 0),
-            total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
-            total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
-        }));
-        const result = await upsertByNpiAndYear(
-            base44.asServiceRole.entities.CMSUtilization, utilRecords, 'year',
-            ['total_services', 'total_medicare_beneficiaries', 'total_medicare_payment']
-        );
-        imported = result.created; updated = result.updated; skipped = result.skipped;
-        await upsertProviderPlaceholders(validData.map(r => r.npi));
-    } else if (importType === 'cms_order_referring') {
-        const refRecords = validData.map(row => ({
-            npi: row.npi,
-            year: parseInt(row.year),
-            total_referrals: parseInt(row.total_referrals),
-            home_health_referrals: parseInt(row.home_health_referrals),
-            hospice_referrals: parseInt(row.hospice_referrals),
-            snf_referrals: parseInt(row.snf_referrals || 0),
-            dme_referrals: parseInt(row.dme_referrals || 0),
-            imaging_referrals: parseInt(row.imaging_referrals || 0),
-        }));
-        const result = await upsertByNpiAndYear(
-            base44.asServiceRole.entities.CMSReferral, refRecords, 'year',
-            ['total_referrals', 'home_health_referrals', 'hospice_referrals', 'dme_referrals']
-        );
-        imported = result.created; updated = result.updated; skipped = result.skipped;
-        await upsertProviderPlaceholders(validData.map(r => r.npi));
-    } else if (importType === 'nursing_home_chains') {
-        const records = validData.map(row => ({
-            chain_name: row.chain_name, chain_id: row.chain_id,
-            number_of_facilities: row.number_of_facilities, avg_overall_rating: row.avg_overall_rating,
-            avg_health_inspection_rating: row.avg_health_inspection_rating,
-            avg_staffing_rating: row.avg_staffing_rating, avg_quality_rating: row.avg_quality_rating,
-            avg_nurse_hours_per_resident_day: row.avg_nurse_hours_per_resident_day,
-            avg_rn_hours_per_resident_day: row.avg_rn_hours_per_resident_day,
-            avg_staff_turnover_percentage: row.avg_staff_turnover_percentage,
-            avg_rn_turnover_percentage: row.avg_rn_turnover_percentage,
-            total_fines: row.total_fines, total_fines_amount: row.total_fines_amount,
-            avg_rehospitalization_rate: row.avg_rehospitalization_rate,
-            avg_antipsychotic_use: row.avg_antipsychotic_use,
-            avg_falls_with_injury: row.avg_falls_with_injury,
-            avg_pressure_ulcers: row.avg_pressure_ulcers, avg_uti_rate: row.avg_uti_rate,
-            data_year: parseInt(year),
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.NursingHomeChain, records);
-    } else if (importType === 'hospice_enrollments') {
-        const records = validData.map(row => ({
-            enrollment_id: row.enrollment_id,
-            npi: row.npi,
-            ccn: row.ccn,
-            organization_name: row.organization_name,
-            doing_business_as: row.doing_business_as,
-            incorporation_date: row.incorporation_date,
-            incorporation_state: row.incorporation_state,
-            organization_type: row.organization_type,
-            proprietary_nonprofit: row.proprietary_nonprofit,
-            address_1: row.address_1,
-            address_2: row.address_2,
-            city: row.city,
-            state: row.state,
-            zip: row.zip,
-            enrollment_state: row.enrollment_state,
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.HospiceEnrollment, records);
-    } else if (importType === 'home_health_enrollments') {
-        const records = validData.map(row => ({
-            enrollment_id: row.enrollment_id,
-            npi: row.npi,
-            ccn: row.ccn,
-            organization_name: row.organization_name,
-            doing_business_as: row.doing_business_as,
-            incorporation_date: row.incorporation_date,
-            incorporation_state: row.incorporation_state,
-            organization_type: row.organization_type,
-            proprietary_nonprofit: row.proprietary_nonprofit,
-            address_1: row.address_1,
-            address_2: row.address_2,
-            city: row.city,
-            state: row.state,
-            zip: row.zip,
-            enrollment_state: row.enrollment_state,
-            practice_location_type: row.practice_location_type,
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthEnrollment, records);
-    } else if (importType === 'home_health_cost_reports') {
-        const records = validData.map(row => ({
-            rpt_rec_num: row.rpt_rec_num, ccn: row.ccn, hha_name: row.hha_name,
-            street_address: row.street_address, city: row.city, state: row.state, zip: row.zip,
-            type_of_control: row.type_of_control, fiscal_year_begin: row.fiscal_year_begin,
-            fiscal_year_end: row.fiscal_year_end, total_medicare_visits: row.total_medicare_visits,
-            total_medicaid_visits: row.total_medicaid_visits, total_visits: row.total_visits,
-            total_episodes: row.total_episodes, total_charges: row.total_charges, total_cost: row.total_cost,
-            net_patient_revenue_medicare: row.net_patient_revenue_medicare,
-            net_patient_revenue_medicaid: row.net_patient_revenue_medicaid,
-            net_patient_revenue_total: row.net_patient_revenue_total,
-            total_operating_expenses: row.total_operating_expenses, net_income: row.net_income,
-            total_assets: row.total_assets, total_liabilities: row.total_liabilities,
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthCostReport, records);
-    } else if (importType === 'cms_service_utilization') {
-        const records = validData.map(row => ({
-            geo_level: row.geo_level, geo_code: row.geo_code, geo_description: row.geo_description,
-            hcpcs_code: row.hcpcs_code, hcpcs_description: row.hcpcs_description,
-            drug_indicator: row.drug_indicator, place_of_service: row.place_of_service,
-            total_providers: row.total_providers, total_beneficiaries: row.total_beneficiaries,
-            total_services: row.total_services, avg_submitted_charge: row.avg_submitted_charge,
-            avg_medicare_allowed: row.avg_medicare_allowed, avg_medicare_payment: row.avg_medicare_payment,
-            data_year: parseInt(year),
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSServiceUtilization, records);
-    } else if (importType === 'provider_service_utilization') {
-        const records = validData.map(row => ({
-            npi: row.npi, hcpcs_code: row.hcpcs_code, hcpcs_description: row.hcpcs_description,
-            drug_indicator: row.drug_indicator, place_of_service: row.place_of_service,
-            total_beneficiaries: row.total_beneficiaries, total_services: row.total_services,
-            avg_submitted_charge: row.avg_submitted_charge, avg_medicare_allowed: row.avg_medicare_allowed,
-            avg_medicare_payment: row.avg_medicare_payment, data_year: parseInt(year),
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.ProviderServiceUtilization, records);
-    } else if (importType === 'home_health_pdgm') {
-        const records = validData.map(row => ({
-            provider_id: row.provider_id, provider_name: row.provider_name,
-            city: row.city, state: row.state, zip: row.zip,
-            grouping_code: row.grouping_code, grouping_description: row.grouping_description,
-            beneficiaries: row.beneficiaries, total_episodes: row.total_episodes,
-            total_service_days: row.total_service_days, avg_charge_per_episode: row.avg_charge_per_episode,
-            avg_allowed_per_episode: row.avg_allowed_per_episode, avg_payment_per_episode: row.avg_payment_per_episode,
-            pt_visits: row.pt_visits, ot_visits: row.ot_visits, slp_visits: row.slp_visits,
-            data_year: parseInt(year),
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthPDGM, records);
-    } else if (importType === 'inpatient_drg') {
-        const records = validData.map(row => ({
-            provider_ccn: row.provider_ccn, provider_name: row.provider_name,
-            city: row.city, state: row.state, zip: row.zip,
-            drg_code: row.drg_code, drg_description: row.drg_description,
-            total_discharges: row.total_discharges, avg_submitted_charge: row.avg_submitted_charge,
-            avg_total_payment: row.avg_total_payment, avg_medicare_payment: row.avg_medicare_payment,
-            data_year: parseInt(year),
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.InpatientDRG, records);
-    } else if (importType === 'provider_ownership') {
-        const records = validData.map(row => {
-            const rec = {
-                enrollment_id: row.enrollment_id, associate_id: row.associate_id,
-                organization_name: row.organization_name, owner_associate_id: row.owner_associate_id,
-                owner_type: row.owner_type, owner_role_code: row.owner_role_code,
-                owner_role_text: row.owner_role_text, owner_first_name: row.owner_first_name,
-                owner_middle_name: row.owner_middle_name, owner_last_name: row.owner_last_name,
-                owner_title: row.owner_title, owner_organization_name: row.owner_organization_name,
-                percentage_ownership: row.percentage_ownership,
-            };
-            if (row.association_date) rec.association_date = row.association_date;
-            return rec;
-        });
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.ProviderOwnership, records);
-    } else if (importType === 'opt_out_physicians') {
-        const records = validData.map(row => ({
-            npi: row.npi, last_name: row.last_name, first_name: row.first_name,
-        }));
-        imported = await bulkCreateEntity(base44.asServiceRole.entities.OptOutPhysician, records);
-    }
-
-    return { imported, updated, skipped, partial };
+    return m;
 }
