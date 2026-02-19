@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -115,17 +117,18 @@ export default function Locations() {
                   <TableHead>Phone</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Primary</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   Array(5).fill(0).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array(8).fill(0).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}
-                    </TableRow>
+                   <TableRow key={i}>
+                     {Array(9).fill(0).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}
+                   </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">No locations found</TableCell></TableRow>
+                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">No locations found</TableCell></TableRow>
                 ) : (
                   filtered.slice(0, 100).map(loc => (
                     <TableRow key={loc.id}>
@@ -137,6 +140,11 @@ export default function Locations() {
                       <TableCell>{loc.phone || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{loc.location_type || '-'}</Badge></TableCell>
                       <TableCell>{loc.is_primary ? <Badge className="bg-blue-100 text-blue-700">Primary</Badge> : '-'}</TableCell>
+                      <TableCell>
+                        <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>
+                          <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
+                        </Link>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

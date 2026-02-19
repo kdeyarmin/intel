@@ -213,9 +213,16 @@ export default function Providers() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
-                            <Button variant="outline" size="sm">View</Button>
-                          </Link>
+                          <div className="flex gap-1">
+                            <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
+                              <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
+                            </Link>
+                            {provider.entity_type === 'Organization' && (
+                              <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
+                                <Button variant="outline" size="sm" className="text-xs h-7">Org</Button>
+                              </Link>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
