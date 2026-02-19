@@ -44,23 +44,18 @@ export default function DataImports() {
 
     setFile(selectedFile);
     setUploadingFile(true);
-    setUploadProgress(10);
+    setUploadProgress(20);
     
+    // Read only first 5000 bytes to extract headers (much faster for large files)
     const reader = new FileReader();
-    
-    reader.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const progress = Math.round((event.loaded / event.total) * 60) + 10;
-        setUploadProgress(progress);
-      }
-    };
+    const blob = selectedFile.slice(0, 5000);
     
     reader.onload = (event) => {
       try {
-        setUploadProgress(80);
+        setUploadProgress(60);
         const text = event.target.result;
-        const lines = text.split('\n').filter(l => l.trim());
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const firstLine = text.split('\n')[0];
+        const headers = firstLine.split(',').map(h => h.trim().replace(/"/g, ''));
         
         setCsvColumns(headers);
         setUploadProgress(100);
@@ -68,21 +63,21 @@ export default function DataImports() {
           setStep('map');
           setUploadingFile(false);
           setUploadProgress(0);
-        }, 500);
+        }, 300);
       } catch (error) {
-        alert('Error parsing file: ' + error.message);
+        alert('Error parsing file headers: ' + error.message);
         setUploadingFile(false);
         setUploadProgress(0);
       }
     };
     
     reader.onerror = () => {
-      alert('Error reading file. Please try again.');
+      alert('Error reading file. Please try selecting the file again.');
       setUploadingFile(false);
       setUploadProgress(0);
     };
     
-    reader.readAsText(selectedFile);
+    reader.readAsText(blob);
   };
 
   const handleValidate = async () => {
