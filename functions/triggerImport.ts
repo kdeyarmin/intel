@@ -1,13 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// CMS API "Dataset Type Identifiers" — these always resolve to the latest version
-// The CMS data API returns JSON arrays, not CSV
+// CMS Data API URLs - verified working endpoints
 const IMPORT_TYPE_URLS = {
-  cms_utilization: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data',
-  cms_order_referring: 'https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data',
-  opt_out_physicians: 'https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data',
+  // Provider & Service level utilization (Rndrng_NPI, HCPCS_Cd, Tot_Srvcs, etc.)
   provider_service_utilization: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data',
+  // Order and Referring (NPI, LAST_NAME, FIRST_NAME, PARTB, DME, HHA, PMD, HOSPICE)
+  cms_order_referring: 'https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data',
+  // Opt-Out Physicians
+  opt_out_physicians: 'https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data',
+  // Home Health Enrollments
   home_health_enrollments: 'https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data',
+  // Hospice Enrollments
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
 };
 
@@ -27,17 +30,41 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing required field: import_type' }, { status: 400 });
     }
 
+    // Check if it's a ZIP-based Medicare stats import
+    const zipFunctionMap = {
+      medicare_hha_stats: 'importMedicareHHA',
+      medicare_ma_inpatient: 'importMedicareMAInpatient',
+      medicare_part_d_stats: 'importMedicarePartD',
+      medicare_snf_stats: 'importMedicareSNF',
+    };
+
+    if (zipFunctionMap[import_type]) {
+      // Route to the specialized ZIP handler
+      const res = await base44.functions.invoke(zipFunctionMap[import_type], {
+        action: 'import',
+        year: parseInt(year || new Date().getFullYear()),
+        custom_url: file_url || undefined,
+        dry_run,
+      });
+      return Response.json({ success: true, import_type, result: res.data });
+    }
+
+    // CMS API-based imports
     const validTypes = Object.keys(IMPORT_TYPE_URLS);
     if (!validTypes.includes(import_type)) {
       return Response.json({
-        error: `Invalid import_type. Must be one of: ${validTypes.join(', ')}`,
+        error: `Invalid import_type. Must be one of: ${[...validTypes, ...Object.keys(zipFunctionMap)].join(', ')}`,
       }, { status: 400 });
     }
 
     const resolvedUrl = file_url || IMPORT_TYPE_URLS[import_type];
+    if (!resolvedUrl) {
+      return Response.json({ error: 'No URL available for this import type. Please provide a file_url.' }, { status: 400 });
+    }
+
     const resolvedYear = year || new Date().getFullYear();
 
-    // Trigger the import via the existing autoImportCMSData function
+    // Call autoImportCMSData directly via service role to avoid auth chain issues
     const response = await base44.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
