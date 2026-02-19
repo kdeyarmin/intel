@@ -88,17 +88,6 @@ export default function DataQuality() {
         </div>
       </div>
 
-      {/* AI Summary Banner */}
-      {latestScan?.summary && (
-        <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl p-4 flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-violet-500 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-violet-800 mb-0.5">AI Analysis</p>
-            <p className="text-sm text-violet-700 leading-relaxed">{latestScan.summary}</p>
-          </div>
-        </div>
-      )}
-
       {/* Score Cards */}
       {scansLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -193,6 +182,17 @@ export default function DataQuality() {
           <ScanHistoryPanel scans={scans} />
         </TabsContent>
       </Tabs>
+
+      {/* AI Summary Banner */}
+      {latestScan?.summary && (
+        <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl p-4 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-violet-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-violet-800 mb-0.5">AI Analysis</p>
+            <p className="text-sm text-violet-700 leading-relaxed">{latestScan.summary}</p>
+          </div>
+        </div>
+      )}
 
       <DataSourcesFooter />
     </div>
