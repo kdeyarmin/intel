@@ -17,6 +17,8 @@ import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
 import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
 import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
+import ErrorLogDialog from '../components/imports/ErrorLogDialog';
+import DateRangeFilter from '../components/imports/DateRangeFilter';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -59,6 +61,9 @@ export default function ImportMonitoring() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryBatch, setRetryBatch] = useState(null);
+  const [errorLogBatch, setErrorLogBatch] = useState(null);
+  const [dateStart, setDateStart] = useState('');
+  const [dateEnd, setDateEnd] = useState('');
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -121,6 +126,17 @@ export default function ImportMonitoring() {
       );
     }
 
+    // Date range
+    if (dateStart) {
+      const start = new Date(dateStart);
+      filtered = filtered.filter(b => new Date(b.created_date) >= start);
+    }
+    if (dateEnd) {
+      const end = new Date(dateEnd);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(b => new Date(b.created_date) <= end);
+    }
+
     // Dedup latest per source
     if (showOnlyLatest) {
       const seen = new Map();
@@ -133,7 +149,7 @@ export default function ImportMonitoring() {
       return Array.from(seen.values());
     }
     return filtered;
-  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest]);
+  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -357,6 +373,12 @@ export default function ImportMonitoring() {
                 Latest only
               </label>
             </div>
+            <DateRangeFilter
+              startDate={dateStart}
+              endDate={dateEnd}
+              onStartChange={setDateStart}
+              onEndChange={setDateEnd}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -400,6 +422,16 @@ export default function ImportMonitoring() {
                         onAction={refreshBatches}
                         onRetryClick={() => setRetryBatch(batch)}
                       />
+                      {batch.status === 'failed' && batch.error_samples?.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setErrorLogBatch(batch)}
+                        >
+                          Error Log
+                        </Button>
+                      )}
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" size="sm" className="h-7 text-xs">Details</Button>
@@ -494,6 +526,13 @@ export default function ImportMonitoring() {
           )}
         </CardContent>
       </Card>
+
+      {/* Error Log Dialog */}
+      <ErrorLogDialog
+        batch={errorLogBatch}
+        open={!!errorLogBatch}
+        onOpenChange={(open) => { if (!open) setErrorLogBatch(null); }}
+      />
 
       {/* Retry Dialog */}
       <RetryBatchDialog
