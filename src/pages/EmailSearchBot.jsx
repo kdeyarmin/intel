@@ -17,8 +17,12 @@ export default function EmailSearchBot() {
   const [skipSearched, setSkipSearched] = useState(true);
   const [singleNpi, setSingleNpi] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const [isRunningAll, setIsRunningAll] = useState(false);
+  const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
+  const [allRunProgress, setAllRunProgress] = useState(null);
   const queryClient = useQueryClient();
+  const stopRef = React.useRef(false);
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['emailBotProviders'],
@@ -65,6 +69,65 @@ export default function EmailSearchBot() {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  const runSearchAll = async () => {
+    setIsRunningAll(true);
+    setIsRunning(true);
+    stopRef.current = false;
+    setStopRequested(false);
+    setLastResults(null);
+    
+    let totalSearched = 0;
+    let totalFound = 0;
+    let allResults = [];
+    let batchNumber = 0;
+    let hasMore = true;
+
+    setAllRunProgress({ totalSearched: 0, totalFound: 0, batchNumber: 0, status: 'running' });
+
+    while (hasMore && !stopRef.current) {
+      batchNumber++;
+      setAllRunProgress(prev => ({ ...prev, batchNumber, status: 'running' }));
+
+      try {
+        const response = await base44.functions.invoke('emailSearchBot', {
+          mode: 'batch',
+          batch_size: batchSize,
+          skip_already_searched: skipSearched,
+        });
+        const data = response.data;
+        
+        if (!data.results || data.results.length === 0 || data.searched === 0) {
+          hasMore = false;
+        } else {
+          totalSearched += data.searched;
+          totalFound += data.found;
+          allResults = [...allResults, ...(data.results || [])];
+          setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running' });
+          setLastResults(allResults);
+        }
+
+        // Refresh stats
+        queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
+      } catch (err) {
+        console.error('Batch failed:', err);
+        toast.error(`Batch ${batchNumber} failed: ${err.response?.data?.error || err.message}. Continuing...`);
+        // If a batch fails, we stop to avoid infinite loops on persistent errors
+        hasMore = false;
+      }
+    }
+
+    setAllRunProgress(prev => ({ ...prev, status: stopRef.current ? 'stopped' : 'complete' }));
+    setIsRunning(false);
+    setIsRunningAll(false);
+    toast.success(`Done! Searched ${totalSearched} providers across ${batchNumber} batches, found ${totalFound} emails.`);
+    queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
+  };
+
+  const handleStopAll = () => {
+    stopRef.current = true;
+    setStopRequested(true);
   };
 
   // Full export CSV
@@ -179,13 +242,18 @@ export default function EmailSearchBot() {
         singleNpi={singleNpi}
         setSingleNpi={setSingleNpi}
         isRunning={isRunning}
+        isRunningAll={isRunningAll}
         onRunBatch={() => runSearch('batch')}
+        onRunAll={runSearchAll}
+        onStopAll={handleStopAll}
+        stopRequested={stopRequested}
         onRunSingle={() => runSearch('single', singleNpi.trim())}
         stats={stats}
+        allRunProgress={allRunProgress}
       />
 
       {/* Running indicator */}
-      {isRunning && (
+      {isRunning && !isRunningAll && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="animate-pulse">
