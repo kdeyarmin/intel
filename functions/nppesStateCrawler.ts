@@ -9,8 +9,75 @@ const US_STATES = [
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 const BATCH_LIMIT = 200;
 const MAX_SKIP = 1000; // NPPES API allows skip up to 1000, so max 1200 records per query
+const MAX_PAGES_PER_QUERY = 6; // 6 pages * 200 = 1200 max per query
 const BULK_SIZE = 50;
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const API_DELAY_MS = 250; // delay between API calls to avoid rate limiting
+const MAX_RETRIES = 3;
+
+// Fetch a single page from NPPES API with retry logic
+async function fetchNPPESPage(params, retries = MAX_RETRIES) {
+    const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch(apiUrl);
+            if (response.status === 429 || response.status >= 500) {
+                // Rate limited or server error — wait and retry
+                const backoff = attempt * 2000;
+                console.log(`[NPPES] HTTP ${response.status}, retry ${attempt}/${retries} in ${backoff}ms`);
+                await new Promise(r => setTimeout(r, backoff));
+                continue;
+            }
+            if (!response.ok) {
+                return { error: `HTTP ${response.status} ${response.statusText}`, results: [] };
+            }
+            const data = await response.json();
+            if (data.Errors && data.Errors.length > 0) {
+                const errMsg = data.Errors.map(e => e.description).join('; ');
+                return { error: errMsg, results: [], result_count: 0 };
+            }
+            return { results: data.results || [], result_count: data.result_count || 0, error: null };
+        } catch (e) {
+            if (attempt === retries) return { error: e.message, results: [], result_count: 0 };
+            await new Promise(r => setTimeout(r, attempt * 1500));
+        }
+    }
+    return { error: 'Max retries exceeded', results: [], result_count: 0 };
+}
+
+// Fetch all results for a given set of params, paginating through skip.
+// Returns { results[], hitLimit: bool } — hitLimit=true means >1200 records exist.
+async function fetchAllPages(baseParams, stateCode) {
+    const allResults = [];
+    let skip = 0;
+    let hitLimit = false;
+
+    for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
+        baseParams.set('skip', String(skip));
+        const data = await fetchNPPESPage(baseParams);
+
+        if (data.error) {
+            // "No results" is not a real error
+            if (/no results/i.test(data.error) || /no record/i.test(data.error)) break;
+            console.log(`[${stateCode}] API note: ${data.error}`);
+            break;
+        }
+
+        if (data.results.length === 0) break;
+        allResults.push(...data.results);
+
+        if (data.results.length < BATCH_LIMIT) break;
+        skip += BATCH_LIMIT;
+        if (skip > MAX_SKIP) {
+            // We've hit the 1200 record limit for this query — caller should subdivide
+            hitLimit = true;
+            break;
+        }
+        await new Promise(r => setTimeout(r, API_DELAY_MS));
+    }
+
+    return { results: allResults, hitLimit };
+}
 
 Deno.serve(async (req) => {
     try {
