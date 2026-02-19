@@ -7,6 +7,7 @@ import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
+import AIAnalysisPanel from '../components/dashboard/AIAnalysisPanel';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -122,6 +123,11 @@ export default function Dashboard() {
           <DataQualityWidget />
         </div>
         <DQQuickStatus />
+      </div>
+
+      {/* AI Analysis */}
+      <div className="mb-6">
+        <AIAnalysisPanel />
       </div>
     </div>
   );
