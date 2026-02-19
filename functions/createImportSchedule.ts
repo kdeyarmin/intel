@@ -59,25 +59,9 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        // Create automation using the internal automations endpoint
-        const appId = Deno.env.get('BASE44_APP_ID');
-        const serviceToken = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
-        
-        const response = await fetch(`https://api.base44.com/v1/apps/${appId}/automations`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-service-role-key': serviceToken,
-            },
-            body: JSON.stringify(scheduleConfig),
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Failed to create automation: ${error}`);
-        }
-
-        const automation = await response.json();
+        // Create automation - Base44 SDK doesn't expose this directly, so we use a workaround
+        // by invoking the automation creation through the platform's internal mechanisms
+        const automation = await base44.functions.invoke('_createAutomation', scheduleConfig);
 
         // If runNow is true, trigger the import immediately
         if (runNow) {
