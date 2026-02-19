@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
-  Stethoscope, ListChecks, FileBarChart2
+  Stethoscope, ListChecks, FileBarChart2, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 const CATEGORY_CONFIG = {
@@ -43,6 +43,9 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const listRef = useRef(null);
+  const inputRef = useRef(null);
 
   const { data: providers = [] } = useQuery({
     queryKey: ['globalProviders'],
@@ -81,8 +84,10 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   });
 
   useEffect(() => {
-    if (!open) { setQuery(''); setActiveCategory('all'); }
+    if (!open) { setQuery(''); setActiveCategory('all'); setHighlightIdx(-1); }
   }, [open]);
+
+  useEffect(() => { setHighlightIdx(-1); }, [query, activeCategory]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -214,13 +219,25 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
         <div className="flex items-center gap-2 px-4 border-b">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <Input
+            ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (filteredResults.length === 0) return;
+              if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIdx(prev => Math.min(prev + 1, filteredResults.length - 1)); }
+              else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIdx(prev => Math.max(prev - 1, 0)); }
+              else if (e.key === 'Enter' && highlightIdx >= 0) { e.preventDefault(); goTo(filteredResults[highlightIdx].url); }
+            }}
             placeholder="Search providers, locations, specialties, NPIs..."
             className="border-0 shadow-none focus-visible:ring-0 text-base h-12"
             autoFocus
           />
-          <kbd className="text-[10px] text-slate-400 border rounded px-1.5 py-0.5 shrink-0">ESC</kbd>
+          <div className="flex items-center gap-1 shrink-0">
+            <kbd className="text-[10px] text-slate-400 border rounded px-1 py-0.5"><ArrowUp className="w-2.5 h-2.5 inline" /></kbd>
+            <kbd className="text-[10px] text-slate-400 border rounded px-1 py-0.5"><ArrowDown className="w-2.5 h-2.5 inline" /></kbd>
+            <span className="text-[10px] text-slate-300 mx-0.5">to navigate</span>
+            <kbd className="text-[10px] text-slate-400 border rounded px-1.5 py-0.5">ESC</kbd>
+          </div>
         </div>
 
         {/* Category filter pills */}
@@ -254,15 +271,17 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               No results found for "{query}"
             </div>
           ) : (
-            <div className="py-1">
+            <div className="py-1" ref={listRef}>
               {filteredResults.map((item, idx) => {
                 const config = CATEGORY_CONFIG[item.type] || CATEGORY_CONFIG.Page;
                 const Icon = config.icon;
+                const isHighlighted = idx === highlightIdx;
                 return (
                   <button
                     key={idx}
                     onClick={() => goTo(item.url)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left transition-colors"
+                    onMouseEnter={() => setHighlightIdx(idx)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
                   >
                     <div className={`p-1.5 rounded-md ${config.color}`}>
                       <Icon className="w-4 h-4" />

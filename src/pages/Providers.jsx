@@ -7,63 +7,38 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download, Sparkles } from 'lucide-react';
+import { Save, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import SearchFilterBar from '../components/filters/SearchFilterBar';
+import TypeAheadSearch from '../components/search/TypeAheadSearch';
+import ProviderAdvancedFilters from '../components/filters/ProviderAdvancedFilters';
+import SortControl from '../components/filters/SortControl';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import EnrichProviderButton from '../components/providers/EnrichProviderButton';
 
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'npi', label: 'NPI' },
+  { value: 'credential', label: 'Credential' },
+  { value: 'score', label: 'Score' },
+  { value: 'created', label: 'Date Added' },
+];
+
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [entityTypeFilter, setEntityTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [credentialFilter, setCredentialFilter] = useState('all');
-  const [enrichmentFilter, setEnrichmentFilter] = useState('all');
-  const [emailFilter, setEmailFilter] = useState('all');
-  const [selectedNpis, setSelectedNpis] = useState(new Set());
-
-  const toggleSelect = (npi) => {
-    setSelectedNpis(prev => {
-      const next = new Set(prev);
-      if (next.has(npi)) next.delete(npi); else next.add(npi);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedNpis.size === filteredProviders.length) {
-      setSelectedNpis(new Set());
-    } else {
-      setSelectedNpis(new Set(filteredProviders.map(p => p.npi)));
-    }
-  };
-
-  const selectedProviders = providers.filter(p => selectedNpis.has(p.npi));
-
-  // Load default saved filter
-  const { data: savedFilters = [] } = useQuery({
-    queryKey: ['savedFilters', 'Providers'],
-    queryFn: () => base44.entities.SavedFilter.filter({ page: 'Providers' }),
-    staleTime: 30000,
+  const [filters, setFilters] = useState({
+    entityTypeFilter: 'all',
+    statusFilter: 'all',
+    credentialFilter: 'all',
+    enrichmentFilter: 'all',
+    emailFilter: 'all',
+    stateFilter: 'all',
+    specialtyFilter: 'all',
   });
-
-  useEffect(() => {
-    const def = savedFilters.find(f => f.is_default);
-    if (def?.filters) applyFilter(def.filters);
-  }, [savedFilters.length]);
-
-  const applyFilter = (filters) => {
-    setSearchTerm(filters.searchTerm || '');
-    setEntityTypeFilter(filters.entityTypeFilter || 'all');
-    setStatusFilter(filters.statusFilter || 'all');
-    setCredentialFilter(filters.credentialFilter || 'all');
-    setEnrichmentFilter(filters.enrichmentFilter || 'all');
-    setEmailFilter(filters.emailFilter || 'all');
-  };
-
-  const currentFilters = { searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter, emailFilter };
+  const [sortField, setSortField] = useState('default');
+  const [sortDir, setSortDir] = useState('asc');
+  const [selectedNpis, setSelectedNpis] = useState(new Set());
 
   const queryClient = useQueryClient();
 
@@ -89,16 +64,164 @@ export default function Providers() {
     staleTime: 120000,
   });
 
-  const getScore = (npi) => {
-    const scoreRecord = scores.find(s => s.npi === npi);
-    return scoreRecord?.score || null;
+  const { data: savedFilters = [] } = useQuery({
+    queryKey: ['savedFilters', 'Providers'],
+    queryFn: () => base44.entities.SavedFilter.filter({ page: 'Providers' }),
+    staleTime: 30000,
+  });
+
+  useEffect(() => {
+    const def = savedFilters.find(f => f.is_default);
+    if (def?.filters) applyFilter(def.filters);
+  }, [savedFilters.length]);
+
+  const applyFilter = (f) => {
+    setSearchTerm(f.searchTerm || '');
+    setFilters({
+      entityTypeFilter: f.entityTypeFilter || 'all',
+      statusFilter: f.statusFilter || 'all',
+      credentialFilter: f.credentialFilter || 'all',
+      enrichmentFilter: f.enrichmentFilter || 'all',
+      emailFilter: f.emailFilter || 'all',
+      stateFilter: f.stateFilter || 'all',
+      specialtyFilter: f.specialtyFilter || 'all',
+    });
   };
 
-  const credentials = useMemo(() => {
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilters({
+      entityTypeFilter: 'all', statusFilter: 'all', credentialFilter: 'all',
+      enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
+    });
+    setSortField('default');
+    setSortDir('asc');
+  };
+
+  const currentFilters = { searchTerm, ...filters };
+
+  const getScore = (npi) => {
+    const s = scores.find(s => s.npi === npi);
+    return s?.score || null;
+  };
+
+  // Build options from data
+  const credentialOptions = useMemo(() => {
     const c = new Set(providers.map(p => p.credential).filter(Boolean));
     return [...c].sort().map(cr => ({ value: cr, label: cr }));
   }, [providers]);
 
+  const stateOptions = useMemo(() => {
+    const s = new Set(locations.map(l => l.state).filter(Boolean));
+    return [...s].sort().map(st => ({ value: st, label: st }));
+  }, [locations]);
+
+  const specialtyOptions = useMemo(() => {
+    const s = new Set(taxonomies.map(t => t.taxonomy_description).filter(Boolean));
+    return [...s].sort().slice(0, 100).map(sp => ({ value: sp, label: sp.length > 40 ? sp.substring(0, 40) + '...' : sp }));
+  }, [taxonomies]);
+
+  // Build location/taxonomy lookup maps
+  const locationByNpi = useMemo(() => {
+    const map = {};
+    for (const l of locations) {
+      if (!map[l.npi]) map[l.npi] = [];
+      map[l.npi].push(l);
+    }
+    return map;
+  }, [locations]);
+
+  const taxonomyByNpi = useMemo(() => {
+    const map = {};
+    for (const t of taxonomies) {
+      if (!map[t.npi]) map[t.npi] = [];
+      map[t.npi].push(t);
+    }
+    return map;
+  }, [taxonomies]);
+
+  // Type-ahead suggestions
+  const searchSuggestions = useMemo(() => {
+    if (!searchTerm || searchTerm.length < 2) return [];
+    const q = searchTerm.toLowerCase();
+    const results = [];
+
+    for (const p of providers) {
+      if (results.length >= 8) break;
+      const name = p.entity_type === 'Individual'
+        ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+        : p.organization_name || '';
+      if (
+        name.toLowerCase().includes(q) ||
+        (p.npi || '').includes(q) ||
+        (p.credential || '').toLowerCase().includes(q)
+      ) {
+        results.push({
+          type: p.entity_type === 'Organization' ? 'organization' : 'provider',
+          label: name || p.npi,
+          sublabel: `NPI: ${p.npi}${p.credential ? ` · ${p.credential}` : ''}`,
+          text: name || p.npi,
+          badge: p.entity_type,
+          npi: p.npi,
+        });
+      }
+    }
+
+    // Specialty suggestions
+    if (results.length < 8) {
+      const seen = new Set();
+      for (const t of taxonomies) {
+        if (results.length >= 8) break;
+        const desc = t.taxonomy_description || '';
+        if (desc.toLowerCase().includes(q) && !seen.has(desc)) {
+          seen.add(desc);
+          results.push({
+            type: 'specialty',
+            label: desc,
+            sublabel: `Code: ${t.taxonomy_code || ''}`,
+            text: desc,
+            badge: 'Specialty',
+          });
+        }
+      }
+    }
+
+    // Location suggestions
+    if (results.length < 8) {
+      const seen = new Set();
+      for (const l of locations) {
+        if (results.length >= 8) break;
+        const city = (l.city || '').toLowerCase();
+        const state = (l.state || '').toLowerCase();
+        const key = `${l.city}, ${l.state}`;
+        if ((city.includes(q) || state.includes(q)) && !seen.has(key)) {
+          seen.add(key);
+          results.push({
+            type: 'location',
+            label: key,
+            sublabel: `ZIP: ${l.zip || ''}`,
+            text: l.city || l.state,
+            badge: 'Location',
+          });
+        }
+      }
+    }
+
+    return results;
+  }, [searchTerm, providers, taxonomies, locations]);
+
+  const handleSuggestionSelect = (item) => {
+    if (item.npi) {
+      setSearchTerm(item.text || item.label);
+    } else if (item.badge === 'Specialty') {
+      setFilters(prev => ({ ...prev, specialtyFilter: item.label }));
+      setSearchTerm('');
+    } else {
+      setSearchTerm(item.text || item.label);
+    }
+  };
+
+  // Filtering
   const filteredProviders = useMemo(() => {
     return providers.filter(p => {
       if (searchTerm) {
@@ -110,23 +233,76 @@ export default function Providers() {
           (p.credential || '').toLowerCase().includes(q);
         if (!match) return false;
       }
-      if (entityTypeFilter !== 'all' && p.entity_type !== entityTypeFilter) return false;
-      if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-      if (credentialFilter !== 'all' && p.credential !== credentialFilter) return false;
-      if (enrichmentFilter !== 'all') {
-        if (enrichmentFilter === 'yes' && !p.needs_nppes_enrichment) return false;
-        if (enrichmentFilter === 'no' && p.needs_nppes_enrichment) return false;
+      if (filters.entityTypeFilter !== 'all' && p.entity_type !== filters.entityTypeFilter) return false;
+      if (filters.statusFilter !== 'all' && p.status !== filters.statusFilter) return false;
+      if (filters.credentialFilter !== 'all' && p.credential !== filters.credentialFilter) return false;
+      if (filters.enrichmentFilter !== 'all') {
+        if (filters.enrichmentFilter === 'yes' && !p.needs_nppes_enrichment) return false;
+        if (filters.enrichmentFilter === 'no' && p.needs_nppes_enrichment) return false;
       }
-      if (emailFilter !== 'all') {
-        if (emailFilter === 'has_email' && !p.email) return false;
-        if (emailFilter === 'no_email' && p.email) return false;
-        if (emailFilter === 'high' && p.email_confidence !== 'high') return false;
-        if (emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
-        if (emailFilter === 'not_searched' && p.email_searched_at) return false;
+      if (filters.emailFilter !== 'all') {
+        if (filters.emailFilter === 'has_email' && !p.email) return false;
+        if (filters.emailFilter === 'no_email' && p.email) return false;
+        if (filters.emailFilter === 'high' && p.email_confidence !== 'high') return false;
+        if (filters.emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
+        if (filters.emailFilter === 'not_searched' && p.email_searched_at) return false;
+      }
+      if (filters.stateFilter !== 'all') {
+        const locs = locationByNpi[p.npi] || [];
+        if (!locs.some(l => l.state === filters.stateFilter)) return false;
+      }
+      if (filters.specialtyFilter !== 'all') {
+        const taxes = taxonomyByNpi[p.npi] || [];
+        if (!taxes.some(t => t.taxonomy_description === filters.specialtyFilter)) return false;
       }
       return true;
     });
-  }, [providers, searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter, emailFilter]);
+  }, [providers, searchTerm, filters, locationByNpi, taxonomyByNpi]);
+
+  // Sorting
+  const sortedProviders = useMemo(() => {
+    if (sortField === 'default') return filteredProviders;
+    const sorted = [...filteredProviders];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+      let va, vb;
+      switch (sortField) {
+        case 'name':
+          va = a.entity_type === 'Individual' ? `${a.last_name} ${a.first_name}` : a.organization_name || '';
+          vb = b.entity_type === 'Individual' ? `${b.last_name} ${b.first_name}` : b.organization_name || '';
+          return dir * va.localeCompare(vb);
+        case 'npi':
+          return dir * (a.npi || '').localeCompare(b.npi || '');
+        case 'credential':
+          return dir * (a.credential || '').localeCompare(b.credential || '');
+        case 'score':
+          return dir * ((getScore(a.npi) || 0) - (getScore(b.npi) || 0));
+        case 'created':
+          return dir * ((a.created_date || '').localeCompare(b.created_date || ''));
+        default:
+          return 0;
+      }
+    });
+    return sorted;
+  }, [filteredProviders, sortField, sortDir, scores]);
+
+  const selectedProviders = providers.filter(p => selectedNpis.has(p.npi));
+
+  const toggleSelect = (npi) => {
+    setSelectedNpis(prev => {
+      const next = new Set(prev);
+      if (next.has(npi)) next.delete(npi); else next.add(npi);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedNpis.size === sortedProviders.length) {
+      setSelectedNpis(new Set());
+    } else {
+      setSelectedNpis(new Set(sortedProviders.map(p => p.npi)));
+    }
+  };
 
   const handleSaveList = async () => {
     const user = await base44.auth.me();
@@ -166,9 +342,9 @@ export default function Providers() {
         </div>
         <div className="flex gap-2">
           <ExportDialog
-            data={filteredProviders.map(p => {
-              const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
-              const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+            data={sortedProviders.map(p => {
+              const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+              const tax = (taxonomyByNpi[p.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[p.npi] || [])[0];
               return {
                 npi: p.npi,
                 name: p.entity_type === 'Individual' ? `${p.last_name}, ${p.first_name}` : p.organization_name || '',
@@ -232,18 +408,34 @@ export default function Providers() {
             currentFilters={currentFilters}
             onApplyFilter={applyFilter}
           />
-          <SearchFilterBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onReset={() => { setSearchTerm(''); setEntityTypeFilter('all'); setStatusFilter('all'); setCredentialFilter('all'); setEnrichmentFilter('all'); setEmailFilter('all'); }}
-            filters={[
-              { key: 'entityType', type: 'select', label: 'Type', value: entityTypeFilter, onChange: setEntityTypeFilter, options: [{ value: 'Individual', label: 'Individual' }, { value: 'Organization', label: 'Organization' }] },
-              { key: 'status', type: 'select', label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'Active', label: 'Active' }, { value: 'Deactivated', label: 'Deactivated' }] },
-              { key: 'credential', type: 'select', label: 'Credential', value: credentialFilter, onChange: setCredentialFilter, options: credentials },
-              { key: 'email', type: 'select', label: 'Email Status', value: emailFilter, onChange: setEmailFilter, options: [{ value: 'has_email', label: 'Has Email' }, { value: 'no_email', label: 'No Email' }, { value: 'high', label: 'High Confidence' }, { value: 'medium', label: 'Medium Confidence' }, { value: 'not_searched', label: 'Not Searched' }] },
-              { key: 'enrichment', type: 'select', label: 'Needs Enrichment', value: enrichmentFilter, onChange: setEnrichmentFilter, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
-            ]}
+
+          {/* Type-ahead search */}
+          <TypeAheadSearch
+            value={searchTerm}
+            onChange={setSearchTerm}
+            suggestions={searchSuggestions}
+            placeholder="Search by name, NPI, specialty, credential, city..."
+            onSuggestionSelect={handleSuggestionSelect}
+            className="flex-1"
           />
+
+          {/* Advanced filters + sort */}
+          <div className="flex items-start justify-between gap-3">
+            <ProviderAdvancedFilters
+              filters={filters}
+              onFilterChange={setFilters}
+              onReset={resetFilters}
+              specialtyOptions={specialtyOptions}
+              stateOptions={stateOptions}
+              credentialOptions={credentialOptions}
+            />
+            <SortControl
+              sortField={sortField}
+              sortDir={sortDir}
+              onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
+              sortOptions={SORT_OPTIONS}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -252,7 +444,7 @@ export default function Providers() {
           <CardTitle className="flex items-center justify-between">
             <span>Provider Directory</span>
             <span className="text-sm font-normal text-gray-500">
-              {filteredProviders.length} results
+              {sortedProviders.length} results
               {selectedNpis.size > 0 && (
                 <Badge className="ml-2 bg-violet-100 text-violet-700 text-[10px]">{selectedNpis.size} selected</Badge>
               )}
@@ -266,7 +458,7 @@ export default function Providers() {
                 <TableRow>
                   <TableHead className="w-10">
                     <input type="checkbox"
-                      checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
+                      checked={sortedProviders.length > 0 && selectedNpis.size === sortedProviders.length}
                       onChange={toggleSelectAll}
                       className="rounded border-slate-300"
                     />
@@ -294,14 +486,14 @@ export default function Providers() {
                       <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                     </TableRow>
                   ))
-                ) : filteredProviders.length === 0 ? (
+                ) : sortedProviders.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       No providers found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProviders.map(provider => {
+                  sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
                     return (
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-violet-50/50' : ''}>
