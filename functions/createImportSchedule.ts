@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        const { import_type, schedule_type, schedule_time, runNow } = await req.json();
+        const { import_type, schedule_type, schedule_time } = await req.json();
 
         const importTypeLabels = {
             'cms_utilization': 'CMS Provider Utilization',
@@ -59,19 +59,23 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        // Create automation - Base44 SDK doesn't expose this directly, so we use a workaround
-        // by invoking the automation creation through the platform's internal mechanisms
-        const automation = await base44.functions.invoke('_createAutomation', scheduleConfig);
+        // Create automation using the platform API directly
+        const appId = Deno.env.get('BASE44_APP_ID');
+        const response = await fetch(`https://api.base44.com/v1/apps/${appId}/automations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers.get('Authorization') || '',
+            },
+            body: JSON.stringify(scheduleConfig),
+        });
 
-        // If runNow is true, trigger the import immediately
-        if (runNow) {
-            try {
-                await base44.asServiceRole.functions.invoke('autoImportCMSData', scheduleConfig.function_args);
-            } catch (err) {
-                console.error('Failed to run immediate import:', err);
-                // Don't fail the schedule creation if immediate run fails
-            }
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to create automation: ${error}`);
         }
+
+        const automation = await response.json();
 
         return Response.json({ success: true, automation });
 
