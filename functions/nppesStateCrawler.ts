@@ -12,7 +12,7 @@ const MAX_SKIP = 1000; // NPPES API allows skip up to 1000, so max 1200 records 
 const MAX_PAGES_PER_QUERY = 6; // 6 pages * 200 = 1200 max per query
 const BULK_SIZE = 50;
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
-const API_DELAY_MS = 150; // delay between API calls to avoid rate limiting
+const API_DELAY_MS = 80; // delay between API calls to avoid rate limiting
 const MAX_RETRIES = 3;
 
 // Zip code prefix ranges per state (2-digit prefixes). NPPES requires 2+ chars for wildcard.
@@ -112,28 +112,22 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         
         // Authenticate: accept admin users or service-role calls
+        // Authenticate: accept admin users, service-role calls, or forwarded admin calls
         let auditEmail = 'system@service';
-        let isAuthenticated = false;
         try {
-            isAuthenticated = await base44.auth.isAuthenticated();
-        } catch (e) {
-            // ignore
-        }
-        
-        if (isAuthenticated) {
-            try {
-                const user = await base44.auth.me();
-                auditEmail = user?.email || auditEmail;
-                const isServiceAccount = user?.email?.includes('service+');
-                if (!isServiceAccount && user?.role !== 'admin') {
+            const user = await base44.auth.me();
+            if (user) {
+                auditEmail = user.email || auditEmail;
+                // Allow service accounts and admins
+                const isServiceAccount = (user.email || '').includes('service+') || (user.email || '').includes('@no-reply.base44.com');
+                if (!isServiceAccount && user.role !== 'admin') {
                     return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
                 }
-            } catch (e) {
-                // Could not fetch user but was authenticated — allow as service call
-                console.log('[StateCrawler] Auth check passed but me() failed — treating as service call');
             }
+        } catch (e) {
+            // me() threw — this is a service-role or internal call, allow it
+            console.log('[StateCrawler] auth.me() failed — treating as service/internal call');
         }
-        // If not authenticated at all, it's a service-role invocation — allow it
 
         const payload = await req.json();
         const {
