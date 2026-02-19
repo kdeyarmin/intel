@@ -98,7 +98,7 @@ export default function AppLayout({ children, currentPageName }) {
 
       `}</style>
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-50 text-slate-600 border-r border-slate-200 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-48' : 'w-14'} bg-slate-50 text-slate-600 border-r border-slate-200 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white/60">
           {sidebarOpen ? (
@@ -172,7 +172,7 @@ export default function AppLayout({ children, currentPageName }) {
                       key={item.name}
                       to={createPageUrl(item.page)}
                       title={item.name}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 ${
                         isActive
                           ? 'bg-blue-50 text-blue-600 font-medium border-l-2 border-blue-500 ml-0.5'
                           : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
