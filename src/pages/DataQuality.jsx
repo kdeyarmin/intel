@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShieldCheck, Play, Loader2, AlertTriangle, CheckCircle,
-  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert
+  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot
 } from 'lucide-react';
 import QualityScoreCard from '../components/dataQuality/QualityScoreCard';
 import RuleResultsTable from '../components/dataQuality/RuleResultsTable';
@@ -16,6 +16,7 @@ import AlertsList from '../components/dataQuality/AlertsList';
 import ScanHistoryPanel from '../components/dataQuality/ScanHistoryPanel';
 import AlertTrendChart from '../components/dataQuality/AlertTrendChart';
 import ProactiveAIScanner from '../components/dataQuality/ProactiveAIScanner';
+import DQAssistant from '../components/dataQuality/DQAssistant';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function DataQuality() {
@@ -144,6 +145,9 @@ export default function DataQuality() {
               <Badge className="ml-1.5 bg-amber-500 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="assistant" className="gap-1.5">
+            <Bot className="w-3.5 h-3.5" /> AI Assistant
+          </TabsTrigger>
           <TabsTrigger value="proactive" className="gap-1.5">
             <ShieldAlert className="w-3.5 h-3.5" /> AI Scanner
           </TabsTrigger>
@@ -172,6 +176,10 @@ export default function DataQuality() {
 
         <TabsContent value="alerts" className="mt-4">
           <AlertsList alerts={alerts} />
+        </TabsContent>
+
+        <TabsContent value="assistant" className="mt-4">
+          <DQAssistant />
         </TabsContent>
 
         <TabsContent value="proactive" className="mt-4">
