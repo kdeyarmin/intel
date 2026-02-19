@@ -2,12 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings, Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail, Search, Bot } from 'lucide-react';
+import {
+  Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
+  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
+  Search, Bot, ChevronDown, ChevronRight
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const NAV_SECTIONS = [
+  {
+    label: 'Overview',
+    items: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
+    ]
+  },
+  {
+    label: 'Data Management',
+    items: [
+      { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
+      { name: 'Import Monitoring', icon: BarChart3, page: 'ImportMonitoring', roles: ['admin'] },
+      { name: 'Error Reports', icon: Shield, page: 'ErrorReports', roles: ['admin'] },
+      { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
+      { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
+      { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
+      { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
+    ]
+  },
+  {
+    label: 'Intelligence',
+    items: [
+      { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
+      { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
+      { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
+      { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
+    ]
+  },
+  {
+    label: 'Sales Tools',
+    items: [
+      { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
+      { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
+      { name: 'Bulk Email Export', icon: Mail, page: 'BulkEmailExport', roles: ['admin'] },
+    ]
+  },
+  {
+    label: 'Analytics & Config',
+    items: [
+      { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
+      { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
+      { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
+      { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
+    ]
+  },
+];
 
 export default function AppLayout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [collapsedSections, setCollapsedSections] = useState({});
 
   useEffect(() => {
     const loadUser = async () => {
@@ -21,126 +73,126 @@ export default function AppLayout({ children, currentPageName }) {
     loadUser();
   }, []);
 
-  const isAdmin = user?.role === 'admin';
-
-  const navigation = [
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
-    { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
-    { name: 'Import Monitoring', icon: LayoutDashboard, page: 'ImportMonitoring', roles: ['admin'] },
-    { name: 'Error Reports', icon: Shield, page: 'ErrorReports', roles: ['admin'] },
-    { name: 'Auto Imports', icon: FileText, page: 'AutoImports', roles: ['admin'] },
-    { name: 'NPPES Import', icon: Search, page: 'NPPESImport', roles: ['admin'] },
-    { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
-    { name: 'Import Schedules', icon: Settings, page: 'ImportSchedule', roles: ['admin'] },
-    { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
-    { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
-    { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
-    { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
-    { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
-    { name: 'AI Matching', icon: Sparkles, page: 'ProviderLocationMatching', roles: ['admin'] },
-    { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
-    { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
-    { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
-    { name: 'Bulk Email Export', icon: Mail, page: 'BulkEmailExport', roles: ['admin'] },
-    { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
-  ];
-
-  const filteredNav = navigation.filter(item => 
-    item.roles.includes(user?.role)
-  );
+  const toggleSection = (label) => {
+    setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
+  };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56' : 'w-16'} bg-gradient-to-b from-gray-100 to-gray-200 text-gray-800 transition-all duration-300 flex flex-col border-r border-gray-300`}>
-        <div className="p-4 flex items-center justify-between">
+      <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col`}>
+        {/* Logo */}
+        <div className="p-4 flex items-center justify-between border-b border-slate-700/50">
           {sidebarOpen ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
                 alt="CareMetric AI"
-                className="w-9 h-9 rounded-lg bg-transparent mix-blend-multiply"
+                className="w-8 h-8 rounded-lg"
               />
               <div>
-                <h1 className="text-lg font-bold leading-tight">CareMetric <span className="text-red-400">AI</span></h1>
-                <p className="text-[10px] text-gray-500">Provider Intel</p>
+                <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-red-400">AI</span></h1>
+                <p className="text-[10px] text-slate-500 font-medium">Provider Intelligence</p>
               </div>
             </div>
           ) : (
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
               alt="CareMetric AI"
-              className="w-8 h-8 rounded-lg bg-transparent mix-blend-multiply"
+              className="w-8 h-8 rounded-lg mx-auto"
             />
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 hover:bg-gray-300"
+            className="text-slate-400 hover:text-white hover:bg-slate-800 h-7 w-7"
           >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1">
-          {filteredNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentPageName === item.page;
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+          {NAV_SECTIONS.map((section) => {
+            const filteredItems = section.items.filter(item => item.roles.includes(user?.role));
+            if (filteredItems.length === 0) return null;
+            const isCollapsed = collapsedSections[section.label];
+
             return (
-              <Link
-                key={item.name}
-                to={createPageUrl(item.page)}
-                className={`flex items-center px-3 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span className="ml-3 font-medium">{item.name}</span>}
-              </Link>
+              <div key={section.label} className="mb-1">
+                {sidebarOpen && (
+                  <button
+                    onClick={() => toggleSection(section.label)}
+                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {section.label}
+                    {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                )}
+                {!isCollapsed && filteredItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentPageName === item.page;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={createPageUrl(item.page)}
+                      title={item.name}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                        isActive
+                          ? 'bg-blue-600/20 text-blue-400 font-medium border-l-2 border-blue-400 ml-0.5'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      {sidebarOpen && <span className="truncate">{item.name}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-300">
+        {/* User footer */}
+        <div className="p-3 border-t border-slate-700/50">
           {user && sidebarOpen && (
-            <div className="mb-3">
-              <p className="text-sm font-medium text-gray-800">{user.full_name || user.email}</p>
-              <p className="text-xs text-gray-500 capitalize">{user.role?.replace('_', ' ')}</p>
+            <div className="mb-2 px-2">
+              <p className="text-xs font-medium text-slate-200 truncate">{user.full_name || user.email}</p>
+              <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>
             </div>
           )}
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-gray-700 hover:bg-gray-300 justify-start"
+            className="w-full text-slate-400 hover:text-white hover:bg-slate-800 justify-start h-8 text-xs"
           >
-            <LogOut className="w-5 h-5" />
-            {sidebarOpen && <span className="ml-3">Logout</span>}
+            <LogOut className="w-4 h-4" />
+            {sidebarOpen && <span className="ml-2">Sign Out</span>}
           </Button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-blue-50 flex flex-col">
+      <main className="flex-1 overflow-auto bg-slate-50 flex flex-col">
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-3 border-t border-gray-200 bg-white/60">
+        <div className="px-8 py-2.5 border-t border-slate-200 bg-white/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
                 alt="CareMetric AI"
-                className="w-5 h-5 rounded"
+                className="w-4 h-4 rounded"
               />
-              <span className="text-xs text-gray-500 font-medium">CareMetric AI</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">www.CareMetric.ai</a>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-300">•</span>
+              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-500 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400 text-center mt-1 leading-relaxed">
-            <strong>Data Sources:</strong> All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships. Small cell counts (&lt;11) are suppressed for privacy compliance.
+          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>
       </main>
