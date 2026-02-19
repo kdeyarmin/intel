@@ -66,9 +66,7 @@ async function fetchAllPages(baseParams, stateCode) {
         const data = await fetchNPPESPage(baseParams);
 
         if (data.error) {
-            // "No results" is not a real error
-            if (/no results/i.test(data.error) || /no record/i.test(data.error)) break;
-            console.log(`[${stateCode}] API note: ${data.error}`);
+            // No results or no record type responses — just stop paginating, not a problem
             break;
         }
 
@@ -82,7 +80,7 @@ async function fetchAllPages(baseParams, stateCode) {
             hitLimit = true;
             break;
         }
-        await new Promise(r => setTimeout(r, API_DELAY_MS));
+        await new Promise(r => setTimeout(r, 100));
     }
 
     return { results: allResults, hitLimit };
