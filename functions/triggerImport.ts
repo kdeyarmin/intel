@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const resolvedYear = year || new Date().getFullYear();
 
     // Trigger the import via the existing autoImportCMSData function
-    const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
+    const response = await base44.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
