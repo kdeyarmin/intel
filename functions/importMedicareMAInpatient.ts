@@ -1,10 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-import * as XLSX from 'npm:xlsx@0.18.5';
-import JSZip from 'npm:jszip@3.10.1';
 
 const MAX_EXEC_MS = 50000;
 let execStart = Date.now();
-function isTimeUp() { return (Date.now() - execStart) < 5000 ? false : (Date.now() - execStart) > MAX_EXEC_MS; }
+function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 
 const CMS_MA_INPT_URLS = {
   2021: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip',
@@ -15,24 +13,30 @@ const CMS_MA_INPT_URLS = {
   2016: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202016.zip',
 };
 
+// Use dynamic imports to avoid CPU-heavy cold start
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   const resp = await fetch(url, { signal: controller.signal });
   clearTimeout(timeout);
-  if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+  if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
   const arrayBuffer = await resp.arrayBuffer();
+  
+  // Dynamic import to reduce cold start
+  const JSZip = (await import('npm:jszip@3.10.1')).default;
   const zip = await JSZip.loadAsync(arrayBuffer);
   const fileNames = Object.keys(zip.files);
   const xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
-  if (!xlsxFileName) throw new Error(`No XLSX file in ZIP. Files: ${fileNames.join(', ')}`);
+  if (!xlsxFileName) throw new Error(`No XLSX in ZIP. Files: ${fileNames.join(', ')}`);
   console.log(`Extracting: ${xlsxFileName}`);
   const xlsxData = await zip.files[xlsxFileName].async('uint8array');
+  
+  const XLSX = await import('npm:xlsx@0.18.5');
   return XLSX.read(xlsxData, { type: 'array' });
 }
 
-function parseSheet(workbook, sheetName) {
+function parseSheet(workbook, sheetName, XLSX) {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
   const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
@@ -125,13 +129,15 @@ Deno.serve(async (req) => {
 
   try {
     const workbook = await downloadAndParseZip(downloadUrl);
+    const XLSX = await import('npm:xlsx@0.18.5');
+    
     const allRecords = [];
     const sheetSummaries = [];
 
     for (const sheetName of workbook.SheetNames) {
       const tableName = classifyTable(sheetName);
       if (!tableName) continue;
-      const rows = parseSheet(workbook, sheetName);
+      const rows = parseSheet(workbook, sheetName, XLSX);
       console.log(`Sheet "${sheetName}" -> ${tableName}: ${rows.length} rows`);
       for (const row of rows) {
         const record = mapRowToRecord(row, tableName, year);
@@ -150,11 +156,10 @@ Deno.serve(async (req) => {
 
     let imported = 0;
     if (!dry_run && allRecords.length > 0) {
-      // Bulk create in chunks — skip slow delete-all, just add (dedup by table_name+year+category if needed later)
       const CHUNK = 50;
       for (let i = 0; i < allRecords.length; i += CHUNK) {
         if (isTimeUp()) {
-          console.warn(`Time limit approaching at ${imported}/${allRecords.length}, saving progress`);
+          console.warn(`Time limit at ${imported}/${allRecords.length}`);
           break;
         }
         const chunk = allRecords.slice(i, i + CHUNK);
@@ -179,7 +184,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.AuditEvent.create({
       event_type: 'import', user_email: user.email,
-      details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, sheets: sheetSummaries, row_count: allRecords.length, imported_count: imported, message: dry_run ? 'Dry run' : 'Import completed' },
+      details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, sheets: sheetSummaries, row_count: allRecords.length, imported_count: imported },
       timestamp: new Date().toISOString(),
     });
 
@@ -193,18 +198,14 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: 'failed', error_samples: [{ message: error.message }],
     });
-
-    // Update schedule config with failure
     try {
       const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
       if (configs.length > 0) {
         await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, {
-          last_run_at: new Date().toISOString(), last_run_status: 'failed',
-          last_run_summary: `Failed: ${error.message}`,
+          last_run_at: new Date().toISOString(), last_run_status: 'failed', last_run_summary: `Failed: ${error.message}`,
         });
       }
     } catch (e) {}
-
     return Response.json({ error: error.message, batch_id: batch.id }, { status: 500 });
   }
 });
