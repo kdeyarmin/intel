@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatShortDateTimeET } from '../utils/dateUtils';
 
 export default function RecentActivityCard({ events }) {
   return (
@@ -30,7 +30,7 @@ export default function RecentActivityCard({ events }) {
                     {event.event_type?.replace(/_/g, ' ')}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {event.user_email?.split('@')[0]} • {event.created_date ? format(new Date(event.created_date), 'MMM d, h:mm a') : ''}
+                    {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
                   </p>
                 </div>
               </div>

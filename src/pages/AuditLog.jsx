@@ -97,7 +97,7 @@ export default function AuditLog() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {new Date(event.created_date).toLocaleString()}
+                          {new Date(event.created_date).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
                         </TableCell>
                       </TableRow>
                     );

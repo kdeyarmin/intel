@@ -170,7 +170,14 @@ export default function ImportMonitoring() {
     return 0;
   };
 
-  const formatTimestamp = (ts) => ts ? new Date(ts).toLocaleString() : 'N/A';
+  const formatTimestamp = (ts) => {
+    if (!ts) return 'N/A';
+    return new Date(ts).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    }) + ' ET';
+  };
 
   return (
     <div className="p-8 space-y-6">

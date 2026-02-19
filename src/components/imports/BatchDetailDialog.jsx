@@ -42,7 +42,7 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
               <StatusIcon className={`w-5 h-5 ${config.color}`} />
               <Badge variant={config.badge} className="text-sm">{batch.status}</Badge>
             </div>
-            <span className="text-sm text-gray-500">{new Date(batch.created_date).toLocaleString()}</span>
+            <span className="text-sm text-gray-500">{new Date(batch.created_date).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span>
           </div>
 
           <div className="space-y-1 text-sm">
@@ -50,7 +50,7 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
             <p><span className="font-medium text-gray-700">File:</span> {batch.file_name}</p>
             {batch.dry_run && <Badge variant="outline" className="mt-1">Dry Run</Badge>}
             {batch.completed_at && (
-              <p><span className="font-medium text-gray-700">Completed:</span> {new Date(batch.completed_at).toLocaleString()}</p>
+              <p><span className="font-medium text-gray-700">Completed:</span> {new Date(batch.completed_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</p>
             )}
           </div>
 

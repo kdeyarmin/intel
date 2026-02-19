@@ -64,7 +64,7 @@ export default function Dashboard() {
   }, [locations]);
 
   const lastRefresh = auditEvents[0]?.created_date
-    ? new Date(auditEvents[0].created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(auditEvents[0].created_date).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' })
     : 'Never';
 
   return (
