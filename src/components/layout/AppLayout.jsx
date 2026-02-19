@@ -87,6 +87,13 @@ export default function AppLayout({ children, currentPageName }) {
 
   return (
     <div className="flex h-screen bg-slate-50">
+      <style>{`
+        .scrollbar-dark::-webkit-scrollbar { width: 6px; }
+        .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 3px; }
+        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.55); }
+        .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.35) transparent; }
+      `}</style>
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-60' : 'w-16'} bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
@@ -137,7 +144,7 @@ export default function AppLayout({ children, currentPageName }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark">
           {NAV_SECTIONS.map((section) => {
             const filteredItems = section.items.filter(item => item.roles.includes(user?.role));
             if (filteredItems.length === 0) return null;
