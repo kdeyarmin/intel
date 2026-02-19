@@ -1049,272 +1049,82 @@ async function importCMSData(base44, importType, validData, year) {
         }));
         imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthEnrollment, records);
     } else if (importType === 'home_health_cost_reports') {
-        for (const row of validData) {
-            try {
-                const costReportData = {
-                    rpt_rec_num: row.rpt_rec_num,
-                    ccn: row.ccn,
-                    hha_name: row.hha_name,
-                    street_address: row.street_address,
-                    city: row.city,
-                    state: row.state,
-                    zip: row.zip,
-                    type_of_control: row.type_of_control,
-                    fiscal_year_begin: row.fiscal_year_begin,
-                    fiscal_year_end: row.fiscal_year_end,
-                    total_medicare_visits: row.total_medicare_visits,
-                    total_medicaid_visits: row.total_medicaid_visits,
-                    total_visits: row.total_visits,
-                    total_episodes: row.total_episodes,
-                    total_charges: row.total_charges,
-                    total_cost: row.total_cost,
-                    net_patient_revenue_medicare: row.net_patient_revenue_medicare,
-                    net_patient_revenue_medicaid: row.net_patient_revenue_medicaid,
-                    net_patient_revenue_total: row.net_patient_revenue_total,
-                    total_operating_expenses: row.total_operating_expenses,
-                    net_income: row.net_income,
-                    total_assets: row.total_assets,
-                    total_liabilities: row.total_liabilities,
-                };
-
-                const existingReport = await base44.asServiceRole.entities.HomeHealthCostReport.filter({
-                    rpt_rec_num: row.rpt_rec_num
-                });
-
-                if (existingReport.length === 0) {
-                    await base44.asServiceRole.entities.HomeHealthCostReport.create(costReportData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.HomeHealthCostReport.update(existingReport[0].id, costReportData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import home health cost report record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            rpt_rec_num: row.rpt_rec_num, ccn: row.ccn, hha_name: row.hha_name,
+            street_address: row.street_address, city: row.city, state: row.state, zip: row.zip,
+            type_of_control: row.type_of_control, fiscal_year_begin: row.fiscal_year_begin,
+            fiscal_year_end: row.fiscal_year_end, total_medicare_visits: row.total_medicare_visits,
+            total_medicaid_visits: row.total_medicaid_visits, total_visits: row.total_visits,
+            total_episodes: row.total_episodes, total_charges: row.total_charges, total_cost: row.total_cost,
+            net_patient_revenue_medicare: row.net_patient_revenue_medicare,
+            net_patient_revenue_medicaid: row.net_patient_revenue_medicaid,
+            net_patient_revenue_total: row.net_patient_revenue_total,
+            total_operating_expenses: row.total_operating_expenses, net_income: row.net_income,
+            total_assets: row.total_assets, total_liabilities: row.total_liabilities,
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthCostReport, records);
     } else if (importType === 'cms_service_utilization') {
-        for (const row of validData) {
-            try {
-                const serviceData = {
-                    geo_level: row.geo_level,
-                    geo_code: row.geo_code,
-                    geo_description: row.geo_description,
-                    hcpcs_code: row.hcpcs_code,
-                    hcpcs_description: row.hcpcs_description,
-                    drug_indicator: row.drug_indicator,
-                    place_of_service: row.place_of_service,
-                    total_providers: row.total_providers,
-                    total_beneficiaries: row.total_beneficiaries,
-                    total_services: row.total_services,
-                    avg_submitted_charge: row.avg_submitted_charge,
-                    avg_medicare_allowed: row.avg_medicare_allowed,
-                    avg_medicare_payment: row.avg_medicare_payment,
-                    data_year: parseInt(year),
-                };
-
-                const existingService = await base44.asServiceRole.entities.CMSServiceUtilization.filter({
-                    hcpcs_code: row.hcpcs_code,
-                    geo_code: row.geo_code,
-                    place_of_service: row.place_of_service,
-                    data_year: parseInt(year)
-                });
-
-                if (existingService.length === 0) {
-                    await base44.asServiceRole.entities.CMSServiceUtilization.create(serviceData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.CMSServiceUtilization.update(existingService[0].id, serviceData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import service utilization record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            geo_level: row.geo_level, geo_code: row.geo_code, geo_description: row.geo_description,
+            hcpcs_code: row.hcpcs_code, hcpcs_description: row.hcpcs_description,
+            drug_indicator: row.drug_indicator, place_of_service: row.place_of_service,
+            total_providers: row.total_providers, total_beneficiaries: row.total_beneficiaries,
+            total_services: row.total_services, avg_submitted_charge: row.avg_submitted_charge,
+            avg_medicare_allowed: row.avg_medicare_allowed, avg_medicare_payment: row.avg_medicare_payment,
+            data_year: parseInt(year),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.CMSServiceUtilization, records);
     } else if (importType === 'provider_service_utilization') {
-        for (const row of validData) {
-            try {
-                const providerNPI = row.npi;
-
-                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: providerNPI });
-                if (existingProvider.length === 0) {
-                    await base44.asServiceRole.entities.Provider.create({
-                        npi: providerNPI,
-                        needs_nppes_enrichment: true,
-                    });
-                }
-
-                const serviceData = {
-                    npi: row.npi,
-                    hcpcs_code: row.hcpcs_code,
-                    hcpcs_description: row.hcpcs_description,
-                    drug_indicator: row.drug_indicator,
-                    place_of_service: row.place_of_service,
-                    total_beneficiaries: row.total_beneficiaries,
-                    total_services: row.total_services,
-                    avg_submitted_charge: row.avg_submitted_charge,
-                    avg_medicare_allowed: row.avg_medicare_allowed,
-                    avg_medicare_payment: row.avg_medicare_payment,
-                    data_year: parseInt(year),
-                };
-
-                const existingService = await base44.asServiceRole.entities.ProviderServiceUtilization.filter({
-                    npi: row.npi,
-                    hcpcs_code: row.hcpcs_code,
-                    place_of_service: row.place_of_service,
-                    data_year: parseInt(year)
-                });
-
-                if (existingService.length === 0) {
-                    await base44.asServiceRole.entities.ProviderServiceUtilization.create(serviceData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.ProviderServiceUtilization.update(existingService[0].id, serviceData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import provider service utilization record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            npi: row.npi, hcpcs_code: row.hcpcs_code, hcpcs_description: row.hcpcs_description,
+            drug_indicator: row.drug_indicator, place_of_service: row.place_of_service,
+            total_beneficiaries: row.total_beneficiaries, total_services: row.total_services,
+            avg_submitted_charge: row.avg_submitted_charge, avg_medicare_allowed: row.avg_medicare_allowed,
+            avg_medicare_payment: row.avg_medicare_payment, data_year: parseInt(year),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.ProviderServiceUtilization, records);
     } else if (importType === 'home_health_pdgm') {
-        for (const row of validData) {
-            try {
-                const pdgmData = {
-                    provider_id: row.provider_id,
-                    provider_name: row.provider_name,
-                    city: row.city,
-                    state: row.state,
-                    zip: row.zip,
-                    grouping_code: row.grouping_code,
-                    grouping_description: row.grouping_description,
-                    beneficiaries: row.beneficiaries,
-                    total_episodes: row.total_episodes,
-                    total_service_days: row.total_service_days,
-                    avg_charge_per_episode: row.avg_charge_per_episode,
-                    avg_allowed_per_episode: row.avg_allowed_per_episode,
-                    avg_payment_per_episode: row.avg_payment_per_episode,
-                    pt_visits: row.pt_visits,
-                    ot_visits: row.ot_visits,
-                    slp_visits: row.slp_visits,
-                    data_year: parseInt(year),
-                };
-
-                const existingPDGM = await base44.asServiceRole.entities.HomeHealthPDGM.filter({
-                    provider_id: row.provider_id,
-                    grouping_code: row.grouping_code,
-                    data_year: parseInt(year)
-                });
-
-                if (existingPDGM.length === 0) {
-                    await base44.asServiceRole.entities.HomeHealthPDGM.create(pdgmData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.HomeHealthPDGM.update(existingPDGM[0].id, pdgmData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import PDGM record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            provider_id: row.provider_id, provider_name: row.provider_name,
+            city: row.city, state: row.state, zip: row.zip,
+            grouping_code: row.grouping_code, grouping_description: row.grouping_description,
+            beneficiaries: row.beneficiaries, total_episodes: row.total_episodes,
+            total_service_days: row.total_service_days, avg_charge_per_episode: row.avg_charge_per_episode,
+            avg_allowed_per_episode: row.avg_allowed_per_episode, avg_payment_per_episode: row.avg_payment_per_episode,
+            pt_visits: row.pt_visits, ot_visits: row.ot_visits, slp_visits: row.slp_visits,
+            data_year: parseInt(year),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.HomeHealthPDGM, records);
     } else if (importType === 'inpatient_drg') {
-        for (const row of validData) {
-            try {
-                const drgData = {
-                    provider_ccn: row.provider_ccn,
-                    provider_name: row.provider_name,
-                    city: row.city,
-                    state: row.state,
-                    zip: row.zip,
-                    drg_code: row.drg_code,
-                    drg_description: row.drg_description,
-                    total_discharges: row.total_discharges,
-                    avg_submitted_charge: row.avg_submitted_charge,
-                    avg_total_payment: row.avg_total_payment,
-                    avg_medicare_payment: row.avg_medicare_payment,
-                    data_year: parseInt(year),
-                };
-
-                const existingDRG = await base44.asServiceRole.entities.InpatientDRG.filter({
-                    provider_ccn: row.provider_ccn,
-                    drg_code: row.drg_code,
-                    data_year: parseInt(year)
-                });
-
-                if (existingDRG.length === 0) {
-                    await base44.asServiceRole.entities.InpatientDRG.create(drgData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.InpatientDRG.update(existingDRG[0].id, drgData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import inpatient DRG record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            provider_ccn: row.provider_ccn, provider_name: row.provider_name,
+            city: row.city, state: row.state, zip: row.zip,
+            drg_code: row.drg_code, drg_description: row.drg_description,
+            total_discharges: row.total_discharges, avg_submitted_charge: row.avg_submitted_charge,
+            avg_total_payment: row.avg_total_payment, avg_medicare_payment: row.avg_medicare_payment,
+            data_year: parseInt(year),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.InpatientDRG, records);
     } else if (importType === 'provider_ownership') {
-        for (const row of validData) {
-            try {
-                const ownershipData = {
-                    enrollment_id: row.enrollment_id,
-                    associate_id: row.associate_id,
-                    organization_name: row.organization_name,
-                    owner_associate_id: row.owner_associate_id,
-                    owner_type: row.owner_type,
-                    owner_role_code: row.owner_role_code,
-                    owner_role_text: row.owner_role_text,
-                    owner_first_name: row.owner_first_name,
-                    owner_middle_name: row.owner_middle_name,
-                    owner_last_name: row.owner_last_name,
-                    owner_title: row.owner_title,
-                    owner_organization_name: row.owner_organization_name,
-                    percentage_ownership: row.percentage_ownership,
-                };
-                
-                if (row.association_date) {
-                    ownershipData.association_date = row.association_date;
-                }
-
-                const existing = await base44.asServiceRole.entities.ProviderOwnership.filter({
-                    enrollment_id: row.enrollment_id,
-                    associate_id: row.associate_id,
-                    owner_associate_id: row.owner_associate_id,
-                    owner_role_code: row.owner_role_code
-                });
-
-                if (existing.length === 0) {
-                    await base44.asServiceRole.entities.ProviderOwnership.create(ownershipData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.ProviderOwnership.update(existing[0].id, ownershipData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import ownership record:', error);
-            }
-        }
+        const records = validData.map(row => {
+            const rec = {
+                enrollment_id: row.enrollment_id, associate_id: row.associate_id,
+                organization_name: row.organization_name, owner_associate_id: row.owner_associate_id,
+                owner_type: row.owner_type, owner_role_code: row.owner_role_code,
+                owner_role_text: row.owner_role_text, owner_first_name: row.owner_first_name,
+                owner_middle_name: row.owner_middle_name, owner_last_name: row.owner_last_name,
+                owner_title: row.owner_title, owner_organization_name: row.owner_organization_name,
+                percentage_ownership: row.percentage_ownership,
+            };
+            if (row.association_date) rec.association_date = row.association_date;
+            return rec;
+        });
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.ProviderOwnership, records);
     } else if (importType === 'opt_out_physicians') {
-        for (const row of validData) {
-            try {
-                const optOutData = {
-                    npi: row.npi,
-                    last_name: row.last_name,
-                    first_name: row.first_name,
-                };
-
-                const existing = await base44.asServiceRole.entities.OptOutPhysician.filter({
-                    npi: row.npi
-                });
-
-                if (existing.length === 0) {
-                    await base44.asServiceRole.entities.OptOutPhysician.create(optOutData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.OptOutPhysician.update(existing[0].id, optOutData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import opt-out physician record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            npi: row.npi, last_name: row.last_name, first_name: row.first_name,
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.OptOutPhysician, records);
     }
 
     return { imported, updated };
