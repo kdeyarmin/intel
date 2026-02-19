@@ -59,32 +59,8 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        // Make direct API call to create automation
-        const apiUrl = Deno.env.get('BASE44_API_URL') || 'https://api.base44.com';
-        const appId = Deno.env.get('BASE44_APP_ID');
-        
-        // Get the authorization token from the incoming request
-        const authHeader = req.headers.get('authorization');
-        if (!authHeader) {
-            throw new Error('No authorization header found');
-        }
-
-        const response = await fetch(`${apiUrl}/v1/apps/${appId}/automations`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': authHeader,
-            },
-            body: JSON.stringify(scheduleConfig),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Automation creation failed:', errorText);
-            throw new Error(`Failed to create automation: ${response.status} ${errorText}`);
-        }
-
-        const automation = await response.json();
+        // Use the Base44 SDK's built-in automation creation
+        const automation = await base44.asServiceRole.createAutomation(scheduleConfig);
 
         // If runNow is true, trigger the import immediately
         if (runNow) {
