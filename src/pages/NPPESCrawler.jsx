@@ -154,6 +154,44 @@ export default function NPPESCrawler() {
     addLog('Crawler stopped.', 'info');
   };
 
+  // --- Auto-chain (server-side) controls ---
+  const startAutoChain = async () => {
+    setAutoStarting(true);
+    addLog('Starting server-side auto-crawler...', 'info');
+    addLog(`Filters: ${taxonomyFilter || 'All specialties'}, ${entityType || 'All types'}`, 'info');
+    try {
+      const res = await base44.functions.invoke('nppesAutoChainCrawler', {
+        action: 'start',
+        taxonomy_description: taxonomyFilter,
+        entity_type: entityType,
+        dry_run: dryRun,
+      });
+      const data = res.data;
+      setAutoMode(true);
+      addLog(`Auto-crawler started. Processing ${data.state_just_processed || 'next state'}...`, 'success');
+      refetchStatus();
+    } catch (err) {
+      addLog(`Failed to start auto-crawler: ${err.message}`, 'error');
+    } finally {
+      setAutoStarting(false);
+    }
+  };
+
+  const stopAutoChain = async () => {
+    setAutoStopping(true);
+    addLog('Sending stop signal to auto-crawler...', 'info');
+    try {
+      const res = await base44.functions.invoke('nppesAutoChainCrawler', { action: 'stop' });
+      addLog(res.data?.message || 'Stop signal sent', 'info');
+      setAutoMode(false);
+      refetchStatus();
+    } catch (err) {
+      addLog(`Failed to stop auto-crawler: ${err.message}`, 'error');
+    } finally {
+      setAutoStopping(false);
+    }
+  };
+
   const completedCount = status?.completed || 0;
   const failedCount = status?.failed || 0;
   const totalStates = US_STATES.length;
