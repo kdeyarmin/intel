@@ -5,17 +5,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+
 import BasicProfile from '../components/providers/BasicProfile';
+import ProviderKPIRow from '../components/providers/ProviderKPIRow';
 import UtilizationInsights from '../components/providers/UtilizationInsights';
-import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
+import UtilizationTrendChart from '../components/providers/UtilizationTrendChart';
+import ReferralTrendChart from '../components/providers/ReferralTrendChart';
 import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoodSignals';
-import TerritoryIntelligence from '../components/providers/TerritoryIntelligence';
+import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
 import WhyThisProvider from '../components/providers/WhyThisProvider';
 import ScoreBreakdown from '../components/providers/ScoreBreakdown';
-import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
-import AISummary from '../components/providers/AISummary';
+import LocationsTable from '../components/providers/LocationsTable';
+import TaxonomyList from '../components/providers/TaxonomyList';
+import TerritoryIntelligence from '../components/providers/TerritoryIntelligence';
 import RelatedLocations from '../components/providers/RelatedLocations';
+import AISummary from '../components/providers/AISummary';
 import AIEmailFinder from '../components/providers/AIEmailFinder';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -47,27 +53,38 @@ export default function ProviderDetail() {
   });
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['providerUtil', npi],
+    queryKey: ['providerUtilAll', npi],
     queryFn: () => base44.entities.CMSUtilization.filter({ npi }),
     enabled: !!npi,
   });
 
   const { data: referrals = [], isLoading: loadingRef } = useQuery({
-    queryKey: ['providerRef', npi],
+    queryKey: ['providerRefAll', npi],
     queryFn: () => base44.entities.CMSReferral.filter({ npi }),
     enabled: !!npi,
   });
 
-  if (loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies) {
+  const { data: serviceUtil = [] } = useQuery({
+    queryKey: ['providerServiceUtil', npi],
+    queryFn: () => base44.entities.ProviderServiceUtilization.filter({ npi }),
+    enabled: !!npi,
+  });
+
+  const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
+
+  if (loading) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <Skeleton className="h-10 w-32 mb-6" />
+      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+        <Skeleton className="h-8 w-32 mb-6" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-64" />)}
           </div>
           <div className="space-y-6">
-            {[1, 2].map(i => <Skeleton key={i} className="h-48" />)}
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-48" />)}
           </div>
         </div>
       </div>
@@ -77,80 +94,95 @@ export default function ProviderDetail() {
   const provider = providers?.[0];
   const score = scores?.[0];
   const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
-  const utilization = utilizations?.[0];
-  const referral = referrals?.[0];
+  const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
 
   if (!provider) {
     return (
-      <div className="p-8">
-        <p className="text-gray-600">Provider not found</p>
+      <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <p className="text-gray-500 text-lg mb-4">Provider not found</p>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <Button
-        variant="ghost"
-        className="mb-6"
-        onClick={() => navigate(-1)}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Back
       </Button>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <ComplianceDisclaimer />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Profile & Intelligence */}
-        <div className="lg:col-span-2 space-y-6">
-          <BasicProfile 
-            provider={provider} 
-            taxonomy={taxonomies} 
-            locations={locations} 
-          />
+      {/* KPI Summary Row */}
+      <div className="mb-6">
+        <ProviderKPIRow
+          utilizations={utilizations}
+          referrals={referrals}
+          locations={locations}
+          taxonomies={taxonomies}
+          score={score}
+        />
+      </div>
 
-          <WhyThisProvider 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content - Left 2/3 */}
+        <div className="lg:col-span-2 space-y-6">
+          <BasicProfile provider={provider} taxonomy={taxonomies} locations={locations} />
+
+          <WhyThisProvider
             score={score}
-            utilization={utilization}
-            referrals={referral}
+            utilization={latestUtil}
+            referrals={latestRef}
             taxonomy={taxonomies}
           />
 
           {score && (
-            <ScoreBreakdown 
+            <ScoreBreakdown
               score={score.score}
-              breakdown={score.score_breakdown} 
-              reasons={score.reasons} 
+              breakdown={score.score_breakdown}
+              reasons={score.reasons}
             />
           )}
 
           <AISummary
             provider={provider}
             taxonomies={taxonomies}
-            utilization={utilization}
-            referral={referral}
+            utilization={latestUtil}
+            referral={latestRef}
             locations={locations}
             score={score}
           />
 
-          <UtilizationInsights utilization={utilization} />
+          <UtilizationInsights utilization={latestUtil} />
+
+          {/* Historical Charts */}
+          <UtilizationTrendChart utilizations={utilizations} />
+          <ReferralTrendChart referrals={referrals} />
 
           <PatientPopulationFingerprint
             provider={provider}
             taxonomy={taxonomies}
-            utilization={utilization}
-            referrals={referral}
+            utilization={latestUtil}
+            referrals={latestRef}
           />
+
+          {/* Full Locations Table */}
+          <LocationsTable locations={locations} />
+
+          {/* Full Taxonomy List */}
+          <TaxonomyList taxonomies={taxonomies} />
         </div>
 
-        {/* Right Column - Signals & Territory */}
+        {/* Sidebar - Right 1/3 */}
         <div className="space-y-6">
           <ReferralLikelihoodSignals
-            utilization={utilization}
-            referrals={referral}
+            utilization={latestUtil}
+            referrals={latestRef}
             taxonomy={taxonomies}
           />
 
