@@ -29,6 +29,7 @@ export default function ImportSchedule() {
   const [runNow, setRunNow] = useState(true);
   const [expandedHistory, setExpandedHistory] = useState({});
 
+  const [importStatus, setImportStatus] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: schedules = [], isLoading } = useQuery({
