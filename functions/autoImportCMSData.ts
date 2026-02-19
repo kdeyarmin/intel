@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization', 'home_health_pdgm', 'inpatient_drg', 'provider_ownership'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -161,12 +161,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'provider_ownership') {
+                    const enrollmentColumn = columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID';
+                    identifier = row[enrollmentColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing enrollment ID',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -183,7 +196,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && import_type !== 'home_health_pdgm' && import_type !== 'inpatient_drg' && import_type !== 'provider_ownership') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     } else if (import_type === 'provider_service_utilization') {
@@ -546,6 +559,33 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'provider_ownership') {
+        const patterns = {
+            'ENROLLMENT ID': ['enrollment id'],
+            'ASSOCIATE ID': ['associate id'],
+            'ORGANIZATION NAME': ['organization name'],
+            'ASSOCIATE ID - OWNER': ['associate id - owner'],
+            'TYPE - OWNER': ['type - owner'],
+            'ROLE CODE - OWNER': ['role code - owner'],
+            'ROLE TEXT - OWNER': ['role text - owner'],
+            'ASSOCIATION DATE - OWNER': ['association date - owner'],
+            'FIRST NAME - OWNER': ['first name - owner'],
+            'MIDDLE NAME - OWNER': ['middle name - owner'],
+            'LAST NAME - OWNER': ['last name - owner'],
+            'TITLE - OWNER': ['title - owner'],
+            'ORGANIZATION NAME - OWNER': ['organization name - owner'],
+            'PERCENTAGE OWNERSHIP': ['percentage ownership'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -707,6 +747,28 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.avg_total_payment = parseFloat(row[columnMapping['Avg_Tot_Pymt_Amt']] || 0);
         mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
         mappedData.data_year = year;
+    } else if (importType === 'provider_ownership') {
+        mappedData.enrollment_id = row[columnMapping['ENROLLMENT ID']] || '';
+        mappedData.associate_id = row[columnMapping['ASSOCIATE ID']] || '';
+        mappedData.organization_name = row[columnMapping['ORGANIZATION NAME']] || '';
+        mappedData.owner_associate_id = row[columnMapping['ASSOCIATE ID - OWNER']] || '';
+        mappedData.owner_type = row[columnMapping['TYPE - OWNER']] || '';
+        mappedData.owner_role_code = row[columnMapping['ROLE CODE - OWNER']] || '';
+        mappedData.owner_role_text = row[columnMapping['ROLE TEXT - OWNER']] || '';
+        
+        const assocDate = row[columnMapping['ASSOCIATION DATE - OWNER']];
+        if (assocDate && assocDate.trim() !== '') {
+            mappedData.association_date = assocDate;
+        }
+        
+        mappedData.owner_first_name = row[columnMapping['FIRST NAME - OWNER']] || '';
+        mappedData.owner_middle_name = row[columnMapping['MIDDLE NAME - OWNER']] || '';
+        mappedData.owner_last_name = row[columnMapping['LAST NAME - OWNER']] || '';
+        mappedData.owner_title = row[columnMapping['TITLE - OWNER']] || '';
+        mappedData.owner_organization_name = row[columnMapping['ORGANIZATION NAME - OWNER']] || '';
+        
+        const ownershipPct = row[columnMapping['PERCENTAGE OWNERSHIP']];
+        mappedData.percentage_ownership = ownershipPct && ownershipPct.trim() !== '' ? parseFloat(ownershipPct) : null;
     }
 
     return mappedData;
@@ -1130,6 +1192,47 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import inpatient DRG record:', error);
+            }
+        }
+    } else if (importType === 'provider_ownership') {
+        for (const row of validData) {
+            try {
+                const ownershipData = {
+                    enrollment_id: row.enrollment_id,
+                    associate_id: row.associate_id,
+                    organization_name: row.organization_name,
+                    owner_associate_id: row.owner_associate_id,
+                    owner_type: row.owner_type,
+                    owner_role_code: row.owner_role_code,
+                    owner_role_text: row.owner_role_text,
+                    owner_first_name: row.owner_first_name,
+                    owner_middle_name: row.owner_middle_name,
+                    owner_last_name: row.owner_last_name,
+                    owner_title: row.owner_title,
+                    owner_organization_name: row.owner_organization_name,
+                    percentage_ownership: row.percentage_ownership,
+                };
+                
+                if (row.association_date) {
+                    ownershipData.association_date = row.association_date;
+                }
+
+                const existing = await base44.asServiceRole.entities.ProviderOwnership.filter({
+                    enrollment_id: row.enrollment_id,
+                    associate_id: row.associate_id,
+                    owner_associate_id: row.owner_associate_id,
+                    owner_role_code: row.owner_role_code
+                });
+
+                if (existing.length === 0) {
+                    await base44.asServiceRole.entities.ProviderOwnership.create(ownershipData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.ProviderOwnership.update(existing[0].id, ownershipData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import ownership record:', error);
             }
         }
     }

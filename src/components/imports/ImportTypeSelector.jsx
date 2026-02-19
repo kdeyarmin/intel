@@ -102,6 +102,13 @@ const importTypes = [
     icon: TrendingUp,
     requiredColumns: ['Rndrng_Prvdr_CCN', 'DRG_Cd', 'DRG_Desc', 'Tot_Dschrgs'],
   },
+  {
+    id: 'provider_ownership',
+    name: 'Provider Ownership Data',
+    description: 'CMS provider ownership and organizational control information',
+    icon: Database,
+    requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
