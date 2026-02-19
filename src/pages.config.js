@@ -73,6 +73,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import DataQuality from './pages/DataQuality';
+import CMSAnalytics from './pages/CMSAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -103,6 +104,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "DataQuality": DataQuality,
+    "CMSAnalytics": CMSAnalytics,
 }
 
 export const pagesConfig = {
