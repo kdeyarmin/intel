@@ -118,7 +118,7 @@ export default function ImportSchedule() {
 
         if (!createResponse.ok) {
           const error = await createResponse.text();
-          throw new Error(`Failed to create automation: ${error}`);
+          throw new Error(`Failed to create automation: ${error || createResponse.statusText}`);
         }
 
         return await createResponse.json();
