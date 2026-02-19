@@ -112,17 +112,28 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         
         // Support both user auth and service role auth (for batch processor calls)
-        let user;
+        let user = null;
+        let isServiceCall = false;
         try {
             user = await base44.auth.me();
         } catch (e) {
-            user = null;
+            // If me() throws, this is likely a service role call
+            isServiceCall = true;
         }
         
-        // Allow if admin user OR if called via service role (user will be null/service account)
-        const isServiceRole = !user || (user.email && user.email.includes('service+'));
-        if (!isServiceRole && user?.role !== 'admin') {
+        // Also detect service role by email pattern
+        if (user?.email && user.email.includes('service+')) {
+            isServiceCall = true;
+        }
+        
+        // Allow if admin user OR if called via service role
+        if (!isServiceCall && user?.role !== 'admin') {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+        
+        // For service calls, use a placeholder user for audit
+        if (!user) {
+            user = { email: 'service@system', role: 'admin' };
         }
 
         const payload = await req.json();
