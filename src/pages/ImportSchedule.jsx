@@ -156,7 +156,7 @@ export default function ImportSchedule() {
 
   const toggleMutation = useMutation({
     mutationFn: async (automationId) => {
-      const response = await fetch(`/.well-known/base44/automations/${automationId}/toggle`, {
+      const response = await fetch(`/api/automations/${automationId}/toggle`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to toggle automation');
@@ -169,7 +169,7 @@ export default function ImportSchedule() {
 
   const deleteMutation = useMutation({
     mutationFn: async (automationId) => {
-      const response = await fetch(`/.well-known/base44/automations/${automationId}`, {
+      const response = await fetch(`/api/automations/${automationId}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete automation');
