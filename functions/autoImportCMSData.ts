@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -96,12 +96,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'home_health_cost_reports') {
+                    const rptColumn = columnMapping['rpt_rec_num'] || 'rpt_rec_num';
+                    identifier = row[rptColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing report record number',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -118,7 +131,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     }
@@ -341,6 +354,42 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'home_health_cost_reports') {
+        const patterns = {
+            'rpt_rec_num': ['rpt_rec_num'],
+            'Provider CCN': ['provider ccn'],
+            'HHA Name': ['hha name'],
+            'Street Address': ['street address'],
+            'City': ['city'],
+            'State Code': ['state code'],
+            'Zip Code': ['zip code'],
+            'Type of Control': ['type of control'],
+            'Fiscal Year Begin Date': ['fiscal year begin date'],
+            'Fiscal Year End Date': ['fiscal year end date'],
+            'Total, Medicare Title XVIII Visits': ['total, medicare title xviii visits'],
+            'Total, Medicaid Title XIX Visits': ['total, medicaid title xix visits'],
+            'Total, Total Visits': ['total, total visits'],
+            'Total Episodes-Total Visits': ['total episodes-total visits'],
+            'Total Episodes-Total Charges': ['total episodes-total charges'],
+            'Total Cost': ['total cost'],
+            'Net Patient Revenues (line 1 minus line 2) XVIII Medicare': ['net patient revenues (line 1 minus line 2) xviii medicare'],
+            'Net Patient Revenues (line 1 minus line 2) XIX Medicaid': ['net patient revenues (line 1 minus line 2) xix medicaid'],
+            'Net Patient Revenues (line 1 minus line 2) Total': ['net patient revenues (line 1 minus line 2) total'],
+            'Less Total Operating Expenses (sum of lines 4 through 16)': ['less total operating expenses'],
+            'Net Income or Loss for the period (line 18 plus line 32)': ['net income or loss for the period'],
+            'Total Assets': ['total assets'],
+            'Total Liabilities': ['total liabilities'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -420,6 +469,30 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.zip = row[columnMapping['ZIP CODE']] || '';
         mappedData.enrollment_state = row[columnMapping['ENROLLMENT STATE']] || '';
         mappedData.practice_location_type = row[columnMapping['PRACTICE LOCATION TYPE']] || '';
+    } else if (importType === 'home_health_cost_reports') {
+        mappedData.rpt_rec_num = row[columnMapping['rpt_rec_num']] || '';
+        mappedData.ccn = row[columnMapping['Provider CCN']] || '';
+        mappedData.hha_name = row[columnMapping['HHA Name']] || '';
+        mappedData.street_address = row[columnMapping['Street Address']] || '';
+        mappedData.city = row[columnMapping['City']] || '';
+        mappedData.state = row[columnMapping['State Code']] || '';
+        mappedData.zip = row[columnMapping['Zip Code']] || '';
+        mappedData.type_of_control = row[columnMapping['Type of Control']] || '';
+        mappedData.fiscal_year_begin = row[columnMapping['Fiscal Year Begin Date']] || '';
+        mappedData.fiscal_year_end = row[columnMapping['Fiscal Year End Date']] || '';
+        mappedData.total_medicare_visits = parseFloat(row[columnMapping['Total, Medicare Title XVIII Visits']] || 0);
+        mappedData.total_medicaid_visits = parseFloat(row[columnMapping['Total, Medicaid Title XIX Visits']] || 0);
+        mappedData.total_visits = parseFloat(row[columnMapping['Total, Total Visits']] || 0);
+        mappedData.total_episodes = parseFloat(row[columnMapping['Total Episodes-Total Visits']] || 0);
+        mappedData.total_charges = parseFloat(row[columnMapping['Total Episodes-Total Charges']] || 0);
+        mappedData.total_cost = parseFloat(row[columnMapping['Total Cost']] || 0);
+        mappedData.net_patient_revenue_medicare = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) XVIII Medicare']] || 0);
+        mappedData.net_patient_revenue_medicaid = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) XIX Medicaid']] || 0);
+        mappedData.net_patient_revenue_total = parseFloat(row[columnMapping['Net Patient Revenues (line 1 minus line 2) Total']] || 0);
+        mappedData.total_operating_expenses = parseFloat(row[columnMapping['Less Total Operating Expenses (sum of lines 4 through 16)']] || 0);
+        mappedData.net_income = parseFloat(row[columnMapping['Net Income or Loss for the period (line 18 plus line 32)']] || 0);
+        mappedData.total_assets = parseFloat(row[columnMapping['Total Assets']] || 0);
+        mappedData.total_liabilities = parseFloat(row[columnMapping['Total Liabilities']] || 0);
     }
 
     return mappedData;
@@ -641,6 +714,50 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import home health enrollment record:', error);
+            }
+        }
+    } else if (importType === 'home_health_cost_reports') {
+        for (const row of validData) {
+            try {
+                const costReportData = {
+                    rpt_rec_num: row.rpt_rec_num,
+                    ccn: row.ccn,
+                    hha_name: row.hha_name,
+                    street_address: row.street_address,
+                    city: row.city,
+                    state: row.state,
+                    zip: row.zip,
+                    type_of_control: row.type_of_control,
+                    fiscal_year_begin: row.fiscal_year_begin,
+                    fiscal_year_end: row.fiscal_year_end,
+                    total_medicare_visits: row.total_medicare_visits,
+                    total_medicaid_visits: row.total_medicaid_visits,
+                    total_visits: row.total_visits,
+                    total_episodes: row.total_episodes,
+                    total_charges: row.total_charges,
+                    total_cost: row.total_cost,
+                    net_patient_revenue_medicare: row.net_patient_revenue_medicare,
+                    net_patient_revenue_medicaid: row.net_patient_revenue_medicaid,
+                    net_patient_revenue_total: row.net_patient_revenue_total,
+                    total_operating_expenses: row.total_operating_expenses,
+                    net_income: row.net_income,
+                    total_assets: row.total_assets,
+                    total_liabilities: row.total_liabilities,
+                };
+
+                const existingReport = await base44.asServiceRole.entities.HomeHealthCostReport.filter({
+                    rpt_rec_num: row.rpt_rec_num
+                });
+
+                if (existingReport.length === 0) {
+                    await base44.asServiceRole.entities.HomeHealthCostReport.create(costReportData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.HomeHealthCostReport.update(existingReport[0].id, costReportData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import home health cost report record:', error);
             }
         }
     }

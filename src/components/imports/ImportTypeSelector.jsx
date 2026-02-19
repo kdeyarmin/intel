@@ -67,6 +67,13 @@ const importTypes = [
     icon: Database,
     requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
   },
+  {
+    id: 'home_health_cost_reports',
+    name: 'Home Health Cost Reports',
+    description: 'CMS home health agency financial and utilization data',
+    icon: TrendingUp,
+    requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
