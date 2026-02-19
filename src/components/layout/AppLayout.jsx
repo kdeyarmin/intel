@@ -50,6 +50,7 @@ const NAV_SECTIONS = [
     label: 'Analytics & Config',
     items: [
       { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
+      { name: 'CMS Analytics', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'Analytics', icon: BarChart3, page: 'Analytics', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Settings, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
