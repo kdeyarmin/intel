@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -109,12 +109,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'cms_service_utilization') {
+                    const hcpcsColumn = columnMapping['HCPCS_Cd'] || 'HCPCS_Cd';
+                    identifier = row[hcpcsColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing HCPCS code',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -131,7 +144,7 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
                     }
@@ -390,6 +403,32 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'cms_service_utilization') {
+        const patterns = {
+            'Rndrng_Prvdr_Geo_Lvl': ['rndrng_prvdr_geo_lvl'],
+            'Rndrng_Prvdr_Geo_Cd': ['rndrng_prvdr_geo_cd'],
+            'Rndrng_Prvdr_Geo_Desc': ['rndrng_prvdr_geo_desc'],
+            'HCPCS_Cd': ['hcpcs_cd'],
+            'HCPCS_Desc': ['hcpcs_desc'],
+            'HCPCS_Drug_Ind': ['hcpcs_drug_ind'],
+            'Place_Of_Srvc': ['place_of_srvc'],
+            'Tot_Rndrng_Prvdrs': ['tot_rndrng_prvdrs'],
+            'Tot_Benes': ['tot_benes'],
+            'Tot_Srvcs': ['tot_srvcs'],
+            'Avg_Sbmtd_Chrg': ['avg_sbmtd_chrg'],
+            'Avg_Mdcr_Alowd_Amt': ['avg_mdcr_alowd_amt'],
+            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -493,6 +532,21 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.net_income = parseFloat(row[columnMapping['Net Income or Loss for the period (line 18 plus line 32)']] || 0);
         mappedData.total_assets = parseFloat(row[columnMapping['Total Assets']] || 0);
         mappedData.total_liabilities = parseFloat(row[columnMapping['Total Liabilities']] || 0);
+    } else if (importType === 'cms_service_utilization') {
+        mappedData.geo_level = row[columnMapping['Rndrng_Prvdr_Geo_Lvl']] || '';
+        mappedData.geo_code = row[columnMapping['Rndrng_Prvdr_Geo_Cd']] || '';
+        mappedData.geo_description = row[columnMapping['Rndrng_Prvdr_Geo_Desc']] || '';
+        mappedData.hcpcs_code = row[columnMapping['HCPCS_Cd']] || '';
+        mappedData.hcpcs_description = row[columnMapping['HCPCS_Desc']] || '';
+        mappedData.drug_indicator = row[columnMapping['HCPCS_Drug_Ind']] || '';
+        mappedData.place_of_service = row[columnMapping['Place_Of_Srvc']] || '';
+        mappedData.total_providers = parseFloat(row[columnMapping['Tot_Rndrng_Prvdrs']] || 0);
+        mappedData.total_beneficiaries = parseFloat(row[columnMapping['Tot_Benes']] || 0);
+        mappedData.total_services = parseFloat(row[columnMapping['Tot_Srvcs']] || 0);
+        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
+        mappedData.avg_medicare_allowed = parseFloat(row[columnMapping['Avg_Mdcr_Alowd_Amt']] || 0);
+        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
+        mappedData.data_year = year;
     }
 
     return mappedData;
@@ -758,6 +812,44 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import home health cost report record:', error);
+            }
+        }
+    } else if (importType === 'cms_service_utilization') {
+        for (const row of validData) {
+            try {
+                const serviceData = {
+                    geo_level: row.geo_level,
+                    geo_code: row.geo_code,
+                    geo_description: row.geo_description,
+                    hcpcs_code: row.hcpcs_code,
+                    hcpcs_description: row.hcpcs_description,
+                    drug_indicator: row.drug_indicator,
+                    place_of_service: row.place_of_service,
+                    total_providers: row.total_providers,
+                    total_beneficiaries: row.total_beneficiaries,
+                    total_services: row.total_services,
+                    avg_submitted_charge: row.avg_submitted_charge,
+                    avg_medicare_allowed: row.avg_medicare_allowed,
+                    avg_medicare_payment: row.avg_medicare_payment,
+                    data_year: parseInt(year),
+                };
+
+                const existingService = await base44.asServiceRole.entities.CMSServiceUtilization.filter({
+                    hcpcs_code: row.hcpcs_code,
+                    geo_code: row.geo_code,
+                    place_of_service: row.place_of_service,
+                    data_year: parseInt(year)
+                });
+
+                if (existingService.length === 0) {
+                    await base44.asServiceRole.entities.CMSServiceUtilization.create(serviceData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.CMSServiceUtilization.update(existingService[0].id, serviceData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import service utilization record:', error);
             }
         }
     }

@@ -74,6 +74,13 @@ const importTypes = [
     icon: TrendingUp,
     requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'],
   },
+  {
+    id: 'cms_service_utilization',
+    name: 'Medicare Service Utilization',
+    description: 'CMS Medicare service utilization by HCPCS code',
+    icon: Activity,
+    requiredColumns: ['HCPCS_Cd', 'HCPCS_Desc', 'Tot_Rndrng_Prvdrs', 'Tot_Benes'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
