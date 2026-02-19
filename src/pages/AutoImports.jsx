@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Upload, Calendar, CheckCircle2, XCircle, Clock, AlertTriangle, PauseCircle, RefreshCw } from 'lucide-react';
+import ValidationReport from '../components/imports/ValidationReport';
 
 export default function AutoImports() {
   const [importType, setImportType] = useState('cms_order_referring');
@@ -193,6 +194,9 @@ export default function AutoImports() {
                   )}
                 </div>
                 {lastResult.batch_id && <p className="text-xs text-green-500">Batch: {lastResult.batch_id}</p>}
+
+                {/* Validation report */}
+                <ValidationReport result={lastResult} />
               </div>
             )}
 
