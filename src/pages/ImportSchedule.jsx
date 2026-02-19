@@ -263,6 +263,15 @@ export default function ImportSchedule() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => runNowMutation.mutate(schedule)}
+                          disabled={runningScheduleId === schedule.id}
+                          title="Run Now"
+                        >
+                          {runningScheduleId === schedule.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 text-green-600" />}
+                        </Button>
                         <Button variant="outline" size="icon" onClick={() => handleEdit(schedule)} title="Edit">
                           <Edit className="w-4 h-4" />
                         </Button>
