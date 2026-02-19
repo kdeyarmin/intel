@@ -81,6 +81,13 @@ const importTypes = [
     icon: Activity,
     requiredColumns: ['HCPCS_Cd', 'HCPCS_Desc', 'Tot_Rndrng_Prvdrs', 'Tot_Benes'],
   },
+  {
+    id: 'provider_service_utilization',
+    name: 'Provider Service Utilization',
+    description: 'Provider-level Medicare service utilization by HCPCS',
+    icon: Activity,
+    requiredColumns: ['Rndrng_NPI', 'HCPCS_Cd', 'HCPCS_Desc', 'Tot_Benes'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {

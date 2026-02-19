@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains', 'hospice_enrollments', 'home_health_enrollments', 'home_health_cost_reports', 'cms_service_utilization', 'provider_service_utilization'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -122,12 +122,25 @@ Deno.serve(async (req) => {
                         }
                         continue;
                     }
+                } else if (import_type === 'provider_service_utilization') {
+                    const npiColumn = columnMapping['Rndrng_NPI'] || 'Rndrng_NPI';
+                    identifier = row[npiColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing NPI',
+                            });
+                        }
+                        continue;
+                    }
                 } else {
                     const npiColumn = columnMapping['NPI'] || 'NPI';
                     identifier = row[npiColumn];
                 }
 
-                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && !validateNPI(identifier)) {
+                if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
@@ -144,9 +157,11 @@ Deno.serve(async (req) => {
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization') {
+                    if (import_type !== 'nursing_home_chains' && import_type !== 'hospice_enrollments' && import_type !== 'home_health_enrollments' && import_type !== 'home_health_cost_reports' && import_type !== 'cms_service_utilization' && import_type !== 'provider_service_utilization') {
                         mappedData.npi = identifier;
                         mappedData.isDuplicate = existingNPIs.has(identifier);
+                    } else if (import_type === 'provider_service_utilization') {
+                        mappedData.npi = identifier;
                     }
                     validData.push(mappedData);
                 }
@@ -429,6 +444,29 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'provider_service_utilization') {
+        const patterns = {
+            'Rndrng_NPI': ['rndrng_npi'],
+            'HCPCS_Cd': ['hcpcs_cd'],
+            'HCPCS_Desc': ['hcpcs_desc'],
+            'HCPCS_Drug_Ind': ['hcpcs_drug_ind'],
+            'Place_Of_Srvc': ['place_of_srvc'],
+            'Tot_Benes': ['tot_benes'],
+            'Tot_Srvcs': ['tot_srvcs'],
+            'Avg_Sbmtd_Chrg': ['avg_sbmtd_chrg'],
+            'Avg_Mdcr_Alowd_Amt': ['avg_mdcr_alowd_amt'],
+            'Avg_Mdcr_Pymt_Amt': ['avg_mdcr_pymt_amt'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h === pattern.toLowerCase());
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -541,6 +579,18 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.drug_indicator = row[columnMapping['HCPCS_Drug_Ind']] || '';
         mappedData.place_of_service = row[columnMapping['Place_Of_Srvc']] || '';
         mappedData.total_providers = parseFloat(row[columnMapping['Tot_Rndrng_Prvdrs']] || 0);
+        mappedData.total_beneficiaries = parseFloat(row[columnMapping['Tot_Benes']] || 0);
+        mappedData.total_services = parseFloat(row[columnMapping['Tot_Srvcs']] || 0);
+        mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
+        mappedData.avg_medicare_allowed = parseFloat(row[columnMapping['Avg_Mdcr_Alowd_Amt']] || 0);
+        mappedData.avg_medicare_payment = parseFloat(row[columnMapping['Avg_Mdcr_Pymt_Amt']] || 0);
+        mappedData.data_year = year;
+    } else if (importType === 'provider_service_utilization') {
+        mappedData.npi = row[columnMapping['Rndrng_NPI']] || '';
+        mappedData.hcpcs_code = row[columnMapping['HCPCS_Cd']] || '';
+        mappedData.hcpcs_description = row[columnMapping['HCPCS_Desc']] || '';
+        mappedData.drug_indicator = row[columnMapping['HCPCS_Drug_Ind']] || '';
+        mappedData.place_of_service = row[columnMapping['Place_Of_Srvc']] || '';
         mappedData.total_beneficiaries = parseFloat(row[columnMapping['Tot_Benes']] || 0);
         mappedData.total_services = parseFloat(row[columnMapping['Tot_Srvcs']] || 0);
         mappedData.avg_submitted_charge = parseFloat(row[columnMapping['Avg_Sbmtd_Chrg']] || 0);
@@ -850,6 +900,51 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import service utilization record:', error);
+            }
+        }
+    } else if (importType === 'provider_service_utilization') {
+        for (const row of validData) {
+            try {
+                const providerNPI = row.npi;
+
+                const existingProvider = await base44.asServiceRole.entities.Provider.filter({ npi: providerNPI });
+                if (existingProvider.length === 0) {
+                    await base44.asServiceRole.entities.Provider.create({
+                        npi: providerNPI,
+                        needs_nppes_enrichment: true,
+                    });
+                }
+
+                const serviceData = {
+                    npi: row.npi,
+                    hcpcs_code: row.hcpcs_code,
+                    hcpcs_description: row.hcpcs_description,
+                    drug_indicator: row.drug_indicator,
+                    place_of_service: row.place_of_service,
+                    total_beneficiaries: row.total_beneficiaries,
+                    total_services: row.total_services,
+                    avg_submitted_charge: row.avg_submitted_charge,
+                    avg_medicare_allowed: row.avg_medicare_allowed,
+                    avg_medicare_payment: row.avg_medicare_payment,
+                    data_year: parseInt(year),
+                };
+
+                const existingService = await base44.asServiceRole.entities.ProviderServiceUtilization.filter({
+                    npi: row.npi,
+                    hcpcs_code: row.hcpcs_code,
+                    place_of_service: row.place_of_service,
+                    data_year: parseInt(year)
+                });
+
+                if (existingService.length === 0) {
+                    await base44.asServiceRole.entities.ProviderServiceUtilization.create(serviceData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.ProviderServiceUtilization.update(existingService[0].id, serviceData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import provider service utilization record:', error);
             }
         }
     }
