@@ -109,13 +109,7 @@ const importTypes = [
     icon: Database,
     requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'],
   },
-  {
-    id: 'opt_out_physicians',
-    name: 'Medicare Opt-Out Physicians',
-    description: 'List of physicians who have opted out of Medicare',
-    icon: FileText,
-    requiredColumns: ['NPI', 'LAST_NAME', 'FIRST_NAME'],
-  },
+
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
