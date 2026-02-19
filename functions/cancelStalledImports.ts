@@ -28,50 +28,35 @@ Deno.serve(async (req) => {
     });
 
     if (stalledBatches.length === 0) {
-      return Response.json({ success: true, cancelled: 0, message: 'No stalled imports found.' });
+      return Response.json({ success: true, retried: 0, message: 'No stalled imports found.' });
     }
 
-    const cancelledIds = [];
-    const cancelTimestamp = new Date().toISOString();
+    const retriedBatches = [];
 
     for (const batch of stalledBatches) {
+      const retryCount = (batch.retry_count || 0) + 1;
+
+      // Reset the batch back to validating so the import pipeline picks it up again
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-        status: 'cancelled',
-        cancelled_at: cancelTimestamp,
-        cancel_reason: `Auto-cancelled: stalled in "${batch.status}" for over ${thresholdHours} hour(s) with no activity`,
+        status: 'validating',
+        retry_count: retryCount,
+        cancel_reason: `Auto-retried (attempt ${retryCount}): was stalled in "${batch.status}" for over ${thresholdHours} hour(s)`,
       });
-      cancelledIds.push({
+
+      retriedBatches.push({
         id: batch.id,
         import_type: batch.import_type,
         file_name: batch.file_name,
         status_was: batch.status,
-        last_activity: batch.updated_date || batch.created_date,
-      });
-    }
-
-    // Notify admins
-    const allUsers = await base44.asServiceRole.entities.User.list();
-    const admins = allUsers.filter(u => u.role === 'admin');
-
-    const batchList = cancelledIds.map((b, i) =>
-      `${i + 1}. ${b.import_type} - "${b.file_name}" (was ${b.status_was}, last activity: ${new Date(b.last_activity).toLocaleString('en-US', { timeZone: 'America/New_York' })} ET)`
-    ).join('\n');
-
-    for (const admin of admins) {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        from_name: 'CareMetric Lead Discovery',
-        to: admin.email,
-        subject: `[AUTO] ${cancelledIds.length} Stalled Import(s) Cancelled`,
-        body: `The following import batch(es) were automatically cancelled after being stalled for over ${thresholdHours} hour(s):\n\n${batchList}\n\nThese jobs had no progress updates within the timeout window. You may retry them from the Import Monitoring page.\n\n---\nAutomated notification from CareMetric Lead Discovery.`,
+        retry_count: retryCount,
       });
     }
 
     return Response.json({
       success: true,
-      cancelled: cancelledIds.length,
-      notified_admins: admins.length,
-      details: cancelledIds,
-      message: `Cancelled ${cancelledIds.length} stalled import(s), notified ${admins.length} admin(s).`,
+      retried: retriedBatches.length,
+      details: retriedBatches,
+      message: `Retried ${retriedBatches.length} stalled import(s).`,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
