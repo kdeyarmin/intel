@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Calendar, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 
 const importTypeOptions = [
@@ -48,6 +49,7 @@ export default function ImportSchedule() {
   const [importType, setImportType] = useState('cms_utilization');
   const [scheduleType, setScheduleType] = useState('daily');
   const [scheduleTime, setScheduleTime] = useState('02:00');
+  const [runNow, setRunNow] = useState(true);
 
   const selectedImportType = importTypeOptions.find(opt => opt.value === importType);
   const scheduleName = `Auto Import - ${selectedImportType?.label || ''}`;
@@ -106,8 +108,25 @@ export default function ImportSchedule() {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries(['importAutomations']);
+      
+      // If "Run Now" is checked, trigger the import immediately
+      if (runNow) {
+        try {
+          await base44.functions.invoke('autoImportCMSData', {
+            import_type: importType,
+            file_url: fileUrl,
+            year: new Date().getFullYear(),
+            dry_run: false,
+          });
+          alert('Schedule created and import started!');
+        } catch (error) {
+          console.error('Failed to start immediate import:', error);
+          alert('Schedule created but immediate import failed: ' + error.message);
+        }
+      }
+      
       setOpen(false);
     },
     onError: (error) => {
@@ -211,9 +230,18 @@ export default function ImportSchedule() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label>Run import immediately</Label>
+                    <p className="text-xs text-gray-500">
+                      Start the import now and schedule for recurring imports
+                    </p>
+                  </div>
+                  <Switch checked={runNow} onCheckedChange={setRunNow} />
+                </div>
                 <p className="text-xs text-gray-500">
-                  The schedule will check for updates and automatically import new data from CMS at the specified time.
+                  The schedule will automatically import new data from CMS at the specified time.
                 </p>
               </div>
 
@@ -222,7 +250,7 @@ export default function ImportSchedule() {
                 disabled={createMutation.isPending}
                 className="w-full bg-teal-600 hover:bg-teal-700"
               >
-                Create Schedule
+                {runNow ? 'Create Schedule & Import Now' : 'Create Schedule'}
               </Button>
             </div>
           </DialogContent>
