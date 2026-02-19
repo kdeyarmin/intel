@@ -283,6 +283,34 @@ Deno.serve(async (req) => {
                 status: 'failed',
                 error_samples: [{ message: error.message }],
             });
+            
+            // Create error report and send notification
+            try {
+                const errorReport = await base44.asServiceRole.entities.ErrorReport.create({
+                    error_type: 'import_failure',
+                    severity: 'high',
+                    source: batch.id,
+                    title: `Import failed: ${import_type}`,
+                    description: `Automated import for ${import_type} failed with error: ${error.message}`,
+                    error_samples: [{ message: error.message, stack: error.stack }],
+                    context: {
+                        import_type,
+                        file_url,
+                        batch_id: batch.id,
+                        year,
+                    },
+                    status: 'new',
+                });
+
+                // Send notification to admins
+                await base44.asServiceRole.functions.invoke('sendErrorNotification', {
+                    error_report_id: errorReport.id,
+                    batch_id: batch.id,
+                });
+            } catch (notifError) {
+                console.error('Failed to send error notification:', notifError);
+            }
+            
             throw error;
         }
 
