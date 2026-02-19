@@ -969,46 +969,23 @@ async function importCMSData(base44, importType, validData, year) {
             }
         }
     } else if (importType === 'nursing_home_chains') {
-        for (const row of validData) {
-            try {
-                const chainData = {
-                    chain_name: row.chain_name,
-                    chain_id: row.chain_id,
-                    number_of_facilities: row.number_of_facilities,
-                    avg_overall_rating: row.avg_overall_rating,
-                    avg_health_inspection_rating: row.avg_health_inspection_rating,
-                    avg_staffing_rating: row.avg_staffing_rating,
-                    avg_quality_rating: row.avg_quality_rating,
-                    avg_nurse_hours_per_resident_day: row.avg_nurse_hours_per_resident_day,
-                    avg_rn_hours_per_resident_day: row.avg_rn_hours_per_resident_day,
-                    avg_staff_turnover_percentage: row.avg_staff_turnover_percentage,
-                    avg_rn_turnover_percentage: row.avg_rn_turnover_percentage,
-                    total_fines: row.total_fines,
-                    total_fines_amount: row.total_fines_amount,
-                    avg_rehospitalization_rate: row.avg_rehospitalization_rate,
-                    avg_antipsychotic_use: row.avg_antipsychotic_use,
-                    avg_falls_with_injury: row.avg_falls_with_injury,
-                    avg_pressure_ulcers: row.avg_pressure_ulcers,
-                    avg_uti_rate: row.avg_uti_rate,
-                    data_year: parseInt(year),
-                };
-
-                const existingChain = await base44.asServiceRole.entities.NursingHomeChain.filter({
-                    chain_name: row.chain_name,
-                    data_year: parseInt(year)
-                });
-
-                if (existingChain.length === 0) {
-                    await base44.asServiceRole.entities.NursingHomeChain.create(chainData);
-                    imported++;
-                } else {
-                    await base44.asServiceRole.entities.NursingHomeChain.update(existingChain[0].id, chainData);
-                    updated++;
-                }
-            } catch (error) {
-                console.error('Failed to import nursing home chain record:', error);
-            }
-        }
+        const records = validData.map(row => ({
+            chain_name: row.chain_name, chain_id: row.chain_id,
+            number_of_facilities: row.number_of_facilities, avg_overall_rating: row.avg_overall_rating,
+            avg_health_inspection_rating: row.avg_health_inspection_rating,
+            avg_staffing_rating: row.avg_staffing_rating, avg_quality_rating: row.avg_quality_rating,
+            avg_nurse_hours_per_resident_day: row.avg_nurse_hours_per_resident_day,
+            avg_rn_hours_per_resident_day: row.avg_rn_hours_per_resident_day,
+            avg_staff_turnover_percentage: row.avg_staff_turnover_percentage,
+            avg_rn_turnover_percentage: row.avg_rn_turnover_percentage,
+            total_fines: row.total_fines, total_fines_amount: row.total_fines_amount,
+            avg_rehospitalization_rate: row.avg_rehospitalization_rate,
+            avg_antipsychotic_use: row.avg_antipsychotic_use,
+            avg_falls_with_injury: row.avg_falls_with_injury,
+            avg_pressure_ulcers: row.avg_pressure_ulcers, avg_uti_rate: row.avg_uti_rate,
+            data_year: parseInt(year),
+        }));
+        imported = await bulkCreateEntity(base44.asServiceRole.entities.NursingHomeChain, records);
     } else if (importType === 'hospice_enrollments') {
         const records = validData.map(row => ({
             enrollment_id: row.enrollment_id,
