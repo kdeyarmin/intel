@@ -46,6 +46,13 @@ const importTypes = [
     icon: Database,
     requiredColumns: ['NPI', 'Provider Name', 'City', 'State', 'Certification Date'],
   },
+  {
+    id: 'nursing_home_chains',
+    name: 'Nursing Home Chain Performance',
+    description: 'CMS nursing home chain performance measures',
+    icon: TrendingUp,
+    requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'],
+  },
 ];
 
 export default function ImportTypeSelector({ onSelect }) {

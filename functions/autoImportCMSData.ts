@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
         const { import_type, file_url, year = 2023, dry_run = false } = payload;
 
         // Validate import type
-        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d'];
+        const validTypes = ['cms_utilization', 'cms_order_referring', 'cms_part_d', 'nursing_home_chains'];
         if (!validTypes.includes(import_type)) {
             return Response.json({ 
                 error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` 
@@ -68,29 +68,47 @@ Deno.serve(async (req) => {
                 const row = {};
                 headers.forEach((h, idx) => { row[h] = values[idx]; });
 
-                // Get NPI from mapped column
-                const npiColumn = columnMapping['NPI'] || 'NPI';
-                const npi = row[npiColumn];
+                // Get identifier based on import type
+                let identifier;
+                if (import_type === 'nursing_home_chains') {
+                    const chainColumn = columnMapping['Chain'] || 'Chain';
+                    identifier = row[chainColumn];
+                    if (!identifier || identifier.trim() === '') {
+                        invalidRows++;
+                        if (errorSamples.length < 10) {
+                            errorSamples.push({
+                                row: i + 1,
+                                message: 'Missing chain name',
+                            });
+                        }
+                        continue;
+                    }
+                } else {
+                    const npiColumn = columnMapping['NPI'] || 'NPI';
+                    identifier = row[npiColumn];
+                }
 
-                if (!validateNPI(npi)) {
+                if (import_type !== 'nursing_home_chains' && !validateNPI(identifier)) {
                     invalidRows++;
                     if (errorSamples.length < 10) {
                         errorSamples.push({
                             row: i + 1,
-                            npi: npi || 'missing',
+                            npi: identifier || 'missing',
                             message: 'Invalid NPI format (must be 10 digits)',
                         });
                     }
-                } else if (seenNPIs.has(npi)) {
+                } else if (seenNPIs.has(identifier)) {
                     duplicateRows++;
                 } else {
-                    seenNPIs.add(npi);
+                    seenNPIs.add(identifier);
                     validRows++;
                     
                     // Map data based on import type
                     const mappedData = mapCMSData(row, columnMapping, import_type, year);
-                    mappedData.npi = npi;
-                    mappedData.isDuplicate = existingNPIs.has(npi);
+                    if (import_type !== 'nursing_home_chains') {
+                        mappedData.npi = identifier;
+                        mappedData.isDuplicate = existingNPIs.has(identifier);
+                    }
                     validData.push(mappedData);
                 }
             }
@@ -222,6 +240,37 @@ function detectCMSColumns(headers, importType) {
                 }
             }
         });
+    } else if (importType === 'nursing_home_chains') {
+        const patterns = {
+            'Chain': ['chain'],
+            'Chain ID': ['chain id', 'chain_id'],
+            'Number of facilities': ['number of facilities', 'facilities'],
+            'Average overall 5-star rating': ['average overall 5-star rating', 'overall rating'],
+            'Average health inspection rating': ['average health inspection rating'],
+            'Average staffing rating': ['average staffing rating'],
+            'Average quality rating': ['average quality rating'],
+            'Average total nurse hours per resident day': ['average total nurse hours per resident day'],
+            'Average total Registered Nurse hours per resident day': ['average total registered nurse hours per resident day'],
+            'Average total nursing staff turnover percentage': ['average total nursing staff turnover percentage'],
+            'Average Registered Nurse turnover percentage': ['average registered nurse turnover percentage'],
+            'Total number of fines': ['total number of fines'],
+            'Total amount of fines in dollars': ['total amount of fines in dollars'],
+            'Average percentage of short-stay residents who were re-hospitalized after a nursing home admission': ['average percentage of short-stay residents who were re-hospitalized'],
+            'Average percentage of long-stay residents who received an antipsychotic medication': ['average percentage of long-stay residents who received an antipsychotic medication'],
+            'Average percentage of long-stay residents experiencing one or more falls with major injury': ['average percentage of long-stay residents experiencing one or more falls with major injury'],
+            'Average percentage of long-stay residents with pressure ulcers': ['average percentage of long-stay residents with pressure ulcers'],
+            'Average percentage of long-stay residents with a urinary tract infection': ['average percentage of long-stay residents with a urinary tract infection'],
+        };
+
+        Object.entries(patterns).forEach(([key, patterns]) => {
+            for (const pattern of patterns) {
+                const idx = normalizedHeaders.findIndex(h => h.includes(pattern.toLowerCase()));
+                if (idx !== -1) {
+                    mapping[key] = headers[idx];
+                    break;
+                }
+            }
+        });
     }
 
     return mapping;
@@ -248,6 +297,26 @@ function mapCMSData(row, columnMapping, importType, year) {
         mappedData.dme_referrals = dme;
         mappedData.snf_referrals = 0;
         mappedData.imaging_referrals = 0;
+    } else if (importType === 'nursing_home_chains') {
+        mappedData.chain_name = row[columnMapping['Chain']] || '';
+        mappedData.chain_id = row[columnMapping['Chain ID']] || '';
+        mappedData.number_of_facilities = parseFloat(row[columnMapping['Number of facilities']] || 0);
+        mappedData.avg_overall_rating = parseFloat(row[columnMapping['Average overall 5-star rating']] || 0);
+        mappedData.avg_health_inspection_rating = parseFloat(row[columnMapping['Average health inspection rating']] || 0);
+        mappedData.avg_staffing_rating = parseFloat(row[columnMapping['Average staffing rating']] || 0);
+        mappedData.avg_quality_rating = parseFloat(row[columnMapping['Average quality rating']] || 0);
+        mappedData.avg_nurse_hours_per_resident_day = parseFloat(row[columnMapping['Average total nurse hours per resident day']] || 0);
+        mappedData.avg_rn_hours_per_resident_day = parseFloat(row[columnMapping['Average total Registered Nurse hours per resident day']] || 0);
+        mappedData.avg_staff_turnover_percentage = parseFloat(row[columnMapping['Average total nursing staff turnover percentage']] || 0);
+        mappedData.avg_rn_turnover_percentage = parseFloat(row[columnMapping['Average Registered Nurse turnover percentage']] || 0);
+        mappedData.total_fines = parseFloat(row[columnMapping['Total number of fines']] || 0);
+        mappedData.total_fines_amount = parseFloat(row[columnMapping['Total amount of fines in dollars']] || 0);
+        mappedData.avg_rehospitalization_rate = parseFloat(row[columnMapping['Average percentage of short-stay residents who were re-hospitalized after a nursing home admission']] || 0);
+        mappedData.avg_antipsychotic_use = parseFloat(row[columnMapping['Average percentage of long-stay residents who received an antipsychotic medication']] || 0);
+        mappedData.avg_falls_with_injury = parseFloat(row[columnMapping['Average percentage of long-stay residents experiencing one or more falls with major injury']] || 0);
+        mappedData.avg_pressure_ulcers = parseFloat(row[columnMapping['Average percentage of long-stay residents with pressure ulcers']] || 0);
+        mappedData.avg_uti_rate = parseFloat(row[columnMapping['Average percentage of long-stay residents with a urinary tract infection']] || 0);
+        mappedData.data_year = year;
     }
 
     return mappedData;
@@ -331,6 +400,47 @@ async function importCMSData(base44, importType, validData, year) {
                 }
             } catch (error) {
                 console.error('Failed to import referral record:', error);
+            }
+        }
+    } else if (importType === 'nursing_home_chains') {
+        for (const row of validData) {
+            try {
+                const chainData = {
+                    chain_name: row.chain_name,
+                    chain_id: row.chain_id,
+                    number_of_facilities: row.number_of_facilities,
+                    avg_overall_rating: row.avg_overall_rating,
+                    avg_health_inspection_rating: row.avg_health_inspection_rating,
+                    avg_staffing_rating: row.avg_staffing_rating,
+                    avg_quality_rating: row.avg_quality_rating,
+                    avg_nurse_hours_per_resident_day: row.avg_nurse_hours_per_resident_day,
+                    avg_rn_hours_per_resident_day: row.avg_rn_hours_per_resident_day,
+                    avg_staff_turnover_percentage: row.avg_staff_turnover_percentage,
+                    avg_rn_turnover_percentage: row.avg_rn_turnover_percentage,
+                    total_fines: row.total_fines,
+                    total_fines_amount: row.total_fines_amount,
+                    avg_rehospitalization_rate: row.avg_rehospitalization_rate,
+                    avg_antipsychotic_use: row.avg_antipsychotic_use,
+                    avg_falls_with_injury: row.avg_falls_with_injury,
+                    avg_pressure_ulcers: row.avg_pressure_ulcers,
+                    avg_uti_rate: row.avg_uti_rate,
+                    data_year: parseInt(year),
+                };
+
+                const existingChain = await base44.asServiceRole.entities.NursingHomeChain.filter({
+                    chain_name: row.chain_name,
+                    data_year: parseInt(year)
+                });
+
+                if (existingChain.length === 0) {
+                    await base44.asServiceRole.entities.NursingHomeChain.create(chainData);
+                    imported++;
+                } else {
+                    await base44.asServiceRole.entities.NursingHomeChain.update(existingChain[0].id, chainData);
+                    updated++;
+                }
+            } catch (error) {
+                console.error('Failed to import nursing home chain record:', error);
             }
         }
     }
