@@ -186,6 +186,49 @@ export default function ImportMonitoring() {
         </Card>
       </div>
 
+      {/* Stale Jobs Warning */}
+      {staleBatches.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+              <AlertCircle className="w-5 h-5" />
+              {staleBatches.length} Stalled Job{staleBatches.length !== 1 ? 's' : ''} Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-amber-700 mb-3">
+              These jobs haven't updated in over 15 minutes and are likely stalled. You can mark them as failed to clean up.
+            </p>
+            <div className="space-y-2">
+              {staleBatches.map(batch => (
+                <div key={batch.id} className="flex items-center justify-between bg-white border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                    <span className="text-sm font-medium">{getImportTypeLabel(batch.import_type)}</span>
+                    <span className="text-xs text-gray-500">{batch.file_name}</span>
+                    <Badge className="bg-amber-100 text-amber-800">{batch.status}</Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    onClick={async () => {
+                      await base44.entities.ImportBatch.update(batch.id, {
+                        status: 'failed',
+                        error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
+                      });
+                      queryClient.invalidateQueries({ queryKey: ['importBatches'] });
+                    }}
+                  >
+                    <XCircle className="w-3 h-3 mr-1" /> Mark Failed
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Import Jobs List */}
       <Card>
         <CardHeader>
