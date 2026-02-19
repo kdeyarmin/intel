@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -40,6 +40,7 @@ const NAV_SECTIONS = [
       { name: 'Organizations', icon: Building2, page: 'OrganizationDetail', roles: ['admin', 'sales_rep'] },
       { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
       { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
+      { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
