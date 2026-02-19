@@ -54,11 +54,24 @@ export default function AppLayout({ children, currentPageName }) {
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-56' : 'w-16'} bg-gradient-to-b from-blue-600 to-blue-800 text-white transition-all duration-300 flex flex-col`}>
         <div className="p-4 flex items-center justify-between">
-          {sidebarOpen && (
-            <div>
-              <h1 className="text-xl font-bold">CareMetric</h1>
-              <p className="text-xs text-teal-100">Provider Intel</p>
+          {sidebarOpen ? (
+            <div className="flex items-center gap-2">
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
+                alt="CareMetric AI"
+                className="w-9 h-9 rounded-lg"
+              />
+              <div>
+                <h1 className="text-lg font-bold leading-tight">CareMetric <span className="text-red-400">AI</span></h1>
+                <p className="text-[10px] text-blue-200">Provider Intel</p>
+              </div>
             </div>
+          ) : (
+            <img
+              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png"
+              alt="CareMetric AI"
+              className="w-8 h-8 rounded-lg"
+            />
           )}
           <Button
             variant="ghost"
