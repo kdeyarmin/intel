@@ -88,7 +88,31 @@ Deno.serve(async (req) => {
             });
         }
 
-        // --- START / CONTINUE: process one state then chain ---
+        // --- START: respond immediately, then fire the crawl chain asynchronously ---
+        if (action === 'start') {
+            console.log('[AutoChain] START requested — launching crawl chain asynchronously');
+
+            // Fire the actual crawl processing as a "continue" call (fire-and-forget)
+            base44.functions.invoke('nppesAutoChainCrawler', {
+                action: 'continue',
+                taxonomy_description,
+                entity_type,
+                dry_run,
+                consecutive_failures: 0,
+                states_processed: 0,
+                total_imported: 0,
+            }).catch(err => {
+                console.error('[AutoChain] Failed to launch chain:', err.message);
+            });
+
+            return Response.json({
+                success: true,
+                message: 'Auto-crawler started. Processing will begin shortly.',
+                state_just_processed: 'starting',
+            });
+        }
+
+        // --- CONTINUE: process one state then chain to next ---
 
         // Check for stop signal
         const signals = await base44.asServiceRole.entities.ImportBatch.filter(
@@ -98,7 +122,6 @@ Deno.serve(async (req) => {
             b => b.file_name === 'crawler_auto_stop_signal' && b.status === 'validating'
         );
         if (stopSignal) {
-            // Clear the signal so it can be restarted later
             await base44.asServiceRole.entities.ImportBatch.update(stopSignal.id, { status: 'completed' });
             console.log('[AutoChain] Stop signal detected — halting chain');
 
@@ -154,12 +177,7 @@ Deno.serve(async (req) => {
             });
             crawlResult = res.data;
         } catch (invokeErr) {
-            // The crawler function itself timed out or errored at HTTP level (502/504)
             console.error('[AutoChain] Crawler invocation failed:', invokeErr.message);
-            
-            // On timeout (502/504), the crawler may still be running server-side
-            // and may eventually complete. Don't count this as a hard failure,
-            // but do proceed to chain the next state.
             const isTimeout = /502|504|timeout|ECONNRESET|aborted/i.test(invokeErr.message);
             if (isTimeout) {
                 console.warn('[AutoChain] Likely timeout — crawler may still be running in background. Proceeding to next state.');
@@ -173,16 +191,12 @@ Deno.serve(async (req) => {
         const newStatesProcessed = states_processed + 1;
         const newTotalImported = total_imported + (crawlResult.imported_providers || 0);
 
-        // Log outcome
         console.log(`[AutoChain] State ${stateJustProcessed}: success=${crawlResult.success}, fetched=${crawlResult.total_fetched || 0}, imported=${crawlResult.imported_providers || 0}`);
 
-        // Track failures for circuit breaker
         let newConsecutiveFailures = crawlResult.success ? 0 : consecutive_failures + 1;
 
-        // If this state failed, log it
         if (!crawlResult.success) {
             console.warn(`[AutoChain] State ${stateJustProcessed} FAILED: ${crawlResult.error}`);
-
             await sendAdminEmail(base44, user.email, `NPPES Crawler Failed — ${stateJustProcessed}`,
                 `The NPPES crawler failed on state ${stateJustProcessed}.\n\n` +
                 `Error: ${crawlResult.error}\n` +
@@ -190,7 +204,6 @@ Deno.serve(async (req) => {
                 `The crawler will continue to the next state automatically.`);
         }
 
-        // Check if all states are done
         if (crawlResult.done) {
             console.log(`[AutoChain] All states processed! Total: ${newStatesProcessed} states, ${newTotalImported} providers`);
 
@@ -223,8 +236,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        // Chain: invoke ourselves for the next state (fire-and-forget via setTimeout trick)
-        // We respond immediately, then trigger the next iteration asynchronously
+        // Chain to next state (fire-and-forget)
         const nextPayload = {
             action: 'continue',
             taxonomy_description,
@@ -235,8 +247,6 @@ Deno.serve(async (req) => {
             total_imported: newTotalImported,
         };
 
-        // Fire-and-forget: invoke next iteration without awaiting
-        // Small delay to let current response complete cleanly
         base44.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {
             console.error('[AutoChain] Failed to chain next state:', err.message);
         });
