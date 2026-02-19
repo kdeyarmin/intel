@@ -13,50 +13,6 @@ const CMS_MA_INPT_URLS = {
   2016: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202016.zip',
 };
 
-// Use dynamic imports to avoid CPU-heavy cold start
-async function downloadAndParseZip(url) {
-  console.log(`Downloading ZIP from: ${url}`);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  const resp = await fetch(url, { signal: controller.signal });
-  clearTimeout(timeout);
-  if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-  const arrayBuffer = await resp.arrayBuffer();
-  
-  // Dynamic import to reduce cold start
-  const JSZip = (await import('npm:jszip@3.10.1')).default;
-  const zip = await JSZip.loadAsync(arrayBuffer);
-  const fileNames = Object.keys(zip.files);
-  const xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
-  if (!xlsxFileName) throw new Error(`No XLSX in ZIP. Files: ${fileNames.join(', ')}`);
-  console.log(`Extracting: ${xlsxFileName}`);
-  const xlsxData = await zip.files[xlsxFileName].async('uint8array');
-  
-  const XLSX = await import('npm:xlsx@0.18.5');
-  return XLSX.read(xlsxData, { type: 'array' });
-}
-
-function parseSheet(workbook, sheetName, XLSX) {
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) return [];
-  const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-  if (rawData.length < 2) return [];
-  let headerIdx = 0;
-  for (let i = 0; i < Math.min(rawData.length, 15); i++) {
-    if (rawData[i].filter(c => c !== '' && c !== null && c !== undefined).length >= 3) { headerIdx = i; break; }
-  }
-  const headers = rawData[headerIdx].map(h => String(h || '').trim());
-  const rows = [];
-  for (let i = headerIdx + 1; i < rawData.length; i++) {
-    const row = rawData[i];
-    if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
-    const obj = {};
-    headers.forEach((h, idx) => { if (h) obj[h] = row[idx] !== undefined ? row[idx] : ''; });
-    rows.push(obj);
-  }
-  return rows;
-}
-
 function classifyTable(sheetName) {
   const name = sheetName.toUpperCase().replace(/\s+/g, ' ');
   if (name.includes('MA 4') || name.includes('MA4') || name.includes('TABLE 4')) return 'MA4';
@@ -128,22 +84,59 @@ Deno.serve(async (req) => {
   });
 
   try {
-    const workbook = await downloadAndParseZip(downloadUrl);
+    // Step 1: Download ZIP
+    console.log(`Downloading: ${downloadUrl}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const resp = await fetch(downloadUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+    const arrayBuffer = await resp.arrayBuffer();
+    console.log(`Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(1)}MB`);
+
+    // Step 2: Extract ZIP (lazy import)
+    const JSZip = (await import('npm:jszip@3.10.1')).default;
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const fileNames = Object.keys(zip.files);
+    const xlsxFileName = fileNames.find(f => f.toLowerCase().endsWith('.xlsx') || f.toLowerCase().endsWith('.xls'));
+    if (!xlsxFileName) throw new Error(`No XLSX in ZIP`);
+    console.log(`Extracting: ${xlsxFileName}`);
+    const xlsxData = await zip.files[xlsxFileName].async('uint8array');
+
+    // Step 3: Parse XLSX (lazy import)
     const XLSX = await import('npm:xlsx@0.18.5');
-    
+    const workbook = XLSX.read(xlsxData, { type: 'array' });
+    console.log(`Sheets: ${workbook.SheetNames.join(', ')}`);
+
     const allRecords = [];
     const sheetSummaries = [];
 
     for (const sheetName of workbook.SheetNames) {
       const tableName = classifyTable(sheetName);
       if (!tableName) continue;
-      const rows = parseSheet(workbook, sheetName, XLSX);
-      console.log(`Sheet "${sheetName}" -> ${tableName}: ${rows.length} rows`);
-      for (const row of rows) {
-        const record = mapRowToRecord(row, tableName, year);
-        if (record.category) allRecords.push(record);
+      
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
+      const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      if (rawData.length < 2) continue;
+      
+      let headerIdx = 0;
+      for (let i = 0; i < Math.min(rawData.length, 15); i++) {
+        if (rawData[i].filter(c => c !== '' && c !== null && c !== undefined).length >= 3) { headerIdx = i; break; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length });
+      const headers = rawData[headerIdx].map(h => String(h || '').trim());
+      
+      let rowCount = 0;
+      for (let i = headerIdx + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+        const obj = {};
+        headers.forEach((h, idx) => { if (h) obj[h] = row[idx] !== undefined ? row[idx] : ''; });
+        const record = mapRowToRecord(obj, tableName, year);
+        if (record.category) { allRecords.push(record); rowCount++; }
+      }
+      console.log(`${sheetName} -> ${tableName}: ${rowCount} rows`);
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount });
     }
 
     console.log(`Total records: ${allRecords.length}`);
@@ -158,10 +151,7 @@ Deno.serve(async (req) => {
     if (!dry_run && allRecords.length > 0) {
       const CHUNK = 50;
       for (let i = 0; i < allRecords.length; i += CHUNK) {
-        if (isTimeUp()) {
-          console.warn(`Time limit at ${imported}/${allRecords.length}`);
-          break;
-        }
+        if (isTimeUp()) { console.warn(`Time limit at ${imported}/${allRecords.length}`); break; }
         const chunk = allRecords.slice(i, i + CHUNK);
         await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
         imported += chunk.length;
@@ -184,7 +174,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.AuditEvent.create({
       event_type: 'import', user_email: user.email,
-      details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, sheets: sheetSummaries, row_count: allRecords.length, imported_count: imported },
+      details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported },
       timestamp: new Date().toISOString(),
     });
 
