@@ -147,16 +147,26 @@ Deno.serve(async (req) => {
         let crawlResult;
         try {
             const res = await base44.functions.invoke('nppesStateCrawler', {
-                action: 'process_next',
+                action: 'start',
                 taxonomy_description,
                 entity_type,
                 dry_run,
             });
             crawlResult = res.data;
         } catch (invokeErr) {
-            // The crawler function itself timed out or errored at HTTP level
+            // The crawler function itself timed out or errored at HTTP level (502/504)
             console.error('[AutoChain] Crawler invocation failed:', invokeErr.message);
-            crawlResult = { success: false, error: invokeErr.message, done: false };
+            
+            // On timeout (502/504), the crawler may still be running server-side
+            // and may eventually complete. Don't count this as a hard failure,
+            // but do proceed to chain the next state.
+            const isTimeout = /502|504|timeout|ECONNRESET|aborted/i.test(invokeErr.message);
+            if (isTimeout) {
+                console.warn('[AutoChain] Likely timeout — crawler may still be running in background. Proceeding to next state.');
+                crawlResult = { success: true, error: 'timeout_likely', done: false, timeout_assumed: true };
+            } else {
+                crawlResult = { success: false, error: invokeErr.message, done: false };
+            }
         }
 
         const stateJustProcessed = crawlResult.state || 'unknown';

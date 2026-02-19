@@ -18,7 +18,7 @@ let MAX_RETRIES = 3;
 let RETRY_BACKOFF_MS = 2000;
 let REQUEST_TIMEOUT_MS = 15000;
 let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
-let MAX_CRAWL_MS = 160000;
+let MAX_CRAWL_MS = 55000;
 // Write concurrency: how many bulk create/update operations to run in parallel
 const WRITE_CONCURRENCY = 5;
 
