@@ -16,7 +16,6 @@ Deno.serve(async (req) => {
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
     } else {
-      // Batch mode: get providers without emails
       const allProviders = await base44.asServiceRole.entities.Provider.list('-created_date', 500);
       providersToSearch = allProviders.filter(p => {
         if (skip_already_searched && p.email_searched_at) return false;
@@ -29,7 +28,6 @@ Deno.serve(async (req) => {
       return Response.json({ message: 'No providers to search', searched: 0 });
     }
 
-    // Get all locations and taxonomies upfront for efficiency
     const allLocations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', 500);
     const allTaxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', 500);
 
@@ -98,7 +96,61 @@ INSTRUCTIONS:
         const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
         const bestEmail = emails[0] || null;
 
-        // Update Provider with best email
+        // --- AI Email Validation Step ---
+        let validationResult = null;
+        if (emails.length > 0) {
+          const emailList = emails.map(e => e.email).join(', ');
+          validationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: `You are an email deliverability expert. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
+
+EMAIL ADDRESSES TO VALIDATE:
+${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
+
+PROVIDER CONTEXT:
+- Type: ${provider.entity_type}
+- Organization: ${provider.organization_name || 'N/A'}
+- Credential: ${provider.credential || 'N/A'}
+- Location: ${locationInfo}
+
+VALIDATION CRITERIA - For each email, check:
+1. FORMAT: Is the email format valid? (proper syntax, no spaces, valid TLD)
+2. DOMAIN: Is the domain a real, active organization? (hospital, clinic, health system, or known provider like gmail)
+3. PATTERN: Does the email follow typical patterns for that domain? (first.last@, flast@, info@, etc.)
+4. RELEVANCE: Does the email domain match the provider's known organization or practice?
+5. DISPOSABLE: Is it a disposable/temporary email service?
+6. ROLE-BASED: Is it a role-based address like info@, admin@, contact@ (less likely to reach the specific person)?
+7. CATCH-ALL: Does the domain likely use a catch-all (accepts all emails but may not deliver)?
+
+For each email, assign:
+- "valid" = high likelihood of being deliverable and reaching the intended person
+- "risky" = might work but has concerns (pattern mismatch, role-based, catch-all domain, generic provider)
+- "invalid" = likely undeliverable (bad format, non-existent domain, clearly wrong person, disposable)
+
+Return validation for ALL emails provided.`,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                validations: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      email: { type: "string" },
+                      status: { type: "string", enum: ["valid", "risky", "invalid"] },
+                      reason: { type: "string" }
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        const validations = validationResult?.validations || [];
+        const getValidation = (email) => validations.find(v => v.email === email) || { status: 'unknown', reason: '' };
+
+        // Update Provider with best email + validation
+        const bestValidation = bestEmail ? getValidation(bestEmail.email) : null;
         const providerUpdate = {
           email_searched_at: new Date().toISOString(),
         };
@@ -107,13 +159,23 @@ INSTRUCTIONS:
           providerUpdate.email = bestEmail.email;
           providerUpdate.email_confidence = bestEmail.confidence;
           providerUpdate.email_source = bestEmail.source || '';
-          providerUpdate.additional_emails = emails.slice(1);
+          providerUpdate.email_validation_status = bestValidation?.status || 'unknown';
+          providerUpdate.email_validation_reason = bestValidation?.reason || '';
+          providerUpdate.additional_emails = emails.slice(1).map(e => {
+            const v = getValidation(e.email);
+            return {
+              email: e.email,
+              confidence: e.confidence,
+              source: e.source,
+              validation_status: v.status || 'unknown',
+            };
+          });
           foundCount++;
         }
 
         await base44.asServiceRole.entities.Provider.update(provider.id, providerUpdate);
 
-        // Also update primary location with the best email if it exists
+        // Also update primary location
         if (bestEmail && primaryLoc && !primaryLoc.email) {
           await base44.asServiceRole.entities.ProviderLocation.update(primaryLoc.id, {
             email: bestEmail.email,
@@ -129,14 +191,15 @@ INSTRUCTIONS:
           emails_found: emails.length,
           best_email: bestEmail?.email || null,
           confidence: bestEmail?.confidence || null,
+          validation_status: bestValidation?.status || null,
+          validation_reason: bestValidation?.reason || null,
+          all_validations: validations,
         });
 
-        // Delay to avoid rate limits
         await new Promise(r => setTimeout(r, 500));
 
       } catch (err) {
         console.error(`Email search failed for NPI ${provider.npi}:`, err.message);
-        // Mark as searched even on failure so we don't retry immediately
         await base44.asServiceRole.entities.Provider.update(provider.id, {
           email_searched_at: new Date().toISOString(),
         });
@@ -151,7 +214,6 @@ INSTRUCTIONS:
       }
     }
 
-    // Log audit event
     await base44.asServiceRole.entities.AuditEvent.create({
       event_type: 'import',
       user_email: user.email,
@@ -160,7 +222,7 @@ INSTRUCTIONS:
         entity: 'Provider',
         searched_count: searchedCount,
         found_count: foundCount,
-        message: `Searched ${searchedCount} providers, found emails for ${foundCount}`
+        message: `Searched ${searchedCount} providers, found emails for ${foundCount} (with validation)`
       },
       timestamp: new Date().toISOString(),
     });
