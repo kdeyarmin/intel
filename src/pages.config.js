@@ -61,6 +61,8 @@ import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
 import LocationAnalytics from './pages/LocationAnalytics';
 import Locations from './pages/Locations';
+import NPPESCrawler from './pages/NPPESCrawler';
+import NPPESImport from './pages/NPPESImport';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import Providers from './pages/Providers';
@@ -70,8 +72,6 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import NPPESImport from './pages/NPPESImport';
-import NPPESCrawler from './pages/NPPESCrawler';
 import __Layout from './Layout.jsx';
 
 
@@ -90,6 +90,8 @@ export const PAGES = {
     "LeadLists": LeadLists,
     "LocationAnalytics": LocationAnalytics,
     "Locations": Locations,
+    "NPPESCrawler": NPPESCrawler,
+    "NPPESImport": NPPESImport,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
     "Providers": Providers,
@@ -99,8 +101,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "NPPESImport": NPPESImport,
-    "NPPESCrawler": NPPESCrawler,
 }
 
 export const pagesConfig = {

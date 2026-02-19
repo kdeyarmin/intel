@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Play, Pause, RotateCcw, CheckCircle2, XCircle, Clock, Globe, MapPin, Bot } from 'lucide-react';
+import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import CrawlerLog from '../components/nppes/CrawlerLog';
 
