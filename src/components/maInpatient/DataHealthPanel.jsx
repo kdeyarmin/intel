@@ -76,64 +76,40 @@ export default function DataHealthPanel({ data, recentBatches = [] }) {
 }
 
 function TopValidationIssues({ batches }) {
-  const issues = useMemo(() => {
-    const ruleCounts = {};
+  const topIssues = useMemo(() => {
+    const merged = {};
+    const add = (rule, count, type) => {
+      if (!rule || !count || count <= 0) return;
+      if (!merged[rule]) merged[rule] = { rule, count: 0, type };
+      merged[rule].count += count;
+    };
+
     batches.forEach(batch => {
-      // Aggregate from error_samples (validation errors/warnings stored on batch)
+      // 1. From error_samples (individual validation errors logged on the batch)
       if (batch.error_samples?.length > 0) {
+        const sampleCounts = {};
         batch.error_samples.forEach(e => {
           const rule = e.rule || e.phase || 'unknown';
-          ruleCounts[rule] = (ruleCounts[rule] || { count: 0, type: 'error' });
-          ruleCounts[rule].count++;
+          sampleCounts[rule] = (sampleCounts[rule] || 0) + 1;
         });
+        Object.entries(sampleCounts).forEach(([rule, count]) => add(rule, count, 'error'));
       }
+      // 2. From batch-level aggregate fields
+      add('invalid_rows', batch.invalid_rows, 'error');
+      add('duplicates', batch.duplicate_rows, 'warning');
+      add('skipped_identical', batch.skipped_rows, 'warning');
     });
-    return Object.entries(ruleCounts)
-      .map(([rule, info]) => ({ rule, count: info.count, type: info.type }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [batches]);
 
-  // Also compute inline data quality warnings from the data itself
-  const dataIssues = useMemo(() => {
-    const checks = {};
-    // no_metrics: records with no numeric values
-    const noMetrics = batches.reduce((sum, b) => {
-      const noMetricsRule = Object.entries(
-        // look for validation_rule_summary or error_samples
-        {}
-      );
-      return sum;
-    }, 0);
-    return checks;
-  }, [batches]);
-
-  // Combine batch error_samples with inline analysis
-  const inlineIssues = useMemo(() => {
-    if (issues.length > 0) return issues;
-    // If no batch-level error samples, derive from the batches' known fields
-    const derived = [];
-    batches.forEach(b => {
-      if (b.invalid_rows > 0) derived.push({ rule: 'invalid_rows', count: b.invalid_rows, type: 'error' });
-      if (b.duplicate_rows > 0) derived.push({ rule: 'duplicates', count: b.duplicate_rows, type: 'warning' });
-      if (b.skipped_rows > 0) derived.push({ rule: 'skipped_identical', count: b.skipped_rows, type: 'warning' });
-    });
-    // Merge by rule
-    const merged = {};
-    derived.forEach(d => {
-      if (!merged[d.rule]) merged[d.rule] = { ...d };
-      else merged[d.rule].count += d.count;
-    });
     return Object.values(merged).sort((a, b) => b.count - a.count).slice(0, 5);
-  }, [issues, batches]);
+  }, [batches]);
 
-  if (inlineIssues.length === 0) return null;
+  if (topIssues.length === 0) return null;
 
   return (
     <div className="mt-4 pt-3 border-t border-slate-200">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Top Validation Issues</p>
       <div className="space-y-1.5">
-        {inlineIssues.map(issue => (
+        {topIssues.map(issue => (
           <div key={issue.rule} className="flex items-center justify-between py-1.5 px-2 rounded bg-slate-50">
             <div className="flex items-center gap-1.5">
               {issue.type === 'error'
