@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, MapPin, Phone, Printer, Stethoscope } from 'lucide-react';
+import { User, MapPin, Phone, Printer, Stethoscope, Mail } from 'lucide-react';
+import EmailValidationBadge from '../emailBot/EmailValidationBadge';
 
 export default function BasicProfile({ provider, taxonomy, locations }) {
   const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
@@ -88,6 +89,29 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 <p className="text-sm text-gray-600">{primaryLocation.fax}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {provider.email && (
+          <div className="flex items-start gap-2 pt-3 border-t">
+            <Mail className="h-5 w-5 text-blue-500 mt-0.5" />
+            <div>
+              <p className="font-medium">Email</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-sm text-gray-600">{provider.email}</p>
+                {provider.email_confidence && (
+                  <Badge className={`text-[10px] ${
+                    provider.email_confidence === 'high' ? 'bg-green-100 text-green-800' :
+                    provider.email_confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>{provider.email_confidence}</Badge>
+                )}
+                <EmailValidationBadge
+                  status={provider.email_validation_status}
+                  reason={provider.email_validation_reason}
+                />
+              </div>
+            </div>
           </div>
         )}
 
