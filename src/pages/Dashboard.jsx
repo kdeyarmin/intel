@@ -55,26 +55,42 @@ export default function Dashboard() {
       title: 'Total Providers',
       value: totalProviders.toLocaleString(),
       icon: Users,
-      gradient: 'bg-gradient-to-br from-blue-500 to-blue-700',
+      gradient: 'bg-gray-100',
+      textColor: 'text-gray-900',
+      subtextColor: 'text-gray-500',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
     },
     {
       title: 'Active Medicare',
       value: activeMedicare.toLocaleString(),
       icon: Activity,
-      gradient: 'bg-gradient-to-br from-blue-400 to-indigo-600',
+      gradient: 'bg-gray-100',
+      textColor: 'text-gray-900',
+      subtextColor: 'text-gray-500',
+      iconBg: 'bg-indigo-100',
+      iconColor: 'text-indigo-600',
     },
     {
       title: 'Top State',
       value: topStates[0]?.[0] || 'N/A',
       subtitle: topStates[0]?.[1] ? `${topStates[0][1]} providers` : '',
       icon: MapPin,
-      gradient: 'bg-gradient-to-br from-sky-500 to-blue-600',
+      gradient: 'bg-gray-100',
+      textColor: 'text-gray-900',
+      subtextColor: 'text-gray-500',
+      iconBg: 'bg-sky-100',
+      iconColor: 'text-sky-600',
     },
     {
       title: 'Last Refresh',
       value: lastRefresh,
       icon: Calendar,
-      gradient: 'bg-gradient-to-br from-indigo-400 to-blue-600',
+      gradient: 'bg-gray-100',
+      textColor: 'text-gray-900',
+      subtextColor: 'text-gray-500',
+      iconBg: 'bg-violet-100',
+      iconColor: 'text-violet-600',
     },
   ];
 
@@ -89,25 +105,25 @@ export default function Dashboard() {
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Card key={kpi.title} className={`overflow-hidden border-0 shadow-md ${kpi.gradient} text-white`}>
+            <Card key={kpi.title} className={`overflow-hidden border shadow-sm ${kpi.gradient}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-white/80">
+                  <CardTitle className={`text-sm font-medium ${kpi.subtextColor}`}>
                     {kpi.title}
                   </CardTitle>
-                  <div className="bg-white/20 p-2.5 rounded-lg">
-                    <Icon className="w-5 h-5 text-white" />
+                  <div className={`${kpi.iconBg} p-2.5 rounded-lg`}>
+                    <Icon className={`w-5 h-5 ${kpi.iconColor}`} />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {loadingProviders || loadingUtil ? (
-                  <Skeleton className="h-8 w-24 bg-white/20" />
+                  <Skeleton className="h-8 w-24" />
                 ) : (
                   <>
-                    <div className="text-3xl font-bold text-white">{kpi.value}</div>
+                    <div className={`text-3xl font-bold ${kpi.textColor}`}>{kpi.value}</div>
                     {kpi.subtitle && (
-                      <p className="text-sm text-white/70 mt-1">{kpi.subtitle}</p>
+                      <p className={`text-sm ${kpi.subtextColor} mt-1`}>{kpi.subtitle}</p>
                     )}
                   </>
                 )}
