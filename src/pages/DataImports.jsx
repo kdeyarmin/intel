@@ -38,7 +38,7 @@ export default function DataImports() {
     return cleaned.length === 10;
   };
 
-  const handleFileSelect = async (e) => {
+  const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
@@ -46,26 +46,43 @@ export default function DataImports() {
     setUploadingFile(true);
     setUploadProgress(10);
     
-    try {
-      // Parse CSV to get columns
-      setUploadProgress(40);
-      const text = await selectedFile.text();
-      setUploadProgress(70);
-      const lines = text.split('\n').filter(l => l.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
-      setCsvColumns(headers);
-      setUploadProgress(100);
-      setTimeout(() => {
-        setStep('map');
+    const reader = new FileReader();
+    
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 60) + 10;
+        setUploadProgress(progress);
+      }
+    };
+    
+    reader.onload = (event) => {
+      try {
+        setUploadProgress(80);
+        const text = event.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        setCsvColumns(headers);
+        setUploadProgress(100);
+        setTimeout(() => {
+          setStep('map');
+          setUploadingFile(false);
+          setUploadProgress(0);
+        }, 500);
+      } catch (error) {
+        alert('Error parsing file: ' + error.message);
         setUploadingFile(false);
         setUploadProgress(0);
-      }, 500);
-    } catch (error) {
-      alert('Error reading file: ' + error.message);
+      }
+    };
+    
+    reader.onerror = () => {
+      alert('Error reading file. Please try again.');
       setUploadingFile(false);
       setUploadProgress(0);
-    }
+    };
+    
+    reader.readAsText(selectedFile);
   };
 
   const handleValidate = async () => {
