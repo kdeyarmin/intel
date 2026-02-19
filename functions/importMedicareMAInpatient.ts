@@ -420,31 +420,32 @@ Deno.serve(async (req) => {
 
       console.log(`[parse] Total records: ${allRecords.length}, parse errors: ${errorSamples.length}`);
 
-      // === Step 3b: Validate all records ===
+      // === Step 3b: Validate all records (single pass) ===
       console.log(`[validate] Running validation on ${allRecords.length} records...`);
-      const validation = validateAllRecords(allRecords);
-      console.log(`[validate] Results: ${validation.valid} valid, ${validation.invalid} invalid, ${validation.warning_count} warnings`);
-      if (Object.keys(validation.rule_summary).length > 0) {
-        console.log(`[validate] Rule breakdown: ${JSON.stringify(validation.rule_summary)}`);
-      }
-
-      // Add validation errors to errorSamples
-      for (const ve of validation.errors) {
-        addError('validation', `[${ve.rule}] ${ve.message}`, { sheet: ve.sheet, row_index: ve.row, field: ve.field });
-      }
-
-      // Filter out invalid records (keep only those that pass validation)
       const validRecords = [];
-      const invalidRecordIndices = new Set();
+      const validation = { total: allRecords.length, valid: 0, invalid: 0, error_count: 0, warning_count: 0, rule_summary: {}, errors: [], warnings: [] };
+      
       for (let i = 0; i < allRecords.length; i++) {
         const result = validateRecord(allRecords[i], i, allRecords[i].table_name);
         if (result.valid) {
+          validation.valid++;
           validRecords.push(allRecords[i]);
         } else {
-          invalidRecordIndices.add(i);
+          validation.invalid++;
+        }
+        for (const e of result.errors) {
+          validation.rule_summary[e.rule] = (validation.rule_summary[e.rule] || 0) + 1;
+          validation.error_count++;
+          if (validation.errors.length < 50) validation.errors.push(e);
+          if (errorSamples.length < 25) addError('validation', `[${e.rule}] ${e.message}`, { sheet: e.sheet, row_index: e.row, field: e.field });
+        }
+        for (const w of result.warnings) {
+          validation.rule_summary[w.rule] = (validation.rule_summary[w.rule] || 0) + 1;
+          validation.warning_count++;
+          if (validation.warnings.length < 50) validation.warnings.push(w);
         }
       }
-      console.log(`[validate] ${validRecords.length} records passed validation, ${invalidRecordIndices.size} rejected`);
+      console.log(`[validate] ${validRecords.length} passed, ${validation.invalid} rejected, ${validation.warning_count} warnings`);
 
       // Apply row_offset/row_limit for range-based retries
       let recordsToProcess = validRecords;
