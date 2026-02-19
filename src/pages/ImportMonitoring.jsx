@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,9 @@ export default function ImportMonitoring() {
   const [selectedBatch, setSelectedBatch] = useState(null);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const queryClient = useQueryClient();
 
-  const { data: batches = [], isLoading, refetch } = useQuery({
+  const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
     refetchInterval: 30000, // Refresh every 30 seconds to avoid rate limits
@@ -114,7 +115,7 @@ export default function ImportMonitoring() {
         <Button 
           onClick={async () => {
             setIsRefreshing(true);
-            await refetch();
+            await queryClient.invalidateQueries({ queryKey: ['importBatches'] });
             setIsRefreshing(false);
           }} 
           variant="outline"
