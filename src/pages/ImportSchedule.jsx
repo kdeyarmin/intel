@@ -72,6 +72,7 @@ export default function ImportSchedule() {
         import_type: importType,
         schedule_type: scheduleType,
         schedule_time: scheduleTime,
+        runNow: runImmediate,
       });
 
       if (response.data.error) {

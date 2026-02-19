@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        const { import_type, schedule_type, schedule_time } = await req.json();
+        const { import_type, schedule_type, schedule_time, runNow } = await req.json();
 
         const importTypeLabels = {
             'cms_utilization': 'CMS Provider Utilization',
@@ -59,27 +59,44 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        // Create the automation using the internal API
+        // Make direct API call to create automation
         const apiUrl = Deno.env.get('BASE44_API_URL') || 'https://api.base44.com';
         const appId = Deno.env.get('BASE44_APP_ID');
         
+        // Get the authorization token from the incoming request
+        const authHeader = req.headers.get('authorization');
+        if (!authHeader) {
+            throw new Error('No authorization header found');
+        }
+
         const response = await fetch(`${apiUrl}/v1/apps/${appId}/automations`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': req.headers.get('authorization') || '',
+                'Authorization': authHeader,
             },
             body: JSON.stringify(scheduleConfig),
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Failed to create schedule: ${error}`);
+            const errorText = await response.text();
+            console.error('Automation creation failed:', errorText);
+            throw new Error(`Failed to create automation: ${response.status} ${errorText}`);
         }
 
-        const result = await response.json();
+        const automation = await response.json();
 
-        return Response.json({ success: true, automation: result });
+        // If runNow is true, trigger the import immediately
+        if (runNow) {
+            try {
+                await base44.asServiceRole.functions.invoke('autoImportCMSData', scheduleConfig.function_args);
+            } catch (err) {
+                console.error('Failed to run immediate import:', err);
+                // Don't fail the schedule creation if immediate run fails
+            }
+        }
+
+        return Response.json({ success: true, automation });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
