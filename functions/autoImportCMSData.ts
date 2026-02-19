@@ -1212,5 +1212,5 @@ async function importCMSData(base44, importType, validData, year, startTime) {
         imported = await bulkCreateEntity(base44.asServiceRole.entities.OptOutPhysician, records);
     }
 
-    return { imported, updated, skipped };
+    return { imported, updated, skipped, partial };
 }
