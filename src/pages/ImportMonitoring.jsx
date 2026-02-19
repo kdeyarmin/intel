@@ -67,7 +67,7 @@ export default function ImportMonitoring() {
     refetchInterval: 300000,
   });
 
-  const refreshBatches = () => queryClient.invalidateQueries({ queryKey: ['importMonitoringBatches'] });
+  const refreshBatches = () => queryClient.refetchQueries({ queryKey: ['importMonitoringBatches'] });
 
   // Collect all unique tags
   const allTags = useMemo(() => {
