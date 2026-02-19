@@ -77,6 +77,8 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import CustomReports from './pages/CustomReports';
+import LocationDetail from './pages/LocationDetail';
+import OrganizationDetail from './pages/OrganizationDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -111,6 +113,8 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "CustomReports": CustomReports,
+    "LocationDetail": LocationDetail,
+    "OrganizationDetail": OrganizationDetail,
 }
 
 export const pagesConfig = {
