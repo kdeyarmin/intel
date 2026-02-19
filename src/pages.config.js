@@ -67,6 +67,7 @@ import Analytics from './pages/Analytics';
 import Locations from './pages/Locations';
 import Utilization from './pages/Utilization';
 import Referrals from './pages/Referrals';
+import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import __Layout from './Layout.jsx';
 
 
@@ -91,6 +92,7 @@ export const PAGES = {
     "Locations": Locations,
     "Utilization": Utilization,
     "Referrals": Referrals,
+    "ProviderLocationMatching": ProviderLocationMatching,
 }
 
 export const pagesConfig = {
