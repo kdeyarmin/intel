@@ -420,22 +420,52 @@ Deno.serve(async (req) => {
 
       console.log(`[parse] Total records: ${allRecords.length}, parse errors: ${errorSamples.length}`);
 
+      // === Step 3b: Validate all records ===
+      console.log(`[validate] Running validation on ${allRecords.length} records...`);
+      const validation = validateAllRecords(allRecords);
+      console.log(`[validate] Results: ${validation.valid} valid, ${validation.invalid} invalid, ${validation.warning_count} warnings`);
+      if (Object.keys(validation.rule_summary).length > 0) {
+        console.log(`[validate] Rule breakdown: ${JSON.stringify(validation.rule_summary)}`);
+      }
+
+      // Add validation errors to errorSamples
+      for (const ve of validation.errors) {
+        addError('validation', `[${ve.rule}] ${ve.message}`, { sheet: ve.sheet, row_index: ve.row, field: ve.field });
+      }
+
+      // Filter out invalid records (keep only those that pass validation)
+      const validRecords = [];
+      const invalidRecordIndices = new Set();
+      for (let i = 0; i < allRecords.length; i++) {
+        const result = validateRecord(allRecords[i], i, allRecords[i].table_name);
+        if (result.valid) {
+          validRecords.push(allRecords[i]);
+        } else {
+          invalidRecordIndices.add(i);
+        }
+      }
+      console.log(`[validate] ${validRecords.length} records passed validation, ${invalidRecordIndices.size} rejected`);
+
       // Apply row_offset/row_limit for range-based retries
-      let recordsToProcess = allRecords;
+      let recordsToProcess = validRecords;
       const effectiveOffset = row_offset || 0;
       if (effectiveOffset > 0 || row_limit) {
-        const end = row_limit ? effectiveOffset + row_limit : allRecords.length;
-        recordsToProcess = allRecords.slice(effectiveOffset, end);
-        console.log(`[range] Processing rows ${effectiveOffset} to ${Math.min(end, allRecords.length)} of ${allRecords.length}`);
+        const end = row_limit ? effectiveOffset + row_limit : validRecords.length;
+        recordsToProcess = validRecords.slice(effectiveOffset, end);
+        console.log(`[range] Processing rows ${effectiveOffset} to ${Math.min(end, validRecords.length)} of ${validRecords.length}`);
       }
 
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         total_rows: allRecords.length,
-        valid_rows: recordsToProcess.length,
-        invalid_rows: errorSamples.length,
+        valid_rows: validRecords.length,
+        invalid_rows: validation.invalid,
         status: dry_run ? 'completed' : 'processing',
         column_mapping: { sheets: sheetSummaries, sheet_errors: Object.keys(sheetErrors).length ? sheetErrors : undefined },
         error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        dedup_summary: {
+          validation_rule_summary: validation.rule_summary,
+          validation_warnings: validation.warning_count,
+        },
       });
 
       // === Step 4: Import with retry per chunk ===
