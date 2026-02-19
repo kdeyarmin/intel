@@ -6,6 +6,7 @@ import KPICard from '../components/dashboard/KPICard';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
+import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -116,7 +117,12 @@ export default function Dashboard() {
       </div>
 
       {/* Data Quality */}
-      <DataQualityWidget />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          <DataQualityWidget />
+        </div>
+        <DQQuickStatus />
+      </div>
     </div>
   );
 }
