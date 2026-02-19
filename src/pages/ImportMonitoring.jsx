@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 export default function ImportMonitoring() {
   const [selectedBatch, setSelectedBatch] = useState(null);
+  const [showOnlyLatest, setShowOnlyLatest] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
@@ -91,6 +93,28 @@ export default function ImportMonitoring() {
   const staleBatches = batches.filter(b => isStale(b));
   const completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
+
+  // Deduplicate: for each import_type+file_name combo, keep only the latest
+  const getDisplayBatches = () => {
+    let filtered = batches;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'active') {
+        filtered = filtered.filter(b => b.status === 'processing' || b.status === 'validating');
+      } else {
+        filtered = filtered.filter(b => b.status === statusFilter);
+      }
+    }
+    if (!showOnlyLatest) return filtered;
+    const seen = new Map();
+    for (const b of filtered) {
+      const key = `${b.import_type}_${b.file_name}`;
+      if (!seen.has(key) || new Date(b.created_date) > new Date(seen.get(key).created_date)) {
+        seen.set(key, b);
+      }
+    }
+    return Array.from(seen.values());
+  };
+  const displayBatches = getDisplayBatches();
 
   const getImportTypeLabel = (type) => {
     const labels = {
