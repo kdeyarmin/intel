@@ -91,37 +91,14 @@ export default function ImportSchedule() {
       const scheduleConfig = response.data.config;
 
       if (editingSchedule) {
-        // Update existing automation
-        const updateResponse = await fetch(`/api/automations/${editingSchedule.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(scheduleConfig),
+        await base44.functions.invoke('updateAutomation', {
+          automation_id: editingSchedule.id,
+          config: scheduleConfig,
         });
-
-        if (!updateResponse.ok) {
-          const error = await updateResponse.text();
-          throw new Error(`Failed to update automation: ${error}`);
-        }
-
-        return await updateResponse.json();
       } else {
-        // Create new automation
-        const createResponse = await fetch(`/api/automations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(scheduleConfig),
+        await base44.functions.invoke('createAutomation', {
+          config: scheduleConfig,
         });
-
-        if (!createResponse.ok) {
-          const error = await createResponse.text();
-          throw new Error(`Failed to create automation: ${error || createResponse.statusText}`);
-        }
-
-        return await createResponse.json();
       }
     },
     onSuccess: async () => {
