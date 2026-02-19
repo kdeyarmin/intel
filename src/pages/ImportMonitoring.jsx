@@ -20,10 +20,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 export default function ImportMonitoring() {
   const [selectedBatch, setSelectedBatch] = useState(null);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const { data: batches = [], isLoading, refetch } = useQuery({
     queryKey: ['importBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds to avoid rate limits
   });
 
   const getStatusIcon = (status) => {
