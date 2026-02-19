@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import SearchFilterBar from '../components/filters/SearchFilterBar';
 
 export default function Providers() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [stateFilter, setStateFilter] = useState('');
+  const [entityTypeFilter, setEntityTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [credentialFilter, setCredentialFilter] = useState('all');
+  const [enrichmentFilter, setEnrichmentFilter] = useState('all');
 
   const { data: providers = [], isLoading } = useQuery({
     queryKey: ['providers'],
@@ -30,13 +33,32 @@ export default function Providers() {
     return scoreRecord?.score || null;
   };
 
-  const filteredProviders = providers.filter(p => {
-    const matchesSearch = !searchTerm || 
-      p.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.npi?.includes(searchTerm);
-    return matchesSearch;
-  });
+  const credentials = useMemo(() => {
+    const c = new Set(providers.map(p => p.credential).filter(Boolean));
+    return [...c].sort().map(cr => ({ value: cr, label: cr }));
+  }, [providers]);
+
+  const filteredProviders = useMemo(() => {
+    return providers.filter(p => {
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        const match = (p.npi || '').includes(q) ||
+          (p.last_name || '').toLowerCase().includes(q) ||
+          (p.first_name || '').toLowerCase().includes(q) ||
+          (p.organization_name || '').toLowerCase().includes(q) ||
+          (p.credential || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      if (entityTypeFilter !== 'all' && p.entity_type !== entityTypeFilter) return false;
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+      if (credentialFilter !== 'all' && p.credential !== credentialFilter) return false;
+      if (enrichmentFilter !== 'all') {
+        if (enrichmentFilter === 'yes' && !p.needs_nppes_enrichment) return false;
+        if (enrichmentFilter === 'no' && p.needs_nppes_enrichment) return false;
+      }
+      return true;
+    });
+  }, [providers, searchTerm, entityTypeFilter, statusFilter, credentialFilter, enrichmentFilter]);
 
   const handleSaveList = async () => {
     const user = await base44.auth.me();
@@ -73,31 +95,34 @@ export default function Providers() {
           <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
           <p className="text-gray-600 mt-1">{providers.length} total providers</p>
         </div>
-        <Button onClick={handleSaveList} className="bg-teal-600 hover:bg-teal-700">
+        <Button onClick={handleSaveList} className="bg-blue-600 hover:bg-blue-700">
           <Save className="w-4 h-4 mr-2" />
           Save as Lead List
         </Button>
       </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 bg-white">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                placeholder="Search by name or NPI..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
+          <SearchFilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onReset={() => { setSearchTerm(''); setEntityTypeFilter('all'); setStatusFilter('all'); setCredentialFilter('all'); setEnrichmentFilter('all'); }}
+            filters={[
+              { key: 'entityType', type: 'select', label: 'Type', value: entityTypeFilter, onChange: setEntityTypeFilter, options: [{ value: 'Individual', label: 'Individual' }, { value: 'Organization', label: 'Organization' }] },
+              { key: 'status', type: 'select', label: 'Status', value: statusFilter, onChange: setStatusFilter, options: [{ value: 'Active', label: 'Active' }, { value: 'Deactivated', label: 'Deactivated' }] },
+              { key: 'credential', type: 'select', label: 'Credential', value: credentialFilter, onChange: setCredentialFilter, options: credentials },
+              { key: 'enrichment', type: 'select', label: 'Needs Enrichment', value: enrichmentFilter, onChange: setEnrichmentFilter, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
+            ]}
+          />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white">
         <CardHeader>
-          <CardTitle>Provider Directory</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Provider Directory</span>
+            <span className="text-sm font-normal text-gray-500">{filteredProviders.length} results</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -151,7 +176,7 @@ export default function Providers() {
                         </TableCell>
                         <TableCell>
                           {score !== null ? (
-                            <Badge className="bg-teal-100 text-teal-800 border-teal-200">
+                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                               {score.toFixed(0)}
                             </Badge>
                           ) : (
