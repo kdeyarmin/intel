@@ -43,6 +43,8 @@ export default function ImportSchedule() {
     initialData: [],
   });
 
+  const [importStatus, setImportStatus] = useState(null);
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const selected = importTypeOptions.find(opt => opt.value === importType);
@@ -68,13 +70,21 @@ export default function ImportSchedule() {
         await base44.entities.ImportScheduleConfig.create(data);
       }
 
+      // Trigger immediate import separately - don't let it block schedule creation
       if (runNow && !editingSchedule) {
-        await base44.functions.invoke('autoImportCMSData', {
-          import_type: importType,
-          file_url: selected.apiUrl,
-          year: now.getFullYear(),
-          dry_run: false,
-        });
+        setImportStatus('running');
+        try {
+          await base44.functions.invoke('autoImportCMSData', {
+            import_type: importType,
+            file_url: selected.apiUrl,
+            year: now.getFullYear(),
+            dry_run: false,
+          });
+          setImportStatus('success');
+        } catch (err) {
+          console.error('Immediate import failed:', err);
+          setImportStatus('failed');
+        }
       }
     },
     onSuccess: () => {
@@ -82,6 +92,7 @@ export default function ImportSchedule() {
       queryClient.invalidateQueries({ queryKey: ['importBatches'] });
       setOpen(false);
       setEditingSchedule(null);
+      setImportStatus(null);
     },
   });
 
