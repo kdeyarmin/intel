@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Upload, Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function AutoImports() {
-  const [importType, setImportType] = useState('cms_utilization');
+  const [importType, setImportType] = useState('cms_order_referring');
   const [fileUrl, setFileUrl] = useState('');
   const [year, setYear] = useState('2023');
   const [dryRun, setDryRun] = useState(true);
@@ -33,50 +33,41 @@ export default function AutoImports() {
   });
 
   const handleImport = async () => {
-    if (!fileUrl) {
+    const zipTypes = ['medicare_hha_stats', 'medicare_ma_inpatient', 'medicare_part_d_stats', 'medicare_snf_stats'];
+    const isZip = zipTypes.includes(importType);
+    
+    // Only require URL for non-zip, non-default types
+    if (!isZip && !fileUrl) {
       alert('Please provide a file URL');
       return;
     }
 
     setProcessing(true);
     try {
-      const zipFunctionMap = {
-        medicare_hha_stats: 'importMedicareHHA',
-        medicare_ma_inpatient: 'importMedicareMAInpatient',
-        medicare_part_d_stats: 'importMedicarePartD',
-        medicare_snf_stats: 'importMedicareSNF',
-      };
-      let result;
-      if (zipFunctionMap[importType]) {
-        const res = await base44.functions.invoke(zipFunctionMap[importType], {
-          action: 'import',
-          year: parseInt(year),
-          custom_url: fileUrl || undefined,
-          dry_run: dryRun,
-        });
-        result = res.data;
-      } else {
-        const res = await base44.functions.invoke('autoImportCMSData', {
-          import_type: importType,
-          file_url: fileUrl,
-          year: parseInt(year),
-          dry_run: dryRun,
-        });
-        result = res.data;
-      }
+      // Use triggerImport which routes to the right handler and has built-in URLs
+      const res = await base44.functions.invoke('triggerImport', {
+        import_type: importType,
+        file_url: fileUrl || undefined,
+        year: parseInt(year),
+        dry_run: dryRun,
+      });
+      const result = res.data?.result || res.data;
 
-      const zipImportTypes = ['medicare_hha_stats', 'medicare_ma_inpatient', 'medicare_part_d_stats', 'medicare_snf_stats'];
-      if (zipImportTypes.includes(importType)) {
+      if (isZip) {
         alert(
           dryRun 
-            ? `Validation complete: ${result.total_records} records from ${result.sheets_parsed?.length || 0} sheets`
-            : `Import complete: ${result.imported} records from ${result.sheets_parsed?.length || 0} sheets`
+            ? `Validation complete: ${result.total_records || 0} records from ${result.sheets_parsed?.length || 0} sheets`
+            : `Import complete: ${result.imported || 0} records from ${result.sheets_parsed?.length || 0} sheets`
+        );
+      } else if (result.partial) {
+        alert(
+          `Partial import: ${result.imported_rows || 0} imported so far, will resume at offset ${result.next_offset}. Run again to continue.`
         );
       } else {
         alert(
           dryRun 
-            ? `Validation complete: ${result.valid_rows} valid rows, ${result.invalid_rows} invalid, ${result.duplicate_rows || 0} duplicates in source`
-            : `Import complete: ${result.imported_rows || 0} new, ${result.updated_rows || 0} updated, ${result.skipped_rows || 0} skipped (identical)`
+            ? `Validation complete: ${result.valid_rows || 0} valid, ${result.invalid_rows || 0} invalid, ${result.duplicate_rows || 0} duplicates`
+            : `Import complete: ${result.imported_rows || 0} new, ${result.updated_rows || 0} updated, ${result.skipped_rows || 0} skipped`
         );
       }
 
@@ -114,9 +105,11 @@ export default function AutoImports() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cms_utilization">CMS Utilization</SelectItem>
                   <SelectItem value="cms_order_referring">CMS Order/Referring</SelectItem>
-                  <SelectItem value="cms_part_d">CMS Part D</SelectItem>
+                  <SelectItem value="opt_out_physicians">Opt-Out Physicians</SelectItem>
+                  <SelectItem value="home_health_enrollments">Home Health Enrollments</SelectItem>
+                  <SelectItem value="hospice_enrollments">Hospice Enrollments</SelectItem>
+                  <SelectItem value="provider_service_utilization">Provider Service Utilization</SelectItem>
                   <SelectItem value="medicare_hha_stats">Medicare HHA Use & Payments</SelectItem>
                   <SelectItem value="medicare_ma_inpatient">Medicare Advantage Inpatient Hospital</SelectItem>
                   <SelectItem value="medicare_part_d_stats">Medicare Part D Use & Payments</SelectItem>
@@ -126,9 +119,9 @@ export default function AutoImports() {
             </div>
 
             <div className="space-y-2">
-              <Label>File URL {['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) ? '(optional — auto-detected by year)' : ''}</Label>
+              <Label>File URL {['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats','cms_order_referring','opt_out_physicians','home_health_enrollments','hospice_enrollments','provider_service_utilization'].includes(importType) ? '(optional — auto-detected)' : ''}</Label>
               <Input
-                placeholder={['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) ? 'Leave blank to use CMS default for selected year' : 'https://example.com/cms-data.csv'}
+                placeholder="Leave blank to use CMS default URL"
                 value={fileUrl}
                 onChange={(e) => setFileUrl(e.target.value)}
               />
@@ -154,7 +147,7 @@ export default function AutoImports() {
 
             <Button
               onClick={handleImport}
-              disabled={processing || (!['medicare_hha_stats','medicare_ma_inpatient','medicare_part_d_stats','medicare_snf_stats'].includes(importType) && !fileUrl)}
+              disabled={processing}
               className="w-full bg-teal-600 hover:bg-teal-700"
             >
               {processing ? (
