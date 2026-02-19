@@ -7,13 +7,42 @@ const US_STATES = [
 ];
 
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
-const BATCH_LIMIT = 200;
-const MAX_SKIP = 1000; // NPPES API allows skip up to 1000, so max 1200 records per query
-const MAX_PAGES_PER_QUERY = 6; // 6 pages * 200 = 1200 max per query
-const BULK_SIZE = 50;
+
+// Defaults — overridden by NPPESCrawlerConfig entity at runtime
+let BATCH_LIMIT = 200;
+let MAX_SKIP = 1000;
+let MAX_PAGES_PER_QUERY = 6;
+let BULK_SIZE = 50;
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
-const API_DELAY_MS = 80; // delay between API calls to avoid rate limiting
-const MAX_RETRIES = 3;
+let API_DELAY_MS = 80;
+let MAX_RETRIES = 3;
+let RETRY_BACKOFF_MS = 2000;
+let REQUEST_TIMEOUT_MS = 15000;
+let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
+let MAX_CRAWL_MS = 160000;
+
+async function loadConfig(base44) {
+    try {
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        if (configs.length > 0) {
+            const c = configs[0];
+            BATCH_LIMIT = c.api_batch_size || 200;
+            BULK_SIZE = c.import_chunk_size || 50;
+            MAX_RETRIES = c.max_retries || 3;
+            API_DELAY_MS = c.api_delay_ms ?? 80;
+            RETRY_BACKOFF_MS = c.retry_backoff_ms || 2000;
+            REQUEST_TIMEOUT_MS = c.request_timeout_ms || 15000;
+            CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
+            MAX_CRAWL_MS = (c.max_crawl_duration_sec || 160) * 1000;
+            MAX_PAGES_PER_QUERY = Math.floor(MAX_SKIP / BATCH_LIMIT) + 1;
+            console.log(`[Config] Loaded: batch=${BATCH_LIMIT}, bulk=${BULK_SIZE}, retries=${MAX_RETRIES}, delay=${API_DELAY_MS}ms, timeout=${REQUEST_TIMEOUT_MS}ms, types=${CRAWL_ENTITY_TYPES.join(',')}, maxDuration=${MAX_CRAWL_MS/1000}s`);
+        } else {
+            console.log('[Config] No custom config found, using defaults');
+        }
+    } catch (e) {
+        console.warn('[Config] Failed to load config, using defaults:', e.message);
+    }
+}
 
 // Zip code prefix ranges per state (2-digit prefixes). NPPES requires 2+ chars for wildcard.
 // Using postal_code with 2-digit wildcard (e.g. "35*") as additional criteria alongside state.
@@ -42,12 +71,12 @@ async function fetchNPPESPage(params, retries = MAX_RETRIES) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);
+            const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
             const response = await fetch(apiUrl, { signal: controller.signal });
             clearTimeout(timeout);
 
             if (response.status === 429 || response.status >= 500) {
-                const backoff = attempt * 2000;
+                const backoff = attempt * RETRY_BACKOFF_MS;
                 console.log(`[NPPES] HTTP ${response.status}, retry ${attempt}/${retries} in ${backoff}ms`);
                 await new Promise(r => setTimeout(r, backoff));
                 continue;
@@ -111,8 +140,9 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        // Authenticate: accept admin users or service-role calls
-        // Authenticate: accept admin users, service-role calls, or forwarded admin calls
+        // Load config from entity
+        await loadConfig(base44);
+
         let auditEmail = 'system@service';
         try {
             const user = await base44.auth.me();
@@ -219,7 +249,7 @@ Deno.serve(async (req) => {
             // Each single-letter wildcard (e.g. "s*") can return max 1200 records (skip caps at 1000).
             // If a single letter hits the 1200 limit, we auto-subdivide into two-letter prefixes
             // (e.g. "sa*", "sb*", ... "sz*") to capture all records for that letter.
-            const enumTypes = entity_type ? [entity_type] : ['NPI-1', 'NPI-2'];
+            const enumTypes = entity_type ? [entity_type] : CRAWL_ENTITY_TYPES;
             let allResults = [];
             const seenNPIsInFetch = new Set();
             let queriesOverLimit = 0;
@@ -258,9 +288,8 @@ Deno.serve(async (req) => {
                 throw new Error(`No zip prefixes configured for state ${stateToProcess} — cannot crawl without additional search criteria`);
             }
 
-            // Time guard: abort gracefully if approaching the function timeout (170s safety margin)
+            // Time guard: abort gracefully if approaching the function timeout
             const crawlStartTime = Date.now();
-            const MAX_CRAWL_MS = 160000; // 160s — leave headroom for saving results
             let timedOut = false;
 
             function checkTimeout() {
