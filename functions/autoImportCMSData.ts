@@ -34,18 +34,40 @@ Deno.serve(async (req) => {
         });
 
         try {
-            // Fetch and parse CSV
+            // Fetch data (supports both JSON API and CSV files)
             const response = await fetch(file_url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch file: ${response.statusText}`);
             }
 
+            const contentType = response.headers.get('content-type') || '';
             const text = await response.text();
-            const lines = text.split('\n').filter(l => l.trim());
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
 
-            // Auto-detect column mapping based on common CMS column names
-            const columnMapping = detectCMSColumns(headers, import_type);
+            let rows = [];
+            let headers = [];
+            let columnMapping = {};
+
+            if (contentType.includes('application/json') || text.trim().startsWith('[')) {
+                // CMS API returns JSON arrays
+                const jsonData = JSON.parse(text);
+                if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                    throw new Error('No data returned from API');
+                }
+                headers = Object.keys(jsonData[0]);
+                rows = jsonData;
+                columnMapping = detectCMSColumns(headers, import_type);
+            } else {
+                // Legacy CSV handling
+                const lines = text.split('\n').filter(l => l.trim());
+                headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                columnMapping = detectCMSColumns(headers, import_type);
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    const row = {};
+                    headers.forEach((h, idx) => { row[h] = values[idx]; });
+                    rows.push(row);
+                }
+            }
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 column_mapping: columnMapping
@@ -62,11 +84,6 @@ Deno.serve(async (req) => {
             // Get existing NPIs
             const existingProviders = await base44.asServiceRole.entities.Provider.list();
             const existingNPIs = new Set(existingProviders.map(p => p.npi));
-
-            for (let i = 1; i < lines.length && i < 100001; i++) {
-                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                const row = {};
-                headers.forEach((h, idx) => { row[h] = values[idx]; });
 
                 // Get identifier based on import type
                 let identifier;
