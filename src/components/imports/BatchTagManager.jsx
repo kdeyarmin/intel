@@ -1,0 +1,70 @@
+import React, { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { X, Plus, Tag } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+
+export default function BatchTagManager({ batch, onUpdate }) {
+  const [newTag, setNewTag] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+
+  const tags = batch.tags || [];
+
+  const addTag = async () => {
+    const tag = newTag.trim().toLowerCase();
+    if (!tag || tags.includes(tag)) return;
+    const updated = [...tags, tag];
+    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+    onUpdate?.();
+    setNewTag('');
+    setIsAdding(false);
+  };
+
+  const removeTag = async (tagToRemove) => {
+    const updated = tags.filter(t => t !== tagToRemove);
+    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+    onUpdate?.();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addTag(); }
+    if (e.key === 'Escape') { setIsAdding(false); setNewTag(''); }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Tag className="w-3.5 h-3.5 text-gray-400" />
+      {tags.map(tag => (
+        <Badge key={tag} variant="outline" className="text-xs gap-1 pr-1">
+          {tag}
+          <button onClick={() => removeTag(tag)} className="hover:text-red-500 ml-0.5">
+            <X className="w-3 h-3" />
+          </button>
+        </Badge>
+      ))}
+      {isAdding ? (
+        <div className="flex items-center gap-1">
+          <Input
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="tag name"
+            className="h-6 w-24 text-xs"
+            autoFocus
+          />
+          <Button size="sm" variant="ghost" className="h-6 px-1" onClick={addTag}>
+            <Plus className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsAdding(true)}
+          className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-0.5"
+        >
+          <Plus className="w-3 h-3" /> Add tag
+        </button>
+      )}
+    </div>
+  );
+}
