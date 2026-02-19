@@ -124,7 +124,7 @@ export default function ImportMonitoring() {
         <Button 
           onClick={async () => {
             setIsRefreshing(true);
-            await queryClient.invalidateQueries({ queryKey: ['importBatches'] });
+            await queryClient.invalidateQueries({ queryKey: ['importMonitoringBatches'] });
             setIsRefreshing(false);
           }} 
           variant="outline"
@@ -217,7 +217,7 @@ export default function ImportMonitoring() {
                         status: 'failed',
                         error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
                       });
-                      queryClient.invalidateQueries({ queryKey: ['importBatches'] });
+                      queryClient.invalidateQueries({ queryKey: ['importMonitoringBatches'] });
                     }}
                   >
                     <XCircle className="w-3 h-3 mr-1" /> Mark Failed
