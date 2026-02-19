@@ -22,6 +22,9 @@ import RelatedLocations from '../components/providers/RelatedLocations';
 import AISummary from '../components/providers/AISummary';
 import AIEmailFinder from '../components/providers/AIEmailFinder';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import UtilizationSummaryCard from '../components/providers/UtilizationSummaryCard';
+import ReferralSummaryCard from '../components/providers/ReferralSummaryCard';
+import DataQualityInsightsCard from '../components/providers/DataQualityInsightsCard';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -158,6 +161,12 @@ export default function ProviderDetail() {
             score={score}
           />
 
+          {/* Aggregated Summaries */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UtilizationSummaryCard utilizations={utilizations} />
+            <ReferralSummaryCard referrals={referrals} />
+          </div>
+
           <UtilizationInsights utilization={latestUtil} />
 
           {/* Historical Charts */}
@@ -189,6 +198,8 @@ export default function ProviderDetail() {
           <TerritoryIntelligence location={primaryLocation} />
 
           <RelatedLocations npi={npi} />
+
+          <DataQualityInsightsCard npi={npi} provider={provider} />
 
           <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
         </div>

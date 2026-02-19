@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, MapPin, Phone, Printer, Users, Building2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Printer, Users, Building2, ExternalLink, Shield, Activity, GitBranch } from 'lucide-react';
+import LocationGeoInsights from '../components/locations/LocationGeoInsights';
+import ContactEnrichmentStatus from '../components/locations/ContactEnrichmentStatus';
 
 export default function LocationDetail() {
   const navigate = useNavigate();
@@ -67,6 +69,37 @@ export default function LocationDetail() {
     queryFn: () => base44.entities.ProviderLocationMatch.filter({ location_id: location.id }),
     enabled: !!location?.id,
   });
+
+  // Fetch all locations for geo insights
+  const { data: allLocationsForGeo = [] } = useQuery({
+    queryKey: ['allLocsGeo'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    staleTime: 120000,
+  });
+
+  // Fetch the associated provider for enrichment status
+  const { data: providerForLoc = [] } = useQuery({
+    queryKey: ['provForLoc', location?.npi],
+    queryFn: () => base44.entities.Provider.filter({ npi: location.npi }),
+    enabled: !!location?.npi,
+  });
+
+  // Fetch taxonomies for associated provider
+  const { data: locTaxonomies = [] } = useQuery({
+    queryKey: ['locTax', location?.npi],
+    queryFn: () => base44.entities.ProviderTaxonomy.filter({ npi: location.npi }),
+    enabled: !!location?.npi,
+  });
+
+  // DQ alerts for this NPI
+  const { data: dqAlerts = [] } = useQuery({
+    queryKey: ['locDQ', location?.npi],
+    queryFn: () => base44.entities.DataQualityAlert.filter({ npi: location.npi }),
+    enabled: !!location?.npi,
+  });
+
+  const associatedProvider = providerForLoc[0];
+  const openDQAlerts = dqAlerts.filter(a => a.status === 'open');
 
   if (loadingLoc) {
     return (
@@ -146,70 +179,126 @@ export default function LocationDetail() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Utilization at this location */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Provider Utilization</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {latestUtil ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-blue-600 font-medium">Beneficiaries</p>
-                  <p className="text-xl font-bold text-blue-900">{(latestUtil.total_medicare_beneficiaries || 0).toLocaleString()}</p>
-                  <p className="text-[10px] text-blue-600">{latestUtil.year}</p>
-                </div>
-                <div className="p-3 bg-teal-50 rounded-lg">
-                  <p className="text-xs text-teal-600 font-medium">Total Services</p>
-                  <p className="text-xl font-bold text-teal-900">{(latestUtil.total_services || 0).toLocaleString()}</p>
-                  <p className="text-[10px] text-teal-600">{latestUtil.year}</p>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-lg">
-                  <p className="text-xs text-emerald-600 font-medium">Medicare Payment</p>
-                  <p className="text-xl font-bold text-emerald-900">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
-                </div>
-                <div className="p-3 bg-violet-50 rounded-lg">
-                  <p className="text-xs text-violet-600 font-medium">Drug Services</p>
-                  <p className="text-xl font-bold text-violet-900">{(latestUtil.drug_services || 0).toLocaleString()}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400 py-4 text-center">No utilization data for this provider</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Main content 2-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Left column - main data */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Utilization */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-500" /> Provider Utilization
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {latestUtil ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <p className="text-[10px] text-blue-600 font-medium">Beneficiaries</p>
+                      <p className="text-xl font-bold text-blue-900">{(latestUtil.total_medicare_beneficiaries || 0).toLocaleString()}</p>
+                      <p className="text-[10px] text-blue-500">{latestUtil.year}</p>
+                    </div>
+                    <div className="p-3 bg-teal-50 rounded-lg">
+                      <p className="text-[10px] text-teal-600 font-medium">Total Services</p>
+                      <p className="text-xl font-bold text-teal-900">{(latestUtil.total_services || 0).toLocaleString()}</p>
+                      <p className="text-[10px] text-teal-500">{latestUtil.year}</p>
+                    </div>
+                    <div className="p-3 bg-emerald-50 rounded-lg">
+                      <p className="text-[10px] text-emerald-600 font-medium">Medicare Payment</p>
+                      <p className="text-xl font-bold text-emerald-900">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 bg-violet-50 rounded-lg">
+                      <p className="text-[10px] text-violet-600 font-medium">Drug Services</p>
+                      <p className="text-xl font-bold text-violet-900">{(latestUtil.drug_services || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 py-4 text-center">No utilization data</p>
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Referral Summary */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Referral Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {latestRef ? (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
-                  <span className="text-sm text-slate-600">Total Referrals</span>
-                  <span className="text-lg font-bold">{(latestRef.total_referrals || 0).toLocaleString()}</span>
+            {/* Referral Summary */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-violet-500" /> Referral Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {latestRef ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600">Total Referrals</span>
+                      <span className="text-lg font-bold">{(latestRef.total_referrals || 0).toLocaleString()}</span>
+                    </div>
+                    {[
+                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-100 text-blue-800' },
+                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-100 text-purple-800' },
+                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-100 text-amber-800' },
+                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-100 text-green-800' },
+                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-100 text-pink-800' },
+                    ].filter(r => r.value > 0).map(r => (
+                      <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
+                        <span className="text-sm text-slate-600">{r.label}</span>
+                        <Badge className={r.color}>{r.value}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 py-4 text-center">No referral data</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Specialties */}
+          {locTaxonomies.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Provider Specialties</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {locTaxonomies.map(t => (
+                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-50 border-blue-200 text-blue-700' : ''}`}>
+                      {t.taxonomy_description || t.taxonomy_code}
+                      {t.primary_flag && <span className="ml-1 text-[9px]">★</span>}
+                    </Badge>
+                  ))}
                 </div>
-                {[
-                  { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-100 text-blue-800' },
-                  { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-100 text-purple-800' },
-                  { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-100 text-amber-800' },
-                  { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-100 text-green-800' },
-                  { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-100 text-pink-800' },
-                ].filter(r => r.value > 0).map(r => (
-                  <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
-                    <span className="text-sm text-slate-600">{r.label}</span>
-                    <Badge className={r.color}>{r.value}</Badge>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right sidebar */}
+        <div className="space-y-6">
+          <LocationGeoInsights location={location} coProviders={coProviders} allLocations={allLocationsForGeo} />
+          <ContactEnrichmentStatus location={location} provider={associatedProvider} />
+
+          {/* DQ Alerts summary */}
+          {openDQAlerts.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-amber-500" />
+                  Data Quality
+                  <Badge className="bg-amber-100 text-amber-700 text-[10px] ml-auto">{openDQAlerts.length} open</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {openDQAlerts.slice(0, 4).map(a => (
+                  <div key={a.id} className="text-xs bg-slate-50 rounded px-2.5 py-1.5 flex items-center gap-2">
+                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${a.severity === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{a.severity}</Badge>
+                    <span className="truncate text-slate-600">{a.summary}</span>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400 py-4 text-center">No referral data for this provider</p>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Co-located providers */}

@@ -47,11 +47,13 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
 import AutoImports from './pages/AutoImports';
 import BulkEmailExport from './pages/BulkEmailExport';
 import CMSAnalytics from './pages/CMSAnalytics';
+import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
@@ -62,11 +64,13 @@ import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
 import LocationAnalytics from './pages/LocationAnalytics';
+import LocationDetail from './pages/LocationDetail';
 import Locations from './pages/Locations';
 import NPPESCrawler from './pages/NPPESCrawler';
 import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
 import NPPESImport from './pages/NPPESImport';
+import OrganizationDetail from './pages/OrganizationDetail';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import Providers from './pages/Providers';
@@ -76,19 +80,17 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import CustomReports from './pages/CustomReports';
-import LocationDetail from './pages/LocationDetail';
-import OrganizationDetail from './pages/OrganizationDetail';
-import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AdvancedAnalytics": AdvancedAnalytics,
     "Analytics": Analytics,
     "AuditLog": AuditLog,
     "AutoImports": AutoImports,
     "BulkEmailExport": BulkEmailExport,
     "CMSAnalytics": CMSAnalytics,
+    "CustomReports": CustomReports,
     "Dashboard": Dashboard,
     "DataImports": DataImports,
     "DataQuality": DataQuality,
@@ -99,11 +101,13 @@ export const PAGES = {
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationAnalytics": LocationAnalytics,
+    "LocationDetail": LocationDetail,
     "Locations": Locations,
     "NPPESCrawler": NPPESCrawler,
     "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "NPPESImport": NPPESImport,
+    "OrganizationDetail": OrganizationDetail,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
     "Providers": Providers,
@@ -113,10 +117,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "CustomReports": CustomReports,
-    "LocationDetail": LocationDetail,
-    "OrganizationDetail": OrganizationDetail,
-    "AdvancedAnalytics": AdvancedAnalytics,
 }
 
 export const pagesConfig = {
