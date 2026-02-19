@@ -76,6 +76,7 @@ import DataQuality from './pages/DataQuality';
 import CMSAnalytics from './pages/CMSAnalytics';
 import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
+import CustomReports from './pages/CustomReports';
 import __Layout from './Layout.jsx';
 
 
@@ -109,6 +110,7 @@ export const PAGES = {
     "CMSAnalytics": CMSAnalytics,
     "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
+    "CustomReports": CustomReports,
 }
 
 export const pagesConfig = {
