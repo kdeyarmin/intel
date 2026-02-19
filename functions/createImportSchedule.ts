@@ -59,25 +59,8 @@ Deno.serve(async (req) => {
             scheduleConfig.start_time = schedule_time;
         }
 
-        // Create automation using the platform API directly
-        const appId = Deno.env.get('BASE44_APP_ID');
-        const response = await fetch(`https://api.base44.com/v1/apps/${appId}/automations`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': req.headers.get('Authorization') || '',
-            },
-            body: JSON.stringify(scheduleConfig),
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`Failed to create automation: ${error}`);
-        }
-
-        const automation = await response.json();
-
-        return Response.json({ success: true, automation });
+        // Return the config so frontend can create the automation
+        return Response.json({ success: true, config: scheduleConfig });
 
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
