@@ -28,6 +28,9 @@ export default function NPPESCrawler() {
   const [currentState, setCurrentState] = useState(null);
   const [logs, setLogs] = useState([]);
   const [status, setStatus] = useState(null);
+  const [autoMode, setAutoMode] = useState(false); // server-side auto-chain mode
+  const [autoStarting, setAutoStarting] = useState(false);
+  const [autoStopping, setAutoStopping] = useState(false);
   const pausedRef = useRef(false);
   const runningRef = useRef(false);
   const queryClient = useQueryClient();
