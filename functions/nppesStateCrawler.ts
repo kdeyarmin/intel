@@ -399,6 +399,22 @@ Deno.serve(async (req) => {
         // Fetch as much data as we can within our time budget, then return with what we got.
         // The auto-chain caller will invoke the write phase separately if needed.
 
+        // Before creating a new batch, mark any old processing/validating batches for this state as failed
+        // to prevent phantom "processing" entries that block future runs
+        const oldBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+        for (const ob of oldBatches) {
+            const obState = ob.file_name?.split('_')[1];
+            if (obState === stateToProcess && (ob.status === 'processing' || ob.status === 'validating')) {
+                const ageMs = Date.now() - new Date(ob.updated_date || ob.created_date).getTime();
+                if (ageMs > 5 * 60 * 1000) { // older than 5 minutes
+                    await base44.asServiceRole.entities.ImportBatch.update(ob.id, {
+                        status: 'failed',
+                        error_samples: [{ message: 'Auto-failed: stale processing batch replaced by new crawl' }],
+                    });
+                }
+            }
+        }
+
         const batch = await base44.asServiceRole.entities.ImportBatch.create({
             import_type: 'nppes_registry',
             file_name: `crawler_${stateToProcess}_${taxonomy_description || 'all'}_${Date.now()}`,
