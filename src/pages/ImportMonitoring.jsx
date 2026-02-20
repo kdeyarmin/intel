@@ -391,6 +391,12 @@ export default function ImportMonitoring() {
       )}
 
       {activeTab === 'monitoring' && <>
+      {/* System Status */}
+      <SystemStatusPanel batches={batches} />
+
+      {/* Live Progress for Active Jobs */}
+      <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-blue-500/40 transition-colors" onClick={() => setStatusFilter('active')}>
