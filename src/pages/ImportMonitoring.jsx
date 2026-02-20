@@ -760,7 +760,14 @@ export default function ImportMonitoring() {
                         </span>
                         <span className="font-medium text-slate-300">{getProgress(batch)}%</span>
                       </div>
-                      <Progress value={getProgress(batch)} className="h-1.5 bg-slate-700" />
+                      <div className="w-full h-2 rounded-full bg-slate-700/80 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            batch.status === 'paused' ? 'bg-amber-500' : batch.status === 'validating' ? 'bg-yellow-500' : 'bg-cyan-500'
+                          }`}
+                          style={{ width: `${getProgress(batch)}%` }}
+                        />
+                      </div>
                       {batch.total_rows > 0 && (
                         <div className="flex gap-4 mt-1 text-[10px] text-slate-500">
                           {batch.status === 'validating' && (
