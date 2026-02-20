@@ -28,7 +28,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      body = {};
+    }
     const { import_type: raw_import_type, file_url, dry_run = false, year } = body;
 
     if (!raw_import_type) {
