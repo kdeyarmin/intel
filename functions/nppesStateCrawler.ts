@@ -337,12 +337,12 @@ Deno.serve(async (req) => {
 
         // STATUS
         if (effectiveAction === 'status') {
-            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'));
+            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
             
             // Deduplicate: keep only the LATEST batch per state
             const stateLatest = {};
-            for (const b of crawlerBatches) {
+            for (const b of crawlBatches) {
+                if (!b.file_name?.startsWith('crawler_') || b.file_name.includes('stop_signal')) continue;
                 const st = b.file_name.split('_')[1];
                 if (!st || st.length > 2 || !US_STATES.includes(st)) continue;
                 if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
@@ -363,14 +363,13 @@ Deno.serve(async (req) => {
                 processing: processingStates.length, pending: pendingStates.length,
                 completed_states: completedStates, failed_states: failedStates,
                 processing_states: processingStates, pending_states: pendingStates,
-                batches: crawlerBatches.slice(0, 60),
             });
         }
 
         // Determine state — use latest batch per state to decide what's done
         let stateToProcess = target_state;
         if (!stateToProcess) {
-            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
             // Deduplicate: only consider a state "done" if its LATEST batch is completed
             const stateLatest = {};
             for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
@@ -401,7 +400,7 @@ Deno.serve(async (req) => {
 
         // Before creating a new batch, mark any old processing/validating batches for this state as failed
         // to prevent phantom "processing" entries that block future runs
-        const oldBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+        const oldBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 50);
         for (const ob of oldBatches) {
             const obState = ob.file_name?.split('_')[1];
             if (obState === stateToProcess && (ob.status === 'processing' || ob.status === 'validating')) {
@@ -536,7 +535,7 @@ Deno.serve(async (req) => {
             });
 
             // Determine next state — only skip states whose LATEST batch is completed
-            const crawlBatches2 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+            const crawlBatches2 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
             const stateLatest2 = {};
             for (const b of crawlBatches2.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
                 const st = b.file_name.split('_')[1];
@@ -577,7 +576,7 @@ Deno.serve(async (req) => {
                 });
             } catch (e) {}
 
-            const crawlBatches3 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+            const crawlBatches3 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
             const stateLatest3 = {};
             for (const b of crawlBatches3.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
                 const st = b.file_name.split('_')[1];
