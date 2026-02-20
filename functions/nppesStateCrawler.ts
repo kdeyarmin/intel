@@ -21,11 +21,14 @@ let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
 // Hard ceiling: respond before platform kills us (platform limit ~60s)
 const MAX_EXEC_MS = 50000;
 const WRITE_CONCURRENCY = 5;
+// Reserve time for the write phase — stop fetching when this much time remains
+const WRITE_RESERVE_MS = 25000;
 
 let execStartTime = Date.now();
 
 function timeLeft() { return MAX_EXEC_MS - (Date.now() - execStartTime); }
 function isTimeUp() { return timeLeft() < 3000; } // 3s safety buffer
+function isFetchTimeUp() { return timeLeft() < WRITE_RESERVE_MS; } // stop fetching, save time for writes
 
 async function loadConfig(base44) {
     try {
