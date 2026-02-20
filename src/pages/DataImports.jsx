@@ -600,6 +600,8 @@ export default function DataImports() {
     setColumnMapping({});
     setCurrentBatch(null);
     setDryRun(false);
+    setMappingConfidence({});
+    setOptionalColumns([]);
   };
 
   const isMappingComplete = selectedType?.requiredColumns.every(col => columnMapping[col]);
@@ -678,8 +680,16 @@ export default function DataImports() {
           <ColumnMapper
             csvColumns={csvColumns}
             requiredColumns={selectedType?.requiredColumns || []}
+            optionalColumns={optionalColumns}
             mapping={columnMapping}
+            confidence={mappingConfidence}
             onChange={setColumnMapping}
+            onFieldCorrected={(field, col) => {
+              if (selectedType) {
+                saveLearnedMapping(selectedType.id, field, col);
+              }
+            }}
+            aiLoading={aiMappingLoading}
           />
 
           <Card>
