@@ -754,6 +754,7 @@ export default function ImportMonitoring() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge className={statusColors[batch.status] || ''}>{batch.status}</Badge>
+                      <ResumeImportButton batch={batch} onResumed={refreshBatches} />
                       <BatchActionButtons
                         batch={batch}
                         onAction={refreshBatches}
@@ -830,8 +831,9 @@ export default function ImportMonitoring() {
 
                   {/* Error summary for failed batches */}
                   {batch.status === 'failed' && batch.error_samples?.length > 0 && (
-                    <div className="mb-2">
+                    <div className="mb-2 space-y-2">
                       <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} compact />
+                      <DetailedErrorRows errors={batch.error_samples} maxVisible={3} />
                     </div>
                   )}
 
