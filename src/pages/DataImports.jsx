@@ -317,7 +317,7 @@ export default function DataImports() {
 
     } else if (importType === 'cms_utilization') {
       const utilRecords = data.map(row => ({
-        npi: row.npi,
+        npi: row._npi,
         year: parseInt(row[columnMapping['Year'] || 'Year'] || new Date().getFullYear()),
         total_services: parseFloat(row[columnMapping['Total Services'] || 'Total Services'] || 0),
         total_medicare_beneficiaries: parseFloat(row[columnMapping['Total Medicare Beneficiaries'] || 'Total Medicare Beneficiaries'] || 0),
@@ -360,7 +360,7 @@ export default function DataImports() {
 
     } else if (importType === 'cms_order_referring') {
       const refRecords = data.map(row => ({
-        npi: row.npi,
+        npi: row._npi,
         year: parseInt(row[columnMapping['Year'] || 'Year'] || new Date().getFullYear()),
         total_referrals: parseFloat(row[columnMapping['Total Referrals'] || 'Total Referrals'] || 0),
         home_health_referrals: parseFloat(row[columnMapping['HHA'] || 'HHA'] || 0),
@@ -397,7 +397,7 @@ export default function DataImports() {
 
     } else if (importType === 'cms_part_d') {
       const providerRecords = data.map(row => ({
-        npi: row.npi,
+        npi: row._npi,
         status: 'Active',
         needs_nppes_enrichment: true,
       }));
@@ -420,7 +420,7 @@ export default function DataImports() {
 
     } else if (importType === 'pa_home_health' || importType === 'hospice_providers') {
       const providerRecords = data.map(row => ({
-        npi: row.npi,
+        npi: row._npi,
         entity_type: 'Organization',
         organization_name: (row[columnMapping['Agency Name'] || 'Agency Name'] || row[columnMapping['Provider Name'] || 'Provider Name'] || '').trim(),
         status: 'Active',
@@ -455,7 +455,7 @@ export default function DataImports() {
       const locationRecords = data
         .filter(row => row[columnMapping['City'] || 'City'] && row[columnMapping['State'] || 'State'])
         .map(row => ({
-          npi: row.npi,
+          npi: row._npi,
           location_type: 'Practice',
           is_primary: true,
           city: (row[columnMapping['City'] || 'City'] || '').trim(),
@@ -491,7 +491,7 @@ export default function DataImports() {
     } else if (importType === 'hospice_enrollments') {
       const records = data.map(row => ({
         enrollment_id: (row[columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID'] || '').trim(),
-        npi: row.npi || '',
+        npi: row._npi || '',
         ccn: (row[columnMapping['CCN'] || 'CCN'] || '').trim(),
         organization_name: (row[columnMapping['ORGANIZATION NAME'] || 'ORGANIZATION NAME'] || '').trim(),
       }));
@@ -508,7 +508,7 @@ export default function DataImports() {
     } else if (importType === 'home_health_enrollments') {
       const records = data.map(row => ({
         enrollment_id: (row[columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID'] || '').trim(),
-        npi: row.npi || '',
+        npi: row._npi || '',
         ccn: (row[columnMapping['CCN'] || 'CCN'] || '').trim(),
         organization_name: (row[columnMapping['ORGANIZATION NAME'] || 'ORGANIZATION NAME'] || '').trim(),
       }));
@@ -541,7 +541,7 @@ export default function DataImports() {
 
     } else if (importType === 'provider_service_utilization') {
       const records = data.map(row => ({
-        npi: row.npi,
+        npi: row._npi,
         hcpcs_code: (row[columnMapping['HCPCS_Cd'] || 'HCPCS_Cd'] || '').trim(),
         hcpcs_description: (row[columnMapping['HCPCS_Desc'] || 'HCPCS_Desc'] || '').trim(),
         total_beneficiaries: parseFloat(row[columnMapping['Tot_Benes'] || 'Tot_Benes'] || 0),
@@ -563,6 +563,7 @@ export default function DataImports() {
       status: 'completed',
       imported_rows: importedCount,
       updated_rows: updatedCount,
+      skipped_rows: skippedCount,
       completed_at: new Date().toISOString(),
     });
   };
