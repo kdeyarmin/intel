@@ -34,7 +34,7 @@ export default function BatchTagManager({ batch, onUpdate }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Tag className="w-3.5 h-3.5 text-gray-400" />
+      <Tag className="w-3.5 h-3.5 text-slate-500" />
       {tags.map(tag => (
         <Badge key={tag} variant="outline" className="text-xs gap-1 pr-1">
           {tag}
@@ -50,17 +50,17 @@ export default function BatchTagManager({ batch, onUpdate }) {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="tag name"
-            className="h-6 w-24 text-xs"
+            className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
             autoFocus
           />
-          <Button size="sm" variant="ghost" className="h-6 px-1" onClick={addTag}>
+          <Button size="sm" variant="ghost" className="h-6 px-1 text-slate-400 hover:text-cyan-400" onClick={addTag}>
             <Plus className="w-3 h-3" />
           </Button>
         </div>
       ) : (
         <button
           onClick={() => setIsAdding(true)}
-          className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-0.5"
+          className="text-xs text-cyan-500 hover:text-cyan-400 flex items-center gap-0.5"
         >
           <Plus className="w-3 h-3" /> Add tag
         </button>

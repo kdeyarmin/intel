@@ -19,10 +19,10 @@ export default function BatchCategorySelector({ batch, onUpdate }) {
 
   return (
     <Select value={batch.category || ''} onValueChange={handleChange}>
-      <SelectTrigger className="h-7 w-36 text-xs">
+      <SelectTrigger className="h-7 w-36 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
         <SelectValue placeholder="Set category" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="bg-[#141d30] border-slate-700">
         {CATEGORIES.map(c => (
           <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
         ))}

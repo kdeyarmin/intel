@@ -80,10 +80,10 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
     <div className="flex items-center gap-1">
       {isActive && (
         <>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={handlePause}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400" onClick={handlePause}>
             <Pause className="w-3 h-3" /> Pause
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
@@ -91,44 +91,44 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {isPaused && (
         <>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-blue-600" onClick={handleResume}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={handleResume}>
             <RefreshCw className="w-3 h-3" /> Resume
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
       )}
 
       {canRetry && (
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-blue-600" onClick={onRetryClick}>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={onRetryClick}>
           <RefreshCw className="w-3 h-3" /> Retry
         </Button>
       )}
 
       {canSkip && (
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-gray-500" onClick={() => setSkipDialogOpen(true)}>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-slate-400 border-slate-700 hover:bg-slate-800" onClick={() => setSkipDialogOpen(true)}>
           <SkipForward className="w-3 h-3" /> Skip
         </Button>
       )}
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-[#141d30] border-slate-700">
           <DialogHeader>
-            <DialogTitle>Cancel Import Job</DialogTitle>
+            <DialogTitle className="text-slate-200">Cancel Import Job</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
-            This will stop the import for <span className="font-medium">{batch.import_type}</span>. Already imported data will not be removed.
+          <p className="text-sm text-slate-400">
+            This will stop the import for <span className="font-medium text-slate-200">{batch.import_type}</span>. Already imported data will not be removed.
           </p>
           <Textarea
             placeholder="Reason for cancellation (optional)"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            className="h-20"
+            className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
+            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
             <Button variant="destructive" onClick={handleCancel}>Cancel Import</Button>
           </DialogFooter>
         </DialogContent>
@@ -136,30 +136,30 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {/* Mark as Skipped Dialog */}
       <Dialog open={skipDialogOpen} onOpenChange={setSkipDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-[#141d30] border-slate-700">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-slate-200">
               <SkipForward className="w-5 h-5" />
               Mark as Skipped
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-400">
             This will mark the batch as completed with a "skipped" tag. Use this for batches with minor issues that don't need to be retried.
           </p>
-          <div className="bg-amber-50 rounded-lg p-3 text-xs text-amber-700 space-y-1">
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 space-y-1">
             <p className="font-medium">Batch Summary:</p>
             <p>Total: {batch.total_rows?.toLocaleString() || 0} · Valid: {batch.valid_rows?.toLocaleString() || 0} · Imported: {batch.imported_rows?.toLocaleString() || 0}</p>
-            {batch.invalid_rows > 0 && <p className="text-red-600">{batch.invalid_rows} invalid rows will be ignored</p>}
+            {batch.invalid_rows > 0 && <p className="text-red-400">{batch.invalid_rows} invalid rows will be ignored</p>}
           </div>
           <Textarea
             placeholder="Reason for skipping (optional)"
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
-            className="h-16"
+            className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSkipDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSkip} className="bg-gray-600 hover:bg-gray-700">
+            <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setSkipDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSkip} className="bg-slate-600 hover:bg-slate-700 text-white">
               <SkipForward className="w-4 h-4 mr-1" /> Mark as Skipped
             </Button>
           </DialogFooter>
