@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell
+  Plus, History, ShieldCheck, Bell, Download
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
