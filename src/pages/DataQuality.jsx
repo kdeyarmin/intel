@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShieldCheck, Play, Loader2, AlertTriangle, CheckCircle,
-  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot
+  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot, MapPin, Copy
 } from 'lucide-react';
 import QualityScoreCard from '../components/dataQuality/QualityScoreCard';
 import RuleResultsTable from '../components/dataQuality/RuleResultsTable';
@@ -17,6 +17,9 @@ import ScanHistoryPanel from '../components/dataQuality/ScanHistoryPanel';
 import AlertTrendChart from '../components/dataQuality/AlertTrendChart';
 import ProactiveAIScanner from '../components/dataQuality/ProactiveAIScanner';
 import DQAssistant from '../components/dataQuality/DQAssistant';
+import ProfileCompletenessChart from '../components/dataQuality/ProfileCompletenessChart';
+import StateQualityBreakdown from '../components/dataQuality/StateQualityBreakdown';
+import DuplicateStatsWidget from '../components/dataQuality/DuplicateStatsWidget';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function DataQuality() {
@@ -33,6 +36,24 @@ export default function DataQuality() {
     queryKey: ['dqAlerts'],
     queryFn: () => base44.entities.DataQualityAlert.list('-created_date', 200),
     staleTime: 30000,
+  });
+
+  const { data: providers = [] } = useQuery({
+    queryKey: ['dqProviders'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
+    staleTime: 120000,
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['dqLocations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
+    staleTime: 120000,
+  });
+
+  const { data: batches = [] } = useQuery({
+    queryKey: ['dqBatches'],
+    queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
+    staleTime: 60000,
   });
 
   const runScanMutation = useMutation({
@@ -60,17 +81,17 @@ export default function DataQuality() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-teal-600" />
+          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-cyan-400" />
             Data Quality Center
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-400 mt-0.5">
             Automated quality monitoring, alerts, and AI-powered corrections
           </p>
         </div>
         <div className="flex items-center gap-3">
           {latestScan?.completed_at && (
-            <span className="text-xs text-slate-400 flex items-center gap-1">
+            <span className="text-xs text-slate-500 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Last scan: {new Date(latestScan.completed_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
             </span>
@@ -78,7 +99,7 @@ export default function DataQuality() {
           <Button
             onClick={() => runScanMutation.mutate()}
             disabled={runScanMutation.isPending}
-            className="bg-teal-600 hover:bg-teal-700"
+            className="bg-cyan-600 hover:bg-cyan-700"
           >
             {runScanMutation.isPending ? (
               <><Loader2 className="w-4 h-4 animate-spin mr-2" />Running Scan...</>
@@ -92,7 +113,7 @@ export default function DataQuality() {
       {/* Score Cards */}
       {scansLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-24" />)}
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-24 bg-slate-700/50" />)}
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -106,38 +127,48 @@ export default function DataQuality() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className="bg-amber-500/10 border-amber-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-amber-600">Open Alerts</p>
-              <p className="text-2xl font-bold text-amber-800">{openAlerts.length}</p>
+              <p className="text-xs font-medium text-amber-400">Open Alerts</p>
+              <p className="text-2xl font-bold text-amber-300">{openAlerts.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-amber-400" />
+            <AlertTriangle className="w-8 h-8 text-amber-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-red-500/10 border-red-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-red-600">Critical / High</p>
-              <p className="text-2xl font-bold text-red-800">{criticalAlerts.length}</p>
+              <p className="text-xs font-medium text-red-400">Critical / High</p>
+              <p className="text-2xl font-bold text-red-300">{criticalAlerts.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-red-400" />
+            <AlertTriangle className="w-8 h-8 text-red-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-violet-50 border-violet-200">
+        <Card className="bg-violet-500/10 border-violet-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-violet-600">AI Suggestions</p>
-              <p className="text-2xl font-bold text-violet-800">{withSuggestions.length}</p>
+              <p className="text-xs font-medium text-violet-400">AI Suggestions</p>
+              <p className="text-2xl font-bold text-violet-300">{withSuggestions.length}</p>
             </div>
-            <Sparkles className="w-8 h-8 text-violet-400" />
+            <Sparkles className="w-8 h-8 text-violet-500/40" />
           </CardContent>
         </Card>
       </div>
 
+      {/* Data Quality Visualizations */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <ProfileCompletenessChart providers={providers} />
+        </div>
+        <DuplicateStatsWidget batches={batches} />
+      </div>
+
+      <StateQualityBreakdown providers={providers} locations={locations} />
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="bg-slate-800/50">
           <TabsTrigger value="overview">Rule Results</TabsTrigger>
           <TabsTrigger value="alerts">
             Alerts
@@ -157,15 +188,15 @@ export default function DataQuality() {
         <TabsContent value="overview" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
-              <Card>
+              <Card className="bg-[#141d30] border-slate-700/50">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Quality Rules ({latestRuleResults.length})</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-slate-300">Quality Rules ({latestRuleResults.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {latestRuleResults.length > 0 ? (
                     <RuleResultsTable results={latestRuleResults} />
                   ) : (
-                    <p className="text-sm text-slate-400 text-center py-8">Run a scan to see rule results</p>
+                    <p className="text-sm text-slate-500 text-center py-8">Run a scan to see rule results</p>
                   )}
                 </CardContent>
               </Card>
@@ -193,11 +224,11 @@ export default function DataQuality() {
 
       {/* AI Summary Banner */}
       {latestScan?.summary && (
-        <div className="bg-gradient-to-r from-violet-50 to-blue-50 border border-violet-200 rounded-xl p-4 flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-violet-500 mt-0.5 shrink-0" />
+        <div className="bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-xl p-4 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-violet-800 mb-0.5">AI Analysis</p>
-            <p className="text-sm text-violet-700 leading-relaxed">{latestScan.summary}</p>
+            <p className="text-sm font-medium text-violet-300 mb-0.5">AI Analysis</p>
+            <p className="text-sm text-slate-300 leading-relaxed">{latestScan.summary}</p>
           </div>
         </div>
       )}
