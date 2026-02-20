@@ -3,45 +3,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Download, Search, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import {
+  AlertTriangle, Download, Search, ChevronDown, ChevronRight, Copy,
+  Lightbulb, ExternalLink, ShieldAlert, FileWarning, Type, Clock,
+  Wifi, Wrench, HelpCircle
+} from 'lucide-react';
+import { ERROR_CATEGORIES, categorizeError, downloadErrorCSV } from './errorCategories';
 
-const ERROR_CATEGORIES = {
-  timeout: { label: 'Timeout', color: 'bg-orange-500/15 text-orange-400', keywords: ['timeout', 'timed out', 'ETIMEDOUT', 'deadline'] },
-  validation: { label: 'Validation', color: 'bg-yellow-500/15 text-yellow-400', keywords: ['invalid', 'required', 'missing', 'format', 'schema', 'type'] },
-  data_format: { label: 'Data Format', color: 'bg-violet-500/15 text-violet-400', keywords: ['parse', 'csv', 'column', 'header', 'encoding', 'utf'] },
-  integrity: { label: 'Integrity', color: 'bg-red-500/15 text-red-400', keywords: ['duplicate', 'unique', 'constraint', 'conflict', 'exists'] },
-  network: { label: 'Network', color: 'bg-blue-500/15 text-blue-400', keywords: ['network', 'connection', 'ECONNREFUSED', 'fetch', 'socket'] },
-  processing: { label: 'Processing', color: 'bg-slate-500/15 text-slate-400', keywords: [] },
+const ICON_MAP = {
+  ShieldAlert, FileWarning, Type, Copy, Clock, Wifi, Wrench, HelpCircle, AlertTriangle,
 };
-
-function categorizeError(msg) {
-  const lower = (msg || '').toLowerCase();
-  for (const [key, cat] of Object.entries(ERROR_CATEGORIES)) {
-    if (key === 'processing') continue;
-    if (cat.keywords.some(k => lower.includes(k))) return key;
-  }
-  return 'processing';
-}
-
-function downloadErrorCSV(errors, batchName) {
-  const headers = ['Row', 'NPI', 'Category', 'Message'];
-  const rows = errors.map(e => [
-    e.row || '', e.npi || '', categorizeError(e.message), (e.message || '').replace(/"/g, '""')
-  ]);
-  const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `errors-${batchName || 'batch'}-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function ErrorLogDialog({ batch, open, onOpenChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [showSolutionFor, setShowSolutionFor] = useState(null);
 
   const errors = batch?.error_samples || [];
 
@@ -80,6 +57,8 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
 
   if (!batch) return null;
 
+  const activeSolutionConfig = showSolutionFor ? ERROR_CATEGORIES[showSolutionFor] : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col bg-[#141d30] border-slate-700">
@@ -94,7 +73,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
           {/* Category pills */}
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setCategoryFilter('all')}
+              onClick={() => { setCategoryFilter('all'); setShowSolutionFor(null); }}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 categoryFilter === 'all' ? 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
@@ -106,9 +85,9 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
               return (
                 <button
                   key={key}
-                  onClick={() => setCategoryFilter(key)}
+                  onClick={() => { setCategoryFilter(key); setShowSolutionFor(key); }}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    categoryFilter === key ? 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/30' : `${cat.color} hover:opacity-80`
+                    categoryFilter === key ? 'bg-cyan-500/20 text-cyan-400 ring-1 ring-cyan-500/30' : `${cat.badgeColor} hover:opacity-80`
                   }`}
                 >
                   {cat.label} ({count})
@@ -116,6 +95,42 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
               );
             })}
           </div>
+
+          {/* Solution panel for selected category */}
+          {activeSolutionConfig && (
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs font-semibold text-slate-200">How to Fix: {activeSolutionConfig.label} Errors</span>
+                <button
+                  onClick={() => setShowSolutionFor(null)}
+                  className="ml-auto text-slate-500 hover:text-slate-300 text-xs"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mb-2">{activeSolutionConfig.description}</p>
+              <ol className="space-y-1.5">
+                {activeSolutionConfig.solutions.map((step, i) => (
+                  <li key={i} className="text-xs text-slate-400 flex gap-2">
+                    <span className="font-semibold text-yellow-400/70 flex-shrink-0">{i + 1}.</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              {activeSolutionConfig.docUrl && (
+                <a
+                  href={activeSolutionConfig.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-2 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  {activeSolutionConfig.docLabel || 'Documentation'}
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Search + download */}
           <div className="flex items-center gap-2">
@@ -146,6 +161,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
               filteredErrors.map((err) => {
                 const isExpanded = expandedRows.has(err._idx);
                 const cat = ERROR_CATEGORIES[err._category];
+                const Icon = ICON_MAP[cat.icon] || AlertTriangle;
                 return (
                   <div key={err._idx} className="border border-slate-700/50 rounded-lg overflow-hidden">
                     <button
@@ -153,6 +169,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                       className="w-full flex items-start gap-3 p-3 text-left hover:bg-slate-800/30 transition-colors"
                     >
                       {isExpanded ? <ChevronDown className="w-4 h-4 mt-0.5 text-slate-500 shrink-0" /> : <ChevronRight className="w-4 h-4 mt-0.5 text-slate-500 shrink-0" />}
+                      <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cat.color}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-red-400 line-clamp-1">{err.message}</p>
                         <div className="flex items-center gap-2 mt-1">
@@ -160,7 +177,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                           {err.npi && <span className="text-xs text-slate-500 font-mono">NPI: {err.npi}</span>}
                         </div>
                       </div>
-                      <Badge className={`${cat.color} text-[10px] shrink-0`}>{cat.label}</Badge>
+                      <Badge className={`${cat.badgeColor} text-[10px] shrink-0`}>{cat.label}</Badge>
                     </button>
                     {isExpanded && (
                       <div className="px-10 pb-3 space-y-2">
@@ -174,10 +191,28 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                               <Copy className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                          {err.stack && (
-                            <pre className="text-xs text-red-400/70 mt-2 whitespace-pre-wrap break-all border-t border-red-500/20 pt-2">{err.stack}</pre>
+                        </div>
+
+                        {/* Inline solution hint */}
+                        <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Lightbulb className="w-3 h-3 text-yellow-400" />
+                            <span className="text-[11px] font-medium text-slate-300">Quick Fix</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400">{cat.solutions[0]}</p>
+                          {cat.docUrl && (
+                            <a
+                              href={cat.docUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-cyan-400 hover:text-cyan-300"
+                            >
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              {cat.docLabel}
+                            </a>
                           )}
                         </div>
+
                         {err.data && (
                           <div>
                             <p className="text-xs text-slate-500 mb-1">Row Data:</p>
