@@ -8,7 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
-  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2
+  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
+  Plus, History
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
@@ -20,6 +21,7 @@ import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
 import BatchDetailPanel from '../components/imports/BatchDetailPanel';
+import NewImportDialog from '../components/imports/NewImportDialog';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -67,6 +69,8 @@ export default function ImportMonitoring() {
   const [dateEnd, setDateEnd] = useState('');
   const [deletingBatchId, setDeletingBatchId] = useState(null);
   const [confirmDeleteBatch, setConfirmDeleteBatch] = useState(null);
+  const [showNewImport, setShowNewImport] = useState(false);
+  const [activeTab, setActiveTab] = useState('monitoring');
   const [selectedForRerun, setSelectedForRerun] = useState(new Set());
   const [bulkRetryMode, setBulkRetryMode] = useState(false);
   const [isBulkRetrying, setIsBulkRetrying] = useState(false);
@@ -278,17 +282,53 @@ export default function ImportMonitoring() {
           <h1 className="text-3xl font-bold text-white">Import Monitoring</h1>
           <p className="text-slate-500 mt-1">Manage, tag, and retry import jobs</p>
         </div>
-        <Button
-          onClick={async () => { setIsRefreshing(true); await refreshBatches(); setIsRefreshing(false); }}
-          variant="outline"
-          disabled={isRefreshing}
-          className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
-        >
-          {isRefreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowNewImport(true)}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Import
+          </Button>
+          <Button
+            onClick={async () => { setIsRefreshing(true); await refreshBatches(); setIsRefreshing(false); }}
+            variant="outline"
+            disabled={isRefreshing}
+            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+          >
+            {isRefreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
+            Refresh
+          </Button>
+        </div>
       </div>
 
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('monitoring')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'monitoring' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 inline mr-1.5" />
+          Live Monitoring
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <History className="w-3.5 h-3.5 inline mr-1.5" />
+          Import History
+        </button>
+      </div>
+
+      {activeTab === 'history' && (
+        <ImportHistoryView batches={batches} formatTimestamp={formatTimestamp} />
+      )}
+
+      {activeTab === 'monitoring' && <>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-blue-500/40 transition-colors" onClick={() => setStatusFilter('active')}>
@@ -730,6 +770,181 @@ export default function ImportMonitoring() {
         onOpenChange={(open) => { if (!open) setRetryBatch(null); }}
         onRetryStarted={refreshBatches}
       />
+      </>}
+
+      {/* New Import Dialog */}
+      <NewImportDialog
+        open={showNewImport}
+        onOpenChange={setShowNewImport}
+        onImportStarted={refreshBatches}
+      />
     </div>
+  );
+}
+
+function ImportHistoryView({ batches, formatTimestamp }) {
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyType, setHistoryType] = useState('all');
+
+  const IMPORT_TYPE_LABELS = {
+    'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
+    'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
+    'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
+    'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
+    'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
+    'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
+    'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
+    'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
+    'medicare_snf_stats': 'Medicare SNF Stats',
+  };
+
+  const statusColors = {
+    processing: 'bg-blue-500/15 text-blue-400',
+    validating: 'bg-yellow-500/15 text-yellow-400',
+    completed: 'bg-emerald-500/15 text-emerald-400',
+    failed: 'bg-red-500/15 text-red-400',
+    paused: 'bg-amber-500/15 text-amber-400',
+    cancelled: 'bg-slate-500/15 text-slate-400',
+  };
+
+  const uniqueTypes = useMemo(() => {
+    const types = new Set(batches.map(b => b.import_type));
+    return Array.from(types).sort();
+  }, [batches]);
+
+  const filtered = useMemo(() => {
+    let result = [...batches].sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    if (historyType !== 'all') result = result.filter(b => b.import_type === historyType);
+    if (historySearch) {
+      const q = historySearch.toLowerCase();
+      result = result.filter(b =>
+        (b.file_name || '').toLowerCase().includes(q) ||
+        (b.import_type || '').toLowerCase().includes(q) ||
+        (IMPORT_TYPE_LABELS[b.import_type] || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [batches, historyType, historySearch]);
+
+  // Group by date
+  const grouped = useMemo(() => {
+    const groups = {};
+    for (const b of filtered) {
+      const d = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(b.created_date));
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(b);
+    }
+    return groups;
+  }, [filtered]);
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const total = batches.length;
+    const completed = batches.filter(b => b.status === 'completed').length;
+    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0), 0);
+    const totalRecords = batches.reduce((sum, b) => sum + (b.total_rows || 0), 0);
+    return { total, completed, totalImported, totalRecords };
+  }, [batches]);
+
+  return (
+    <>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-slate-500">Total Imports</p>
+            <p className="text-2xl font-bold text-white">{stats.total}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-slate-500">Successful</p>
+            <p className="text-2xl font-bold text-emerald-400">{stats.completed}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-slate-500">Records Imported</p>
+            <p className="text-2xl font-bold text-blue-400">{stats.totalImported.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardContent className="pt-4 pb-3">
+            <p className="text-xs text-slate-500">Records Processed</p>
+            <p className="text-2xl font-bold text-slate-300">{stats.totalRecords.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="bg-[#141d30] border-slate-700/50">
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle className="text-slate-200">Import History</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Input
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  placeholder="Search..."
+                  className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                />
+              </div>
+              <select
+                className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
+                value={historyType}
+                onChange={(e) => setHistoryType(e.target.value)}
+              >
+                <option value="all">All Types</option>
+                {uniqueTypes.map(t => (
+                  <option key={t} value={t}>{IMPORT_TYPE_LABELS[t] || t}</option>
+                ))}
+              </select>
+              <Badge className="bg-slate-800 text-slate-400 text-xs">{filtered.length} imports</Badge>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p className="font-medium">No import history</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(grouped).map(([date, items]) => (
+                <div key={date}>
+                  <p className="text-xs font-semibold text-slate-500 mb-2 sticky top-0 bg-[#141d30] py-1">{date}</p>
+                  <div className="space-y-2">
+                    {items.map(b => (
+                      <div key={b.id} className="flex items-center gap-3 p-3 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 transition-colors">
+                        <Badge className={`${statusColors[b.status] || ''} text-[10px] w-20 justify-center`}>{b.status}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-200 truncate">{IMPORT_TYPE_LABELS[b.import_type] || b.import_type}</p>
+                          <p className="text-xs text-slate-500 truncate">{b.file_name}</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-slate-500 flex-shrink-0">
+                          {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} imported</span>}
+                          {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} total</span>}
+                          <span className="w-24 text-right">{formatTimestamp(b.created_date).replace(/, \d{4}/, '')}</span>
+                        </div>
+                        {(b.tags || []).length > 0 && (
+                          <div className="flex gap-1 flex-shrink-0">
+                            {b.tags.slice(0, 2).map(t => (
+                              <Badge key={t} className="bg-slate-700/50 text-slate-400 text-[9px]">{t}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
