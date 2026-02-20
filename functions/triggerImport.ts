@@ -1,6 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 // CMS Data API URLs - verified working endpoints
+// Aliases: cms_utilization maps to provider_service_utilization
+const IMPORT_TYPE_ALIASES = {
+  cms_utilization: 'provider_service_utilization',
+};
+
 const IMPORT_TYPE_URLS = {
   // Provider & Service level utilization (Rndrng_NPI, HCPCS_Cd, Tot_Srvcs, etc.)
   provider_service_utilization: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data',
@@ -24,11 +29,14 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { import_type, file_url, dry_run = false, year } = body;
+    const { import_type: raw_import_type, file_url, dry_run = false, year } = body;
 
-    if (!import_type) {
+    if (!raw_import_type) {
       return Response.json({ error: 'Missing required field: import_type' }, { status: 400 });
     }
+
+    // Resolve aliases (e.g. cms_utilization -> provider_service_utilization)
+    const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
 
     // Check if it's a ZIP-based Medicare stats import
     const zipFunctionMap = {
