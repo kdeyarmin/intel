@@ -320,7 +320,7 @@ export default function ImportMonitoring() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Import Monitoring</h1>
-          <p className="text-slate-500 mt-1">Manage, tag, and retry import jobs</p>
+          <p className="text-slate-400 mt-1">Real-time monitoring, validation rules, and alert notifications</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
