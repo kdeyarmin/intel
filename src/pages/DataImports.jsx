@@ -411,7 +411,7 @@ export default function DataImports() {
           <p className="text-slate-500 mt-1">Upload and validate NPPES and CMS datasets</p>
         </div>
         {step !== 'select' && (
-          <Button variant="outline" onClick={handleReset}>
+          <Button variant="outline" onClick={handleReset} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Start New Import
           </Button>

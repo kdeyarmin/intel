@@ -314,7 +314,7 @@ export default function LeadLists() {
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
             </div>
           ) : lists.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No lead lists yet. Create one to get started!</p>
+            <p className="text-slate-500 text-center py-8">No lead lists yet. Create one to get started!</p>
           ) : (
             <Table>
               <TableHeader>
@@ -329,10 +329,10 @@ export default function LeadLists() {
               <TableBody>
                 {lists.map(list => (
                   <TableRow key={list.id}>
-                    <TableCell className="font-medium">{list.name}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{list.description || '-'}</TableCell>
-                    <TableCell>{list.provider_count}</TableCell>
-                    <TableCell>{new Date(list.created_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
+                    <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
+                    <TableCell className="text-slate-300">{list.provider_count}</TableCell>
+                    <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Dialog>
