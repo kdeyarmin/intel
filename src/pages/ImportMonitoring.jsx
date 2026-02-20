@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,6 +95,30 @@ export default function ImportMonitoring() {
   const completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
   const pausedBatches = batches.filter(b => b.status === 'paused');
+  const [autoFailedIds, setAutoFailedIds] = useState(new Set());
+  const autoFailProcessed = useRef(new Set());
+
+  // Auto-mark stale jobs as failed
+  useEffect(() => {
+    if (staleBatches.length === 0) return;
+    const toFail = staleBatches.filter(b => !autoFailProcessed.current.has(b.id));
+    if (toFail.length === 0) return;
+
+    (async () => {
+      for (const batch of toFail) {
+        autoFailProcessed.current.add(batch.id);
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'failed',
+          error_samples: [
+            ...(batch.error_samples || []),
+            { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
+          ]
+        });
+        setAutoFailedIds(prev => new Set([...prev, batch.id]));
+      }
+      refreshBatches();
+    })();
+  }, [staleBatches]);
 
   const displayBatches = useMemo(() => {
     let filtered = batches;
@@ -276,6 +300,29 @@ export default function ImportMonitoring() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Auto-failed notification */}
+      {autoFailedIds.size > 0 && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-400" />
+              <p className="text-sm text-red-400">
+                <span className="font-semibold">{autoFailedIds.size} stalled job{autoFailedIds.size !== 1 ? 's were' : ' was'} automatically marked as failed</span>
+                {' '}due to inactivity (no updates for 15+ minutes).
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-xs text-slate-400 hover:text-slate-200"
+                onClick={() => setAutoFailedIds(new Set())}
+              >
+                Dismiss
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stale Jobs Warning */}
       {staleBatches.length > 0 && (
