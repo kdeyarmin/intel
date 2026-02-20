@@ -41,18 +41,18 @@ Deno.serve(async (req) => {
         }
 
         const payload = await req.json();
-        const { import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null } = payload;
+        const { import_type: raw_import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null } = payload;
 
         // Resolve aliases before validation
         const ALIASES = { cms_utilization: 'provider_service_utilization' };
-        let import_type_resolved = ALIASES[import_type] || import_type;
+        const import_type = ALIASES[raw_import_type] || raw_import_type;
         
         const validTypes = [
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
             'provider_service_utilization',
         ];
-        if (!validTypes.includes(import_type_resolved)) {
+        if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
         }
 
