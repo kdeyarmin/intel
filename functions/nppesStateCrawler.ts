@@ -116,6 +116,25 @@ async function fetchAllPages(baseParams) {
 }
 
 // ---- WRITE HELPERS ----
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function withRetry(fn, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (e) {
+            const is429 = /429|rate limit/i.test(e.message);
+            if (is429 && attempt < maxRetries) {
+                const backoff = attempt * 2000 + Math.random() * 1000;
+                console.warn(`[Retry] Rate limited, waiting ${Math.round(backoff)}ms (attempt ${attempt}/${maxRetries})`);
+                await sleep(backoff);
+                continue;
+            }
+            throw e;
+        }
+    }
+}
+
 async function runConcurrent(tasks, concurrency) {
     const results = [];
     for (let i = 0; i < tasks.length; i += concurrency) {
@@ -123,19 +142,26 @@ async function runConcurrent(tasks, concurrency) {
         const batch = tasks.slice(i, i + concurrency);
         const batchResults = await Promise.all(batch.map(fn => fn()));
         results.push(...batchResults);
+        // Small delay between concurrent batches to avoid rate limits
+        if (i + concurrency < tasks.length) await sleep(200);
     }
     return results;
 }
 
 async function batchLookupByNPI(entity, npis, base44) {
     const resultMap = {};
-    const lookupTasks = npis.map(npi => async () => {
-        try {
-            const found = await base44.asServiceRole.entities[entity].filter({ npi });
-            if (found.length > 0) resultMap[npi] = found;
-        } catch (e) { /* ignore */ }
-    });
-    await runConcurrent(lookupTasks, WRITE_CONCURRENCY);
+    // Process lookups sequentially in small batches to avoid rate limits
+    for (let i = 0; i < npis.length; i += 3) {
+        if (isTimeUp()) break;
+        const batch = npis.slice(i, i + 3);
+        await Promise.all(batch.map(async (npi) => {
+            try {
+                const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ npi }));
+                if (found.length > 0) resultMap[npi] = found;
+            } catch (e) { /* ignore after retries */ }
+        }));
+        if (i + 3 < npis.length) await sleep(150);
+    }
     return resultMap;
 }
 
@@ -164,9 +190,11 @@ function isMoreComplete(incoming, existing, fields) {
 async function upsertProviders(records, base44) {
     const FIELDS = ['first_name','last_name','organization_name','credential','gender','status','entity_type','enumeration_date','last_update_date'];
     let imported = 0, updated = 0, skipped = 0;
-    for (let i = 0; i < records.length; i += BULK_SIZE) {
+    // Use smaller chunks to reduce per-chunk lookup pressure
+    const chunkSize = Math.min(BULK_SIZE, 20);
+    for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
-        const chunk = records.slice(i, i + BULK_SIZE);
+        const chunk = records.slice(i, i + chunkSize);
         const npis = [...new Set(chunk.map(p => p.npi))];
         const existingMap = await batchLookupByNPI('Provider', npis, base44);
         const toCreate = [], updateTasks = [];
@@ -179,16 +207,26 @@ async function upsertProviders(records, base44) {
                 for (const f of FIELDS) { if (!merged[f] && ex[f]) merged[f] = ex[f]; }
                 merged.needs_nppes_enrichment = false;
                 updateTasks.push(async () => {
-                    try { await base44.asServiceRole.entities.Provider.update(ex.id, merged); } catch (e) {}
+                    try { await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged)); } catch (e) {}
                 });
             } else { skipped++; }
         }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, WRITE_CONCURRENCY); updated += updateTasks.length; }
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
         if (toCreate.length > 0) {
-            try { await base44.asServiceRole.entities.Provider.bulkCreate(toCreate); imported += toCreate.length; } catch (e) {
-                for (const p of toCreate) { try { await base44.asServiceRole.entities.Provider.create(p); imported++; } catch (err) {} }
+            try {
+                await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate));
+                imported += toCreate.length;
+            } catch (e) {
+                // Fallback: create one by one with delays
+                for (const p of toCreate) {
+                    if (isTimeUp()) break;
+                    try { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; } catch (err) {}
+                    await sleep(100);
+                }
             }
         }
+        // Throttle between chunks
+        await sleep(300);
     }
     return { imported, updated, skipped };
 }
@@ -196,9 +234,10 @@ async function upsertProviders(records, base44) {
 async function upsertLocations(records, base44) {
     const FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
     let imported = 0, updated = 0, skipped = 0;
-    for (let i = 0; i < records.length; i += BULK_SIZE) {
+    const chunkSize = Math.min(BULK_SIZE, 20);
+    for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
-        const chunk = records.slice(i, i + BULK_SIZE);
+        const chunk = records.slice(i, i + chunkSize);
         const npis = [...new Set(chunk.map(l => l.npi))];
         const existingMap = await batchLookupByNPI('ProviderLocation', npis, base44);
         const toCreate = [], updateTasks = [];
@@ -215,16 +254,24 @@ async function upsertLocations(records, base44) {
                 const merged = { ...loc };
                 for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
                 updateTasks.push(async () => {
-                    try { await base44.asServiceRole.entities.ProviderLocation.update(match.id, merged); } catch (e) {}
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.update(match.id, merged)); } catch (e) {}
                 });
             }
         }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, WRITE_CONCURRENCY); updated += updateTasks.length; }
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
         if (toCreate.length > 0) {
-            try { await base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate); imported += toCreate.length; } catch (e) {
-                for (const loc of toCreate) { try { await base44.asServiceRole.entities.ProviderLocation.create(loc); imported++; } catch (err) {} }
+            try {
+                await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate));
+                imported += toCreate.length;
+            } catch (e) {
+                for (const loc of toCreate) {
+                    if (isTimeUp()) break;
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {}
+                    await sleep(100);
+                }
             }
         }
+        await sleep(300);
     }
     return { imported, updated, skipped };
 }
@@ -232,9 +279,10 @@ async function upsertLocations(records, base44) {
 async function upsertTaxonomies(records, base44) {
     const FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
     let imported = 0, updated = 0, skipped = 0;
-    for (let i = 0; i < records.length; i += BULK_SIZE) {
+    const chunkSize = Math.min(BULK_SIZE, 20);
+    for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
-        const chunk = records.slice(i, i + BULK_SIZE);
+        const chunk = records.slice(i, i + chunkSize);
         const npis = [...new Set(chunk.map(t => t.npi))];
         const existingMap = await batchLookupByNPI('ProviderTaxonomy', npis, base44);
         const toCreate = [], updateTasks = [];
@@ -247,16 +295,24 @@ async function upsertTaxonomies(records, base44) {
                 const merged = { ...tax };
                 for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
                 updateTasks.push(async () => {
-                    try { await base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged); } catch (e) {}
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged)); } catch (e) {}
                 });
             }
         }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, WRITE_CONCURRENCY); updated += updateTasks.length; }
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
         if (toCreate.length > 0) {
-            try { await base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate); imported += toCreate.length; } catch (e) {
-                for (const tax of toCreate) { try { await base44.asServiceRole.entities.ProviderTaxonomy.create(tax); imported++; } catch (err) {} }
+            try {
+                await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate));
+                imported += toCreate.length;
+            } catch (e) {
+                for (const tax of toCreate) {
+                    if (isTimeUp()) break;
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {}
+                    await sleep(100);
+                }
             }
         }
+        await sleep(300);
     }
     return { imported, updated, skipped };
 }
