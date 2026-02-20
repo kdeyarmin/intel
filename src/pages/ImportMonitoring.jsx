@@ -698,7 +698,7 @@ export default function ImportMonitoring() {
                         <span className="text-slate-500">Progress</span>
                         <span className="font-medium text-slate-300">{getProgress(batch)}%</span>
                       </div>
-                      <Progress value={getProgress(batch)} className="h-1.5" />
+                      <Progress value={getProgress(batch)} className="h-1.5 bg-slate-700" />
                     </div>
                   )}
 
