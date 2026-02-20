@@ -11,6 +11,7 @@ import DashboardAIAssistant from '../components/dashboard/DashboardAIAssistant';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import { formatDateET } from '../components/utils/dateUtils';
 
 export default function Dashboard() {
   const { data: providers = [], isLoading: loadingProviders } = useQuery({
@@ -90,7 +91,7 @@ export default function Dashboard() {
   }, [locations]);
 
   const lastRefresh = auditEvents[0]?.created_date
-    ? new Date(auditEvents[0].created_date).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' })
+    ? formatDateET(auditEvents[0].created_date)
     : 'Never';
 
   return (

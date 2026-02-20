@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RefreshCw, Sparkles, Send, Clock, Eye, MessageSquare, Mail, ChevronRight, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { formatDateET } from '../utils/dateUtils';
 import { toast } from 'sonner';
 import AIFollowUpGenerator from './AIFollowUpGenerator';
 import AutoFollowUpSequencer from './AutoFollowUpSequencer';
@@ -215,7 +216,7 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
                           <TableCell>
                             <Badge className={`text-[10px] ${segCfg?.color || 'bg-slate-50 text-slate-400'}`}>{m.status}</Badge>
                           </TableCell>
-                          <TableCell className="text-[10px] text-slate-400">{m.sent_at ? new Date(m.sent_at).toLocaleDateString() : '-'}</TableCell>
+                          <TableCell className="text-[10px] text-slate-400">{m.sent_at ? formatDateET(m.sent_at) : '-'}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[9px]">{segCfg?.label || segment}</Badge>
                           </TableCell>
