@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles, Database, Shield } from 'lucide-react';
 import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner';
+import ProactiveEnrichmentScanner from '../components/enrichment/ProactiveEnrichmentScanner';
 import EnrichmentReviewQueue from '../components/enrichment/EnrichmentReviewQueue';
 import EnrichmentStats from '../components/enrichment/EnrichmentStats';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
@@ -54,10 +55,11 @@ export default function EnrichmentHub() {
       {/* Stats overview */}
       <EnrichmentStats />
 
-      {/* Runner + Queue */}
+      {/* Runner + Scanner + Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div>
+        <div className="space-y-4">
           <BulkEnrichmentRunner providers={providers} />
+          <ProactiveEnrichmentScanner providers={providers} />
         </div>
         <div className="lg:col-span-2">
           <EnrichmentReviewQueue />

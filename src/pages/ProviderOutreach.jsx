@@ -19,6 +19,8 @@ import CampaignPerformanceAnalysis from '../components/outreach/CampaignPerforma
 import TargetListBuilder from '../components/outreach/TargetListBuilder';
 import TemplateEditor from '../components/outreach/TemplateEditor';
 import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
+import AISmartTargeting from '../components/outreach/AISmartTargeting';
+import AIPersonalizedContent from '../components/outreach/AIPersonalizedContent';
 import FollowUpManager from '../components/outreach/FollowUpManager';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
@@ -218,6 +220,14 @@ export default function ProviderOutreach() {
                   <Label>Description</Label>
                   <Textarea value={campaignDesc} onChange={(e) => setCampaignDesc(e.target.value)} placeholder="Brief description..." rows={2} className="mt-1" />
                 </div>
+                <AISmartTargeting
+                  providers={providers}
+                  referrals={referrals}
+                  scores={scores}
+                  locations={locations}
+                  taxonomies={taxonomies}
+                  onTargetsReady={setTargetConfig}
+                />
                 <TargetListBuilder
                   leadLists={leadLists}
                   providers={providers}
@@ -231,11 +241,22 @@ export default function ProviderOutreach() {
                 {targetConfig && (
                   <Badge className="bg-teal-100 text-teal-700">
                     Target: {targetConfig.source === 'lead_list' ? 'From lead list' : `${targetConfig.npis?.length || 0} providers`}
+                    {targetConfig.strategy && <span className="ml-1">({targetConfig.strategy})</span>}
                   </Badge>
                 )}
               </div>
-              <div>
+              <div className="space-y-4">
                 <TemplateEditor subject={subject} onSubjectChange={setSubject} body={body} onBodyChange={setBody} />
+                <AIPersonalizedContent
+                  targetConfig={targetConfig}
+                  providers={providers}
+                  scores={scores}
+                  referrals={referrals}
+                  locations={locations}
+                  taxonomies={taxonomies}
+                  onApplySubject={setSubject}
+                  onApplyBody={setBody}
+                />
               </div>
               <div>
                 <AICampaignAssistant
