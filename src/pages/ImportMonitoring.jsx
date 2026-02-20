@@ -755,10 +755,22 @@ export default function ImportMonitoring() {
                   {(batch.status === 'processing' || batch.status === 'validating' || batch.status === 'paused') && (
                     <div className="mb-2">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500">Progress</span>
+                        <span className="text-slate-400">
+                          {batch.status === 'validating' ? 'Validating rows...' : batch.status === 'processing' ? 'Importing data...' : 'Paused'}
+                        </span>
                         <span className="font-medium text-slate-300">{getProgress(batch)}%</span>
                       </div>
                       <Progress value={getProgress(batch)} className="h-1.5 bg-slate-700" />
+                      {batch.total_rows > 0 && (
+                        <div className="flex gap-4 mt-1 text-[10px] text-slate-500">
+                          {batch.status === 'validating' && (
+                            <span>Validated: {((batch.valid_rows || 0) + (batch.invalid_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
+                          )}
+                          {batch.status === 'processing' && (
+                            <span>Imported: {((batch.imported_rows || 0) + (batch.updated_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
