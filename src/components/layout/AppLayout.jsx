@@ -120,7 +120,7 @@ export default function AppLayout({ children, currentPageName }) {
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
                 className="w-10 h-10 rounded-xl flex-shrink-0"
-                style={{ background: 'transparent' }}
+                style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
               <div>
                 <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></h1>
@@ -132,7 +132,7 @@ export default function AppLayout({ children, currentPageName }) {
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
               alt="CareMetric AI"
               className="w-10 h-10 rounded-xl mx-auto"
-              style={{ background: 'transparent' }}
+              style={{ background: 'transparent', mixBlendMode: 'screen' }}
             />
           )}
           <Button
@@ -231,7 +231,7 @@ export default function AppLayout({ children, currentPageName }) {
         <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
           <Menu className="w-5 h-5" />
         </Button>
-        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent' }} />
+        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
         <h1 className="text-sm font-bold text-white">CareMetric <span className="text-cyan-400">AI</span></h1>
       </div>
 
@@ -247,7 +247,7 @@ export default function AppLayout({ children, currentPageName }) {
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
                 className="w-4 h-4 rounded"
-                style={{ background: 'transparent' }}
+                style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
               <span className="text-[11px] text-slate-500 font-medium">CareMetric AI</span>
               <span className="text-[11px] text-slate-700">•</span>
