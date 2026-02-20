@@ -191,11 +191,12 @@ export default function ImportMonitoring() {
 
   const formatTimestamp = (ts) => {
     if (!ts) return 'N/A';
-    return new Date(ts).toLocaleString('en-US', {
+    const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York',
       month: 'short', day: 'numeric', year: 'numeric',
       hour: 'numeric', minute: '2-digit', hour12: true,
-    }) + ' ET';
+    });
+    return formatter.format(new Date(ts)) + ' ET';
   };
 
   return (
