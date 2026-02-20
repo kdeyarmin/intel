@@ -58,9 +58,19 @@ Deno.serve(async (req) => {
                 { import_type: 'nppes_registry' }, '-created_date', 200
             );
             const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_') && b.file_name !== 'crawler_auto_stop_signal');
-            const completedStates = [], failedStates = [], processingStates = [];
+            
+            // Deduplicate: keep only the LATEST batch per state
+            const stateLatest = {};
             for (const b of crawlerBatches) {
                 const st = b.file_name.split('_')[1];
+                if (!st || st.length > 2 || !US_STATES.includes(st)) continue;
+                if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
+                    stateLatest[st] = b;
+                }
+            }
+            
+            const completedStates = [], failedStates = [], processingStates = [];
+            for (const [st, b] of Object.entries(stateLatest)) {
                 if (b.status === 'completed') completedStates.push(st);
                 else if (b.status === 'failed') failedStates.push(st);
                 else processingStates.push(st);
