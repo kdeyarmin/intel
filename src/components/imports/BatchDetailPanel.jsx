@@ -259,6 +259,14 @@ export default function BatchDetailPanel({ batch }) {
         </div>
       )}
 
+      {/* Validation Rule Results */}
+      <div>
+        <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-cyan-400" /> Validation Rule Analysis
+        </h4>
+        <ValidationRuleResults batch={batch} />
+      </div>
+
       {/* Errors */}
       {batch.error_samples?.length > 0 && (
         <>
