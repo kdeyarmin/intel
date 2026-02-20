@@ -79,6 +79,7 @@ export default function ImportMonitoring() {
   const [selectedForRerun, setSelectedForRerun] = useState(new Set());
   const [bulkRetryMode, setBulkRetryMode] = useState(false);
   const [isBulkRetrying, setIsBulkRetrying] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
