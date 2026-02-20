@@ -13,6 +13,7 @@ import ColumnMapper from '../components/imports/ColumnMapper';
 import ValidationResults from '../components/imports/ValidationResults';
 import FileParser from '../components/imports/FileParser';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from '../components/imports/columnMappingAI';
 
 // Simple CSV line parser that handles quoted fields with commas
 function parseCSVLine(line) {
@@ -53,6 +54,9 @@ export default function DataImports() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
+  const [mappingConfidence, setMappingConfidence] = useState({});
+  const [optionalColumns, setOptionalColumns] = useState([]);
+  const [aiMappingLoading, setAiMappingLoading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -67,24 +71,39 @@ export default function DataImports() {
     return cleaned.length === 10;
   };
 
-  const handleFileParsed = ({ headers, file: parsedFile, file_url, parseMode }) => {
+  const handleFileParsed = async ({ headers, file: parsedFile, file_url, parseMode }) => {
     setFile(parsedFile);
     setFileUrl(file_url);
     setParsedMode(parseMode);
     setCsvColumns(headers);
-
-    const autoMapping = {};
-    const normalizedHeaders = headers.map((h) => ({ original: h, normalized: h.toLowerCase().trim() }));
-
-    selectedType.requiredColumns.forEach(requiredCol => {
-      const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase().trim());
-      if (match) {
-        autoMapping[requiredCol] = match.original;
-      }
-    });
-
-    setColumnMapping(autoMapping);
     setStep('map');
+
+    // Start with quick fuzzy match, then enhance with AI
+    setAiMappingLoading(true);
+    try {
+      const { mapping: aiMapping, confidence, optionalColumns: optCols } = await generateAIMapping(
+        headers,
+        selectedType.requiredColumns,
+        selectedType.id,
+        selectedType.name
+      );
+      setColumnMapping(aiMapping);
+      setMappingConfidence(confidence);
+      setOptionalColumns(optCols);
+    } catch (err) {
+      console.error('AI mapping failed, using basic matching:', err);
+      // Fallback: basic exact match
+      const autoMapping = {};
+      const normalizedHeaders = headers.map((h) => ({ original: h, normalized: h.toLowerCase().trim() }));
+      selectedType.requiredColumns.forEach(requiredCol => {
+        const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase().trim());
+        if (match) autoMapping[requiredCol] = match.original;
+      });
+      setColumnMapping(autoMapping);
+      setOptionalColumns(OPTIONAL_COLUMNS[selectedType.id] || []);
+    } finally {
+      setAiMappingLoading(false);
+    }
   };
 
   // Get NPI value from a row using the column mapping
