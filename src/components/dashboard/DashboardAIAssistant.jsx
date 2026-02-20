@@ -101,7 +101,7 @@ export default function DashboardAIAssistant() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [hasAutoRun, setHasAutoRun] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -127,13 +127,13 @@ export default function DashboardAIAssistant() {
     }
   }, [messages]);
 
-  // Auto-generate initial briefing
+  // Auto-generate initial briefing only when expanded
   useEffect(() => {
-    if (dataLoaded && !hasAutoRun && messages.length === 0) {
+    if (isExpanded && dataLoaded && !hasAutoRun && messages.length === 0) {
       setHasAutoRun(true);
       runQuery('Give me a concise executive briefing of the dashboard. Highlight the top 3 most important findings — including any data quality concerns, notable trends, and actionable recommendations. Keep it under 200 words.');
     }
-  }, [dataLoaded, hasAutoRun]);
+  }, [isExpanded, dataLoaded, hasAutoRun]);
 
   const runQuery = async (prompt) => {
     if (!prompt.trim() || isGenerating) return;
