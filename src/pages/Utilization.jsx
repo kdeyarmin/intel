@@ -118,24 +118,24 @@ export default function Utilization() {
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No utilization records found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-slate-500">No utilization records found</TableCell></TableRow>
                 ) : (
                   filtered.slice(0, 100).map(u => (
                     <TableRow key={u.id}>
-                      <TableCell className="font-mono text-sm">{u.npi}</TableCell>
-                      <TableCell>{u.year || '-'}</TableCell>
-                      <TableCell className="text-right">{fmt(u.total_services)}</TableCell>
-                      <TableCell className="text-right">{fmt(u.total_medicare_beneficiaries)}</TableCell>
-                      <TableCell className="text-right">{fmtDollar(u.total_submitted_charges)}</TableCell>
-                      <TableCell className="text-right">{fmtDollar(u.total_medicare_allowed)}</TableCell>
-                      <TableCell className="text-right font-medium">{fmtDollar(u.total_medicare_payment)}</TableCell>
+                      <TableCell className="font-mono text-sm text-slate-400">{u.npi}</TableCell>
+                      <TableCell className="text-slate-400">{u.year || '-'}</TableCell>
+                      <TableCell className="text-right text-slate-300">{fmt(u.total_services)}</TableCell>
+                      <TableCell className="text-right text-slate-300">{fmt(u.total_medicare_beneficiaries)}</TableCell>
+                      <TableCell className="text-right text-slate-400">{fmtDollar(u.total_submitted_charges)}</TableCell>
+                      <TableCell className="text-right text-slate-400">{fmtDollar(u.total_medicare_allowed)}</TableCell>
+                      <TableCell className="text-right font-medium text-cyan-400">{fmtDollar(u.total_medicare_payment)}</TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
           </div>
-          {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
+          {filtered.length > 100 && <p className="text-xs text-slate-500 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
         </CardContent>
       </Card>
 

@@ -127,17 +127,17 @@ export default function Referrals() {
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">No referral records found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-500">No referral records found</TableCell></TableRow>
                 ) : (
                   filtered.slice(0, 100).map(r => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-mono text-sm">{r.npi}</TableCell>
-                      <TableCell>{r.year || '-'}</TableCell>
-                      <TableCell className="text-right font-medium">{fmt(r.total_referrals)}</TableCell>
-                      <TableCell className="text-right">{r.home_health_referrals > 0 ? <Badge className="bg-green-100 text-green-700">{fmt(r.home_health_referrals)}</Badge> : '0'}</TableCell>
-                      <TableCell className="text-right">{r.hospice_referrals > 0 ? <Badge className="bg-purple-100 text-purple-700">{fmt(r.hospice_referrals)}</Badge> : '0'}</TableCell>
-                      <TableCell className="text-right">{fmt(r.snf_referrals)}</TableCell>
-                      <TableCell className="text-right">{fmt(r.dme_referrals)}</TableCell>
+                      <TableCell className="font-mono text-sm text-slate-400">{r.npi}</TableCell>
+                      <TableCell className="text-slate-400">{r.year || '-'}</TableCell>
+                      <TableCell className="text-right font-medium text-slate-200">{fmt(r.total_referrals)}</TableCell>
+                      <TableCell className="text-right">{r.home_health_referrals > 0 ? <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">{fmt(r.home_health_referrals)}</Badge> : <span className="text-slate-600">0</span>}</TableCell>
+                      <TableCell className="text-right">{r.hospice_referrals > 0 ? <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20">{fmt(r.hospice_referrals)}</Badge> : <span className="text-slate-600">0</span>}</TableCell>
+                      <TableCell className="text-right text-slate-300">{fmt(r.snf_referrals)}</TableCell>
+                      <TableCell className="text-right text-slate-300">{fmt(r.dme_referrals)}</TableCell>
 
                     </TableRow>
                   ))
@@ -145,7 +145,7 @@ export default function Referrals() {
               </TableBody>
             </Table>
           </div>
-          {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
+          {filtered.length > 100 && <p className="text-xs text-slate-500 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
         </CardContent>
       </Card>
 
