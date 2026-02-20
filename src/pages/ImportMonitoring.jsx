@@ -288,10 +288,20 @@ export default function ImportMonitoring() {
   const getProgress = (batch) => {
     if (batch.status === 'completed') return 100;
     if (batch.status === 'failed' || batch.status === 'cancelled') return 0;
-    if (batch.status === 'paused') return 35;
-    if (batch.status === 'processing') return 50;
-    if (batch.status === 'validating') return 25;
-    return 0;
+    const total = batch.total_rows || 0;
+    if (total === 0) {
+      if (batch.status === 'paused') return 35;
+      if (batch.status === 'processing') return 50;
+      if (batch.status === 'validating') return 15;
+      return 0;
+    }
+    if (batch.status === 'validating') {
+      const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
+      return Math.min(Math.round((validated / total) * 50), 49);
+    }
+    // processing or paused
+    const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
+    return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
 
   const formatTimestamp = (ts) => {
