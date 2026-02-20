@@ -137,7 +137,7 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
 
         <Button
           onClick={handleRun}
-          disabled={running || needEnrichment === 0}
+          disabled={running || !loadedExisting || needEnrichment === 0}
           className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
         >
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
