@@ -486,12 +486,13 @@ Deno.serve(async (req) => {
                 console.log(`[${stateToProcess}] Write ${writeComplete ? 'complete' : 'PARTIAL'}: P(${provResult.imported}c/${provResult.updated}u/${provResult.skipped}s) L(${locResult.imported}c) T(${taxResult.imported}c)`);
             }
 
-            const finalStatus = dry_run ? 'completed' : (writeComplete || providers.length === 0) ? 'completed' : 'completed';
-            // Mark as completed even if partial write — the data that was written is valid
-            // Better to complete and move to next state than to get stuck
+            // Only mark as completed if we actually wrote data (or it was a dry run or there was nothing to write)
+            const didWrite = provResult.imported > 0 || provResult.updated > 0;
+            const nothingToWrite = providers.length === 0;
+            const finalStatus = dry_run || nothingToWrite || didWrite ? 'completed' : 'failed';
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: 'completed',
+                status: finalStatus,
                 imported_rows: provResult.imported,
                 updated_rows: provResult.updated + locResult.updated + taxResult.updated,
                 skipped_rows: provResult.skipped + locResult.skipped + taxResult.skipped,
