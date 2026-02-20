@@ -83,7 +83,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2 text-slate-300 font-semibold">
+        <CardTitle className="text-base flex items-center gap-2 text-white font-semibold">
           <Sparkles className="w-4 h-4 text-violet-400" />
           Proactive Insights
           <Badge variant="outline" className="ml-auto text-[10px] border-slate-700 text-slate-400">{insights.length}</Badge>
@@ -98,10 +98,10 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
               <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${colors.icon}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium text-slate-200">{alert.title}</p>
+                  <p className="text-base font-medium text-white">{alert.title}</p>
                   <Badge className={`text-[10px] border ${colors.badge}`}>{alert.severity}</Badge>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">{alert.description}</p>
+                <p className="text-sm text-slate-300 mt-0.5">{alert.description}</p>
               </div>
             </div>
           );

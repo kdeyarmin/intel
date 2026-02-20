@@ -38,7 +38,7 @@ export default function DQQuickStatus() {
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-cyan-400" />
             Quality Monitor
           </CardTitle>
@@ -54,17 +54,17 @@ export default function DQQuickStatus() {
           <>
             <div className="flex items-center gap-6">
               <div className="text-center">
-                <p className={`text-3xl font-bold ${overallColor}`}>{scores.overall || 0}%</p>
-                <p className="text-[10px] text-slate-400">Overall</p>
+                <p className={`text-4xl font-bold ${overallColor}`}>{scores.overall || 0}%</p>
+                <p className="text-xs text-slate-300">Overall</p>
               </div>
               <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
-              <div className="flex justify-between"><span className="text-slate-400">Completeness</span><span className="font-semibold text-slate-200">{scores.completeness || 0}%</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Accuracy</span><span className="font-semibold text-slate-200">{scores.accuracy || 0}%</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Timeliness</span><span className="font-semibold text-slate-200">{scores.timeliness || 0}%</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Consistency</span><span className="font-semibold text-slate-200">{scores.consistency || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-300">Completeness</span><span className="font-semibold text-white">{scores.completeness || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-300">Accuracy</span><span className="font-semibold text-white">{scores.accuracy || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-300">Timeliness</span><span className="font-semibold text-white">{scores.timeliness || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-300">Consistency</span><span className="font-semibold text-white">{scores.consistency || 0}%</span></div>
               </div>
             </div>
-            <div className="flex gap-3 pt-2 border-t border-slate-700/50 text-xs">
+            <div className="flex gap-3 pt-2 border-t border-slate-700/50 text-sm">
               {openCount > 0 && (
                 <span className="flex items-center gap-1 text-amber-400">
                   <AlertTriangle className="w-3 h-3" />{openCount} open alerts

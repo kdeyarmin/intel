@@ -165,7 +165,7 @@ USER QUESTION: ${prompt}`;
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm flex items-center gap-2 text-slate-200 font-semibold">
+          <CardTitle className="text-base flex items-center gap-2 text-white font-semibold">
             <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             </div>

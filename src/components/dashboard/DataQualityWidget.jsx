@@ -133,7 +133,7 @@ export default function DataQualityWidget() {
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
             <Database className="w-4 h-4 text-cyan-400" />
             Data Quality Overview
           </CardTitle>
@@ -167,20 +167,20 @@ export default function DataQualityWidget() {
         {/* Summary Stats Footer */}
         <div className="grid grid-cols-4 gap-3 pt-2 border-t border-slate-700/50">
           <div className="text-center">
-            <p className="text-lg font-bold text-white">{providers.length}</p>
-            <p className="text-[10px] text-slate-400">Providers</p>
+            <p className="text-xl font-bold text-white">{providers.length}</p>
+            <p className="text-xs text-slate-300">Providers</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-white">{locations.length}</p>
-            <p className="text-[10px] text-slate-400">Locations</p>
+            <p className="text-xl font-bold text-white">{locations.length}</p>
+            <p className="text-xs text-slate-300">Locations</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-amber-400">{providers.filter(p => p.needs_nppes_enrichment).length}</p>
-            <p className="text-[10px] text-slate-400">Need Enrichment</p>
+            <p className="text-xl font-bold text-amber-400">{providers.filter(p => p.needs_nppes_enrichment).length}</p>
+            <p className="text-xs text-slate-300">Need Enrichment</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-white">{taxonomies.length}</p>
-            <p className="text-[10px] text-slate-400">Taxonomies</p>
+            <p className="text-xl font-bold text-white">{taxonomies.length}</p>
+            <p className="text-xs text-slate-300">Taxonomies</p>
           </div>
         </div>
       </CardContent>

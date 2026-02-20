@@ -7,7 +7,7 @@ export default function RecentActivityCard({ events }) {
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+        <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
           <Clock className="w-4 h-4 text-violet-400" />
           Recent Activity
         </CardTitle>
@@ -26,10 +26,10 @@ export default function RecentActivityCard({ events }) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-200 capitalize truncate">
+                  <p className="text-base font-medium text-white capitalize truncate">
                     {event.event_type?.replace(/_/g, ' ')}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-sm text-slate-300 mt-0.5">
                     {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
                   </p>
                 </div>

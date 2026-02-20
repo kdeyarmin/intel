@@ -50,7 +50,7 @@ export default function EmailCoverageWidget({ providers }) {
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
-          <span className="flex items-center gap-2 text-slate-300 font-semibold">
+          <span className="flex items-center gap-2 text-white font-semibold text-base">
             <Mail className="w-4 h-4 text-cyan-400" />
             Email Outreach Readiness
           </span>
@@ -61,7 +61,7 @@ export default function EmailCoverageWidget({ providers }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+          <div className="flex justify-between text-sm text-slate-200 mb-1.5">
             <span>{withEmail} of {total} providers have email</span>
             <span>{coveragePct}%</span>
           </div>
@@ -72,21 +72,21 @@ export default function EmailCoverageWidget({ providers }) {
 
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <div className="text-lg font-bold text-emerald-400">{highConf}</div>
-            <div className="text-[10px] text-emerald-400">High Conf.</div>
+            <div className="text-xl font-bold text-emerald-400">{highConf}</div>
+            <div className="text-xs text-emerald-300">High Conf.</div>
           </div>
           <div className="text-center p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-            <div className="text-lg font-bold text-amber-400">{medConf}</div>
-            <div className="text-[10px] text-amber-400">Medium</div>
+            <div className="text-xl font-bold text-amber-400">{medConf}</div>
+            <div className="text-xs text-amber-300">Medium</div>
           </div>
           <div className="text-center p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <div className="text-lg font-bold text-red-400">{lowConf}</div>
-            <div className="text-[10px] text-red-400">Low</div>
+            <div className="text-xl font-bold text-red-400">{lowConf}</div>
+            <div className="text-xs text-red-300">Low</div>
           </div>
         </div>
 
         <div>
-          <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+          <div className="flex justify-between text-sm text-slate-200 mb-1.5">
             <span>Search progress</span>
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>

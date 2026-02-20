@@ -97,8 +97,8 @@ export default function Dashboard() {
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-sm text-slate-400 mt-0.5">CareMetric Provider Intelligence Overview</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
+        <p className="text-base text-slate-300 mt-0.5">CareMetric Provider Intelligence Overview</p>
       </div>
 
       {/* KPI Row */}
