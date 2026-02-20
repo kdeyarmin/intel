@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, Crown, AlertTriangle, MapPin, Stethoscope, TrendingUp, Network } from 'lucide-react';
+import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
 
 const KEY_SPECIALTIES = [
   'Internal Medicine', 'Family Medicine', 'Cardiology', 'Orthopedic Surgery',
@@ -274,6 +275,9 @@ Provide:
           )}
         </CardContent>
       </Card>
+
+      {/* Predictive Network Analysis */}
+      <PredictiveNetworkAnalysis nodes={nodes} edges={edges} locations={locations} />
     </div>
   );
 }

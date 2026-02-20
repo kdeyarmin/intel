@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { RefreshCw, Sparkles, Send, Clock, Eye, MessageSquare, Mail, ChevronRight, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AIFollowUpGenerator from './AIFollowUpGenerator';
+import AutoFollowUpSequencer from './AutoFollowUpSequencer';
 
 const STATUS_COLORS = {
   pending: 'bg-slate-100 text-slate-600',
@@ -140,6 +141,15 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
           </div>
         </CardContent>
       </Card>
+
+      {selectedCampaignId && !loadingMsgs && selectedCampaign && (
+        <AutoFollowUpSequencer
+          campaign={selectedCampaign}
+          messages={messages}
+          providers={providers}
+          onCreateFollowUp={(data) => createFollowUpMutation.mutate(data)}
+        />
+      )}
 
       {!selectedCampaignId && (
         <div className="text-center py-12 text-sm text-slate-400">

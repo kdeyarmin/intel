@@ -22,6 +22,7 @@ import AICampaignAssistant from '../components/outreach/AICampaignAssistant';
 import AISmartTargeting from '../components/outreach/AISmartTargeting';
 import AIPersonalizedContent from '../components/outreach/AIPersonalizedContent';
 import FollowUpManager from '../components/outreach/FollowUpManager';
+import CampaignPredictiveAnalytics from '../components/outreach/CampaignPredictiveAnalytics';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function ProviderOutreach() {
@@ -301,6 +302,9 @@ export default function ProviderOutreach() {
               <TabsTrigger value="follow_ups" className="text-xs gap-1.5">
                 <RefreshCw className="w-3.5 h-3.5" /> Follow-Ups
               </TabsTrigger>
+              <TabsTrigger value="predictive" className="text-xs gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5" /> Predictive Analytics
+              </TabsTrigger>
               <TabsTrigger value="metrics" className="text-xs gap-1.5">
                 <BarChart3 className="w-3.5 h-3.5" /> Engagement Metrics
               </TabsTrigger>
@@ -331,6 +335,15 @@ export default function ProviderOutreach() {
 
             <TabsContent value="follow_ups" className="mt-4">
               <FollowUpManager campaigns={campaigns} providers={providers} />
+            </TabsContent>
+
+            <TabsContent value="predictive" className="mt-4">
+              <CampaignPredictiveAnalytics
+                campaigns={campaigns}
+                providers={providers}
+                scores={scores}
+                referrals={referrals}
+              />
             </TabsContent>
 
             <TabsContent value="metrics" className="mt-4">

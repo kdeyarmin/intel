@@ -6,6 +6,8 @@ import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner'
 import ProactiveEnrichmentScanner from '../components/enrichment/ProactiveEnrichmentScanner';
 import EnrichmentReviewQueue from '../components/enrichment/EnrichmentReviewQueue';
 import EnrichmentStats from '../components/enrichment/EnrichmentStats';
+import EnrichmentActionability from '../components/enrichment/EnrichmentActionability';
+import BatchProviderUpdater from '../components/enrichment/BatchProviderUpdater';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function EnrichmentHub() {
@@ -60,8 +62,10 @@ export default function EnrichmentHub() {
         <div className="space-y-4">
           <BulkEnrichmentRunner providers={providers} />
           <ProactiveEnrichmentScanner providers={providers} />
+          <EnrichmentActionability />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
+          <BatchProviderUpdater />
           <EnrichmentReviewQueue />
         </div>
       </div>
