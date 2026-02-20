@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
             try {
                 await base44.asServiceRole.entities.AuditEvent.create({
                     event_type: 'import',
-                    user_email: user.email,
+                    user_email: user?.email || 'system',
                     details: {
                         action: `CMS Import: ${import_type}`,
                         entity: import_type,
