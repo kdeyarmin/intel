@@ -107,24 +107,7 @@ Deno.serve(async (req) => {
                 last_run_summary: runSummary,
             });
 
-            // Notification
-            const shouldNotify = (runStatus === 'failed' && schedule.notify_on_failure !== false) ||
-                                 (runStatus !== 'failed' && schedule.notify_on_complete !== false);
-            if (shouldNotify) {
-                try {
-                    const subject = runStatus === 'failed'
-                        ? `⚠️ Import Failed: ${schedule.label}`
-                        : runStatus === 'partial'
-                        ? `⏳ Import Partial: ${schedule.label}`
-                        : `✅ Import Complete: ${schedule.label}`;
-
-                    await base44.asServiceRole.integrations.Core.SendEmail({
-                        to: user.email,
-                        subject,
-                        body: `<h2>Scheduled Import Report</h2><p><strong>${schedule.label}</strong></p><p>Status: ${runStatus}</p><p>${runSummary}</p><p>Next run: ${nextRunDate.toLocaleString()}</p>`,
-                    });
-                } catch (e) { console.error('Email failed:', e.message); }
-            }
+            // Email notifications disabled per admin request
 
             results.push({ import_type: schedule.import_type, status: runStatus, summary: runSummary });
         }

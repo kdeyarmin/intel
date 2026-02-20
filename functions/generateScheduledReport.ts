@@ -243,21 +243,9 @@ async function executeReport(base44, report) {
   // Build email
   const emailBody = buildEmailBody(report, aggregated, metrics, summary);
 
-  // Send to all recipients
+  // Email notifications disabled per admin request
   const recipients = report.recipients || [];
-  let sentCount = 0;
-  for (const email of recipients) {
-    try {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: email,
-        subject: `📊 ${report.name} — ${report.frequency} Report`,
-        body: emailBody,
-      });
-      sentCount++;
-    } catch (e) {
-      console.error(`Failed to send to ${email}:`, e.message);
-    }
-  }
+  const sentCount = 0;
 
   // Update report status
   await base44.asServiceRole.entities.ScheduledReport.update(report.id, {

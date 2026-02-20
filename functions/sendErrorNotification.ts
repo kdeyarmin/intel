@@ -50,40 +50,10 @@ Import Details:
         const allUsers = await base44.asServiceRole.entities.User.list();
         const adminUsers = allUsers.filter(u => u.role === 'admin');
 
-        // Send email to all admins
-        for (const admin of adminUsers) {
-            await base44.integrations.Core.SendEmail({
-                from_name: 'CareMetric Lead Discovery',
-                to: admin.email,
-                subject: `[${report.severity.toUpperCase()}] Import Error: ${report.title}`,
-                body: `
-A data import job has failed and requires your attention.
-
-Error Report ID: ${report.id}
-Severity: ${report.severity}
-Type: ${report.error_type}
-Created: ${new Date(report.created_date).toLocaleString()}
-
-${report.description}
-
-${batchInfo}
-
-${errorSamplesText}
-
-Context: ${JSON.stringify(report.context, null, 2)}
-
-Please review this error in the Error Reports page:
-${Deno.env.get('BASE44_APP_URL') || 'Your app'}/ErrorReports
-
----
-This is an automated notification from CareMetric Lead Discovery.
-                `
-            });
-        }
-
+        // Email notifications disabled per admin request
         return Response.json({ 
             success: true, 
-            message: `Notification sent to ${adminUsers.length} admin(s)` 
+            message: `Email notifications are disabled. ${adminUsers.length} admin(s) would have been notified.` 
         });
 
     } catch (error) {
