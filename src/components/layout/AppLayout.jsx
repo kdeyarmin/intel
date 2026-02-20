@@ -149,7 +149,9 @@ export default function AppLayout({ children, currentPageName }) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark">
           {NAV_SECTIONS.map((section) => {
-            const filteredItems = section.items.filter(item => item.roles.includes(user?.role));
+            const filteredItems = user?.role
+              ? section.items.filter(item => item.roles.includes(user.role))
+              : section.items;
             if (filteredItems.length === 0) return null;
             const isCollapsed = collapsedSections[section.label];
 
