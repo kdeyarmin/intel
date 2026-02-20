@@ -7,41 +7,41 @@ export default function TopStatesCard({ topStates, loading }) {
   const maxCount = topStates[0]?.[1] || 1;
 
   return (
-    <Card className="bg-white border-slate-200/80 shadow-sm">
+    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-blue-500" />
+        <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-cyan-400" />
           Top States by Provider Count
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full bg-slate-700/50" />)}
           </div>
         ) : topStates.length === 0 ? (
-          <p className="text-slate-400 text-center py-8 text-sm">No location data available</p>
+          <p className="text-slate-500 text-center py-8 text-sm">No location data available</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {topStates.map(([state, count], index) => {
               const pct = (count / maxCount) * 100;
               const colors = [
-                'bg-blue-500', 'bg-blue-400', 'bg-blue-300', 'bg-sky-300', 'bg-sky-200'
+                'bg-cyan-500', 'bg-cyan-400', 'bg-cyan-300/80', 'bg-sky-400/60', 'bg-sky-300/40'
               ];
               return (
                 <div key={state} className="group">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                      <span className="w-5 h-5 rounded-md bg-slate-800 border border-slate-700/50 flex items-center justify-center text-[10px] font-bold text-slate-400">
                         {index + 1}
                       </span>
-                      <span className="text-sm font-semibold text-slate-800">{state}</span>
+                      <span className="text-sm font-semibold text-white">{state}</span>
                     </div>
-                    <span className="text-xs font-medium text-slate-500">{count.toLocaleString()}</span>
+                    <span className="text-xs font-medium text-slate-400">{count.toLocaleString()}</span>
                   </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${colors[index] || 'bg-slate-300'} transition-all duration-500`}
+                      className={`h-full rounded-full ${colors[index] || 'bg-slate-600'} transition-all duration-500`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>

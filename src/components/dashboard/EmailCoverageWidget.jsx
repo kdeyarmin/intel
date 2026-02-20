@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Mail, Bot, Download, TrendingUp } from 'lucide-react';
+import { Mail, Bot, Download } from 'lucide-react';
 
 export default function EmailCoverageWidget({ providers }) {
   const total = providers.length;
@@ -47,63 +47,63 @@ export default function EmailCoverageWidget({ providers }) {
   };
 
   return (
-    <Card>
+    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-blue-600" />
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span className="flex items-center gap-2 text-slate-300 font-semibold">
+            <Mail className="w-4 h-4 text-cyan-400" />
             Email Outreach Readiness
           </span>
-          <Badge className={coveragePct >= 50 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+          <Badge className={coveragePct >= 50 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}>
             {coveragePct}% coverage
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Coverage bar */}
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1">
+          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
             <span>{withEmail} of {total} providers have email</span>
             <span>{coveragePct}%</span>
           </div>
-          <Progress value={coveragePct} className="h-2" />
+          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{ width: `${coveragePct}%` }} />
+          </div>
         </div>
 
-        {/* Confidence breakdown */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="text-center p-2 bg-green-50 rounded-lg">
-            <div className="text-lg font-bold text-green-700">{highConf}</div>
-            <div className="text-[10px] text-green-600">High Conf.</div>
+          <div className="text-center p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+            <div className="text-lg font-bold text-emerald-400">{highConf}</div>
+            <div className="text-[10px] text-emerald-500/80">High Conf.</div>
           </div>
-          <div className="text-center p-2 bg-yellow-50 rounded-lg">
-            <div className="text-lg font-bold text-yellow-700">{medConf}</div>
-            <div className="text-[10px] text-yellow-600">Medium</div>
+          <div className="text-center p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <div className="text-lg font-bold text-amber-400">{medConf}</div>
+            <div className="text-[10px] text-amber-500/80">Medium</div>
           </div>
-          <div className="text-center p-2 bg-red-50 rounded-lg">
-            <div className="text-lg font-bold text-red-700">{lowConf}</div>
-            <div className="text-[10px] text-red-600">Low</div>
+          <div className="text-center p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <div className="text-lg font-bold text-red-400">{lowConf}</div>
+            <div className="text-[10px] text-red-500/80">Low</div>
           </div>
         </div>
 
-        {/* Search progress */}
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1">
+          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
             <span>Search progress</span>
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>
-          <Progress value={searchedPct} className="h-1.5" />
+          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-violet-500/70 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
+          </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 pt-1">
           <Link to={createPageUrl('EmailSearchBot')} className="flex-1">
-            <Button variant="outline" size="sm" className="w-full text-xs gap-1.5">
+            <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400 hover:border-cyan-500/30">
               <Bot className="w-3.5 h-3.5" /> Run Email Bot
             </Button>
           </Link>
           {withEmail > 0 && (
-            <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={downloadEmailCSV}>
-              <Download className="w-3.5 h-3.5" /> Export CSV
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400 hover:border-cyan-500/30" onClick={downloadEmailCSV}>
+              <Download className="w-3.5 h-3.5" /> CSV
             </Button>
           )}
         </div>

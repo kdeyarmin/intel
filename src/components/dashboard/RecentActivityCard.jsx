@@ -5,31 +5,31 @@ import { formatShortDateTimeET } from '../utils/dateUtils';
 
 export default function RecentActivityCard({ events }) {
   return (
-    <Card className="bg-white border-slate-200/80 shadow-sm">
+    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-violet-500" />
+        <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-violet-400" />
           Recent Activity
         </CardTitle>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-slate-400 text-center py-8 text-sm">No recent activity</p>
+          <p className="text-slate-500 text-center py-8 text-sm">No recent activity</p>
         ) : (
           <div className="space-y-1">
             {events.slice(0, 5).map((event, idx) => (
-              <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+              <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-800/50 transition-colors">
                 <div className="relative mt-1.5">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <div className="w-2 h-2 rounded-full bg-cyan-400" />
                   {idx < events.length - 1 && (
-                    <div className="absolute top-2.5 left-[3px] w-px h-8 bg-slate-200" />
+                    <div className="absolute top-2.5 left-[3px] w-px h-8 bg-slate-700" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 capitalize truncate">
+                  <p className="text-sm font-medium text-slate-200 capitalize truncate">
                     {event.event_type?.replace(/_/g, ' ')}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
                   </p>
                 </div>

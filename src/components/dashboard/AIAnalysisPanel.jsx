@@ -13,66 +13,64 @@ const findings = [
 ];
 
 const typeStyles = {
-  critical: 'bg-red-50 border-red-200 text-red-700',
-  warning: 'bg-amber-50 border-amber-200 text-amber-700',
-  info: 'bg-blue-50 border-blue-200 text-blue-700',
-  success: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  critical: 'bg-red-500/10 border-red-500/20 text-red-400',
+  warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+  info: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
+  success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
 };
 
 const iconStyles = {
-  critical: 'text-red-500',
-  warning: 'text-amber-500',
-  info: 'text-blue-500',
-  success: 'text-emerald-500',
+  critical: 'text-red-400',
+  warning: 'text-amber-400',
+  info: 'text-cyan-400',
+  success: 'text-emerald-400',
 };
 
 export default function AIAnalysisPanel() {
   return (
-    <Card>
+    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-violet-500" />
+          <CardTitle className="text-sm flex items-center gap-2 text-slate-300 font-semibold">
+            <Sparkles className="w-4 h-4 text-violet-400" />
             AI Analysis
           </CardTitle>
-          <Badge className="bg-violet-100 text-violet-700 text-[10px]">Auto-generated</Badge>
+          <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">Auto-generated</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Score summary */}
-        <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
+        <div className="flex items-center gap-4 p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
           <div className="text-center">
-            <p className="text-2xl font-bold text-slate-900">88%</p>
+            <p className="text-2xl font-bold text-white">88%</p>
             <p className="text-[10px] text-slate-500 font-medium">Overall Score</p>
           </div>
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="text-center">
-              <p className="text-sm font-semibold text-emerald-600">100%</p>
+              <p className="text-sm font-semibold text-emerald-400">100%</p>
               <p className="text-[10px] text-slate-500">Timeliness</p>
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-emerald-600">100%</p>
+              <p className="text-sm font-semibold text-emerald-400">100%</p>
               <p className="text-[10px] text-slate-500">Consistency</p>
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-amber-600">80%</p>
+              <p className="text-sm font-semibold text-amber-400">80%</p>
               <p className="text-[10px] text-slate-500">Completeness</p>
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-red-600">70%</p>
+              <p className="text-sm font-semibold text-red-400">70%</p>
               <p className="text-[10px] text-slate-500">Accuracy</p>
             </div>
           </div>
         </div>
 
-        {/* Summary text */}
-        <p className="text-xs text-slate-600 leading-relaxed">
-          The data quality scan reveals an overall score of <strong>88%</strong>, with high timeliness and consistency (100%) but lower scores for completeness (80%) and accuracy (70%). Key issues identified include significant missing gender information (53%), a high percentage of providers lacking a location (50%) and taxonomy (40%), as well as a notable number of invalid ZIP code formats (9%). A total of <strong>20 alerts</strong> were generated from the scan of 200 providers, locations, and taxonomies.
+        <p className="text-xs text-slate-500 leading-relaxed">
+          The data quality scan reveals an overall score of <strong className="text-slate-300">88%</strong>, with high timeliness and consistency (100%) but lower scores for completeness (80%) and accuracy (70%). Key issues include missing gender information (53%), providers lacking a location (50%) and taxonomy (40%), as well as invalid ZIP code formats (9%). A total of <strong className="text-slate-300">20 alerts</strong> were generated from the scan.
         </p>
 
-        {/* Findings */}
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-700">Key Findings</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Key Findings</p>
           {findings.map((f, i) => {
             const Icon = f.icon;
             return (
@@ -80,7 +78,7 @@ export default function AIAnalysisPanel() {
                 <Icon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${iconStyles[f.type]}`} />
                 <div>
                   <span className="font-semibold">{f.label}:</span>{' '}
-                  <span className="opacity-90">{f.detail}</span>
+                  <span className="opacity-80">{f.detail}</span>
                 </div>
               </div>
             );
