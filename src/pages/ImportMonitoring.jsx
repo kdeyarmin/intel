@@ -70,6 +70,7 @@ export default function ImportMonitoring() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryBatch, setRetryBatch] = useState(null);
@@ -121,11 +122,23 @@ export default function ImportMonitoring() {
     }
   }, [batches]);
 
-  // Collect all unique tags
+  // Collect all unique tags and years
   const allTags = useMemo(() => {
     const tags = new Set();
     batches.forEach(b => (b.tags || []).forEach(t => tags.add(t)));
     return Array.from(tags).sort();
+  }, [batches]);
+
+  const allYears = useMemo(() => {
+    const years = new Set();
+    batches.forEach(b => {
+      if (b.data_year) years.add(String(b.data_year));
+      else {
+        const match = (b.file_name || '').match(/20\d{2}/);
+        if (match) years.add(match[0]);
+      }
+    });
+    return Array.from(years).sort().reverse();
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -221,6 +234,17 @@ export default function ImportMonitoring() {
     // Category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(b => b.category === categoryFilter);
+    }
+
+    // Year filter
+    if (yearFilter !== 'all') {
+      filtered = filtered.filter(b => {
+        // Try to find year in data_year field, or parse from file_name/file_url
+        if (b.data_year) return String(b.data_year) === yearFilter;
+        // Check file name for year pattern (4 digits)
+        const match = (b.file_name || '').match(/20\d{2}/);
+        return match && match[0] === yearFilter;
+      });
     }
 
     // Tag filter
@@ -659,6 +683,16 @@ export default function ImportMonitoring() {
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
+              <select
+                className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+              >
+                <option value="all">All Years</option>
+                {allYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
               {allTags.length > 0 && (
                 <select
                   className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
@@ -749,10 +783,7 @@ export default function ImportMonitoring() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          {batch.data_year && <Badge variant="outline" className="text-[10px] h-4 px-1">{batch.data_year}</Badge>}
-                          <span className="truncate max-w-[200px]" title={batch.file_name}>{batch.file_name}</span>
-                        </div>
+                        <p className="text-sm text-slate-500">{batch.file_name}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

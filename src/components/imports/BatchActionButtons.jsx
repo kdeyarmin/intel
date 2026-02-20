@@ -29,16 +29,30 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handleResume = async () => {
     setIsActing(true);
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'processing',
-      paused_at: null,
-    });
-    await base44.functions.invoke('triggerImport', {
-      import_type: batch.import_type,
-      file_url: batch.file_url,
-    });
-    setIsActing(false);
-    onAction?.();
+    try {
+      const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+      
+      // Update status first
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'processing',
+        paused_at: null,
+      });
+
+      // Trigger resumption
+      await base44.functions.invoke('triggerImport', {
+        import_type: batch.import_type,
+        file_url: batch.file_url,
+        batch_id: batch.id,
+        resume_offset: offset,
+        year: batch.data_year // Ensure year is passed if available
+      });
+      
+      onAction?.();
+    } catch (error) {
+      console.error('Resume failed:', error);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   const handleCancel = async () => {
@@ -91,7 +105,9 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {isPaused && (
         <>
-          {/* Resume is handled by ResumeImportButton component */}
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={handleResume}>
+            <RefreshCw className="w-3 h-3" /> Resume
+          </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
