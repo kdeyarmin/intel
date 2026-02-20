@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 
 import BasicProfile from '../components/providers/BasicProfile';
 import ProviderKPIRow from '../components/providers/ProviderKPIRow';
@@ -32,11 +33,14 @@ import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 import ProviderAffiliations from '../components/providers/ProviderAffiliations';
 import AINetworkFitCard from '../components/providers/AINetworkFitCard';
 import ProviderMessaging from '../components/providers/ProviderMessaging';
+import ProviderImportHistory from '../components/providers/ProviderImportHistory';
+import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(window.location.search);
   const npi = searchParams.get('npi');
+  const fromPage = searchParams.get('from');
 
   const { data: providers = [], isLoading: loadingProvider } = useQuery({
     queryKey: ['provider', npi],
@@ -138,9 +142,16 @@ export default function ProviderDetail() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
-      <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back
-      </Button>
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        </Button>
+        <Link to={createPageUrl('Providers')}>
+          <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+            All Providers
+          </Button>
+        </Link>
+      </div>
 
       <div className="mb-4">
         <ComplianceDisclaimer />
@@ -247,6 +258,16 @@ export default function ProviderDetail() {
           <RelatedLocations npi={npi} />
 
           <DataQualityInsightsCard npi={npi} provider={provider} />
+
+          <ProviderAIQualityInsights
+            provider={provider}
+            locations={locations}
+            utilizations={utilizations}
+            referrals={referrals}
+            taxonomies={taxonomies}
+          />
+
+          <ProviderImportHistory npi={npi} />
 
           <AIDataEnrichmentPanel
             provider={provider}
