@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
     if (zipFunctionMap[import_type]) {
       // Route to the specialized ZIP handler, passing through all params
       // Fire-and-forget: launch the ZIP-based import asynchronously
-      base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
+      // Use user-scoped invoke so admin auth passes through
+      base44.functions.invoke(zipFunctionMap[import_type], {
         action: 'import',
         year: parseInt(year || new Date().getFullYear()),
         custom_url: file_url || undefined,
