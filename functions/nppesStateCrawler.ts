@@ -339,10 +339,19 @@ Deno.serve(async (req) => {
         if (effectiveAction === 'status') {
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
             const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'));
-            const completedStates = [], failedStates = [], processingStates = [];
+            
+            // Deduplicate: keep only the LATEST batch per state
+            const stateLatest = {};
             for (const b of crawlerBatches) {
                 const st = b.file_name.split('_')[1];
-                if (!st || st.length > 2) continue; // skip non-state entries
+                if (!st || st.length > 2 || !US_STATES.includes(st)) continue;
+                if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
+                    stateLatest[st] = b;
+                }
+            }
+            
+            const completedStates = [], failedStates = [], processingStates = [];
+            for (const [st, b] of Object.entries(stateLatest)) {
                 if (b.status === 'completed') completedStates.push(st);
                 else if (b.status === 'failed') failedStates.push(st);
                 else processingStates.push(st);
@@ -358,14 +367,23 @@ Deno.serve(async (req) => {
             });
         }
 
-        // Determine state
+        // Determine state — use latest batch per state to decide what's done
         let stateToProcess = target_state;
         if (!stateToProcess) {
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates = new Set();
+            // Deduplicate: only consider a state "done" if its LATEST batch is completed
+            const stateLatest = {};
             for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
                 const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st)) doneStates.add(st);
+                if (st && st.length <= 2 && US_STATES.includes(st)) {
+                    if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
+                        stateLatest[st] = b;
+                    }
+                }
+            }
+            const doneStates = new Set();
+            for (const [st, b] of Object.entries(stateLatest)) {
+                if (b.status === 'completed') doneStates.add(st);
             }
             stateToProcess = US_STATES.find(s => !doneStates.has(s));
         }
@@ -501,12 +519,20 @@ Deno.serve(async (req) => {
                 completed_at: new Date().toISOString(),
             });
 
-            // Determine next state
+            // Determine next state — only skip states whose LATEST batch is completed
             const crawlBatches2 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates2 = new Set();
+            const stateLatest2 = {};
             for (const b of crawlBatches2.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
                 const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st) && (b.status === 'completed' || b.status === 'failed')) doneStates2.add(st);
+                if (st && st.length <= 2 && US_STATES.includes(st)) {
+                    if (!stateLatest2[st] || new Date(b.created_date) > new Date(stateLatest2[st].created_date)) {
+                        stateLatest2[st] = b;
+                    }
+                }
+            }
+            const doneStates2 = new Set();
+            for (const [st, b] of Object.entries(stateLatest2)) {
+                if (b.status === 'completed') doneStates2.add(st);
             }
             const nextState = US_STATES.find(s => !doneStates2.has(s));
 
@@ -536,10 +562,18 @@ Deno.serve(async (req) => {
             } catch (e) {}
 
             const crawlBatches3 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates3 = new Set();
+            const stateLatest3 = {};
             for (const b of crawlBatches3.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
                 const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st) && (b.status === 'completed' || b.status === 'failed')) doneStates3.add(st);
+                if (st && st.length <= 2 && US_STATES.includes(st)) {
+                    if (!stateLatest3[st] || new Date(b.created_date) > new Date(stateLatest3[st].created_date)) {
+                        stateLatest3[st] = b;
+                    }
+                }
+            }
+            const doneStates3 = new Set();
+            for (const [st, b] of Object.entries(stateLatest3)) {
+                if (b.status === 'completed') doneStates3.add(st);
             }
             const nextState = US_STATES.find(s => !doneStates3.has(s));
 
