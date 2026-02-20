@@ -326,6 +326,14 @@ export default function ImportMonitoring() {
         </div>
         <div className="flex items-center gap-2">
           <Button
+            onClick={() => setShowExport(true)}
+            variant="outline"
+            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button
             onClick={() => setShowNewImport(true)}
             className="bg-cyan-600 hover:bg-cyan-700 text-white"
           >
