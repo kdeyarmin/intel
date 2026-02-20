@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck } from 'lucide-react';
+import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
@@ -23,6 +24,7 @@ export default function EmailSearchBot() {
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, setAllRunProgress] = useState(null);
+  const [activeSection, setActiveSection] = useState('search');
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
@@ -198,6 +200,27 @@ export default function EmailSearchBot() {
 
       <ComplianceDisclaimer />
 
+      {/* Mode Tabs */}
+      <Tabs value={activeSection} onValueChange={setActiveSection}>
+        <TabsList className="h-9 w-full grid grid-cols-2">
+          <TabsTrigger value="search" className="text-xs gap-1.5">
+            <Bot className="w-3.5 h-3.5" /> Email Search
+          </TabsTrigger>
+          <TabsTrigger value="campaign" className="text-xs gap-1.5">
+            <Sparkles className="w-3.5 h-3.5" /> AI Campaign Assistant
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="campaign" className="mt-4">
+          <AICampaignAssistant
+            providers={providers}
+            locations={allLocations}
+            taxonomies={allTaxonomies}
+          />
+        </TabsContent>
+
+        <TabsContent value="search" className="mt-4 space-y-5">
+
       {/* Stats Overview + Export */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="bg-slate-50">
@@ -360,13 +383,6 @@ export default function EmailSearchBot() {
         </Card>
       )}
 
-      {/* AI Campaign Assistant */}
-      <AICampaignAssistant
-        providers={providers}
-        locations={allLocations}
-        taxonomies={allTaxonomies}
-      />
-
       {/* Disclaimer */}
       <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
         <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
@@ -378,6 +394,9 @@ export default function EmailSearchBot() {
       </div>
 
       <DataSourcesFooter />
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
