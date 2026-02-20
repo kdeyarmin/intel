@@ -15,6 +15,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
   const [rowLimit, setRowLimit] = useState('');
   const [npiFilter, setNpiFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
+  const [sheetFilter, setSheetFilter] = useState('');
   const [dryRun, setDryRun] = useState(false);
   const [skipValidation, setSkipValidation] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -27,6 +28,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       setRowLimit('');
       setNpiFilter('');
       setStateFilter('');
+      setSheetFilter('');
       setDryRun(false);
       setSkipValidation(false);
     }
@@ -53,6 +55,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       } else if (retryMode === 'criteria') {
         retryParams.npi_filter = npiFilter || undefined;
         retryParams.state_filter = stateFilter || undefined;
+        retryParams.sheet_filter = sheetFilter || undefined;
       } else if (retryMode === 'resume') {
         retryParams.row_offset = batch.imported_rows || 0;
         retryParams.resume_from = batch.imported_rows || 0;
@@ -84,6 +87,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         } else if (retryMode === 'resume') {
           invokeParams.row_offset = batch.imported_rows || 0;
         }
+        if (retryMode === 'criteria') {
+          if (npiFilter) invokeParams.npi_filter = npiFilter;
+          if (stateFilter) invokeParams.state_filter = stateFilter;
+        }
+        if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+        if (skipValidation) invokeParams.skip_validation = true;
         await base44.functions.invoke('triggerImport', invokeParams);
       } catch (e) {
         console.warn('triggerImport call failed, batch was still created:', e.message);
@@ -124,9 +133,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
           {/* Retry mode tabs */}
           <Tabs value={retryMode} onValueChange={setRetryMode}>
-            <TabsList className="grid grid-cols-4 h-8 bg-slate-800/50">
+            <TabsList className="grid grid-cols-5 h-8 bg-slate-800/50">
               <TabsTrigger value="full" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Full</TabsTrigger>
               <TabsTrigger value="row_range" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Row Range</TabsTrigger>
+              <TabsTrigger value="criteria" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Criteria</TabsTrigger>
               <TabsTrigger value="failed_only" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Failed Only</TabsTrigger>
               <TabsTrigger value="resume" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200" disabled={!batch.imported_rows}>Resume</TabsTrigger>
             </TabsList>
@@ -175,6 +185,44 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               )}
             </TabsContent>
 
+            <TabsContent value="criteria" className="mt-3 space-y-3">
+              <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-3 text-xs text-violet-400 flex items-start gap-2">
+                <Filter className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                <span>Filter the source data by NPI, state, or sheet before processing. Only matching rows will be imported.</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">NPI Filter (comma-separated)</Label>
+                  <Input
+                    value={npiFilter}
+                    onChange={(e) => setNpiFilter(e.target.value)}
+                    placeholder="1234567890, 0987654321"
+                    className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">State Filter</Label>
+                  <Input
+                    value={stateFilter}
+                    onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
+                    placeholder="NY"
+                    maxLength={2}
+                    className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-400">Sheet Filter</Label>
+                <Input
+                  value={sheetFilter}
+                  onChange={(e) => setSheetFilter(e.target.value)}
+                  placeholder="e.g. MA4, Sheet1"
+                  className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
+                />
+                <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports</p>
+              </div>
+            </TabsContent>
+
             <TabsContent value="failed_only" className="mt-3 space-y-3">
               {hasInvalidRows ? (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 flex items-start gap-2">
@@ -200,39 +248,19 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             </TabsContent>
           </Tabs>
 
-          {/* NPI/State criteria filter (shown for all modes) */}
-          <div className="space-y-2">
-            <button 
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300"
-              onClick={() => setNpiFilter(prev => prev === null ? '' : prev === '' ? null : '')}
-            >
-              <Filter className="w-3 h-3" /> 
-              {npiFilter !== null && npiFilter !== undefined ? 'Hide' : 'Show'} NPI/State filter (optional)
-            </button>
-            {npiFilter !== null && npiFilter !== undefined && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Filter by NPIs (comma-separated)</Label>
-                  <Input
-                    value={npiFilter || ''}
-                    onChange={(e) => setNpiFilter(e.target.value)}
-                    placeholder="1234567890, 0987654321"
-                    className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Filter by state</Label>
-                  <Input
-                    value={stateFilter}
-                    onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
-                    placeholder="AK"
-                    maxLength={2}
-                    className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Sheet filter (visible for all modes) */}
+          {retryMode !== 'criteria' && (
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-400">Sheet Filter (optional)</Label>
+              <Input
+                value={sheetFilter}
+                onChange={(e) => setSheetFilter(e.target.value)}
+                placeholder="e.g. MA4, Sheet1"
+                className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
+              />
+              <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
+            </div>
+          )}
 
           {/* Options */}
           <div className="space-y-2 border-t border-slate-700/50 pt-3">

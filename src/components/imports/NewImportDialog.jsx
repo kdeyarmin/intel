@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
   Upload, FileText, Database, TrendingUp, Activity,
-  Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus
+  Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus, Settings
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
@@ -50,6 +50,13 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [dryRun, setDryRun] = useState(false);
+  const [skipValidation, setSkipValidation] = useState(false);
+  const [rowOffset, setRowOffset] = useState('');
+  const [rowLimit, setRowLimit] = useState('');
+  const [npiFilter, setNpiFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+  const [sheetFilter, setSheetFilter] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -66,6 +73,13 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setTags([]);
     setTagInput('');
     setDryRun(false);
+    setSkipValidation(false);
+    setRowOffset('');
+    setRowLimit('');
+    setNpiFilter('');
+    setStateFilter('');
+    setSheetFilter('');
+    setShowAdvanced(false);
     setYear(String(new Date().getFullYear()));
     setResult(null);
     setError(null);
@@ -104,6 +118,14 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setError(null);
     setResult(null);
 
+    const retryParams = {};
+    if (skipValidation) retryParams.skip_validation = true;
+    if (rowOffset) retryParams.row_offset = Number(rowOffset);
+    if (rowLimit) retryParams.row_limit = Number(rowLimit);
+    if (npiFilter) retryParams.npi_filter = npiFilter;
+    if (stateFilter) retryParams.state_filter = stateFilter;
+    if (sheetFilter) retryParams.sheet_filter = sheetFilter;
+
     const batchData = {
       import_type: selectedType.id,
       file_name: uploadedFile || `manual_${selectedType.id}_${Date.now()}`,
@@ -113,17 +135,23 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       category: category || selectedType.cat || '',
       tags: tags.length > 0 ? tags : ['manual-import'],
       retry_count: 0,
+      retry_params: Object.keys(retryParams).length > 0 ? retryParams : undefined,
     };
 
     await base44.entities.ImportBatch.create(batchData);
 
     try {
-      const response = await base44.functions.invoke('triggerImport', {
+      const invokeParams = {
         import_type: selectedType.id,
         file_url: fileUrl || undefined,
         dry_run: dryRun,
         year: parseInt(year) || new Date().getFullYear(),
-      });
+      };
+      if (rowOffset) invokeParams.row_offset = Number(rowOffset);
+      if (rowLimit) invokeParams.row_limit = Number(rowLimit);
+      if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+
+      const response = await base44.functions.invoke('triggerImport', invokeParams);
       setResult({ success: true, data: response.data });
       setStep(3);
     } catch (e) {
@@ -308,13 +336,96 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               )}
             </div>
 
-            {/* Dry run */}
-            <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
-              <div>
-                <Label className="text-sm text-slate-300">Dry Run</Label>
-                <p className="text-[10px] text-slate-500">Validate only — no data will be written</p>
+            {/* Processing Options */}
+            <div className="space-y-3 border-t border-slate-700/50 pt-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm text-slate-300">Dry Run</Label>
+                  <p className="text-[10px] text-slate-500">Validate only — no data will be written</p>
+                </div>
+                <Switch checked={dryRun} onCheckedChange={setDryRun} />
               </div>
-              <Switch checked={dryRun} onCheckedChange={setDryRun} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm text-slate-300">Skip Validation</Label>
+                  <p className="text-[10px] text-slate-500">Import directly without row-level validation</p>
+                </div>
+                <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
+              </div>
+            </div>
+
+            {/* Advanced Parameters */}
+            <div className="border-t border-slate-700/50 pt-3">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 mb-3"
+              >
+                <Settings className="w-3 h-3" />
+                {showAdvanced ? 'Hide' : 'Show'} Advanced Parameters
+              </button>
+              {showAdvanced && (
+                <div className="space-y-3 bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-400">Row Offset</Label>
+                      <Input
+                        type="number"
+                        value={rowOffset}
+                        onChange={(e) => setRowOffset(e.target.value)}
+                        min={0}
+                        placeholder="0 (start)"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                      />
+                      <p className="text-[10px] text-slate-600">Skip N rows from the start</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-400">Row Limit</Label>
+                      <Input
+                        type="number"
+                        value={rowLimit}
+                        onChange={(e) => setRowLimit(e.target.value)}
+                        min={1}
+                        placeholder="All rows"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                      />
+                      <p className="text-[10px] text-slate-600">Max rows to process</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-400">NPI Filter</Label>
+                      <Input
+                        value={npiFilter}
+                        onChange={(e) => setNpiFilter(e.target.value)}
+                        placeholder="1234567890, 0987654321"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                      />
+                      <p className="text-[10px] text-slate-600">Comma-separated NPIs</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-400">State Filter</Label>
+                      <Input
+                        value={stateFilter}
+                        onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
+                        placeholder="NY"
+                        maxLength={2}
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                      />
+                      <p className="text-[10px] text-slate-600">2-letter state code</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Sheet Filter</Label>
+                    <Input
+                      value={sheetFilter}
+                      onChange={(e) => setSheetFilter(e.target.value)}
+                      placeholder="e.g. MA4, Sheet1"
+                      className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                    />
+                    <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
