@@ -1,13 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2, XCircle, Clock, Loader2, Pause, FileText,
-  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck
+  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
 } from 'lucide-react';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
 import ErrorCategoryDisplay from './ErrorCategoryDisplay';
 import ValidationRuleResults from './ValidationRuleResults';
+import ErrorDistributionChart from './ErrorDistributionChart';
+import ErrorFilterBar from './ErrorFilterBar';
+import AIRuleSuggestions from './AIRuleSuggestions';
+import { categorizeError } from './errorCategories';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -99,7 +103,46 @@ function ProgressBreakdown({ batch }) {
   );
 }
 
+function classifySeverity(msg) {
+  const lower = (msg || '').toLowerCase();
+  if (lower.includes('flag')) return 'flag';
+  if (lower.includes('warn') || lower.includes('length') || lower.includes('duplicate') || lower.includes('unique')) return 'warn';
+  return 'reject';
+}
+
+function FilteredErrors({ errors, filters, batchName }) {
+  const filtered = useMemo(() => {
+    return errors.filter(err => {
+      if (filters.severity) {
+        const sev = classifySeverity(err.message);
+        if (sev !== filters.severity) return false;
+      }
+      if (filters.category) {
+        const cat = categorizeError(err.message);
+        if (cat !== filters.category) return false;
+      }
+      return true;
+    });
+  }, [errors, filters]);
+
+  const hasFilters = filters.severity || filters.category;
+
+  return (
+    <>
+      {hasFilters && (
+        <p className="text-xs text-slate-500">
+          Showing {filtered.length} of {errors.length} error{errors.length !== 1 ? 's' : ''}
+        </p>
+      )}
+      <ErrorSummaryPanel errors={filtered} batchName={batchName} />
+      <ErrorCategoryDisplay errors={filtered} />
+    </>
+  );
+}
+
 export default function BatchDetailPanel({ batch }) {
+  const [errorFilters, setErrorFilters] = useState({ severity: null, category: null });
+
   if (!batch) return null;
 
   const columnFields = useMemo(() => {
@@ -267,12 +310,33 @@ export default function BatchDetailPanel({ batch }) {
         <ValidationRuleResults batch={batch} />
       </div>
 
-      {/* Errors */}
+      {/* Error Visualization & Filtering */}
       {batch.error_samples?.length > 0 && (
         <>
-          <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} />
-          <ErrorCategoryDisplay errors={batch.error_samples} />
+          <ErrorDistributionChart errors={batch.error_samples} />
+
+          <ErrorFilterBar
+            filters={errorFilters}
+            onFilterChange={setErrorFilters}
+            errorCategories={[...new Set(batch.error_samples.map(e => categorizeError(e.message)))]}
+          />
+
+          <FilteredErrors
+            errors={batch.error_samples}
+            filters={errorFilters}
+            batchName={batch.file_name}
+          />
         </>
+      )}
+
+      {/* AI Rule Suggestions for failed batches */}
+      {batch.status === 'failed' && batch.import_type && (
+        <div>
+          <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400" /> Suggested Rules
+          </h4>
+          <AIRuleSuggestions importType={batch.import_type} />
+        </div>
       )}
     </div>
   );
