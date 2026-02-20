@@ -65,7 +65,7 @@ export default function EmailCoverageWidget({ providers }) {
             <span>{withEmail} of {total} providers have email</span>
             <span>{coveragePct}%</span>
           </div>
-          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{ width: `${coveragePct}%` }} />
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function EmailCoverageWidget({ providers }) {
             <span>Search progress</span>
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>
-          <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
             <div className="h-full bg-violet-500/70 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
           </div>
         </div>

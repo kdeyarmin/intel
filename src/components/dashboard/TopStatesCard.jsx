@@ -39,7 +39,7 @@ export default function TopStatesCard({ topStates, loading }) {
                     </div>
                     <span className="text-xs font-medium text-slate-400">{count.toLocaleString()}</span>
                   </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${colors[index] || 'bg-slate-600'} transition-all duration-500`}
                       style={{ width: `${pct}%` }}
