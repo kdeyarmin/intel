@@ -20,6 +20,7 @@ import DQAssistant from '../components/dataQuality/DQAssistant';
 import ProfileCompletenessChart from '../components/dataQuality/ProfileCompletenessChart';
 import StateQualityBreakdown from '../components/dataQuality/StateQualityBreakdown';
 import DuplicateStatsWidget from '../components/dataQuality/DuplicateStatsWidget';
+import ProactiveDQAlerts from '../components/dataQuality/ProactiveDQAlerts';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function DataQuality() {
@@ -179,6 +180,9 @@ export default function DataQuality() {
           <TabsTrigger value="assistant" className="gap-1.5">
             <Bot className="w-3.5 h-3.5" /> AI Assistant
           </TabsTrigger>
+          <TabsTrigger value="predictive" className="gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5" /> Predictive Alerts
+          </TabsTrigger>
           <TabsTrigger value="proactive" className="gap-1.5">
             <ShieldAlert className="w-3.5 h-3.5" /> AI Scanner
           </TabsTrigger>
@@ -211,6 +215,10 @@ export default function DataQuality() {
 
         <TabsContent value="assistant" className="mt-4">
           <DQAssistant />
+        </TabsContent>
+
+        <TabsContent value="predictive" className="mt-4">
+          <ProactiveDQAlerts />
         </TabsContent>
 
         <TabsContent value="proactive" className="mt-4">

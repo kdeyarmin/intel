@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, Crown, AlertTriangle, MapPin, Stethoscope, TrendingUp, Network } from 'lucide-react';
 import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
+import StrategicPartnerFinder from './StrategicPartnerFinder';
 
 const KEY_SPECIALTIES = [
   'Internal Medicine', 'Family Medicine', 'Cardiology', 'Orthopedic Surgery',
@@ -275,6 +276,9 @@ Provide:
           )}
         </CardContent>
       </Card>
+
+      {/* Strategic Partner Discovery */}
+      <StrategicPartnerFinder nodes={nodes} edges={edges} locations={locations} />
 
       {/* Predictive Network Analysis */}
       <PredictiveNetworkAnalysis nodes={nodes} edges={edges} locations={locations} />

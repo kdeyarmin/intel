@@ -30,6 +30,8 @@ import AIRelatedProviders from '../components/ai/AIRelatedProviders';
 import AIMarketInsights from '../components/ai/AIMarketInsights';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 import ProviderAffiliations from '../components/providers/ProviderAffiliations';
+import AINetworkFitCard from '../components/providers/AINetworkFitCard';
+import ProviderMessaging from '../components/providers/ProviderMessaging';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -220,10 +222,24 @@ export default function ProviderDetail() {
 
         {/* Sidebar - Right 1/3 */}
         <div className="space-y-6">
+          <AINetworkFitCard
+            provider={provider}
+            taxonomy={taxonomies}
+            utilization={latestUtil}
+            referrals={latestRef}
+            score={score}
+            locations={locations}
+          />
+
           <ReferralLikelihoodSignals
             utilization={latestUtil}
             referrals={latestRef}
             taxonomy={taxonomies}
+          />
+
+          <ProviderMessaging
+            provider={provider}
+            locations={locations}
           />
 
           <TerritoryIntelligence location={primaryLocation} />
