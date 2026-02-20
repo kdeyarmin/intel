@@ -67,9 +67,18 @@ const NAV_SECTIONS = [
 
 export default function AppLayout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Auto-expand sidebar on large screens
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    setSidebarOpen(mq.matches);
+    const handler = (e) => setSidebarOpen(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -96,8 +105,13 @@ export default function AppLayout({ children, currentPageName }) {
         .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(99,116,158,0.6); }
         .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(99,116,158,0.4) transparent; }
       `}</style>
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-52' : 'w-14'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
           {sidebarOpen ? (
@@ -212,8 +226,17 @@ export default function AppLayout({ children, currentPageName }) {
 
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-[#0b1120] border-b border-slate-800/60 px-3 py-2 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
+          <Menu className="w-5 h-5" />
+        </Button>
+        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent' }} />
+        <h1 className="text-sm font-bold text-white">CareMetric <span className="text-cyan-400">AI</span></h1>
+      </div>
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-[#0f1729] flex flex-col">
+      <main className="flex-1 overflow-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0">
         <div className="flex-1">
           {children}
         </div>
