@@ -276,8 +276,17 @@ function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
 Deno.serve(async (req) => {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (user?.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+  
+  let userEmail = 'system@service';
+  try {
+    const u = await base44.auth.me();
+    if (u) {
+      userEmail = u.email || userEmail;
+      const isService = (u.email || '').includes('service+') || (u.email || '').includes('@no-reply.base44.com');
+      if (!isService && u.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+  } catch (e) { /* service role call */ }
+  const user = { email: userEmail };
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', year = 2021, dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;

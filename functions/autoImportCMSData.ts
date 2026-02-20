@@ -26,11 +26,19 @@ Deno.serve(async (req) => {
 
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (user?.role !== 'admin') {
-            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-        }
+        
+        let userEmail = 'system@service';
+        try {
+            const u = await base44.auth.me();
+            if (u) {
+                userEmail = u.email || userEmail;
+                const isService = (u.email || '').includes('service+') || (u.email || '').includes('@no-reply.base44.com');
+                if (!isService && u.role !== 'admin') {
+                    return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+                }
+            }
+        } catch (e) { /* service role call */ }
+        const user = { email: userEmail };
 
         const payload = await req.json();
         const { import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null } = payload;
