@@ -66,8 +66,11 @@ Deno.serve(async (req) => {
                     }
                 } else {
                     // CMS data import — use triggerImport which has built-in URLs
+                    // Resolve aliases: cms_utilization -> provider_service_utilization
+                    const ALIASES = { cms_utilization: 'provider_service_utilization' };
+                    const resolvedType = ALIASES[schedule.import_type] || schedule.import_type;
                     const res = await base44.asServiceRole.functions.invoke('triggerImport', {
-                        import_type: schedule.import_type,
+                        import_type: resolvedType,
                         file_url: schedule.api_url || undefined,
                         year: now.getFullYear(),
                         dry_run: false,
