@@ -102,6 +102,14 @@ export default function DataImports() {
     return null;
   };
 
+  // Helper: get a mapped column value from a row
+  const getMappedValue = (row, requiredColName, fallbackColName) => {
+    const csvCol = columnMapping[requiredColName];
+    if (csvCol && row[csvCol] !== undefined) return row[csvCol];
+    if (fallbackColName && row[fallbackColName] !== undefined) return row[fallbackColName];
+    return '';
+  };
+
   const handleValidate = async () => {
     if (!file) return;
 
@@ -110,25 +118,39 @@ export default function DataImports() {
     try {
       const user = await base44.auth.me();
       
-      const file_url = fileUrl || (await base44.integrations.Core.UploadFile({ file })).file_url;
+      // Use already-uploaded URL from FileParser, or upload now
+      let uploadedUrl = fileUrl;
+      if (!uploadedUrl) {
+        const uploadResult = await base44.integrations.Core.UploadFile({ file });
+        uploadedUrl = uploadResult.file_url;
+      }
+      
       setProcessingStatus('Creating import batch...');
       
       const batch = await base44.entities.ImportBatch.create({
         import_type: selectedType.id,
         file_name: file.name,
-        file_url,
+        file_url: uploadedUrl,
         status: 'validating',
         dry_run: dryRun,
         column_mapping: columnMapping,
       });
 
-      setProcessingStatus('Parsing file...');
-      const response = await fetch(file_url);
+      setProcessingStatus('Downloading file for parsing...');
+      const response = await fetch(uploadedUrl);
       const text = await response.text();
       const lines = text.split('\n').filter(l => l.trim());
-      const headers = parseCSVLine(lines[0]);
+      if (lines.length < 2) {
+        await base44.entities.ImportBatch.update(batch.id, { status: 'failed', error_samples: [{ message: 'File has no data rows' }] });
+        setCurrentBatch({ ...batch, status: 'failed', error_samples: [{ message: 'File has no data rows' }] });
+        setStep('complete');
+        return;
+      }
       
-      setProcessingStatus(`Validating ${lines.length - 1} rows...`);
+      const headers = parseCSVLine(lines[0]);
+      const totalDataRows = lines.length - 1;
+      
+      setProcessingStatus(`Validating ${totalDataRows} rows...`);
       
       let validRows = 0;
       let invalidRows = 0;
@@ -137,44 +159,37 @@ export default function DataImports() {
       const validData = [];
       const seenNPIs = new Set();
 
-      for (let i = 1; i < lines.length && i < 10001; i++) {
-        const values = parseCSVLine(lines[i]);
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = values[idx]; });
+      const npiBasedTypes = ['nppes_monthly', 'cms_utilization', 'cms_part_d', 'cms_order_referring', 'pa_home_health', 'hospice_providers', 'provider_service_utilization'];
+      const requiresNPI = npiBasedTypes.includes(selectedType.id);
 
-        // Build mapped data using column mapping
-        const mappedData = {};
-        Object.entries(columnMapping).forEach(([requiredCol, csvCol]) => {
-          mappedData[requiredCol] = row[csvCol];
-        });
+      // Parse ALL rows (no 10k cap)
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length < 2) continue; // skip blank/malformed lines
+        
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
         const npi = getNPIFromRow(row);
-        
-        // Some import types don't use NPI (nursing_home_chains, cms_service_utilization, etc.)
-        const npiBasedTypes = ['nppes_monthly', 'cms_utilization', 'cms_part_d', 'cms_order_referring', 'pa_home_health', 'hospice_providers', 'provider_service_utilization'];
-        const requiresNPI = npiBasedTypes.includes(selectedType.id);
 
         if (requiresNPI && !validateNPI(npi)) {
           invalidRows++;
           if (errorSamples.length < 10) {
-            errorSamples.push({
-              row: i + 1,
-              npi: npi || 'missing',
-              message: 'Invalid NPI format (must be 10 digits)',
-            });
+            errorSamples.push({ row: i + 1, npi: npi || 'missing', message: 'Invalid NPI format (must be 10 digits)' });
           }
         } else if (requiresNPI && seenNPIs.has(npi)) {
+          // Duplicate within THIS file — skip
           duplicateRows++;
         } else {
           if (npi) seenNPIs.add(npi);
           validRows++;
-          validData.push({ ...row, ...mappedData, npi });
+          validData.push({ ...row, _npi: npi }); // store full row + extracted NPI
         }
       }
 
       await base44.entities.ImportBatch.update(batch.id, {
         status: dryRun ? 'completed' : 'processing',
-        total_rows: lines.length - 1,
+        total_rows: totalDataRows,
         valid_rows: validRows,
         invalid_rows: invalidRows,
         duplicate_rows: duplicateRows,
@@ -184,15 +199,15 @@ export default function DataImports() {
       if (!dryRun && validData.length > 0) {
         setProcessingStatus(`Importing ${validData.length} records...`);
         await importData(selectedType.id, validData, batch.id);
-      } else {
+      } else if (dryRun) {
         await base44.entities.ImportBatch.update(batch.id, {
           status: 'completed',
           completed_at: new Date().toISOString(),
         });
       }
 
-      const updatedBatch = await base44.entities.ImportBatch.filter({ id: batch.id });
-      setCurrentBatch(updatedBatch[0]);
+      const updatedBatches = await base44.entities.ImportBatch.filter({ id: batch.id });
+      setCurrentBatch(updatedBatches[0] || batch);
 
       await base44.entities.AuditEvent.create({
         event_type: 'import',
@@ -209,6 +224,7 @@ export default function DataImports() {
       setStep('complete');
       queryClient.invalidateQueries();
     } catch (error) {
+      console.error('Import failed:', error);
       alert('Import failed: ' + error.message);
     } finally {
       setProcessing(false);
@@ -219,46 +235,82 @@ export default function DataImports() {
   const importData = async (importType, data, batchId) => {
     let importedCount = 0;
     let updatedCount = 0;
-    const CHUNK_SIZE = 50;
+    let skippedCount = 0;
+    const CHUNK_SIZE = 25; // Smaller chunks for reliability
 
     if (importType === 'nppes_monthly') {
-      // Bulk create all providers
-      const providerRecords = data.map(row => ({
-        npi: row.npi,
-        entity_type: row[columnMapping['Entity Type Code'] || 'Entity Type Code'] === '1' ? 'Individual' : 'Organization',
-        first_name: (row[columnMapping['Provider First Name'] || 'Provider First Name'] || '').trim(),
-        last_name: (row[columnMapping['Provider Last Name (Legal Name)'] || 'Provider Last Name (Legal Name)'] || '').trim(),
-        credential: row[columnMapping['Provider Credential Text'] || 'Provider Credential Text'] || '',
-        status: 'Active',
-        last_update_date: new Date().toISOString(),
-        needs_nppes_enrichment: false,
-      }));
+      // Build provider records from raw CSV rows
+      const providerRecords = data.map(row => {
+        const npi = row._npi;
+        const entityCode = getMappedValue(row, 'Entity Type Code', 'Entity Type Code');
+        const isIndividual = entityCode === '1';
+        const deactivationDate = (row[columnMapping['NPI Deactivation Date']] || row['NPI Deactivation Date'] || '').trim();
+        
+        const record = {
+          npi,
+          entity_type: isIndividual ? 'Individual' : 'Organization',
+          first_name: getMappedValue(row, 'Provider First Name', 'Provider First Name').trim(),
+          last_name: getMappedValue(row, 'Provider Last Name (Legal Name)', 'Provider Last Name (Legal Name)').trim(),
+          middle_name: (row[columnMapping['Provider Middle Name']] || row['Provider Middle Name'] || '').trim(),
+          credential: (row[columnMapping['Provider Credential Text']] || row['Provider Credential Text'] || '').trim(),
+          gender: (row[columnMapping['Provider Gender Code']] || row['Provider Gender Code'] || '').trim(),
+          organization_name: isIndividual ? '' : (row[columnMapping['Provider Organization Name (Legal Business Name)']] || row['Provider Organization Name (Legal Business Name)'] || '').trim(),
+          enumeration_date: (row[columnMapping['Provider Enumeration Date']] || row['Provider Enumeration Date'] || '').trim(),
+          last_update_date: (row[columnMapping['Last Update Date']] || row['Last Update Date'] || '').trim(),
+          status: deactivationDate ? 'Deactivated' : 'Active',
+          needs_nppes_enrichment: false,
+        };
+        
+        // Normalize gender to match schema enum
+        if (record.gender !== 'M' && record.gender !== 'F') record.gender = '';
+        
+        return record;
+      });
 
+      // Process in chunks: for each chunk, look up existing NPIs first, then create/update
       for (let i = 0; i < providerRecords.length; i += CHUNK_SIZE) {
         const chunk = providerRecords.slice(i, i + CHUNK_SIZE);
-        setProcessingStatus(`Importing providers ${i + 1}-${Math.min(i + CHUNK_SIZE, providerRecords.length)} of ${providerRecords.length}...`);
-        try {
-          await base44.entities.Provider.bulkCreate(chunk);
-          importedCount += chunk.length;
-        } catch (error) {
-          // If bulk fails, try one-by-one for this chunk
-          console.error('Bulk create failed, trying individual:', error.message);
-          for (const record of chunk) {
-            try {
-              await base44.entities.Provider.create(record);
-              importedCount++;
-            } catch (e) {
-              // Likely a duplicate — try update
+        setProcessingStatus(`Processing providers ${i + 1}-${Math.min(i + CHUNK_SIZE, providerRecords.length)} of ${providerRecords.length}...`);
+        
+        // Separate into new vs existing by trying to look up each NPI
+        const toCreate = [];
+        const toUpdate = [];
+        
+        for (const record of chunk) {
+          const existing = await base44.entities.Provider.filter({ npi: record.npi });
+          if (existing.length === 0) {
+            toCreate.push(record);
+          } else {
+            // Update existing record
+            toUpdate.push({ id: existing[0].id, data: record });
+          }
+        }
+        
+        // Bulk create new records
+        if (toCreate.length > 0) {
+          try {
+            await base44.entities.Provider.bulkCreate(toCreate);
+            importedCount += toCreate.length;
+          } catch (bulkErr) {
+            console.error('Bulk create failed, trying one-by-one:', bulkErr.message);
+            for (const record of toCreate) {
               try {
-                const existing = await base44.entities.Provider.filter({ npi: record.npi });
-                if (existing.length > 0) {
-                  await base44.entities.Provider.update(existing[0].id, record);
-                  updatedCount++;
-                }
-              } catch (e2) {
-                console.error('Failed to create/update provider:', record.npi, e2.message);
+                await base44.entities.Provider.create(record);
+                importedCount++;
+              } catch (e) {
+                console.error('Individual create failed for NPI:', record.npi, e.message);
               }
             }
+          }
+        }
+        
+        // Update existing records one by one
+        for (const { id, data: updateData } of toUpdate) {
+          try {
+            await base44.entities.Provider.update(id, updateData);
+            updatedCount++;
+          } catch (e) {
+            console.error('Update failed for provider:', updateData.npi, e.message);
           }
         }
       }
