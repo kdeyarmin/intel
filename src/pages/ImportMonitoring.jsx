@@ -885,6 +885,12 @@ export default function ImportMonitoring() {
         onOpenChange={setShowNewImport}
         onImportStarted={refreshBatches}
       />
+
+      {/* Export Dialog */}
+      <ExportImportData
+        open={showExport}
+        onOpenChange={setShowExport}
+      />
     </div>
   );
 }
