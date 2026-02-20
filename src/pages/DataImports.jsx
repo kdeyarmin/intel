@@ -14,15 +14,40 @@ import ValidationResults from '../components/imports/ValidationResults';
 import FileParser from '../components/imports/FileParser';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
+// Simple CSV line parser that handles quoted fields with commas
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 export default function DataImports() {
-  const [step, setStep] = useState('select'); // select, upload, map, validate, complete
+  const [step, setStep] = useState('select');
   const [selectedType, setSelectedType] = useState(null);
   const [file, setFile] = useState(null);
   const [fileUrl, setFileUrl] = useState(null);
   const [parseMode, setParsedMode] = useState(null);
   const [csvColumns, setCsvColumns] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
-  const [dryRun, setDryRun] = useState(true);
+  const [dryRun, setDryRun] = useState(false);
   const [currentBatch, setCurrentBatch] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -48,12 +73,11 @@ export default function DataImports() {
     setParsedMode(parseMode);
     setCsvColumns(headers);
 
-    // Auto-map columns that match exactly (case-insensitive)
     const autoMapping = {};
-    const normalizedHeaders = headers.map((h) => ({ original: h, normalized: h.toLowerCase() }));
+    const normalizedHeaders = headers.map((h) => ({ original: h, normalized: h.toLowerCase().trim() }));
 
     selectedType.requiredColumns.forEach(requiredCol => {
-      const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase());
+      const match = normalizedHeaders.find(h => h.normalized === requiredCol.toLowerCase().trim());
       if (match) {
         autoMapping[requiredCol] = match.original;
       }
@@ -61,6 +85,21 @@ export default function DataImports() {
 
     setColumnMapping(autoMapping);
     setStep('map');
+  };
+
+  // Get NPI value from a row using the column mapping
+  const getNPIFromRow = (row) => {
+    // Check mapped NPI column first
+    const npiRequiredCol = selectedType.requiredColumns.find(c => c.toUpperCase() === 'NPI' || c === 'Rndrng_NPI');
+    if (npiRequiredCol && columnMapping[npiRequiredCol]) {
+      const val = row[columnMapping[npiRequiredCol]];
+      if (val) return String(val).trim();
+    }
+    // Fallback: try common NPI column names directly
+    for (const key of ['NPI', 'npi', 'Npi', 'Rndrng_NPI', 'rndrng_npi']) {
+      if (row[key]) return String(row[key]).trim();
+    }
+    return null;
   };
 
   const handleValidate = async () => {
@@ -71,11 +110,9 @@ export default function DataImports() {
     try {
       const user = await base44.auth.me();
       
-      // Use already-uploaded file URL from FileParser, or upload now
       const file_url = fileUrl || (await base44.integrations.Core.UploadFile({ file })).file_url;
       setProcessingStatus('Creating import batch...');
       
-      // Create batch record
       const batch = await base44.entities.ImportBatch.create({
         import_type: selectedType.id,
         file_name: file.name,
@@ -85,12 +122,11 @@ export default function DataImports() {
         column_mapping: columnMapping,
       });
 
-      // Parse and validate CSV
-      setProcessingStatus('Parsing CSV file...');
+      setProcessingStatus('Parsing file...');
       const response = await fetch(file_url);
       const text = await response.text();
       const lines = text.split('\n').filter(l => l.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const headers = parseCSVLine(lines[0]);
       
       setProcessingStatus(`Validating ${lines.length - 1} rows...`);
       
@@ -101,26 +137,24 @@ export default function DataImports() {
       const validData = [];
       const seenNPIs = new Set();
 
-      // Get existing NPIs for deduplication check
-      const existingProviders = await base44.entities.Provider.list();
-      const existingNPIs = new Set(existingProviders.map(p => p.npi));
-
       for (let i = 1; i < lines.length && i < 10001; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCSVLine(lines[i]);
         const row = {};
         headers.forEach((h, idx) => { row[h] = values[idx]; });
 
-        // Get mapped values
+        // Build mapped data using column mapping
         const mappedData = {};
         Object.entries(columnMapping).forEach(([requiredCol, csvCol]) => {
           mappedData[requiredCol] = row[csvCol];
         });
 
-        // Validate NPI
-        const npiCol = columnMapping['NPI'] || columnMapping['Npi'] || 'NPI';
-        const npi = row[npiCol];
+        const npi = getNPIFromRow(row);
         
-        if (!validateNPI(npi)) {
+        // Some import types don't use NPI (nursing_home_chains, cms_service_utilization, etc.)
+        const npiBasedTypes = ['nppes_monthly', 'cms_utilization', 'cms_part_d', 'cms_order_referring', 'pa_home_health', 'hospice_providers', 'provider_service_utilization'];
+        const requiresNPI = npiBasedTypes.includes(selectedType.id);
+
+        if (requiresNPI && !validateNPI(npi)) {
           invalidRows++;
           if (errorSamples.length < 10) {
             errorSamples.push({
@@ -129,20 +163,15 @@ export default function DataImports() {
               message: 'Invalid NPI format (must be 10 digits)',
             });
           }
-        } else if (seenNPIs.has(npi)) {
+        } else if (requiresNPI && seenNPIs.has(npi)) {
           duplicateRows++;
         } else {
-          seenNPIs.add(npi);
+          if (npi) seenNPIs.add(npi);
           validRows++;
-          validData.push({ 
-            ...mappedData, 
-            npi,
-            isDuplicate: existingNPIs.has(npi)
-          });
+          validData.push({ ...row, ...mappedData, npi });
         }
       }
 
-      // Update batch with results
       await base44.entities.ImportBatch.update(batch.id, {
         status: dryRun ? 'completed' : 'processing',
         total_rows: lines.length - 1,
@@ -152,23 +181,19 @@ export default function DataImports() {
         error_samples: errorSamples,
       });
 
-      // If not dry run, import data
       if (!dryRun && validData.length > 0) {
         setProcessingStatus(`Importing ${validData.length} records...`);
         await importData(selectedType.id, validData, batch.id);
       } else {
-        setProcessingStatus('Finalizing...');
         await base44.entities.ImportBatch.update(batch.id, {
           status: 'completed',
           completed_at: new Date().toISOString(),
         });
       }
 
-      // Reload batch
       const updatedBatch = await base44.entities.ImportBatch.filter({ id: batch.id });
       setCurrentBatch(updatedBatch[0]);
 
-      // Log audit
       await base44.entities.AuditEvent.create({
         event_type: 'import',
         user_email: user.email,
@@ -191,192 +216,293 @@ export default function DataImports() {
     }
   };
 
-  // Normalize text for matching
-  const normalize = (text) => {
-    if (!text) return '';
-    return text.toLowerCase().trim().replace(/[^\w\s]/g, '');
-  };
-
   const importData = async (importType, data, batchId) => {
     let importedCount = 0;
     let updatedCount = 0;
+    const CHUNK_SIZE = 50;
 
     if (importType === 'nppes_monthly') {
-      for (const row of data) {
-        try {
-          const existing = await base44.entities.Provider.filter({ npi: row.npi });
-          
-          const providerData = {
-            npi: row.npi,
-            entity_type: row['Entity Type Code'] === '1' ? 'Individual' : 'Organization',
-            first_name: normalize(row['Provider First Name']),
-            last_name: normalize(row['Provider Last Name (Legal Name)']),
-            credential: row['Provider Credential Text'],
-            status: 'Active',
-            last_update_date: new Date().toISOString(),
-            needs_nppes_enrichment: false,
-          };
+      // Bulk create all providers
+      const providerRecords = data.map(row => ({
+        npi: row.npi,
+        entity_type: row[columnMapping['Entity Type Code'] || 'Entity Type Code'] === '1' ? 'Individual' : 'Organization',
+        first_name: (row[columnMapping['Provider First Name'] || 'Provider First Name'] || '').trim(),
+        last_name: (row[columnMapping['Provider Last Name (Legal Name)'] || 'Provider Last Name (Legal Name)'] || '').trim(),
+        credential: row[columnMapping['Provider Credential Text'] || 'Provider Credential Text'] || '',
+        status: 'Active',
+        last_update_date: new Date().toISOString(),
+        needs_nppes_enrichment: false,
+      }));
 
-          if (existing.length === 0) {
-            await base44.entities.Provider.create(providerData);
-            importedCount++;
-          } else {
-            // Dedupe: keep latest
-            const current = existing[0];
-            const currentDate = current.last_update_date ? new Date(current.last_update_date) : new Date(0);
-            const newDate = new Date(providerData.last_update_date);
-            
-            if (newDate > currentDate) {
-              await base44.entities.Provider.update(current.id, providerData);
-              updatedCount++;
-            }
-          }
+      for (let i = 0; i < providerRecords.length; i += CHUNK_SIZE) {
+        const chunk = providerRecords.slice(i, i + CHUNK_SIZE);
+        setProcessingStatus(`Importing providers ${i + 1}-${Math.min(i + CHUNK_SIZE, providerRecords.length)} of ${providerRecords.length}...`);
+        try {
+          await base44.entities.Provider.bulkCreate(chunk);
+          importedCount += chunk.length;
         } catch (error) {
-          console.error('Failed to import provider', error);
-        }
-      }
-    } else if (importType === 'cms_utilization') {
-      for (const row of data) {
-        try {
-          // Check if provider exists, create placeholder if not
-          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
-          if (existingProvider.length === 0) {
-            await base44.entities.Provider.create({
-              npi: row.npi,
-              status: 'Active',
-              needs_nppes_enrichment: true,
-            });
-          }
-
-          // Dedupe utilization by NPI + year
-          const existingUtil = await base44.entities.CMSUtilization.filter({ 
-            npi: row.npi, 
-            year: parseInt(row['Year'] || '2023') 
-          });
-
-          const utilData = {
-            npi: row.npi,
-            year: parseInt(row['Year'] || '2023'),
-            total_services: parseFloat(row['Total Services'] || 0),
-            total_medicare_beneficiaries: parseFloat(row['Medicare Beneficiaries'] || 0),
-            total_medicare_payment: parseFloat(row['Medicare Payment Amount'] || 0),
-          };
-
-          if (existingUtil.length === 0) {
-            await base44.entities.CMSUtilization.create(utilData);
-            importedCount++;
-          } else {
-            await base44.entities.CMSUtilization.update(existingUtil[0].id, utilData);
-            updatedCount++;
-          }
-        } catch (error) {
-          console.error('Failed to import utilization', error);
-        }
-      }
-    } else if (importType === 'cms_order_referring') {
-      for (const row of data) {
-        try {
-          // Check if provider exists, create placeholder if not
-          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
-          if (existingProvider.length === 0) {
-            await base44.entities.Provider.create({
-              npi: row.npi,
-              status: 'Active',
-              needs_nppes_enrichment: true,
-            });
-          }
-
-          // Dedupe referrals by NPI + year
-          const existingRef = await base44.entities.CMSReferral.filter({ 
-            npi: row.npi, 
-            year: parseInt(row['Year'] || '2023') 
-          });
-
-          const refData = {
-            npi: row.npi,
-            year: parseInt(row['Year'] || '2023'),
-            total_referrals: parseFloat(row['Total Referrals'] || 0),
-            home_health_referrals: parseFloat(row['Home Health Referrals'] || 0),
-            hospice_referrals: parseFloat(row['Hospice Referrals'] || 0),
-          };
-
-          if (existingRef.length === 0) {
-            await base44.entities.CMSReferral.create(refData);
-            importedCount++;
-          } else {
-            await base44.entities.CMSReferral.update(existingRef[0].id, refData);
-            updatedCount++;
-          }
-        } catch (error) {
-          console.error('Failed to import referral', error);
-        }
-      }
-    } else if (importType === 'cms_part_d') {
-      for (const row of data) {
-        try {
-          const existingProvider = await base44.entities.Provider.filter({ npi: row.npi });
-          if (existingProvider.length === 0) {
-            await base44.entities.Provider.create({
-              npi: row.npi,
-              status: 'Active',
-              needs_nppes_enrichment: true,
-            });
-          }
-          importedCount++;
-        } catch (error) {
-          console.error('Failed to import Part D data', error);
-        }
-      }
-    } else if (importType === 'pa_home_health' || importType === 'hospice_providers') {
-      for (const row of data) {
-        try {
-          const existing = await base44.entities.Provider.filter({ npi: row.npi });
-          const providerData = {
-            npi: row.npi,
-            entity_type: 'Organization',
-            organization_name: normalize(row['Agency Name'] || row['Provider Name']),
-            status: 'Active',
-            last_update_date: new Date().toISOString(),
-          };
-
-          if (existing.length === 0) {
-            await base44.entities.Provider.create(providerData);
-            importedCount++;
-          } else {
-            await base44.entities.Provider.update(existing[0].id, providerData);
-            updatedCount++;
-          }
-
-          // Add location if available
-          if (row['City'] && row['State']) {
-            const existingLoc = await base44.entities.ProviderLocation.filter({ 
-              npi: row.npi,
-              location_type: 'Practice'
-            });
-            const locationData = {
-              npi: row.npi,
-              location_type: 'Practice',
-              is_primary: existingLoc.length === 0, // First location is primary
-              city: normalize(row['City']),
-              state: row['State']?.toUpperCase(),
-              address_1: row['Address'] || '',
-            };
-
-            if (existingLoc.length === 0) {
-              await base44.entities.ProviderLocation.create(locationData);
-            } else {
-              // Check for duplicate by normalized address
-              const isDuplicate = existingLoc.some(loc => 
-                normalize(loc.city) === normalize(row['City']) && 
-                loc.state === row['State']?.toUpperCase()
-              );
-              if (!isDuplicate) {
-                await base44.entities.ProviderLocation.create(locationData);
+          // If bulk fails, try one-by-one for this chunk
+          console.error('Bulk create failed, trying individual:', error.message);
+          for (const record of chunk) {
+            try {
+              await base44.entities.Provider.create(record);
+              importedCount++;
+            } catch (e) {
+              // Likely a duplicate — try update
+              try {
+                const existing = await base44.entities.Provider.filter({ npi: record.npi });
+                if (existing.length > 0) {
+                  await base44.entities.Provider.update(existing[0].id, record);
+                  updatedCount++;
+                }
+              } catch (e2) {
+                console.error('Failed to create/update provider:', record.npi, e2.message);
               }
             }
           }
+        }
+      }
+
+    } else if (importType === 'cms_utilization') {
+      const utilRecords = data.map(row => ({
+        npi: row.npi,
+        year: parseInt(row[columnMapping['Year'] || 'Year'] || new Date().getFullYear()),
+        total_services: parseFloat(row[columnMapping['Total Services'] || 'Total Services'] || 0),
+        total_medicare_beneficiaries: parseFloat(row[columnMapping['Total Medicare Beneficiaries'] || 'Total Medicare Beneficiaries'] || 0),
+        total_medicare_payment: parseFloat(row[columnMapping['Total Medicare Payment Amount'] || 'Total Medicare Payment Amount'] || 0),
+      }));
+
+      // Also create placeholder providers for any NPIs not yet in system
+      const uniqueNPIs = [...new Set(utilRecords.map(r => r.npi))];
+      const providerPlaceholders = uniqueNPIs.map(npi => ({
+        npi,
+        status: 'Active',
+        needs_nppes_enrichment: true,
+      }));
+
+      // Create providers first (ignore failures for duplicates)
+      for (let i = 0; i < providerPlaceholders.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + CHUNK_SIZE));
+        } catch (e) { /* ignore duplicate errors */ }
+      }
+
+      for (let i = 0; i < utilRecords.length; i += CHUNK_SIZE) {
+        const chunk = utilRecords.slice(i, i + CHUNK_SIZE);
+        setProcessingStatus(`Importing utilization ${i + 1}-${Math.min(i + CHUNK_SIZE, utilRecords.length)} of ${utilRecords.length}...`);
+        try {
+          await base44.entities.CMSUtilization.bulkCreate(chunk);
+          importedCount += chunk.length;
         } catch (error) {
-          console.error('Failed to import provider', error);
+          console.error('Bulk create utilization failed:', error.message);
+          for (const record of chunk) {
+            try {
+              await base44.entities.CMSUtilization.create(record);
+              importedCount++;
+            } catch (e) {
+              console.error('Individual utilization create failed:', e.message);
+            }
+          }
+        }
+      }
+
+    } else if (importType === 'cms_order_referring') {
+      const refRecords = data.map(row => ({
+        npi: row.npi,
+        year: parseInt(row[columnMapping['Year'] || 'Year'] || new Date().getFullYear()),
+        total_referrals: parseFloat(row[columnMapping['Total Referrals'] || 'Total Referrals'] || 0),
+        home_health_referrals: parseFloat(row[columnMapping['HHA'] || 'HHA'] || 0),
+        hospice_referrals: parseFloat(row[columnMapping['HOSPICE'] || 'HOSPICE'] || 0),
+        dme_referrals: parseFloat(row[columnMapping['DME'] || 'DME'] || 0),
+      }));
+
+      const uniqueNPIs = [...new Set(refRecords.map(r => r.npi))];
+      for (let i = 0; i < uniqueNPIs.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.Provider.bulkCreate(uniqueNPIs.slice(i, i + CHUNK_SIZE).map(npi => ({
+            npi, status: 'Active', needs_nppes_enrichment: true,
+          })));
+        } catch (e) { /* ignore */ }
+      }
+
+      for (let i = 0; i < refRecords.length; i += CHUNK_SIZE) {
+        const chunk = refRecords.slice(i, i + CHUNK_SIZE);
+        setProcessingStatus(`Importing referrals ${i + 1}-${Math.min(i + CHUNK_SIZE, refRecords.length)} of ${refRecords.length}...`);
+        try {
+          await base44.entities.CMSReferral.bulkCreate(chunk);
+          importedCount += chunk.length;
+        } catch (error) {
+          for (const record of chunk) {
+            try {
+              await base44.entities.CMSReferral.create(record);
+              importedCount++;
+            } catch (e) {
+              console.error('Individual referral create failed:', e.message);
+            }
+          }
+        }
+      }
+
+    } else if (importType === 'cms_part_d') {
+      const providerRecords = data.map(row => ({
+        npi: row.npi,
+        status: 'Active',
+        needs_nppes_enrichment: true,
+      }));
+
+      for (let i = 0; i < providerRecords.length; i += CHUNK_SIZE) {
+        const chunk = providerRecords.slice(i, i + CHUNK_SIZE);
+        setProcessingStatus(`Importing Part D providers ${i + 1}-${Math.min(i + CHUNK_SIZE, providerRecords.length)} of ${providerRecords.length}...`);
+        try {
+          await base44.entities.Provider.bulkCreate(chunk);
+          importedCount += chunk.length;
+        } catch (e) {
+          for (const record of chunk) {
+            try {
+              await base44.entities.Provider.create(record);
+              importedCount++;
+            } catch (e2) { /* duplicate, skip */ }
+          }
+        }
+      }
+
+    } else if (importType === 'pa_home_health' || importType === 'hospice_providers') {
+      const providerRecords = data.map(row => ({
+        npi: row.npi,
+        entity_type: 'Organization',
+        organization_name: (row[columnMapping['Agency Name'] || 'Agency Name'] || row[columnMapping['Provider Name'] || 'Provider Name'] || '').trim(),
+        status: 'Active',
+        last_update_date: new Date().toISOString(),
+      }));
+
+      for (let i = 0; i < providerRecords.length; i += CHUNK_SIZE) {
+        const chunk = providerRecords.slice(i, i + CHUNK_SIZE);
+        setProcessingStatus(`Importing providers ${i + 1}-${Math.min(i + CHUNK_SIZE, providerRecords.length)} of ${providerRecords.length}...`);
+        try {
+          await base44.entities.Provider.bulkCreate(chunk);
+          importedCount += chunk.length;
+        } catch (error) {
+          for (const record of chunk) {
+            try {
+              await base44.entities.Provider.create(record);
+              importedCount++;
+            } catch (e) {
+              try {
+                const existing = await base44.entities.Provider.filter({ npi: record.npi });
+                if (existing.length > 0) {
+                  await base44.entities.Provider.update(existing[0].id, record);
+                  updatedCount++;
+                }
+              } catch (e2) { console.error('Failed provider:', record.npi); }
+            }
+          }
+        }
+      }
+
+      // Also create locations
+      const locationRecords = data
+        .filter(row => row[columnMapping['City'] || 'City'] && row[columnMapping['State'] || 'State'])
+        .map(row => ({
+          npi: row.npi,
+          location_type: 'Practice',
+          is_primary: true,
+          city: (row[columnMapping['City'] || 'City'] || '').trim(),
+          state: (row[columnMapping['State'] || 'State'] || '').toUpperCase().trim(),
+          address_1: (row[columnMapping['Address'] || 'Address'] || '').trim(),
+        }));
+
+      for (let i = 0; i < locationRecords.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.ProviderLocation.bulkCreate(locationRecords.slice(i, i + CHUNK_SIZE));
+        } catch (e) {
+          console.error('Location bulk create failed:', e.message);
+        }
+      }
+
+    } else if (importType === 'nursing_home_chains') {
+      const chainRecords = data.map(row => ({
+        chain_name: (row[columnMapping['Chain'] || 'Chain'] || '').trim(),
+        chain_id: (row[columnMapping['Chain ID'] || 'Chain ID'] || '').trim(),
+        number_of_facilities: parseFloat(row[columnMapping['Number of facilities'] || 'Number of facilities'] || 0),
+        avg_overall_rating: parseFloat(row[columnMapping['Average overall 5-star rating'] || 'Average overall 5-star rating'] || 0),
+      }));
+
+      for (let i = 0; i < chainRecords.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.NursingHomeChain.bulkCreate(chainRecords.slice(i, i + CHUNK_SIZE));
+          importedCount += chainRecords.slice(i, i + CHUNK_SIZE).length;
+        } catch (e) {
+          console.error('Chain bulk create failed:', e.message);
+        }
+      }
+
+    } else if (importType === 'hospice_enrollments') {
+      const records = data.map(row => ({
+        enrollment_id: (row[columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID'] || '').trim(),
+        npi: row.npi || '',
+        ccn: (row[columnMapping['CCN'] || 'CCN'] || '').trim(),
+        organization_name: (row[columnMapping['ORGANIZATION NAME'] || 'ORGANIZATION NAME'] || '').trim(),
+      }));
+
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.HospiceEnrollment.bulkCreate(records.slice(i, i + CHUNK_SIZE));
+          importedCount += records.slice(i, i + CHUNK_SIZE).length;
+        } catch (e) {
+          console.error('Hospice enrollment bulk create failed:', e.message);
+        }
+      }
+
+    } else if (importType === 'home_health_enrollments') {
+      const records = data.map(row => ({
+        enrollment_id: (row[columnMapping['ENROLLMENT ID'] || 'ENROLLMENT ID'] || '').trim(),
+        npi: row.npi || '',
+        ccn: (row[columnMapping['CCN'] || 'CCN'] || '').trim(),
+        organization_name: (row[columnMapping['ORGANIZATION NAME'] || 'ORGANIZATION NAME'] || '').trim(),
+      }));
+
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.HomeHealthEnrollment.bulkCreate(records.slice(i, i + CHUNK_SIZE));
+          importedCount += records.slice(i, i + CHUNK_SIZE).length;
+        } catch (e) {
+          console.error('HH enrollment bulk create failed:', e.message);
+        }
+      }
+
+    } else if (importType === 'home_health_cost_reports') {
+      const records = data.map(row => ({
+        rpt_rec_num: (row[columnMapping['rpt_rec_num'] || 'rpt_rec_num'] || '').trim(),
+        ccn: (row[columnMapping['Provider CCN'] || 'Provider CCN'] || '').trim(),
+        hha_name: (row[columnMapping['HHA Name'] || 'HHA Name'] || '').trim(),
+        total_cost: parseFloat(row[columnMapping['Total Cost'] || 'Total Cost'] || 0),
+      }));
+
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.HomeHealthCostReport.bulkCreate(records.slice(i, i + CHUNK_SIZE));
+          importedCount += records.slice(i, i + CHUNK_SIZE).length;
+        } catch (e) {
+          console.error('Cost report bulk create failed:', e.message);
+        }
+      }
+
+    } else if (importType === 'provider_service_utilization') {
+      const records = data.map(row => ({
+        npi: row.npi,
+        hcpcs_code: (row[columnMapping['HCPCS_Cd'] || 'HCPCS_Cd'] || '').trim(),
+        hcpcs_description: (row[columnMapping['HCPCS_Desc'] || 'HCPCS_Desc'] || '').trim(),
+        total_beneficiaries: parseFloat(row[columnMapping['Tot_Benes'] || 'Tot_Benes'] || 0),
+        total_services: parseFloat(row[columnMapping['Tot_Srvcs'] || 'Tot_Srvcs'] || 0),
+        data_year: new Date().getFullYear(),
+      }));
+
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        try {
+          await base44.entities.ProviderServiceUtilization.bulkCreate(records.slice(i, i + CHUNK_SIZE));
+          importedCount += records.slice(i, i + CHUNK_SIZE).length;
+        } catch (e) {
+          console.error('Service util bulk create failed:', e.message);
         }
       }
     }
@@ -398,7 +524,7 @@ export default function DataImports() {
     setCsvColumns([]);
     setColumnMapping({});
     setCurrentBatch(null);
-    setDryRun(true);
+    setDryRun(false);
   };
 
   const isMappingComplete = selectedType?.requiredColumns.every(col => columnMapping[col]);
@@ -433,19 +559,23 @@ export default function DataImports() {
               <CardContent>
                 <div className="space-y-2">
                   {batches.slice(0, 5).map(batch => (
-                    <div key={batch.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                       <div>
-                        <p className="font-medium">{batch.file_name}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-medium text-slate-200">{batch.file_name}</p>
+                        <p className="text-sm text-slate-400">
                           {batch.import_type?.replace(/_/g, ' ')} • {batch.valid_rows} valid rows
+                          {batch.imported_rows > 0 && ` • ${batch.imported_rows} imported`}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-slate-500">
                           {new Date(batch.created_date).toLocaleDateString()}
                         </p>
                         {batch.dry_run && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Dry Run</span>
+                          <span className="text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded">Dry Run</span>
+                        )}
+                        {batch.status === 'completed' && !batch.dry_run && (
+                          <span className="text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded">Imported</span>
                         )}
                       </div>
                     </div>
@@ -482,26 +612,26 @@ export default function DataImports() {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <Label>Dry Run Mode</Label>
-                  <p className="text-sm text-gray-600">Validate only, don't import data</p>
+                  <p className="text-sm text-slate-400">Validate only, don't import data</p>
                 </div>
                 <Switch checked={dryRun} onCheckedChange={setDryRun} />
               </div>
 
               {processing && processingStatus && (
-                <div className="space-y-2 p-4 bg-teal-50 rounded-lg border border-teal-200">
+                <div className="space-y-2 p-4 bg-cyan-900/30 rounded-lg border border-cyan-700/50">
                   <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
-                    <span className="text-sm font-medium text-teal-900">{processingStatus}</span>
+                    <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+                    <span className="text-sm font-medium text-cyan-200">{processingStatus}</span>
                   </div>
                   <Progress value={45} className="h-2" />
-                  <p className="text-xs text-teal-700">This may take several minutes for large files...</p>
+                  <p className="text-xs text-cyan-400/70">This may take several minutes for large files...</p>
                 </div>
               )}
 
               <Button
                 onClick={handleValidate}
                 disabled={!isMappingComplete || processing}
-                className="w-full bg-teal-600 hover:bg-teal-700"
+                className="w-full bg-cyan-600 hover:bg-cyan-700"
               >
                 {processing ? (
                   <>
