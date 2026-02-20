@@ -104,14 +104,14 @@ Deno.serve(async (req) => {
             category: batch.category,
           });
 
-          // Trigger the import (fire-and-forget via service role)
+          // Trigger the import
           try {
-            base44.asServiceRole.functions.invoke('autoImportCMSData', {
+            await base44.asServiceRole.functions.invoke('autoImportCMSData', {
               import_type: batch.import_type,
               file_url: batch.file_url,
               year: new Date().getFullYear(),
               dry_run: batch.dry_run || false,
-            }).catch(() => {});
+            });
           } catch (triggerErr) {
             console.error(`Failed to trigger retry for ${batch.id}:`, triggerErr.message);
           }

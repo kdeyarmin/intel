@@ -39,34 +39,44 @@ Deno.serve(async (req) => {
     };
 
     if (zipFunctionMap[import_type]) {
-      // Route directly to the specialized ZIP handler
-      // Use asServiceRole since sub-functions accept service role calls
+      // Route to the specialized ZIP handler, passing through all params
       try {
-        const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
+        const res = await base44.functions.invoke(zipFunctionMap[import_type], {
           action: 'import',
           year: parseInt(year || new Date().getFullYear()),
           custom_url: file_url || undefined,
           dry_run,
+          // Pass through retry/range params
           sheet_filter: body.sheet_filter || undefined,
           row_offset: body.row_offset || undefined,
           row_limit: body.row_limit || undefined,
         });
         const result = res.data;
+        // If the sub-function returned an error, surface it with details
         if (result?.error) {
           return Response.json({
             error: result.error,
+            error_phase: result.error_phase || 'unknown',
+            retryable: result.retryable || false,
             batch_id: result.batch_id,
+            error_samples: result.error_samples,
+            hint: result.hint || 'Check the batch error log for details.',
             import_type,
           }, { status: 500 });
         }
         return Response.json({ success: true, import_type, result });
       } catch (e) {
-        const errorData = e.response?.data;
+        // Extract useful info from the sub-function error
+        let errorData;
+        try { errorData = e.response?.data || JSON.parse(e.message); } catch (_) { errorData = null; }
         return Response.json({
           error: errorData?.error || e.message || 'Import function failed',
+          error_phase: errorData?.error_phase || 'invocation',
+          retryable: errorData?.retryable || false,
           batch_id: errorData?.batch_id,
+          error_samples: errorData?.error_samples,
+          hint: errorData?.hint || `The ${import_type} import function returned an error. Check backend logs for details.`,
           import_type,
-          hint: 'The import may have timed out but could still be running. Check Import Monitoring.',
         }, { status: 500 });
       }
     }
@@ -86,30 +96,22 @@ Deno.serve(async (req) => {
 
     const resolvedYear = year || new Date().getFullYear();
 
-    // Await the CMS API import directly via service role
-    try {
-      const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
-        import_type,
-        file_url: resolvedUrl,
-        year: resolvedYear,
-        dry_run,
-      });
-      return Response.json({
-        success: true,
-        import_type,
-        file_url: resolvedUrl,
-        year: resolvedYear,
-        dry_run,
-        result: response.data,
-      });
-    } catch (e) {
-      const errorData = e.response?.data;
-      return Response.json({
-        error: errorData?.error || e.message,
-        import_type,
-        hint: 'The import may have timed out but could still be running. Check Import Monitoring.',
-      }, { status: 500 });
-    }
+    // Call autoImportCMSData directly via service role to avoid auth chain issues
+    const response = await base44.functions.invoke('autoImportCMSData', {
+      import_type,
+      file_url: resolvedUrl,
+      year: resolvedYear,
+      dry_run,
+    });
+
+    return Response.json({
+      success: true,
+      import_type,
+      file_url: resolvedUrl,
+      year: resolvedYear,
+      dry_run,
+      result: response.data,
+    });
   } catch (error) {
     let errorData;
     try { errorData = error.response?.data; } catch (_) { errorData = null; }

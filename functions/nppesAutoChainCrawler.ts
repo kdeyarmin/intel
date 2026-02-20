@@ -54,36 +54,24 @@ Deno.serve(async (req) => {
                 'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
                 'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
             ];
-            // Only fetch recent batches (limit 100) for speed
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
-                { import_type: 'nppes_registry' }, '-created_date', 100
+                { import_type: 'nppes_registry' }, '-created_date', 200
             );
-            
-            // Deduplicate: keep only the LATEST batch per state
-            const stateLatest = {};
-            let stopSignalActive = false;
-            for (const b of crawlBatches) {
-                if (!b.file_name) continue;
-                if (b.file_name === 'crawler_auto_stop_signal' && b.status === 'validating') {
-                    stopSignalActive = true;
-                    continue;
-                }
-                if (!b.file_name.startsWith('crawler_')) continue;
-                const st = b.file_name.split('_')[1];
-                if (!st || st.length > 2 || !US_STATES.includes(st)) continue;
-                if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
-                    stateLatest[st] = b;
-                }
-            }
-            
+            const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_') && b.file_name !== 'crawler_auto_stop_signal');
             const completedStates = [], failedStates = [], processingStates = [];
-            for (const [st, b] of Object.entries(stateLatest)) {
+            for (const b of crawlerBatches) {
+                const st = b.file_name.split('_')[1];
                 if (b.status === 'completed') completedStates.push(st);
                 else if (b.status === 'failed') failedStates.push(st);
                 else processingStates.push(st);
             }
             const doneSet = new Set([...completedStates, ...failedStates]);
             const pendingStates = US_STATES.filter(s => !doneSet.has(s));
+
+            // Check if auto-chain is active (stop signal NOT present = running)
+            const stopSignalActive = crawlBatches.some(
+                b => b.file_name === 'crawler_auto_stop_signal' && b.status === 'validating'
+            );
 
             return Response.json({
                 total_states: US_STATES.length,
@@ -96,6 +84,7 @@ Deno.serve(async (req) => {
                 processing_states: processingStates,
                 pending_states: pendingStates,
                 auto_chain_active: processingStates.length > 0 && !stopSignalActive,
+                batches: crawlerBatches.slice(0, 60),
             });
         }
 
