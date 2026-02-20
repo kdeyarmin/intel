@@ -101,7 +101,7 @@ async function fetchAllPages(baseParams) {
     let skip = 0;
     let hitLimit = false;
     for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
-        if (isTimeUp()) break;
+        if (isFetchTimeUp()) break;
         baseParams.set('skip', String(skip));
         const data = await fetchNPPESPage(baseParams);
         if (data.error) break;
@@ -407,12 +407,12 @@ Deno.serve(async (req) => {
             let fetchComplete = true;
 
             for (const enumType of enumTypes) {
-                if (isTimeUp()) { fetchComplete = false; break; }
+                if (isFetchTimeUp()) { fetchComplete = false; break; }
                 const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
                 console.log(`[${stateToProcess}] ${typeLabel}: ${zipPrefixes.length} zip prefixes`);
 
                 for (const zipPrefix of zipPrefixes) {
-                    if (isTimeUp()) { fetchComplete = false; break; }
+                    if (isFetchTimeUp()) { fetchComplete = false; break; }
 
                     const params = new URLSearchParams();
                     params.set('version', '2.1');
@@ -426,8 +426,8 @@ Deno.serve(async (req) => {
                     addUnique(results);
 
                     // Expand to 3-digit if we hit the limit
-                    if (hitLimit && !isTimeUp()) {
-                        for (let d = 0; d <= 9 && !isTimeUp(); d++) {
+                    if (hitLimit && !isFetchTimeUp()) {
+                        for (let d = 0; d <= 9 && !isFetchTimeUp(); d++) {
                             const zip3 = `${zipPrefix}${d}`;
                             const subParams = new URLSearchParams();
                             subParams.set('version', '2.1'); subParams.set('limit', String(BATCH_LIMIT));
@@ -436,8 +436,8 @@ Deno.serve(async (req) => {
                             if (taxonomy_description) subParams.set('taxonomy_description', taxonomy_description);
                             const subResult = await fetchAllPages(subParams);
                             addUnique(subResult.results);
-                            if (subResult.hitLimit && !isTimeUp()) {
-                                for (let d2 = 0; d2 <= 9 && !isTimeUp(); d2++) {
+                            if (subResult.hitLimit && !isFetchTimeUp()) {
+                                for (let d2 = 0; d2 <= 9 && !isFetchTimeUp(); d2++) {
                                     const zip4 = `${zip3}${d2}`;
                                     const deepParams = new URLSearchParams();
                                     deepParams.set('version', '2.1'); deepParams.set('limit', String(BATCH_LIMIT));
