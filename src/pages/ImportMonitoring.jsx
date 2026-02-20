@@ -384,6 +384,12 @@ export default function ImportMonitoring() {
         </Card>
       )}
 
+      {activeTab === 'alerts' && (
+        <div className="max-w-2xl">
+          <AlertNotificationSettings />
+        </div>
+      )}
+
       {activeTab === 'monitoring' && <>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
