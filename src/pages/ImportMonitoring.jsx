@@ -26,6 +26,7 @@ import ValidationRulesManager from '../components/imports/ValidationRulesManager
 import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
+import ExportImportData from '../components/imports/ExportImportData';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
