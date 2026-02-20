@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Activity, MapPin, Calendar, TrendingUp, Database } from 'lucide-react';
+import { Users, Activity, MapPin, Calendar, GitBranch, Database } from 'lucide-react';
 import KPICard from '../components/dashboard/KPICard';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
@@ -51,16 +51,42 @@ export default function Dashboard() {
   const loading = loadingProviders || loadingUtil;
 
   const totalProviders = providers.length;
-  const activeMedicare = utilization.filter(u => u.total_medicare_beneficiaries > 0).length;
-  const totalReferrals = referrals.reduce((sum, r) => sum + (r.total_referrals || 0), 0);
   const totalLocations = locations.length;
 
-  const topStates = useMemo(() => {
-    const stateCount = {};
-    locations.forEach(loc => {
-      if (loc.state) stateCount[loc.state] = (stateCount[loc.state] || 0) + 1;
+  // Count unique provider NPIs that have Medicare utilization records with beneficiaries
+  const activeMedicare = useMemo(() => {
+    const npis = new Set();
+    utilization.forEach(u => {
+      if (u.total_medicare_beneficiaries > 0 && u.npi) npis.add(u.npi);
     });
-    return Object.entries(stateCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return npis.size;
+  }, [utilization]);
+
+  // Sum referrals only from the most recent year per provider to avoid double-counting
+  const totalReferrals = useMemo(() => {
+    const latestByNPI = {};
+    referrals.forEach(r => {
+      if (!r.npi) return;
+      if (!latestByNPI[r.npi] || (r.year || 0) > (latestByNPI[r.npi].year || 0)) {
+        latestByNPI[r.npi] = r;
+      }
+    });
+    return Object.values(latestByNPI).reduce((sum, r) => sum + (r.total_referrals || 0), 0);
+  }, [referrals]);
+
+  // Count unique provider NPIs per state (not locations)
+  const topStates = useMemo(() => {
+    const stateNPIs = {};
+    locations.forEach(loc => {
+      if (loc.state && loc.npi) {
+        if (!stateNPIs[loc.state]) stateNPIs[loc.state] = new Set();
+        stateNPIs[loc.state].add(loc.npi);
+      }
+    });
+    return Object.entries(stateNPIs)
+      .map(([state, npis]) => [state, npis.size])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
   }, [locations]);
 
   const lastRefresh = auditEvents[0]?.created_date
@@ -85,8 +111,9 @@ export default function Dashboard() {
           loading={loading}
         />
         <KPICard
-          title="Active Medicare"
+          title="Medicare Providers"
           value={activeMedicare.toLocaleString()}
+          subtitle={`of ${totalProviders} total`}
           icon={Activity}
           iconColor="text-emerald-400"
           loading={loading}
@@ -94,7 +121,8 @@ export default function Dashboard() {
         <KPICard
           title="Total Referrals"
           value={totalReferrals.toLocaleString()}
-          icon={TrendingUp}
+          subtitle="Latest year per provider"
+          icon={GitBranch}
           iconColor="text-violet-400"
           loading={loading}
         />

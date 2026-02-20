@@ -11,7 +11,7 @@ export default function TopStatesCard({ topStates, loading }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <MapPin className="w-4 h-4 text-cyan-400" />
-          Top States by Provider Count
+          Top States by Providers
         </CardTitle>
       </CardHeader>
       <CardContent>
