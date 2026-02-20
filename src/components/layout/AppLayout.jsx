@@ -189,7 +189,7 @@ export default function AppLayout({ children, currentPageName }) {
                       key={item.name}
                       to={createPageUrl(item.page)}
                       title={item.name}
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 ${
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-500/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
                           : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
