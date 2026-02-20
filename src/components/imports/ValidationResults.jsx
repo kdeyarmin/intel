@@ -73,7 +73,16 @@ export default function ValidationResults({ batch }) {
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              Import completed: {batch.imported_rows} new records, {batch.updated_rows || 0} updated.
+              Import completed: {batch.imported_rows || 0} new records, {batch.updated_rows || 0} updated{batch.skipped_rows > 0 ? `, ${batch.skipped_rows} skipped (unchanged)` : ''}.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {batch.status === 'failed' && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              Import failed. {batch.error_samples?.[0]?.message || 'Check logs for details.'}
             </AlertDescription>
           </Alert>
         )}
