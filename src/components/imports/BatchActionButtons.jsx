@@ -91,9 +91,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {isPaused && (
         <>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={handleResume}>
-            <RefreshCw className="w-3 h-3" /> Resume
-          </Button>
+          {/* Resume is handled by ResumeImportButton component */}
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>

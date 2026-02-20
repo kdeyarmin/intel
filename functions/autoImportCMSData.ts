@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
                 import_type,
                 file_name: `auto_import_${import_type}_${year}_${Date.now()}`,
                 file_url,
+                data_year: parseInt(year),
                 status: 'validating',
                 dry_run,
             });

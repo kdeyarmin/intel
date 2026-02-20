@@ -128,7 +128,8 @@ Deno.serve(async (req) => {
   if (!downloadUrl) return Response.json({ error: `No URL for year ${year}` }, { status: 400 });
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl, status: 'validating', dry_run,
+    import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl,
+    status: 'validating', dry_run, data_year: year,
     retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
   });
   const errorSamples = [];

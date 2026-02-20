@@ -749,7 +749,10 @@ export default function ImportMonitoring() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500">{batch.file_name}</p>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          {batch.data_year && <Badge variant="outline" className="text-[10px] h-4 px-1">{batch.data_year}</Badge>}
+                          <span className="truncate max-w-[200px]" title={batch.file_name}>{batch.file_name}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

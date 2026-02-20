@@ -17,7 +17,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
       await base44.functions.invoke('triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url || undefined,
-        year: new Date().getFullYear(),
+        year: batch.data_year || (batch.file_name.match(/_(\d{4})/) ? parseInt(batch.file_name.match(/_(\d{4})/)[1]) : new Date().getFullYear()),
         dry_run: false,
         resume_offset: resumeOffset,
         batch_id: batch.id,
