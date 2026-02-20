@@ -121,7 +121,10 @@ export default function DashboardAIAssistant() {
   }, [dataLoaded, providers, locations, referrals, utilization, taxonomies, batches, auditEvents]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   // Auto-generate initial briefing
