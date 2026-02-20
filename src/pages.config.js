@@ -59,6 +59,7 @@ import Dashboard from './pages/Dashboard';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
 import EmailSearchBot from './pages/EmailSearchBot';
+import EnrichmentHub from './pages/EnrichmentHub';
 import ErrorReports from './pages/ErrorReports';
 import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
@@ -85,7 +86,6 @@ import ScheduledReports from './pages/ScheduledReports';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import EnrichmentHub from './pages/EnrichmentHub';
 import __Layout from './Layout.jsx';
 
 
@@ -102,6 +102,7 @@ export const PAGES = {
     "DataImports": DataImports,
     "DataQuality": DataQuality,
     "EmailSearchBot": EmailSearchBot,
+    "EnrichmentHub": EnrichmentHub,
     "ErrorReports": ErrorReports,
     "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
@@ -128,7 +129,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "EnrichmentHub": EnrichmentHub,
 }
 
 export const pagesConfig = {

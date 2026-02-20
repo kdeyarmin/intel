@@ -111,7 +111,6 @@ export default function AutoImports() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cms_order_referring">CMS Order/Referring</SelectItem>
-                  <SelectItem value="opt_out_physicians">Opt-Out Physicians</SelectItem>
                   <SelectItem value="home_health_enrollments">Home Health Enrollments</SelectItem>
                   <SelectItem value="hospice_enrollments">Hospice Enrollments</SelectItem>
                   <SelectItem value="provider_service_utilization">Provider Service Utilization</SelectItem>
