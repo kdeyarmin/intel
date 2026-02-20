@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
     };
 
     if (zipFunctionMap[import_type]) {
-      // Route directly to the specialized ZIP handler and AWAIT it
-      // This may take a while but the platform allows ~60s
+      // Route directly to the specialized ZIP handler
+      // Use asServiceRole since sub-functions accept service role calls
       try {
-        const res = await base44.functions.invoke(zipFunctionMap[import_type], {
+        const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
           action: 'import',
           year: parseInt(year || new Date().getFullYear()),
           custom_url: file_url || undefined,
@@ -86,9 +86,9 @@ Deno.serve(async (req) => {
 
     const resolvedYear = year || new Date().getFullYear();
 
-    // Await the CMS API import directly
+    // Await the CMS API import directly via service role
     try {
-      const response = await base44.functions.invoke('autoImportCMSData', {
+      const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
         import_type,
         file_url: resolvedUrl,
         year: resolvedYear,
