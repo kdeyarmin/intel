@@ -98,7 +98,6 @@ export default function ImportMonitoring() {
   const staleBatches = batches.filter(b => isStale(b));
   const completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
-  const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
   const toggleSelectForRerun = (id) => {
     setSelectedForRerun(prev => {
@@ -222,6 +221,8 @@ export default function ImportMonitoring() {
     }
     return filtered;
   }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd]);
+
+  const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
   const getStatusIcon = (status) => {
     switch (status) {
