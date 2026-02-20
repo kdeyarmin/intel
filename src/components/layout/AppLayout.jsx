@@ -73,7 +73,19 @@ export default function AppLayout({ children, currentPageName }) {
   const mainRef = React.useRef(null);
 
   useEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
+    // Scroll main container to top
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+    // Also scroll window in case of nested scrolling
+    window.scrollTo(0, 0);
+    // Retry after render in case content loads async
+    const t = setTimeout(() => {
+      if (mainRef.current) {
+        mainRef.current.scrollTop = 0;
+      }
+    }, 50);
+    return () => clearTimeout(t);
   }, [currentPageName]);
 
   // Auto-expand sidebar on large screens
