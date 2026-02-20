@@ -29,6 +29,7 @@ import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AIRelatedProviders from '../components/ai/AIRelatedProviders';
 import AIMarketInsights from '../components/ai/AIMarketInsights';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
+import ProviderAffiliations from '../components/providers/ProviderAffiliations';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -200,6 +201,14 @@ export default function ProviderDetail() {
             taxonomy={taxonomies}
             utilization={latestUtil}
             referrals={latestRef}
+          />
+
+          {/* Affiliations */}
+          <ProviderAffiliations
+            npi={npi}
+            provider={provider}
+            location={primaryLocation}
+            taxonomies={taxonomies}
           />
 
           {/* Full Locations Table */}

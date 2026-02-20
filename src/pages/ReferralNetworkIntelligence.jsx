@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Network, Crown, ArrowRightLeft, MapPin, AlertTriangle } from 'lucide-react';
+import { Network, Crown, ArrowRightLeft, MapPin, AlertTriangle, Sparkles } from 'lucide-react';
 
 import NetworkKPIs from '../components/referralNetwork/NetworkKPIs';
 import NetworkFilters from '../components/referralNetwork/NetworkFilters';
@@ -13,6 +13,7 @@ import ReferralFlowSankey from '../components/referralNetwork/ReferralFlowSankey
 import NodeDetailPanel from '../components/referralNetwork/NodeDetailPanel';
 import GeographicHeatmap from '../components/referralNetwork/GeographicHeatmap';
 import CareGapAnalysis from '../components/referralNetwork/CareGapAnalysis';
+import NetworkInsightsDashboard from '../components/network/NetworkInsightsDashboard';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 const HUB_THRESHOLD_PERCENTILE = 0.85;
@@ -199,6 +200,9 @@ export default function ReferralNetworkIntelligence() {
               <TabsTrigger value="gaps" className="gap-1.5 text-xs">
                 <AlertTriangle className="w-3.5 h-3.5" /> Care Gaps
               </TabsTrigger>
+              <TabsTrigger value="insights" className="gap-1.5 text-xs">
+                <Sparkles className="w-3.5 h-3.5" /> AI Insights
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="graph" className="mt-4">
@@ -232,6 +236,10 @@ export default function ReferralNetworkIntelligence() {
 
             <TabsContent value="gaps" className="mt-4">
               <CareGapAnalysis nodes={filteredNodes} locations={locations} />
+            </TabsContent>
+
+            <TabsContent value="insights" className="mt-4">
+              <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} locations={locations} />
             </TabsContent>
           </Tabs>
         </>
