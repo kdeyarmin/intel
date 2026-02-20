@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download } from 'lucide-react';
+import { Save, Download, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import TypeAheadSearch from '../components/search/TypeAheadSearch';
 import ProviderAdvancedFilters from '../components/filters/ProviderAdvancedFilters';
@@ -343,7 +343,14 @@ export default function Providers() {
     <div className="p-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
+            {activeTab !== 'directory' && (
+              <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px]">
+                <Sparkles className="w-3 h-3 mr-0.5" /> AI Tools
+              </Badge>
+            )}
+          </div>
           <p className="text-gray-600 mt-1">{providers.length} total providers</p>
         </div>
         <div className="flex gap-2">
@@ -408,11 +415,11 @@ export default function Providers() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="h-9 mb-4">
-          <TabsTrigger value="directory" className="text-xs gap-1.5"><List className="w-3.5 h-3.5" /> Directory</TabsTrigger>
-          <TabsTrigger value="npi-finder" className="text-xs gap-1.5"><Search className="w-3.5 h-3.5" /> NPI Finder</TabsTrigger>
-          <TabsTrigger value="augment" className="text-xs gap-1.5"><Globe className="w-3.5 h-3.5" /> Profile Augmenter</TabsTrigger>
-          <TabsTrigger value="duplicates" className="text-xs gap-1.5"><Copy className="w-3.5 h-3.5" /> Duplicate Detector</TabsTrigger>
+        <TabsList className="h-10 mb-4 p-1 bg-slate-100">
+          <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-white"><List className="w-3.5 h-3.5" /> Directory</TabsTrigger>
+          <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-white"><Search className="w-3.5 h-3.5" /> AI NPI Finder</TabsTrigger>
+          <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-white"><Globe className="w-3.5 h-3.5" /> AI Augmenter</TabsTrigger>
+          <TabsTrigger value="duplicates" className="text-xs gap-1.5 data-[state=active]:bg-white"><Copy className="w-3.5 h-3.5" /> AI Duplicates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="npi-finder">
