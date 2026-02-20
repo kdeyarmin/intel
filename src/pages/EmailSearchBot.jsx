@@ -186,11 +186,11 @@ export default function EmailSearchBot() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-100 to-teal-100">
-            <Bot className="w-5 h-5 text-blue-600" />
+          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+            <Bot className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Email Search Bot</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Email Search Bot</h1>
             <p className="text-sm text-slate-500">
               AI-powered search to find email addresses for providers and practices
             </p>
@@ -222,42 +222,37 @@ export default function EmailSearchBot() {
         <TabsContent value="search" className="mt-4 space-y-5">
 
       {/* Stats Overview + Export */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="bg-slate-50">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+            <div className="text-2xl font-bold text-white">{stats.total}</div>
             <div className="text-xs text-slate-500">Total Providers</div>
           </CardContent>
         </Card>
-        <Card className="bg-green-50">
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-700">{stats.withEmail}</div>
-            <div className="text-xs text-green-600">Have Email</div>
+            <div className="text-2xl font-bold text-emerald-400">{stats.withEmail}</div>
+            <div className="text-xs text-emerald-500/80">Have Email</div>
           </CardContent>
         </Card>
-        <Card className="bg-blue-50">
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-700">{stats.searched}</div>
-            <div className="text-xs text-blue-600">Already Searched</div>
+            <div className="text-2xl font-bold text-cyan-400">{stats.searched}</div>
+            <div className="text-xs text-cyan-500/80">Already Searched</div>
           </CardContent>
         </Card>
-        <Card className="bg-amber-50">
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-amber-700">{stats.remaining}</div>
-            <div className="text-xs text-amber-600">Remaining</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.remaining}</div>
+            <div className="text-xs text-amber-500/80">Remaining</div>
           </CardContent>
         </Card>
-        <Card className="bg-white border-2 border-blue-200 flex items-center justify-center">
+        <Card className="bg-[#141d30] border-cyan-500/30 col-span-2 sm:col-span-1 flex items-center justify-center">
           <CardContent className="p-4 text-center">
-            <Button
-              onClick={downloadFullEmailCSV}
-              disabled={stats.withEmail === 0}
-              className="bg-blue-600 hover:bg-blue-700 gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export All Emails CSV
+            <Button onClick={downloadFullEmailCSV} disabled={stats.withEmail === 0} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
+              <Download className="w-4 h-4" /> Export Emails CSV
             </Button>
-            <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail} providers ready</div>
+            <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail} ready</div>
           </CardContent>
         </Card>
       </div>

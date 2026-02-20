@@ -248,15 +248,15 @@ export default function LeadLists() {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Lead Lists</h1>
-          <p className="text-gray-600 mt-1">Create and manage targeted provider lists</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Lead Lists</h1>
+          <p className="text-slate-500 mt-1">Create and manage targeted provider lists</p>
         </div>
         <Dialog open={creating} onOpenChange={setCreating}>
           <DialogTrigger asChild>
-            <Button className="bg-teal-600 hover:bg-teal-700">
+            <Button className="bg-cyan-600 hover:bg-cyan-700">
               <Plus className="w-4 h-4 mr-2" />
               Create New List
             </Button>
@@ -304,9 +304,9 @@ export default function LeadLists() {
         </Dialog>
       </div>
 
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle>Your Lead Lists</CardTitle>
+          <CardTitle className="text-slate-200">Your Lead Lists</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (

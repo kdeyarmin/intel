@@ -53,11 +53,11 @@ export default function Referrals() {
   const fmt = (v) => v != null ? Number(v).toLocaleString() : '0';
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Referrals</h1>
-          <p className="text-gray-600 mt-1">{referrals.length} referral records</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Referrals</h1>
+          <p className="text-slate-500 mt-1">{referrals.length} referral records</p>
         </div>
         <ExportDialog
           data={filtered.map(r => ({
@@ -73,11 +73,11 @@ export default function Referrals() {
           fileName="referrals"
           title="CMS Referrals"
           dateField="created_date"
-          trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+          trigger={<Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"><Download className="w-4 h-4 mr-2" /> Export</Button>}
         />
       </div>
 
-      <Card className="mb-6 bg-white">
+      <Card className="mb-6 bg-[#141d30] border-slate-700/50">
         <CardContent className="pt-6">
           <SearchFilterBar
             searchTerm={search}
@@ -97,11 +97,11 @@ export default function Referrals() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white">
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><GitBranch className="w-5 h-5" /> CMS Referral Records</span>
-            <span className="text-sm font-normal text-gray-500">{filtered.length} results</span>
+          <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-slate-200">
+            <span className="flex items-center gap-2"><GitBranch className="w-5 h-5 text-cyan-400" /> CMS Referral Records</span>
+            <span className="text-sm font-normal text-slate-500">{filtered.length} results</span>
           </CardTitle>
         </CardHeader>
         <CardContent>

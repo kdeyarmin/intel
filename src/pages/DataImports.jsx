@@ -404,11 +404,11 @@ export default function DataImports() {
   const isMappingComplete = selectedType?.requiredColumns.every(col => columnMapping[col]);
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Data Imports</h1>
-          <p className="text-gray-600 mt-1">Upload and validate NPPES and CMS datasets</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Data Imports</h1>
+          <p className="text-slate-500 mt-1">Upload and validate NPPES and CMS datasets</p>
         </div>
         {step !== 'select' && (
           <Button variant="outline" onClick={handleReset}>
