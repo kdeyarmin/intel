@@ -104,8 +104,8 @@ Deno.serve(async (req) => {
 
     const resolvedYear = year || new Date().getFullYear();
 
-    // Call autoImportCMSData directly via service role to avoid auth chain issues
-    const response = await base44.functions.invoke('autoImportCMSData', {
+    // Call autoImportCMSData via service role to avoid auth chain issues
+    const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
