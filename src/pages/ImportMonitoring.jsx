@@ -27,6 +27,7 @@ import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
+import ImportTrendCharts from '../components/imports/ImportTrendCharts';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -80,6 +81,7 @@ export default function ImportMonitoring() {
   const [bulkRetryMode, setBulkRetryMode] = useState(false);
   const [isBulkRetrying, setIsBulkRetrying] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [lastNFilter, setLastNFilter] = useState(0); // 0 = off
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -244,6 +246,11 @@ export default function ImportMonitoring() {
       filtered = filtered.filter(b => new Date(b.created_date) <= end);
     }
 
+    // Last N filter
+    if (lastNFilter > 0) {
+      filtered = filtered.slice(0, lastNFilter);
+    }
+
     // Dedup latest per source
     if (showOnlyLatest) {
       const seen = new Map();
@@ -256,7 +263,7 @@ export default function ImportMonitoring() {
       return Array.from(seen.values());
     }
     return filtered;
-  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd]);
+  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter]);
 
   const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
@@ -499,6 +506,9 @@ export default function ImportMonitoring() {
         </Card>
       )}
 
+      {/* Import Trend Charts */}
+      <ImportTrendCharts batches={batches} />
+
       {/* Stale Jobs Warning */}
       {staleBatches.length > 0 && (
         <Card className="border-amber-500/30 bg-amber-500/10">
@@ -645,6 +655,17 @@ export default function ImportMonitoring() {
                   ))}
                 </select>
               )}
+              <select
+                className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
+                value={lastNFilter}
+                onChange={(e) => setLastNFilter(Number(e.target.value))}
+              >
+                <option value={0}>All Imports</option>
+                <option value={5}>Last 5</option>
+                <option value={10}>Last 10</option>
+                <option value={25}>Last 25</option>
+                <option value={50}>Last 50</option>
+              </select>
               <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
                 <input
                   type="checkbox"
