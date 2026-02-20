@@ -361,6 +361,15 @@ export default function ImportMonitoring() {
           <ShieldCheck className="w-3.5 h-3.5 inline mr-1.5" />
           Validation Rules
         </button>
+        <button
+          onClick={() => setActiveTab('alerts')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'alerts' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Bell className="w-3.5 h-3.5 inline mr-1.5" />
+          Alert Settings
+        </button>
       </div>
 
       {activeTab === 'history' && (
