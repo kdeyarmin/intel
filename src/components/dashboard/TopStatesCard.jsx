@@ -20,7 +20,7 @@ export default function TopStatesCard({ topStates, loading }) {
             {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-10 w-full bg-slate-700/50" />)}
           </div>
         ) : topStates.length === 0 ? (
-          <p className="text-slate-500 text-center py-8 text-sm">No location data available</p>
+          <p className="text-slate-400 text-center py-8 text-sm">No location data available</p>
         ) : (
           <div className="space-y-3">
             {topStates.map(([state, count], index) => {

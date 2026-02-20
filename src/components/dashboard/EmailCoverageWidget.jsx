@@ -61,7 +61,7 @@ export default function EmailCoverageWidget({ providers }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <div className="flex justify-between text-xs text-slate-400 mb-1.5">
             <span>{withEmail} of {total} providers have email</span>
             <span>{coveragePct}%</span>
           </div>
@@ -86,7 +86,7 @@ export default function EmailCoverageWidget({ providers }) {
         </div>
 
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <div className="flex justify-between text-xs text-slate-400 mb-1.5">
             <span>Search progress</span>
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>

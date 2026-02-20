@@ -168,19 +168,19 @@ export default function DataQualityWidget() {
         <div className="grid grid-cols-4 gap-3 pt-2 border-t border-slate-700/50">
           <div className="text-center">
             <p className="text-lg font-bold text-white">{providers.length}</p>
-            <p className="text-[10px] text-slate-500">Providers</p>
+            <p className="text-[10px] text-slate-400">Providers</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-white">{locations.length}</p>
-            <p className="text-[10px] text-slate-500">Locations</p>
+            <p className="text-[10px] text-slate-400">Locations</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-amber-400">{providers.filter(p => p.needs_nppes_enrichment).length}</p>
-            <p className="text-[10px] text-slate-500">Need Enrichment</p>
+            <p className="text-[10px] text-slate-400">Need Enrichment</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-bold text-white">{taxonomies.length}</p>
-            <p className="text-[10px] text-slate-500">Taxonomies</p>
+            <p className="text-[10px] text-slate-400">Taxonomies</p>
           </div>
         </div>
       </CardContent>

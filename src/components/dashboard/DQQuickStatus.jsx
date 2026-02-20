@@ -55,13 +55,13 @@ export default function DQQuickStatus() {
             <div className="flex items-center gap-6">
               <div className="text-center">
                 <p className={`text-3xl font-bold ${overallColor}`}>{scores.overall || 0}%</p>
-                <p className="text-[10px] text-slate-500">Overall</p>
+                <p className="text-[10px] text-slate-400">Overall</p>
               </div>
               <div className="flex-1 grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between"><span className="text-slate-500">Completeness</span><span className="font-semibold text-slate-300">{scores.completeness || 0}%</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Accuracy</span><span className="font-semibold text-slate-300">{scores.accuracy || 0}%</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Timeliness</span><span className="font-semibold text-slate-300">{scores.timeliness || 0}%</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Consistency</span><span className="font-semibold text-slate-300">{scores.consistency || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Completeness</span><span className="font-semibold text-slate-200">{scores.completeness || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Accuracy</span><span className="font-semibold text-slate-200">{scores.accuracy || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Timeliness</span><span className="font-semibold text-slate-200">{scores.timeliness || 0}%</span></div>
+              <div className="flex justify-between"><span className="text-slate-400">Consistency</span><span className="font-semibold text-slate-200">{scores.consistency || 0}%</span></div>
               </div>
             </div>
             <div className="flex gap-3 pt-2 border-t border-slate-700/50 text-xs">
@@ -89,7 +89,7 @@ export default function DQQuickStatus() {
           </>
         ) : (
           <div className="text-center py-4">
-            <p className="text-sm text-slate-500">No quality scans run yet</p>
+            <p className="text-sm text-slate-400">No quality scans run yet</p>
             <Link to={createPageUrl('DataQuality')}>
               <Button size="sm" variant="outline" className="mt-2 text-xs bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Run First Scan</Button>
             </Link>

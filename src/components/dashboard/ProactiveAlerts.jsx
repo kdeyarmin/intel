@@ -101,7 +101,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
                   <p className="text-sm font-medium text-slate-200">{alert.title}</p>
                   <Badge className={`text-[10px] border ${colors.badge}`}>{alert.severity}</Badge>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">{alert.description}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{alert.description}</p>
               </div>
             </div>
           );

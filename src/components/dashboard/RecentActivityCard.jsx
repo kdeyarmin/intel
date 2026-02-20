@@ -14,7 +14,7 @@ export default function RecentActivityCard({ events }) {
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-slate-500 text-center py-8 text-sm">No recent activity</p>
+          <p className="text-slate-400 text-center py-8 text-sm">No recent activity</p>
         ) : (
           <div className="space-y-1">
             {events.slice(0, 5).map((event, idx) => (
@@ -29,7 +29,7 @@ export default function RecentActivityCard({ events }) {
                   <p className="text-sm font-medium text-slate-200 capitalize truncate">
                     {event.event_type?.replace(/_/g, ' ')}
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
                   </p>
                 </div>
