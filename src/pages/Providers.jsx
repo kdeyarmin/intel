@@ -503,14 +503,15 @@ export default function Providers() {
                     <input type="checkbox"
                       checked={sortedProviders.length > 0 && selectedNpis.size === sortedProviders.length}
                       onChange={toggleSelectAll}
-                      className="rounded border-slate-300"
+                      className="rounded border-slate-600 bg-slate-800"
                     />
                   </TableHead>
                   <TableHead>NPI</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Credential</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Specialty</TableHead>
+                  <TableHead className="hidden lg:table-cell">State</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -522,22 +523,25 @@ export default function Providers() {
                       <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                     </TableRow>
                   ))
                 ) : sortedProviders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-slate-500">
                       No providers found
                     </TableCell>
                   </TableRow>
                 ) : (
                   sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
+                    const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[provider.npi] || [])[0];
+                    const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
                     return (
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-500/5' : ''}>
                         <TableCell>
@@ -549,22 +553,34 @@ export default function Providers() {
                         </TableCell>
                         <TableCell className="font-mono text-sm text-slate-400">{provider.npi}</TableCell>
                         <TableCell>
-                          {provider.entity_type === 'Individual' ? (
-                            <div>
-                              <p className="font-medium text-slate-200">{provider.last_name}, {provider.first_name}</p>
-                            </div>
-                          ) : (
-                            <p className="font-medium text-slate-200">{provider.organization_name}</p>
-                          )}
+                          <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)} className="hover:underline">
+                            {provider.entity_type === 'Individual' ? (
+                              <div>
+                                <p className="font-medium text-slate-200">{provider.last_name}, {provider.first_name}</p>
+                                {provider.credential && <p className="text-[10px] text-slate-500">{provider.credential}</p>}
+                              </div>
+                            ) : (
+                              <p className="font-medium text-slate-200">{provider.organization_name}</p>
+                            )}
+                          </Link>
                         </TableCell>
-                        <TableCell className="text-slate-400">{provider.credential || '-'}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <span className="text-xs text-slate-400 truncate max-w-[150px] block">
+                            {provTax?.taxonomy_description || '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <span className="text-xs text-slate-400">{provLoc?.state || '—'}</span>
+                        </TableCell>
                         <TableCell>
-                           <Badge variant="outline" className="border-slate-700 text-slate-400">{provider.entity_type}</Badge>
-                         </TableCell>
-                         <TableCell>
+                          <Badge variant="outline" className={`text-[10px] ${
+                            provider.status === 'Active' ? 'border-emerald-500/30 text-emerald-400' : 'border-red-500/30 text-red-400'
+                          }`}>{provider.status}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
                            {provider.email ? (
                              <div className="flex items-center gap-1.5">
-                               <span className="text-xs text-slate-400 truncate max-w-[120px] sm:max-w-[160px]">{provider.email}</span>
+                               <span className="text-xs text-slate-400 truncate max-w-[120px]">{provider.email}</span>
                                {provider.email_confidence && (
                                  <Badge className={`text-[10px] border ${
                                    provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
@@ -576,8 +592,8 @@ export default function Providers() {
                            ) : (
                             <span className="text-slate-600 text-xs">—</span>
                            )}
-                           </TableCell>
-                           <TableCell>
+                        </TableCell>
+                        <TableCell>
                            {score !== null ? (
                            <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
                               {score.toFixed(0)}
