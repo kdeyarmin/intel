@@ -340,20 +340,20 @@ export default function Providers() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Providers</h1>
             {activeTab !== 'directory' && (
-              <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px]">
+              <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
                 <Sparkles className="w-3 h-3 mr-0.5" /> AI Tools
               </Badge>
             )}
           </div>
-          <p className="text-gray-600 mt-1">{providers.length} total providers</p>
+          <p className="text-slate-500 mt-1">{providers.length} total providers</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders.map(p => {
               const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
@@ -394,7 +394,7 @@ export default function Providers() {
             fileName="providers"
             title="Providers"
             dateField="enumeration_date"
-            trigger={<Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>}
+            trigger={<Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"><Download className="w-4 h-4 mr-2" /> Export</Button>}
           />
           <EnrichProviderButton
             providers={selectedProviders.length > 0 ? selectedProviders : filteredProviders.slice(0, 20)}
@@ -407,19 +407,20 @@ export default function Providers() {
               setSelectedNpis(new Set());
             }}
           />
-          <Button onClick={handleSaveList} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={handleSaveList} className="bg-cyan-600 hover:bg-cyan-700">
             <Save className="w-4 h-4 mr-2" />
-            Save as Lead List
+            <span className="hidden sm:inline">Save as Lead List</span>
+            <span className="sm:hidden">Save List</span>
           </Button>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="h-10 mb-4 p-1 bg-slate-100">
-          <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-white"><List className="w-3.5 h-3.5" /> Directory</TabsTrigger>
-          <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-white"><Search className="w-3.5 h-3.5" /> AI NPI Finder</TabsTrigger>
-          <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-white"><Globe className="w-3.5 h-3.5" /> AI Augmenter</TabsTrigger>
-          <TabsTrigger value="duplicates" className="text-xs gap-1.5 data-[state=active]:bg-white"><Copy className="w-3.5 h-3.5" /> AI Duplicates</TabsTrigger>
+        <TabsList className="h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><List className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Directory</span><span className="sm:hidden">Dir</span></TabsTrigger>
+          <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI NPI Finder</span><span className="sm:hidden">NPI</span></TabsTrigger>
+          <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Globe className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Augmenter</span><span className="sm:hidden">Augment</span></TabsTrigger>
+          <TabsTrigger value="duplicates" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Copy className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Duplicates</span><span className="sm:hidden">Dupes</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="npi-finder">
@@ -440,7 +441,7 @@ export default function Providers() {
         </TabsContent>
 
         <TabsContent value="directory">
-      <Card className="mb-6 bg-white">
+      <Card className="mb-6 bg-[#141d30] border-slate-700/50">
         <CardContent className="pt-6 space-y-3">
           <SavedFilterBar
             page="Providers"
@@ -478,14 +479,14 @@ export default function Providers() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white">
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between text-slate-200">
             <span>Provider Directory</span>
-            <span className="text-sm font-normal text-gray-500">
+            <span className="text-sm font-normal text-slate-500">
               {sortedProviders.length} results
               {selectedNpis.size > 0 && (
-                <Badge className="ml-2 bg-violet-100 text-violet-700 text-[10px]">{selectedNpis.size} selected</Badge>
+                <Badge className="ml-2 bg-violet-500/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
               )}
             </span>
           </CardTitle>
@@ -527,7 +528,7 @@ export default function Providers() {
                   ))
                 ) : sortedProviders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-slate-500">
                       No providers found
                     </TableCell>
                   </TableRow>
@@ -535,61 +536,61 @@ export default function Providers() {
                   sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
                     return (
-                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-violet-50/50' : ''}>
+                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-500/5' : ''}>
                         <TableCell>
                           <input type="checkbox"
                             checked={selectedNpis.has(provider.npi)}
                             onChange={() => toggleSelect(provider.npi)}
-                            className="rounded border-slate-300"
+                            className="rounded border-slate-600 bg-slate-800"
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-sm">{provider.npi}</TableCell>
+                        <TableCell className="font-mono text-sm text-slate-400">{provider.npi}</TableCell>
                         <TableCell>
                           {provider.entity_type === 'Individual' ? (
                             <div>
-                              <p className="font-medium">{provider.last_name}, {provider.first_name}</p>
+                              <p className="font-medium text-slate-200">{provider.last_name}, {provider.first_name}</p>
                             </div>
                           ) : (
-                            <p className="font-medium">{provider.organization_name}</p>
+                            <p className="font-medium text-slate-200">{provider.organization_name}</p>
                           )}
                         </TableCell>
-                        <TableCell>{provider.credential || '-'}</TableCell>
+                        <TableCell className="text-slate-400">{provider.credential || '-'}</TableCell>
                         <TableCell>
-                           <Badge variant="outline">{provider.entity_type}</Badge>
+                           <Badge variant="outline" className="border-slate-700 text-slate-400">{provider.entity_type}</Badge>
                          </TableCell>
                          <TableCell>
                            {provider.email ? (
                              <div className="flex items-center gap-1.5">
-                               <span className="text-xs text-slate-700 truncate max-w-[160px]">{provider.email}</span>
+                               <span className="text-xs text-slate-400 truncate max-w-[120px] sm:max-w-[160px]">{provider.email}</span>
                                {provider.email_confidence && (
-                                 <Badge className={`text-[10px] ${
-                                   provider.email_confidence === 'high' ? 'bg-green-100 text-green-700' :
-                                   provider.email_confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                   'bg-red-100 text-red-700'
+                                 <Badge className={`text-[10px] border ${
+                                   provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
+                                   provider.email_confidence === 'medium' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
+                                   'bg-red-500/15 text-red-400 border-red-500/20'
                                  }`}>{provider.email_confidence}</Badge>
                                )}
                              </div>
                            ) : (
-                             <span className="text-gray-300 text-xs">—</span>
+                            <span className="text-slate-600 text-xs">—</span>
                            )}
-                         </TableCell>
-                         <TableCell>
-                          {score !== null ? (
-                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                           </TableCell>
+                           <TableCell>
+                           {score !== null ? (
+                           <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
                               {score.toFixed(0)}
                             </Badge>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-slate-600">-</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
-                              <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
+                              <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View</Button>
                             </Link>
                             {provider.entity_type === 'Organization' && (
                               <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
-                                <Button variant="outline" size="sm" className="text-xs h-7">Org</Button>
+                                <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Org</Button>
                               </Link>
                             )}
                           </div>
