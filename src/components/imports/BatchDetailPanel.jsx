@@ -3,10 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   CheckCircle2, XCircle, Clock, Loader2, Pause, FileText,
-  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2
+  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck
 } from 'lucide-react';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
 import ErrorCategoryDisplay from './ErrorCategoryDisplay';
+import ValidationRuleResults from './ValidationRuleResults';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
