@@ -139,7 +139,7 @@ export default function ProviderAdvancedFilters({
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <Select value={value || 'all'} onValueChange={onChange}>
-      <SelectTrigger className="h-9 text-xs w-[140px] bg-white">
+      <SelectTrigger className="h-9 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-300">
         <SelectValue placeholder={label} />
       </SelectTrigger>
       <SelectContent>
@@ -154,9 +154,9 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function FilterChip({ label, onRemove }) {
   return (
-    <Badge variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-default">
+    <Badge variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/15 cursor-default">
       {label}
-      <button onClick={onRemove} className="hover:bg-blue-200 rounded-full p-0.5 transition-colors">
+      <button onClick={onRemove} className="hover:bg-cyan-500/20 rounded-full p-0.5 transition-colors">
         <X className="w-3 h-3" />
       </button>
     </Badge>

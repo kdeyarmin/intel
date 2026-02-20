@@ -10,7 +10,7 @@ export default function SortControl({ sortField, sortDir, onSortChange, sortOpti
         value={sortField || 'default'}
         onValueChange={(v) => onSortChange(v, sortDir || 'asc')}
       >
-        <SelectTrigger className="h-8 text-xs w-[130px] bg-white">
+        <SelectTrigger className="h-8 text-xs w-[130px] bg-slate-800/50 border-slate-700 text-slate-300">
           <div className="flex items-center gap-1">
             <ArrowUpDown className="w-3 h-3 text-slate-400" />
             <SelectValue placeholder="Sort by" />

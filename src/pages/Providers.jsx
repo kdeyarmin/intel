@@ -28,6 +28,7 @@ const SORT_OPTIONS = [
   { value: 'credential', label: 'Credential' },
   { value: 'score', label: 'Score' },
   { value: 'created', label: 'Date Added' },
+  { value: 'updated', label: 'Last Updated' },
 ];
 
 export default function Providers() {
@@ -285,6 +286,8 @@ export default function Providers() {
           return dir * ((getScore(a.npi) || 0) - (getScore(b.npi) || 0));
         case 'created':
           return dir * ((a.created_date || '').localeCompare(b.created_date || ''));
+        case 'updated':
+          return dir * ((a.updated_date || a.created_date || '').localeCompare(b.updated_date || b.created_date || ''));
         default:
           return 0;
       }
