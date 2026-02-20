@@ -107,7 +107,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No URL available for this import type. Please provide a file_url.' }, { status: 400 });
     }
 
-    const resolvedYear = year || new Date().getFullYear();
+    // Default to a safe year (2 years ago) for generic stats if not provided, otherwise pass through
+    // Individual import functions (HHA, SNF, Part D) handle their own fallbacks to LATEST_AVAILABLE_YEAR
+    const resolvedYear = year || (new Date().getFullYear() - 2);
 
     // Call autoImportCMSData via service role to avoid auth chain issues
     const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {

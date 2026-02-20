@@ -126,7 +126,13 @@ Deno.serve(async (req) => {
   if (user?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
-  const { action = 'import', year = 2021, dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
+  const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
+  
+  const LATEST_YEAR = Math.max(...Object.keys(CMS_SNF_URLS).map(Number));
+  const requestedYear = parseInt(payload.year || LATEST_YEAR);
+  // Fallback to latest if requested year not found
+  const year = CMS_SNF_URLS[requestedYear] ? requestedYear : LATEST_YEAR;
+  if (requestedYear !== year) console.log(`Year ${requestedYear} unavailable for SNF, falling back to ${year}`);
 
   if (action === 'list_years') return Response.json({ available_years: Object.keys(CMS_SNF_URLS).map(Number).sort((a, b) => b - a) });
 

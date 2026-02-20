@@ -58,7 +58,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [stateFilter, setStateFilter] = useState('');
   const [sheetFilter, setSheetFilter] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  // Default to 2 years ago as CMS data typically lags by 1-2 years
+  const [year, setYear] = useState(String(new Date().getFullYear() - 2));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
