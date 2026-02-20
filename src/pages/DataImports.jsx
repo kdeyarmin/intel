@@ -325,18 +325,19 @@ export default function DataImports() {
       }));
 
       // Also create placeholder providers for any NPIs not yet in system
+      // Create placeholder providers for NPIs not yet in system
       const uniqueNPIs = [...new Set(utilRecords.map(r => r.npi))];
-      const providerPlaceholders = uniqueNPIs.map(npi => ({
-        npi,
-        status: 'Active',
-        needs_nppes_enrichment: true,
-      }));
-
-      // Create providers first (ignore failures for duplicates)
-      for (let i = 0; i < providerPlaceholders.length; i += CHUNK_SIZE) {
-        try {
-          await base44.entities.Provider.bulkCreate(providerPlaceholders.slice(i, i + CHUNK_SIZE));
-        } catch (e) { /* ignore duplicate errors */ }
+      setProcessingStatus(`Ensuring ${uniqueNPIs.length} providers exist...`);
+      for (let i = 0; i < uniqueNPIs.length; i += CHUNK_SIZE) {
+        const chunk = uniqueNPIs.slice(i, i + CHUNK_SIZE);
+        for (const npi of chunk) {
+          const existing = await base44.entities.Provider.filter({ npi });
+          if (existing.length === 0) {
+            try {
+              await base44.entities.Provider.create({ npi, status: 'Active', needs_nppes_enrichment: true });
+            } catch (e) { /* ignore */ }
+          }
+        }
       }
 
       for (let i = 0; i < utilRecords.length; i += CHUNK_SIZE) {
@@ -369,12 +370,14 @@ export default function DataImports() {
       }));
 
       const uniqueNPIs = [...new Set(refRecords.map(r => r.npi))];
-      for (let i = 0; i < uniqueNPIs.length; i += CHUNK_SIZE) {
-        try {
-          await base44.entities.Provider.bulkCreate(uniqueNPIs.slice(i, i + CHUNK_SIZE).map(npi => ({
-            npi, status: 'Active', needs_nppes_enrichment: true,
-          })));
-        } catch (e) { /* ignore */ }
+      setProcessingStatus(`Ensuring ${uniqueNPIs.length} providers exist...`);
+      for (const npi of uniqueNPIs) {
+        const existing = await base44.entities.Provider.filter({ npi });
+        if (existing.length === 0) {
+          try {
+            await base44.entities.Provider.create({ npi, status: 'Active', needs_nppes_enrichment: true });
+          } catch (e) { /* ignore */ }
+        }
       }
 
       for (let i = 0; i < refRecords.length; i += CHUNK_SIZE) {
