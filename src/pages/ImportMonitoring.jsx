@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
-  Plus, History
+  Plus, History, ShieldCheck
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
@@ -22,6 +22,7 @@ import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
 import BatchDetailPanel from '../components/imports/BatchDetailPanel';
 import NewImportDialog from '../components/imports/NewImportDialog';
+import ValidationRulesManager from '../components/imports/ValidationRulesManager';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -322,10 +323,27 @@ export default function ImportMonitoring() {
           <History className="w-3.5 h-3.5 inline mr-1.5" />
           Import History
         </button>
+        <button
+          onClick={() => setActiveTab('rules')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'rules' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 inline mr-1.5" />
+          Validation Rules
+        </button>
       </div>
 
       {activeTab === 'history' && (
         <ImportHistoryView batches={batches} formatTimestamp={formatTimestamp} />
+      )}
+
+      {activeTab === 'rules' && (
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardContent className="pt-6" style={{ minHeight: '500px' }}>
+            <ValidationRulesManager />
+          </CardContent>
+        </Card>
       )}
 
       {activeTab === 'monitoring' && <>

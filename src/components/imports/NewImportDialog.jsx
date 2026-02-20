@@ -10,6 +10,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus, Settings
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import ActiveRulesBadge from './ActiveRulesBadge';
 
 const IMPORT_TYPES = [
   { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, cat: 'nppes', hasUrl: false },
@@ -224,6 +225,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <selectedType.icon className="w-4 h-4 text-cyan-400" />
               <span className="text-sm font-medium text-slate-200">{selectedType.name}</span>
               <Badge className="bg-slate-700/50 text-slate-400 text-[10px]">{CATEGORY_LABELS[selectedType.cat]}</Badge>
+              <ActiveRulesBadge importType={selectedType.id} />
               <Button variant="ghost" size="sm" className="ml-auto text-xs text-slate-500 hover:text-slate-300 h-6" onClick={() => setStep(1)}>
                 Change
               </Button>
