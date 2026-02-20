@@ -17,8 +17,6 @@ const DEFAULT_SETTINGS = {
   onSuccess: true,
   onFailure: true,
   onStall: true,
-  emailAlerts: false,
-  emailAddress: '',
   stallThresholdMinutes: 15,
   showBrowserNotifications: true,
 };
