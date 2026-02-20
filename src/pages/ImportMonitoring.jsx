@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download
+  Plus, History, ShieldCheck, Bell, Download, Sparkles
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
@@ -28,6 +28,9 @@ import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
+import ResumeImportButton from '../components/imports/ResumeImportButton';
+import DetailedErrorRows from '../components/imports/DetailedErrorRows';
+import AIImportQualityAnalysis from '../components/imports/AIImportQualityAnalysis';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -397,6 +400,15 @@ export default function ImportMonitoring() {
           <Bell className="w-3.5 h-3.5 inline mr-1.5" />
           Alert Settings
         </button>
+        <button
+          onClick={() => setActiveTab('ai_quality')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'ai_quality' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 inline mr-1.5" />
+          AI Quality
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -415,6 +427,10 @@ export default function ImportMonitoring() {
         <div className="max-w-2xl">
           <AlertNotificationSettings />
         </div>
+      )}
+
+      {activeTab === 'ai_quality' && (
+        <AIImportQualityAnalysis />
       )}
 
       {activeTab === 'monitoring' && <>
