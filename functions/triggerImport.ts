@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       try {
         const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
           action: 'import',
-          year: parseInt(year || new Date().getFullYear()),
+          year: parseInt(year || 2023),
           custom_url: file_url || undefined,
           dry_run,
           // Pass through retry/range params
