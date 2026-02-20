@@ -7,7 +7,7 @@ import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
-import AIAnalysisPanel from '../components/dashboard/AIAnalysisPanel';
+import DashboardAIAssistant from '../components/dashboard/DashboardAIAssistant';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
@@ -165,9 +165,9 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* AI Analysis */}
+      {/* AI Assistant */}
       <div className="mb-6">
-        <AIAnalysisPanel />
+        <DashboardAIAssistant />
       </div>
 
       <DataSourcesFooter />
