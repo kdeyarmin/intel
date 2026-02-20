@@ -549,10 +549,10 @@ export default function ImportMonitoring() {
             </DialogDescription>
           </DialogHeader>
           {confirmDeleteBatch && (
-            <div className="text-sm bg-gray-50 rounded-lg p-3 space-y-1">
-              <p><span className="text-gray-500">Type:</span> <span className="font-medium">{IMPORT_TYPE_LABELS[confirmDeleteBatch.import_type] || confirmDeleteBatch.import_type}</span></p>
-              <p><span className="text-gray-500">File:</span> <span className="font-medium">{confirmDeleteBatch.file_name}</span></p>
-              <p><span className="text-gray-500">Status:</span> <Badge className={statusColors[confirmDeleteBatch.status] || ''}>{confirmDeleteBatch.status}</Badge></p>
+            <div className="text-sm bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 space-y-1">
+              <p><span className="text-slate-500">Type:</span> <span className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[confirmDeleteBatch.import_type] || confirmDeleteBatch.import_type}</span></p>
+              <p><span className="text-slate-500">File:</span> <span className="font-medium text-slate-200">{confirmDeleteBatch.file_name}</span></p>
+              <p><span className="text-slate-500">Status:</span> <Badge className={statusColors[confirmDeleteBatch.status] || ''}>{confirmDeleteBatch.status}</Badge></p>
             </div>
           )}
           <DialogFooter>
