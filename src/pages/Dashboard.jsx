@@ -71,7 +71,7 @@ export default function Dashboard() {
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
         <p className="text-sm text-slate-500 mt-0.5">CareMetric Provider Intelligence Overview</p>
       </div>
 
@@ -81,40 +81,35 @@ export default function Dashboard() {
           title="Total Providers"
           value={totalProviders.toLocaleString()}
           icon={Users}
-          iconColor="text-blue-600"
-          iconBg="bg-blue-50"
+          iconColor="text-cyan-400"
           loading={loading}
         />
         <KPICard
           title="Active Medicare"
           value={activeMedicare.toLocaleString()}
           icon={Activity}
-          iconColor="text-emerald-600"
-          iconBg="bg-emerald-50"
+          iconColor="text-emerald-400"
           loading={loading}
         />
         <KPICard
           title="Total Referrals"
           value={totalReferrals.toLocaleString()}
           icon={TrendingUp}
-          iconColor="text-violet-600"
-          iconBg="bg-violet-50"
+          iconColor="text-violet-400"
           loading={loading}
         />
         <KPICard
           title="Locations"
           value={totalLocations.toLocaleString()}
           icon={MapPin}
-          iconColor="text-sky-600"
-          iconBg="bg-sky-50"
+          iconColor="text-sky-400"
           loading={loading}
         />
         <KPICard
           title="Last Refresh"
           value={lastRefresh}
           icon={Calendar}
-          iconColor="text-amber-600"
-          iconBg="bg-amber-50"
+          iconColor="text-amber-400"
           loading={loading}
         />
       </div>

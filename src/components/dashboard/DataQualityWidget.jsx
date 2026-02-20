@@ -116,28 +116,28 @@ export default function DataQualityWidget() {
 
   if (isLoading) {
     return (
-      <Card className="col-span-1 lg:col-span-3">
-        <CardHeader><CardTitle>Data Quality</CardTitle></CardHeader>
+      <Card className="col-span-1 lg:col-span-3 bg-[#141d30] border-slate-700/50">
+        <CardHeader><CardTitle className="text-slate-300">Data Quality</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full bg-slate-700/50" />)}
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const overallColor = scores.overall >= 80 ? 'bg-green-100 text-green-700' : scores.overall >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+  const overallColor = scores.overall >= 80 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : scores.overall >= 50 ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' : 'bg-red-500/15 text-red-400 border-red-500/20';
 
   return (
-    <Card className="bg-white border-slate-200/80 shadow-sm">
+    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Database className="w-4 h-4 text-teal-500" />
+          <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+            <Database className="w-4 h-4 text-cyan-400" />
             Data Quality Overview
           </CardTitle>
-          <Badge className={overallColor}>
+          <Badge className={`border ${overallColor}`}>
             Overall: {scores.overall}%
           </Badge>
         </div>
@@ -153,34 +153,34 @@ export default function DataQualityWidget() {
 
         {/* Detailed Panels */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="border rounded-lg p-3">
+          <div className="border border-slate-700/50 rounded-lg p-3 bg-slate-800/30">
             <CompletenessPanel providers={providers} locations={locations} taxonomies={taxonomies} />
           </div>
-          <div className="border rounded-lg p-3">
+          <div className="border border-slate-700/50 rounded-lg p-3 bg-slate-800/30">
             <AccuracyPanel providers={providers} locations={locations} />
           </div>
-          <div className="border rounded-lg p-3">
+          <div className="border border-slate-700/50 rounded-lg p-3 bg-slate-800/30">
             <TimelinessPanel datasets={datasets} />
           </div>
         </div>
 
         {/* Summary Stats Footer */}
-        <div className="grid grid-cols-4 gap-3 pt-2 border-t">
+        <div className="grid grid-cols-4 gap-3 pt-2 border-t border-slate-700/50">
           <div className="text-center">
-            <p className="text-lg font-bold text-gray-900">{providers.length}</p>
-            <p className="text-[10px] text-gray-500">Providers</p>
+            <p className="text-lg font-bold text-white">{providers.length}</p>
+            <p className="text-[10px] text-slate-500">Providers</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-gray-900">{locations.length}</p>
-            <p className="text-[10px] text-gray-500">Locations</p>
+            <p className="text-lg font-bold text-white">{locations.length}</p>
+            <p className="text-[10px] text-slate-500">Locations</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-orange-600">{providers.filter(p => p.needs_nppes_enrichment).length}</p>
-            <p className="text-[10px] text-gray-500">Need Enrichment</p>
+            <p className="text-lg font-bold text-amber-400">{providers.filter(p => p.needs_nppes_enrichment).length}</p>
+            <p className="text-[10px] text-slate-500">Need Enrichment</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-bold text-gray-900">{taxonomies.length}</p>
-            <p className="text-[10px] text-gray-500">Taxonomies</p>
+            <p className="text-lg font-bold text-white">{taxonomies.length}</p>
+            <p className="text-[10px] text-slate-500">Taxonomies</p>
           </div>
         </div>
       </CardContent>
