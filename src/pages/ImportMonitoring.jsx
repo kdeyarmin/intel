@@ -19,6 +19,7 @@ import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
 import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
+import BatchDetailPanel from '../components/imports/BatchDetailPanel';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -66,6 +67,9 @@ export default function ImportMonitoring() {
   const [dateEnd, setDateEnd] = useState('');
   const [deletingBatchId, setDeletingBatchId] = useState(null);
   const [confirmDeleteBatch, setConfirmDeleteBatch] = useState(null);
+  const [selectedForRerun, setSelectedForRerun] = useState(new Set());
+  const [bulkRetryMode, setBulkRetryMode] = useState(false);
+  const [isBulkRetrying, setIsBulkRetrying] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -94,6 +98,48 @@ export default function ImportMonitoring() {
   const staleBatches = batches.filter(b => isStale(b));
   const completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
+  const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
+
+  const toggleSelectForRerun = (id) => {
+    setSelectedForRerun(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkRetry = async () => {
+    if (selectedForRerun.size === 0) return;
+    setIsBulkRetrying(true);
+    const toRetry = batches.filter(b => selectedForRerun.has(b.id));
+    for (const batch of toRetry) {
+      await base44.entities.ImportBatch.create({
+        import_type: batch.import_type,
+        file_name: batch.file_name,
+        file_url: batch.file_url,
+        status: 'validating',
+        dry_run: false,
+        retry_of: batch.id,
+        retry_count: (batch.retry_count || 0) + 1,
+        retry_params: { mode: 'full' },
+        tags: [...(batch.tags || []), 'retry', 'bulk-retry'],
+        category: batch.category,
+      });
+      try {
+        await base44.functions.invoke('triggerImport', {
+          import_type: batch.import_type,
+          file_url: batch.file_url,
+          dry_run: false,
+        });
+      } catch (e) {
+        console.warn('triggerImport for bulk retry failed:', e.message);
+      }
+    }
+    setSelectedForRerun(new Set());
+    setBulkRetryMode(false);
+    setIsBulkRetrying(false);
+    refreshBatches();
+  };
   const pausedBatches = batches.filter(b => b.status === 'paused');
   const [autoFailedIds, setAutoFailedIds] = useState(new Set());
   const autoFailProcessed = useRef(new Set());
@@ -365,6 +411,62 @@ export default function ImportMonitoring() {
         </Card>
       )}
 
+      {/* Bulk Retry Bar */}
+      {failedBatches.length > 0 && (
+        <div className="flex items-center gap-3">
+          {!bulkRetryMode ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+              onClick={() => setBulkRetryMode(true)}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Bulk Re-run Failed ({failedBatches.length})
+            </Button>
+          ) : (
+            <>
+              <span className="text-xs text-slate-400">
+                Select failed batches to re-run ({selectedForRerun.size} selected)
+              </span>
+              <Button
+                size="sm"
+                disabled={selectedForRerun.size === 0 || isBulkRetrying}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                onClick={handleBulkRetry}
+              >
+                {isBulkRetrying ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                Re-run {selectedForRerun.size} batch{selectedForRerun.size !== 1 ? 'es' : ''}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800"
+                onClick={() => { setBulkRetryMode(false); setSelectedForRerun(new Set()); }}
+              >
+                Cancel
+              </Button>
+              {displayedFailedBatches.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-slate-500 hover:text-slate-300"
+                  onClick={() => {
+                    if (selectedForRerun.size === displayedFailedBatches.length) {
+                      setSelectedForRerun(new Set());
+                    } else {
+                      setSelectedForRerun(new Set(displayedFailedBatches.map(b => b.id)));
+                    }
+                  }}
+                >
+                  {selectedForRerun.size === displayedFailedBatches.length ? 'Deselect All' : 'Select All Failed'}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Filters */}
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
@@ -447,11 +549,29 @@ export default function ImportMonitoring() {
           ) : (
             <div className="space-y-4">
               {displayBatches.map((batch) => (
-                <div key={batch.id} className="p-4 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 transition-colors">
+                <div key={batch.id} className={`p-4 border rounded-lg hover:bg-slate-800/30 transition-colors ${
+                  bulkRetryMode && batch.status === 'failed'
+                    ? selectedForRerun.has(batch.id)
+                      ? 'border-cyan-500/40 bg-cyan-500/5'
+                      : 'border-slate-700/50 cursor-pointer'
+                    : 'border-slate-700/50'
+                }`}
+                  onClick={bulkRetryMode && batch.status === 'failed' ? () => toggleSelectForRerun(batch.id) : undefined}
+                >
                   {/* Row 1: Title, status, actions */}
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      {getStatusIcon(batch.status)}
+                      {bulkRetryMode && batch.status === 'failed' ? (
+                        <input
+                          type="checkbox"
+                          checked={selectedForRerun.has(batch.id)}
+                          onChange={() => toggleSelectForRerun(batch.id)}
+                          className="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500/30"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        getStatusIcon(batch.status)
+                      )}
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-slate-200">
@@ -500,36 +620,7 @@ export default function ImportMonitoring() {
                           <DialogHeader>
                             <DialogTitle className="text-slate-200">Import Job Details</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div><span className="text-slate-500">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>
-                              <div><span className="text-slate-500">Status:</span><p className="font-medium text-slate-200">{batch.status}</p></div>
-                              <div><span className="text-slate-500">Created:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.created_date)}</p></div>
-                              <div><span className="text-slate-500">Completed:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.completed_at)}</p></div>
-                              {batch.retry_of && <div><span className="text-slate-500">Retry Of:</span><p className="font-medium text-xs font-mono text-slate-300">{batch.retry_of}</p></div>}
-                              {batch.cancel_reason && <div className="col-span-2"><span className="text-slate-500">Cancel Reason:</span><p className="font-medium text-red-400">{batch.cancel_reason}</p></div>}
-                            </div>
-                            <div className="grid grid-cols-3 gap-3 text-sm">
-                              <div><span className="text-slate-500">Total:</span><p className="font-medium text-slate-200">{batch.total_rows?.toLocaleString() || 0}</p></div>
-                              <div><span className="text-slate-500">Valid:</span><p className="font-medium text-emerald-400">{batch.valid_rows?.toLocaleString() || 0}</p></div>
-                              <div><span className="text-slate-500">Invalid:</span><p className="font-medium text-red-400">{batch.invalid_rows?.toLocaleString() || 0}</p></div>
-                              <div><span className="text-slate-500">Duplicates:</span><p className="font-medium text-amber-400">{batch.duplicate_rows?.toLocaleString() || 0}</p></div>
-                              <div><span className="text-slate-500">Imported:</span><p className="font-medium text-blue-400">{batch.imported_rows?.toLocaleString() || 0}</p></div>
-                              <div><span className="text-slate-500">Updated:</span><p className="font-medium text-violet-400">{batch.updated_rows?.toLocaleString() || 0}</p></div>
-                            </div>
-                            {batch.retry_params && (
-                              <div>
-                                <h4 className="font-semibold mb-2 text-sm text-slate-300">Retry Parameters</h4>
-                                <pre className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-xs overflow-auto text-slate-300">{JSON.stringify(batch.retry_params, null, 2)}</pre>
-                              </div>
-                            )}
-                            {batch.error_samples?.length > 0 && (
-                              <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} />
-                            )}
-                            {batch.error_samples?.length > 0 && (
-                              <ErrorCategoryDisplay errors={batch.error_samples} />
-                            )}
-                          </div>
+                          <BatchDetailPanel batch={batch} />
                         </DialogContent>
                       </Dialog>
                     </div>
