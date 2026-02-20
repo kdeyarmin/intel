@@ -39,9 +39,22 @@ export default function ProactiveEnrichmentScanner({ providers = [] }) {
     setRunning(true);
     setResults(null);
 
-    // Find providers with missing data
-    const candidates = providers.slice(0, batchSize * 3);
+    // Get NPIs already scanned via proactive discovery so we skip them
+    let alreadyScannedNPIs = new Set();
+    try {
+      const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'proactive_scan' });
+      alreadyScannedNPIs = new Set(existing.map(r => r.npi));
+    } catch (e) { console.warn('Could not fetch existing scans:', e.message); }
+
+    // Filter out already-scanned providers, then take batchSize
+    const candidates = providers.filter(p => !alreadyScannedNPIs.has(p.npi));
     const toScan = candidates.slice(0, batchSize);
+    
+    if (toScan.length === 0) {
+      setResults({ enriched: 0, no_data: 0, errors: 0, details: [], message: 'All providers have already been scanned.' });
+      setRunning(false);
+      return;
+    }
     setProgress({ current: 0, total: toScan.length, currentName: '' });
 
     const scanResults = { enriched: 0, no_data: 0, errors: 0, details: [] };

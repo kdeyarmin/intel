@@ -15,10 +15,28 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
   const [autoApply, setAutoApply] = useState(false);
   const [batchSize, setBatchSize] = useState(10);
 
+  const [alreadyEnrichedNPIs, setAlreadyEnrichedNPIs] = useState(new Set());
+  const [loadedExisting, setLoadedExisting] = useState(false);
+
+  // Load already-enriched NPIs on mount so we can skip them
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'enrichment_details' });
+        setAlreadyEnrichedNPIs(new Set(existing.map(r => r.npi)));
+      } catch (e) { console.warn('Could not fetch existing enrichments:', e.message); }
+      setLoadedExisting(true);
+    })();
+  }, []);
+
+  const unenrichedProviders = providers.filter(
+    p => (!p.email || p.needs_nppes_enrichment) && !alreadyEnrichedNPIs.has(p.npi)
+  );
+
   const handleRun = async () => {
-    const npis = providers.filter(p => !p.email || p.needs_nppes_enrichment).map(p => p.npi).slice(0, batchSize);
+    const npis = unenrichedProviders.map(p => p.npi).slice(0, batchSize);
     if (npis.length === 0) {
-      setResults({ enriched: 0, no_data: 0, errors: 0, total: 0, message: 'No providers need enrichment' });
+      setResults({ enriched: 0, no_data: 0, errors: 0, total: 0, message: 'All providers have already been enriched' });
       return;
     }
 
@@ -32,11 +50,18 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
       auto_apply_high_confidence: autoApply,
     });
 
+    // Update local set so the next run skips these too
+    setAlreadyEnrichedNPIs(prev => {
+      const next = new Set(prev);
+      npis.forEach(n => next.add(n));
+      return next;
+    });
+
     setResults(res.data);
     setRunning(false);
   };
 
-  const needEnrichment = providers.filter(p => !p.email || p.needs_nppes_enrichment).length;
+  const needEnrichment = unenrichedProviders.length;
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">
@@ -116,7 +141,7 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
           className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
         >
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {running ? 'Enriching...' : `Enrich ${Math.min(batchSize, needEnrichment)} Providers`}
+          {!loadedExisting ? 'Loading...' : running ? 'Enriching...' : `Enrich ${Math.min(batchSize, needEnrichment)} Providers`}
         </Button>
       </CardContent>
     </Card>
