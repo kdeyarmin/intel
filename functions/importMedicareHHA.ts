@@ -9,13 +9,34 @@ const CMS_HHA_URLS = {
   2020: 'https://data.cms.gov/sites/default/files/2022-02/CPS%20MDCR%20HHA%202020.zip',
 };
 
+const LATEST_AVAILABLE_YEAR = Math.max(...Object.keys(CMS_HHA_URLS).map(Number));
+
 // Download ZIP, extract XLSX, parse sheets
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
   
+  const contentType = resp.headers.get('content-type') || '';
   const arrayBuffer = await resp.arrayBuffer();
+  
+  // Check if the response is actually a ZIP file (magic bytes: PK = 0x50 0x4B)
+  const header = new Uint8Array(arrayBuffer.slice(0, 4));
+  const isZip = header[0] === 0x50 && header[1] === 0x4B;
+  
+  if (!isZip) {
+    // Maybe it's a direct XLSX file (which is also a ZIP internally) - try parsing directly
+    try {
+      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+      if (workbook.SheetNames.length > 0) {
+        console.log('Response was a direct XLSX file, not a ZIP archive');
+        return workbook;
+      }
+    } catch (_) {
+      // Not an XLSX either
+    }
+    throw new Error(`Downloaded file is not a valid ZIP/XLSX archive (content-type: ${contentType}). The URL may have changed or CMS may not have published this data yet.`);
+  }
   
   // Extract XLSX from the ZIP archive
   const zip = await JSZip.loadAsync(arrayBuffer);
@@ -181,7 +202,13 @@ Deno.serve(async (req) => {
   }
 
   const payload = await req.json().catch(() => ({}));
-  const { action = 'import', year = 2023, dry_run = false, custom_url } = payload;
+  const { action = 'import', dry_run = false, custom_url } = payload;
+  // If requested year has no data, fall back to the latest available year
+  const requestedYear = parseInt(payload.year || LATEST_AVAILABLE_YEAR);
+  const year = CMS_HHA_URLS[requestedYear] ? requestedYear : LATEST_AVAILABLE_YEAR;
+  if (requestedYear !== year) {
+    console.log(`Year ${requestedYear} not available for HHA stats, falling back to ${year}`);
+  }
 
   // --- LIST available years ---
   if (action === 'list_years') {
@@ -196,7 +223,8 @@ Deno.serve(async (req) => {
   const downloadUrl = custom_url || CMS_HHA_URLS[year];
   if (!downloadUrl) {
     return Response.json({ 
-      error: `No download URL for year ${year}. Available: ${Object.keys(CMS_HHA_URLS).join(', ')}` 
+      error: `No download URL for year ${year}. Available: ${Object.keys(CMS_HHA_URLS).join(', ')}`,
+      hint: `The latest available year is ${LATEST_AVAILABLE_YEAR}. CMS has not published data for ${requestedYear} yet.`,
     }, { status: 400 });
   }
 
