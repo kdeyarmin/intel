@@ -717,18 +717,18 @@ export default function ImportMonitoring() {
                       </div>
                     ) : (
                       <>
-                        {batch.total_rows > 0 && <div><span className="text-slate-500">Total: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
-                        {batch.valid_rows > 0 && <div><span className="text-slate-500">Validated: </span><span className="font-semibold text-emerald-400">{batch.valid_rows.toLocaleString()}</span></div>}
-                        {batch.imported_rows > 0 && <div><span className="text-slate-500">Imported: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
-                        {batch.updated_rows > 0 && <div><span className="text-slate-500">Updated: </span><span className="font-semibold text-violet-400">{batch.updated_rows.toLocaleString()}</span></div>}
-                        {batch.skipped_rows > 0 && <div><span className="text-slate-500">Skipped: </span><span className="font-semibold text-slate-400">{batch.skipped_rows.toLocaleString()}</span></div>}
-                        {batch.invalid_rows > 0 && <div><span className="text-slate-500">Invalid: </span><span className="font-semibold text-red-400">{batch.invalid_rows.toLocaleString()}</span></div>}
+                        {batch.total_rows > 0 && <div><span className="text-slate-400">Total: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
+                        {batch.valid_rows > 0 && <div><span className="text-slate-400">Validated: </span><span className="font-semibold text-emerald-400">{batch.valid_rows.toLocaleString()}</span></div>}
+                        {batch.imported_rows > 0 && <div><span className="text-slate-400">Imported: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
+                        {batch.updated_rows > 0 && <div><span className="text-slate-400">Updated: </span><span className="font-semibold text-violet-400">{batch.updated_rows.toLocaleString()}</span></div>}
+                        {batch.skipped_rows > 0 && <div><span className="text-slate-400">Skipped: </span><span className="font-semibold text-slate-300">{batch.skipped_rows.toLocaleString()}</span></div>}
+                        {batch.invalid_rows > 0 && <div><span className="text-slate-400">Invalid: </span><span className="font-semibold text-red-400">{batch.invalid_rows.toLocaleString()}</span></div>}
                         {batch.status === 'failed' && batch.valid_rows > 0 && !batch.imported_rows && (
                           <div className="text-xs text-amber-400 italic">Validated but failed during import</div>
                         )}
                       </>
                     )}
-                    <div className="ml-auto text-slate-500 text-xs">{formatTimestamp(batch.created_date)}</div>
+                    <div className="ml-auto text-slate-400 text-xs">{formatTimestamp(batch.created_date)}</div>
                   </div>
                 </div>
               ))}
