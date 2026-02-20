@@ -40,13 +40,13 @@ export default function CompletenessPanel({ providers, locations, taxonomies }) 
 
   return (
     <div>
-      <h4 className="text-xs font-semibold text-gray-700 mb-2">Record Completeness</h4>
+      <h4 className="text-xs font-semibold text-slate-300 mb-2">Record Completeness</h4>
       <div className="h-40">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={metrics} layout="vertical" margin={{ left: 55, right: 10, top: 0, bottom: 0 }}>
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={v => `${v}%`} />
-            <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={50} />
-            <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 12 }} />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => `${v}%`} axisLine={{ stroke: '#334155' }} tickLine={{ stroke: '#334155' }} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} width={50} axisLine={{ stroke: '#334155' }} tickLine={{ stroke: '#334155' }} />
+            <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 12, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, color: '#e2e8f0' }} />
             <Bar dataKey="pct" radius={[0, 4, 4, 0]} barSize={12}>
               {metrics.map((m, i) => (
                 <Cell key={i} fill={getBarColor(m.pct)} />

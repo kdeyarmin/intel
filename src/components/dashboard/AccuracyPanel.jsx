@@ -20,12 +20,12 @@ function CheckRow({ label, passed, total }) {
     <div className="flex items-center justify-between py-1.5">
       <div className="flex items-center gap-1.5">
         {isGood
-          ? <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-          : <XCircle className="w-3.5 h-3.5 text-red-500" />
+          ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+          : <XCircle className="w-3.5 h-3.5 text-red-400" />
         }
-        <span className="text-xs text-gray-700">{label}</span>
+        <span className="text-xs text-slate-400">{label}</span>
       </div>
-      <span className={`text-xs font-semibold ${isGood ? 'text-green-600' : 'text-red-600'}`}>
+      <span className={`text-xs font-semibold ${isGood ? 'text-emerald-400' : 'text-red-400'}`}>
         {passed}/{total} ({pct}%)
       </span>
     </div>
@@ -41,8 +41,8 @@ export default function AccuracyPanel({ providers, locations }) {
 
   return (
     <div>
-      <h4 className="text-xs font-semibold text-gray-700 mb-1">Data Accuracy Checks</h4>
-      <div className="divide-y divide-gray-100">
+      <h4 className="text-xs font-semibold text-slate-300 mb-1">Data Accuracy Checks</h4>
+      <div className="divide-y divide-slate-700/30">
         <CheckRow label="Valid NPI format" passed={validNPIs} total={providers.length} />
         <CheckRow label="Valid entity type" passed={validEntityTypes} total={providers.length} />
         <CheckRow label="Valid gender code" passed={validGender} total={providers.length} />

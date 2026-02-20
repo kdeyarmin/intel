@@ -37,7 +37,7 @@ export default function QualityRadialChart({ score, label, size = 80 }) {
               strokeWidth={0}
             >
               <Cell fill={color} />
-              <Cell fill="#f1f5f9" />
+              <Cell fill="#1e293b" />
             </Pie>
           </PieChart>
         </ResponsiveContainer>
@@ -45,7 +45,7 @@ export default function QualityRadialChart({ score, label, size = 80 }) {
           <span className="text-sm font-bold" style={{ color }}>{score}%</span>
         </div>
       </div>
-      <span className="text-[10px] text-gray-500 mt-1 text-center leading-tight">{label}</span>
+      <span className="text-[10px] text-slate-500 mt-1 text-center leading-tight">{label}</span>
     </div>
   );
 }
