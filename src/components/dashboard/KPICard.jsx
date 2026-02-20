@@ -6,7 +6,7 @@ export default function KPICard({ title, value, subtitle, icon: Icon, iconColor,
     <div className="bg-[#141d30] rounded-xl border border-slate-700/50 shadow-lg shadow-black/10 hover:border-cyan-500/20 hover:shadow-cyan-500/5 transition-all duration-300 p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest">{title}</p>
+          <p className="text-[11px] font-semibold text-slate-200 uppercase tracking-widest">{title}</p>
           {loading ? (
             <Skeleton className="h-8 w-24 mt-2 bg-slate-700/50" />
           ) : (

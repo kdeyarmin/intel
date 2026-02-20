@@ -54,7 +54,7 @@ export default function EmailCoverageWidget({ providers }) {
             <Mail className="w-4 h-4 text-cyan-400" />
             Email Outreach Readiness
           </span>
-          <Badge className={coveragePct >= 50 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}>
+          <Badge className={coveragePct >= 50 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}>
             {coveragePct}% coverage
           </Badge>
         </CardTitle>
@@ -73,15 +73,15 @@ export default function EmailCoverageWidget({ providers }) {
         <div className="grid grid-cols-3 gap-2">
           <div className="text-center p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
             <div className="text-lg font-bold text-emerald-400">{highConf}</div>
-            <div className="text-[10px] text-emerald-500/80">High Conf.</div>
+            <div className="text-[10px] text-emerald-400">High Conf.</div>
           </div>
           <div className="text-center p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
             <div className="text-lg font-bold text-amber-400">{medConf}</div>
-            <div className="text-[10px] text-amber-500/80">Medium</div>
+            <div className="text-[10px] text-amber-400">Medium</div>
           </div>
           <div className="text-center p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
             <div className="text-lg font-bold text-red-400">{lowConf}</div>
-            <div className="text-[10px] text-red-500/80">Low</div>
+            <div className="text-[10px] text-red-400">Low</div>
           </div>
         </div>
 

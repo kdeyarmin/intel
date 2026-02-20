@@ -127,7 +127,7 @@ export default function DataQualityWidget() {
     );
   }
 
-  const overallColor = scores.overall >= 80 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : scores.overall >= 50 ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' : 'bg-red-500/15 text-red-400 border-red-500/20';
+  const overallColor = scores.overall >= 80 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : scores.overall >= 50 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30';
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
