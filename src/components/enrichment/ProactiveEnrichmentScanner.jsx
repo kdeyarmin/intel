@@ -97,6 +97,18 @@ Only return data you can verify. Provide specific numbers and names.`,
       if (!res.data_found) {
         scanResults.no_data++;
         scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
+        // Record no_data so this NPI is skipped on future scans
+        await base44.entities.EnrichmentRecord.create({
+          npi: p.npi,
+          provider_name: name,
+          source: 'ai_web_search',
+          enrichment_type: 'multi_field',
+          field_name: 'proactive_scan',
+          new_value: 'No data found',
+          confidence: 'low',
+          status: 'rejected',
+          batch_id: `proactive_${Date.now()}`,
+        });
         continue;
       }
 
