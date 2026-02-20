@@ -83,10 +83,36 @@ export default function ImportMonitoring() {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importMonitoringBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
-    refetchInterval: 300000,
+    refetchInterval: 10000, // Poll every 10s for real-time feel
   });
 
   const refreshBatches = () => queryClient.refetchQueries({ queryKey: ['importMonitoringBatches'] });
+
+  // Real-time subscription for live updates
+  const prevStatusMap = useRef({});
+  useEffect(() => {
+    const unsubscribe = base44.entities.ImportBatch.subscribe((event) => {
+      queryClient.invalidateQueries({ queryKey: ['importMonitoringBatches'] });
+      // Trigger alert notifications on status change
+      if (event.type === 'update' && event.data) {
+        const prev = prevStatusMap.current[event.id];
+        if (prev && prev !== event.data.status) {
+          checkAndNotify(event.data, prev);
+        }
+        prevStatusMap.current[event.id] = event.data.status;
+      }
+    });
+    return unsubscribe;
+  }, [queryClient]);
+
+  // Keep prev status map in sync
+  useEffect(() => {
+    for (const b of batches) {
+      if (!prevStatusMap.current[b.id]) {
+        prevStatusMap.current[b.id] = b.status;
+      }
+    }
+  }, [batches]);
 
   // Collect all unique tags
   const allTags = useMemo(() => {
