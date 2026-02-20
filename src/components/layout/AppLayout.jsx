@@ -70,6 +70,11 @@ export default function AppLayout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
+  const mainRef = React.useRef(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [currentPageName]);
 
   // Auto-expand sidebar on large screens
   useEffect(() => {
@@ -236,7 +241,7 @@ export default function AppLayout({ children, currentPageName }) {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0">
+      <main ref={mainRef} className="flex-1 overflow-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0">
         <div className="flex-1">
           {children}
         </div>
