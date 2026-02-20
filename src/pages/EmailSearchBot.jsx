@@ -202,11 +202,11 @@ export default function EmailSearchBot() {
 
       {/* Mode Tabs */}
       <Tabs value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="h-9 w-full grid grid-cols-2">
-          <TabsTrigger value="search" className="text-xs gap-1.5">
+        <TabsList className="h-9 w-full grid grid-cols-2 bg-slate-800/60 border border-slate-700/50">
+          <TabsTrigger value="search" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Bot className="w-3.5 h-3.5" /> Email Search
           </TabsTrigger>
-          <TabsTrigger value="campaign" className="text-xs gap-1.5">
+          <TabsTrigger value="campaign" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Sparkles className="w-3.5 h-3.5" /> AI Campaign Assistant
           </TabsTrigger>
         </TabsList>
@@ -260,25 +260,25 @@ export default function EmailSearchBot() {
       {/* Validation Stats */}
       {stats.validated > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-green-50 border-green-200">
+          <Card className="bg-[#141d30] border-emerald-500/20">
             <CardContent className="p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
-                <ShieldCheck className="w-4 h-4 text-green-600" />
-                <span className="text-lg font-bold text-green-700">{stats.valid}</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="text-lg font-bold text-emerald-400">{stats.valid}</span>
               </div>
-              <div className="text-[10px] text-green-600">Valid Emails</div>
+              <div className="text-[10px] text-emerald-500/80">Valid Emails</div>
             </CardContent>
           </Card>
-          <Card className="bg-amber-50 border-amber-200">
+          <Card className="bg-[#141d30] border-amber-500/20">
             <CardContent className="p-3 text-center">
-              <div className="text-lg font-bold text-amber-700">{stats.risky}</div>
-              <div className="text-[10px] text-amber-600">Risky Emails</div>
+              <div className="text-lg font-bold text-amber-400">{stats.risky}</div>
+              <div className="text-[10px] text-amber-500/80">Risky Emails</div>
             </CardContent>
           </Card>
-          <Card className="bg-red-50 border-red-200">
+          <Card className="bg-[#141d30] border-red-500/20">
             <CardContent className="p-3 text-center">
-              <div className="text-lg font-bold text-red-700">{stats.invalid}</div>
-              <div className="text-[10px] text-red-600">Invalid Emails</div>
+              <div className="text-lg font-bold text-red-400">{stats.invalid}</div>
+              <div className="text-[10px] text-red-500/80">Invalid Emails</div>
             </CardContent>
           </Card>
         </div>
@@ -305,14 +305,14 @@ export default function EmailSearchBot() {
 
       {/* Running indicator */}
       {isRunning && !isRunningAll && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-cyan-500/20 bg-cyan-500/5">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="animate-pulse">
-              <Bot className="w-5 h-5 text-blue-600" />
+              <Bot className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-blue-800">Bot is searching for email addresses...</p>
-              <p className="text-xs text-blue-600">This may take a few minutes depending on batch size. Each provider requires a web search.</p>
+              <p className="text-sm font-medium text-cyan-300">Bot is searching for email addresses...</p>
+              <p className="text-xs text-cyan-500/70">This may take a few minutes depending on batch size. Each provider requires a web search.</p>
             </div>
           </CardContent>
         </Card>
@@ -321,11 +321,11 @@ export default function EmailSearchBot() {
       {/* Latest Run Results */}
       {lastResults && (
         <div>
-          <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-blue-600" />
+          <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            <Mail className="w-4 h-4 text-cyan-400" />
             Latest Run Results
-            <Badge className="bg-blue-100 text-blue-700 text-[10px]">{lastResults.length} searched</Badge>
-            <Badge className="bg-green-100 text-green-700 text-[10px]">
+            <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[10px]">{lastResults.length} searched</Badge>
+            <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 text-[10px]">
               {lastResults.filter(r => r.best_email).length} found
             </Badge>
           </h2>
@@ -335,10 +335,10 @@ export default function EmailSearchBot() {
 
       {/* Recent Finds */}
       {recentFinds.length > 0 && (
-        <Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <CardTitle className="text-sm flex items-center gap-2 text-slate-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               Recently Found Emails
             </CardTitle>
           </CardHeader>
@@ -355,9 +355,9 @@ export default function EmailSearchBot() {
                 }[p.email_confidence] || 'bg-slate-100 text-slate-600';
 
                 return (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
+                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-900 truncate">{name}</div>
+                      <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
                       <div className="text-xs text-slate-500">{p.email}</div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -379,9 +379,9 @@ export default function EmailSearchBot() {
       )}
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-        <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-        <p className="text-xs text-amber-700">
+      <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+        <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+        <p className="text-xs text-amber-400/80">
           Email addresses are found via AI-powered web search and may not be 100% accurate. 
           Always verify before using for outreach. High confidence means found on a public page; 
           medium means inferred from a domain pattern; low means best guess.
