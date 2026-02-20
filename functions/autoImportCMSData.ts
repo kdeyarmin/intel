@@ -106,16 +106,30 @@ Deno.serve(async (req) => {
                     console.log(`Fetching offset ${offset}...`);
 
                     let pageResponse;
-                    try {
-                        pageResponse = await fetchWithTimeout(pageUrl);
-                    } catch (e) {
-                        console.warn(`Fetch timeout at offset ${offset}: ${e.message}`);
-                        break;
+                    let fetchSuccess = false;
+                    for (let fetchAttempt = 0; fetchAttempt < 3; fetchAttempt++) {
+                        try {
+                            pageResponse = await fetchWithTimeout(pageUrl);
+                            if (pageResponse.ok) { fetchSuccess = true; break; }
+                            if (pageResponse.status === 429 || pageResponse.status >= 500) {
+                                const wait = jitteredBackoff(fetchAttempt);
+                                console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset}, backing off ${Math.round(wait)}ms (attempt ${fetchAttempt + 1}/3)`);
+                                await delay(wait);
+                            } else {
+                                console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset} (non-retryable)`);
+                                break;
+                            }
+                        } catch (e) {
+                            if (fetchAttempt < 2) {
+                                const wait = jitteredBackoff(fetchAttempt);
+                                console.warn(`[fetch] Error at offset ${offset}: ${e.message}, backing off ${Math.round(wait)}ms`);
+                                await delay(wait);
+                            } else {
+                                console.warn(`[fetch] Failed after 3 attempts at offset ${offset}: ${e.message}`);
+                            }
+                        }
                     }
-                    if (!pageResponse.ok) {
-                        console.warn(`Fetch failed at offset ${offset}: ${pageResponse.status}`);
-                        break;
-                    }
+                    if (!fetchSuccess) break;
 
                     const pageText = await pageResponse.text();
                     let pageData;
@@ -286,7 +300,9 @@ Deno.serve(async (req) => {
                 imported_rows: importedCount, updated_rows: updatedCount,
                 skipped_rows: skippedCount,
                 next_offset: partial ? offset : null,
+                resume_offset: partial ? offset : null,
                 elapsed_ms: Date.now() - startTime,
+                ...(partial ? { hint: `Resume with resume_offset=${offset} and batch_id=${batch.id}` } : {}),
             });
 
         } catch (error) {
@@ -469,10 +485,12 @@ function parseDate(dateStr) {
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
-// Bulk importer with rate limit handling
+// Bulk importer with exponential backoff + jitter for rate limit handling
 async function importChunk(base44, importType, records, startTime) {
     let imported = 0, updated = 0, skipped = 0;
+    const chunkErrors = [];
 
     const entityMap = {
         'cms_order_referring': 'CMSReferral',
@@ -483,35 +501,39 @@ async function importChunk(base44, importType, records, startTime) {
     };
 
     const entityName = entityMap[importType];
-    if (!entityName) return { imported: 0, updated: 0, skipped: 0 };
+    if (!entityName) return { imported: 0, updated: 0, skipped: 0, errors: [] };
     const entity = base44.asServiceRole.entities[entityName];
 
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
         const chunk = records.slice(i, i + BULK_SIZE);
-        let retries = 0;
-        while (retries < 3) {
+        let success = false;
+
+        for (let attempt = 0; attempt < 4; attempt++) {
             try {
                 await entity.bulkCreate(chunk);
                 imported += chunk.length;
+                success = true;
                 break;
             } catch (e) {
-                if (e.message && e.message.includes('Rate limit') && retries < 2) {
-                    retries++;
-                    console.warn(`Rate limited, waiting ${retries * 2}s before retry...`);
-                    await delay(retries * 2000);
+                const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('network') || e.message?.includes('503');
+                if (isRetryable && attempt < 3) {
+                    const wait = jitteredBackoff(attempt);
+                    console.warn(`[importChunk] Attempt ${attempt + 1}/4 failed (${e.message}), backing off ${Math.round(wait)}ms`);
+                    await delay(wait);
                 } else {
-                    console.warn(`Bulk create failed at ${i}: ${e.message}`);
+                    chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
+                    console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
                     skipped += chunk.length;
                     break;
                 }
             }
         }
-        // Small delay between batches to avoid rate limits
+        // Adaptive delay: longer after retries, shorter on clean runs
         if (i + BULK_SIZE < records.length) {
-            await delay(200);
+            await delay(success ? 150 : 500);
         }
     }
 
-    return { imported, updated, skipped };
+    return { imported, updated, skipped, errors: chunkErrors };
 }
