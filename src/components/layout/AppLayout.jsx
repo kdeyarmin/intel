@@ -88,43 +88,44 @@ export default function AppLayout({ children, currentPageName }) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-[#0f1729]">
       <style>{`
         .scrollbar-dark::-webkit-scrollbar { width: 6px; }
         .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.4); border-radius: 3px; }
-        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.6); }
-        .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(148,163,184,0.4) transparent; }
-
+        .scrollbar-dark::-webkit-scrollbar-thumb { background: rgba(99,116,158,0.4); border-radius: 3px; }
+        .scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(99,116,158,0.6); }
+        .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(99,116,158,0.4) transparent; }
       `}</style>
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-48' : 'w-14'} bg-slate-50 text-slate-600 border-r border-slate-200 transition-all duration-300 flex flex-col`}>
+      <aside className={`${sidebarOpen ? 'w-52' : 'w-14'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col`}>
         {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-200 bg-white/60">
+        <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
           {sidebarOpen ? (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
-                className="w-8 h-8 rounded-lg flex-shrink-0"
+                className="w-10 h-10 rounded-xl flex-shrink-0"
+                style={{ background: 'transparent' }}
               />
               <div>
-                <h1 className="text-sm font-bold text-slate-800 leading-tight tracking-tight">CareMetric <span className="text-red-500">AI</span></h1>
-                <p className="text-xs text-slate-400 font-medium">Intel</p>
+                <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></h1>
+                <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Intelligence</p>
               </div>
             </div>
           ) : (
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
               alt="CareMetric AI"
-              className="w-8 h-8 rounded-lg mx-auto"
+              className="w-10 h-10 rounded-xl mx-auto"
+              style={{ background: 'transparent' }}
             />
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 h-7 w-7"
+            className="text-slate-500 hover:text-white hover:bg-slate-800/60 h-7 w-7"
           >
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </Button>
@@ -134,13 +135,13 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-2 py-2">
           <button
             onClick={() => setSearchOpen(true)}
-            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
           >
             <Search className="w-4 h-4 shrink-0" />
             {sidebarOpen && (
               <>
                 <span className="flex-1 text-left">Search...</span>
-                <kbd className="text-[10px] text-slate-400 border border-slate-300 rounded px-1 py-0.5">⌘K</kbd>
+                <kbd className="text-[10px] text-slate-600 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
               </>
             )}
           </button>
@@ -160,7 +161,7 @@ export default function AppLayout({ children, currentPageName }) {
                 {sidebarOpen && (
                   <button
                     onClick={() => toggleSection(section.label)}
-                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
+                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
                   >
                     {section.label}
                     {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -174,13 +175,13 @@ export default function AppLayout({ children, currentPageName }) {
                       key={item.name}
                       to={createPageUrl(item.page)}
                       title={item.name}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 ${
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 ${
                         isActive
-                          ? 'bg-blue-50 text-blue-600 font-medium border-l-2 border-blue-500 ml-0.5'
-                          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
+                          ? 'bg-cyan-500/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
+                          : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} />
                       {sidebarOpen && <span className="truncate">{item.name}</span>}
                     </Link>
                   );
@@ -191,17 +192,17 @@ export default function AppLayout({ children, currentPageName }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-slate-200">
+        <div className="p-3 border-t border-slate-800/60">
           {user && sidebarOpen && (
             <div className="mb-2 px-2">
-              <p className="text-xs font-medium text-slate-700 truncate">{user.full_name || user.email}</p>
-              <p className="text-[10px] text-slate-400 capitalize">{user.role?.replace('_', ' ')}</p>
+              <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>
+              <p className="text-[10px] text-slate-600 capitalize">{user.role?.replace('_', ' ')}</p>
             </div>
           )}
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
-            className="w-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 justify-start h-8 text-xs"
+            className="w-full text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />
             {sidebarOpen && <span className="ml-2">Sign Out</span>}
@@ -212,24 +213,25 @@ export default function AppLayout({ children, currentPageName }) {
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-slate-100/50 flex flex-col">
+      <main className="flex-1 overflow-auto bg-[#0f1729] flex flex-col">
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-2.5 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
+        <div className="px-8 py-2.5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
                 alt="CareMetric AI"
                 className="w-4 h-4 rounded"
+                style={{ background: 'transparent' }}
               />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-300">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-500 hover:underline">www.CareMetric.ai</a>
+              <span className="text-[11px] text-slate-500 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-700">•</span>
+              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-500/70 hover:text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-[9px] text-slate-600 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
             Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>
