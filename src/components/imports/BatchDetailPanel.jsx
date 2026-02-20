@@ -11,6 +11,7 @@ import ValidationRuleResults from './ValidationRuleResults';
 import ErrorDistributionChart from './ErrorDistributionChart';
 import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
+import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
 
 const IMPORT_TYPE_LABELS = {
@@ -326,6 +327,8 @@ export default function BatchDetailPanel({ batch }) {
             filters={errorFilters}
             batchName={batch.file_name}
           />
+
+          <DetailedErrorRows errors={batch.error_samples} maxVisible={15} />
         </>
       )}
 

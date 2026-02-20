@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Loader2, CheckCircle2, XCircle, Pause, Clock, Zap, ArrowUpDown,
-  FileText, Activity
+  FileText, Activity, Play
 } from 'lucide-react';
+import ResumeImportButton from './ResumeImportButton';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -148,6 +149,16 @@ export default function LiveProgressCard({ activeBatches }) {
                       <div className="flex items-center gap-1 text-[10px] text-red-400">
                         <XCircle className="w-3 h-3" /> {batch.invalid_rows.toLocaleString()} invalid rows
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Resume button for paused */}
+                {isPaused && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <ResumeImportButton batch={batch} onResumed={() => {}} />
+                    {batch.cancel_reason && (
+                      <span className="text-[10px] text-amber-400/70 truncate">{batch.cancel_reason}</span>
                     )}
                   </div>
                 )}
