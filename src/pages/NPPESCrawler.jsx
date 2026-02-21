@@ -25,6 +25,7 @@ export default function NPPESCrawler() {
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
   const [dryRun, setDryRun] = useState(false);
+  const [ignoreHistory, setIgnoreHistory] = useState(false);
   const [taxonomyFilter, setTaxonomyFilter] = useState('');
   const [entityType, setEntityType] = useState('');
   const [currentState, setCurrentState] = useState(null);
@@ -72,6 +73,7 @@ export default function NPPESCrawler() {
         taxonomy_description: taxonomyFilter,
         entity_type: entityType,
         dry_run: dryRun,
+        ignore_history: ignoreHistory,
       });
 
       const data = res.data;
@@ -251,9 +253,15 @@ export default function NPPESCrawler() {
             </div>
             <div className="space-y-2">
               <Label>Mode</Label>
-              <div className="flex items-center gap-3 h-9">
-                <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={running} />
-                <span className="text-sm text-gray-600">{dryRun ? 'Dry Run (validate only)' : 'Live Import'}</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3 h-9">
+                  <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={running} />
+                  <span className="text-sm text-gray-600">{dryRun ? 'Dry Run' : 'Live Import'}</span>
+                </div>
+                <div className="flex items-center gap-3 h-9">
+                  <Switch checked={ignoreHistory} onCheckedChange={setIgnoreHistory} disabled={running} />
+                  <span className="text-sm text-gray-600">Force Re-crawl (Ignore completed)</span>
+                </div>
               </div>
             </div>
           </div>

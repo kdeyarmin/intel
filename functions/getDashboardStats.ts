@@ -3,10 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-        // Allow public read if needed or restrict. Dashboard is usually authenticated.
-        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
+        
         // Fetch batches to aggregate stats
         // We need to paginate to get all batches if > 50
         const BATCH_SIZE = 1000;
@@ -47,10 +44,7 @@ Deno.serve(async (req) => {
                 if (batch.dedup_summary && batch.dedup_summary.locations) {
                     stats.totalLocations += (batch.dedup_summary.locations.created || 0);
                 } else {
-                    // Fallback estimate if summary missing (rare for new batches)
-                    // Locations usually 1:1 or 1:2 with providers
-                    // But imported_rows is providers. 
-                    // Let's assume imported_locations field if exists in older schema
+                    // Fallback estimate if summary missing
                     stats.totalLocations += (batch.imported_locations || imported); 
                 }
 
@@ -65,7 +59,6 @@ Deno.serve(async (req) => {
                 }
             } else if (batch.import_type === 'cms_utilization') {
                 // approximate active medicare providers count by number of utilization records
-                // (usually 1 record per provider per year)
                 stats.activeMedicareProviders += imported;
             } else if (batch.import_type === 'cms_order_referring') {
                 stats.totalReferrals += imported;

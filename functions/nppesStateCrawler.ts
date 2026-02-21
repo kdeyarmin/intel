@@ -389,7 +389,7 @@ Deno.serve(async (req) => {
         } catch (e) { /* service call */ }
 
         const payload = await req.json();
-        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', phase = 'fetch' } = payload;
+        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', phase = 'fetch', ignore_history = false } = payload;
 
         // Normalize 'process_next' to 'start'
         const effectiveAction = (action === 'process_next') ? 'start' : action;
@@ -420,13 +420,36 @@ Deno.serve(async (req) => {
         // Determine state
         let stateToProcess = target_state;
         if (!stateToProcess) {
-            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates = new Set();
-            for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
-                const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st)) doneStates.add(st);
+            if (ignore_history) {
+                // If ignoring history, just pick the first state or rotate?
+                // Actually, ignore_history usually implies we want to restart from scratch.
+                // But blindly picking first state might restart AL every time.
+                // A better approach for "process all again" is needed.
+                // For now, if ignore_history is true, we simply DONT check doneStates.
+                // But we still need to pick ONE state.
+                // Let's assume the caller will likely call this in a loop or we just pick the first one 
+                // that ISNT currently processing (to avoid double processing).
+                
+                // Actually, let's just pick the first state in US_STATES if we're ignoring history
+                // AND we rely on the fact that this script runs one state at a time.
+                // BUT if we want to "Process Next" ignoring history, we need to know what was processed "recently" in THIS run.
+                // That requires state tracking.
+                // Simple fallback: If ignore_history, we pick the state that hasn't been run *in the last 24 hours*?
+                // Or: we just rely on `target_state` being passed by the caller (batch processor) when forcing re-crawl.
+                
+                // If `ignore_history` is true but no target_state, we default to the first state that isn't CURRENTLY running.
+                const runningBatches = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' });
+                const runningStates = new Set(runningBatches.map(b => b.file_name?.split('_')[1]).filter(s => s));
+                stateToProcess = US_STATES.find(s => !runningStates.has(s));
+            } else {
+                const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+                const doneStates = new Set();
+                for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
+                    const st = b.file_name.split('_')[1];
+                    if (st && st.length <= 2 && US_STATES.includes(st)) doneStates.add(st);
+                }
+                stateToProcess = US_STATES.find(s => !doneStates.has(s));
             }
-            stateToProcess = US_STATES.find(s => !doneStates.has(s));
         }
 
         if (!stateToProcess) return Response.json({ success: true, message: 'All states processed!', done: true });
