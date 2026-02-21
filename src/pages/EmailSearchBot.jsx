@@ -9,7 +9,6 @@ import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
-import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 
@@ -194,8 +193,6 @@ export default function EmailSearchBot() {
           </div>
         </div>
       </div>
-
-      <ComplianceDisclaimer />
 
       <div className="space-y-5">
 
