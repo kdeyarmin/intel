@@ -598,10 +598,12 @@ Deno.serve(async (req) => {
         let batch;
         let processedPrefixes = new Set();
         
-        const recentBatches = await base44.asServiceRole.entities.ImportBatch.filter({
-            import_type: 'nppes_registry',
-            status: 'processing'
-        });
+        // Look for existing batch to resume — check both 'processing' and 'validating' (auto-retry creates 'validating')
+        const [processingBatches, validatingBatches] = await Promise.all([
+            base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }),
+            base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'validating' }),
+        ]);
+        const recentBatches = [...processingBatches, ...validatingBatches];
         const resumeBatch = recentBatches.find(b => b.file_name?.includes(`crawler_${stateToProcess}_`));
         
         if (resumeBatch) {
