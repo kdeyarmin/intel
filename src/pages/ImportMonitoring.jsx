@@ -562,6 +562,13 @@ export default function ImportMonitoring() {
       {/* Import Trend Charts */}
       <ImportTrendCharts batches={batches} />
 
+      {/* Enhanced Error Report Dialog */}
+      <EnhancedErrorReport
+        batch={errorReportBatch}
+        open={!!errorReportBatch}
+        onOpenChange={(open) => { if (!open) setErrorReportBatch(null); }}
+      />
+
       {/* Stale Jobs Warning */}
       {staleBatches.length > 0 && (
         <Card className="border-amber-500/30 bg-amber-500/10">
