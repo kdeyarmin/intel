@@ -34,7 +34,8 @@ Deno.serve(async (req) => {
         ]);
 
         // Email stats from a sample (fast)
-        const emailSample = await base44.asServiceRole.entities.Provider.list('-created_date', 5000);
+        let emailSample = await base44.asServiceRole.entities.Provider.list('-created_date', 5000);
+        if (!Array.isArray(emailSample)) emailSample = [];
         const withEmail = emailSample.filter(p => p.email).length;
         const emailSearched = emailSample.filter(p => p.email_searched_at).length;
         const emailValid = emailSample.filter(p => p.email_validation_status === 'valid').length;
