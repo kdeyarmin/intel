@@ -26,27 +26,27 @@ export default function Dashboard() {
   });
 
   const { data: providers = [] } = useQuery({
-    queryKey: ['providers'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 1000), 
-    staleTime: 60000,
+    queryKey: ['providersSample'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 200), 
+    staleTime: 120000,
   });
 
   const { data: utilizationData = [] } = useQuery({
-    queryKey: ['utilization'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 1000),
-    staleTime: 60000,
+    queryKey: ['utilizationSample'],
+    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 200),
+    staleTime: 120000,
   });
 
   const { data: locationsData = [] } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 1000),
-    staleTime: 60000,
+    queryKey: ['locationsSample'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 200),
+    staleTime: 120000,
   });
 
   const { data: referralsData = [] } = useQuery({
-    queryKey: ['referrals'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 1000),
-    staleTime: 60000,
+    queryKey: ['referralsSample'],
+    queryFn: () => base44.entities.CMSReferral.list('-created_date', 200),
+    staleTime: 120000,
   });
 
   const { data: auditEvents = [] } = useQuery({
@@ -58,10 +58,8 @@ export default function Dashboard() {
 
   const loading = loadingStats;
 
-  // Fallback to providers list length if stats are missing/zero (e.g. historic batches missing)
-  const totalProviders = (stats?.totalProviders > providers.length) ? stats.totalProviders : providers.length;
-  // If we hit the limit (1000), append '+' to indicate more
-  const displayTotalProviders = (providers.length === 1000 && totalProviders === 1000) ? '1000+' : totalProviders.toLocaleString();
+  const totalProviders = stats?.totalProviders || 0;
+  const displayTotalProviders = totalProviders.toLocaleString();
 
   const totalLocations = stats?.totalLocations || 0;
   const activeMedicare = stats?.activeMedicareProviders || 0;
