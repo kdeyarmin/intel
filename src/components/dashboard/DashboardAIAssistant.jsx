@@ -97,11 +97,11 @@ RECENT IMPORTS: ${recentBatches.map(b => `${b.type}(${b.status}, ${b.imported}/$
 RECENT ACTIVITY: ${(auditEvents || []).slice(0, 5).map(e => `${e.event_type} by ${e.user_email?.split('@')[0]} at ${e.created_date}`).join('; ')}`;
 }
 
-export default function DashboardAIAssistant() {
+export default function DashboardAIAssistant({ isFullPage = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(isFullPage);
   const [hasAutoRun, setHasAutoRun] = useState(false);
   const messagesEndRef = useRef(null);
 
@@ -135,6 +135,10 @@ export default function DashboardAIAssistant() {
     }
   }, [isExpanded, dataLoaded, hasAutoRun]);
 
+  useEffect(() => {
+    if (isFullPage) setIsExpanded(true);
+  }, [isFullPage]);
+
   const runQuery = async (prompt) => {
     if (!prompt.trim() || isGenerating) return;
 
@@ -162,8 +166,8 @@ USER QUESTION: ${prompt}`;
   };
 
   return (
-    <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
-      <CardHeader className="pb-2">
+    <Card className={`bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10 ${isFullPage ? 'h-full flex flex-col' : ''}`}>
+      <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2 text-white font-semibold">
             <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
@@ -175,19 +179,21 @@ USER QUESTION: ${prompt}`;
             <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
               Live Data
             </Badge>
-            <Button
-              variant="ghost" size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-200"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
+            {!isFullPage && (
+              <Button
+                variant="ghost" size="icon"
+                className="h-7 w-7 text-slate-400 hover:text-slate-200"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
 
       {isExpanded && (
-        <CardContent className="space-y-3 pt-0">
+        <CardContent className={`space-y-3 pt-0 ${isFullPage ? 'flex-1 flex flex-col min-h-0' : ''}`}>
           {/* Quick prompts */}
           <div className="flex gap-2 flex-wrap">
             {QUICK_PROMPTS.map((qp) => {
@@ -221,7 +227,7 @@ USER QUESTION: ${prompt}`;
 
           {/* Messages */}
           {messages.length > 0 && (
-            <div className="max-h-[400px] overflow-y-auto space-y-3 pr-1 scroll-smooth">
+            <div className={`${isFullPage ? 'flex-1 min-h-0' : 'max-h-[400px]'} overflow-y-auto space-y-3 pr-1 scroll-smooth`}>
               {messages.map((msg, i) => (
                 <div key={i} className={`${msg.role === 'user' ? 'flex justify-end' : ''}`}>
                   {msg.role === 'user' ? (

@@ -7,7 +7,6 @@ import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
-import DashboardAIAssistant from '../components/dashboard/DashboardAIAssistant';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
@@ -164,11 +163,6 @@ export default function Dashboard() {
           referrals={referrals}
           locations={locations}
         />
-      </div>
-
-      {/* AI Assistant */}
-      <div className="mb-6">
-        <DashboardAIAssistant />
       </div>
 
       <DataSourcesFooter />
