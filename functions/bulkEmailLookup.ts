@@ -121,6 +121,12 @@ Return results for ALL ${subBatch.length} providers, even if you can only guess.
         ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
         : p.organization_name || '';
 
+      // Validate email - reject masked/hidden emails (e.g., g****e@gmail.com)
+      let email = emailResult.email || '';
+      if (email && (email.includes('*') || email.includes('...') || email.includes('•'))) {
+        email = '';
+      }
+
       return {
         npi: p.npi,
         name,
@@ -130,9 +136,9 @@ Return results for ALL ${subBatch.length} providers, even if you can only guess.
         city: primaryLoc?.city || '',
         state: primaryLoc?.state || '',
         phone: primaryLoc?.phone || '',
-        email: emailResult.email || '',
-        email_confidence: emailResult.confidence || '',
-        email_source: emailResult.source || ''
+        email: email,
+        email_confidence: email ? emailResult.confidence || '' : '',
+        email_source: email ? emailResult.source || '' : ''
       };
     });
 
