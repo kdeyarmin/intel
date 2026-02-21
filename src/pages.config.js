@@ -56,6 +56,7 @@ import AutoImports from './pages/AutoImports';
 import BulkEmailExport from './pages/BulkEmailExport';
 import CMSAnalytics from './pages/CMSAnalytics';
 import CustomReports from './pages/CustomReports';
+import Dashboard from './pages/Dashboard';
 import DataCenter from './pages/DataCenter';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
@@ -87,7 +88,6 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import Dashboard from './pages/Dashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -101,6 +101,7 @@ export const PAGES = {
     "BulkEmailExport": BulkEmailExport,
     "CMSAnalytics": CMSAnalytics,
     "CustomReports": CustomReports,
+    "Dashboard": Dashboard,
     "DataCenter": DataCenter,
     "DataImports": DataImports,
     "DataQuality": DataQuality,
@@ -132,7 +133,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "Dashboard": Dashboard,
 }
 
 export const pagesConfig = {

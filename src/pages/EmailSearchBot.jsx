@@ -203,14 +203,15 @@ export default function EmailSearchBot() {
         });
         const data = response.data;
         
-        if (!data.results || data.results.length === 0 || data.searched === 0) {
+        totalSearched += data.searched || 0;
+        totalFound += data.found || 0;
+        allResults = [...allResults, ...(data.results || [])];
+        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running' });
+        setLastResults(allResults);
+
+        // Stop only when backend confirms no more providers remain
+        if (!data.has_more || data.searched === 0) {
           hasMore = false;
-        } else {
-          totalSearched += data.searched;
-          totalFound += data.found;
-          allResults = [...allResults, ...(data.results || [])];
-          setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running' });
-          setLastResults(allResults);
         }
 
         // Refresh stats
