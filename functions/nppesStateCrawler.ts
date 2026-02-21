@@ -10,8 +10,8 @@ const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 
 // Defaults — overridden by NPPESCrawlerConfig entity at runtime
 let BATCH_LIMIT = 200;
-let MAX_PAGES_PER_QUERY = 6;
-let MAX_SKIP = 1000; 
+let MAX_PAGES_PER_QUERY = 10; // Increased to properly detect when API paging limit is hit
+let MAX_SKIP = 1000; // NPPES API hard limit
 let BULK_SIZE = 50;
 let CONCURRENCY_LIMIT = 4;
 let API_DELAY_MS = 200; // Increased default to reduce rate limits
