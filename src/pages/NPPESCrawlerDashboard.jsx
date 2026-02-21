@@ -10,6 +10,8 @@ import ErrorRateTrend from '../components/crawlerDashboard/ErrorRateTrend';
 import ProcessingStates from '../components/crawlerDashboard/ProcessingStates';
 import CrawlerKPIs from '../components/crawlerDashboard/CrawlerKPIs';
 import ProcessingTimeChart from '../components/crawlerDashboard/ProcessingTimeChart';
+import ApiUsageChart from '../components/crawlerDashboard/ApiUsageChart';
+import LastFiveRunsMetrics from '../components/crawlerDashboard/LastFiveRunsMetrics';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -68,27 +70,35 @@ export default function NPPESCrawlerDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProcessingTimeChart nppesImports={nppesImports} loading={loadingImports} />
-        <CrawlProgressChart
+        <ApiUsageChart nppesImports={nppesImports} loading={loadingImports} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <CrawlProgressChart
           crawlStatus={crawlStatus}
           totalStates={US_STATES.length}
           loading={loadingStatus}
         />
-        <ErrorRateTrend
+         <ErrorRateTrend
           nppesImports={nppesImports}
           loading={loadingImports}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProcessingStates
-          crawlStatus={crawlStatus}
-          nppesImports={nppesImports}
-          loading={loading}
-        />
+        <LastFiveRunsMetrics nppesImports={nppesImports} loading={loadingImports} />
         <RecentCrawlActivity
           nppesImports={nppesImports}
           auditEvents={auditEvents}
           loading={loadingImports || loadingAudit}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <ProcessingStates
+          crawlStatus={crawlStatus}
+          nppesImports={nppesImports}
+          loading={loading}
         />
       </div>
     </div>
