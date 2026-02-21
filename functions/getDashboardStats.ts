@@ -3,81 +3,67 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
-        // Fetch batches to aggregate stats
-        // We need to paginate to get all batches if > 50
-        const BATCH_SIZE = 1000;
-        let allBatches = [];
-        let skip = 0;
-        while (true) {
-            const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', BATCH_SIZE, skip);
-            if (batches.length === 0) break;
-            allBatches = allBatches.concat(batches);
-            if (batches.length < BATCH_SIZE) break;
-            skip += BATCH_SIZE;
-        }
 
-        // Get actual counts directly from entities instead of summing batches
-        const [allProviders, allLocations, allReferrals, allUtilization] = await Promise.all([
-            base44.asServiceRole.entities.Provider.list('-created_date', 1),
-            base44.asServiceRole.entities.ProviderLocation.list('-created_date', 1),
-            base44.asServiceRole.entities.CMSReferral.list('-created_date', 1),
-            base44.asServiceRole.entities.CMSUtilization.list('-created_date', 1),
+        // Fetch actual entity counts by listing records
+        // Use larger limits to get real counts
+        const [providers, locations, referrals, utilization] = await Promise.all([
+            base44.asServiceRole.entities.Provider.list('-created_date', 5000),
+            base44.asServiceRole.entities.ProviderLocation.list('-created_date', 5000),
+            base44.asServiceRole.entities.CMSReferral.list('-created_date', 5000),
+            base44.asServiceRole.entities.CMSUtilization.list('-created_date', 5000),
         ]);
 
-        const stats = {
-            totalProviders: allProviders?.totalCount || 0,
-            totalLocations: allLocations?.totalCount || 0,
-            totalReferrals: allReferrals?.totalCount || 0,
-            activeMedicareProviders: allUtilization?.totalCount || 0,
-            lastRefresh: null,
-            topStates: {}
-        };
+        const totalProviders = providers.length;
+        const totalLocations = locations.length;
+        const totalReferrals = referrals.length;
+        const activeMedicareProviders = utilization.length;
 
-        // Find last refresh (most recent completed batch)
-        const lastBatch = allBatches.find(b => b.status === 'completed');
-        if (lastBatch) {
-            stats.lastRefresh = lastBatch.created_date;
+        // Build top states from provider locations
+        const stateCounts = {};
+        for (const loc of locations) {
+            const st = loc.state;
+            if (st) {
+                stateCounts[st] = (stateCounts[st] || 0) + 1;
+            }
         }
 
-        for (const batch of allBatches) {
-            if (batch.status !== 'completed') continue;
-                
-                // Extract locations count from dedup_summary if available
-                if (batch.dedup_summary && batch.dedup_summary.locations) {
-                    stats.totalLocations += (batch.dedup_summary.locations.created || 0);
-                } else {
-                    // Fallback estimate if summary missing
-                    stats.totalLocations += (batch.imported_locations || imported); 
-                }
-
-                // Top states from file name
+        // If no locations have state, try providers' locations from batches
+        if (Object.keys(stateCounts).length === 0) {
+            // Fallback: look at recent import batches to extract state info
+            const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 200);
+            for (const batch of batches) {
+                if (batch.status !== 'completed') continue;
                 if (batch.file_name) {
                     const match = batch.file_name.match(/crawler_([A-Z]{2})_/);
                     if (match) {
                         const state = match[1];
-                        if (!stats.topStates[state]) stats.topStates[state] = 0;
-                        stats.topStates[state] += imported;
+                        const imported = batch.imported_rows || batch.valid_rows || 0;
+                        stateCounts[state] = (stateCounts[state] || 0) + imported;
                     }
                 }
-            } else if (batch.import_type === 'cms_utilization') {
-                // (actual count now fetched directly above)
-            } else if (batch.import_type === 'cms_order_referring') {
-                // (actual count now fetched directly above)
             }
         }
 
-        // Sort top states
-        const topStatesArr = Object.entries(stats.topStates)
+        const topStates = Object.entries(stateCounts)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
+            .slice(0, 10);
+
+        // Find last refresh from most recent completed batch
+        const recentBatches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 10);
+        const lastCompleted = recentBatches.find(b => b.status === 'completed');
+        const lastRefresh = lastCompleted?.completed_at || lastCompleted?.created_date || null;
 
         return Response.json({
-            ...stats,
-            topStates: topStatesArr
+            totalProviders,
+            totalLocations,
+            totalReferrals,
+            activeMedicareProviders,
+            lastRefresh,
+            topStates,
         });
 
     } catch (error) {
+        console.error('getDashboardStats error:', error);
         return Response.json({ error: error.message }, { status: 500 });
     }
 });
