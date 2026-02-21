@@ -166,6 +166,20 @@ export default function NPPESCrawler() {
     addLog('Crawler stopped.', 'info');
   };
 
+  const resetCrawler = async () => {
+    if (!confirm('Are you sure you want to reset the crawler history? This will clear all progress indicators (but NOT the imported providers).')) return;
+    
+    addLog('Resetting crawler history...', 'info');
+    try {
+      const res = await base44.functions.invoke('nppesStateCrawler', { action: 'reset' });
+      addLog(res.data?.message || 'Reset complete', 'success');
+      refetchStatus();
+      queryClient.invalidateQueries(['crawlerStatus']);
+    } catch (err) {
+      addLog(`Reset failed: ${err.message}`, 'error');
+    }
+  };
+
   // --- Auto-chain (server-side) controls ---
   const startAutoChain = async () => {
     setAutoStarting(true);
@@ -328,6 +342,11 @@ export default function NPPESCrawler() {
             <Button onClick={refetchStatus} variant="outline" className="gap-2">
               <RotateCcw className="w-4 h-4" />
               Refresh Status
+            </Button>
+
+            <Button onClick={resetCrawler} variant="outline" className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800">
+              <RotateCcw className="w-4 h-4" />
+              Reset History
             </Button>
           </div>
 

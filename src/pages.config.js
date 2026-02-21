@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AIAssistant from './pages/AIAssistant';
 import AIInsights from './pages/AIInsights';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import Analytics from './pages/Analytics';
@@ -74,6 +75,7 @@ import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
 import NPPESImport from './pages/NPPESImport';
 import OrganizationDetail from './pages/OrganizationDetail';
+import Organizations from './pages/Organizations';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import ProviderOutreach from './pages/ProviderOutreach';
@@ -84,12 +86,11 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import AIAssistant from './pages/AIAssistant';
-import Organizations from './pages/Organizations';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AIAssistant": AIAssistant,
     "AIInsights": AIInsights,
     "AdvancedAnalytics": AdvancedAnalytics,
     "Analytics": Analytics,
@@ -117,6 +118,7 @@ export const PAGES = {
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "NPPESImport": NPPESImport,
     "OrganizationDetail": OrganizationDetail,
+    "Organizations": Organizations,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
     "ProviderOutreach": ProviderOutreach,
@@ -127,8 +129,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "AIAssistant": AIAssistant,
-    "Organizations": Organizations,
 }
 
 export const pagesConfig = {

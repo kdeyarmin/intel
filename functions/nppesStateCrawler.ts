@@ -394,6 +394,24 @@ Deno.serve(async (req) => {
         // Normalize 'process_next' to 'start'
         const effectiveAction = (action === 'process_next') ? 'start' : action;
 
+        // RESET
+        if (effectiveAction === 'reset') {
+            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 1000);
+            const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_'));
+            
+            let deletedCount = 0;
+            for (const b of crawlerBatches) {
+                try {
+                    await base44.asServiceRole.entities.ImportBatch.delete(b.id);
+                    deletedCount++;
+                } catch (e) {
+                    console.error(`Failed to delete batch ${b.id}:`, e.message);
+                }
+            }
+            
+            return Response.json({ success: true, message: `Reset complete. Deleted ${deletedCount} crawler batches.`, deleted_count: deletedCount });
+        }
+
         // STATUS
         if (effectiveAction === 'status') {
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
