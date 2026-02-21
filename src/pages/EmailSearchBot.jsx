@@ -362,7 +362,20 @@ export default function EmailSearchBot() {
                     <div className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
-                        <div className="text-xs text-slate-500">{p.email}</div>
+                        <div className="text-xs text-slate-500 mb-1.5">{p.email}</div>
+                        {p.email_quality_confidence && (
+                          <EmailQualityDetails 
+                            analysis={{
+                              score: p.email_quality_score,
+                              confidence: p.email_quality_confidence,
+                              reasons: p.email_quality_reasons,
+                              riskFlags: p.email_quality_risk_flags,
+                              analysis: p.email_quality_analysis
+                            }} 
+                            email={p.email}
+                            compact={true}
+                          />
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {p.email_validation_status && p.email_validation_status !== '' && (
