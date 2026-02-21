@@ -51,7 +51,7 @@ export default function EmailBotControls({
             </div>
             <div className="flex items-center gap-2 pt-5">
               <Switch checked={skipSearched} onCheckedChange={setSkipSearched} disabled={isRunning} />
-              <Label className="text-xs">Skip already searched</Label>
+              <Label className="text-xs text-slate-400">Skip already searched</Label>
             </div>
           </div>
 
