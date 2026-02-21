@@ -781,6 +781,12 @@ Deno.serve(async (req) => {
             state: stateToProcess,
             done: finalStatus === 'completed',
             stats: stats,
+            // Flatten stats for nppesBatchProcessor compatibility
+            valid_rows: stats.valid,
+            imported_providers: stats.prov.imported,
+            updated_providers: stats.prov.updated,
+            skipped_providers: stats.prov.skipped,
+            
             batch_id: batch.id,
             resume_next: !allPendingProcessed,
             elapsed_ms: Date.now() - execStartTime,
