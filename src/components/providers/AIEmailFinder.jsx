@@ -38,6 +38,7 @@ Instructions:
 3. If no direct email is found, infer the most likely email patterns based on the organization domain (e.g. first.last@hospital.org).
 4. For each email, rate your confidence: "high" if found publicly, "medium" if inferred from a known domain pattern, "low" if purely guessed.
 5. Return up to 5 possible emails.
+6. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email, return practice or office emails (e.g., info@practice.com, office@clinic.com, frontdesk@hospital.org). Mark these with source "practice email". Always prefer a direct provider email, but never return zero results if a practice email exists.
 
 IMPORTANT: Be honest about confidence levels. Mark as "low" if you're guessing.`;
 
