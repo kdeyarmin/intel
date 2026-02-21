@@ -1,18 +1,14 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Activity, MapPin, Calendar, GitBranch, Database } from 'lucide-react';
-import KPICard from '../components/dashboard/KPICard';
+
+import DatabaseOverview from '../components/dashboard/DatabaseOverview';
+import SystemHealthStrip from '../components/dashboard/SystemHealthStrip';
+import EmailHealthBar from '../components/dashboard/EmailHealthBar';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
-import DataQualityWidget from '../components/dashboard/DataQualityWidget';
-import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
-import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
-import DataQualityScore from '../components/dashboard/DataQualityScore';
-import DataQualityReportDashboard from '../components/dataQuality/DataQualityReportDashboard';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
-import { formatDateET } from '../components/utils/dateUtils';
 
 export default function Dashboard() {
   const { data: stats, isLoading: loadingStats } = useQuery({
@@ -25,128 +21,63 @@ export default function Dashboard() {
     refetchInterval: 300000,
   });
 
-  const { data: providers = [] } = useQuery({
-    queryKey: ['providersSample'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 200), 
-    staleTime: 120000,
+  const { data: auditEvents = [] } = useQuery({
+    queryKey: ['auditEvents'],
+    queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
+    staleTime: 60000,
   });
 
-  const { data: utilizationData = [] } = useQuery({
+  // Sample for proactive alerts (keep lightweight)
+  const { data: providersSample = [] } = useQuery({
+    queryKey: ['providersSample'],
+    queryFn: () => base44.entities.Provider.list('-created_date', 200),
+    staleTime: 120000,
+  });
+  const { data: utilizationSample = [] } = useQuery({
     queryKey: ['utilizationSample'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 200),
     staleTime: 120000,
   });
-
-  const { data: locationsData = [] } = useQuery({
+  const { data: referralsSample = [] } = useQuery({
+    queryKey: ['referralsSample'],
+    queryFn: () => base44.entities.CMSReferral.list('-created_date', 200),
+    staleTime: 120000,
+  });
+  const { data: locationsSample = [] } = useQuery({
     queryKey: ['locationsSample'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 200),
     staleTime: 120000,
   });
 
-  const { data: referralsData = [] } = useQuery({
-    queryKey: ['referralsSample'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 200),
-    staleTime: 120000,
-  });
-
-  const { data: auditEvents = [] } = useQuery({
-    queryKey: ['auditEvents'],
-    queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
-    staleTime: 60000,
-    refetchInterval: 300000,
-  });
-
-  const loading = loadingStats;
-
-  const totalProviders = stats?.totalProviders || 0;
-  const displayTotalProviders = totalProviders.toLocaleString();
-
-  const totalLocations = stats?.totalLocations || 0;
-  const activeMedicare = stats?.activeMedicareProviders || 0;
-  const totalReferrals = stats?.totalReferrals || 0;
-  const topStates = stats?.topStates || [];
-  
-  const lastRefresh = stats?.lastRefresh 
-    ? formatDateET(stats.lastRefresh)
-    : (auditEvents[0]?.created_date ? formatDateET(auditEvents[0].created_date) : 'Never');
-
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-base text-slate-300 mt-0.5">CareMetric Provider Intelligence Overview</p>
+        <p className="text-sm text-slate-400 mt-0.5">CareMetric Provider Intelligence — all your data at a glance</p>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <KPICard
-          title="Total Providers"
-          value={displayTotalProviders}
-          icon={Users}
-          iconColor="text-cyan-400"
-          loading={loading}
-        />
-        <KPICard
-          title="Medicare Providers"
-          value={activeMedicare.toLocaleString()}
-          subtitle={`of ${totalProviders} total`}
-          icon={Activity}
-          iconColor="text-emerald-400"
-          loading={loading}
-        />
-        <KPICard
-          title="Total Referrals"
-          value={totalReferrals.toLocaleString()}
-          subtitle="Latest year per provider"
-          icon={GitBranch}
-          iconColor="text-violet-400"
-          loading={loading}
-        />
-        <KPICard
-          title="Locations"
-          value={totalLocations.toLocaleString()}
-          icon={MapPin}
-          iconColor="text-sky-400"
-          loading={loading}
-        />
-        <KPICard
-          title="Last Refresh"
-          value={lastRefresh}
-          icon={Calendar}
-          iconColor="text-amber-400"
-          loading={loading}
-        />
+      {/* System Health Strip */}
+      <SystemHealthStrip stats={stats} loading={loadingStats} />
+
+      {/* Database Record Counts — single source of truth for all entity counts */}
+      <DatabaseOverview stats={stats} loading={loadingStats} />
+
+      {/* Email Health + Top States */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EmailHealthBar emailStats={stats?.emailStats} totalProviders={stats?.totalProviders || 0} />
+        <TopStatesCard topStates={stats?.topStates || []} loading={loadingStats} />
       </div>
 
-      {/* Middle Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <TopStatesCard topStates={topStates} loading={loading} />
-        <RecentActivityCard events={auditEvents} />
-      </div>
-
-      {/* Email Coverage + Data Quality */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-        <EmailCoverageWidget providers={providers} />
-        <DataQualityWidget />
-        <DataQualityScore />
-        <DQQuickStatus />
-      </div>
-
-      {/* Proactive Insights */}
-      <div className="mb-6">
+      {/* Proactive Insights + Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProactiveAlerts
-          providers={providers}
-          utilizations={utilizationData}
-          referrals={referralsData}
-          locations={locationsData}
+          providers={providersSample}
+          utilizations={utilizationSample}
+          referrals={referralsSample}
+          locations={locationsSample}
         />
-      </div>
-
-      {/* Data Quality Reporting Dashboard */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Data Quality Reports</h2>
-        <DataQualityReportDashboard />
+        <RecentActivityCard events={auditEvents} />
       </div>
 
       <DataSourcesFooter />

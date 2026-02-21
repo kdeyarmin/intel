@@ -57,11 +57,13 @@ import BulkEmailExport from './pages/BulkEmailExport';
 import CMSAnalytics from './pages/CMSAnalytics';
 import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
+import DataCenter from './pages/DataCenter';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
 import EmailSearchBot from './pages/EmailSearchBot';
 import EnrichmentHub from './pages/EnrichmentHub';
 import ErrorReports from './pages/ErrorReports';
+import ImportHub from './pages/ImportHub';
 import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
 import LeadListBuilder from './pages/LeadListBuilder';
@@ -86,8 +88,6 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
-import ImportHub from './pages/ImportHub';
-import DataCenter from './pages/DataCenter';
 import __Layout from './Layout.jsx';
 
 
@@ -102,11 +102,13 @@ export const PAGES = {
     "CMSAnalytics": CMSAnalytics,
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
+    "DataCenter": DataCenter,
     "DataImports": DataImports,
     "DataQuality": DataQuality,
     "EmailSearchBot": EmailSearchBot,
     "EnrichmentHub": EnrichmentHub,
     "ErrorReports": ErrorReports,
+    "ImportHub": ImportHub,
     "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
     "LeadListBuilder": LeadListBuilder,
@@ -131,8 +133,6 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
-    "ImportHub": ImportHub,
-    "DataCenter": DataCenter,
 }
 
 export const pagesConfig = {
