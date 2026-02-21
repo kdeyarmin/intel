@@ -33,34 +33,46 @@ Deno.serve(async (req) => {
             countEntity('ProviderTaxonomy'),
         ]);
 
-        // Email stats from a sample (fast) — use smaller batch to avoid issues
-        let emailSample = [];
-        try {
-            const batch1 = await base44.asServiceRole.entities.Provider.list('-created_date', 1000);
-            if (Array.isArray(batch1)) emailSample = batch1;
-        } catch (e) {
-            console.warn('Email sample fetch failed:', e.message);
+        // Email stats — paginate through ALL providers for accurate counts
+        let withEmail = 0;
+        let emailSearched = 0;
+        let emailValid = 0;
+        let emailRisky = 0;
+        let emailInvalid = 0;
+        let needsEnrichment = 0;
+        const EMAIL_PAGE = 5000;
+        let emailSkip = 0;
+        while (true) {
+            let batch;
+            try {
+                batch = await base44.asServiceRole.entities.Provider.list('-created_date', EMAIL_PAGE, emailSkip);
+            } catch (e) {
+                console.warn('Email stats page fetch failed at skip', emailSkip, e.message);
+                break;
+            }
+            if (!batch || batch.length === 0) break;
+            for (const p of batch) {
+                if (p.email) withEmail++;
+                if (p.email_searched_at) emailSearched++;
+                if (p.email_validation_status === 'valid') emailValid++;
+                if (p.email_validation_status === 'risky') emailRisky++;
+                if (p.email_validation_status === 'invalid') emailInvalid++;
+                if (p.needs_nppes_enrichment) needsEnrichment++;
+            }
+            if (batch.length < EMAIL_PAGE) break;
+            emailSkip += EMAIL_PAGE;
+            if (emailSkip > 500000) break;
         }
 
-        const withEmail = emailSample.filter(p => p.email).length;
-        const emailSearched = emailSample.filter(p => p.email_searched_at).length;
-        const emailValid = emailSample.filter(p => p.email_validation_status === 'valid').length;
-        const emailRisky = emailSample.filter(p => p.email_validation_status === 'risky').length;
-        const emailInvalid = emailSample.filter(p => p.email_validation_status === 'invalid').length;
-        const needsEnrichment = emailSample.filter(p => p.needs_nppes_enrichment).length;
-        const sampleSize = emailSample.length;
-
-        // Scale email stats to total if sample < total
-        const scale = totalProviders > 0 && sampleSize > 0 ? totalProviders / sampleSize : 1;
         const emailStats = {
-            withEmail: sampleSize === totalProviders ? withEmail : Math.round(withEmail * scale),
-            searched: sampleSize === totalProviders ? emailSearched : Math.round(emailSearched * scale),
-            valid: sampleSize === totalProviders ? emailValid : Math.round(emailValid * scale),
-            risky: sampleSize === totalProviders ? emailRisky : Math.round(emailRisky * scale),
-            invalid: sampleSize === totalProviders ? emailInvalid : Math.round(emailInvalid * scale),
-            needsEnrichment: sampleSize === totalProviders ? needsEnrichment : Math.round(needsEnrichment * scale),
-            sampleSize,
-            isEstimated: sampleSize < totalProviders,
+            withEmail,
+            searched: emailSearched,
+            valid: emailValid,
+            risky: emailRisky,
+            invalid: emailInvalid,
+            needsEnrichment,
+            sampleSize: totalProviders,
+            isEstimated: false,
         };
 
         // Top states by actual provider location counts
