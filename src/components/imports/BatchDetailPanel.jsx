@@ -95,7 +95,7 @@ function ProgressBreakdown({ batch }) {
       </div>
       {(skipped > 0 || duplicates > 0 || invalid > 0) && (
         <div className="flex gap-4 mt-3 text-xs">
-          {skipped > 0 && <span className="text-slate-500">Already up-to-date: <span className="text-slate-400 font-medium">{skipped.toLocaleString()}</span></span>}
+          {skipped > 0 && <span className="text-slate-500">Skipped: <span className="text-slate-400 font-medium">{skipped.toLocaleString()}</span></span>}
           {duplicates > 0 && <span className="text-slate-500">Duplicates: <span className="text-amber-400 font-medium">{duplicates.toLocaleString()}</span></span>}
           {invalid > 0 && <span className="text-slate-500">Invalid: <span className="text-red-400 font-medium">{invalid.toLocaleString()}</span></span>}
         </div>
@@ -224,9 +224,7 @@ export default function BatchDetailPanel({ batch }) {
           <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />
         </div>
         {batch.skipped_rows > 0 && (
-          <p className="text-xs text-slate-500 mt-2">
-            ✓ {batch.skipped_rows?.toLocaleString()} records already up-to-date (skipped — no changes needed)
-          </p>
+          <p className="text-xs text-slate-500 mt-2">Skipped {batch.skipped_rows?.toLocaleString()} identical records</p>
         )}
       </div>
 

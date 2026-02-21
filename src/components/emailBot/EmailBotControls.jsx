@@ -42,16 +42,16 @@ export default function EmailBotControls({
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-slate-400">Batch Size</Label>
+              <Label className="text-xs">Batch Size</Label>
               <Input
                 type="number" min="1" max="500" value={batchSize}
                 onChange={e => setBatchSize(Math.min(500, parseInt(e.target.value) || 10))}
-                className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-200" disabled={isRunning}
+                className="h-8 text-sm" disabled={isRunning}
               />
             </div>
             <div className="flex items-center gap-2 pt-5">
               <Switch checked={skipSearched} onCheckedChange={setSkipSearched} disabled={isRunning} />
-              <Label className="text-xs text-slate-400">Skip already searched</Label>
+              <Label className="text-xs">Skip already searched</Label>
             </div>
           </div>
 
