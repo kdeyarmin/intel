@@ -63,23 +63,31 @@ Deno.serve(async (req) => {
             isEstimated: sampleSize < totalProviders,
         };
 
-        // Top states from import batches
+        // Top states by actual provider location counts
         const stateCounts = {};
-        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 500);
-        for (const batch of batches) {
-            if (batch.status !== 'completed') continue;
-            if (batch.file_name) {
-                const match = batch.file_name.match(/crawler_([A-Z]{2})_/);
-                if (match) {
-                    const state = match[1];
-                    const imported = batch.imported_rows || batch.valid_rows || 0;
-                    stateCounts[state] = (stateCounts[state] || 0) + imported;
+        let locSkip = 0;
+        const LOC_PAGE = 5000;
+        while (true) {
+            const locs = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', LOC_PAGE, locSkip);
+            if (!locs || locs.length === 0) break;
+            for (const loc of locs) {
+                if (loc.state) {
+                    const st = loc.state.trim().toUpperCase();
+                    if (st.length === 2) {
+                        stateCounts[st] = (stateCounts[st] || 0) + 1;
+                    }
                 }
             }
+            if (locs.length < LOC_PAGE) break;
+            locSkip += LOC_PAGE;
+            if (locSkip > 200000) break; // safety cap
         }
         const topStates = Object.entries(stateCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10);
+
+        // Import batches for freshness & health
+        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 500);
 
         // Last refresh
         const recentBatches = batches.slice(0, 10);
