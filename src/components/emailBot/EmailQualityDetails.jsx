@@ -83,11 +83,11 @@ export default function EmailQualityDetails({ analysis, email, compact = false }
       )}
 
       {/* Analysis Reasons */}
-      {analysis.reasons.length > 0 && (
+      {reasons.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold text-slate-400">Analysis</p>
           <div className="space-y-1">
-            {analysis.reasons.map((reason, idx) => (
+            {reasons.map((reason, idx) => (
               <div key={idx} className="text-[11px] text-slate-400 flex items-start gap-2">
                 <span className="text-slate-500 mt-0.5">→</span>
                 <span>{reason}</span>
