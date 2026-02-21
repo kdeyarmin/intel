@@ -655,77 +655,10 @@ Deno.serve(async (req) => {
                         }
                     }
                     
-                    // Handle deep expansion if limit hit (original logic retained)
+                    // Handle deep expansion if limit hit — recursively narrow zip prefix
+                    // until results fit within the API's skip limit (1200 = 200 * 6 pages)
                     if (hitLimit && !isTimeUp()) {
-                        for (let d = 0; d <= 9 && !isTimeUp(); d++) {
-                            const zip3 = `${prefix}${d}`;
-                            const subParams = new URLSearchParams(params);
-                            subParams.set('postal_code', `${zip3}*`);
-                            const subResult = await fetchAllPages(subParams, batch, base44);
-
-                            if (subResult.results.length > 0) {
-                                const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(subResult.results);
-                                stats.valid += validRows;
-                                stats.invalid += invalidRows;
-                                stats.duplicate += duplicateRows;
-                                if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
-                                if (!dry_run) {
-                                    const provRes = await upsertProviders(providers, base44);
-                                    stats.prov.imported += provRes.imported;
-                                    stats.prov.updated += provRes.updated;
-                                    stats.prov.skipped += provRes.skipped;
-                                    if (!isTimeUp()) {
-                                        const locRes = await upsertLocations(locations, base44);
-                                        stats.loc.imported += locRes.imported;
-                                        stats.loc.updated += locRes.updated;
-                                        stats.loc.skipped += locRes.skipped;
-                                    }
-                                    if (!isTimeUp()) {
-                                        const taxRes = await upsertTaxonomies(taxonomies, base44);
-                                        stats.tax.imported += taxRes.imported;
-                                        stats.tax.updated += taxRes.updated;
-                                        stats.tax.skipped += taxRes.skipped;
-                                    }
-                                }
-                            }
-                            
-                            if (subResult.hitLimit && !isTimeUp()) {
-                                for (let d2 = 0; d2 <= 9 && !isTimeUp(); d2++) {
-                                    const zip4 = `${zip3}${d2}`;
-                                    const deepParams = new URLSearchParams(params);
-                                    deepParams.set('postal_code', `${zip4}*`);
-                                    const deepResult = await fetchAllPages(deepParams, batch, base44);
-
-                                    if (deepResult.results.length > 0) {
-                                        const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(deepResult.results);
-                                        stats.valid += validRows;
-                                        stats.invalid += invalidRows;
-                                        stats.duplicate += duplicateRows;
-                                        if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
-                                        if (!dry_run) {
-                                            const provRes = await upsertProviders(providers, base44);
-                                            stats.prov.imported += provRes.imported;
-                                            stats.prov.updated += provRes.updated;
-                                            stats.prov.skipped += provRes.skipped;
-                                            if (!isTimeUp()) {
-                                                const locRes = await upsertLocations(locations, base44);
-                                                stats.loc.imported += locRes.imported;
-                                                stats.loc.updated += locRes.updated;
-                                                stats.loc.skipped += locRes.skipped;
-                                            }
-                                            if (!isTimeUp()) {
-                                                const taxRes = await upsertTaxonomies(taxonomies, base44);
-                                                stats.tax.imported += taxRes.imported;
-                                                stats.tax.updated += taxRes.updated;
-                                                stats.tax.skipped += taxRes.skipped;
-                                            }
-                                        }
-                                    }
-                                    await sleep(100);
-                                }
-                            }
-                            await sleep(100);
-                        }
+                        await expandZipPrefix(prefix, params, batch, base44, stats, dry_run);
                     }
                 }
                 
