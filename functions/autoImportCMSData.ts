@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 // Strict time budget: 45s to leave buffer before platform kills us
-const MAX_EXEC_MS = 45_000;
+const MAX_EXEC_MS = 40_000; // Reduced to 40s to be safer
 const FETCH_TIMEOUT_MS = 15_000;
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 500; // Reduced page size for more frequent updates
 const BULK_SIZE = 50;
 
 function isTimeUp(startTime) {
@@ -153,47 +153,57 @@ Deno.serve(async (req) => {
                         });
                     }
 
-                    // Validate + map this page
-                    const validDataChunk = [];
+                    // Process page in chunks to allow granular resume
+                    let pageProcessedRaw = 0;
                     const seenInPage = new Set();
+                    
+                    for (let i = 0; i < pageData.length; i += BULK_SIZE) {
+                        if (isTimeUp(startTime)) break;
 
-                    for (const row of pageData) {
-                        totalProcessed++;
-                        const mapped = mapRowToEntity(row, import_type, year);
-                        if (!mapped) {
-                            invalidRows++;
-                            if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Failed to map row' });
-                            continue;
+                        const rawChunk = pageData.slice(i, i + BULK_SIZE);
+                        const validDataChunk = [];
+
+                        for (const row of rawChunk) {
+                            totalProcessed++;
+                            const mapped = mapRowToEntity(row, import_type, year);
+                            if (!mapped) {
+                                invalidRows++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Failed to map row' });
+                                continue;
+                            }
+
+                            const dedupKey = getDedupKey(mapped, import_type);
+                            if (!dedupKey) {
+                                invalidRows++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Missing required identifier' });
+                                continue;
+                            }
+
+                            if (seenInPage.has(dedupKey)) { duplicateRows++; continue; }
+                            seenInPage.add(dedupKey);
+                            validRows++;
+                            validDataChunk.push(mapped);
                         }
 
-                        const dedupKey = getDedupKey(mapped, import_type);
-                        if (!dedupKey) {
-                            invalidRows++;
-                            if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Missing required identifier' });
-                            continue;
+                        // Import this chunk
+                        if (!dry_run && validDataChunk.length > 0) {
+                            const result = await importChunk(base44, import_type, validDataChunk, startTime);
+                            importedCount += result.imported;
+                            updatedCount += result.updated;
+                            skippedCount += result.skipped;
                         }
-
-                        if (seenInPage.has(dedupKey)) { duplicateRows++; continue; }
-                        seenInPage.add(dedupKey);
-                        validRows++;
-                        validDataChunk.push(mapped);
+                        
+                        // Increment offset by the number of raw rows we successfully processed/attempted
+                        pageProcessedRaw += rawChunk.length;
                     }
 
-                    // Import this chunk immediately
-                    if (!dry_run && validDataChunk.length > 0 && !isTimeUp(startTime)) {
-                        const result = await importChunk(base44, import_type, validDataChunk, startTime);
-                        importedCount += result.imported;
-                        updatedCount += result.updated;
-                        skippedCount += result.skipped;
-                    }
-
-                    offset += pageData.length;
+                    offset += pageProcessedRaw;
 
                     if (pageData.length < PAGE_SIZE) {
                         reachedEnd = true;
                     }
 
-                    // Update progress
+                    // Update progress (heartbeat)
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         total_rows: offset,
                         valid_rows: validRows,
@@ -202,7 +212,11 @@ Deno.serve(async (req) => {
                         imported_rows: importedCount,
                         updated_rows: updatedCount,
                         skipped_rows: skippedCount,
+                        updated_date: new Date().toISOString() // Force updated_date refresh
                     });
+
+                    // Break outer loop if we timed out in the inner loop
+                    if (isTimeUp(startTime)) break;
                 }
             } else {
                 // CSV fallback
