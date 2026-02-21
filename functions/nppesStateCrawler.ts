@@ -461,7 +461,7 @@ Deno.serve(async (req) => {
         await loadConfig(base44);
 
         const payload = await req.json();
-        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '' } = payload;
+        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', retry_count = 0, retry_of = null } = payload;
 
         // Normalize 'process_next' to 'start'
         const effectiveAction = (action === 'process_next') ? 'start' : action;
@@ -567,6 +567,8 @@ Deno.serve(async (req) => {
                 file_url: `NPPES API crawler - ${stateToProcess}`,
                 status: 'processing',
                 dry_run,
+                retry_count: retry_count,
+                retry_of: retry_of,
                 retry_params: { processed_prefixes: [] }
             });
         }
