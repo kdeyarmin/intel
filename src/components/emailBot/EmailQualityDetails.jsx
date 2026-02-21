@@ -2,8 +2,28 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, AlertCircle, Shield } from 'lucide-react';
 
-export default function EmailQualityDetails({ analysis, email }) {
+export default function EmailQualityDetails({ analysis, email, compact = false }) {
   if (!analysis) return null;
+
+  if (compact) {
+    // Minimal display for inline view
+    return (
+      <div className="flex items-center gap-2 pt-1.5">
+        <Badge className={
+          analysis.score >= 75 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
+          analysis.score >= 50 ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
+          'bg-red-500/15 text-red-400 border-red-500/20'
+        } title={`${analysis.score}% confidence`}>
+          {analysis.confidence} confidence
+        </Badge>
+        {analysis.riskFlags.length > 0 && (
+          <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-[9px]">
+            {analysis.riskFlags.length} risk flag{analysis.riskFlags.length !== 1 ? 's' : ''}
+          </Badge>
+        )}
+      </div>
+    );
+  }
 
   const getConfidenceColor = (confidence) => {
     switch (confidence) {
