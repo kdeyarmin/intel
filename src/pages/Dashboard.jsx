@@ -8,7 +8,9 @@ import EmailHealthBar from '../components/dashboard/EmailHealthBar';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import QuickActions from '../components/shared/QuickActions';
+import { LayoutDashboard } from 'lucide-react';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function Dashboard() {
   const { data: stats, isLoading: loadingStats } = useQuery({
@@ -51,11 +53,14 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-sm text-slate-400 mt-0.5">CareMetric Provider Intelligence — all your data at a glance</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="CareMetric Provider Intelligence — all your data at a glance"
+        icon={LayoutDashboard}
+      />
+
+      {/* Quick Actions */}
+      <QuickActions />
 
       {/* System Health Strip — last refresh, imports, quality score, alerts */}
       <SystemHealthStrip stats={stats} loading={loadingStats} />
@@ -80,7 +85,6 @@ export default function Dashboard() {
         <RecentActivityCard events={auditEvents} />
       </div>
 
-      <DataSourcesFooter />
     </div>
   );
 }
