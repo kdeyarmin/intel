@@ -230,14 +230,36 @@ Deno.serve(async (req) => {
             // function call inherits the admin user's authentication
             const wavePromises = wave.map(async (stateCode) => {
                 try {
-                    const res = await base44.functions.invoke('nppesStateCrawler', {
-                        action: 'start',
-                        target_state: stateCode,
-                        taxonomy_description,
-                        entity_type,
-                        dry_run,
-                    });
-                    return { state: stateCode, ...res.data };
+                    // Keep calling nppesStateCrawler until the state is fully done
+                    // (it may need multiple invocations if it times out mid-state)
+                    let stateResult = null;
+                    let invocations = 0;
+                    const MAX_INVOCATIONS_PER_STATE = 20; // Safety limit
+                    
+                    while (invocations < MAX_INVOCATIONS_PER_STATE) {
+                        invocations++;
+                        const res = await base44.functions.invoke('nppesStateCrawler', {
+                            action: 'start',
+                            target_state: stateCode,
+                            taxonomy_description,
+                            entity_type,
+                            dry_run,
+                        });
+                        stateResult = res.data;
+                        
+                        // If the state is fully done or failed, stop looping
+                        if (stateResult.done || !stateResult.resume_next || !stateResult.success) {
+                            break;
+                        }
+                        
+                        console.log(`[BatchProcessor] State ${stateCode} needs continuation (invocation ${invocations}). Resuming...`);
+                    }
+                    
+                    if (invocations >= MAX_INVOCATIONS_PER_STATE && stateResult?.resume_next) {
+                        console.warn(`[BatchProcessor] State ${stateCode} hit max invocations (${MAX_INVOCATIONS_PER_STATE}). May be incomplete.`);
+                    }
+                    
+                    return { state: stateCode, ...stateResult, invocations };
                 } catch (err) {
                     return { state: stateCode, success: false, error: err.message };
                 }
