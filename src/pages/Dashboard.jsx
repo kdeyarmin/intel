@@ -31,6 +31,24 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
+  const { data: utilization = [] } = useQuery({
+    queryKey: ['utilization'],
+    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 1000),
+    staleTime: 60000,
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 1000),
+    staleTime: 60000,
+  });
+
+  const { data: referrals = [] } = useQuery({
+    queryKey: ['referrals'],
+    queryFn: () => base44.entities.CMSReferral.list('-created_date', 1000),
+    staleTime: 60000,
+  });
+
   const { data: auditEvents = [] } = useQuery({
     queryKey: ['auditEvents'],
     queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
