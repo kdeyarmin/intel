@@ -10,7 +10,7 @@ import ComparativeAnalysisPanel from '../components/advancedAnalytics/Comparativ
 import PredictiveAnalyticsPanel from '../components/advancedAnalytics/PredictiveAnalyticsPanel';
 import DrillDownTable from '../components/advancedAnalytics/DrillDownTable';
 import DashboardBuilder from '../components/advancedAnalytics/DashboardBuilder';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -74,18 +74,12 @@ export default function AdvancedAnalytics() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-violet-100 to-blue-100">
-            <BarChart3 className="w-5 h-5 text-violet-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Advanced Analytics</h1>
-            <p className="text-sm text-slate-500">Deep insights, trend analysis, comparative reports & predictive models</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Advanced Analytics"
+        subtitle="Deep insights, trend analysis, comparative reports & predictive models"
+        icon={BarChart3}
+        breadcrumbs={[{ label: 'Analytics' }]}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-slate-100">
@@ -176,7 +170,7 @@ export default function AdvancedAnalytics() {
         </TabsContent>
       </Tabs>
 
-      <DataSourcesFooter />
+
     </div>
   );
 }

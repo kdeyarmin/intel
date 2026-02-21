@@ -14,7 +14,7 @@ import ProviderAdvancedFilters from '../components/filters/ProviderAdvancedFilte
 import SortControl from '../components/filters/SortControl';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 import EnrichProviderButton from '../components/providers/EnrichProviderButton';
 import AINPIFinder from '../components/providers/AINPIFinder';
 import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
@@ -344,19 +344,13 @@ export default function Providers() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Providers</h1>
-            {activeTab !== 'directory' && (
-              <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
-                <Sparkles className="w-3 h-3 mr-0.5" /> AI Tools
-              </Badge>
-            )}
-          </div>
-          <p className="text-slate-500 mt-1">{providers.length} total providers</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Providers"
+        subtitle={`${providers.length} total providers`}
+        icon={Users}
+        breadcrumbs={[{ label: 'Providers' }]}
+        actions={
+          <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders.map(p => {
               const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
@@ -416,7 +410,8 @@ export default function Providers() {
             <span className="sm:hidden">Save List</span>
           </Button>
         </div>
-      </div>
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-4">
@@ -624,7 +619,6 @@ export default function Providers() {
         </CardContent>
       </Card>
 
-      <DataSourcesFooter />
         </TabsContent>
       </Tabs>
     </div>

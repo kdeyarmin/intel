@@ -15,7 +15,7 @@ import HHAStatsChart from '../components/cmsAnalytics/HHAStatsChart';
 import PartDStatsChart from '../components/cmsAnalytics/PartDStatsChart';
 import SNFStatsChart from '../components/cmsAnalytics/SNFStatsChart';
 import DatasetOverview from '../components/cmsAnalytics/DatasetOverview';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function CMSAnalytics() {
   const [selectedYear, setSelectedYear] = useState('all');
@@ -112,13 +112,13 @@ export default function CMSAnalytics() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">CMS Data Analytics</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Visualize Medicare datasets across programs and years</p>
-        </div>
-        <div className="flex gap-3">
+      <PageHeader
+        title="CMS Data Analytics"
+        subtitle="Visualize Medicare datasets across programs and years"
+        icon={BarChart3}
+        breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'CMS Data' }]}
+        actions={
+          <div className="flex gap-3">
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Year" />
@@ -141,7 +141,8 @@ export default function CMSAnalytics() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+        }
+      />
 
       {/* KPI Row */}
       <CMSKPIRow
@@ -182,7 +183,7 @@ export default function CMSAnalytics() {
         )}
       </div>
 
-      <DataSourcesFooter />
+
     </div>
   );
 }

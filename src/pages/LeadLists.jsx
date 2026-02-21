@@ -14,7 +14,8 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import LeadListTable from '../components/leadlists/LeadListTable';
 import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
+import { ListCheck } from 'lucide-react';
 
 export default function LeadLists() {
   const [viewingListId, setViewingListId] = useState(null);
@@ -159,18 +160,20 @@ export default function LeadLists() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 sm:mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Lead Lists</h1>
-          <p className="text-slate-500 mt-1">Create and manage targeted provider lists</p>
-        </div>
-        <Link to={createPageUrl('LeadListBuilder')}>
-          <Button className="bg-cyan-600 hover:bg-cyan-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Create New List
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Lead Lists"
+        subtitle="Create and manage targeted provider lists"
+        icon={ListCheck}
+        breadcrumbs={[{ label: 'Lead Lists' }]}
+        actions={
+          <Link to={createPageUrl('LeadListBuilder')}>
+            <Button className="bg-cyan-600 hover:bg-cyan-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Create New List
+            </Button>
+          </Link>
+        }
+      />
 
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
@@ -239,7 +242,7 @@ export default function LeadLists() {
         </CardContent>
       </Card>
 
-      <DataSourcesFooter />
+
     </div>
   );
 }

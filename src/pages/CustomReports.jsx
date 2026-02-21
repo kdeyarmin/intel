@@ -14,7 +14,7 @@ import ReportScheduleForm from '../components/scheduledReports/ReportScheduleFor
 import ScheduledReportsList from '../components/scheduledReports/ScheduledReportsList';
 import ReportTemplateLibrary from '../components/scheduledReports/ReportTemplateLibrary';
 import { DATASET_CONFIG } from '../components/customReports/reportConfig';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 const EMPTY_CONFIG = { name: '', dataset: '', metrics: [], group_by: '', chart_type: 'bar', filters: {} };
 
@@ -180,18 +180,12 @@ export default function CustomReports() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-violet-100">
-            <FileBarChart2 className="w-5 h-5 text-violet-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Reports & Analytics</h1>
-            <p className="text-xs text-slate-500">Create custom visualizations and schedule automated emails</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Reports & Analytics"
+        subtitle="Create custom visualizations and schedule automated emails"
+        icon={FileBarChart2}
+        breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Reports' }]}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="flex justify-between items-center">
@@ -280,7 +274,7 @@ export default function CustomReports() {
         </TabsContent>
       </Tabs>
 
-      <DataSourcesFooter />
+
     </div>
   );
 }
