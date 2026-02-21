@@ -521,70 +521,20 @@ export default function ImportMonitoring() {
       )}
 
       {activeTab === 'monitoring' && <>
+      {/* Overview KPIs */}
+      <ImportOverviewKPIs batches={batches} onFilterChange={setStatusFilter} />
+
+      {/* Critical Failure Alerts */}
+      <CriticalFailureAlerts batches={batches} onViewErrors={(b) => setErrorReportBatch(b)} />
+
       {/* System Status */}
       <SystemStatusPanel batches={batches} />
 
       {/* Live Progress for Active Jobs */}
       <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-blue-500/40 transition-colors" onClick={() => setStatusFilter('active')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Active</p>
-                <p className="text-2xl font-bold text-white">{runningBatches.length}</p>
-              </div>
-              <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-amber-500/40 transition-colors" onClick={() => setStatusFilter('paused')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Paused</p>
-                <p className="text-2xl font-bold text-amber-400">{pausedBatches.length}</p>
-              </div>
-              <Pause className="w-6 h-6 text-amber-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-emerald-500/40 transition-colors" onClick={() => setStatusFilter('completed')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Completed</p>
-                <p className="text-2xl font-bold text-emerald-400">{completedBatches.length}</p>
-              </div>
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-red-500/40 transition-colors" onClick={() => setStatusFilter('failed')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Failed</p>
-                <p className="text-2xl font-bold text-red-400">{failedBatches.length}</p>
-              </div>
-              <XCircle className="w-6 h-6 text-red-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-cyan-500/40 transition-colors" onClick={() => setStatusFilter('all')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Total</p>
-                <p className="text-2xl font-bold text-white">{batches.length}</p>
-              </div>
-              <TrendingUp className="w-6 h-6 text-cyan-400" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Success vs Failure Charts */}
+      <SuccessVsFailureChart batches={batches} />
 
       {/* Auto-failed notification */}
       {autoFailedIds.size > 0 && (
