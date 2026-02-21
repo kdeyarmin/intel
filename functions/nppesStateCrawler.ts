@@ -1,3 +1,4 @@
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const US_STATES = [
@@ -13,22 +14,28 @@ let BATCH_LIMIT = 200;
 let MAX_SKIP = 1000;
 let MAX_PAGES_PER_QUERY = 6;
 let BULK_SIZE = 50;
-let API_DELAY_MS = 80;
+let API_DELAY_MS = 100; // Increased default
 let MAX_RETRIES = 3;
 let RETRY_BACKOFF_MS = 2000;
 let REQUEST_TIMEOUT_MS = 15000;
 let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
 // Hard ceiling: respond before platform kills us (platform limit ~60s)
 const MAX_EXEC_MS = 50000;
-const WRITE_CONCURRENCY = 5;
-// Reserve time for the write phase — stop fetching when this much time remains
-const WRITE_RESERVE_MS = 25000;
 
 let execStartTime = Date.now();
 
 function timeLeft() { return MAX_EXEC_MS - (Date.now() - execStartTime); }
-function isTimeUp() { return timeLeft() < 3000; } // 3s safety buffer
-function isFetchTimeUp() { return timeLeft() < WRITE_RESERVE_MS; } // stop fetching, save time for writes
+function isTimeUp() { return timeLeft() < 5000; } // 5s safety buffer
+
+// ---- ERROR CATEGORIZATION ----
+function categorizeError(error) {
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('429') || msg.includes('rate limit')) return 'rate_limit';
+    if (msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('504')) return 'api_downtime';
+    if (msg.includes('timeout') || msg.includes('econnreset') || msg.includes('network')) return 'network_error';
+    if (msg.includes('validation') || msg.includes('schema') || msg.includes('parse')) return 'data_validation';
+    return 'unknown';
+}
 
 async function loadConfig(base44) {
     try {
@@ -38,7 +45,7 @@ async function loadConfig(base44) {
             BATCH_LIMIT = c.api_batch_size || 200;
             BULK_SIZE = c.import_chunk_size || 50;
             MAX_RETRIES = c.max_retries || 3;
-            API_DELAY_MS = c.api_delay_ms ?? 80;
+            API_DELAY_MS = Math.max(c.api_delay_ms ?? 100, 50); // Minimum 50ms
             RETRY_BACKOFF_MS = c.retry_backoff_ms || 2000;
             REQUEST_TIMEOUT_MS = Math.min(c.request_timeout_ms || 10000, 10000);
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
@@ -68,6 +75,22 @@ const STATE_ZIP_PREFIXES = {
     WV: ['24','25','26'], WI: ['53','54'], WY: ['82','83']
 };
 
+// ---- RATE LIMITER ----
+// We use a shared lock for "fetch" operations to enforce a global rate limit across parallel tasks.
+const fetchLock = {
+    promise: Promise.resolve(),
+    async run(fn, delay) {
+        // Enqueue the operation
+        const op = this.promise.then(async () => {
+            await new Promise(r => setTimeout(r, delay));
+            return fn();
+        });
+        // Update tail, handling errors so queue doesn't stall on rejections
+        this.promise = op.catch(() => {});
+        return op;
+    }
+};
+
 async function fetchNPPESPage(params) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -75,21 +98,36 @@ async function fetchNPPESPage(params) {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-            const response = await fetch(apiUrl, { signal: controller.signal });
+            
+            // Execute with rate limiting
+            const response = await fetchLock.run(() => fetch(apiUrl, { signal: controller.signal }), API_DELAY_MS);
+            
             clearTimeout(timeout);
+            
             if (response.status === 429 || response.status >= 500) {
-                const backoff = attempt * RETRY_BACKOFF_MS;
-                await new Promise(r => setTimeout(r, Math.min(backoff, 3000)));
+                const isRateLimit = response.status === 429;
+                const backoff = attempt * (isRateLimit ? RETRY_BACKOFF_MS * 2 : RETRY_BACKOFF_MS);
+                console.warn(`[API] ${response.status} error. Backing off ${backoff}ms (attempt ${attempt}/${MAX_RETRIES})...`);
+                await new Promise(r => setTimeout(r, Math.min(backoff, 5000)));
                 continue;
             }
             if (!response.ok) return { error: `HTTP ${response.status}`, results: [] };
+            
             const data = await response.json();
             if (data.Errors && data.Errors.length > 0) {
+                // If it's a transient error reported in body, retry
+                const errStr = JSON.stringify(data.Errors);
+                if (errStr.includes('unavailable') || errStr.includes('timeout')) {
+                     console.warn(`[API] Transient error in response body. Retrying in 1s (attempt ${attempt}/${MAX_RETRIES})...`);
+                     await new Promise(r => setTimeout(r, 1000));
+                     continue;
+                }
                 return { error: data.Errors.map(e => e.description).join('; '), results: [], noResults: true };
             }
             return { results: data.results || [], result_count: data.result_count || 0, error: null };
         } catch (e) {
             if (attempt === MAX_RETRIES) return { error: e.message, results: [] };
+            console.warn(`[API] Fetch error: ${e.message}. Retrying in ${attempt}s (attempt ${attempt}/${MAX_RETRIES})...`);
             await new Promise(r => setTimeout(r, attempt * 1000));
         }
     }
@@ -101,16 +139,18 @@ async function fetchAllPages(baseParams) {
     let skip = 0;
     let hitLimit = false;
     for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
-        if (isFetchTimeUp()) break;
+        if (isTimeUp()) break;
         baseParams.set('skip', String(skip));
         const data = await fetchNPPESPage(baseParams);
-        if (data.error) break;
+        if (data.error) {
+             console.warn(`[FetchAllPages] Error on skip ${skip}: ${data.error}`);
+             break;
+        }
         if (data.results.length === 0) break;
         allResults.push(...data.results);
         if (data.results.length < BATCH_LIMIT) break;
         skip += BATCH_LIMIT;
         if (skip > MAX_SKIP) { hitLimit = true; break; }
-        await new Promise(r => setTimeout(r, 80));
     }
     return { results: allResults, hitLimit };
 }
@@ -125,9 +165,7 @@ async function withRetry(fn, maxRetries = 3) {
         } catch (e) {
             const is429 = /429|rate limit/i.test(e.message);
             if (is429 && attempt < maxRetries) {
-                const backoff = attempt * 2000 + Math.random() * 1000;
-                console.warn(`[Retry] Rate limited, waiting ${Math.round(backoff)}ms (attempt ${attempt}/${maxRetries})`);
-                await sleep(backoff);
+                await sleep(attempt * 1000);
                 continue;
             }
             throw e;
@@ -186,53 +224,76 @@ function isMoreComplete(incoming, existing, fields) {
 }
 
 async function upsertProviders(records, base44) {
-    const FIELDS = ['first_name','last_name','organization_name','credential','gender','status','entity_type','enumeration_date','last_update_date'];
+    // Optimized for speed: use bulk create where possible, only update if needed
+    const FIELDS = ['first_name','last_name','organization_name','status','entity_type','last_update_date'];
     let imported = 0, updated = 0, skipped = 0;
-    // VERY small chunks to avoid rate limits
-    const chunkSize = 5; 
-    for (let i = 0; i < records.length; i += chunkSize) {
+    
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp()) break;
-        const chunk = records.slice(i, i + chunkSize);
-        const npis = [...new Set(chunk.map(p => p.npi))];
-        const existingMap = await batchLookupByNPI('Provider', npis, base44);
-        const toCreate = [], updateTasks = [];
-        for (const p of chunk) {
-            const ex = existingMap[p.npi]?.[0];
-            if (!ex) { toCreate.push(p); }
-            else if (isIdentical(p, ex, FIELDS)) { skipped++; }
-            else if (isNewer(p, ex) || isMoreComplete(p, ex, FIELDS)) {
-                const merged = { ...p };
-                for (const f of FIELDS) { if (!merged[f] && ex[f]) merged[f] = ex[f]; }
-                merged.needs_nppes_enrichment = false;
-                updateTasks.push(async () => {
-                    try { await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged)); } catch (e) {}
-                });
-            } else { skipped++; }
-        }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
-        if (toCreate.length > 0) {
-            try {
-                await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate));
-                imported += toCreate.length;
-            } catch (e) {
-                // Fallback: create one by one with delays
-                for (const p of toCreate) {
-                    if (isTimeUp()) break;
-                    try { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; } catch (err) {}
-                    await sleep(100);
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = chunk.map(p => p.npi);
+        
+        try {
+            const existing = await withRetry(() => base44.asServiceRole.entities.Provider.filter({ 
+                npi: { $in: npis } 
+            }));
+            const existingMap = new Map(existing.map(e => [e.npi, e]));
+            
+            const toCreate = [];
+            const updatePromises = [];
+            
+            for (const p of chunk) {
+                const ex = existingMap.get(p.npi);
+                if (!ex) {
+                    toCreate.push(p);
+                } else {
+                    if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
+                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, p).catch(() => {}));
+                    } else {
+                        skipped++;
+                    }
                 }
             }
+            
+            if (toCreate.length > 0) {
+                await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate));
+                imported += toCreate.length;
+            }
+            if (updatePromises.length > 0) {
+                await Promise.all(updatePromises);
+                updated += updatePromises.length;
+            }
+        } catch (e) {
+            console.error('[UpsertProviders] Error:', e.message);
+            // On error, try one by one to save some records if bulk fails
+            for (const p of chunk) {
+                if (isTimeUp()) break;
+                try {
+                    const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
+                    if (!ex) {
+                        await withRetry(() => base44.asServiceRole.entities.Provider.create(p));
+                        imported++;
+                    } else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
+                        await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, p));
+                        updated++;
+                    } else {
+                        skipped++;
+                    }
+                } catch (err) {
+                    console.error(`[UpsertProviders] Fallback failed for NPI ${p.npi}:`, err.message);
+                }
+                await sleep(50); // Small delay for individual writes
+            }
         }
-        // Throttle between chunks
-        await sleep(300);
     }
     return { imported, updated, skipped };
 }
 
+
 async function upsertLocations(records, base44) {
     const FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
     let imported = 0, updated = 0, skipped = 0;
-    const chunkSize = 5; // Reduced chunk size
+    const chunkSize = BULK_SIZE; 
     for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
         const chunk = records.slice(i, i + chunkSize);
@@ -269,7 +330,7 @@ async function upsertLocations(records, base44) {
                 }
             }
         }
-        await sleep(300);
+        await sleep(100); // Throttle between chunks
     }
     return { imported, updated, skipped };
 }
@@ -277,7 +338,7 @@ async function upsertLocations(records, base44) {
 async function upsertTaxonomies(records, base44) {
     const FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
     let imported = 0, updated = 0, skipped = 0;
-    const chunkSize = 5; // Reduced chunk size
+    const chunkSize = BULK_SIZE; 
     for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
         const chunk = records.slice(i, i + chunkSize);
@@ -310,7 +371,7 @@ async function upsertTaxonomies(records, base44) {
                 }
             }
         }
-        await sleep(300);
+        await sleep(100); // Throttle between chunks
     }
     return { imported, updated, skipped };
 }
@@ -376,18 +437,8 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         await loadConfig(base44);
 
-        let auditEmail = 'system@service';
-        try {
-            const user = await base44.auth.me();
-            if (user) {
-                auditEmail = user.email || auditEmail;
-                const isService = (user.email || '').includes('service+') || (user.email || '').includes('@no-reply.base44.com');
-                if (!isService && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-            }
-        } catch (e) { /* service call */ }
-
         const payload = await req.json();
-        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', phase = 'fetch', ignore_history = false } = payload;
+        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '' } = payload;
 
         // Normalize 'process_next' to 'start'
         const effectiveAction = (action === 'process_next') ? 'start' : action;
@@ -433,7 +484,6 @@ Deno.serve(async (req) => {
             });
         }
 
-        // Determine state
         let stateToProcess = target_state;
         
         // If target_state was explicitly passed (e.g. for auto-retry), we use it.
@@ -448,152 +498,157 @@ Deno.serve(async (req) => {
         }
 
         if (!stateToProcess) {
-            if (ignore_history) {
-                // If ignoring history, just pick the first state or rotate?
-                // Actually, ignore_history usually implies we want to restart from scratch.
-                // But blindly picking first state might restart AL every time.
-                // A better approach for "process all again" is needed.
-                // For now, if ignore_history is true, we simply DONT check doneStates.
-                // But we still need to pick ONE state.
-                // Let's assume the caller will likely call this in a loop or we just pick the first one 
-                // that ISNT currently processing (to avoid double processing).
-                
-                // Actually, let's just pick the first state in US_STATES if we're ignoring history
-                // AND we rely on the fact that this script runs one state at a time.
-                // BUT if we want to "Process Next" ignoring history, we need to know what was processed "recently" in THIS run.
-                // That requires state tracking.
-                // Simple fallback: If ignore_history, we pick the state that hasn't been run *in the last 24 hours*?
-                // Or: we just rely on `target_state` being passed by the caller (batch processor) when forcing re-crawl.
-                
-                // If `ignore_history` is true but no target_state, we default to the first state that isn't CURRENTLY running.
-                const runningBatches = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' });
-                const runningStates = new Set(runningBatches.map(b => b.file_name?.split('_')[1]).filter(s => s));
-                stateToProcess = US_STATES.find(s => !runningStates.has(s));
-            } else {
-                const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-                const doneStates = new Set();
-                for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
-                    const st = b.file_name.split('_')[1];
-                    if (st && st.length <= 2 && US_STATES.includes(st)) doneStates.add(st);
-                }
-                stateToProcess = US_STATES.find(s => !doneStates.has(s));
-            }
+             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 300);
+             const doneStates = new Set();
+             for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_'))) {
+                 const st = b.file_name.split('_')[1];
+                 if (st && b.status === 'completed') doneStates.add(st);
+             }
+             const processingBatches = crawlBatches.filter(b => b.status === 'processing');
+             const processingStates = new Set(processingBatches.map(b => b.file_name?.split('_')[1]).filter(s => s));
+             
+             stateToProcess = US_STATES.find(s => !doneStates.has(s) && !processingStates.has(s));
+             
+             if (!stateToProcess && processingBatches.length > 0) {
+                 // Pick the oldest processing batch to resume if no new state is found
+                 const oldestProcessing = processingBatches.sort((a,b) => new Date(a.created_date).getTime() - new Date(b.created_date).getTime())[0];
+                 stateToProcess = oldestProcessing?.file_name.split('_')[1];
+                 if (stateToProcess) {
+                     console.log(`[Crawler] Resuming processing state ${stateToProcess} from batch ${oldestProcessing.id}`);
+                 }
+             }
         }
-
+        
         if (!stateToProcess) return Response.json({ success: true, message: 'All states processed!', done: true });
 
-        const zipPrefixes = STATE_ZIP_PREFIXES[stateToProcess] || [];
-        if (zipPrefixes.length === 0) return Response.json({ error: `No zip prefixes for ${stateToProcess}` }, { status: 400 });
-
-        console.log(`[Crawler] State=${stateToProcess}, phase=${phase}, taxonomy=${taxonomy_description || 'all'}`);
-
-        // ---- INTERLEAVED FETCH & WRITE PHASE ----
-        const batch = await base44.asServiceRole.entities.ImportBatch.create({
+        // RESUMPTION LOGIC
+        let batch;
+        let processedPrefixes = new Set();
+        
+        const recentBatches = await base44.asServiceRole.entities.ImportBatch.filter({
             import_type: 'nppes_registry',
-            file_name: `crawler_${stateToProcess}_${taxonomy_description || 'all'}_${Date.now()}`,
-            file_url: `NPPES API crawler - ${stateToProcess}`,
-            status: 'processing',
-            dry_run,
+            status: 'processing'
         });
-
-        try {
-            const enumTypes = entity_type ? [entity_type] : CRAWL_ENTITY_TYPES;
-            let totalFetched = 0;
-            let fetchComplete = true;
-            let writeComplete = true;
-            
-            // Accumulate stats across loop iterations
-            let stats = {
-                valid: 0, invalid: 0, duplicate: 0,
-                prov: { imported: 0, updated: 0, skipped: 0 },
-                loc: { imported: 0, updated: 0, skipped: 0 },
-                tax: { imported: 0, updated: 0, skipped: 0 },
-                errors: []
-            };
-
-            // We use a set to avoid duplicates within this run
-            const seenNPIs = new Set();
-
-            async function processResults(results) {
-                if (results.length === 0) return;
-                
-                // Deduplicate within this run
-                const uniqueResults = [];
-                for (const r of results) {
-                    const npi = String(r.number || '');
-                    if (npi && !seenNPIs.has(npi)) { seenNPIs.add(npi); uniqueResults.push(r); }
-                }
-                
-                if (uniqueResults.length === 0) return;
-                totalFetched += uniqueResults.length;
-
-                // Transform
-                const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(uniqueResults);
-                stats.valid += validRows;
-                stats.invalid += invalidRows;
-                stats.duplicate += duplicateRows;
-                if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
-
-                if (!dry_run) {
-                    const provRes = await upsertProviders(providers, base44);
-                    stats.prov.imported += provRes.imported;
-                    stats.prov.updated += provRes.updated;
-                    stats.prov.skipped += provRes.skipped;
-
-                    // Only process child entities if we have time
-                    if (!isTimeUp()) {
-                        const locRes = await upsertLocations(locations, base44);
-                        stats.loc.imported += locRes.imported;
-                        stats.loc.updated += locRes.updated;
-                        stats.loc.skipped += locRes.skipped;
-                    }
-                    if (!isTimeUp()) {
-                        const taxRes = await upsertTaxonomies(taxonomies, base44);
-                        stats.tax.imported += taxRes.imported;
-                        stats.tax.updated += taxRes.updated;
-                        stats.tax.skipped += taxRes.skipped;
-                    }
-                }
-                
-                // Update batch periodically
-                if (totalFetched % 100 === 0) {
-                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                        total_rows: totalFetched,
-                        valid_rows: stats.valid,
-                        imported_rows: stats.prov.imported,
-                        updated_rows: stats.prov.updated + stats.loc.updated,
-                        skipped_rows: stats.prov.skipped,
-                     }).catch(() => {}); // ignore update errors
-                }
+        const resumeBatch = recentBatches.find(b => b.file_name?.includes(`crawler_${stateToProcess}_`));
+        
+        if (resumeBatch) {
+            batch = resumeBatch;
+            if (batch.retry_params?.processed_prefixes) {
+                batch.retry_params.processed_prefixes.forEach(p => processedPrefixes.add(p));
             }
+            console.log(`[Crawler] Resuming batch ${batch.id} for ${stateToProcess}. Skipped ${processedPrefixes.size} prefixes.`);
+        } else {
+             batch = await base44.asServiceRole.entities.ImportBatch.create({
+                import_type: 'nppes_registry',
+                file_name: `crawler_${stateToProcess}_${taxonomy_description || 'all'}_${Date.now()}`,
+                file_url: `NPPES API crawler - ${stateToProcess}`,
+                status: 'processing',
+                dry_run,
+                retry_params: { processed_prefixes: [] }
+            });
+        }
 
-            // Main loop
-            loop_main:
-            for (const enumType of enumTypes) {
-                if (isTimeUp()) { fetchComplete = false; writeComplete = false; break; }
-                
-                for (const zipPrefix of zipPrefixes) {
-                    if (isTimeUp()) { fetchComplete = false; writeComplete = false; break loop_main; }
+        const zipPrefixes = STATE_ZIP_PREFIXES[stateToProcess] || [];
+        const pendingPrefixes = zipPrefixes.filter(p => !processedPrefixes.has(p));
+        
+        if (pendingPrefixes.length === 0) {
+             await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'completed', completed_at: new Date().toISOString() });
+             return Response.json({ success: true, state: stateToProcess, done: false, message: `State ${stateToProcess} completed.` }); // Next run will pick next state
+        }
 
+        console.log(`[Crawler] State=${stateToProcess}, processing ${pendingPrefixes.length} prefixes. Current batch: ${batch.id}`);
+
+        // PARALLEL PROCESSING
+        // We run a few prefixes in parallel, but `fetchNPPESPage` uses `fetchLock` to enforce global rate limit.
+        // This allows us to prepare/process data in parallel while fetching sequentially.
+        const CONCURRENCY = 2; 
+        
+        let stats = {
+            valid: 0, invalid: 0, duplicate: 0,
+            prov: { imported: 0, updated: 0, skipped: 0 },
+            loc: { imported: 0, updated: 0, skipped: 0 },
+            tax: { imported: 0, updated: 0, skipped: 0 },
+            errors: []
+        };
+        
+        const processPrefix = async (prefix) => {
+            if (isTimeUp()) return;
+            
+            try {
+                for (const enumType of (entity_type ? [entity_type] : CRAWL_ENTITY_TYPES)) {
+                    if (isTimeUp()) break;
+                    
                     const params = new URLSearchParams();
                     params.set('version', '2.1');
                     params.set('limit', String(BATCH_LIMIT));
                     params.set('state', stateToProcess);
                     params.set('enumeration_type', enumType);
-                    params.set('postal_code', `${zipPrefix}*`);
+                    params.set('postal_code', `${prefix}*`);
                     if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
 
-                    // Fetch & Process immediately
                     const { results, hitLimit } = await fetchAllPages(params);
-                    await processResults(results);
+                    
+                    if (results.length > 0) {
+                        const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(results);
+                        stats.valid += validRows;
+                        stats.invalid += invalidRows;
+                        stats.duplicate += duplicateRows;
+                        if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
 
+                        if (!dry_run) {
+                            const provRes = await upsertProviders(providers, base44);
+                            stats.prov.imported += provRes.imported;
+                            stats.prov.updated += provRes.updated;
+                            stats.prov.skipped += provRes.skipped;
+
+                            if (!isTimeUp()) {
+                                const locRes = await upsertLocations(locations, base44);
+                                stats.loc.imported += locRes.imported;
+                                stats.loc.updated += locRes.updated;
+                                stats.loc.skipped += locRes.skipped;
+                            }
+                            if (!isTimeUp()) {
+                                const taxRes = await upsertTaxonomies(taxonomies, base44);
+                                stats.tax.imported += taxRes.imported;
+                                stats.tax.updated += taxRes.updated;
+                                stats.tax.skipped += taxRes.skipped;
+                            }
+                        }
+                    }
+                    
+                    // Handle deep expansion if limit hit (original logic retained)
                     if (hitLimit && !isTimeUp()) {
                         for (let d = 0; d <= 9 && !isTimeUp(); d++) {
-                            const zip3 = `${zipPrefix}${d}`;
+                            const zip3 = `${prefix}${d}`;
                             const subParams = new URLSearchParams(params);
                             subParams.set('postal_code', `${zip3}*`);
                             const subResult = await fetchAllPages(subParams);
-                            await processResults(subResult.results);
+
+                            if (subResult.results.length > 0) {
+                                const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(subResult.results);
+                                stats.valid += validRows;
+                                stats.invalid += invalidRows;
+                                stats.duplicate += duplicateRows;
+                                if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
+                                if (!dry_run) {
+                                    const provRes = await upsertProviders(providers, base44);
+                                    stats.prov.imported += provRes.imported;
+                                    stats.prov.updated += provRes.updated;
+                                    stats.prov.skipped += provRes.skipped;
+                                    if (!isTimeUp()) {
+                                        const locRes = await upsertLocations(locations, base44);
+                                        stats.loc.imported += locRes.imported;
+                                        stats.loc.updated += locRes.updated;
+                                        stats.loc.skipped += locRes.skipped;
+                                    }
+                                    if (!isTimeUp()) {
+                                        const taxRes = await upsertTaxonomies(taxonomies, base44);
+                                        stats.tax.imported += taxRes.imported;
+                                        stats.tax.updated += taxRes.updated;
+                                        stats.tax.skipped += taxRes.skipped;
+                                    }
+                                }
+                            }
                             
                             if (subResult.hitLimit && !isTimeUp()) {
                                 for (let d2 = 0; d2 <= 9 && !isTimeUp(); d2++) {
@@ -601,93 +656,114 @@ Deno.serve(async (req) => {
                                     const deepParams = new URLSearchParams(params);
                                     deepParams.set('postal_code', `${zip4}*`);
                                     const deepResult = await fetchAllPages(deepParams);
-                                    await processResults(deepResult.results);
+
+                                    if (deepResult.results.length > 0) {
+                                        const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(deepResult.results);
+                                        stats.valid += validRows;
+                                        stats.invalid += invalidRows;
+                                        stats.duplicate += duplicateRows;
+                                        if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
+                                        if (!dry_run) {
+                                            const provRes = await upsertProviders(providers, base44);
+                                            stats.prov.imported += provRes.imported;
+                                            stats.prov.updated += provRes.updated;
+                                            stats.prov.skipped += provRes.skipped;
+                                            if (!isTimeUp()) {
+                                                const locRes = await upsertLocations(locations, base44);
+                                                stats.loc.imported += locRes.imported;
+                                                stats.loc.updated += locRes.updated;
+                                                stats.loc.skipped += locRes.skipped;
+                                            }
+                                            if (!isTimeUp()) {
+                                                const taxRes = await upsertTaxonomies(taxonomies, base44);
+                                                stats.tax.imported += taxRes.imported;
+                                                stats.tax.updated += taxRes.updated;
+                                                stats.tax.skipped += taxRes.skipped;
+                                            }
+                                        }
+                                    }
                                     await sleep(100);
                                 }
                             }
                             await sleep(100);
                         }
                     }
-                    await sleep(API_DELAY_MS * 2); // Increased delay
                 }
+                
+                processedPrefixes.add(prefix);
+                // Update batch periodically to save progress
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                     retry_params: { processed_prefixes: Array.from(processedPrefixes) },
+                     valid_rows: (batch.valid_rows || 0) + stats.valid,
+                     imported_rows: (batch.imported_rows || 0) + stats.prov.imported,
+                     updated_rows: (batch.updated_rows || 0) + stats.prov.updated,
+                     skipped_rows: (batch.skipped_rows || 0) + stats.prov.skipped,
+                }).catch(()=>{}); // Ignore update errors to not break main flow
+                
+            } catch (err) {
+                console.error(`[Prefix ${prefix} ERROR]`, err.message);
+                const cat = categorizeError(err);
+                stats.errors.push({ prefix, message: err.message, category: cat });
             }
+        };
 
-            console.log(`[${stateToProcess}] Processed ${totalFetched} NPIs. Complete=${fetchComplete}`);
-
-            // Final status logic
-            // Mark completed even if skipped. Mark failed only on catch.
-            const finalStatus = 'completed'; 
-
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: finalStatus,
-                total_rows: totalFetched,
-                valid_rows: stats.valid,
-                invalid_rows: stats.invalid,
-                duplicate_rows: stats.duplicate,
-                error_samples: stats.errors,
-                imported_rows: stats.prov.imported,
-                updated_rows: stats.prov.updated + stats.loc.updated + stats.tax.updated,
-                skipped_rows: stats.prov.skipped + stats.loc.skipped + stats.tax.skipped,
-                dedup_summary: {
-                    providers: stats.prov,
-                    locations: stats.loc,
-                    taxonomies: stats.tax,
-                    fetch_complete: fetchComplete,
-                    write_complete: writeComplete,
-                },
-                completed_at: new Date().toISOString(),
-            });
-
-            // Determine next state
-            const crawlBatches2 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates2 = new Set();
-            for (const b of crawlBatches2.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
-                const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st) && (b.status === 'completed' || b.status === 'failed')) doneStates2.add(st);
+        // Run worker pool
+        const queue = [...pendingPrefixes];
+        const workers = Array(CONCURRENCY).fill(null).map(async () => {
+            while(queue.length > 0 && !isTimeUp()) {
+                const p = queue.shift();
+                if (p) await processPrefix(p); // Ensure p is not undefined
             }
-            const nextState = US_STATES.find(s => !doneStates2.has(s));
+        });
+        
+        await Promise.all(workers);
+        
+        // Final update
+        const allPendingProcessed = queue.length === 0;
+        const finalStatus = allPendingProcessed ? 'completed' : 'processing'; 
+        
+        await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+             status: finalStatus,
+             retry_params: { processed_prefixes: Array.from(processedPrefixes) },
+             valid_rows: (batch.valid_rows || 0) + stats.valid,
+             imported_rows: (batch.imported_rows || 0) + stats.prov.imported,
+             updated_rows: (batch.updated_rows || 0) + stats.prov.updated,
+             skipped_rows: (batch.skipped_rows || 0) + stats.prov.skipped,
+             completed_at: allPendingProcessed ? new Date().toISOString() : undefined
+        });
 
-            return Response.json({
-                success: true, state: stateToProcess, done: !nextState, next_state: nextState || null,
-                batch_id: batch.id, total_fetched: allResults.length, valid_rows: validRows,
-                invalid_rows: invalidRows, duplicate_rows: duplicateRows, fetch_complete: fetchComplete,
-                write_complete: writeComplete,
-                imported_providers: provResult.imported, updated_providers: provResult.updated, skipped_providers: provResult.skipped,
-                imported_locations: locResult.imported, imported_taxonomies: taxResult.imported,
-                dry_run, elapsed_ms: Date.now() - execStartTime,
-            });
-
-        } catch (error) {
-            console.error(`[${stateToProcess}] Error:`, error.message);
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'failed', error_samples: [{ message: error.message }] });
-
-            try {
-                await base44.asServiceRole.entities.ErrorReport.create({
-                    error_type: 'import_failure', severity: 'high', source: batch.id,
-                    title: `NPPES Crawler Failed - ${stateToProcess}`,
-                    description: `${stateToProcess}: ${error.message}`,
-                    error_samples: [{ message: error.message }],
-                    context: { state: stateToProcess, taxonomy_description, batch_id: batch.id },
-                    status: 'new',
-                });
-            } catch (e) {}
-
-            const crawlBatches3 = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
-            const doneStates3 = new Set();
-            for (const b of crawlBatches3.filter(b => b.file_name?.startsWith('crawler_') && !b.file_name.includes('stop_signal'))) {
-                const st = b.file_name.split('_')[1];
-                if (st && st.length <= 2 && US_STATES.includes(st) && (b.status === 'completed' || b.status === 'failed')) doneStates3.add(st);
-            }
-            const nextState = US_STATES.find(s => !doneStates3.has(s));
-
-            return Response.json({
-                success: false, state: stateToProcess, error: error.message,
-                done: !nextState, next_state: nextState || null, batch_id: batch.id,
-                elapsed_ms: Date.now() - execStartTime,
-            });
+        // Error Reporting
+        if (stats.errors.length > 0) {
+             const cats = [...new Set(stats.errors.map(e => e.category))];
+             for (const cat of cats) {
+                 const errs = stats.errors.filter(e => e.category === cat);
+                 try {
+                    await base44.asServiceRole.entities.ErrorReport.create({
+                        error_type: 'import_failure',
+                        error_category: cat, 
+                        severity: cat === 'rate_limit' || cat === 'api_downtime' ? 'high' : 'medium',
+                        source: batch.id,
+                        title: `Crawler Errors: ${cat} in ${stateToProcess}`,
+                        description: `Encountered ${errs.length} errors of type ${cat}. State: ${stateToProcess}`,
+                        error_samples: errs.slice(0, 5),
+                        context: { state: stateToProcess, batch_id: batch.id, taxonomy: taxonomy_description },
+                        status: 'new'
+                    });
+                 } catch (e) { console.error('Failed to create ErrorReport:', e.message); }
+             }
         }
 
+        return Response.json({
+            success: true,
+            state: stateToProcess,
+            done: finalStatus === 'completed',
+            stats: stats,
+            batch_id: batch.id,
+            resume_next: !allPendingProcessed,
+            elapsed_ms: Date.now() - execStartTime,
+        });
+
     } catch (error) {
-        return Response.json({ error: error.message }, { status: 500 });
+        return Response.json({ error: error.message, stack: error.stack }, { status: 500 });
     }
 });
