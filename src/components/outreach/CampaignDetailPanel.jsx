@@ -23,6 +23,24 @@ const PIE_COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59
 
 export default function CampaignDetailPanel({ campaign, onClose }) {
   const queryClient = useQueryClient();
+  const [generating, setGenerating] = React.useState(false);
+
+  const handleGenerateAI = async () => {
+      setGenerating(true);
+      try {
+          const res = await base44.functions.invoke('generateHyperPersonalizedMessages', { campaign_id: campaign.id });
+          if (res.data.success) {
+              alert(`Generated ${res.data.generated} personalized messages!`);
+              queryClient.invalidateQueries(['outreachMessages', campaign.id]);
+          } else {
+              alert(res.data.message || 'No messages needed generation.');
+          }
+      } catch (e) {
+          alert('Failed to generate: ' + e.message);
+      } finally {
+          setGenerating(false);
+      }
+  };
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['outreachMessages', campaign.id],
@@ -48,7 +66,18 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
           <h2 className="text-lg font-bold text-slate-900">{campaign.name}</h2>
           <p className="text-xs text-slate-500">{campaign.description}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+        <div className="flex items-center gap-2">
+            <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-violet-600 border-violet-200 hover:bg-violet-50 text-xs h-8" 
+                onClick={handleGenerateAI} 
+                disabled={generating}
+            >
+                {generating ? <><span className="animate-spin mr-2">⏳</span> Generating...</> : '✨ Generate AI Messages'}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+        </div>
       </div>
 
       {/* Summary metrics */}
@@ -106,6 +135,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
                     <TableHead className="text-xs">Recipient</TableHead>
                     <TableHead className="text-xs">NPI</TableHead>
                     <TableHead className="text-xs">Email</TableHead>
+                    <TableHead className="text-xs">AI Content</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs">Sent</TableHead>
                     <TableHead className="text-xs">Opened</TableHead>
@@ -119,6 +149,15 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
                       <TableCell className="text-xs font-medium">{m.recipient_name || '-'}</TableCell>
                       <TableCell className="text-[10px] font-mono text-slate-400">{m.npi}</TableCell>
                       <TableCell className="text-xs">{m.recipient_email || <span className="text-slate-300">—</span>}</TableCell>
+                      <TableCell>
+                          {m.body_html ? (
+                              <Badge variant="outline" className="text-[9px] border-violet-200 text-violet-600 bg-violet-50">
+                                  Generated
+                              </Badge>
+                          ) : (
+                              <span className="text-[9px] text-slate-300">-</span>
+                          )}
+                      </TableCell>
                       <TableCell><Badge className={`text-[10px] ${statusColors[m.status]}`}>{m.status}</Badge></TableCell>
                       <TableCell className="text-[10px] text-slate-400">{m.sent_at ? new Date(m.sent_at).toLocaleDateString() : '-'}</TableCell>
                       <TableCell className="text-[10px] text-slate-400">{m.opened_at ? new Date(m.opened_at).toLocaleDateString() : '-'}</TableCell>
