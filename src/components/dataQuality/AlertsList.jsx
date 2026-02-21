@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { AlertTriangle, CheckCircle, XCircle, Sparkles, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Sparkles, ChevronDown, ChevronRight, Loader2, Zap } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import BulkAlertActions from './BulkAlertActions';
@@ -66,6 +66,19 @@ export default function AlertsList({ alerts = [] }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
   });
 
+  const autoFixMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('runDataQualityScan', { action: 'auto_fix_eligible' });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
+      if (data.success) {
+        alert(`Auto-fix complete: Fixed ${data.fixed} alerts, Skipped ${data.skipped}.`);
+      }
+    },
+  });
+
   const filtered = alerts.filter(a => {
     if (filterCategory !== 'all' && a.category !== filterCategory) return false;
     if (filterSeverity !== 'all' && a.severity !== filterSeverity) return false;
@@ -81,7 +94,19 @@ export default function AlertsList({ alerts = [] }) {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <CardTitle className="text-base">Quality Alerts ({filtered.length})</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-base">Quality Alerts ({filtered.length})</CardTitle>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+              onClick={() => autoFixMutation.mutate()}
+              disabled={autoFixMutation.isPending}
+            >
+              {autoFixMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              Auto-Fix Safe Alerts
+            </Button>
+          </div>
           <div className="flex gap-2 flex-wrap">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
