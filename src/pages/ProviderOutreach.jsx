@@ -46,13 +46,13 @@ export default function ProviderOutreach() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2 mb-1">
-          <Mail className="w-7 h-7 text-blue-600" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2 mb-1">
+          <Mail className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
           Provider Outreach
         </h1>
-        <p className="text-slate-600">Create and manage provider engagement campaigns</p>
+        <p className="text-sm text-slate-600">Create and manage provider engagement campaigns</p>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -116,7 +116,7 @@ export default function ProviderOutreach() {
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-4 pt-3 border-t">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t">
                         <div className="text-center">
                           <p className="text-xs text-slate-600">Recipients</p>
                           <p className="font-bold text-lg mt-1">{campaign.total_recipients || 0}</p>

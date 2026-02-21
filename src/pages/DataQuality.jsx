@@ -78,7 +78,7 @@ export default function DataQuality() {
   const latestRuleResults = latestScan?.rule_results || [];
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -169,24 +169,24 @@ export default function DataQuality() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-800/50">
-          <TabsTrigger value="overview">Rule Results</TabsTrigger>
-          <TabsTrigger value="alerts">
+        <TabsList className="bg-slate-800/50 w-full grid grid-cols-3 sm:grid-cols-6 h-auto">
+          <TabsTrigger value="overview" className="text-xs">Rules</TabsTrigger>
+          <TabsTrigger value="alerts" className="text-xs">
             Alerts
             {openAlerts.length > 0 && (
               <Badge className="ml-1.5 bg-amber-500 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="assistant" className="gap-1.5">
-            <Bot className="w-3.5 h-3.5" /> AI Assistant
+          <TabsTrigger value="assistant" className="gap-1 text-xs">
+            <Bot className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI </span>Assistant
           </TabsTrigger>
-          <TabsTrigger value="predictive" className="gap-1.5">
-            <ShieldAlert className="w-3.5 h-3.5" /> Predictive Alerts
+          <TabsTrigger value="predictive" className="gap-1 text-xs">
+            <ShieldAlert className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Predictive</span><span className="sm:hidden">Predict</span>
           </TabsTrigger>
-          <TabsTrigger value="proactive" className="gap-1.5">
-            <ShieldAlert className="w-3.5 h-3.5" /> AI Scanner
+          <TabsTrigger value="proactive" className="gap-1 text-xs">
+            <ShieldAlert className="w-3.5 h-3.5" /> Scanner
           </TabsTrigger>
-          <TabsTrigger value="history">Scan History</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs">History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">

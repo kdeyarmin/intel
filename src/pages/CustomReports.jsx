@@ -179,7 +179,7 @@ export default function CustomReports() {
   }, []);
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <PageHeader
         title="Reports & Analytics"
         subtitle="Create custom visualizations and schedule automated emails"
@@ -187,17 +187,17 @@ export default function CustomReports() {
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Reports' }]}
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="flex justify-between items-center">
-          <TabsList>
-            <TabsTrigger value="builder" className="gap-2">
-              <FileBarChart2 className="w-4 h-4" /> Custom Builder
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
+            <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
+              <FileBarChart2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Custom </span>Builder
             </TabsTrigger>
-            <TabsTrigger value="schedules" className="gap-2">
-              <Calendar className="w-4 h-4" /> Scheduled Reports
+            <TabsTrigger value="schedules" className="gap-1.5 text-xs sm:text-sm">
+              <Calendar className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Scheduled</span><span className="sm:hidden">Schedule</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2">
-              <BookTemplate className="w-4 h-4" /> Templates
+            <TabsTrigger value="templates" className="gap-1.5 text-xs sm:text-sm">
+              <BookTemplate className="w-3.5 h-3.5" /> Templates
             </TabsTrigger>
           </TabsList>
           

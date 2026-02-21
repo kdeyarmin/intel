@@ -233,13 +233,13 @@ export default function NPPESCrawler() {
   const progress = ((completedCount + failedCount) / totalStates) * 100;
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Bot className="w-8 h-8 text-teal-600" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-teal-600" />
           NPPES State Crawler
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-sm text-gray-600 mt-1">
           Automatically pull all providers from the NPPES registry, one state at a time
         </p>
       </div>
