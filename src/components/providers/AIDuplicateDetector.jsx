@@ -126,13 +126,12 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
     if (res.duplicate_groups?.length > 0) {
       for (const group of res.duplicate_groups.slice(0, 5)) {
         await base44.entities.DataQualityAlert.create({
-          rule_id: `dup_${group.group_id}`,
-          rule_name: 'Potential Duplicate',
-          category: 'duplicate',
+          alert_type: 'new_issue_detected',
           severity: group.confidence === 'high' ? 'high' : 'medium',
-          summary: `Potential duplicate: ${group.records.map(r => r.name).join(' / ')}`,
-          npi: group.records[0]?.npi || '',
-          status: 'open',
+          title: `Potential Duplicate: ${group.records.map(r => r.name).join(' / ')}`,
+          description: group.reason,
+          action_required: group.confidence === 'high',
+          status: 'new',
         });
       }
       toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
