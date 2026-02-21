@@ -71,8 +71,8 @@ export default function EnrichmentHub() {
       {/* Runner + Scanner + Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-4">
-          <BulkEnrichmentRunner providers={providers} />
-          <ProactiveEnrichmentScanner providers={providers} />
+          <BulkEnrichmentRunner providers={providers} totalProviders={stats?.totalProviders || providers.length} />
+          <ProactiveEnrichmentScanner providers={providers} totalProviders={stats?.totalProviders || providers.length} />
           <EnrichmentActionability />
         </div>
         <div className="lg:col-span-2 space-y-4">
