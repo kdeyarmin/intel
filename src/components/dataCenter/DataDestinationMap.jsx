@@ -1,0 +1,48 @@
+// Maps import types to their destination pages for "View Data" links
+const DATA_DESTINATION_MAP = {
+  nppes_monthly: { page: 'Providers', label: 'Providers' },
+  nppes_registry: { page: 'Providers', label: 'Providers' },
+  cms_utilization: { page: 'Utilization', label: 'Utilization' },
+  cms_part_d: { page: 'Providers', label: 'Providers' },
+  cms_order_referring: { page: 'Referrals', label: 'Referrals' },
+  pa_home_health: { page: 'Providers', label: 'Providers' },
+  hospice_providers: { page: 'Providers', label: 'Providers' },
+  nursing_home_chains: { page: 'Organizations', label: 'Organizations' },
+  hospice_enrollments: { page: 'Organizations', label: 'Organizations' },
+  home_health_enrollments: { page: 'Organizations', label: 'Organizations' },
+  home_health_cost_reports: { page: 'Organizations', label: 'Organizations' },
+  cms_service_utilization: { page: 'Utilization', label: 'Utilization' },
+  provider_service_utilization: { page: 'Utilization', label: 'Utilization' },
+  home_health_pdgm: { page: 'CMSAnalytics', label: 'CMS Analytics' },
+  inpatient_drg: { page: 'CMSAnalytics', label: 'CMS Analytics' },
+  provider_ownership: { page: 'Organizations', label: 'Organizations' },
+  medicare_hha_stats: { page: 'CMSAnalytics', label: 'CMS Analytics' },
+  medicare_ma_inpatient: { page: 'MAInpatientDashboard', label: 'MA Inpatient' },
+  medicare_part_d_stats: { page: 'CMSAnalytics', label: 'CMS Analytics' },
+  medicare_snf_stats: { page: 'CMSAnalytics', label: 'CMS Analytics' },
+};
+
+const IMPORT_TYPE_LABELS = {
+  nppes_monthly: 'NPPES Monthly',
+  nppes_registry: 'NPPES Registry',
+  cms_utilization: 'CMS Utilization',
+  cms_part_d: 'CMS Part D',
+  cms_order_referring: 'Order & Referring',
+  pa_home_health: 'PA Home Health',
+  hospice_providers: 'Hospice Providers',
+  nursing_home_chains: 'Nursing Home Chains',
+  hospice_enrollments: 'Hospice Enrollments',
+  home_health_enrollments: 'HH Enrollments',
+  home_health_cost_reports: 'HH Cost Reports',
+  cms_service_utilization: 'Service Utilization',
+  provider_service_utilization: 'Provider Service Util',
+  home_health_pdgm: 'HH PDGM',
+  inpatient_drg: 'Inpatient DRG',
+  provider_ownership: 'Provider Ownership',
+  medicare_hha_stats: 'Medicare HHA Stats',
+  medicare_ma_inpatient: 'Medicare MA Inpatient',
+  medicare_part_d_stats: 'Medicare Part D Stats',
+  medicare_snf_stats: 'Medicare SNF Stats',
+};
+
+export { DATA_DESTINATION_MAP, IMPORT_TYPE_LABELS };
