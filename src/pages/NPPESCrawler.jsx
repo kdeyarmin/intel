@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Layers } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import CrawlerLog from '../components/nppes/CrawlerLog';
-import BatchProcessPanel from '../components/nppes/BatchProcessPanel';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 
@@ -369,14 +368,7 @@ export default function NPPESCrawler() {
         </CardContent>
       </Card>
 
-      {/* Batch Process */}
-      <BatchProcessPanel
-        taxonomyFilter={taxonomyFilter}
-        entityType={entityType}
-        dryRun={dryRun}
-        onLog={addLog}
-        onRefresh={refetchStatus}
-      />
+
 
       {/* Progress */}
       <Card>
