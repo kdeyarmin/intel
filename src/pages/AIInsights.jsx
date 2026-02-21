@@ -4,14 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles } from 'lucide-react';
 
-import NetworkHealthWidget from '../components/aiInsights/NetworkHealthWidget';
 import HighReferralPotentialWidget from '../components/aiInsights/HighReferralPotentialWidget';
-import DataQualityIssuesWidget from '../components/aiInsights/DataQualityIssuesWidget';
 import ProviderSummaryWidget from '../components/aiInsights/ProviderSummaryWidget';
 import MarketInsightsWidget from '../components/aiInsights/MarketInsightsWidget';
 import CampaignPredictionWidget from '../components/aiInsights/CampaignPredictionWidget';
 import LeadScoringTrendsWidget from '../components/aiInsights/LeadScoringTrendsWidget';
 import ConnectionsWidget from '../components/aiInsights/ConnectionsWidget';
+import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function AIInsights() {
@@ -79,14 +78,12 @@ export default function AIInsights() {
         </div>
       </div>
 
-      {/* Network Health overview */}
-      <NetworkHealthWidget
+      {/* Proactive Alerts & Data Quality (Consolidated) */}
+      <ProactiveAlerts
         providers={providers}
-        locations={locations}
-        referrals={referrals}
         utilizations={utilizations}
-        scores={scores}
-        campaigns={campaigns}
+        referrals={referrals}
+        locations={locations}
       />
 
       {/* NEW: Provider Summary — full width */}
@@ -98,8 +95,8 @@ export default function AIInsights() {
         utilizations={utilizations}
       />
 
-      {/* NEW: Referral Potential + Data Quality side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* NEW: Referral Potential */}
+      <div className="grid grid-cols-1 gap-6">
         <HighReferralPotentialWidget
           providers={providers}
           referrals={referrals}
@@ -107,13 +104,6 @@ export default function AIInsights() {
           locations={locations}
           taxonomies={taxonomies}
           scores={scores}
-        />
-        <DataQualityIssuesWidget
-          providers={providers}
-          locations={locations}
-          taxonomies={taxonomies}
-          referrals={referrals}
-          utilizations={utilizations}
         />
       </div>
 
