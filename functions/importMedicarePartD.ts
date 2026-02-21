@@ -11,6 +11,7 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
 
 const CMS_PART_D_URLS = {
+  // URLs may be unstable/broken. Users might need to provide custom_url.
   2023: 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip',
   2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20UTLZN%20D%202022.zip',
   2021: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202021.zip',
