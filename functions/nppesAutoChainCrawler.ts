@@ -55,8 +55,19 @@ Deno.serve(async (req) => {
                 'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
                 'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
             ];
+            // Load config to check auto-retry
+            let autoRetryEnabled = false;
+            let retryDelayMin = 60;
+            try {
+                const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+                if (configs.length > 0) {
+                    autoRetryEnabled = configs[0].auto_retry_enabled === true;
+                    retryDelayMin = configs[0].retry_delay_minutes || 60;
+                }
+            } catch (e) {}
+
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
-                { import_type: 'nppes_registry' }, '-created_date', 200
+                { import_type: 'nppes_registry' }, '-created_date', 300
             );
             const crawlerBatches = crawlBatches.filter(b => b.file_name && b.file_name.startsWith('crawler_') && b.file_name !== 'crawler_auto_stop_signal');
             const completedStates = [], failedStates = [], processingStates = [];
@@ -247,6 +258,52 @@ Deno.serve(async (req) => {
             });
         }
 
+        // DETERMINE NEXT STATE (including auto-retries)
+        let forceNextState = null;
+
+        // Check config for auto-retry
+        try {
+            const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+            if (configs.length > 0 && configs[0].auto_retry_enabled) {
+                const delayMin = configs[0].retry_delay_minutes || 60;
+                const delayMs = delayMin * 60 * 1000;
+
+                // Look for FAILED states that are old enough to retry
+                const allBatches = await base44.asServiceRole.entities.ImportBatch.filter(
+                    { import_type: 'nppes_registry' }, '-created_date', 300
+                );
+
+                // Group by state
+                const stateBatches = {};
+                for (const b of allBatches) {
+                     if (!b.file_name?.startsWith('crawler_')) continue;
+                     const st = b.file_name.split('_')[1];
+                     if (!st) continue;
+                     if (!stateBatches[st]) stateBatches[st] = [];
+                     stateBatches[st].push(b);
+                }
+
+                // Find candidate
+                for (const st of Object.keys(stateBatches)) {
+                    const batches = stateBatches[st];
+                    // Sort desc by date
+                    batches.sort((a,b) => new Date(b.created_date) - new Date(a.created_date));
+                    const lastBatch = batches[0];
+
+                    if (lastBatch.status === 'failed') {
+                        const age = Date.now() - new Date(lastBatch.created_date).getTime();
+                        if (age > delayMs) {
+                            console.log(`[AutoChain] Auto-Retry: State ${st} failed ${Math.round(age/60000)}m ago. Retrying.`);
+                            forceNextState = st;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[AutoChain] Auto-retry check failed:', e.message);
+        }
+
         // Chain to next state (fire-and-forget)
         const nextPayload = {
             action: 'continue',
@@ -257,6 +314,7 @@ Deno.serve(async (req) => {
             states_processed: newStatesProcessed,
             total_imported: newTotalImported,
             admin_email: notifyEmail,
+            target_state: forceNextState // Pass explicit state if we found a retry candidate
         };
 
         base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {

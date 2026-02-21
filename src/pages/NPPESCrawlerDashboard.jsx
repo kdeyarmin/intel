@@ -8,6 +8,8 @@ import CrawlProgressChart from '../components/crawlerDashboard/CrawlProgressChar
 import RecentCrawlActivity from '../components/crawlerDashboard/RecentCrawlActivity';
 import ErrorRateTrend from '../components/crawlerDashboard/ErrorRateTrend';
 import ProcessingStates from '../components/crawlerDashboard/ProcessingStates';
+import CrawlerKPIs from '../components/crawlerDashboard/CrawlerKPIs';
+import ProcessingTimeChart from '../components/crawlerDashboard/ProcessingTimeChart';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -55,6 +57,8 @@ export default function NPPESCrawlerDashboard() {
         <p className="text-sm text-slate-500 mt-0.5">Real-time monitoring of NPPES registry crawl operations</p>
       </div>
 
+      <CrawlerKPIs nppesImports={nppesImports} loading={loading} />
+
       <CrawlProgressSummary
         crawlStatus={crawlStatus}
         nppesImports={nppesImports}
@@ -63,6 +67,7 @@ export default function NPPESCrawlerDashboard() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ProcessingTimeChart nppesImports={nppesImports} loading={loadingImports} />
         <CrawlProgressChart
           crawlStatus={crawlStatus}
           totalStates={US_STATES.length}

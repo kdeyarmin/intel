@@ -28,6 +28,13 @@ export default function NPPESCrawlerSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const queryClient = useQueryClient();
 
+  // Add new defaults
+  const extendedDefaults = {
+    ...DEFAULTS,
+    auto_retry_enabled: false,
+    retry_delay_minutes: 60,
+  };
+
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['crawlerConfig'],
     queryFn: () => base44.entities.NPPESCrawlerConfig.filter({ config_key: 'default' }),
@@ -47,6 +54,8 @@ export default function NPPESCrawlerSettings() {
         request_timeout_ms: existingConfig.request_timeout_ms ?? DEFAULTS.request_timeout_ms,
         crawl_entity_types: existingConfig.crawl_entity_types ?? DEFAULTS.crawl_entity_types,
         max_crawl_duration_sec: existingConfig.max_crawl_duration_sec ?? DEFAULTS.max_crawl_duration_sec,
+        auto_retry_enabled: existingConfig.auto_retry_enabled ?? false,
+        retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
       });
     }
   }, [existingConfig]);
@@ -197,6 +206,41 @@ export default function NPPESCrawlerSettings() {
               min={30} max={300}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Auto-Retry Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-orange-500" />
+            Auto-Retry Settings
+          </CardTitle>
+          <CardDescription>Configure automatic retries for failed states</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+           <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-50 border-slate-200">
+              <div className="space-y-0.5">
+                <Label className="text-base">Enable Auto-Retry</Label>
+                <p className="text-xs text-slate-500">Automatically re-queue failed states after delay</p>
+              </div>
+              <Switch 
+                checked={form.auto_retry_enabled} 
+                onCheckedChange={(v) => updateField('auto_retry_enabled', v)} 
+              />
+            </div>
+            
+            {form.auto_retry_enabled && (
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <SettingField
+                  label="Retry Delay (minutes)"
+                  description="Wait time before retrying a failed state"
+                  value={form.retry_delay_minutes}
+                  onChange={(v) => updateField('retry_delay_minutes', clampInt(v, 5, 1440))}
+                  min={5} max={1440}
+                />
+               </div>
+            )}
         </CardContent>
       </Card>
 

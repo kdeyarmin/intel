@@ -435,6 +435,18 @@ Deno.serve(async (req) => {
 
         // Determine state
         let stateToProcess = target_state;
+        
+        // If target_state was explicitly passed (e.g. for auto-retry), we use it.
+        // But we must ensure it's not currently running in another batch to avoid double processing.
+        if (stateToProcess) {
+            const runningBatches = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' });
+            const isAlreadyRunning = runningBatches.some(b => b.file_name?.includes(`crawler_${stateToProcess}_`));
+            if (isAlreadyRunning) {
+                console.log(`[Crawler] Target state ${stateToProcess} is already running. Skipping override.`);
+                stateToProcess = null; // Fall back to finding next available
+            }
+        }
+
         if (!stateToProcess) {
             if (ignore_history) {
                 // If ignoring history, just pick the first state or rotate?
