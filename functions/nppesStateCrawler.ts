@@ -403,6 +403,52 @@ async function upsertTaxonomies(records, base44) {
     return { imported, updated, skipped };
 }
 
+// ---- RECURSIVE ZIP EXPANSION ----
+// When a zip prefix returns more results than we can page through (>1200),
+// we expand it by appending 0-9 and querying each sub-prefix separately.
+// This recurses up to 5-digit zip codes to handle very dense areas.
+async function expandZipPrefix(prefix, baseParams, batch, base44, stats, dry_run) {
+    for (let d = 0; d <= 9 && !isTimeUp(); d++) {
+        const subZip = `${prefix}${d}`;
+        const subParams = new URLSearchParams(baseParams);
+        subParams.set('postal_code', `${subZip}*`);
+        const subResult = await fetchAllPages(subParams, batch, base44);
+
+        if (subResult.results.length > 0) {
+            const transformed = transformResults(subResult.results);
+            stats.valid += transformed.validRows;
+            stats.invalid += transformed.invalidRows;
+            stats.duplicate += transformed.duplicateRows;
+            if (transformed.errors.length > 0 && stats.errors.length < 10) stats.errors.push(...transformed.errors);
+            if (!dry_run) {
+                const provRes = await upsertProviders(transformed.providers, base44);
+                stats.prov.imported += provRes.imported;
+                stats.prov.updated += provRes.updated;
+                stats.prov.skipped += provRes.skipped;
+                if (!isTimeUp()) {
+                    const locRes = await upsertLocations(transformed.locations, base44);
+                    stats.loc.imported += locRes.imported;
+                    stats.loc.updated += locRes.updated;
+                    stats.loc.skipped += locRes.skipped;
+                }
+                if (!isTimeUp()) {
+                    const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
+                    stats.tax.imported += taxRes.imported;
+                    stats.tax.updated += taxRes.updated;
+                    stats.tax.skipped += taxRes.skipped;
+                }
+            }
+        }
+
+        // If sub-prefix ALSO hit the limit and we haven't reached 5-digit zips yet, go deeper
+        if (subResult.hitLimit && subZip.length < 5 && !isTimeUp()) {
+            console.log(`[Crawler] Sub-prefix ${subZip}* still has ${subResult.totalAvailable || '1200+'} results, expanding deeper...`);
+            await expandZipPrefix(subZip, baseParams, batch, base44, stats, dry_run);
+        }
+        await sleep(100);
+    }
+}
+
 // ---- TRANSFORM: convert raw NPPES API results to entity records ----
 function transformResults(allResults) {
     let validRows = 0, invalidRows = 0, duplicateRows = 0;
