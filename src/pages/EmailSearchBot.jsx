@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles, Search } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
@@ -13,6 +14,7 @@ import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailDeduplicationPanel from '../components/emailBot/EmailDeduplicationPanel';
 import OutreachEmailPreview from '../components/emailBot/OutreachEmailPreview';
+import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
 
 export default function EmailSearchBot() {
   const [batchSize, setBatchSize] = useState(10);
@@ -28,6 +30,7 @@ export default function EmailSearchBot() {
   const [deduplicationResults, setDeduplicationResults] = useState({});
   const [outreachPreview, setOutreachPreview] = useState(null);
   const [selectedProviderId, setSelectedProviderId] = useState(null);
+  const [activeTab, setActiveTab] = useState('search');
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
@@ -263,7 +266,20 @@ export default function EmailSearchBot() {
         </div>
       </div>
 
-      <div className="space-y-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full justify-start h-10 bg-slate-800/50 p-1 mb-5">
+          <TabsTrigger value="search" className="gap-2 h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Search className="w-3.5 h-3.5" /> Email Search
+          </TabsTrigger>
+          <TabsTrigger value="verify" className="gap-2 h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <ShieldCheck className="w-3.5 h-3.5" /> Email Verification
+            {stats.risky + stats.invalid > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="search" className="space-y-5">
 
       {/* Stats Overview + Export */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -470,7 +486,16 @@ export default function EmailSearchBot() {
         </p>
       </div>
 
-      </div>
+      </TabsContent>
+
+      <TabsContent value="verify" className="space-y-5">
+        <EmailVerificationPanel 
+          providers={providers} 
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })} 
+        />
+      </TabsContent>
+
+      </Tabs>
 
       {/* Outreach Preview Modal */}
       {outreachPreview && (
