@@ -13,32 +13,22 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import { formatDateET } from '../components/utils/dateUtils';
 
 export default function Dashboard() {
-  const { data: providers = [], isLoading: loadingProviders } = useQuery({
+  const { data: stats, isLoading: loadingStats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getDashboardStats');
+      return res.data;
+    },
+    staleTime: 60000,
+    refetchInterval: 300000,
+  });
+
+  // Keep fetching providers for the widgets that need detailed data (e.g. EmailCoverageWidget)
+  // But reduce limit to save bandwidth as widgets usually only need a sample or recent data
+  const { data: providers = [] } = useQuery({
     queryKey: ['providers'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
+    queryFn: () => base44.entities.Provider.list('-created_date', 1000), 
     staleTime: 60000,
-    refetchInterval: 300000,
-  });
-
-  const { data: utilization = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['utilization'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000),
-    staleTime: 60000,
-    refetchInterval: 300000,
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
-    staleTime: 60000,
-    refetchInterval: 300000,
-  });
-
-  const { data: referrals = [] } = useQuery({
-    queryKey: ['referrals'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 10000),
-    staleTime: 60000,
-    refetchInterval: 300000,
   });
 
   const { data: auditEvents = [] } = useQuery({
@@ -48,50 +38,17 @@ export default function Dashboard() {
     refetchInterval: 300000,
   });
 
-  const loading = loadingProviders || loadingUtil;
+  const loading = loadingStats;
 
-  const totalProviders = providers.length;
-  const totalLocations = locations.length;
-
-  // Count unique provider NPIs that have Medicare utilization records with beneficiaries
-  const activeMedicare = useMemo(() => {
-    const npis = new Set();
-    utilization.forEach(u => {
-      if (u.total_medicare_beneficiaries > 0 && u.npi) npis.add(u.npi);
-    });
-    return npis.size;
-  }, [utilization]);
-
-  // Sum referrals only from the most recent year per provider to avoid double-counting
-  const totalReferrals = useMemo(() => {
-    const latestByNPI = {};
-    referrals.forEach(r => {
-      if (!r.npi) return;
-      if (!latestByNPI[r.npi] || (r.year || 0) > (latestByNPI[r.npi].year || 0)) {
-        latestByNPI[r.npi] = r;
-      }
-    });
-    return Object.values(latestByNPI).reduce((sum, r) => sum + (r.total_referrals || 0), 0);
-  }, [referrals]);
-
-  // Count unique provider NPIs per state (not locations)
-  const topStates = useMemo(() => {
-    const stateNPIs = {};
-    locations.forEach(loc => {
-      if (loc.state && loc.npi) {
-        if (!stateNPIs[loc.state]) stateNPIs[loc.state] = new Set();
-        stateNPIs[loc.state].add(loc.npi);
-      }
-    });
-    return Object.entries(stateNPIs)
-      .map(([state, npis]) => [state, npis.size])
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-  }, [locations]);
-
-  const lastRefresh = auditEvents[0]?.created_date
-    ? formatDateET(auditEvents[0].created_date)
-    : 'Never';
+  const totalProviders = stats?.totalProviders || 0;
+  const totalLocations = stats?.totalLocations || 0;
+  const activeMedicare = stats?.activeMedicareProviders || 0;
+  const totalReferrals = stats?.totalReferrals || 0;
+  const topStates = stats?.topStates || [];
+  
+  const lastRefresh = stats?.lastRefresh 
+    ? formatDateET(stats.lastRefresh)
+    : (auditEvents[0]?.created_date ? formatDateET(auditEvents[0].created_date) : 'Never');
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
