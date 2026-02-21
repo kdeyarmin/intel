@@ -33,6 +33,7 @@ import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AIRelatedProviders from '../components/ai/AIRelatedProviders';
 import AIMarketInsights from '../components/ai/AIMarketInsights';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
+import SingleEmailVerifier from '../components/emailBot/SingleEmailVerifier';
 import ProviderAffiliations from '../components/providers/ProviderAffiliations';
 import AINetworkFitCard from '../components/providers/AINetworkFitCard';
 import ProviderMessaging from '../components/providers/ProviderMessaging';
@@ -344,6 +345,22 @@ export default function ProviderDetail() {
             </div>
             <div className="space-y-6">
               <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
+              {provider.email && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      Email Verification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SingleEmailVerifier
+                      provider={provider}
+                      onVerified={() => queryClient.invalidateQueries({ queryKey: ['provider', npi] })}
+                    />
+                  </CardContent>
+                </Card>
+              )}
               <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
             </div>
           </div>
