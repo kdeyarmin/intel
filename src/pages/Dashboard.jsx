@@ -23,27 +23,25 @@ export default function Dashboard() {
     refetchInterval: 300000,
   });
 
-  // Keep fetching providers for the widgets that need detailed data (e.g. EmailCoverageWidget)
-  // But reduce limit to save bandwidth as widgets usually only need a sample or recent data
   const { data: providers = [] } = useQuery({
     queryKey: ['providers'],
     queryFn: () => base44.entities.Provider.list('-created_date', 1000), 
     staleTime: 60000,
   });
 
-  const { data: utilization = [] } = useQuery({
+  const { data: utilizationData = [] } = useQuery({
     queryKey: ['utilization'],
     queryFn: () => base44.entities.CMSUtilization.list('-created_date', 1000),
     staleTime: 60000,
   });
 
-  const { data: locations = [] } = useQuery({
+  const { data: locationsData = [] } = useQuery({
     queryKey: ['locations'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 1000),
     staleTime: 60000,
   });
 
-  const { data: referrals = [] } = useQuery({
+  const { data: referralsData = [] } = useQuery({
     queryKey: ['referrals'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 1000),
     staleTime: 60000,
@@ -138,9 +136,9 @@ export default function Dashboard() {
       <div className="mb-6">
         <ProactiveAlerts
           providers={providers}
-          utilizations={utilization}
-          referrals={referrals}
-          locations={locations}
+          utilizations={utilizationData}
+          referrals={referralsData}
+          locations={locationsData}
         />
       </div>
 
