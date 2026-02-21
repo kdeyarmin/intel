@@ -18,22 +18,22 @@ export default function RecentActivityCard({ events }) {
         ) : (
           <div className="space-y-1">
             {events.slice(0, 5).map((event, idx) => (
-              <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-800/50 transition-colors">
-                <div className="relative mt-1.5">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400" />
-                  {idx < events.length - 1 && (
-                    <div className="absolute top-2.5 left-[3px] w-px h-8 bg-slate-700" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-white capitalize truncate">
-                    {event.event_type?.replace(/_/g, ' ')}
-                  </p>
-                  <p className="text-sm text-slate-300 mt-0.5">
-                    {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
-                  </p>
-                </div>
-              </div>
+              <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-700/30 transition-colors">
+                 <div className="relative mt-1.5">
+                   <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                   {idx < events.length - 1 && (
+                     <div className="absolute top-2.5 left-[3px] w-px h-8 bg-slate-700" />
+                   )}
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <p className="text-base font-medium text-white capitalize truncate">
+                     {event.event_type?.replace(/_/g, ' ')}
+                   </p>
+                   <p className="text-sm text-white mt-0.5">
+                     {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
+                   </p>
+                 </div>
+               </div>
             ))}
           </div>
         )}
