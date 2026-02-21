@@ -10,15 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Download, Trash2, Eye, FileDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import FilterBuilder from '../components/leadlists/FilterBuilder';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import LeadListTable from '../components/leadlists/LeadListTable';
 import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function LeadLists() {
-  const [creating, setCreating] = useState(false);
   const [viewingListId, setViewingListId] = useState(null);
-  const [newList, setNewList] = useState({ name: '', description: '', filters: {} });
   const queryClient = useQueryClient();
 
   const { data: lists = [], isLoading } = useQuery({
@@ -31,96 +30,7 @@ export default function LeadLists() {
     onSuccess: () => queryClient.invalidateQueries(['leadLists']),
   });
 
-  const handleCreateList = async () => {
-    if (!newList.name) {
-      alert('Please enter a list name');
-      return;
-    }
 
-    // Apply filters to find matching providers
-    const providers = await base44.entities.Provider.list();
-    const scores = await base44.entities.LeadScore.list();
-    const utilizations = await base44.entities.CMSUtilization.list();
-    const referrals = await base44.entities.CMSReferral.list();
-    const locations = await base44.entities.ProviderLocation.list();
-
-    let filtered = providers;
-
-    // Apply state filter
-    if (newList.filters.states?.length > 0) {
-      const matchingNPIs = new Set(
-        locations.filter(l => newList.filters.states.includes(l.state)).map(l => l.npi)
-      );
-      filtered = filtered.filter(p => matchingNPIs.has(p.npi));
-    }
-
-    // Apply score filter
-    if (newList.filters.min_score || newList.filters.max_score) {
-      const min = newList.filters.min_score || 0;
-      const max = newList.filters.max_score || 100;
-      const matchingNPIs = new Set(
-        scores.filter(s => s.score >= min && s.score <= max).map(s => s.npi)
-      );
-      filtered = filtered.filter(p => matchingNPIs.has(p.npi));
-    }
-
-    // Apply beneficiaries filter
-    if (newList.filters.min_beneficiaries) {
-      const matchingNPIs = new Set(
-        utilizations.filter(u => u.total_medicare_beneficiaries >= newList.filters.min_beneficiaries).map(u => u.npi)
-      );
-      filtered = filtered.filter(p => matchingNPIs.has(p.npi));
-    }
-
-    // Apply referrals filter
-    if (newList.filters.min_referrals) {
-      const matchingNPIs = new Set(
-        referrals.filter(r => r.total_referrals >= newList.filters.min_referrals).map(r => r.npi)
-      );
-      filtered = filtered.filter(p => matchingNPIs.has(p.npi));
-    }
-
-    // Apply medicare active filter
-    if (newList.filters.medicare_active) {
-      filtered = filtered.filter(p => p.status === 'Active' && !p.needs_nppes_enrichment);
-    }
-
-    // Create the list
-    const list = await base44.entities.LeadList.create({
-      name: newList.name,
-      description: newList.description,
-      filters: newList.filters,
-      provider_count: filtered.length,
-    });
-
-    // Add members in bulk
-    const memberBatch = filtered.map(provider => ({
-      lead_list_id: list.id,
-      npi: provider.npi,
-      status: 'New',
-    }));
-    for (let i = 0; i < memberBatch.length; i += 25) {
-      await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
-    }
-
-    // Log audit
-    const user = await base44.auth.me();
-    await base44.entities.AuditEvent.create({
-      event_type: 'user_action',
-      user_email: user.email,
-      details: {
-        action: 'Create Lead List',
-        entity: 'LeadList',
-        row_count: filtered.length,
-        message: `Created list: ${newList.name}`,
-      },
-      timestamp: new Date().toISOString(),
-    });
-
-    queryClient.invalidateQueries();
-    setCreating(false);
-    setNewList({ name: '', description: '', filters: {} });
-  };
 
   const buildExportRows = async (listId) => {
     const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
@@ -254,54 +164,12 @@ export default function LeadLists() {
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Lead Lists</h1>
           <p className="text-slate-500 mt-1">Create and manage targeted provider lists</p>
         </div>
-        <Dialog open={creating} onOpenChange={setCreating}>
-          <DialogTrigger asChild>
-            <Button className="bg-cyan-600 hover:bg-cyan-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Create New List
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Lead List</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>List Name</Label>
-                  <Input
-                    placeholder="e.g., High-Value Behavioral Health Providers"
-                    value={newList.name}
-                    onChange={(e) => setNewList({ ...newList, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Textarea
-                    placeholder="Brief description of this list..."
-                    value={newList.description}
-                    onChange={(e) => setNewList({ ...newList, description: e.target.value })}
-                    rows={2}
-                  />
-                </div>
-              </div>
-
-              <FilterBuilder
-                filters={newList.filters}
-                onChange={(filters) => setNewList({ ...newList, filters })}
-              />
-
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setCreating(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateList} className="bg-teal-600 hover:bg-teal-700">
-                  Create List
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Link to={createPageUrl('LeadListBuilder')}>
+          <Button className="bg-cyan-600 hover:bg-cyan-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Create New List
+          </Button>
+        </Link>
       </div>
 
       <Card className="bg-[#141d30] border-slate-700/50">

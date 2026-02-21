@@ -48,15 +48,13 @@ const NAV_SECTIONS = [
       { name: 'CMS Analytics', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'MA Inpatient', icon: Building2, page: 'MAInpatientDashboard', roles: ['admin', 'sales_rep'] },
       { name: 'Location Analytics', icon: MapPin, page: 'LocationAnalytics', roles: ['admin', 'sales_rep'] },
-      { name: 'Custom Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
-      { name: 'Scheduled Reports', icon: Calendar, page: 'ScheduledReports', roles: ['admin', 'sales_rep'] },
+      { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
     label: 'Data Operations',
     items: [
       { name: 'Import Monitoring', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
-      { name: 'Data Imports', icon: Upload, page: 'DataImports', roles: ['admin'] },
       { name: 'Import Schedules', icon: Calendar, page: 'ImportSchedule', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Enrichment Hub', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },

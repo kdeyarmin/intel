@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download, Sparkles
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
@@ -367,12 +369,21 @@ export default function ImportMonitoring() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
+          <Link to={createPageUrl('DataImports')}>
+            <Button
+              variant="outline"
+              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Manual Upload
+            </Button>
+          </Link>
           <Button
             onClick={() => setShowNewImport(true)}
             className="bg-cyan-600 hover:bg-cyan-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Import
+            Auto-Import
           </Button>
           <Button
             onClick={async () => { setIsRefreshing(true); await refreshBatches(); setIsRefreshing(false); }}
