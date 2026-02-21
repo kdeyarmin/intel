@@ -13,6 +13,7 @@ let BATCH_LIMIT = 200;
 let MAX_PAGES_PER_QUERY = 6;
 let MAX_SKIP = 1000; 
 let BULK_SIZE = 50;
+let CONCURRENCY_LIMIT = 4;
 let API_DELAY_MS = 200; // Increased default to reduce rate limits
 let MAX_RETRIES = 3;
 let RETRY_BACKOFF_MS = 5000; // Increased default for rate limits
@@ -50,6 +51,7 @@ async function loadConfig(base44) {
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
             MAX_PAGES_PER_QUERY = c.max_pages_per_query || 6;
             MAX_SKIP = c.max_skip || 1000;
+            CONCURRENCY_LIMIT = c.concurrency || 4;
         }
     } catch (e) {
         console.warn('[Config] Failed to load:', e.message);
@@ -202,15 +204,22 @@ async function runConcurrent(tasks, concurrency) {
 
 async function batchLookupByNPI(entity, npis, base44) {
     const resultMap = {};
-    // Process lookups SEQUENTIALLY to respect rate limits
-    for (const npi of npis) {
-        if (isTimeUp()) break;
-        try {
-            const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ npi }));
-            if (found.length > 0) resultMap[npi] = found;
-        } catch (e) { /* ignore */ }
-        // Throttle 100ms per request (approx 10 req/s max)
-        await sleep(100);
+    if (!npis || npis.length === 0) return resultMap;
+    
+    try {
+        // Bulk lookup using $in operator
+        // Use a high limit to ensure we get all records for the batch (assuming avg < 20 records per NPI)
+        const limit = npis.length * 20 + 100; 
+        const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ 
+            npi: { $in: npis } 
+        }, undefined, limit));
+        
+        for (const record of found) {
+            if (!resultMap[record.npi]) resultMap[record.npi] = [];
+            resultMap[record.npi].push(record);
+        }
+    } catch (e) { 
+        console.warn(`[BatchLookup] Error for ${entity}: ${e.message}`);
     }
     return resultMap;
 }
@@ -250,7 +259,7 @@ async function upsertProviders(records, base44) {
         try {
             const existing = await withRetry(() => base44.asServiceRole.entities.Provider.filter({ 
                 npi: { $in: npis } 
-            }));
+            }, undefined, 1000));
             const existingMap = new Map(existing.map(e => [e.npi, e]));
             
             const toCreate = [];
@@ -573,9 +582,9 @@ Deno.serve(async (req) => {
         console.log(`[Crawler] State=${stateToProcess}, processing ${pendingPrefixes.length} prefixes. Current batch: ${batch.id}`);
 
         // PARALLEL PROCESSING
-        // We run a few prefixes in parallel, but `fetchNPPESPage` uses `fetchLock` to enforce global rate limit.
-        // This allows us to prepare/process data in parallel while fetching sequentially.
-        const CONCURRENCY = 2; 
+        // We run multiple prefixes in parallel. `fetchNPPESPage` uses `fetchLock` to enforce global rate limit on API calls.
+        // Higher concurrency allows DB writes (which are slow) to happen in parallel while keeping the API busy.
+        const CONCURRENCY = CONCURRENCY_LIMIT || 4; 
         
         let stats = {
             valid: 0, invalid: 0, duplicate: 0,

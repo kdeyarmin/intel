@@ -60,6 +60,7 @@ export default function NPPESCrawlerSettings() {
         retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
         max_pages_per_query: existingConfig.max_pages_per_query ?? DEFAULTS.max_pages_per_query,
         max_skip: existingConfig.max_skip ?? DEFAULTS.max_skip,
+        concurrency: existingConfig.concurrency ?? 4,
       });
     }
   }, [existingConfig]);
@@ -222,6 +223,13 @@ export default function NPPESCrawlerSettings() {
               value={form.max_skip}
               onChange={(v) => updateField('max_skip', clampInt(v, 200, 5000))}
               min={200} max={5000}
+            />
+            <SettingField
+              label="Concurrency"
+              description="Number of parallel workers processing zip prefixes"
+              value={form.concurrency}
+              onChange={(v) => updateField('concurrency', clampInt(v, 1, 10))}
+              min={1} max={10}
             />
           </div>
         </CardContent>
