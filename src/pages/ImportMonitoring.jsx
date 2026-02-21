@@ -826,9 +826,9 @@ export default function ImportMonitoring() {
                           variant="outline"
                           size="sm"
                           className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
-                          onClick={() => setErrorLogBatch(batch)}
+                          onClick={() => setErrorReportBatch(batch)}
                         >
-                          Error Log
+                          Error Report
                         </Button>
                       )}
                       <Button
