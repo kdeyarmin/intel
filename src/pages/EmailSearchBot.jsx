@@ -11,6 +11,8 @@ import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
+import EmailDeduplicationPanel from '../components/emailBot/EmailDeduplicationPanel';
+import OutreachEmailPreview from '../components/emailBot/OutreachEmailPreview';
 
 export default function EmailSearchBot() {
   const [batchSize, setBatchSize] = useState(10);
@@ -23,6 +25,9 @@ export default function EmailSearchBot() {
   const [allRunProgress, setAllRunProgress] = useState(null);
   const [emailAnalysis, setEmailAnalysis] = useState({});
   const [analyzingEmails, setAnalyzingEmails] = useState(false);
+  const [deduplicationResults, setDeduplicationResults] = useState({});
+  const [outreachPreview, setOutreachPreview] = useState(null);
+  const [selectedProviderId, setSelectedProviderId] = useState(null);
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
@@ -55,6 +60,42 @@ export default function EmailSearchBot() {
     const invalid = providers.filter(p => p.email_validation_status === 'invalid').length;
     return { total, withEmail, searched, remaining, validated, valid, risky, invalid };
   }, [providers]);
+
+  const triggerEmailDeduplication = async (providerId) => {
+    try {
+      const response = await base44.functions.invoke('deduplicateProviderEmails', {
+        provider_id: providerId
+      });
+      
+      if (response.data.success) {
+        setDeduplicationResults(prev => ({
+          ...prev,
+          [providerId]: response.data.email_groups
+        }));
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Deduplication error:', error);
+    }
+  };
+
+  const generateOutreachEmail = async (providerId, email, outreachType) => {
+    try {
+      setSelectedProviderId(providerId);
+      const response = await base44.functions.invoke('generatePersonalizedOutreach', {
+        provider_id: providerId,
+        email,
+        outreach_type: outreachType
+      });
+      
+      if (response.data.success) {
+        setOutreachPreview(response.data);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Outreach generation error:', error);
+    }
+  };
 
   const analyzeEmails = async (emails) => {
     if (!emails || emails.length === 0) return;
@@ -410,6 +451,19 @@ export default function EmailSearchBot() {
       </div>
 
       </div>
+
+      {/* Outreach Preview Modal */}
+      {outreachPreview && (
+        <OutreachEmailPreview
+          outreach={outreachPreview.outreach}
+          provider={outreachPreview.provider}
+          onClose={() => setOutreachPreview(null)}
+          onSend={() => {
+            setOutreachPreview(null);
+            toast.success('Email is ready to send!');
+          }}
+        />
+      )}
     </div>
   );
 }
