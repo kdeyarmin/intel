@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, Zap, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailVerificationResultRow from './EmailVerificationResultRow';
+import BulkEmailActions from './BulkEmailActions';
 
 export default function EmailVerificationPanel({ providers, onRefresh }) {
   const [isRunning, setIsRunning] = useState(false);
@@ -197,6 +198,9 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Bulk Actions */}
+      <BulkEmailActions providers={providers} onRefresh={onRefresh} />
 
       {/* Info */}
       <div className="flex items-start gap-2 bg-slate-800/40 border border-slate-700/30 rounded-lg p-3">
