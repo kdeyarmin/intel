@@ -262,7 +262,6 @@ Deno.serve(async (req) => {
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     column_mapping: { fields: headers },
                     total_rows: lines.length - 1,
-                    status: 'processing',
                 });
 
                 const validDataChunk = [];
