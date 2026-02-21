@@ -319,7 +319,6 @@ Deno.serve(async (req) => {
             }
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: dry_run ? 'completed' : 'processing',
                 total_rows: allResults.length,
                 valid_rows: validRows,
                 invalid_rows: invalidRows,
