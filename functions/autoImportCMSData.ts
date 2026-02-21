@@ -61,22 +61,44 @@ Deno.serve(async (req) => {
         }
 
         // Create or resume batch
-        let batch;
-        if (batch_id) {
-            const existing = await base44.asServiceRole.entities.ImportBatch.filter({ id: batch_id });
-            batch = existing[0];
-            if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
-        } else {
-            batch = await base44.asServiceRole.entities.ImportBatch.create({
-                import_type,
-                file_name: `auto_import_${import_type}_${year}_${Date.now()}`,
-                file_url,
-                data_year: parseInt(year),
-                status: 'validating',
-                dry_run,
-            });
-        }
+         let batch;
+         if (batch_id) {
+             const existing = await base44.asServiceRole.entities.ImportBatch.filter({ id: batch_id });
+             batch = existing[0];
+             if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+             // Only allow resume if not already in progress
+             if (batch.status === 'processing') {
+                 return Response.json({
+                     error: `Batch ${batch_id} is already processing`,
+                     conflict: true,
+                     batch_id: batch.id,
+                 }, { status: 409 });
+             }
+             await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+         } else {
+             // Check for duplicate import_type already in progress (for new imports only)
+             const activeImports = await base44.asServiceRole.entities.ImportBatch.filter({
+                 import_type,
+                 status: { $in: ['validating', 'processing'] }
+             });
+             if (activeImports.length > 0) {
+                 const existing = activeImports[0];
+                 return Response.json({
+                     error: `Import for ${import_type} is already in progress`,
+                     conflict: true,
+                     existing_batch_id: existing.id,
+                     started_at: existing.created_date,
+                 }, { status: 409 });
+             }
+             batch = await base44.asServiceRole.entities.ImportBatch.create({
+                 import_type,
+                 file_name: `auto_import_${import_type}_${year}_${Date.now()}`,
+                 file_url,
+                 data_year: parseInt(year),
+                 status: 'validating',
+                 dry_run,
+             });
+         }
 
         try {
             // Probe the URL to detect format
