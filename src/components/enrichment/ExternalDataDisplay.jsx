@@ -4,30 +4,50 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Shield, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, Shield, Zap, RefreshCw, Clock } from 'lucide-react';
 
 export default function ExternalDataDisplay({ npi, onEnrichmentComplete }) {
   const [enriching, setEnriching] = useState(false);
-  const { data: medicareData, isLoading: loadingMedicare } = useQuery({
+  const { data: medicareData, isLoading: loadingMedicare, refetch: refetchMedicare } = useQuery({
     queryKey: ['providerMedicareCompare', npi],
     queryFn: () => base44.entities.ProviderMedicareCompare.filter({ npi }),
     enabled: !!npi,
     staleTime: 86400000, // 24 hours
   });
 
-  const { data: npiValidation, isLoading: loadingNPI } = useQuery({
+  const { data: npiValidation, isLoading: loadingNPI, refetch: refetchNPI } = useQuery({
     queryKey: ['providerNPIValidation', npi],
     queryFn: () => base44.entities.ProviderNPIValidation.filter({ npi }),
     enabled: !!npi,
     staleTime: 86400000,
   });
 
-  const { data: deaData, isLoading: loadingDEA } = useQuery({
+  const { data: deaData, isLoading: loadingDEA, refetch: refetchDEA } = useQuery({
     queryKey: ['providerDEASchedules', npi],
     queryFn: () => base44.entities.ProviderDEASchedules.filter({ npi }),
     enabled: !!npi,
     staleTime: 86400000,
   });
+
+  const handleEnrich = async () => {
+    setEnriching(true);
+    try {
+      await Promise.all([
+        base44.functions.invoke('enrichProviderMedicareData', { npi }),
+        base44.functions.invoke('validateProviderNPI', { npi, checkDiscrepancies: true }),
+        base44.functions.invoke('enrichProviderDEAData', { npi })
+      ]);
+      
+      // Refresh all data
+      await Promise.all([refetchMedicare(), refetchNPI(), refetchDEA()]);
+      onEnrichmentComplete?.();
+    } catch (error) {
+      console.error('Enrichment error:', error);
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   const hasData = (medicareData?.length > 0) || (npiValidation?.length > 0) || (deaData?.length > 0);
   if (!hasData && !loadingMedicare && !loadingNPI && !loadingDEA) return null;
@@ -39,10 +59,22 @@ export default function ExternalDataDisplay({ npi, onEnrichmentComplete }) {
   return (
     <Card className="bg-slate-900 border-slate-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-white">
-          <Zap className="w-5 h-5 text-blue-400" />
-          External Data Enrichment
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-white">
+            <Zap className="w-5 h-5 text-blue-400" />
+            External Data Enrichment
+          </CardTitle>
+          <Button 
+            onClick={handleEnrich} 
+            disabled={enriching}
+            variant="outline"
+            size="sm"
+            className="gap-2 text-slate-200 border-slate-600 hover:border-slate-500"
+          >
+            {enriching ? <Clock className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {enriching ? 'Enriching...' : 'Enrich Now'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="medicare" className="w-full">
