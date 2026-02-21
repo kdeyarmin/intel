@@ -182,7 +182,6 @@ Deno.serve(async (req) => {
                         console.log(`Detected ${columnMapping.length} columns: ${columnMapping.slice(0, 5).join(', ')}...`);
                         await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                             column_mapping: { fields: columnMapping },
-                            status: 'processing',
                         });
                     }
 
