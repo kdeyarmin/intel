@@ -91,29 +91,7 @@ Deno.serve(async (req) => {
       status: 'completed',
     });
 
-    // Send email notification with summary
-    await base44.integrations.Core.SendEmail({
-      to: user.email,
-      subject: `Weekly Data Quality Report - Quality Score: ${reportData.data_quality_score}%`,
-      body: `
-Data Quality Report Summary (${new Date().toLocaleDateString()})
-
-OVERALL QUALITY SCORE: ${reportData.data_quality_score}%
-
-PROVIDER DATA COMPLETENESS: ${Math.round(providerMetrics.field_completeness)}%
-LOCATION DATA COMPLETENESS: ${Math.round(locationMetrics.field_completeness)}%
-
-EMAIL COVERAGE: ${reportData.email_quality.completeness_percent}% (${emailCompleteness.with_email}/${emailCompleteness.total})
-EMAIL VALIDATION: ${reportData.email_quality.valid_percent}% valid addresses
-
-REFERRAL COVERAGE: ${reportData.referral_coverage.coverage_percent}% of providers
-UTILIZATION COVERAGE: ${reportData.utilization_coverage.coverage_percent}% of providers
-
-DEACTIVATED PROVIDERS: ${deactivatedCount}
-
-Areas requiring attention: Check the dashboard for detailed metrics.
-      `
-    });
+    // Email notifications disabled per admin request
 
     return Response.json({
       success: true,

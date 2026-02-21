@@ -126,22 +126,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send email if high severity alerts exist
-    const highSeverityAlerts = alerts.filter(a => a.severity === 'high');
-    if (highSeverityAlerts.length > 0 && user.email) {
-      const alertDetails = highSeverityAlerts.map(a => `- ${a.title}: ${a.message}`).join('\n');
-      await base44.integrations.Core.SendEmail({
-        to: user.email,
-        subject: `🚨 Data Quality Alert - ${highSeverityAlerts.length} Issue(s) Detected`,
-        body: `
-Data Quality Alert Report
-
-${alertDetails}
-
-Review your dashboard immediately for details and remediation steps.
-        `
-      });
-    }
+    // Email notifications disabled per admin request
 
     return Response.json({
       success: true,
