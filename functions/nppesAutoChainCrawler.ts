@@ -9,15 +9,16 @@ const MAX_CONSECUTIVE_FAILURES = 3;
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (user?.role !== 'admin') {
-            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-        }
+        let user = null;
+        try {
+            user = await base44.auth.me();
+        } catch (e) { /* ignore auth error for service calls */ }
 
         const payload = await req.json();
         const {
             action = 'start',           // 'start' | 'stop' | 'status'
+            admin_email = null,         // email to notify
+            taxonomy_description = '',
             taxonomy_description = '',
             entity_type = '',
             dry_run = false,
@@ -88,12 +89,20 @@ Deno.serve(async (req) => {
             });
         }
 
+        // Require admin user for manual start/stop actions
+        if ((action === 'start' || action === 'stop') && (!user || user.role !== 'admin')) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+
+        const notifyEmail = admin_email || (user ? user.email : 'system@caremetric.app');
+
         // --- START: respond immediately, then fire the crawl chain asynchronously ---
         if (action === 'start') {
             console.log('[AutoChain] START requested — launching crawl chain asynchronously');
 
             // Fire the actual crawl processing as a "continue" call (fire-and-forget)
-            base44.functions.invoke('nppesAutoChainCrawler', {
+            // Use service role for background execution
+            base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', {
                 action: 'continue',
                 taxonomy_description,
                 entity_type,
@@ -101,6 +110,7 @@ Deno.serve(async (req) => {
                 consecutive_failures: 0,
                 states_processed: 0,
                 total_imported: 0,
+                admin_email: notifyEmail,
             }).catch(err => {
                 console.error('[AutoChain] Failed to launch chain:', err.message);
             });
@@ -125,7 +135,7 @@ Deno.serve(async (req) => {
             await base44.asServiceRole.entities.ImportBatch.update(stopSignal.id, { status: 'completed' });
             console.log('[AutoChain] Stop signal detected — halting chain');
 
-            await sendAdminEmail(base44, user.email, 'NPPES Auto-Crawler Stopped',
+            await sendAdminEmail(base44, notifyEmail, 'NPPES Auto-Crawler Stopped',
                 `The NPPES auto-crawler was stopped by admin request after processing ${states_processed} states and importing ${total_imported} providers.`);
 
             return Response.json({
@@ -150,7 +160,7 @@ Deno.serve(async (req) => {
                 status: 'new',
             });
 
-            await sendAdminEmail(base44, user.email, 'NPPES Auto-Crawler HALTED — Circuit Breaker',
+            await sendAdminEmail(base44, notifyEmail, 'NPPES Auto-Crawler HALTED — Circuit Breaker',
                 `The NPPES auto-crawler halted after ${consecutive_failures} consecutive failures.\n\n` +
                 `States processed so far: ${states_processed}\n` +
                 `Total providers imported: ${total_imported}\n\n` +
@@ -169,7 +179,8 @@ Deno.serve(async (req) => {
 
         let crawlResult;
         try {
-            const res = await base44.functions.invoke('nppesStateCrawler', {
+            // Use service role for inner call to ensure it runs
+            const res = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
                 action: 'start',
                 taxonomy_description,
                 entity_type,
@@ -197,7 +208,7 @@ Deno.serve(async (req) => {
 
         if (!crawlResult.success) {
             console.warn(`[AutoChain] State ${stateJustProcessed} FAILED: ${crawlResult.error}`);
-            await sendAdminEmail(base44, user.email, `NPPES Crawler Failed — ${stateJustProcessed}`,
+            await sendAdminEmail(base44, notifyEmail, `NPPES Crawler Failed — ${stateJustProcessed}`,
                 `The NPPES crawler failed on state ${stateJustProcessed}.\n\n` +
                 `Error: ${crawlResult.error}\n` +
                 `Consecutive failures: ${newConsecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}\n` +
@@ -209,7 +220,7 @@ Deno.serve(async (req) => {
 
             await base44.asServiceRole.entities.AuditEvent.create({
                 event_type: 'import',
-                user_email: user.email,
+                user_email: notifyEmail,
                 details: {
                     action: 'NPPES Auto-Chain Complete',
                     entity: 'nppes_registry',
@@ -221,7 +232,7 @@ Deno.serve(async (req) => {
                 timestamp: new Date().toISOString(),
             });
 
-            await sendAdminEmail(base44, user.email, 'NPPES Auto-Crawler Complete',
+            await sendAdminEmail(base44, notifyEmail, 'NPPES Auto-Crawler Complete',
                 `The NPPES auto-crawler has finished processing all states.\n\n` +
                 `States processed: ${newStatesProcessed}\n` +
                 `Total providers imported: ${newTotalImported}\n` +
@@ -245,9 +256,10 @@ Deno.serve(async (req) => {
             consecutive_failures: newConsecutiveFailures,
             states_processed: newStatesProcessed,
             total_imported: newTotalImported,
+            admin_email: notifyEmail,
         };
 
-        base44.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {
+        base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {
             console.error('[AutoChain] Failed to chain next state:', err.message);
         });
 
