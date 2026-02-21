@@ -104,14 +104,31 @@ Deno.serve(async (req) => {
             category: batch.category,
           });
 
-          // Trigger the import
+          // Trigger the import — use appropriate function based on batch type
           try {
-            await base44.asServiceRole.functions.invoke('autoImportCMSData', {
-              import_type: batch.import_type,
-              file_url: batch.file_url,
-              year: new Date().getFullYear(),
-              dry_run: batch.dry_run || false,
-            });
+            const isCrawlerBatch = batch.file_name && batch.file_name.startsWith('crawler_');
+            if (isCrawlerBatch) {
+              // Extract state code from file_name like "crawler_AK_all_1234567"
+              const stateCode = batch.file_name.split('_')[1];
+              if (stateCode && stateCode.length === 2) {
+                await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
+                  action: 'start',
+                  target_state: stateCode,
+                  dry_run: batch.dry_run || false,
+                  retry_count: newRetryCount,
+                  retry_of: batch.id,
+                });
+              } else {
+                console.error(`Could not extract state from crawler batch file_name: ${batch.file_name}`);
+              }
+            } else {
+              await base44.asServiceRole.functions.invoke('autoImportCMSData', {
+                import_type: batch.import_type,
+                file_url: batch.file_url,
+                year: new Date().getFullYear(),
+                dry_run: batch.dry_run || false,
+              });
+            }
           } catch (triggerErr) {
             console.error(`Failed to trigger retry for ${batch.id}:`, triggerErr.message);
           }
