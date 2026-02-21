@@ -8,12 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Sparkles, Loader2, CheckCircle2, XCircle, AlertTriangle, Database } from 'lucide-react';
 
-export default function BulkEnrichmentRunner({ providers = [] }) {
+export default function BulkEnrichmentRunner({ providers = [], totalProviders = 0 }) {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [autoApply, setAutoApply] = useState(false);
   const [batchSize, setBatchSize] = useState(10);
+  const [skipAlreadyChecked, setSkipAlreadyChecked] = useState(true);
+  const [enrichAll, setEnrichAll] = useState(false);
 
   const [alreadyEnrichedNPIs, setAlreadyEnrichedNPIs] = useState(new Set());
   const [loadedExisting, setLoadedExisting] = useState(false);
@@ -29,14 +31,17 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
     })();
   }, []);
 
-  const unenrichedProviders = providers.filter(
-    p => (!p.email || p.needs_nppes_enrichment) && !alreadyEnrichedNPIs.has(p.npi)
-  );
+  const unenrichedProviders = skipAlreadyChecked
+    ? providers.filter(p => (!p.email || p.needs_nppes_enrichment) && !alreadyEnrichedNPIs.has(p.npi))
+    : providers.filter(p => !p.email || p.needs_nppes_enrichment);
 
   const handleRun = async () => {
-    const npis = unenrichedProviders.map(p => p.npi).slice(0, batchSize);
+    const npis = enrichAll
+      ? unenrichedProviders.map(p => p.npi)
+      : unenrichedProviders.map(p => p.npi).slice(0, batchSize);
+
     if (npis.length === 0) {
-      setResults({ enriched: 0, no_data: 0, errors: 0, total: 0, message: 'All providers have already been enriched' });
+      setResults({ enriched: 0, no_data: 0, errors: 0, total: 0, message: 'All providers in this sample have already been enriched' });
       return;
     }
 
@@ -44,11 +49,26 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
     setProgress({ current: 0, total: npis.length });
     setResults(null);
 
-    const res = await base44.functions.invoke('enrichProviderThirdParty', {
-      npis,
-      batch_size: batchSize,
-      auto_apply_high_confidence: autoApply,
-    });
+    // Process in chunks to avoid timeouts on large "enrich all" runs
+    const CHUNK_SIZE = 25;
+    let aggregated = { enriched: 0, no_data: 0, errors: 0, total: 0 };
+
+    for (let i = 0; i < npis.length; i += CHUNK_SIZE) {
+      const chunk = npis.slice(i, i + CHUNK_SIZE);
+      setProgress({ current: i, total: npis.length });
+
+      const res = await base44.functions.invoke('enrichProviderThirdParty', {
+        npis: chunk,
+        batch_size: chunk.length,
+        auto_apply_high_confidence: autoApply,
+      });
+
+      const d = res.data || {};
+      aggregated.enriched += d.enriched || 0;
+      aggregated.no_data += d.no_data || 0;
+      aggregated.errors += d.errors || 0;
+      aggregated.total += d.total || 0;
+    }
 
     // Update local set so the next run skips these too
     setAlreadyEnrichedNPIs(prev => {
@@ -57,11 +77,12 @@ export default function BulkEnrichmentRunner({ providers = [] }) {
       return next;
     });
 
-    setResults(res.data);
+    setResults(aggregated);
     setRunning(false);
   };
 
   const needEnrichment = unenrichedProviders.length;
+  const displayTotal = totalProviders || providers.length;
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">
