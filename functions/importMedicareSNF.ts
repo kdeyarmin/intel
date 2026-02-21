@@ -11,7 +11,8 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
 
 const CMS_SNF_URLS = {
-  // URLs seem to be changing/broken. Users may need to provide custom_url until stable.
+  // URLs are frequently unstable. Users should provide custom_url from data.cms.gov when default URLs fail.
+  // Default URLs may return HTML error pages instead of data files.
   2023: 'https://data.cms.gov/sites/default/files/2026-01/CPS%20MDCR%20SNF%202023.zip',
   2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20SNF%202022.zip',
   2021: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20SNF%202021.zip',
