@@ -15,6 +15,9 @@ import GeographicHeatmap from '../components/referralNetwork/GeographicHeatmap';
 import CareGapAnalysis from '../components/referralNetwork/CareGapAnalysis';
 import NetworkInsightsDashboard from '../components/network/NetworkInsightsDashboard';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import NetworkInfluencerAnalysis from '../components/referralNetwork/NetworkInfluencerAnalysis';
+import NetworkGapAnalysis from '../components/referralNetwork/NetworkGapAnalysis';
+import AINetworkRecommendations from '../components/referralNetwork/AINetworkRecommendations';
 
 const HUB_THRESHOLD_PERCENTILE = 0.85;
 
@@ -203,6 +206,12 @@ export default function ReferralNetworkIntelligence() {
               <TabsTrigger value="insights" className="gap-1.5 text-xs">
                 <Sparkles className="w-3.5 h-3.5" /> AI Insights
               </TabsTrigger>
+              <TabsTrigger value="influencers" className="gap-1.5 text-xs">
+                <Crown className="w-3.5 h-3.5" /> Influencers
+              </TabsTrigger>
+              <TabsTrigger value="recommendations" className="gap-1.5 text-xs">
+                <Sparkles className="w-3.5 h-3.5" /> Recommendations
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="graph" className="mt-4">
@@ -240,6 +249,24 @@ export default function ReferralNetworkIntelligence() {
 
             <TabsContent value="insights" className="mt-4">
               <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} locations={locations} />
+            </TabsContent>
+
+            <TabsContent value="influencers" className="mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <NetworkInfluencerAnalysis onInfluencerSelect={(npi) => {
+                    const node = allNodes.find(n => n.npi === npi);
+                    setSelectedNode(node);
+                  }} />
+                </div>
+                <div>
+                  <NetworkGapAnalysis />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="recommendations" className="mt-4">
+              <AINetworkRecommendations />
             </TabsContent>
           </Tabs>
         </>
