@@ -88,6 +88,24 @@ Deno.serve(async (req) => {
 
         // ---- BATCH_STOP ----
         if (action === 'batch_stop') {
+            // Update active batch signal to stopped
+            const activeSignals = await base44.asServiceRole.entities.ImportBatch.filter({
+                import_type: 'nppes_registry',
+                file_name: 'batch_process_active'
+            }, '-created_date', 1);
+
+            if (activeSignals.length > 0) {
+                await base44.asServiceRole.entities.ImportBatch.update(activeSignals[0].id, {
+                    status: 'cancelled',
+                    retry_params: {
+                        ...(activeSignals[0].retry_params || {}),
+                        stopped: true,
+                        stopped_at: new Date().toISOString()
+                    }
+                });
+            }
+            
+            // Also set legacy stop signal for backward compatibility
             const existing = await base44.asServiceRole.entities.ImportBatch.filter(
                 { import_type: 'nppes_registry' }, '-created_date', 50
             );
@@ -144,6 +162,38 @@ Deno.serve(async (req) => {
         );
         if (activeStop) {
             await base44.asServiceRole.entities.ImportBatch.update(activeStop.id, { status: 'completed' });
+        }
+
+        // Create/Update batch process signal for automation
+        const activeBatchSignals = existingSignals.filter(
+            b => b.file_name === 'batch_process_active'
+        );
+
+        if (activeBatchSignals.length > 0) {
+            await base44.asServiceRole.entities.ImportBatch.update(activeBatchSignals[0].id, {
+                status: 'processing',
+                retry_params: {
+                    target_states: targetStates,
+                    skip_completed: skip_completed,
+                    stopped: false,
+                    started_at: new Date().toISOString(),
+                    concurrency: effectiveConcurrency
+                }
+            });
+        } else {
+            await base44.asServiceRole.entities.ImportBatch.create({
+                import_type: 'nppes_registry',
+                file_name: 'batch_process_active',
+                file_url: 'Automated batch orchestration signal',
+                status: 'processing',
+                retry_params: {
+                    target_states: targetStates,
+                    skip_completed: skip_completed,
+                    stopped: false,
+                    started_at: new Date().toISOString(),
+                    concurrency: effectiveConcurrency
+                }
+            });
         }
 
         const effectiveConcurrency = Math.min(Math.max(1, concurrency), 5); // cap at 5
