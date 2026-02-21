@@ -287,12 +287,45 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     const errorPhase = error.message?.includes('download') ? 'download' : error.message?.includes('ZIP') ? 'extraction' : error.message?.includes('XLSX') ? 'parsing' : 'unknown';
-    const isRetryable = errorPhase === 'download' || error.message?.includes('timeout');
+    const errMsg = error.message.toLowerCase();
+    const isRetryable = errorPhase === 'download' || 
+                        errMsg.includes('timeout') || 
+                        errMsg.includes('central directory') || 
+                        errMsg.includes('not a valid zip') ||
+                        errMsg.includes('too small') ||
+                        errMsg.includes('network') || 
+                        errMsg.includes('econnreset');
+    
+    const errorCategory = isRetryable ? 'network_error' : 'data_validation';
+    
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: isRetryable ? 'paused' : 'failed',
-      error_samples: [...errorSamples, { phase: errorPhase, detail: error.message, timestamp: new Date().toISOString(), retryable: isRetryable }],
-      ...(isRetryable ? { paused_at: new Date().toISOString(), cancel_reason: `${errorPhase} error: ${error.message}` } : {}),
+      status: 'failed',
+      error_samples: [...errorSamples, { phase: errorPhase, detail: error.message, timestamp: new Date().toISOString(), retryable: isRetryable, category: errorCategory }],
+      completed_at: new Date().toISOString(),
     });
-    return Response.json({ error: error.message, error_phase: errorPhase, retryable: isRetryable, batch_id: batch.id, error_samples: errorSamples.slice(0, 5) }, { status: 500 });
+    
+    // Create error report for tracking and retry
+    try {
+      await base44.asServiceRole.entities.ErrorReport.create({
+        error_type: 'import_failure',
+        error_category: errorCategory,
+        severity: isRetryable ? 'medium' : 'high',
+        source: batch.id,
+        title: `HHA Import Failed: ${year}`,
+        description: `Failed during ${errorPhase} phase. ${isRetryable ? 'This error is retryable via automated retry system.' : 'Manual intervention may be required - check data.cms.gov for URL changes.'}`,
+        error_samples: [{ url: downloadUrl, message: error.message, phase: errorPhase }],
+        context: { year, batch_id: batch.id, url: downloadUrl, error_phase: errorPhase },
+        status: 'new'
+      });
+    } catch (e) { console.error('Failed to create ErrorReport:', e.message); }
+    
+    return Response.json({ 
+      error: error.message, 
+      error_phase: errorPhase, 
+      retryable: isRetryable,
+      category: errorCategory,
+      batch_id: batch.id, 
+      error_samples: errorSamples.slice(0, 5) 
+    }, { status: 500 });
   }
 });
