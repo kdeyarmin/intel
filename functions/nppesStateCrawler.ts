@@ -10,7 +10,6 @@ const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 
 // Defaults — overridden by NPPESCrawlerConfig entity at runtime
 let BATCH_LIMIT = 200;
-let MAX_SKIP = 1000;
 let MAX_PAGES_PER_QUERY = 6;
 let MAX_SKIP = 1000; 
 let BULK_SIZE = 50;
@@ -92,13 +91,20 @@ const fetchLock = {
     }
 };
 
-async function fetchNPPESPage(params) {
+async function fetchNPPESPage(params, batch, base44) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         if (isTimeUp()) return { error: 'time_up', results: [], result_count: 0 };
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+            // Increment API request count before making the request
+            if (batch?.id && base44) {
+                try {
+                   await base44.asServiceRole.entities.ImportBatch.update(batch.id, { api_requests_count: (batch.api_requests_count || 0) + 1 });
+                } catch(e) { /* ignore stats update error */ }
+            }
             
             // Execute with rate limiting
             const response = await fetchLock.run(() => fetch(apiUrl, { signal: controller.signal }), API_DELAY_MS);
@@ -106,12 +112,17 @@ async function fetchNPPESPage(params) {
             clearTimeout(timeout);
             
             if (response.status === 429 || response.status >= 500) {
+                // Increment rate limit count on 429 error
+                if (response.status === 429 && batch?.id && base44) {
+                    try {
+                        await base44.asServiceRole.entities.ImportBatch.update(batch.id, { rate_limit_count: (batch.rate_limit_count || 0) + 1 });
+                    } catch(e) { /* ignore stats update error */ }
+                }
+
                 const isRateLimit = response.status === 429;
                 const backoff = attempt * (isRateLimit ? RETRY_BACKOFF_MS * 2 : RETRY_BACKOFF_MS);
                 console.warn(`[API] ${response.status} error. Backing off ${backoff}ms (attempt ${attempt}/${MAX_RETRIES})...`);
-                await new Promise(r => setTimeout(r, Math.min(backoff, 5000)));
-                // We count this as a request attempt, but return generic retry logic
-                // Ideally we'd track this rate limit hit here, but for now we just return error on max retries
+                await new Promise(r => setTimeout(r, Math.min(backoff, 10000)));
                 continue;
             }
             if (!response.ok) return { error: `HTTP ${response.status}`, results: [], requests: attempt };
