@@ -52,7 +52,7 @@ export default function EmailDeduplicationPanel({ emailGroups, providerId, onGen
                       variant="ghost"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onGenerateOutreach?.(providerId, primary.email, 'contact_verification');
+                        onGenerateOutreach?.(primary.id, primary.email, 'contact_verification');
                       }}
                       className="h-8 w-8 p-0"
                       title="Generate outreach email"
