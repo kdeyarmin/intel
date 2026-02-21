@@ -106,8 +106,16 @@ export default function NPPESCrawler() {
 
       return true;
     } catch (err) {
-      addLog(`Error: ${err.message}`, 'error');
-      return false;
+      const msg = err.message || '';
+      const isTimeout = /timeout|502|504|500|network|aborted|ECONNRESET|failed to fetch/i.test(msg);
+      if (isTimeout) {
+        addLog(`⏱ State crawler timed out — this is normal for large states. Continuing...`, 'info');
+        refetchStatus();
+        return true; // Keep the loop going — the state saved progress and next call resumes or moves on
+      }
+      addLog(`Error: ${msg} — retrying next state...`, 'error');
+      refetchStatus();
+      return true; // Don't stop the loop on errors — try the next state
     }
   };
 

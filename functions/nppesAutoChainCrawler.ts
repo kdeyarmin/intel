@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
             action = 'start',           // 'start' | 'stop' | 'status'
             admin_email = null,         // email to notify
             taxonomy_description = '',
-            taxonomy_description = '',
             entity_type = '',
             dry_run = false,
             consecutive_failures = 0,   // tracked internally for circuit-breaker
@@ -315,7 +314,7 @@ Deno.serve(async (req) => {
             console.error('[AutoChain] Auto-retry check failed:', e.message);
         }
 
-        // Chain to next state (fire-and-forget)
+        // Chain to next state — wait briefly to ensure the HTTP request is dispatched
         const nextPayload = {
             action: 'continue',
             taxonomy_description,
@@ -328,9 +327,11 @@ Deno.serve(async (req) => {
             target_state: forceNextState // Pass explicit state if we found a retry candidate
         };
 
-        base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {
+        const chainPromise = base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', nextPayload).catch(err => {
             console.error('[AutoChain] Failed to chain next state:', err.message);
         });
+        // Wait up to 5s to ensure the chain call HTTP request is dispatched before responding
+        await Promise.race([chainPromise, new Promise(r => setTimeout(r, 5000))]).catch(() => {});
 
         return Response.json({
             success: true,
