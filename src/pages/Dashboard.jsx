@@ -9,6 +9,7 @@ import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
+import DataQualityReportDashboard from '../components/dataQuality/DataQualityReportDashboard';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import { formatDateET } from '../components/utils/dateUtils';
 
@@ -140,6 +141,12 @@ export default function Dashboard() {
           referrals={referralsData}
           locations={locationsData}
         />
+      </div>
+
+      {/* Data Quality Reporting Dashboard */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-white mb-4">Data Quality Reports</h2>
+        <DataQualityReportDashboard />
       </div>
 
       <DataSourcesFooter />
