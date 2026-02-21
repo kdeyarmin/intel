@@ -95,7 +95,8 @@ export default function LiveProgressCard({ activeBatches }) {
             const progress = getProgressValue(batch);
             const total = batch.total_rows || 0;
             const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
-            const imported = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0);
+            const upToDate = batch.skipped_rows || 0;
+            const imported = (batch.imported_rows || 0) + (batch.updated_rows || 0) + upToDate;
             const elapsed = getElapsedTime(batch.created_date);
             const isPaused = batch.status === 'paused';
 
