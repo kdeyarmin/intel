@@ -99,29 +99,46 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
 
         <div className="bg-slate-800/40 rounded-lg p-3 space-y-2">
           <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Providers needing enrichment</span>
+            <span className="text-slate-400">Candidates in sample</span>
             <span className="font-semibold text-cyan-400">{needEnrichment.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-slate-400">Total providers</span>
-            <span className="font-semibold text-slate-300">{providers.length.toLocaleString()}</span>
+            <span className="text-slate-400">Already checked</span>
+            <span className="font-semibold text-slate-400">{alreadyEnrichedNPIs.size.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-400">Total providers in database</span>
+            <span className="font-semibold text-slate-300">{displayTotal.toLocaleString()}</span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs text-slate-400">Batch size</Label>
-            <select
-              className="w-full mt-1 text-xs bg-slate-800/50 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300"
-              value={batchSize}
-              onChange={e => setBatchSize(Number(e.target.value))}
-            >
-              <option value={5}>5 providers</option>
-              <option value={10}>10 providers</option>
-              <option value={25}>25 providers</option>
-              <option value={50}>50 providers</option>
-            </select>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs text-slate-400">Skip already checked</Label>
+            <Switch checked={skipAlreadyChecked} onCheckedChange={setSkipAlreadyChecked} />
           </div>
+
+          <div className="flex items-center justify-between">
+            <Label className="text-xs text-slate-400">Enrich all candidates</Label>
+            <Switch checked={enrichAll} onCheckedChange={setEnrichAll} />
+          </div>
+
+          {!enrichAll && (
+            <div>
+              <Label className="text-xs text-slate-400">Batch size</Label>
+              <select
+                className="w-full mt-1 text-xs bg-slate-800/50 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300"
+                value={batchSize}
+                onChange={e => setBatchSize(Number(e.target.value))}
+              >
+                <option value={5}>5 providers</option>
+                <option value={10}>10 providers</option>
+                <option value={25}>25 providers</option>
+                <option value={50}>50 providers</option>
+                <option value={100}>100 providers</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <Label className="text-xs text-slate-400">Auto-apply high confidence results</Label>
