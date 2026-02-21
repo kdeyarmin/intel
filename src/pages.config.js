@@ -87,6 +87,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import ImportHub from './pages/ImportHub';
+import DataCenter from './pages/DataCenter';
 import __Layout from './Layout.jsx';
 
 
@@ -131,6 +132,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "ImportHub": ImportHub,
+    "DataCenter": DataCenter,
 }
 
 export const pagesConfig = {
