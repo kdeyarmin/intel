@@ -11,9 +11,20 @@ import BatchProviderUpdater from '../components/enrichment/BatchProviderUpdater'
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
 export default function EnrichmentHub() {
+  // Use dashboard stats for accurate total count
+  const { data: stats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getDashboardStats');
+      return res.data;
+    },
+    staleTime: 120000,
+  });
+
+  // Fetch a working sample for the enrichment runners
   const { data: providers = [] } = useQuery({
     queryKey: ['enrichProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
+    queryFn: () => base44.entities.Provider.list('-created_date', 5000),
     staleTime: 120000,
   });
 
