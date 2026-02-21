@@ -21,6 +21,8 @@ export default function EmailSearchBot() {
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, setAllRunProgress] = useState(null);
+  const [emailAnalysis, setEmailAnalysis] = useState({});
+  const [analyzingEmails, setAnalyzingEmails] = useState(false);
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
@@ -54,6 +56,25 @@ export default function EmailSearchBot() {
     return { total, withEmail, searched, remaining, validated, valid, risky, invalid };
   }, [providers]);
 
+  const analyzeEmails = async (emails) => {
+    if (!emails || emails.length === 0) return;
+    setAnalyzingEmails(true);
+    try {
+      const response = await base44.functions.invoke('analyzeEmailQuality', {
+        emails: emails.filter(Boolean)
+      });
+      const analysisMap = {};
+      (response.data.results || []).forEach(result => {
+        analysisMap[result.email] = result;
+      });
+      setEmailAnalysis(analysisMap);
+    } catch (err) {
+      console.warn('Email analysis failed:', err.message);
+    } finally {
+      setAnalyzingEmails(false);
+    }
+  };
+
   const runSearch = async (mode, npi) => {
     setIsRunning(true);
     setLastResults(null);
@@ -66,6 +87,13 @@ export default function EmailSearchBot() {
       });
       const data = response.data;
       setLastResults(data.results || []);
+      
+      // Analyze emails found
+      const foundEmails = (data.results || [])
+        .filter(r => r.best_email)
+        .map(r => r.best_email);
+      await analyzeEmails(foundEmails);
+      
       toast.success(`Searched ${data.searched} providers, found emails for ${data.found}`);
       queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
     } catch (err) {
@@ -330,21 +358,26 @@ export default function EmailSearchBot() {
                 }[p.email_confidence] || 'bg-slate-100 text-slate-600';
 
                 return (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
-                      <div className="text-xs text-slate-500">{p.email}</div>
+                  <div key={idx} className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
+                        <div className="text-xs text-slate-500">{p.email}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {p.email_validation_status && p.email_validation_status !== '' && (
+                          <EmailValidationBadge
+                            status={p.email_validation_status}
+                            reason={p.email_validation_reason}
+                            size="sm"
+                          />
+                        )}
+                        <Badge className={`${confColor} text-[10px]`}>{p.email_confidence}</Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {p.email_validation_status && p.email_validation_status !== '' && (
-                        <EmailValidationBadge
-                          status={p.email_validation_status}
-                          reason={p.email_validation_reason}
-                          size="sm"
-                        />
-                      )}
-                      <Badge className={`${confColor} text-[10px]`}>{p.email_confidence}</Badge>
-                    </div>
+                    {emailAnalysis[p.email] && (
+                      <EmailQualityDetails analysis={emailAnalysis[p.email]} email={p.email} />
+                    )}
                   </div>
                 );
               })}
