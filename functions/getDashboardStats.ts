@@ -4,42 +4,40 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Fetch actual entity counts by listing records
-        // Use larger limits to get real counts
-        const [providers, locations, referrals, utilization] = await Promise.all([
-            base44.asServiceRole.entities.Provider.list('-created_date', 5000),
-            base44.asServiceRole.entities.ProviderLocation.list('-created_date', 5000),
-            base44.asServiceRole.entities.CMSReferral.list('-created_date', 5000),
-            base44.asServiceRole.entities.CMSUtilization.list('-created_date', 5000),
-        ]);
-
-        const totalProviders = providers.length;
-        const totalLocations = locations.length;
-        const totalReferrals = referrals.length;
-        const activeMedicareProviders = utilization.length;
-
-        // Build top states from provider locations
-        const stateCounts = {};
-        for (const loc of locations) {
-            const st = loc.state;
-            if (st) {
-                stateCounts[st] = (stateCounts[st] || 0) + 1;
+        // Count entities by paginating until we get fewer than the limit
+        async function countEntity(entity) {
+            const PAGE = 5000;
+            let total = 0;
+            let skip = 0;
+            while (true) {
+                const page = await base44.asServiceRole.entities[entity].list('-created_date', PAGE, skip);
+                total += page.length;
+                if (page.length < PAGE) break;
+                skip += PAGE;
+                // Safety cap to avoid infinite loops
+                if (skip > 500000) break;
             }
+            return total;
         }
 
-        // If no locations have state, try providers' locations from batches
-        if (Object.keys(stateCounts).length === 0) {
-            // Fallback: look at recent import batches to extract state info
-            const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 200);
-            for (const batch of batches) {
-                if (batch.status !== 'completed') continue;
-                if (batch.file_name) {
-                    const match = batch.file_name.match(/crawler_([A-Z]{2})_/);
-                    if (match) {
-                        const state = match[1];
-                        const imported = batch.imported_rows || batch.valid_rows || 0;
-                        stateCounts[state] = (stateCounts[state] || 0) + imported;
-                    }
+        const [totalProviders, totalLocations, totalReferrals, activeMedicareProviders] = await Promise.all([
+            countEntity('Provider'),
+            countEntity('ProviderLocation'),
+            countEntity('CMSReferral'),
+            countEntity('CMSUtilization'),
+        ]);
+
+        // Build top states from import batches (faster than scanning all locations)
+        const stateCounts = {};
+        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 500);
+        for (const batch of batches) {
+            if (batch.status !== 'completed') continue;
+            if (batch.file_name) {
+                const match = batch.file_name.match(/crawler_([A-Z]{2})_/);
+                if (match) {
+                    const state = match[1];
+                    const imported = batch.imported_rows || batch.valid_rows || 0;
+                    stateCounts[state] = (stateCounts[state] || 0) + imported;
                 }
             }
         }
