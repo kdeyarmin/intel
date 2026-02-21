@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import ImportTypeSelector from '../components/imports/ImportTypeSelector';
 import ImportWizardAccordion from '../components/imports/ImportWizardAccordion';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
+import { Upload } from 'lucide-react';
 
 export default function DataImports() {
   const [selectedType, setSelectedType] = useState(null);
@@ -23,18 +24,18 @@ export default function DataImports() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Data Imports</h1>
-          <p className="text-slate-500 mt-1">Upload and validate NPPES and CMS datasets</p>
-        </div>
-        {selectedType && (
+      <PageHeader
+        title="Data Imports"
+        subtitle="Upload and validate NPPES and CMS datasets"
+        icon={Upload}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Data Imports' }]}
+        actions={selectedType ? (
           <Button variant="outline" onClick={handleReset} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Choose Different Type
           </Button>
-        )}
-      </div>
+        ) : null}
+      />
 
       {!selectedType ? (
         <div className="space-y-6">
@@ -92,7 +93,7 @@ export default function DataImports() {
         </div>
       )}
 
-      <DataSourcesFooter />
+
     </div>
   );
 }

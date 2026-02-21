@@ -15,6 +15,7 @@ import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailDeduplicationPanel from '../components/emailBot/EmailDeduplicationPanel';
 import OutreachEmailPreview from '../components/emailBot/OutreachEmailPreview';
 import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function EmailSearchBot() {
   const [batchSize, setBatchSize] = useState(10);
@@ -281,20 +282,12 @@ export default function EmailSearchBot() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-            <Bot className="w-5 h-5 text-cyan-400" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Email Search Bot</h1>
-            <p className="text-sm text-slate-500">
-              AI-powered search to find email addresses for providers and practices
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Email Search Bot"
+        subtitle="AI-powered search to find email addresses for providers and practices"
+        icon={Bot}
+        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Email Bot' }]}
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full justify-start h-10 bg-slate-800/50 p-1 mb-5">
