@@ -123,7 +123,7 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`}>
+      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.tagName === 'A') setSidebarOpen(false); }}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
           {sidebarOpen ? (
@@ -201,6 +201,7 @@ export default function AppLayout({ children, currentPageName }) {
                       key={item.name}
                       to={createPageUrl(item.page)}
                       title={item.name}
+                      onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-500/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
@@ -261,7 +262,7 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-8 py-2.5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
+        <div className="px-4 sm:px-8 py-2.5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
