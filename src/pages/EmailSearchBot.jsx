@@ -9,8 +9,8 @@ import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
-
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
+import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 
 export default function EmailSearchBot() {
   const [batchSize, setBatchSize] = useState(10);
