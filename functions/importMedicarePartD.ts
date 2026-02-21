@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       total_rows: allRecords.length + totalInvalid, valid_rows: allRecords.length, invalid_rows: totalInvalid,
-      status: dry_run ? 'completed' : 'processing', column_mapping: { sheets: sheetSummaries },
+      column_mapping: { sheets: sheetSummaries },
       error_samples: errorSamples.length > 0 ? errorSamples : undefined,
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
