@@ -443,10 +443,10 @@ export default function EmailSearchBot() {
                   ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
                   : p.organization_name || p.npi;
                 const confColor = {
-                  high: 'bg-green-100 text-green-800',
-                  medium: 'bg-yellow-100 text-yellow-800',
-                  low: 'bg-red-100 text-red-800',
-                }[p.email_confidence] || 'bg-slate-100 text-slate-600';
+                  high: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
+                  medium: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+                  low: 'bg-red-500/15 text-red-400 border border-red-500/20',
+                }[p.email_confidence] || 'bg-slate-500/15 text-slate-400 border border-slate-500/20';
 
                 return (
                   <div key={idx} className="flex flex-col gap-2">

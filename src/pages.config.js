@@ -64,7 +64,6 @@ import EmailSearchBot from './pages/EmailSearchBot';
 import EnrichmentHub from './pages/EnrichmentHub';
 import ErrorReports from './pages/ErrorReports';
 import ImportHub from './pages/ImportHub';
-import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
@@ -88,6 +87,7 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
+import ImportMonitoring from './pages/ImportMonitoring';
 import __Layout from './Layout.jsx';
 
 
@@ -109,7 +109,6 @@ export const PAGES = {
     "EnrichmentHub": EnrichmentHub,
     "ErrorReports": ErrorReports,
     "ImportHub": ImportHub,
-    "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
@@ -133,6 +132,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
+    "ImportMonitoring": ImportMonitoring,
 }
 
 export const pagesConfig = {

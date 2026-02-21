@@ -4,10 +4,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion } from 'lucide-react';
 
 const config = {
-  valid: { icon: ShieldCheck, color: 'bg-green-100 text-green-800 border-green-200', label: 'Valid' },
-  risky: { icon: ShieldAlert, color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Risky' },
-  invalid: { icon: ShieldX, color: 'bg-red-100 text-red-800 border-red-200', label: 'Invalid' },
-  unknown: { icon: ShieldQuestion, color: 'bg-slate-100 text-slate-600 border-slate-200', label: 'Unknown' },
+  valid: { icon: ShieldCheck, color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', label: 'Valid' },
+  risky: { icon: ShieldAlert, color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', label: 'Risky' },
+  invalid: { icon: ShieldX, color: 'bg-red-500/15 text-red-400 border-red-500/20', label: 'Invalid' },
+  unknown: { icon: ShieldQuestion, color: 'bg-slate-500/15 text-slate-400 border-slate-500/20', label: 'Unknown' },
 };
 
 export default function EmailValidationBadge({ status, reason, size = 'default' }) {
