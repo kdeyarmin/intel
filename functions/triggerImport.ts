@@ -43,6 +43,22 @@ Deno.serve(async (req) => {
     // Resolve aliases (e.g. cms_utilization -> provider_service_utilization)
     const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
 
+    // Check for duplicate imports already in progress
+    const activeImports = await base44.asServiceRole.entities.ImportBatch.filter({
+      import_type,
+      status: { $in: ['validating', 'processing'] }
+    });
+
+    if (activeImports.length > 0) {
+      const existing = activeImports[0];
+      return Response.json({
+        error: `Import for ${import_type} is already in progress`,
+        conflict: true,
+        existing_batch_id: existing.id,
+        started_at: existing.created_date,
+      }, { status: 409 });
+    }
+
     // Check if it's a ZIP-based Medicare stats import
     const zipFunctionMap = {
       medicare_hha_stats: 'importMedicareHHA',
