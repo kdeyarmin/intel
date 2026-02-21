@@ -17,11 +17,19 @@ Deno.serve(async (req) => {
             skip += BATCH_SIZE;
         }
 
+        // Get actual counts directly from entities instead of summing batches
+        const [allProviders, allLocations, allReferrals, allUtilization] = await Promise.all([
+            base44.asServiceRole.entities.Provider.list('-created_date', 1),
+            base44.asServiceRole.entities.ProviderLocation.list('-created_date', 1),
+            base44.asServiceRole.entities.CMSReferral.list('-created_date', 1),
+            base44.asServiceRole.entities.CMSUtilization.list('-created_date', 1),
+        ]);
+
         const stats = {
-            totalProviders: 0,
-            totalLocations: 0,
-            totalReferrals: 0,
-            activeMedicareProviders: 0, // approximation
+            totalProviders: allProviders?.totalCount || 0,
+            totalLocations: allLocations?.totalCount || 0,
+            totalReferrals: allReferrals?.totalCount || 0,
+            activeMedicareProviders: allUtilization?.totalCount || 0,
             lastRefresh: null,
             topStates: {}
         };
@@ -34,11 +42,6 @@ Deno.serve(async (req) => {
 
         for (const batch of allBatches) {
             if (batch.status !== 'completed') continue;
-
-            const imported = batch.imported_rows || 0;
-            
-            if (batch.import_type === 'nppes_registry') {
-                stats.totalProviders += imported;
                 
                 // Extract locations count from dedup_summary if available
                 if (batch.dedup_summary && batch.dedup_summary.locations) {
@@ -58,10 +61,9 @@ Deno.serve(async (req) => {
                     }
                 }
             } else if (batch.import_type === 'cms_utilization') {
-                // approximate active medicare providers count by number of utilization records
-                stats.activeMedicareProviders += imported;
+                // (actual count now fetched directly above)
             } else if (batch.import_type === 'cms_order_referring') {
-                stats.totalReferrals += imported;
+                // (actual count now fetched directly above)
             }
         }
 
