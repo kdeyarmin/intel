@@ -314,25 +314,25 @@ export default function EmailSearchBot() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
+            <div className="text-2xl font-bold text-white">{stats.total.toLocaleString()}</div>
             <div className="text-xs text-slate-500">Total Providers</div>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-emerald-400">{stats.withEmail}</div>
+            <div className="text-2xl font-bold text-emerald-400">{stats.withEmail.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
             <div className="text-xs text-emerald-500/80">Have Email</div>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-cyan-400">{stats.searched}</div>
+            <div className="text-2xl font-bold text-cyan-400">{stats.searched.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
             <div className="text-xs text-cyan-500/80">Already Searched</div>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-amber-400">{stats.remaining}</div>
+            <div className="text-2xl font-bold text-amber-400">{stats.remaining.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
             <div className="text-xs text-amber-500/80">Remaining</div>
           </CardContent>
         </Card>
@@ -341,10 +341,14 @@ export default function EmailSearchBot() {
             <Button onClick={downloadFullEmailCSV} disabled={stats.withEmail === 0} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
               <Download className="w-4 h-4" /> Export Emails CSV
             </Button>
-            <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail} ready</div>
+            <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail.toLocaleString()} ready</div>
           </CardContent>
         </Card>
       </div>
+
+      {stats.isEstimated && (
+        <p className="text-[10px] text-slate-600 text-center -mt-2">~ counts are estimated from a sample — actual numbers may differ slightly</p>
+      )}
 
       {/* Validation Stats */}
       {stats.validated > 0 && (
@@ -353,20 +357,20 @@ export default function EmailSearchBot() {
             <CardContent className="p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="text-lg font-bold text-emerald-400">{stats.valid}</span>
+                <span className="text-lg font-bold text-emerald-400">{stats.valid.toLocaleString()}{stats.isEstimated ? '~' : ''}</span>
               </div>
               <div className="text-[10px] text-emerald-500/80">Valid Emails</div>
             </CardContent>
           </Card>
           <Card className="bg-[#141d30] border-amber-500/20">
             <CardContent className="p-3 text-center">
-              <div className="text-lg font-bold text-amber-400">{stats.risky}</div>
+              <div className="text-lg font-bold text-amber-400">{stats.risky.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
               <div className="text-[10px] text-amber-500/80">Risky Emails</div>
             </CardContent>
           </Card>
           <Card className="bg-[#141d30] border-red-500/20">
             <CardContent className="p-3 text-center">
-              <div className="text-lg font-bold text-red-400">{stats.invalid}</div>
+              <div className="text-lg font-bold text-red-400">{stats.invalid.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
               <div className="text-[10px] text-red-500/80">Invalid Emails</div>
             </CardContent>
           </Card>
