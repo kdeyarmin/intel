@@ -150,17 +150,15 @@ async function runConcurrent(tasks, concurrency) {
 
 async function batchLookupByNPI(entity, npis, base44) {
     const resultMap = {};
-    // Process lookups sequentially in small batches to avoid rate limits
-    for (let i = 0; i < npis.length; i += 3) {
+    // Process lookups SEQUENTIALLY to respect rate limits
+    for (const npi of npis) {
         if (isTimeUp()) break;
-        const batch = npis.slice(i, i + 3);
-        await Promise.all(batch.map(async (npi) => {
-            try {
-                const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ npi }));
-                if (found.length > 0) resultMap[npi] = found;
-            } catch (e) { /* ignore after retries */ }
-        }));
-        if (i + 3 < npis.length) await sleep(150);
+        try {
+            const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ npi }));
+            if (found.length > 0) resultMap[npi] = found;
+        } catch (e) { /* ignore */ }
+        // Throttle 100ms per request (approx 10 req/s max)
+        await sleep(100);
     }
     return resultMap;
 }
@@ -190,8 +188,8 @@ function isMoreComplete(incoming, existing, fields) {
 async function upsertProviders(records, base44) {
     const FIELDS = ['first_name','last_name','organization_name','credential','gender','status','entity_type','enumeration_date','last_update_date'];
     let imported = 0, updated = 0, skipped = 0;
-    // Use smaller chunks to reduce per-chunk lookup pressure
-    const chunkSize = Math.min(BULK_SIZE, 20);
+    // VERY small chunks to avoid rate limits
+    const chunkSize = 5; 
     for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
         const chunk = records.slice(i, i + chunkSize);
@@ -234,7 +232,7 @@ async function upsertProviders(records, base44) {
 async function upsertLocations(records, base44) {
     const FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
     let imported = 0, updated = 0, skipped = 0;
-    const chunkSize = Math.min(BULK_SIZE, 20);
+    const chunkSize = 5; // Reduced chunk size
     for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
         const chunk = records.slice(i, i + chunkSize);
@@ -279,7 +277,7 @@ async function upsertLocations(records, base44) {
 async function upsertTaxonomies(records, base44) {
     const FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
     let imported = 0, updated = 0, skipped = 0;
-    const chunkSize = Math.min(BULK_SIZE, 20);
+    const chunkSize = 5; // Reduced chunk size
     for (let i = 0; i < records.length; i += chunkSize) {
         if (isTimeUp()) break;
         const chunk = records.slice(i, i + chunkSize);
@@ -477,39 +475,93 @@ Deno.serve(async (req) => {
 
         console.log(`[Crawler] State=${stateToProcess}, phase=${phase}, taxonomy=${taxonomy_description || 'all'}`);
 
-        // ---- FETCH PHASE ----
-        // Fetch as much data as we can within our time budget, then return with what we got.
-        // The auto-chain caller will invoke the write phase separately if needed.
-
+        // ---- INTERLEAVED FETCH & WRITE PHASE ----
         const batch = await base44.asServiceRole.entities.ImportBatch.create({
             import_type: 'nppes_registry',
             file_name: `crawler_${stateToProcess}_${taxonomy_description || 'all'}_${Date.now()}`,
             file_url: `NPPES API crawler - ${stateToProcess}`,
-            status: 'validating',
+            status: 'processing',
             dry_run,
         });
 
         try {
             const enumTypes = entity_type ? [entity_type] : CRAWL_ENTITY_TYPES;
-            let allResults = [];
+            let totalFetched = 0;
+            let fetchComplete = true;
+            let writeComplete = true;
+            
+            // Accumulate stats across loop iterations
+            let stats = {
+                valid: 0, invalid: 0, duplicate: 0,
+                prov: { imported: 0, updated: 0, skipped: 0 },
+                loc: { imported: 0, updated: 0, skipped: 0 },
+                tax: { imported: 0, updated: 0, skipped: 0 },
+                errors: []
+            };
+
+            // We use a set to avoid duplicates within this run
             const seenNPIs = new Set();
 
-            function addUnique(results) {
+            async function processResults(results) {
+                if (results.length === 0) return;
+                
+                // Deduplicate within this run
+                const uniqueResults = [];
                 for (const r of results) {
                     const npi = String(r.number || '');
-                    if (npi && !seenNPIs.has(npi)) { seenNPIs.add(npi); allResults.push(r); }
+                    if (npi && !seenNPIs.has(npi)) { seenNPIs.add(npi); uniqueResults.push(r); }
+                }
+                
+                if (uniqueResults.length === 0) return;
+                totalFetched += uniqueResults.length;
+
+                // Transform
+                const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(uniqueResults);
+                stats.valid += validRows;
+                stats.invalid += invalidRows;
+                stats.duplicate += duplicateRows;
+                if (errors.length > 0 && stats.errors.length < 10) stats.errors.push(...errors);
+
+                if (!dry_run) {
+                    const provRes = await upsertProviders(providers, base44);
+                    stats.prov.imported += provRes.imported;
+                    stats.prov.updated += provRes.updated;
+                    stats.prov.skipped += provRes.skipped;
+
+                    // Only process child entities if we have time
+                    if (!isTimeUp()) {
+                        const locRes = await upsertLocations(locations, base44);
+                        stats.loc.imported += locRes.imported;
+                        stats.loc.updated += locRes.updated;
+                        stats.loc.skipped += locRes.skipped;
+                    }
+                    if (!isTimeUp()) {
+                        const taxRes = await upsertTaxonomies(taxonomies, base44);
+                        stats.tax.imported += taxRes.imported;
+                        stats.tax.updated += taxRes.updated;
+                        stats.tax.skipped += taxRes.skipped;
+                    }
+                }
+                
+                // Update batch periodically
+                if (totalFetched % 100 === 0) {
+                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                        total_rows: totalFetched,
+                        valid_rows: stats.valid,
+                        imported_rows: stats.prov.imported,
+                        updated_rows: stats.prov.updated + stats.loc.updated,
+                        skipped_rows: stats.prov.skipped,
+                     }).catch(() => {}); // ignore update errors
                 }
             }
 
-            let fetchComplete = true;
-
+            // Main loop
+            loop_main:
             for (const enumType of enumTypes) {
-                if (isFetchTimeUp()) { fetchComplete = false; break; }
-                const typeLabel = enumType === 'NPI-1' ? 'Individual' : 'Organization';
-                console.log(`[${stateToProcess}] ${typeLabel}: ${zipPrefixes.length} zip prefixes`);
-
+                if (isTimeUp()) { fetchComplete = false; writeComplete = false; break; }
+                
                 for (const zipPrefix of zipPrefixes) {
-                    if (isFetchTimeUp()) { fetchComplete = false; break; }
+                    if (isTimeUp()) { fetchComplete = false; writeComplete = false; break loop_main; }
 
                     const params = new URLSearchParams();
                     params.set('version', '2.1');
@@ -519,85 +571,57 @@ Deno.serve(async (req) => {
                     params.set('postal_code', `${zipPrefix}*`);
                     if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
 
+                    // Fetch & Process immediately
                     const { results, hitLimit } = await fetchAllPages(params);
-                    addUnique(results);
+                    await processResults(results);
 
-                    // Expand to 3-digit if we hit the limit
-                    if (hitLimit && !isFetchTimeUp()) {
-                        for (let d = 0; d <= 9 && !isFetchTimeUp(); d++) {
+                    if (hitLimit && !isTimeUp()) {
+                        for (let d = 0; d <= 9 && !isTimeUp(); d++) {
                             const zip3 = `${zipPrefix}${d}`;
-                            const subParams = new URLSearchParams();
-                            subParams.set('version', '2.1'); subParams.set('limit', String(BATCH_LIMIT));
-                            subParams.set('state', stateToProcess); subParams.set('enumeration_type', enumType);
+                            const subParams = new URLSearchParams(params);
                             subParams.set('postal_code', `${zip3}*`);
-                            if (taxonomy_description) subParams.set('taxonomy_description', taxonomy_description);
                             const subResult = await fetchAllPages(subParams);
-                            addUnique(subResult.results);
-                            if (subResult.hitLimit && !isFetchTimeUp()) {
-                                for (let d2 = 0; d2 <= 9 && !isFetchTimeUp(); d2++) {
+                            await processResults(subResult.results);
+                            
+                            if (subResult.hitLimit && !isTimeUp()) {
+                                for (let d2 = 0; d2 <= 9 && !isTimeUp(); d2++) {
                                     const zip4 = `${zip3}${d2}`;
-                                    const deepParams = new URLSearchParams();
-                                    deepParams.set('version', '2.1'); deepParams.set('limit', String(BATCH_LIMIT));
-                                    deepParams.set('state', stateToProcess); deepParams.set('enumeration_type', enumType);
+                                    const deepParams = new URLSearchParams(params);
                                     deepParams.set('postal_code', `${zip4}*`);
-                                    if (taxonomy_description) deepParams.set('taxonomy_description', taxonomy_description);
                                     const deepResult = await fetchAllPages(deepParams);
-                                    addUnique(deepResult.results);
-                                    await new Promise(r => setTimeout(r, 30));
+                                    await processResults(deepResult.results);
+                                    await sleep(100);
                                 }
                             }
-                            await new Promise(r => setTimeout(r, 30));
+                            await sleep(100);
                         }
                     }
-                    await new Promise(r => setTimeout(r, API_DELAY_MS));
+                    await sleep(API_DELAY_MS * 2); // Increased delay
                 }
             }
 
-            console.log(`[${stateToProcess}] Fetched ${allResults.length} unique NPIs (complete=${fetchComplete})`);
+            console.log(`[${stateToProcess}] Processed ${totalFetched} NPIs. Complete=${fetchComplete}`);
 
-            // Transform
-            const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(allResults);
-
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                status: dry_run ? 'completed' : 'processing',
-                total_rows: allResults.length, valid_rows: validRows, invalid_rows: invalidRows,
-                duplicate_rows: duplicateRows, error_samples: errors,
-            });
-
-            // ---- WRITE PHASE (only if time remains and not dry run) ----
-            let provResult = { imported: 0, updated: 0, skipped: 0 };
-            let locResult = { imported: 0, updated: 0, skipped: 0 };
-            let taxResult = { imported: 0, updated: 0, skipped: 0 };
-            let writeComplete = false;
-
-            if (!dry_run && providers.length > 0 && !isTimeUp()) {
-                console.log(`[${stateToProcess}] Writing: ${providers.length} providers, ${locations.length} locations, ${taxonomies.length} taxonomies`);
-
-                // Write providers first (most important), then locations and taxonomies if time permits
-                provResult = await upsertProviders(providers, base44);
-                if (!isTimeUp()) locResult = await upsertLocations(locations, base44);
-                if (!isTimeUp()) taxResult = await upsertTaxonomies(taxonomies, base44);
-
-                writeComplete = !isTimeUp();
-
-                console.log(`[${stateToProcess}] Write ${writeComplete ? 'complete' : 'PARTIAL'}: P(${provResult.imported}c/${provResult.updated}u/${provResult.skipped}s) L(${locResult.imported}c) T(${taxResult.imported}c)`);
-            }
-
-            // Only mark as completed if we actually wrote data (or it was a dry run or there was nothing to write)
-            const didWrite = provResult.imported > 0 || provResult.updated > 0;
-            const nothingToWrite = providers.length === 0;
-            const finalStatus = dry_run || nothingToWrite || didWrite ? 'completed' : 'failed';
+            // Final status logic
+            // Mark completed even if skipped. Mark failed only on catch.
+            const finalStatus = 'completed'; 
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: finalStatus,
-                imported_rows: provResult.imported,
-                updated_rows: provResult.updated + locResult.updated + taxResult.updated,
-                skipped_rows: provResult.skipped + locResult.skipped + taxResult.skipped,
+                total_rows: totalFetched,
+                valid_rows: stats.valid,
+                invalid_rows: stats.invalid,
+                duplicate_rows: stats.duplicate,
+                error_samples: stats.errors,
+                imported_rows: stats.prov.imported,
+                updated_rows: stats.prov.updated + stats.loc.updated + stats.tax.updated,
+                skipped_rows: stats.prov.skipped + stats.loc.skipped + stats.tax.skipped,
                 dedup_summary: {
-                    providers: { created: provResult.imported, updated: provResult.updated, skipped: provResult.skipped },
-                    locations: { created: locResult.imported, updated: locResult.updated, skipped: locResult.skipped },
-                    taxonomies: { created: taxResult.imported, updated: taxResult.updated, skipped: taxResult.skipped },
-                    fetch_complete: fetchComplete, write_complete: writeComplete,
+                    providers: stats.prov,
+                    locations: stats.loc,
+                    taxonomies: stats.tax,
+                    fetch_complete: fetchComplete,
+                    write_complete: writeComplete,
                 },
                 completed_at: new Date().toISOString(),
             });
