@@ -432,13 +432,33 @@ export default function EmailSearchBot() {
                     {emailAnalysis[p.email] && (
                       <EmailQualityDetails analysis={emailAnalysis[p.email]} email={p.email} />
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                    {p.additional_emails && p.additional_emails.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => triggerEmailDeduplication(p.id)}
+                        className="text-[10px] h-6 gap-1 text-purple-400 hover:text-purple-300 mt-1"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Deduplicate
+                      </Button>
+                    )}
+                    {deduplicationResults[p.id] && (
+                      <div className="mt-2">
+                        <EmailDeduplicationPanel 
+                          emailGroups={deduplicationResults[p.id]}
+                          providerId={p.id}
+                          onGenerateOutreach={generateOutreachEmail}
+                        />
+                      </div>
+                    )}
+                    </div>
+                    );
+                    })}
+                    </div>
+                    </CardContent>
+                    </Card>
+                    )}
 
       {/* Disclaimer */}
       <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
