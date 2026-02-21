@@ -224,7 +224,9 @@ export default function BatchDetailPanel({ batch }) {
           <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />
         </div>
         {batch.skipped_rows > 0 && (
-          <p className="text-xs text-slate-500 mt-2">Skipped {batch.skipped_rows?.toLocaleString()} identical records</p>
+          <p className="text-xs text-slate-500 mt-2">
+            ✓ {batch.skipped_rows?.toLocaleString()} records already up-to-date (skipped — no changes needed)
+          </p>
         )}
       </div>
 
