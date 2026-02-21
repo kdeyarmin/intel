@@ -40,7 +40,11 @@ export default function Dashboard() {
 
   const loading = loadingStats;
 
-  const totalProviders = stats?.totalProviders || 0;
+  // Fallback to providers list length if stats are missing/zero (e.g. historic batches missing)
+  const totalProviders = (stats?.totalProviders > providers.length) ? stats.totalProviders : providers.length;
+  // If we hit the limit (1000), append '+' to indicate more
+  const displayTotalProviders = (providers.length === 1000 && totalProviders === 1000) ? '1000+' : totalProviders.toLocaleString();
+
   const totalLocations = stats?.totalLocations || 0;
   const activeMedicare = stats?.activeMedicareProviders || 0;
   const totalReferrals = stats?.totalReferrals || 0;
@@ -62,7 +66,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <KPICard
           title="Total Providers"
-          value={totalProviders.toLocaleString()}
+          value={displayTotalProviders}
           icon={Users}
           iconColor="text-cyan-400"
           loading={loading}
