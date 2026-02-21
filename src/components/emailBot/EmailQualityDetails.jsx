@@ -5,6 +5,9 @@ import { AlertTriangle, CheckCircle2, AlertCircle, Shield } from 'lucide-react';
 export default function EmailQualityDetails({ analysis, email, compact = false }) {
   if (!analysis) return null;
 
+  const riskFlags = analysis.riskFlags || analysis.risk_flags || [];
+  const reasons = analysis.reasons || [];
+
   if (compact) {
     // Minimal display for inline view
     return (
@@ -16,9 +19,9 @@ export default function EmailQualityDetails({ analysis, email, compact = false }
         } title={`${analysis.score}% confidence`}>
           {analysis.confidence} confidence
         </Badge>
-        {analysis.riskFlags.length > 0 && (
+        {riskFlags.length > 0 && (
           <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-[9px]">
-            {analysis.riskFlags.length} risk flag{analysis.riskFlags.length !== 1 ? 's' : ''}
+            {riskFlags.length} risk flag{riskFlags.length !== 1 ? 's' : ''}
           </Badge>
         )}
       </div>
