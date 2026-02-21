@@ -608,7 +608,11 @@ Deno.serve(async (req) => {
         
         if (resumeBatch) {
             batch = resumeBatch;
-            if (batch.retry_params?.processed_prefixes) {
+            // If this batch was in 'validating' (from auto-retry), move it to 'processing'
+            if (batch.status === 'validating') {
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+            }
+            if (batch.retry_params?.processed_prefixes && Array.isArray(batch.retry_params.processed_prefixes)) {
                 batch.retry_params.processed_prefixes.forEach(p => processedPrefixes.add(p));
             }
             console.log(`[Crawler] Resuming batch ${batch.id} for ${stateToProcess}. Skipped ${processedPrefixes.size} prefixes.`);
