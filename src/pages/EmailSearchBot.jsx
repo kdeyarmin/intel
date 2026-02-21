@@ -6,11 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
-import AICampaignAssistant from '../components/emailBot/AICampaignAssistant';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
@@ -24,7 +22,6 @@ export default function EmailSearchBot() {
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, setAllRunProgress] = useState(null);
-  const [activeSection, setActiveSection] = useState('search');
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
@@ -200,26 +197,7 @@ export default function EmailSearchBot() {
 
       <ComplianceDisclaimer />
 
-      {/* Mode Tabs */}
-      <Tabs value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="h-9 w-full grid grid-cols-2 bg-slate-800/60 border border-slate-700/50">
-          <TabsTrigger value="search" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
-            <Bot className="w-3.5 h-3.5" /> Email Search
-          </TabsTrigger>
-          <TabsTrigger value="campaign" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
-            <Sparkles className="w-3.5 h-3.5" /> AI Campaign Assistant
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="campaign" className="mt-4">
-          <AICampaignAssistant
-            providers={providers}
-            locations={allLocations}
-            taxonomies={allTaxonomies}
-          />
-        </TabsContent>
-
-        <TabsContent value="search" className="mt-4 space-y-5">
+      <div className="space-y-5">
 
       {/* Stats Overview + Export */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -390,8 +368,7 @@ export default function EmailSearchBot() {
 
       <DataSourcesFooter />
 
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }
