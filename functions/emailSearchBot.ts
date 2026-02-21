@@ -242,11 +242,21 @@ Return validation for ALL emails provided.`,
       timestamp: new Date().toISOString(),
     });
 
+    // Check if there are more unsearched providers remaining
+    let hasMore = false;
+    if (mode !== 'single') {
+      const checkFilter = skip_already_searched ? { email_searched_at: '' } : {};
+      const remaining = await base44.asServiceRole.entities.Provider.filter(checkFilter, '-created_date', 1);
+      const unsearched = remaining.filter(p => !p.email);
+      hasMore = unsearched.length > 0;
+    }
+
     return Response.json({
       success: true,
       searched: searchedCount,
       found: foundCount,
       results,
+      has_more: hasMore,
     });
 
   } catch (error) {
