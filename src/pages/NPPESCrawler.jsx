@@ -14,6 +14,7 @@ import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import CrawlerLog from '../components/nppes/CrawlerLog';
 import BatchProcessPanel from '../components/nppes/BatchProcessPanel';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import StateDetailSheet from '../components/nppes/StateDetailSheet';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -34,6 +35,7 @@ export default function NPPESCrawler() {
   const [autoMode, setAutoMode] = useState(false); // server-side auto-chain mode
   const [autoStarting, setAutoStarting] = useState(false);
   const [autoStopping, setAutoStopping] = useState(false);
+  const [selectedState, setSelectedState] = useState(null);
   const pausedRef = useRef(false);
   const runningRef = useRef(false);
   const queryClient = useQueryClient();
@@ -399,7 +401,12 @@ export default function NPPESCrawler() {
             </div>
           )}
 
-          <StateCrawlerGrid status={status} currentState={currentState} running={running} />
+          <StateCrawlerGrid 
+            status={status} 
+            currentState={currentState} 
+            running={running} 
+            onStateClick={setSelectedState}
+          />
         </CardContent>
       </Card>
 
@@ -407,6 +414,12 @@ export default function NPPESCrawler() {
       <CrawlerLog logs={logs} />
 
       <DataSourcesFooter />
+      
+      <StateDetailSheet 
+        stateCode={selectedState} 
+        isOpen={!!selectedState} 
+        onClose={() => setSelectedState(null)} 
+      />
     </div>
   );
 }

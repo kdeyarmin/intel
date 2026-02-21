@@ -7,7 +7,7 @@ const US_STATES = [
   'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 
-export default function StateCrawlerGrid({ status, currentState, running }) {
+export default function StateCrawlerGrid({ status, currentState, running, onStateClick }) {
   const completedSet = new Set(status?.completed_states || []);
   const failedSet = new Set(status?.failed_states || []);
   const processingSet = new Set(status?.processing_states || []);
@@ -43,8 +43,9 @@ export default function StateCrawlerGrid({ status, currentState, running }) {
         return (
           <div
             key={st}
-            className={`flex items-center justify-center gap-0.5 px-1.5 py-1 rounded border text-xs font-medium ${statusStyles[stStatus]}`}
-            title={`${st}: ${stStatus}`}
+            onClick={() => onStateClick && onStateClick(st)}
+            className={`flex items-center justify-center gap-0.5 px-1.5 py-1 rounded border text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-teal-500 ${statusStyles[stStatus]}`}
+            title={`${st}: ${stStatus} (Click for details)`}
           >
             {statusIcons[stStatus]}
             {st}
