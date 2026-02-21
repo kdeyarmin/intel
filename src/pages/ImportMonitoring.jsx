@@ -183,26 +183,32 @@ export default function ImportMonitoring() {
     setIsBulkRetrying(true);
     const toRetry = batches.filter(b => selectedForRerun.has(b.id));
     for (const batch of toRetry) {
-      await base44.entities.ImportBatch.create({
-        import_type: batch.import_type,
-        file_name: batch.file_name,
-        file_url: batch.file_url,
-        status: 'validating',
-        dry_run: false,
-        retry_of: batch.id,
-        retry_count: (batch.retry_count || 0) + 1,
-        retry_params: { mode: 'full' },
-        tags: [...(batch.tags || []), 'retry', 'bulk-retry'],
-        category: batch.category,
-      });
       try {
+        // First reset the failed batch back to validating so triggerImport doesn't see a conflict
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'validating',
+          retry_count: (batch.retry_count || 0) + 1,
+          tags: [...new Set([...(batch.tags || []), 'retry', 'bulk-retry'])],
+          error_samples: [],
+          imported_rows: 0,
+          updated_rows: 0,
+          skipped_rows: 0,
+          invalid_rows: 0,
+          valid_rows: 0,
+        });
+        // Then trigger the import — triggerImport will see this batch as active and won't create a new one
         await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
-          file_url: batch.file_url,
+          file_url: batch.file_url || undefined,
           dry_run: false,
         });
       } catch (e) {
-        console.warn('triggerImport for bulk retry failed:', e.message);
+        // If triggerImport fails (e.g. conflict), mark batch back as failed with the error
+        console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'failed',
+          error_samples: [{ row: 0, message: `Bulk retry failed: ${e.message}` }],
+        });
       }
     }
     setSelectedForRerun(new Set());
