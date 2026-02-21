@@ -186,6 +186,8 @@ Only return information you find with reasonable confidence from public sources.
       }
 
       await base44.entities.DataQualityAlert.create({
+        alert_type: 'new_issue_detected',
+        title: 'Profile Augmentation',
         rule_id: `augment_${profile.npi}`,
         rule_name: 'Profile Augmentation',
         category: 'completeness',
