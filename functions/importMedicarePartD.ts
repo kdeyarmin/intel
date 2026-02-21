@@ -21,21 +21,35 @@ const CMS_PART_D_URLS = {
 const NUMERIC_FIELDS = ['total_enrollees','total_utilizers','avg_annual_fills','avg_annual_gross_cost','generic_dispensing_rate','brand_cost','generic_cost','total_drug_cost'];
 
 async function downloadAndParseZip(url) {
+  console.log(`Downloading from: ${url}`);
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+  
   const arrayBuffer = await resp.arrayBuffer();
+  if (arrayBuffer.byteLength < 1000) {
+      const text = new TextDecoder().decode(arrayBuffer);
+      throw new Error(`Downloaded file is too small (${arrayBuffer.byteLength} bytes) and likely invalid. Content preview: ${text.substring(0, 200)}`);
+  }
+
   const header = new Uint8Array(arrayBuffer.slice(0, 4));
   if (!(header[0] === 0x50 && header[1] === 0x4B)) {
     try { const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' }); if (wb.SheetNames.length > 0) return wb; } catch (_) {}
-    throw new Error('Downloaded file is not a valid ZIP/XLSX archive.');
+    // Preview the content to help debug
+    const text = new TextDecoder().decode(arrayBuffer.slice(0, 200));
+    throw new Error(`Downloaded file is not a valid ZIP/XLSX archive. Header: ${header[0]},${header[1]}. Content preview: ${text}`);
   }
-  const zip = await JSZip.loadAsync(arrayBuffer);
-  const fileNames = Object.keys(zip.files);
-  const xlsxFile = fileNames.find(f => /\.(xlsx|xls|csv)$/i.test(f));
-  if (!xlsxFile) throw new Error(`No data file in ZIP. Files: ${fileNames.join(', ')}`);
-  const data = await zip.files[xlsxFile].async('uint8array');
-  if (/\.csv$/i.test(xlsxFile)) return XLSX.read(new TextDecoder().decode(data), { type: 'string' });
-  return XLSX.read(data, { type: 'array' });
+  
+  try {
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const fileNames = Object.keys(zip.files);
+      const xlsxFile = fileNames.find(f => /\.(xlsx|xls|csv)$/i.test(f));
+      if (!xlsxFile) throw new Error(`No data file in ZIP. Files: ${fileNames.join(', ')}`);
+      const data = await zip.files[xlsxFile].async('uint8array');
+      if (/\.csv$/i.test(xlsxFile)) return XLSX.read(new TextDecoder().decode(data), { type: 'string' });
+      return XLSX.read(data, { type: 'array' });
+  } catch (e) {
+      throw new Error(`Failed to parse ZIP file: ${e.message}`);
+  }
 }
 
 function parseSheet(workbook, sheetName) {
