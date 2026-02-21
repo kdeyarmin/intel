@@ -65,14 +65,14 @@ export default function EmailQualityDetails({ analysis, email, compact = false }
       </div>
 
       {/* Risk Flags */}
-      {analysis.riskFlags.length > 0 && (
+      {riskFlags.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold text-amber-400 flex items-center gap-1.5">
             <Shield className="w-3 h-3" />
             Risk Flags
           </p>
           <div className="space-y-1">
-            {analysis.riskFlags.map((flag, idx) => (
+            {riskFlags.map((flag, idx) => (
               <div key={idx} className="text-[11px] text-amber-400/80 flex items-start gap-2">
                 <span className="text-amber-500 mt-0.5">•</span>
                 <span>{flag}</span>
