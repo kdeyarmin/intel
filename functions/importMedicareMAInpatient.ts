@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
     import_type: 'medicare_ma_inpatient',
     file_name: `medicare_ma_inpatient_${year}`,
     file_url: downloadUrl,
-    status: 'validating',
+    status: 'processing',
     dry_run,
     retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
   });
