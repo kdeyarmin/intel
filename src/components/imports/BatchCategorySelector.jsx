@@ -11,22 +11,12 @@ const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function BatchCategorySelector({ batch, onUpdate }) {
-  const handleChange = async (value) => {
-    await base44.entities.ImportBatch.update(batch.id, { category: value });
-    onUpdate?.();
-  };
-
+export default function BatchCategorySelector({ batch }) {
+  const label = CATEGORIES.find(c => c.value === batch.category)?.label || batch.category || 'Uncategorized';
+  
   return (
-    <Select value={batch.category || ''} onValueChange={handleChange}>
-      <SelectTrigger className="h-7 w-36 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
-        <SelectValue placeholder="Set category" />
-      </SelectTrigger>
-      <SelectContent className="bg-[#141d30] border-slate-700">
-        {CATEGORIES.map(c => (
-          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="h-7 w-36 px-3 py-1.5 rounded-md bg-slate-800/50 border border-slate-700 text-xs text-slate-300 flex items-center">
+      {label}
+    </div>
   );
 }

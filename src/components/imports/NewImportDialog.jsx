@@ -47,7 +47,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [fileUrl, setFileUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [category, setCategory] = useState('');
+
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [dryRun, setDryRun] = useState(false);
@@ -71,7 +71,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setTypeSearch('');
     setFileUrl('');
     setUploadedFile(null);
-    setCategory('');
+
     setTags([]);
     setTagInput('');
     setDryRun(false);
@@ -134,7 +134,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       file_url: fileUrl || '',
       status: 'validating',
       dry_run: dryRun,
-      category: category || selectedType.cat || '',
+      category: selectedType.cat || '',
       tags: tags.length > 0 ? tags : ['manual-import'],
       retry_count: 0,
       retry_params: Object.keys(retryParams).length > 0 ? retryParams : undefined,
@@ -195,7 +195,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 return (
                   <button
                     key={t.id}
-                    onClick={() => { setSelectedType(t); setCategory(t.cat || ''); setStep(2); }}
+                    onClick={() => { setSelectedType(t); setStep(2); }}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800/40 transition-colors text-left"
                   >
                     <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
@@ -294,20 +294,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               />
             </div>
 
-            {/* Category */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Category</Label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8 w-full"
-              >
-                <option value="">None</option>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
+
 
             {/* Tags */}
             <div className="space-y-1.5">
