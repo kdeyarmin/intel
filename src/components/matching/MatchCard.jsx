@@ -80,6 +80,8 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
               specialization={match.specialization_score}
               proximity={match.proximity_score}
               referral={match.referral_score}
+              nameMatch={match.name_match_score}
+              addressMatch={match.address_match_score}
             />
 
             {match.match_reasons?.length > 0 && (
