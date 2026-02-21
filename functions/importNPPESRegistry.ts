@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
             import_type: 'nppes_registry',
             file_name: `nppes_api_${state || 'all'}_${taxonomy_description || 'all'}_${Date.now()}`,
             file_url: `${NPPES_API_BASE}&${params.toString()}`,
-            status: 'validating',
+            status: 'processing',
             dry_run,
         });
 
