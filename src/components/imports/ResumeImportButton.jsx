@@ -24,9 +24,8 @@ export default function ResumeImportButton({ batch, onResumed }) {
       await base44.functions.invoke('triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url,
-        year: batch.data_year || 2023, // Fallback if year not stored directly, usually in file_name or separate field
+        year: batch.data_year || 2023,
         resume_offset: offset,
-        batch_id: batch.id,
         dry_run: batch.dry_run
       });
 
