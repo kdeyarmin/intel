@@ -117,7 +117,7 @@ export default function ProviderDetail() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
         <Skeleton className="h-8 w-32 mb-6" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}
@@ -152,7 +152,7 @@ export default function ProviderDetail() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-2 mb-4">
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -180,24 +180,24 @@ export default function ProviderDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start h-12 bg-slate-100 p-1 mb-6 overflow-x-auto">
-          <TabsTrigger value="overview" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <LayoutDashboard className="w-4 h-4" /> Overview
+        <TabsList className="w-full h-auto bg-slate-100 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
+          <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="clinical" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <Stethoscope className="w-4 h-4" /> Clinical Data
+          <TabsTrigger value="clinical" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Stethoscope className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Clinical</span><span className="sm:hidden">Clinical</span>
           </TabsTrigger>
-          <TabsTrigger value="locations" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <MapPinIcon className="w-4 h-4" /> Locations & Territory
+          <TabsTrigger value="locations" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <MapPinIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Locations</span><span className="sm:hidden">Locations</span>
           </TabsTrigger>
-          <TabsTrigger value="network" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <Network className="w-4 h-4" /> Network & Affiliations
+          <TabsTrigger value="network" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Network className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Network</span><span className="sm:hidden">Network</span>
           </TabsTrigger>
-          <TabsTrigger value="outreach" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <Mail className="w-4 h-4" /> Outreach
+          <TabsTrigger value="outreach" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Mail className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Outreach</span><span className="sm:hidden">Outreach</span>
           </TabsTrigger>
-          <TabsTrigger value="quality" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <ShieldCheck className="w-4 h-4" /> Data Quality
+          <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Quality</span><span className="sm:hidden">Quality</span>
           </TabsTrigger>
         </TabsList>
 

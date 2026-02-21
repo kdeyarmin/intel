@@ -205,12 +205,12 @@ export default function LeadLists() {
                     <TableCell className="text-slate-300">{list.provider_count}</TableCell>
                     <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button size="sm" variant="outline">
                               <Eye className="w-4 h-4 mr-1" />
-                              View
+                              <span className="hidden sm:inline">View</span>
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-[95vw]">

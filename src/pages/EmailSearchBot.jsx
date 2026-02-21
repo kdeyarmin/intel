@@ -272,15 +272,15 @@ export default function EmailSearchBot() {
 
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
         <Skeleton className="h-10 w-72" />
-        <div className="grid grid-cols-2 gap-5">{[1, 2].map(i => <Skeleton key={i} className="h-64" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">{[1, 2].map(i => <Skeleton key={i} className="h-64" />)}</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
       <PageHeader
         title="Email Search Bot"
         subtitle="AI-powered search to find email addresses for providers and practices"
@@ -289,7 +289,7 @@ export default function EmailSearchBot() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full justify-start h-10 bg-slate-800/50 p-1 mb-5">
+        <TabsList className="w-full grid grid-cols-2 h-10 bg-slate-800/50 p-1 mb-5">
           <TabsTrigger value="search" className="gap-2 h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Search className="w-3.5 h-3.5" /> Email Search
           </TabsTrigger>

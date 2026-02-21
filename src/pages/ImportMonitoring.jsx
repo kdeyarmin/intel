@@ -405,14 +405,14 @@ export default function ImportMonitoring() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Import Monitoring</h1>
-          <p className="text-slate-400 mt-1">Real-time monitoring, validation rules, and alert notifications</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Import Monitoring</h1>
+          <p className="text-sm text-slate-400 mt-1">Real-time monitoring, validation rules, and alert notifications</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             onClick={() => setShowExport(true)}
             variant="outline"
@@ -450,51 +450,51 @@ export default function ImportMonitoring() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg overflow-x-auto">
         <button
           onClick={() => setActiveTab('monitoring')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'monitoring' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Activity className="w-3.5 h-3.5 inline mr-1.5" />
-          Live Monitoring
+          <Activity className="w-3.5 h-3.5 inline mr-1" />
+          <span className="hidden sm:inline">Live </span>Monitor
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <History className="w-3.5 h-3.5 inline mr-1.5" />
-          Import History
+          <History className="w-3.5 h-3.5 inline mr-1" />
+          History
         </button>
         <button
           onClick={() => setActiveTab('rules')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'rules' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <ShieldCheck className="w-3.5 h-3.5 inline mr-1.5" />
-          Validation Rules
+          <ShieldCheck className="w-3.5 h-3.5 inline mr-1" />
+          Rules
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'alerts' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Bell className="w-3.5 h-3.5 inline mr-1.5" />
-          Alert Settings
+          <Bell className="w-3.5 h-3.5 inline mr-1" />
+          Alerts
         </button>
         <button
           onClick={() => setActiveTab('ai_quality')}
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'ai_quality' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 inline mr-1.5" />
-          AI Quality
+          <Sparkles className="w-3.5 h-3.5 inline mr-1" />
+          AI
         </button>
       </div>
 
@@ -786,7 +786,7 @@ export default function ImportMonitoring() {
                   onClick={bulkRetryMode && batch.status === 'failed' ? () => toggleSelectForRerun(batch.id) : undefined}
                 >
                   {/* Row 1: Title, status, actions */}
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-3">
                       {bulkRetryMode && batch.status === 'failed' ? (
                         <input
@@ -813,7 +813,7 @@ export default function ImportMonitoring() {
                         <p className="text-sm text-slate-500">{batch.file_name}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge className={statusColors[batch.status] || ''}>{batch.status}</Badge>
                       <ResumeImportButton batch={batch} onResumed={refreshBatches} />
                       <BatchActionButtons

@@ -73,7 +73,7 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
         title="Advanced Analytics"
         subtitle="Deep insights, trend analysis, comparative reports & predictive models"
@@ -82,12 +82,12 @@ export default function AdvancedAnalytics() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-100">
+        <TabsList className="bg-slate-100 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
-            <LayoutDashboard className="w-3.5 h-3.5" /> Custom Dashboards
+            <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Custom </span>Dashboards
           </TabsTrigger>
           <TabsTrigger value="trends" className="gap-1.5 text-xs">
-            <TrendingUp className="w-3.5 h-3.5" /> Trend Analysis
+            <TrendingUp className="w-3.5 h-3.5" /> Trends
           </TabsTrigger>
           <TabsTrigger value="compare" className="gap-1.5 text-xs">
             <GitCompare className="w-3.5 h-3.5" /> Comparative
