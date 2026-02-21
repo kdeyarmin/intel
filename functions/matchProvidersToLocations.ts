@@ -1,5 +1,81 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Fuzzy name matching utilities
+function normalizeString(str) {
+  if (!str) return '';
+  return str.toLowerCase()
+    .replace(/\b(dr|md|do|np|pa|phd|dds|dpm|od|pharmd|rn|pt|ot|st|rph|crnp|aprn)\b/gi, '')
+    .replace(/[.,\-()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function levenshteinDistance(a, b) {
+  const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j - 1][i] + 1,
+        matrix[j][i - 1] + 1,
+        matrix[j - 1][i - 1] + cost
+      );
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function nameSimilarity(name1, name2) {
+  const norm1 = normalizeString(name1);
+  const norm2 = normalizeString(name2);
+  if (!norm1 || !norm2) return 0;
+  if (norm1 === norm2) return 100;
+  
+  const maxLen = Math.max(norm1.length, norm2.length);
+  const distance = levenshteinDistance(norm1, norm2);
+  const similarity = ((maxLen - distance) / maxLen) * 100;
+  
+  // Token-based matching boost
+  const tokens1 = norm1.split(' ').filter(t => t.length > 1);
+  const tokens2 = norm2.split(' ').filter(t => t.length > 1);
+  const commonTokens = tokens1.filter(t => tokens2.includes(t)).length;
+  const tokenBoost = (commonTokens / Math.max(tokens1.length, tokens2.length)) * 30;
+  
+  return Math.min(100, similarity + tokenBoost);
+}
+
+function addressSimilarity(addr1, addr2, city1, city2, state1, state2, zip1, zip2) {
+  let score = 0;
+  
+  // State match is critical (30 points)
+  if (state1 && state2 && state1.toUpperCase() === state2.toUpperCase()) {
+    score += 30;
+  }
+  
+  // ZIP match (25 points for full, 15 for partial)
+  const z1 = (zip1 || '').substring(0, 5);
+  const z2 = (zip2 || '').substring(0, 5);
+  if (z1 && z2) {
+    if (z1 === z2) score += 25;
+    else if (z1.substring(0, 3) === z2.substring(0, 3)) score += 15;
+  }
+  
+  // City match (20 points)
+  if (city1 && city2 && normalizeString(city1) === normalizeString(city2)) {
+    score += 20;
+  }
+  
+  // Address similarity (25 points)
+  if (addr1 && addr2) {
+    const addrSim = nameSimilarity(addr1, addr2);
+    score += (addrSim / 100) * 25;
+  }
+  
+  return Math.min(100, score);
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
@@ -165,13 +241,52 @@ Use these patterns to calibrate your matching. Prioritize the scoring dimensions
 `
     : '';
 
-  const prompt = `You are an AI healthcare provider-location matching engine.
+  // FUZZY MATCHING: Pre-compute similarity scores for AI context
+  const fuzzyHints = [];
+  for (const prov of providerSummaries.slice(0, 20)) {
+    const provName = prov.name;
+    const provLocs = locByNPI[prov.npi] || [];
+    const provState = provLocs.find(l => l.is_primary)?.state || provLocs[0]?.state;
+    const provCity = provLocs.find(l => l.is_primary)?.city || provLocs[0]?.city;
+    const provAddr = provLocs.find(l => l.is_primary)?.address_1 || provLocs[0]?.address_1;
+    const provZip = provLocs.find(l => l.is_primary)?.zip || provLocs[0]?.zip;
+    
+    const candidatesForProv = uniqueLocations
+      .filter(loc => loc.npi !== prov.npi) // Don't match to self
+      .map(loc => {
+        const locProvider = providers.find(p => p.npi === loc.npi);
+        const locName = locProvider?.entity_type === 'Individual' 
+          ? `${locProvider.first_name} ${locProvider.last_name}`
+          : locProvider?.organization_name || '';
+        
+        const nameSim = nameSimilarity(provName, locName);
+        const addrSim = addressSimilarity(provAddr, loc.address, provCity, loc.city, provState, loc.state, provZip, loc.zip);
+        const overallSim = (nameSim * 0.6) + (addrSim * 0.4);
+        
+        return { location_id: loc.id, name_similarity: Math.round(nameSim), address_similarity: Math.round(addrSim), overall_similarity: Math.round(overallSim) };
+      })
+      .filter(c => c.overall_similarity > 30)
+      .sort((a, b) => b.overall_similarity - a.overall_similarity)
+      .slice(0, 5);
+    
+    if (candidatesForProv.length > 0) {
+      fuzzyHints.push({ npi: prov.npi, fuzzy_matches: candidatesForProv });
+    }
+  }
 
-Given these providers and locations, suggest the best location matches for each provider.
-Consider:
-1. SPECIALIZATION: Match providers to locations where their specialty is most needed
-2. PROXIMITY: Prefer locations in the same state/city as the provider's existing locations
-3. REFERRAL PATTERNS: Providers with high home health/hospice referrals should match to relevant facility locations
+  const prompt = `You are an advanced AI healthcare provider-location matching engine with fuzzy name and address matching capabilities.
+
+MATCHING ALGORITHM - Use ALL these signals:
+1. NAME SIMILARITY: Use the pre-computed fuzzy name matching scores (Levenshtein distance + token overlap)
+2. ADDRESS SIMILARITY: Use the pre-computed address/city/state/ZIP matching scores
+3. SPECIALIZATION: Match providers to locations where their specialty is most needed
+4. PROXIMITY: Prefer locations in the same geographic area (state/city/ZIP)
+5. REFERRAL PATTERNS: Providers with high home health/hospice referrals should match to relevant facility locations
+6. NPI: If a provider appears in multiple datasets with different locations, these may be the same entity
+
+FUZZY MATCHING PRE-COMPUTED SCORES (USE THESE HEAVILY - they represent sophisticated string similarity):
+${JSON.stringify(fuzzyHints, null, 1)}
+
 ${feedbackSection}
 PROVIDERS:
 ${JSON.stringify(providerSummaries.slice(0, 20), null, 1)}
@@ -179,7 +294,12 @@ ${JSON.stringify(providerSummaries.slice(0, 20), null, 1)}
 CANDIDATE LOCATIONS (sample):
 ${JSON.stringify(uniqueLocations.slice(0, 60), null, 1)}
 
-For each provider, suggest up to 3 best location matches. Return JSON with this exact schema.`;
+INSTRUCTIONS:
+- For each provider, suggest up to 3 best location matches
+- PRIORITIZE matches with high fuzzy_matches overall_similarity scores (>60 is strong, >80 is very strong)
+- If fuzzy matching shows a strong name+address match, weight that heavily in your confidence score
+- Consider that the same provider may appear in NPPES vs CMS datasets with slight variations (e.g., "John Smith MD" vs "Smith John")
+- Return JSON with this exact schema`;
 
   const result = await base44.integrations.Core.InvokeLLM({
     prompt,
@@ -199,6 +319,8 @@ For each provider, suggest up to 3 best location matches. Return JSON with this 
               specialization_score: { type: "number" },
               proximity_score: { type: "number" },
               referral_score: { type: "number" },
+              name_match_score: { type: "number" },
+              address_match_score: { type: "number" },
               reasons: { type: "array", items: { type: "string" } }
             }
           }
@@ -220,6 +342,8 @@ For each provider, suggest up to 3 best location matches. Return JSON with this 
       specialization_score: match.specialization_score || 0,
       proximity_score: match.proximity_score || 0,
       referral_score: match.referral_score || 0,
+      name_match_score: match.name_match_score || 0,
+      address_match_score: match.address_match_score || 0,
       match_reasons: match.reasons || [],
       status: 'suggested',
       provider_name: match.provider_name || '',
