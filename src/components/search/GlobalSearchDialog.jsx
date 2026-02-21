@@ -12,15 +12,21 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_CONFIG = {
-  Provider:     { icon: Users,        color: 'bg-blue-50 text-blue-600' },
-  Organization: { icon: Building2,    color: 'bg-indigo-50 text-indigo-600' },
-  Location:     { icon: MapPin,       color: 'bg-sky-50 text-sky-600' },
-  Utilization:  { icon: Activity,     color: 'bg-teal-50 text-teal-600' },
-  Referral:     { icon: GitBranch,    color: 'bg-violet-50 text-violet-600' },
-  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-50 text-emerald-600' },
-  'Lead List':  { icon: ListChecks,   color: 'bg-amber-50 text-amber-600' },
-  Page:         { icon: FileBarChart2, color: 'bg-slate-100 text-slate-600' },
+  Provider:     { icon: Users,        color: 'bg-blue-500/15 text-blue-400' },
+  Organization: { icon: Building2,    color: 'bg-indigo-500/15 text-indigo-400' },
+  Location:     { icon: MapPin,       color: 'bg-sky-500/15 text-sky-400' },
+  Utilization:  { icon: Activity,     color: 'bg-teal-500/15 text-teal-400' },
+  Referral:     { icon: GitBranch,    color: 'bg-violet-500/15 text-violet-400' },
+  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-500/15 text-emerald-400' },
+  'Lead List':  { icon: ListChecks,   color: 'bg-amber-500/15 text-amber-400' },
+  Page:         { icon: FileBarChart2, color: 'bg-slate-500/15 text-slate-400' },
 };
+
+const QUICK_FILTERS = [
+  { label: 'Providers in PA with email', search: 'PA', type: 'shortcut' },
+  { label: 'Failed imports this week', search: 'failed', type: 'shortcut' },
+  { label: 'High-score leads', search: 'high', type: 'shortcut' },
+];
 
 const PAGES = [
   { name: 'Dashboard', page: 'Dashboard' },
@@ -208,7 +214,17 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     ? allResults.slice(0, 25)
     : allResults.filter(r => r.type === activeCategory).slice(0, 25);
 
+  // Recent searches
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('recentSearches') || '[]'); } catch { return []; }
+  });
+
   const goTo = (url) => {
+    if (query && query.length >= 2) {
+      const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+    }
     onOpenChange(false);
     navigate(url);
   };
@@ -245,7 +261,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           <div className="flex gap-1.5 px-4 py-2 border-b overflow-x-auto">
             <button
               onClick={() => setActiveCategory('all')}
-              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
             >
               All ({allResults.length})
             </button>
@@ -253,7 +269,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-slate-800 text-white border-slate-800' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
               >
                 {cat} ({count})
               </button>
@@ -263,8 +279,30 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
         <div className="max-h-[400px] overflow-auto">
           {query.length < 2 ? (
-            <div className="py-10 text-center text-sm text-slate-400">
-              Type at least 2 characters to search across all entities
+            <div className="py-6 px-4 space-y-4">
+              {recentSearches.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Recent Searches</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {recentSearches.map((s, i) => (
+                      <button key={i} onClick={() => setQuery(s)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Quick Filters</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_FILTERS.map((qf, i) => (
+                    <button key={i} onClick={() => setQuery(qf.search)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                      {qf.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 text-center pt-2">Type at least 2 characters to search</p>
             </div>
           ) : filteredResults.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400">
@@ -281,14 +319,14 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                     key={idx}
                     onClick={() => goTo(item.url)}
                     onMouseEnter={() => setHighlightIdx(idx)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-500/10' : 'hover:bg-slate-800/50'}`}
                   >
                     <div className={`p-1.5 rounded-md ${config.color}`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{item.label}</p>
-                      <p className="text-xs text-slate-400 truncate">{item.sublabel}</p>
+                      <p className="text-sm font-medium text-slate-200 truncate">{item.label}</p>
+                      <p className="text-xs text-slate-500 truncate">{item.sublabel}</p>
                     </div>
                     <Badge variant="outline" className="text-[10px] shrink-0">{item.type}</Badge>
                   </button>
