@@ -16,8 +16,22 @@ Deno.serve(async (req) => {
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
     } else {
-      const allProviders = await base44.asServiceRole.entities.Provider.list('-created_date', 500);
-      providersToSearch = allProviders.filter(p => {
+      // Build filter to find providers that haven't been searched yet
+      const filter = {};
+      if (skip_already_searched) {
+        filter.email_searched_at = '';
+      }
+      
+      // Use filter to get only unsearched providers directly from DB
+      let candidates;
+      if (Object.keys(filter).length > 0) {
+        candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', Math.min(batch_size * 3, 500));
+      } else {
+        candidates = await base44.asServiceRole.entities.Provider.list('-created_date', Math.min(batch_size * 3, 500));
+      }
+      
+      // Additional client-side filter for providers without email
+      providersToSearch = candidates.filter(p => {
         if (skip_already_searched && p.email_searched_at) return false;
         if (p.email) return false;
         return true;
