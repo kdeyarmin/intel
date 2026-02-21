@@ -34,11 +34,24 @@ export default function EmailSearchBot() {
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
-  const { data: providers = [], isLoading } = useQuery({
+  // Use backend to get accurate total counts across ALL providers
+  const { data: dashStats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['emailBotDashStats'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getDashboardStats');
+      return res.data;
+    },
+    staleTime: 60000,
+  });
+
+  // Local sample for recent finds, export, and display purposes
+  const { data: providers = [], isLoading: isLoadingProviders } = useQuery({
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
   });
+
+  const isLoading = isLoadingStats || isLoadingProviders;
 
   const { data: allLocations = [] } = useQuery({
     queryKey: ['emailBotLocations'],
@@ -53,7 +66,23 @@ export default function EmailSearchBot() {
   });
 
   const stats = useMemo(() => {
-    const total = providers.length;
+    const total = dashStats?.totalProviders || providers.length;
+    const es = dashStats?.emailStats;
+    if (es) {
+      const searched = es.searched || 0;
+      return {
+        total,
+        withEmail: es.withEmail || 0,
+        searched,
+        remaining: total - searched,
+        validated: (es.valid || 0) + (es.risky || 0) + (es.invalid || 0),
+        valid: es.valid || 0,
+        risky: es.risky || 0,
+        invalid: es.invalid || 0,
+        isEstimated: es.isEstimated || false,
+      };
+    }
+    // Fallback to local sample
     const withEmail = providers.filter(p => p.email).length;
     const searched = providers.filter(p => p.email_searched_at).length;
     const remaining = total - searched;
@@ -61,8 +90,8 @@ export default function EmailSearchBot() {
     const valid = providers.filter(p => p.email_validation_status === 'valid').length;
     const risky = providers.filter(p => p.email_validation_status === 'risky').length;
     const invalid = providers.filter(p => p.email_validation_status === 'invalid').length;
-    return { total, withEmail, searched, remaining, validated, valid, risky, invalid };
-  }, [providers]);
+    return { total, withEmail, searched, remaining, validated, valid, risky, invalid, isEstimated: false };
+  }, [providers, dashStats]);
 
   const triggerEmailDeduplication = async (providerId) => {
     try {
