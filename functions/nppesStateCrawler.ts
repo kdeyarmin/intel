@@ -576,7 +576,17 @@ Deno.serve(async (req) => {
         
         if (pendingPrefixes.length === 0) {
              await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'completed', completed_at: new Date().toISOString() });
-             return Response.json({ success: true, state: stateToProcess, done: false, message: `State ${stateToProcess} completed.` }); // Next run will pick next state
+             return Response.json({ 
+                 success: true, 
+                 state: stateToProcess, 
+                 done: false, 
+                 message: `State ${stateToProcess} completed.`,
+                 valid_rows: 0,
+                 imported_providers: 0,
+                 updated_providers: 0,
+                 skipped_providers: 0,
+                 stats: { valid: 0, prov: { imported: 0, updated: 0, skipped: 0 } }
+             }); // Next run will pick next state
         }
 
         console.log(`[Crawler] State=${stateToProcess}, processing ${pendingPrefixes.length} prefixes. Current batch: ${batch.id}`);
