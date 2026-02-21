@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, Shield, Zap } from 'lucide-react';
 
-export default function ExternalDataDisplay({ npi }) {
+export default function ExternalDataDisplay({ npi, onEnrichmentComplete }) {
+  const [enriching, setEnriching] = useState(false);
   const { data: medicareData, isLoading: loadingMedicare } = useQuery({
     queryKey: ['providerMedicareCompare', npi],
     queryFn: () => base44.entities.ProviderMedicareCompare.filter({ npi }),
