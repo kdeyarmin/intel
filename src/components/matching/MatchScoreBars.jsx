@@ -4,14 +4,18 @@ const BAR_COLORS = {
   specialization: 'bg-purple-500',
   proximity: 'bg-blue-500',
   referral: 'bg-teal-500',
+  nameMatch: 'bg-emerald-500',
+  addressMatch: 'bg-amber-500',
 };
 
-export default function MatchScoreBars({ specialization, proximity, referral }) {
+export default function MatchScoreBars({ specialization, proximity, referral, nameMatch, addressMatch }) {
   const bars = [
-    { label: 'Specialization', value: specialization || 0, color: BAR_COLORS.specialization },
-    { label: 'Proximity', value: proximity || 0, color: BAR_COLORS.proximity },
-    { label: 'Referral Pattern', value: referral || 0, color: BAR_COLORS.referral },
-  ];
+    { label: 'Name Match', value: nameMatch || 0, color: BAR_COLORS.nameMatch, show: nameMatch !== undefined },
+    { label: 'Address Match', value: addressMatch || 0, color: BAR_COLORS.addressMatch, show: addressMatch !== undefined },
+    { label: 'Specialization', value: specialization || 0, color: BAR_COLORS.specialization, show: true },
+    { label: 'Proximity', value: proximity || 0, color: BAR_COLORS.proximity, show: true },
+    { label: 'Referral Pattern', value: referral || 0, color: BAR_COLORS.referral, show: true },
+  ].filter(b => b.show);
 
   return (
     <div className="space-y-2">
