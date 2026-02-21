@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Search, ShieldCheck, ShieldAlert, AlertTriangle, Flag,
-  Pencil, Trash2, Loader2, Copy, GripVertical
+  Pencil, Trash2, Loader2, Copy, GripVertical, Sparkles
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import ValidationRuleEditor from './ValidationRuleEditor';
+import AIRuleSuggestions from './AIRuleSuggestions';
 
 const IMPORT_TYPE_LABELS = {
   '_global': 'All Import Types (Global)',
@@ -80,6 +81,7 @@ export default function ValidationRulesManager() {
   const [editingRule, setEditingRule] = useState(null);
   const [deleteRule, setDeleteRule] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: rules = [], isLoading } = useQuery({
@@ -225,19 +227,60 @@ export default function ValidationRulesManager() {
           </div>
         )}
 
+        {/* AI Suggestions (for specific import types) */}
+         {selectedType !== '_global' && !showAISuggestions && (
+           <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+             <div className="flex items-center justify-between gap-2">
+               <div className="flex items-center gap-2">
+                 <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                 <div className="min-w-0">
+                   <p className="text-xs font-medium text-amber-400">AI Rule Suggestions</p>
+                   <p className="text-[10px] text-amber-400/70">Generate rules from historical error patterns</p>
+                 </div>
+               </div>
+               <Button
+                 size="sm"
+                 variant="outline"
+                 className="h-7 text-xs bg-transparent border-amber-500/30 text-amber-400 hover:bg-amber-500/10 flex-shrink-0"
+                 onClick={() => setShowAISuggestions(true)}
+               >
+                 View Suggestions
+               </Button>
+             </div>
+           </div>
+         )}
+
+         {showAISuggestions && selectedType !== '_global' && (
+           <Card className="border-amber-500/30 bg-amber-500/5">
+             <CardContent className="pt-6">
+               <Button
+                 size="sm"
+                 variant="ghost"
+                 className="mb-3 text-xs text-slate-500 hover:text-slate-400"
+                 onClick={() => setShowAISuggestions(false)}
+               >
+                 ← Back to rules
+               </Button>
+               <AIRuleSuggestions importType={selectedType} />
+             </CardContent>
+           </Card>
+         )}
+
         {/* Rules list */}
-        {isLoading ? (
-          <div className="text-center py-12 text-slate-500">
-            <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
-            <p>Loading rules...</p>
-          </div>
-        ) : displayRules.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
-            <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No validation rules</p>
-            <p className="text-xs mt-1 text-slate-600">Add rules to automatically validate data before import</p>
-          </div>
-        ) : (
+         {!showAISuggestions && (
+         <>
+         {isLoading ? (
+           <div className="text-center py-12 text-slate-500">
+             <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
+             <p>Loading rules...</p>
+           </div>
+         ) : displayRules.length === 0 ? (
+           <div className="text-center py-16 text-slate-500">
+             <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
+             <p className="font-medium">No validation rules</p>
+             <p className="text-xs mt-1 text-slate-600">Add rules to automatically validate data before import</p>
+           </div>
+         ) : (
           <div className="space-y-2">
             {displayRules.map(rule => {
               const sev = SEVERITY_STYLES[rule.severity] || SEVERITY_STYLES.reject;
@@ -283,9 +326,11 @@ export default function ValidationRulesManager() {
                 </div>
               );
             })}
-          </div>
-        )}
-      </div>
+            </div>
+            )}
+            </>
+            )}
+            </div>
 
       {/* Editor Dialog */}
       <ValidationRuleEditor
