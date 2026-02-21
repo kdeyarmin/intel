@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Sparkles, Brain, ChevronDown, ChevronUp, X } from 'lucide-react';
 
-const confidenceBadge = (level) => {
+function ConfidenceBadge({ level, score }) {
   if (!level) return null;
   const config = {
     high: { label: 'Exact Match', className: 'bg-green-900/40 text-green-300 border-green-700' },
@@ -14,20 +14,28 @@ const confidenceBadge = (level) => {
     ai: { label: 'AI Suggested', className: 'bg-cyan-900/40 text-cyan-300 border-cyan-700' },
     medium: { label: 'Likely Match', className: 'bg-yellow-900/40 text-yellow-300 border-yellow-700' },
     low: { label: 'Guess', className: 'bg-orange-900/40 text-orange-300 border-orange-700' },
+    exact: { label: 'Exact Match', className: 'bg-green-900/40 text-green-300 border-green-700' },
   };
   const c = config[level];
   if (!c) return null;
+
+  const scoreDisplay = typeof score === 'number' ? score : null;
+
   return (
-    <Badge variant="outline" className={`text-[10px] ml-2 ${c.className}`}>
-      {(level === 'ai' || level === 'learned') && <Sparkles className="w-2.5 h-2.5 mr-1" />}
+    <Badge variant="outline" className={`text-[10px] ml-2 gap-1 ${c.className}`}>
+      {(level === 'ai' || level === 'learned') && <Sparkles className="w-2.5 h-2.5" />}
       {c.label}
+      {scoreDisplay !== null && (
+        <span className="opacity-70 ml-0.5">{scoreDisplay}%</span>
+      )}
     </Badge>
   );
-};
+}
 
-function MappingRow({ fieldName, isRequired, csvColumns, mapping, confidence, onChange, onClear }) {
+function MappingRow({ fieldName, isRequired, csvColumns, mapping, confidence, scores, onChange, onClear }) {
   const currentValue = mapping[fieldName] || '';
   const conf = confidence?.[fieldName];
+  const score = scores?.[fieldName];
 
   return (
     <div className="flex items-center gap-3">
@@ -37,7 +45,7 @@ function MappingRow({ fieldName, isRequired, csvColumns, mapping, confidence, on
             {fieldName}
           </Label>
           {isRequired && <span className="text-red-400 ml-1 flex-shrink-0">*</span>}
-          {confidenceBadge(conf)}
+          {currentValue && <ConfidenceBadge level={conf} score={score} />}
         </div>
       </div>
       <div className="w-64 flex-shrink-0 flex items-center gap-1">
@@ -77,6 +85,7 @@ export default function ColumnMapper({
   optionalColumns = [],
   mapping,
   confidence = {},
+  scores = {},
   onChange,
   onFieldCorrected,
   aiLoading = false,
@@ -86,10 +95,15 @@ export default function ColumnMapper({
   const isMappingComplete = requiredColumns.every(col => mapping[col]);
   const mappedOptionalCount = optionalColumns.filter(col => mapping[col]).length;
 
+  // Compute summary stats
+  const allMapped = [...requiredColumns, ...optionalColumns].filter(f => mapping[f]);
+  const scoreValues = allMapped.map(f => scores[f]).filter(s => typeof s === 'number');
+  const avgScore = scoreValues.length > 0 ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) : null;
+  const learnedCount = allMapped.filter(f => confidence[f] === 'learned').length;
+
   const handleMappingChange = (fieldName, csvCol) => {
     const newMapping = { ...mapping, [fieldName]: csvCol };
     onChange(newMapping);
-    // Notify parent of user correction for learning
     if (onFieldCorrected) {
       onFieldCorrected(fieldName, csvCol);
     }
@@ -103,6 +117,28 @@ export default function ColumnMapper({
 
   return (
     <div className="space-y-4">
+      {/* Mapping Quality Summary */}
+      {allMapped.length > 0 && !aiLoading && (
+        <div className="flex items-center gap-3 flex-wrap text-xs px-1">
+          {avgScore !== null && (
+            <div className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full ${avgScore >= 80 ? 'bg-green-400' : avgScore >= 55 ? 'bg-yellow-400' : 'bg-orange-400'}`} />
+              <span className="text-slate-400">Avg confidence: <span className="text-slate-200 font-medium">{avgScore}%</span></span>
+            </div>
+          )}
+          <span className="text-slate-600">•</span>
+          <span className="text-slate-400">{allMapped.length} mapped</span>
+          {learnedCount > 0 && (
+            <>
+              <span className="text-slate-600">•</span>
+              <span className="text-purple-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> {learnedCount} from learned corrections
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Required Columns */}
       <Card>
         <CardHeader className="pb-3">
@@ -133,6 +169,7 @@ export default function ColumnMapper({
               csvColumns={csvColumns}
               mapping={mapping}
               confidence={confidence}
+              scores={scores}
               onChange={handleMappingChange}
               onClear={handleClear}
             />
@@ -175,6 +212,7 @@ export default function ColumnMapper({
                   csvColumns={csvColumns}
                   mapping={mapping}
                   confidence={confidence}
+                  scores={scores}
                   onChange={handleMappingChange}
                   onClear={handleClear}
                 />
