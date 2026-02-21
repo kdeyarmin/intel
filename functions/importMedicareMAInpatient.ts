@@ -460,7 +460,6 @@ Deno.serve(async (req) => {
         total_rows: allRecords.length,
         valid_rows: validRecords.length,
         invalid_rows: validation.invalid,
-        status: dry_run ? 'completed' : 'processing',
         column_mapping: { sheets: sheetSummaries, sheet_errors: Object.keys(sheetErrors).length ? sheetErrors : undefined },
         error_samples: errorSamples.length > 0 ? errorSamples : undefined,
         dedup_summary: {
