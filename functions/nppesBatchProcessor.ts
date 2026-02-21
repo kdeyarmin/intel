@@ -169,6 +169,8 @@ Deno.serve(async (req) => {
             b => b.file_name === 'batch_process_active'
         );
 
+        const effectiveConcurrency = Math.min(Math.max(1, concurrency), 5); // cap at 5
+
         if (activeBatchSignals.length > 0) {
             await base44.asServiceRole.entities.ImportBatch.update(activeBatchSignals[0].id, {
                 status: 'processing',
@@ -195,8 +197,6 @@ Deno.serve(async (req) => {
                 }
             });
         }
-
-        const effectiveConcurrency = Math.min(Math.max(1, concurrency), 5); // cap at 5
 
         console.log(`[BatchProcessor] Starting batch: ${targetStates.length} states, concurrency=${effectiveConcurrency}`);
 
