@@ -21,6 +21,7 @@ import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
 import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List } from 'lucide-react';
+// Users imported above
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
