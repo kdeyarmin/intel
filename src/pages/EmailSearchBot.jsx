@@ -35,24 +35,23 @@ export default function EmailSearchBot() {
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
-  // Use backend to get accurate total counts across ALL providers
-  const { data: dashStats, isLoading: isLoadingStats } = useQuery({
+  // Use backend to get accurate total counts across ALL providers (non-blocking)
+  const { data: dashStats } = useQuery({
     queryKey: ['emailBotDashStats'],
     queryFn: async () => {
       const res = await base44.functions.invoke('getDashboardStats');
       return res.data;
     },
-    staleTime: 60000,
+    staleTime: 120000,
+    retry: 1,
   });
 
   // Local sample for recent finds, export, and display purposes
-  const { data: providers = [], isLoading: isLoadingProviders } = useQuery({
+  const { data: providers = [], isLoading } = useQuery({
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
   });
-
-  const isLoading = isLoadingStats || isLoadingProviders;
 
   const { data: allLocations = [] } = useQuery({
     queryKey: ['emailBotLocations'],
