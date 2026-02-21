@@ -55,6 +55,7 @@ export default function DataImports() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [mappingConfidence, setMappingConfidence] = useState({});
+  const [mappingScores, setMappingScores] = useState({});
   const [optionalColumns, setOptionalColumns] = useState([]);
   const [aiMappingLoading, setAiMappingLoading] = useState(false);
 
@@ -81,7 +82,7 @@ export default function DataImports() {
     // Start with quick fuzzy match, then enhance with AI
     setAiMappingLoading(true);
     try {
-      const { mapping: aiMapping, confidence, optionalColumns: optCols } = await generateAIMapping(
+      const { mapping: aiMapping, confidence, scores, optionalColumns: optCols } = await generateAIMapping(
         headers,
         selectedType.requiredColumns,
         selectedType.id,
@@ -89,6 +90,7 @@ export default function DataImports() {
       );
       setColumnMapping(aiMapping);
       setMappingConfidence(confidence);
+      setMappingScores(scores || {});
       setOptionalColumns(optCols);
     } catch (err) {
       console.error('AI mapping failed, using basic matching:', err);
@@ -601,6 +603,7 @@ export default function DataImports() {
     setCurrentBatch(null);
     setDryRun(false);
     setMappingConfidence({});
+    setMappingScores({});
     setOptionalColumns([]);
   };
 
@@ -683,6 +686,7 @@ export default function DataImports() {
             optionalColumns={optionalColumns}
             mapping={columnMapping}
             confidence={mappingConfidence}
+            scores={mappingScores}
             onChange={setColumnMapping}
             onFieldCorrected={(field, col) => {
               if (selectedType) {

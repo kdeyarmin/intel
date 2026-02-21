@@ -34,6 +34,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
   const [csvColumns, setCsvColumns] = useState([]);
   const [columnMapping, setColumnMapping] = useState({});
   const [mappingConfidence, setMappingConfidence] = useState({});
+  const [mappingScores, setMappingScores] = useState({});
   const [optionalColumns, setOptionalColumns] = useState([]);
   const [aiMappingLoading, setAiMappingLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -65,11 +66,12 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
 
     setAiMappingLoading(true);
     try {
-      const { mapping, confidence, optionalColumns: optCols } = await generateAIMapping(
+      const { mapping, confidence, scores, optionalColumns: optCols } = await generateAIMapping(
         headers, selectedType.requiredColumns, selectedType.id, selectedType.name
       );
       setColumnMapping(mapping);
       setMappingConfidence(confidence);
+      setMappingScores(scores || {});
       setOptionalColumns(optCols);
     } catch {
       const autoMapping = {};
@@ -280,6 +282,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
               optionalColumns={optionalColumns}
               mapping={columnMapping}
               confidence={mappingConfidence}
+              scores={mappingScores}
               onChange={setColumnMapping}
               onFieldCorrected={(field, col) => { if (selectedType) saveLearnedMapping(selectedType.id, field, col); }}
               aiLoading={aiMappingLoading}
