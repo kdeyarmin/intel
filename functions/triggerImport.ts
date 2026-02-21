@@ -51,12 +51,23 @@ Deno.serve(async (req) => {
 
     if (activeImports.length > 0) {
       const existing = activeImports[0];
-      return Response.json({
-        error: `Import for ${import_type} is already in progress`,
-        conflict: true,
-        existing_batch_id: existing.id,
-        started_at: existing.created_date,
-      }, { status: 409 });
+      // If the active batch has been stuck for over 3 hours, auto-cancel it
+      const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date).getTime();
+      if (stuckMs > 3 * 60 * 60 * 1000) {
+        console.warn(`Auto-cancelling stale batch ${existing.id} (stuck ${Math.round(stuckMs / 60000)}min)`);
+        await base44.asServiceRole.entities.ImportBatch.update(existing.id, {
+          status: 'failed',
+          cancel_reason: `Auto-cancelled: stuck in "${existing.status}" for ${Math.round(stuckMs / 60000)} minutes`,
+          cancelled_at: new Date().toISOString(),
+        });
+      } else {
+        return Response.json({
+          error: `Import for ${import_type} is already in progress`,
+          conflict: true,
+          existing_batch_id: existing.id,
+          started_at: existing.created_date,
+        }, { status: 409 });
+      }
     }
 
     // Check if it's a ZIP-based Medicare stats import
