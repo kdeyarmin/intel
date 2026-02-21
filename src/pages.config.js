@@ -63,7 +63,6 @@ import EnrichmentHub from './pages/EnrichmentHub';
 import ErrorReports from './pages/ErrorReports';
 import ImportMonitoring from './pages/ImportMonitoring';
 import ImportSchedule from './pages/ImportSchedule';
-import LeadDiscoveryCopilot from './pages/LeadDiscoveryCopilot';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
 import LocationAnalytics from './pages/LocationAnalytics';
@@ -106,7 +105,6 @@ export const PAGES = {
     "ErrorReports": ErrorReports,
     "ImportMonitoring": ImportMonitoring,
     "ImportSchedule": ImportSchedule,
-    "LeadDiscoveryCopilot": LeadDiscoveryCopilot,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationAnalytics": LocationAnalytics,

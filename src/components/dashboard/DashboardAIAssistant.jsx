@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,163 +7,89 @@ import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 import {
   Sparkles, Send, Loader2, RefreshCw, TrendingUp,
-  AlertTriangle, FileText, ChevronDown, ChevronUp
+  AlertTriangle, FileText, ChevronDown, ChevronUp, Search, Users
 } from 'lucide-react';
 
 const QUICK_PROMPTS = [
   { label: 'Summarize dashboard', icon: FileText, prompt: 'Give me a concise executive summary of the current dashboard metrics, recent activity, and overall data health.' },
   { label: 'Find anomalies', icon: AlertTriangle, prompt: 'Analyze the provider, referral, and utilization data for any anomalies, outliers, or unusual patterns that need attention.' },
-  { label: 'Trend analysis', icon: TrendingUp, prompt: 'Identify the most important trends in the data — referral growth, provider additions, utilization changes, and data quality trajectory.' },
+  { label: 'Discover Leads', icon: Users, prompt: 'Find psychiatrists with high patient volumes near Pittsburgh who are likely to refer to home health.' },
   { label: 'Data quality audit', icon: AlertTriangle, prompt: 'Perform a thorough data quality audit. Check for missing fields, invalid formats, stale records, and suggest specific fixes.' },
 ];
-
-function buildDataContext(providers, locations, referrals, utilization, taxonomies, batches, auditEvents) {
-  const total = providers.length;
-  const orgCount = providers.filter(p => p.entity_type === 'Organization').length;
-  const indCount = providers.filter(p => p.entity_type === 'Individual').length;
-  const deactivated = providers.filter(p => p.status === 'Deactivated').length;
-  const needEnrichment = providers.filter(p => p.needs_nppes_enrichment).length;
-  const withEmail = providers.filter(p => p.email).length;
-
-  const stateMap = {};
-  locations.forEach(l => { if (l.state) stateMap[l.state] = (stateMap[l.state] || 0) + 1; });
-  const topStates = Object.entries(stateMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-  const locNPIs = new Set(locations.map(l => l.npi));
-  const noLocation = providers.filter(p => !locNPIs.has(p.npi)).length;
-  const taxNPIs = new Set(taxonomies.map(t => t.npi));
-  const noTaxonomy = providers.filter(p => !taxNPIs.has(p.npi)).length;
-
-  // Referral trends
-  const refByYear = {};
-  referrals.forEach(r => {
-    if (!r.year) return;
-    refByYear[r.year] = (refByYear[r.year] || 0) + (r.total_referrals || 0);
-  });
-
-  // Utilization trends
-  const utilByYear = {};
-  utilization.forEach(u => {
-    if (!u.year) return;
-    if (!utilByYear[u.year]) utilByYear[u.year] = { services: 0, beneficiaries: 0, payment: 0, providers: new Set() };
-    utilByYear[u.year].services += (u.total_services || 0);
-    utilByYear[u.year].beneficiaries += (u.total_medicare_beneficiaries || 0);
-    utilByYear[u.year].payment += (u.total_medicare_payment || 0);
-    utilByYear[u.year].providers.add(u.npi);
-  });
-  const utilSummary = Object.entries(utilByYear).map(([y, d]) => ({
-    year: y, services: d.services, beneficiaries: d.beneficiaries, payment: Math.round(d.payment), providers: d.providers.size
-  })).sort((a, b) => Number(a.year) - Number(b.year));
-
-  // Recent batches
-  const recentBatches = batches.slice(0, 10).map(b => ({
-    type: b.import_type, status: b.status, rows: b.total_rows || 0,
-    imported: b.imported_rows || 0, failed: b.invalid_rows || 0,
-    date: b.created_date
-  }));
-
-  // Top specialties
-  const specMap = {};
-  taxonomies.forEach(t => {
-    if (t.taxonomy_description) specMap[t.taxonomy_description] = (specMap[t.taxonomy_description] || 0) + 1;
-  });
-  const topSpecialties = Object.entries(specMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-  return `DASHBOARD DATA SNAPSHOT (as of ${new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}):
-
-PROVIDERS: ${total} total (${indCount} individuals, ${orgCount} organizations)
-- Deactivated: ${deactivated}
-- Need NPPES enrichment: ${needEnrichment}
-- With email: ${withEmail} (${total > 0 ? Math.round(withEmail/total*100) : 0}%)
-- Missing location: ${noLocation} (${total > 0 ? Math.round(noLocation/total*100) : 0}%)
-- Missing taxonomy: ${noTaxonomy} (${total > 0 ? Math.round(noTaxonomy/total*100) : 0}%)
-
-TOP STATES: ${topStates.map(([s, c]) => `${s}:${c}`).join(', ')}
-
-TOP SPECIALTIES: ${topSpecialties.map(([s, c]) => `${s}:${c}`).join(', ')}
-
-REFERRALS BY YEAR: ${Object.entries(refByYear).sort((a,b) => Number(a[0])-Number(b[0])).map(([y, c]) => `${y}:${c.toLocaleString()}`).join(', ')}
-
-UTILIZATION BY YEAR:
-${utilSummary.map(u => `${u.year}: ${u.providers} providers, ${u.services.toLocaleString()} services, ${u.beneficiaries.toLocaleString()} beneficiaries, $${u.payment.toLocaleString()} payment`).join('\n')}
-
-LOCATIONS: ${locations.length} total
-- Missing phone: ${locations.filter(l => !l.phone).length}
-- Missing zip: ${locations.filter(l => !l.zip).length}
-
-RECENT IMPORTS: ${recentBatches.map(b => `${b.type}(${b.status}, ${b.imported}/${b.rows} rows, ${b.date?.split('T')[0]})`).join('; ')}
-
-RECENT ACTIVITY: ${(auditEvents || []).slice(0, 5).map(e => `${e.event_type} by ${e.user_email?.split('@')[0]} at ${e.created_date}`).join('; ')}`;
-}
 
 export default function DashboardAIAssistant({ isFullPage = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExpanded, setIsExpanded] = useState(isFullPage);
-  const [hasAutoRun, setHasAutoRun] = useState(false);
+  const [conversation, setConversation] = useState(null);
   const messagesEndRef = useRef(null);
 
-  const { data: providers = [] } = useQuery({ queryKey: ['providers'], queryFn: () => base44.entities.Provider.list('-created_date', 10000), staleTime: 60000 });
-  const { data: locations = [] } = useQuery({ queryKey: ['locations'], queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000), staleTime: 60000 });
-  const { data: referrals = [] } = useQuery({ queryKey: ['referrals'], queryFn: () => base44.entities.CMSReferral.list('-created_date', 10000), staleTime: 60000 });
-  const { data: utilization = [] } = useQuery({ queryKey: ['utilization'], queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000), staleTime: 60000 });
-  const { data: taxonomies = [] } = useQuery({ queryKey: ['taxonomies'], queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 10000), staleTime: 60000 });
-  const { data: batches = [] } = useQuery({ queryKey: ['importBatches'], queryFn: () => base44.entities.ImportBatch.list('-created_date', 100), staleTime: 60000 });
-  const { data: auditEvents = [] } = useQuery({ queryKey: ['auditEvents'], queryFn: () => base44.entities.AuditEvent.list('-created_date', 5), staleTime: 60000 });
-
-  const dataLoaded = providers.length > 0;
-
-  const dataContext = useMemo(() => {
-    if (!dataLoaded) return '';
-    return buildDataContext(providers, locations, referrals, utilization, taxonomies, batches, auditEvents);
-  }, [dataLoaded, providers, locations, referrals, utilization, taxonomies, batches, auditEvents]);
-
+  // Initialize Conversation with Agent
   useEffect(() => {
-    const container = messagesEndRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages]);
+    const init = async () => {
+      try {
+        const conv = await base44.agents.createConversation({
+          agent_name: 'caremetric_assistant',
+          metadata: { name: 'Dashboard Session' }
+        });
+        setConversation(conv);
+        if (conv.messages) setMessages(conv.messages);
+      } catch (err) {
+        console.error("Agent init failed:", err);
+      }
+    };
+    if (isExpanded && !conversation) init();
+  }, [isExpanded]);
 
-  // Auto-generate initial briefing only when expanded
+  // Subscribe to updates
   useEffect(() => {
-    if (isExpanded && dataLoaded && !hasAutoRun && messages.length === 0) {
-      setHasAutoRun(true);
-      runQuery('Give me a concise executive briefing of the dashboard. Highlight the top 3 most important findings — including any data quality concerns, notable trends, and actionable recommendations. Keep it under 200 words.');
+    if (conversation?.id) {
+      const unsubscribe = base44.agents.subscribeToConversation(conversation.id, (data) => {
+        setMessages(data.messages);
+        
+        // Check if latest message is from assistant and done
+        const lastMsg = data.messages[data.messages.length - 1];
+        if (lastMsg?.role === 'assistant' && !lastMsg.tool_calls?.some(tc => ['running', 'pending'].includes(tc.status))) {
+          setIsGenerating(false);
+        }
+      });
+      return unsubscribe;
     }
-  }, [isExpanded, dataLoaded, hasAutoRun]);
+  }, [conversation?.id]);
 
   useEffect(() => {
     if (isFullPage) setIsExpanded(true);
   }, [isFullPage]);
 
+  // Scroll to bottom
+  useEffect(() => {
+    const container = messagesEndRef.current?.parentElement;
+    if (container) container.scrollTop = container.scrollHeight;
+  }, [messages]);
+
   const runQuery = async (prompt) => {
-    if (!prompt.trim() || isGenerating) return;
-
-    const userMsg = { role: 'user', content: prompt };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    if (!prompt.trim() || !conversation) return;
+    
     setIsGenerating(true);
-
-    const fullPrompt = `You are CareMetric AI, an expert healthcare data analyst assistant embedded in a provider intelligence dashboard. You analyze CMS Medicare data, NPPES provider registries, referral patterns, and utilization trends.
-
-Your style: concise, data-driven, actionable. Use specific numbers from the data. Format with markdown — use **bold** for key metrics, bullet points for lists, and keep paragraphs short. When identifying issues, always suggest a specific next step.
-
-${dataContext}
-
-USER QUESTION: ${prompt}`;
-
-    const response = await base44.integrations.Core.InvokeLLM({ prompt: fullPrompt });
-    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    setIsGenerating(false);
+    setInput('');
+    
+    // Optimistic UI update handled by subscription
+    try {
+      await base44.agents.addMessage(conversation, {
+        role: 'user',
+        content: prompt
+      });
+    } catch (err) {
+      console.error(err);
+      setIsGenerating(false);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     runQuery(input);
   };
-
   return (
     <Card className={`bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10 ${isFullPage ? 'h-full flex flex-col' : ''}`}>
       <CardHeader className="pb-2 flex-shrink-0">
