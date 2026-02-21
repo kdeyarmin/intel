@@ -46,7 +46,7 @@ export default function EmailBotControls({
               <Input
                 type="number" min="1" max="500" value={batchSize}
                 onChange={e => setBatchSize(Math.min(500, parseInt(e.target.value) || 10))}
-                className="h-8 text-sm" disabled={isRunning}
+                className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-200" disabled={isRunning}
               />
             </div>
             <div className="flex items-center gap-2 pt-5">
