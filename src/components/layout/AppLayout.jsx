@@ -5,10 +5,11 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database, Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
+import NotificationBell from '../shared/NotificationBell';
 
 const NAV_SECTIONS = [
   {
@@ -41,25 +42,20 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'sales_rep'] },
       { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
-      { name: 'Network Analysis', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
+      { name: 'Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
       { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
-    label: 'Data Operations',
+    label: 'Admin',
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
       { name: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
-    ]
-  },
-  {
-    label: 'Settings',
-    items: [
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Audit Log', icon: Shield, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
+      { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
     ]
   },
 ];
@@ -223,10 +219,18 @@ export default function AppLayout({ children, currentPageName }) {
 
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60">
-          {user && sidebarOpen && (
-            <div className="mb-2 px-2">
-              <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>
-              <p className="text-[10px] text-slate-600 capitalize">{user.role?.replace('_', ' ')}</p>
+          {sidebarOpen && (
+            <div className="mb-2 px-2 flex items-center justify-between">
+              <div>
+                {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
+                {user && <p className="text-[10px] text-slate-600 capitalize">{user.role?.replace('_', ' ')}</p>}
+              </div>
+              <NotificationBell />
+            </div>
+          )}
+          {!sidebarOpen && (
+            <div className="flex justify-center mb-2">
+              <NotificationBell />
             </div>
           )}
           <Button
@@ -248,7 +252,8 @@ export default function AppLayout({ children, currentPageName }) {
           <Menu className="w-5 h-5" />
         </Button>
         <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-        <h1 className="text-sm font-bold text-white">CareMetric <span className="text-cyan-400">AI</span></h1>
+        <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
+        <NotificationBell />
       </div>
 
       {/* Main content */}
