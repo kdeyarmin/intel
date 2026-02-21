@@ -234,8 +234,34 @@ Deno.serve(async (req) => {
       ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
     });
   } catch (error) {
-    const isRetryable = error.message?.includes('download') || error.message?.includes('timeout');
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, { phase: 'fatal', detail: error.message }], ...(isRetryable ? { paused_at: new Date().toISOString() } : {}) });
-    return Response.json({ error: error.message, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
+    const errorMsg = error.message || String(error);
+    const isRetryable = errorMsg.includes('download') || 
+                        errorMsg.includes('timeout') || 
+                        errorMsg.includes('too small') || 
+                        errorMsg.includes('not a valid ZIP') ||
+                        errorMsg.includes('Failed to download');
+    
+    const errorCategory = errorMsg.includes('too small') || errorMsg.includes('not a valid ZIP') ? 'api_downtime' : 
+                          errorMsg.includes('timeout') ? 'network_error' : 'unknown';
+
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { 
+      status: isRetryable ? 'paused' : 'failed', 
+      error_samples: [...errorSamples, { phase: 'fatal', detail: errorMsg }], 
+      ...(isRetryable ? { paused_at: new Date().toISOString() } : {}) 
+    });
+
+    // Create Error Report for tracking and retry logic
+    await base44.asServiceRole.entities.ErrorReport.create({
+      error_type: 'import_failure',
+      error_category: errorCategory,
+      severity: isRetryable ? 'medium' : 'high',
+      source: batch.id,
+      title: `Medicare SNF Import Failed: ${year}`,
+      description: errorMsg,
+      status: 'new',
+      context: { import_type: 'medicare_snf_stats', year, url: downloadUrl }
+    });
+
+    return Response.json({ error: errorMsg, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }
 });
