@@ -10,32 +10,44 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { mode = 'unverified', batch_size = 10, filter_status } = await req.json();
+    const { mode = 'unverified', batch_size = 10, filter_status, npis } = await req.json();
 
-    // Build filter based on mode
-    let filter = {};
-    if (mode === 'unverified') {
-      // Providers with email but never analyzed
-      filter = { email: { $ne: null } };
-    } else if (mode === 'risky') {
-      filter = { email_validation_status: 'risky' };
-    } else if (mode === 'invalid') {
-      filter = { email_validation_status: 'invalid' };
-    } else if (mode === 'reverify') {
-      // Re-verify risky + invalid
-      filter = { email_validation_status: { $in: ['risky', 'invalid'] } };
-    }
+    let toVerify = [];
 
-    const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', 500);
+    if (mode === 'specific_npis' && npis && npis.length > 0) {
+      // Re-verify specific providers by NPI list
+      for (let i = 0; i < npis.length; i += 50) {
+        const chunk = npis.slice(i, i + 50);
+        for (const npi of chunk) {
+          const found = await base44.asServiceRole.entities.Provider.filter({ npi }, '-created_date', 1);
+          if (found.length > 0 && found[0].email) {
+            toVerify.push(found[0]);
+          }
+        }
+      }
+    } else {
+      // Build filter based on mode
+      let filter = {};
+      if (mode === 'unverified') {
+        filter = { email: { $ne: null } };
+      } else if (mode === 'risky') {
+        filter = { email_validation_status: 'risky' };
+      } else if (mode === 'invalid') {
+        filter = { email_validation_status: 'invalid' };
+      } else if (mode === 'reverify') {
+        filter = { email_validation_status: { $in: ['risky', 'invalid'] } };
+      }
 
-    // Filter further: must have email, and for unverified mode skip already analyzed
-    let toVerify = candidates.filter(p => p.email && p.email.trim());
-    if (mode === 'unverified') {
-      toVerify = toVerify.filter(p => !p.email_analyzed_at);
+      const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', 500);
+      toVerify = candidates.filter(p => p.email && p.email.trim());
+      if (mode === 'unverified') {
+        toVerify = toVerify.filter(p => !p.email_analyzed_at);
+      }
     }
 
     // Take batch
-    const batch = toVerify.slice(0, Math.min(batch_size, 25));
+    const maxBatch = mode === 'specific_npis' ? Math.min(toVerify.length, 50) : Math.min(batch_size, 25);
+    const batch = toVerify.slice(0, maxBatch);
 
     const results = [];
     let verified = 0;
