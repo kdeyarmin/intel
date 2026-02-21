@@ -2,10 +2,13 @@ import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Stethoscope, Network, Mail, ShieldCheck, MapPin as MapPinIcon, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import BasicProfile from '../components/providers/BasicProfile';
 import ProviderKPIRow from '../components/providers/ProviderKPIRow';
@@ -101,6 +104,12 @@ export default function ProviderDetail() {
     staleTime: 120000,
   });
 
+  const { data: outreachMessages = [] } = useQuery({
+    queryKey: ['providerMessages', npi],
+    queryFn: () => base44.entities.OutreachMessage.filter({ npi }),
+    enabled: !!npi,
+  });
+
   const queryClient = useQueryClient();
   const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
 
@@ -168,143 +177,206 @@ export default function ProviderDetail() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content - Left 2/3 */}
-        <div className="lg:col-span-2 space-y-6">
-          <BasicProfile provider={provider} taxonomy={taxonomies} locations={locations} />
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="w-full justify-start h-12 bg-slate-100 p-1 mb-6 overflow-x-auto">
+          <TabsTrigger value="overview" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <LayoutDashboard className="w-4 h-4" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="clinical" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Stethoscope className="w-4 h-4" /> Clinical Data
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <MapPinIcon className="w-4 h-4" /> Locations & Territory
+          </TabsTrigger>
+          <TabsTrigger value="network" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Network className="w-4 h-4" /> Network & Affiliations
+          </TabsTrigger>
+          <TabsTrigger value="outreach" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Mail className="w-4 h-4" /> Outreach
+          </TabsTrigger>
+          <TabsTrigger value="quality" className="gap-2 h-10 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <ShieldCheck className="w-4 h-4" /> Data Quality
+          </TabsTrigger>
+        </TabsList>
 
-          <WhyThisProvider
-            score={score}
-            utilization={latestUtil}
-            referrals={latestRef}
-            taxonomy={taxonomies}
-          />
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <BasicProfile provider={provider} taxonomy={taxonomies} locations={locations} />
+              <AISummary
+                provider={provider}
+                taxonomies={taxonomies}
+                utilization={latestUtil}
+                referral={latestRef}
+                locations={locations}
+                score={score}
+              />
+              <WhyThisProvider
+                score={score}
+                utilization={latestUtil}
+                referrals={latestRef}
+                taxonomy={taxonomies}
+              />
+              {score && (
+                <ScoreBreakdown
+                  score={score.score}
+                  breakdown={score.score_breakdown}
+                  reasons={score.reasons}
+                />
+              )}
+            </div>
+            <div className="space-y-6">
+              <AINetworkFitCard
+                provider={provider}
+                taxonomy={taxonomies}
+                utilization={latestUtil}
+                referrals={latestRef}
+                score={score}
+                locations={locations}
+              />
+              <ReferralLikelihoodSignals
+                utilization={latestUtil}
+                referrals={latestRef}
+                taxonomy={taxonomies}
+              />
+               <AIMarketInsights
+                provider={provider}
+                location={primaryLocation}
+                taxonomies={taxonomies}
+                utilizations={utilizations}
+                referrals={referrals}
+                score={score}
+              />
+            </div>
+          </div>
+        </TabsContent>
 
-          {score && (
-            <ScoreBreakdown
-              score={score.score}
-              breakdown={score.score_breakdown}
-              reasons={score.reasons}
-            />
-          )}
-
-          <AISummary
-            provider={provider}
-            taxonomies={taxonomies}
-            utilization={latestUtil}
-            referral={latestRef}
-            locations={locations}
-            score={score}
-          />
-
-          {/* Aggregated Summaries */}
+        <TabsContent value="clinical" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />
             <ReferralSummaryCard referrals={referrals} />
           </div>
-
           <UtilizationInsights utilization={latestUtil} />
-
-          {/* Historical Charts */}
-          <UtilizationTrendChart utilizations={utilizations} />
-          <ReferralTrendChart referrals={referrals} />
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UtilizationTrendChart utilizations={utilizations} />
+            <ReferralTrendChart referrals={referrals} />
+          </div>
           <PatientPopulationFingerprint
             provider={provider}
             taxonomy={taxonomies}
             utilization={latestUtil}
             referrals={latestRef}
           />
-
-          {/* Affiliations */}
-          <ProviderAffiliations
-            npi={npi}
-            provider={provider}
-            location={primaryLocation}
-            taxonomies={taxonomies}
-          />
-
-          {/* Full Locations Table */}
-          <LocationsTable locations={locations} />
-
-          {/* Full Taxonomy List */}
           <TaxonomyList taxonomies={taxonomies} />
-        </div>
+        </TabsContent>
 
-        {/* Sidebar - Right 1/3 */}
-        <div className="space-y-6">
-          <AINetworkFitCard
-            provider={provider}
-            taxonomy={taxonomies}
-            utilization={latestUtil}
-            referrals={latestRef}
-            score={score}
-            locations={locations}
-          />
+        <TabsContent value="locations" className="space-y-6">
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+               <LocationsTable locations={locations} />
+               <TerritoryIntelligence location={primaryLocation} />
+            </div>
+             <div className="space-y-6">
+               <RelatedLocations npi={npi} />
+             </div>
+           </div>
+        </TabsContent>
 
-          <ReferralLikelihoodSignals
-            utilization={latestUtil}
-            referrals={latestRef}
-            taxonomy={taxonomies}
-          />
+        <TabsContent value="network" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+               <ProviderAffiliations
+                npi={npi}
+                provider={provider}
+                location={primaryLocation}
+                taxonomies={taxonomies}
+              />
+            </div>
+            <div className="space-y-6">
+              <AIRelatedProviders
+                provider={provider}
+                location={primaryLocation}
+                taxonomies={taxonomies}
+                referrals={latestRef}
+                allProviders={allProviders}
+                allLocations={allLocations}
+                allTaxonomies={allTaxonomies}
+              />
+            </div>
+          </div>
+        </TabsContent>
 
-          <ProviderMessaging
-            provider={provider}
-            locations={locations}
-          />
+        <TabsContent value="outreach" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <ProviderMessaging
+                provider={provider}
+                locations={locations}
+              />
+              
+              {outreachMessages.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                       <MessageSquare className="w-5 h-5 text-violet-500" />
+                       Campaign History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                     <div className="space-y-4">
+                      {outreachMessages.sort((a,b) => new Date(b.created_date) - new Date(a.created_date)).map(msg => (
+                        <div key={msg.id} className="border rounded-lg p-3">
+                           <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-semibold text-sm">{msg.subject || 'No Subject'}</h4>
+                                <p className="text-xs text-slate-500">Sent: {new Date(msg.created_date).toLocaleDateString()}</p>
+                              </div>
+                              <Badge variant="outline">{msg.status}</Badge>
+                           </div>
+                           <p className="text-sm text-slate-600 line-clamp-2">{msg.body}</p>
+                        </div>
+                      ))}
+                     </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+            <div className="space-y-6">
+              <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
+              <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
+            </div>
+          </div>
+        </TabsContent>
 
-          <TerritoryIntelligence location={primaryLocation} />
-
-          <RelatedLocations npi={npi} />
-
-          <DataQualityInsightsCard npi={npi} provider={provider} />
-
-          <ProviderAIQualityInsights
-            provider={provider}
-            locations={locations}
-            utilizations={utilizations}
-            referrals={referrals}
-            taxonomies={taxonomies}
-          />
-
-          <ProviderImportHistory npi={npi} />
-
-          <AIDataEnrichmentPanel
-            provider={provider}
-            location={primaryLocation}
-            taxonomies={taxonomies}
-            entityType={provider.entity_type === 'Organization' ? 'organization' : 'provider'}
-            onDataUpdated={() => {
-              queryClient.invalidateQueries({ queryKey: ['provider', npi] });
-              queryClient.invalidateQueries({ queryKey: ['providerLocations', npi] });
-              queryClient.invalidateQueries({ queryKey: ['providerTaxonomies', npi] });
-            }}
-          />
-
-          <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
-
-          <AIRelatedProviders
-            provider={provider}
-            location={primaryLocation}
-            taxonomies={taxonomies}
-            referrals={latestRef}
-            allProviders={allProviders}
-            allLocations={allLocations}
-            allTaxonomies={allTaxonomies}
-          />
-
-          <AIMarketInsights
-            provider={provider}
-            location={primaryLocation}
-            taxonomies={taxonomies}
-            utilizations={utilizations}
-            referrals={referrals}
-            score={score}
-          />
-
-          <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
-        </div>
-      </div>
+        <TabsContent value="quality" className="space-y-6">
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <DataQualityInsightsCard npi={npi} provider={provider} />
+              <ProviderAIQualityInsights
+                provider={provider}
+                locations={locations}
+                utilizations={utilizations}
+                referrals={referrals}
+                taxonomies={taxonomies}
+              />
+              <ProviderImportHistory npi={npi} />
+            </div>
+            <div className="space-y-6">
+              <AIDataEnrichmentPanel
+                provider={provider}
+                location={primaryLocation}
+                taxonomies={taxonomies}
+                entityType={provider.entity_type === 'Organization' ? 'organization' : 'provider'}
+                onDataUpdated={() => {
+                  queryClient.invalidateQueries({ queryKey: ['provider', npi] });
+                  queryClient.invalidateQueries({ queryKey: ['providerLocations', npi] });
+                  queryClient.invalidateQueries({ queryKey: ['providerTaxonomies', npi] });
+                }}
+              />
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
