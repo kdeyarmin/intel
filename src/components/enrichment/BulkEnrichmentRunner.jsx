@@ -173,13 +173,22 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
           </div>
         )}
 
+        {running && (
+          <div className="space-y-2">
+            <Progress value={progress.total > 0 ? (progress.current / progress.total) * 100 : 0} className="h-2" />
+            <p className="text-[10px] text-slate-500 text-center">
+              Processing {progress.current}/{progress.total} providers...
+            </p>
+          </div>
+        )}
+
         <Button
           onClick={handleRun}
           disabled={running || !loadedExisting || needEnrichment === 0}
           className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
         >
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {!loadedExisting ? 'Loading...' : running ? 'Enriching...' : `Enrich ${Math.min(batchSize, needEnrichment)} Providers`}
+          {!loadedExisting ? 'Loading...' : running ? 'Enriching...' : enrichAll ? `Enrich All ${needEnrichment.toLocaleString()} Candidates` : `Enrich ${Math.min(batchSize, needEnrichment)} Providers`}
         </Button>
       </CardContent>
     </Card>
