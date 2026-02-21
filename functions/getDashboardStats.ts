@@ -33,9 +33,15 @@ Deno.serve(async (req) => {
             countEntity('ProviderTaxonomy'),
         ]);
 
-        // Email stats from a sample (fast)
-        let emailSample = await base44.asServiceRole.entities.Provider.list('-created_date', 5000);
-        if (!Array.isArray(emailSample)) emailSample = [];
+        // Email stats from a sample (fast) — use smaller batch to avoid issues
+        let emailSample = [];
+        try {
+            const batch1 = await base44.asServiceRole.entities.Provider.list('-created_date', 1000);
+            if (Array.isArray(batch1)) emailSample = batch1;
+        } catch (e) {
+            console.warn('Email sample fetch failed:', e.message);
+        }
+
         const withEmail = emailSample.filter(p => p.email).length;
         const emailSearched = emailSample.filter(p => p.email_searched_at).length;
         const emailValid = emailSample.filter(p => p.email_validation_status === 'valid').length;
