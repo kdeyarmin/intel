@@ -291,8 +291,19 @@ Deno.serve(async (req) => {
                     const lastBatch = batches[0];
 
                     if (lastBatch.status === 'failed') {
+                        // Check for transient errors to retry sooner
+                        let effectiveDelay = delayMs;
+                        try {
+                            const errors = await base44.asServiceRole.entities.ErrorReport.filter({ source: lastBatch.id }, '-created_date', 5);
+                            const isTransient = errors.some(e => ['rate_limit', 'api_downtime', 'network_error'].includes(e.error_category));
+                            if (isTransient) {
+                                effectiveDelay = 15 * 60 * 1000; // Retry transient errors after 15 mins
+                                console.log(`[AutoChain] State ${st} has transient errors. Using shorter delay: 15m.`);
+                            }
+                        } catch (e) {}
+
                         const age = Date.now() - new Date(lastBatch.created_date).getTime();
-                        if (age > delayMs) {
+                        if (age > effectiveDelay) {
                             console.log(`[AutoChain] Auto-Retry: State ${st} failed ${Math.round(age/60000)}m ago. Retrying.`);
                             forceNextState = st;
                             break;
