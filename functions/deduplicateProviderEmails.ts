@@ -15,135 +15,141 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'provider_id is required' }, { status: 400 });
     }
 
-    // Fetch the provider
-    const providers = await base44.asServiceRole.entities.Provider.filter({ id: provider_id });
-    if (providers.length === 0) {
+    // Get the provider and their email data
+    const provider = await base44.entities.Provider.get(provider_id);
+    if (!provider) {
       return Response.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    const provider = providers[0];
-    
-    // Collect all emails
+    // Collect all emails for this provider
     const allEmails = [];
+    
+    // Primary email
     if (provider.email) {
       allEmails.push({
         email: provider.email,
-        source: 'primary',
-        confidence: provider.email_confidence || 'unknown',
+        confidence: provider.email_confidence || 'medium',
+        source: provider.email_source || 'search',
+        validation_status: provider.email_validation_status || 'unknown',
         quality_score: provider.email_quality_score || 0,
-        validation_status: provider.email_validation_status || 'unknown'
-      });
-    }
-    
-    if (provider.additional_emails && Array.isArray(provider.additional_emails)) {
-      provider.additional_emails.forEach((alt, idx) => {
-        allEmails.push({
-          email: alt.email,
-          source: `additional_${idx}`,
-          confidence: alt.confidence || 'unknown',
-          quality_score: alt.quality_score || 0,
-          validation_status: alt.validation_status || 'unknown'
-        });
+        quality_confidence: provider.email_quality_confidence || 'low'
       });
     }
 
+    // Additional emails
+    if (provider.additional_emails && Array.isArray(provider.additional_emails)) {
+      allEmails.push(...provider.additional_emails.map(e => ({
+        email: e.email,
+        confidence: e.confidence || 'medium',
+        source: e.source || 'search',
+        validation_status: e.validation_status || 'unknown',
+        quality_score: 0
+      })));
+    }
+
+    // If only one email, no deduplication needed
     if (allEmails.length <= 1) {
       return Response.json({
         success: true,
-        provider_npi: provider.npi,
-        email_groups: allEmails.length > 0 ? [{ 
-          primary: allEmails[0], 
-          alternatives: [] 
-        }] : [],
-        deduplication_performed: false
+        email_groups: [],
+        message: 'Only one email found, no deduplication needed'
       });
     }
 
-    // Use AI to identify duplicates/variants
-    const prompt = `Analyze these email addresses and identify which ones are likely duplicates or variants of the same person/contact:
+    // Use AI to identify duplicates and group similar emails
+    const deduplicationPrompt = `You are an email deduplication expert. Analyze these email addresses for the same provider and identify potential duplicates or similar variations.
 
-${allEmails.map((e, i) => `${i + 1}. ${e.email} (confidence: ${e.confidence}, quality_score: ${e.quality_score})`).join('\n')}
+Provider: ${provider.entity_type === 'Individual' ? `${provider.first_name} ${provider.last_name}` : provider.organization_name}
+Organization: ${provider.organization_name || 'N/A'}
 
-Provider: ${provider.first_name} ${provider.last_name} (${provider.npi})
+Email addresses found:
+${allEmails.map((e, i) => `${i + 1}. ${e.email} (confidence: ${e.confidence}, validation: ${e.validation_status})`).join('\n')}
 
-For each group of duplicate/variant emails:
-1. Identify which is the most reliable (consider confidence score and quality)
-2. Explain why they're duplicates (typo, formatting variation, different domain, etc.)
-3. Rank alternatives by reliability
+For each group of similar/duplicate emails:
+1. Identify which is the PRIMARY email (most verified, highest confidence, best quality)
+2. List ALTERNATIVES with why they're duplicates/similar
+3. Provide the REASON for choosing the primary one
 
-Return a JSON object with:
+Format your response as JSON with this structure:
 {
   "groups": [
     {
-      "primary_email": "the most reliable email",
-      "reason_for_primary": "why this one is best",
+      "primary": {"email": "...", "confidence": "..."},
+      "primary_reason": "Why this is the best one",
       "alternatives": [
-        {
-          "email": "alternative email",
-          "reason_duplicate": "why it's a duplicate",
-          "reliability_score": 0-100
-        }
+        {"email": "...", "reason_duplicate": "Why this is similar/duplicate", "confidence": "...", "reliability_score": 75}
       ]
     }
-  ]
-}`;
+  ],
+  "analysis_notes": "General observations about the emails"
+}
 
-    const analysisResult = await base44.integrations.Core.InvokeLLM({
-      prompt,
+IMPORTANT: Return ONLY valid JSON, no markdown formatting or code blocks.`;
+
+    const llmResponse = await base44.integrations.Core.InvokeLLM({
+      prompt: deduplicationPrompt,
       response_json_schema: {
-        type: 'object',
+        type: "object",
         properties: {
           groups: {
-            type: 'array',
+            type: "array",
             items: {
-              type: 'object',
+              type: "object",
               properties: {
-                primary_email: { type: 'string' },
-                reason_for_primary: { type: 'string' },
+                primary: { type: "object" },
+                primary_reason: { type: "string" },
                 alternatives: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      email: { type: 'string' },
-                      reason_duplicate: { type: 'string' },
-                      reliability_score: { type: 'number' }
-                    }
-                  }
+                  type: "array",
+                  items: { type: "object" }
                 }
               }
             }
-          }
+          },
+          analysis_notes: { type: "string" }
         }
       }
     });
 
-    // Enrich groups with original metadata
-    const enrichedGroups = (analysisResult.groups || []).map(group => {
-      const primaryData = allEmails.find(e => e.email.toLowerCase() === group.primary_email.toLowerCase());
-      const alternativesData = group.alternatives.map(alt => {
-        const altData = allEmails.find(e => e.email.toLowerCase() === alt.email.toLowerCase());
+    // Enrich groups with quality data from our system
+    const enrichedGroups = (llmResponse.groups || []).map(group => {
+      const primaryData = allEmails.find(e => e.email === group.primary.email);
+      const enrichedAlts = (group.alternatives || []).map(alt => {
+        const altData = allEmails.find(e => e.email === alt.email);
         return {
           ...alt,
-          ...altData
+          validation_status: altData?.validation_status,
+          quality_score: altData?.quality_score || 0,
+          reliability_score: alt.reliability_score || 65
         };
       });
-      
+
       return {
-        primary: primaryData || { email: group.primary_email },
-        primary_reason: group.reason_for_primary,
-        alternatives: alternativesData
+        primary: {
+          ...primaryData,
+          email: group.primary.email
+        },
+        primary_reason: group.primary_reason,
+        alternatives: enrichedAlts
       };
+    });
+
+    // Save deduplication result to provider for future reference
+    await base44.entities.Provider.update(provider_id, {
+      email_dedup_analyzed_at: new Date().toISOString()
     });
 
     return Response.json({
       success: true,
-      provider_npi: provider.npi,
       email_groups: enrichedGroups,
-      deduplication_performed: true,
-      total_unique_groups: enrichedGroups.length
+      analysis_notes: llmResponse.analysis_notes,
+      total_emails: allEmails.length,
+      unique_groups: enrichedGroups.length
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('Deduplication error:', error);
+    return Response.json(
+      { error: error.message || 'Deduplication failed' },
+      { status: 500 }
+    );
   }
 });
