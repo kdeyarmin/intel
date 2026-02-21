@@ -4,8 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
-  Sparkles, Plus, Check, Loader2, ChevronDown, ChevronRight, ShieldCheck, AlertTriangle, Lightbulb
+  Sparkles, Plus, Check, Loader2, ChevronDown, ChevronRight, ShieldCheck, AlertTriangle, Lightbulb, Settings
 } from 'lucide-react';
 
 const RULE_TYPE_LABELS = {
@@ -48,6 +50,8 @@ function buildRuleConfig(ruleType) {
 export default function AIRuleSuggestions({ importType }) {
   const [expandedSuggestion, setExpandedSuggestion] = useState(null);
   const [addedRules, setAddedRules] = useState(new Set());
+  const [customizing, setCustomizing] = useState(null);
+  const [customConfig, setCustomConfig] = useState({});
   const queryClient = useQueryClient();
 
   // Fetch recent failed batches for this import type
@@ -122,14 +126,18 @@ export default function AIRuleSuggestions({ importType }) {
   }, [recentBatches, existingRules]);
 
   const createRuleMutation = useMutation({
-    mutationFn: async (suggestion) => {
+    mutationFn: async (suggestion, useCustomConfig = false) => {
+      const config = useCustomConfig && customConfig[suggestion.id] 
+        ? customConfig[suggestion.id] 
+        : buildRuleConfig(suggestion.ruleType);
+      
       await base44.entities.ImportValidationRule.create({
         import_type: importType,
         rule_name: suggestion.ruleName,
         description: suggestion.description,
         column: suggestion.column,
         rule_type: suggestion.ruleType,
-        config: buildRuleConfig(suggestion.ruleType),
+        config,
         severity: 'reject',
         enabled: true,
         order: 100,
@@ -137,10 +145,20 @@ export default function AIRuleSuggestions({ importType }) {
     },
     onSuccess: (_, suggestion) => {
       setAddedRules(prev => new Set(prev).add(suggestion.id));
+      setCustomizing(null);
       queryClient.invalidateQueries({ queryKey: ['existingRulesForSuggestion'] });
       queryClient.invalidateQueries({ queryKey: ['validationRulesForBatch'] });
     },
   });
+
+  const handleCustomize = (suggestion) => {
+    setCustomizing(suggestion.id);
+    const baseConfig = buildRuleConfig(suggestion.ruleType);
+    setCustomConfig(prev => ({
+      ...prev,
+      [suggestion.id]: { ...baseConfig }
+    }));
+  };
 
   if (!importType) return null;
 
@@ -217,34 +235,180 @@ export default function AIRuleSuggestions({ importType }) {
                       ))}
                     </div>
 
-                    {/* Add rule button */}
-                    <div className="flex justify-end">
-                      {isAdded ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 gap-1">
-                          <Check className="w-3 h-3" /> Rule Added
-                        </Badge>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
-                          onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate(s); }}
-                          disabled={isAdding}
-                        >
-                          {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                          Add Rule
-                        </Button>
-                      )}
-                    </div>
+                    {/* Action buttons */}
+                     <div className="flex items-center gap-2 justify-end">
+                       {isAdded ? (
+                         <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 gap-1">
+                           <Check className="w-3 h-3" /> Rule Added
+                         </Badge>
+                       ) : (
+                         <>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             className="h-7 text-xs gap-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+                             onClick={(e) => { e.stopPropagation(); handleCustomize(s); }}
+                           >
+                             <Settings className="w-3 h-3" /> Customize
+                           </Button>
+                           <Button
+                             size="sm"
+                             className="h-7 text-xs gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                             onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate(s); }}
+                             disabled={isAdding}
+                           >
+                             {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                             Add Rule
+                           </Button>
+                         </>
+                       )}
+                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           );
         })}
-      </div>
-    </div>
-  );
-}
+        </div>
+
+        {/* Customization Dialog */}
+        <Dialog open={!!customizing} onOpenChange={(open) => { if (!open) setCustomizing(null); }}>
+        <DialogContent className="max-w-lg bg-[#141d30] border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-slate-200">Customize Validation Rule</DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Adjust the rule configuration before applying it to future imports.
+            </DialogDescription>
+          </DialogHeader>
+          {customizing && suggestions.find(s => s.id === customizing) && (
+            <CustomizeRuleForm
+              suggestion={suggestions.find(s => s.id === customizing)}
+              config={customConfig[customizing] || {}}
+              onConfigChange={(cfg) => setCustomConfig(prev => ({
+                ...prev,
+                [customizing]: cfg
+              }))}
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCustomizing(null)} className="bg-transparent border-slate-700 text-slate-300">
+              Cancel
+            </Button>
+            <Button
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              onClick={() => {
+                const sug = suggestions.find(s => s.id === customizing);
+                if (sug) {
+                  createRuleMutation.mutate(sug, true);
+                }
+              }}
+              disabled={createRuleMutation.isPending}
+            >
+              {createRuleMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Apply Customized Rule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+        </Dialog>
+        </div>
+        );
+        }
+
+        function CustomizeRuleForm({ suggestion, config, onConfigChange }) {
+        const ruleType = suggestion.ruleType;
+
+        const renderConfig = () => {
+        switch (ruleType) {
+        case 'required':
+        return <p className="text-xs text-slate-400">No configuration needed — field will be marked as required.</p>;
+
+        case 'regex':
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-slate-400">Regex Pattern</label>
+            <Input
+              value={config.pattern || ''}
+              onChange={(e) => onConfigChange({ ...config, pattern: e.target.value })}
+              placeholder="e.g., ^\d{10}$"
+              className="text-xs bg-slate-800/50 border-slate-700"
+            />
+            <p className="text-[10px] text-slate-500">Default: {buildRuleConfig('regex').pattern}</p>
+          </div>
+        );
+
+        case 'numeric_range':
+        return (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-slate-400">Minimum Value</label>
+              <Input
+                type="number"
+                value={config.min ?? ''}
+                onChange={(e) => onConfigChange({ ...config, min: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="Leave empty for no minimum"
+                className="text-xs bg-slate-800/50 border-slate-700"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400">Maximum Value</label>
+              <Input
+                type="number"
+                value={config.max ?? ''}
+                onChange={(e) => onConfigChange({ ...config, max: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="Leave empty for no maximum"
+                className="text-xs bg-slate-800/50 border-slate-700"
+              />
+            </div>
+          </div>
+        );
+
+        case 'max_length':
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-slate-400">Maximum Length</label>
+            <Input
+              type="number"
+              value={config.max_length || 255}
+              onChange={(e) => onConfigChange({ ...config, max_length: Number(e.target.value) })}
+              className="text-xs bg-slate-800/50 border-slate-700"
+            />
+          </div>
+        );
+
+        case 'date_format':
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-slate-400">Date Format</label>
+            <Input
+              value={config.date_format || 'YYYY-MM-DD'}
+              onChange={(e) => onConfigChange({ ...config, date_format: e.target.value })}
+              placeholder="e.g., YYYY-MM-DD"
+              className="text-xs bg-slate-800/50 border-slate-700"
+            />
+            <p className="text-[10px] text-slate-500">Common formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY</p>
+          </div>
+        );
+
+        case 'enum_values':
+        return (
+          <div className="space-y-2">
+            <label className="text-xs text-slate-400">Allowed Values (comma-separated)</label>
+            <Input
+              value={(config.values || []).join(', ')}
+              onChange={(e) => onConfigChange({ ...config, values: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
+              placeholder="e.g., active, inactive, pending"
+              className="text-xs bg-slate-800/50 border-slate-700"
+            />
+          </div>
+        );
+
+        default:
+        return <p className="text-xs text-slate-400">No additional configuration for this rule type.</p>;
+        }
+        };
+
+        return <div className="space-y-4 py-2">{renderConfig()}</div>;
+        }
 
 function generateDescription(ruleType, column, count) {
   switch (ruleType) {
