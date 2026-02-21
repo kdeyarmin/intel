@@ -9,6 +9,7 @@ import DataQualityWidget from '../components/dashboard/DataQualityWidget';
 import DQQuickStatus from '../components/dashboard/DQQuickStatus';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import EmailCoverageWidget from '../components/dashboard/EmailCoverageWidget';
+import DataQualityScore from '../components/dashboard/DataQualityScore';
 import DataQualityReportDashboard from '../components/dataQuality/DataQualityReportDashboard';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import { formatDateET } from '../components/utils/dateUtils';
