@@ -1,4 +1,3 @@
-
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const US_STATES = [
@@ -109,9 +108,11 @@ async function fetchNPPESPage(params) {
                 const backoff = attempt * (isRateLimit ? RETRY_BACKOFF_MS * 2 : RETRY_BACKOFF_MS);
                 console.warn(`[API] ${response.status} error. Backing off ${backoff}ms (attempt ${attempt}/${MAX_RETRIES})...`);
                 await new Promise(r => setTimeout(r, Math.min(backoff, 5000)));
+                // We count this as a request attempt, but return generic retry logic
+                // Ideally we'd track this rate limit hit here, but for now we just return error on max retries
                 continue;
             }
-            if (!response.ok) return { error: `HTTP ${response.status}`, results: [] };
+            if (!response.ok) return { error: `HTTP ${response.status}`, results: [], requests: attempt };
             
             const data = await response.json();
             if (data.Errors && data.Errors.length > 0) {
