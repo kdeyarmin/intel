@@ -87,6 +87,7 @@ import Referrals from './pages/Referrals';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
+import Dashboard from './pages/Dashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -131,6 +132,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
+    "Dashboard": Dashboard,
 }
 
 export const pagesConfig = {
