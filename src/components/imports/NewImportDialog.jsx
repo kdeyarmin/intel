@@ -13,32 +13,24 @@ import { base44 } from '@/api/base44Client';
 import ActiveRulesBadge from './ActiveRulesBadge';
 
 const IMPORT_TYPES = [
-  { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, cat: 'nppes', hasUrl: false },
-  { id: 'nppes_registry', name: 'NPPES Registry', desc: 'Full NPI registry', icon: FileText, cat: 'nppes', hasUrl: false },
-  { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, cat: 'cms_claims', hasUrl: false },
-  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, cat: 'cms_claims', hasUrl: false },
-  { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, cat: 'cms_claims', hasUrl: true },
-  { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, cat: 'cms_claims', hasUrl: true },
-  { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, cat: 'cms_enrollment', hasUrl: true },
-  { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, cat: 'cms_enrollment', hasUrl: true },
-  { id: 'home_health_cost_reports', name: 'HH Cost Reports', desc: 'Financial & utilization', icon: TrendingUp, cat: 'cms_claims', hasUrl: false },
-  { id: 'nursing_home_chains', name: 'Nursing Home Chains', desc: 'Chain performance', icon: TrendingUp, cat: 'provider_data', hasUrl: false },
-  { id: 'home_health_pdgm', name: 'HH PDGM', desc: 'PDGM utilization', icon: TrendingUp, cat: 'cms_claims', hasUrl: false },
-  { id: 'inpatient_drg', name: 'Inpatient DRG', desc: 'Hospital DRG data', icon: TrendingUp, cat: 'cms_claims', hasUrl: false },
-  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, cat: 'provider_data', hasUrl: false },
-  { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, cat: 'cms_statistics', hasUrl: true },
-  { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, cat: 'cms_statistics', hasUrl: true },
-  { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, cat: 'cms_statistics', hasUrl: true },
-  { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, cat: 'cms_statistics', hasUrl: true },
+  { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, hasUrl: false },
+  { id: 'nppes_registry', name: 'NPPES Registry', desc: 'Full NPI registry', icon: FileText, hasUrl: false },
+  { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, hasUrl: false },
+  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: false },
+  { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, hasUrl: true },
+  { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
+  { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
+  { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, hasUrl: true },
+  { id: 'home_health_cost_reports', name: 'HH Cost Reports', desc: 'Financial & utilization', icon: TrendingUp, hasUrl: false },
+  { id: 'nursing_home_chains', name: 'Nursing Home Chains', desc: 'Chain performance', icon: TrendingUp, hasUrl: false },
+  { id: 'home_health_pdgm', name: 'HH PDGM', desc: 'PDGM utilization', icon: TrendingUp, hasUrl: false },
+  { id: 'inpatient_drg', name: 'Inpatient DRG', desc: 'Hospital DRG data', icon: TrendingUp, hasUrl: false },
+  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, hasUrl: false },
+  { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, hasUrl: true },
+  { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
+  { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
+  { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, hasUrl: true },
 ];
-
-const CATEGORY_LABELS = {
-  nppes: 'NPPES',
-  cms_claims: 'CMS Claims',
-  cms_enrollment: 'CMS Enrollment',
-  cms_statistics: 'CMS Statistics',
-  provider_data: 'Provider Data',
-};
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
   const [step, setStep] = useState(1);
@@ -134,7 +126,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       file_url: fileUrl || '',
       status: 'validating',
       dry_run: dryRun,
-      category: selectedType.cat || '',
       tags: tags.length > 0 ? tags : ['manual-import'],
       retry_count: 0,
       retry_params: Object.keys(retryParams).length > 0 ? retryParams : undefined,
@@ -205,9 +196,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       <p className="text-sm font-medium text-slate-200">{t.name}</p>
                       <p className="text-xs text-slate-500">{t.desc}</p>
                     </div>
-                    <Badge className="bg-slate-800 text-slate-400 text-[10px] border border-slate-700/50 flex-shrink-0">
-                      {CATEGORY_LABELS[t.cat] || t.cat}
-                    </Badge>
+
                   </button>
                 );
               })}
@@ -225,7 +214,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
               <selectedType.icon className="w-4 h-4 text-cyan-400" />
               <span className="text-sm font-medium text-slate-200">{selectedType.name}</span>
-              <Badge className="bg-slate-700/50 text-slate-400 text-[10px]">{CATEGORY_LABELS[selectedType.cat]}</Badge>
+
               <ActiveRulesBadge importType={selectedType.id} />
               <Button variant="ghost" size="sm" className="ml-auto text-xs text-slate-500 hover:text-slate-300 h-6" onClick={() => setStep(1)}>
                 Change
