@@ -146,13 +146,6 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
           </div>
         </div>
 
-        {running && (
-          <div className="space-y-2">
-            <Progress value={50} className="h-2" />
-            <p className="text-[10px] text-slate-500 text-center">Enriching providers... This may take a moment.</p>
-          </div>
-        )}
-
         {results && (
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-emerald-500/10 rounded-lg p-2 text-center">
