@@ -95,6 +95,7 @@ export default function ImportMonitoring() {
   const [lastNFilter, setLastNFilter] = useState(0); // 0 = off
   const [sortBy, setSortBy] = useState('created_date_desc');
   const [importTypeFilter, setImportTypeFilter] = useState('');
+  const [errorReportBatch, setErrorReportBatch] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
