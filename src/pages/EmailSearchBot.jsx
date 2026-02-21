@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 
 export default function EmailSearchBot() {
@@ -365,8 +365,6 @@ export default function EmailSearchBot() {
           medium means inferred from a domain pattern; low means best guess.
         </p>
       </div>
-
-      <DataSourcesFooter />
 
       </div>
     </div>
