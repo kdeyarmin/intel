@@ -56,7 +56,6 @@ import AutoImports from './pages/AutoImports';
 import BulkEmailExport from './pages/BulkEmailExport';
 import CMSAnalytics from './pages/CMSAnalytics';
 import CustomReports from './pages/CustomReports';
-import Dashboard from './pages/Dashboard';
 import DataCenter from './pages/DataCenter';
 import DataImports from './pages/DataImports';
 import DataQuality from './pages/DataQuality';
@@ -101,7 +100,6 @@ export const PAGES = {
     "BulkEmailExport": BulkEmailExport,
     "CMSAnalytics": CMSAnalytics,
     "CustomReports": CustomReports,
-    "Dashboard": Dashboard,
     "DataCenter": DataCenter,
     "DataImports": DataImports,
     "DataQuality": DataQuality,
@@ -136,7 +134,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Dashboard",
+    mainPage: "AIAssistant",
     Pages: PAGES,
     Layout: __Layout,
 };
