@@ -33,6 +33,7 @@ import ImportTrendCharts from '../components/imports/ImportTrendCharts';
 import ResumeImportButton from '../components/imports/ResumeImportButton';
 import DetailedErrorRows from '../components/imports/DetailedErrorRows';
 import AIImportQualityAnalysis from '../components/imports/AIImportQualityAnalysis';
+import BatchFilterSort from '../components/imports/BatchFilterSort';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -88,6 +89,8 @@ export default function ImportMonitoring() {
   const [isBulkRetrying, setIsBulkRetrying] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [lastNFilter, setLastNFilter] = useState(0); // 0 = off
+  const [sortBy, setSortBy] = useState('created_date_desc');
+  const [importTypeFilter, setImportTypeFilter] = useState('');
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -124,7 +127,7 @@ export default function ImportMonitoring() {
     }
   }, [batches]);
 
-  // Collect all unique tags and years
+  // Collect all unique tags, years, and import types
   const allTags = useMemo(() => {
     const tags = new Set();
     batches.forEach(b => (b.tags || []).forEach(t => tags.add(t)));
@@ -141,6 +144,18 @@ export default function ImportMonitoring() {
       }
     });
     return Array.from(years).sort().reverse();
+  }, [batches]);
+
+  const allImportTypes = useMemo(() => {
+    const types = new Set();
+    batches.forEach(b => {
+      if (b.import_type) types.add(b.import_type);
+    });
+    return Array.from(types).sort((a, b) => {
+      const labelA = IMPORT_TYPE_LABELS[a] || a;
+      const labelB = IMPORT_TYPE_LABELS[b] || b;
+      return labelA.localeCompare(labelB);
+    });
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -254,6 +269,11 @@ export default function ImportMonitoring() {
       filtered = filtered.filter(b => (b.tags || []).includes(tagFilter));
     }
 
+    // Import type filter
+    if (importTypeFilter) {
+      filtered = filtered.filter(b => b.import_type === importTypeFilter);
+    }
+
     // Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -289,10 +309,31 @@ export default function ImportMonitoring() {
           seen.set(key, b);
         }
       }
-      return Array.from(seen.values());
+      filtered = Array.from(seen.values());
     }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'created_date_desc':
+          return new Date(b.created_date) - new Date(a.created_date);
+        case 'created_date_asc':
+          return new Date(a.created_date) - new Date(b.created_date);
+        case 'completed_date_desc':
+          return (new Date(b.completed_at || b.updated_date || 0) - new Date(a.completed_at || a.updated_date || 0));
+        case 'completed_date_asc':
+          return (new Date(a.completed_at || a.updated_date || 0) - new Date(b.completed_at || b.updated_date || 0));
+        case 'total_rows_desc':
+          return (b.total_rows || 0) - (a.total_rows || 0);
+        case 'total_rows_asc':
+          return (a.total_rows || 0) - (b.total_rows || 0);
+        default:
+          return 0;
+      }
+    });
+
     return filtered;
-  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter]);
+  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter, sortBy, importTypeFilter]);
 
   const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
@@ -657,11 +698,18 @@ export default function ImportMonitoring() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters & Sort */}
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <CardTitle className="text-slate-200">Import Jobs</CardTitle>
+            <BatchFilterSort
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              importTypes={allImportTypes}
+              currentImportTypeFilter={importTypeFilter}
+              onFilterTypeChange={setImportTypeFilter}
+            />
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
