@@ -154,6 +154,7 @@ async function fetchAllPages(baseParams, batch, base44) {
     const allResults = [];
     let skip = 0;
     let hitLimit = false;
+    let totalAvailable = 0;
     for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
         if (isTimeUp()) break;
         baseParams.set('skip', String(skip));
@@ -162,13 +163,16 @@ async function fetchAllPages(baseParams, batch, base44) {
              console.warn(`[FetchAllPages] Error on skip ${skip}: ${data.error}`);
              break;
         }
+        if (data.result_count && data.result_count > totalAvailable) totalAvailable = data.result_count;
         if (data.results.length === 0) break;
         allResults.push(...data.results);
         if (data.results.length < BATCH_LIMIT) break;
         skip += BATCH_LIMIT;
         if (skip > MAX_SKIP) { hitLimit = true; break; }
     }
-    return { results: allResults, hitLimit };
+    // Also flag hitLimit if the API reported more results than we fetched
+    if (totalAvailable > allResults.length) hitLimit = true;
+    return { results: allResults, hitLimit, totalAvailable };
 }
 
 // ---- WRITE HELPERS ----
