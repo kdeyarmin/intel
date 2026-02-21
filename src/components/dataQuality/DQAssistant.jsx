@@ -42,7 +42,7 @@ export default function DQAssistant() {
     setInput('');
     setLoading(true);
 
-    const res = await base44.functions.invoke('dqAutoFix', {
+    const res = await base44.functions.invoke('runDataQualityScan', {
       action: 'assistant_query',
       question,
     });
@@ -64,7 +64,7 @@ export default function DQAssistant() {
     setLoading(true);
     setAutoFixResult(null);
 
-    const res = await base44.functions.invoke('dqAutoFix', {
+    const res = await base44.functions.invoke('runDataQualityScan', {
       action: 'auto_fix_eligible',
     });
 
@@ -81,7 +81,7 @@ export default function DQAssistant() {
     setLoading(true);
     setPatternResult(null);
 
-    const res = await base44.functions.invoke('dqAutoFix', {
+    const res = await base44.functions.invoke('runDataQualityScan', {
       action: 'analyze_patterns',
     });
 
