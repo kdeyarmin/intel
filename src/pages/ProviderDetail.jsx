@@ -38,6 +38,7 @@ import AINetworkFitCard from '../components/providers/AINetworkFitCard';
 import ProviderMessaging from '../components/providers/ProviderMessaging';
 import ProviderImportHistory from '../components/providers/ProviderImportHistory';
 import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
+import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -350,31 +351,32 @@ export default function ProviderDetail() {
 
         <TabsContent value="quality" className="space-y-6">
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <DataQualityInsightsCard npi={npi} provider={provider} />
-              <ProviderAIQualityInsights
-                provider={provider}
-                locations={locations}
-                utilizations={utilizations}
-                referrals={referrals}
-                taxonomies={taxonomies}
-              />
-              <ProviderImportHistory npi={npi} />
-            </div>
-            <div className="space-y-6">
-              <AIDataEnrichmentPanel
-                provider={provider}
-                location={primaryLocation}
-                taxonomies={taxonomies}
-                entityType={provider.entity_type === 'Organization' ? 'organization' : 'provider'}
-                onDataUpdated={() => {
-                  queryClient.invalidateQueries({ queryKey: ['provider', npi] });
-                  queryClient.invalidateQueries({ queryKey: ['providerLocations', npi] });
-                  queryClient.invalidateQueries({ queryKey: ['providerTaxonomies', npi] });
-                }}
-              />
-            </div>
-          </div>
+             <div className="lg:col-span-2 space-y-6">
+               <DataQualityInsightsCard npi={npi} provider={provider} />
+               <ExternalDataDisplay npi={npi} />
+               <ProviderAIQualityInsights
+                 provider={provider}
+                 locations={locations}
+                 utilizations={utilizations}
+                 referrals={referrals}
+                 taxonomies={taxonomies}
+               />
+               <ProviderImportHistory npi={npi} />
+             </div>
+             <div className="space-y-6">
+               <AIDataEnrichmentPanel
+                 provider={provider}
+                 location={primaryLocation}
+                 taxonomies={taxonomies}
+                 entityType={provider.entity_type === 'Organization' ? 'organization' : 'provider'}
+                 onDataUpdated={() => {
+                   queryClient.invalidateQueries({ queryKey: ['provider', npi] });
+                   queryClient.invalidateQueries({ queryKey: ['providerLocations', npi] });
+                   queryClient.invalidateQueries({ queryKey: ['providerTaxonomies', npi] });
+                 }}
+               />
+             </div>
+           </div>
         </TabsContent>
       </Tabs>
     </div>
