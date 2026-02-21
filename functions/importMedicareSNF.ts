@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
     import_type: 'medicare_snf_stats', file_name: `medicare_snf_${year}`, file_url: downloadUrl,
-    status: 'validating', dry_run, data_year: year,
+    status: 'processing', dry_run, data_year: year,
     retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
   });
   const errorSamples = [];
