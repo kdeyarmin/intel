@@ -12,10 +12,11 @@ const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 let BATCH_LIMIT = 200;
 let MAX_SKIP = 1000;
 let MAX_PAGES_PER_QUERY = 6;
+let MAX_SKIP = 1000; 
 let BULK_SIZE = 50;
-let API_DELAY_MS = 100; // Increased default
+let API_DELAY_MS = 200; // Increased default to reduce rate limits
 let MAX_RETRIES = 3;
-let RETRY_BACKOFF_MS = 2000;
+let RETRY_BACKOFF_MS = 5000; // Increased default for rate limits
 let REQUEST_TIMEOUT_MS = 15000;
 let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
 // Hard ceiling: respond before platform kills us (platform limit ~60s)
@@ -48,7 +49,8 @@ async function loadConfig(base44) {
             RETRY_BACKOFF_MS = c.retry_backoff_ms || 2000;
             REQUEST_TIMEOUT_MS = Math.min(c.request_timeout_ms || 10000, 10000);
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
-            MAX_PAGES_PER_QUERY = Math.floor(MAX_SKIP / BATCH_LIMIT) + 1;
+            MAX_PAGES_PER_QUERY = c.max_pages_per_query || 6;
+            MAX_SKIP = c.max_skip || 1000;
         }
     } catch (e) {
         console.warn('[Config] Failed to load:', e.message);
@@ -135,14 +137,14 @@ async function fetchNPPESPage(params) {
     return { error: 'Max retries', results: [] };
 }
 
-async function fetchAllPages(baseParams) {
+async function fetchAllPages(baseParams, batch, base44) {
     const allResults = [];
     let skip = 0;
     let hitLimit = false;
     for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
         if (isTimeUp()) break;
         baseParams.set('skip', String(skip));
-        const data = await fetchNPPESPage(baseParams);
+        const data = await fetchNPPESPage(baseParams, batch, base44);
         if (data.error) {
              console.warn(`[FetchAllPages] Error on skip ${skip}: ${data.error}`);
              break;
@@ -587,7 +589,7 @@ Deno.serve(async (req) => {
                     params.set('postal_code', `${prefix}*`);
                     if (taxonomy_description) params.set('taxonomy_description', taxonomy_description);
 
-                    const { results, hitLimit } = await fetchAllPages(params);
+                    const { results, hitLimit } = await fetchAllPages(params, batch, base44);
                     
                     if (results.length > 0) {
                         const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(results);
@@ -623,7 +625,7 @@ Deno.serve(async (req) => {
                             const zip3 = `${prefix}${d}`;
                             const subParams = new URLSearchParams(params);
                             subParams.set('postal_code', `${zip3}*`);
-                            const subResult = await fetchAllPages(subParams);
+                            const subResult = await fetchAllPages(subParams, batch, base44);
 
                             if (subResult.results.length > 0) {
                                 const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(subResult.results);
@@ -656,7 +658,7 @@ Deno.serve(async (req) => {
                                     const zip4 = `${zip3}${d2}`;
                                     const deepParams = new URLSearchParams(params);
                                     deepParams.set('postal_code', `${zip4}*`);
-                                    const deepResult = await fetchAllPages(deepParams);
+                                    const deepResult = await fetchAllPages(deepParams, batch, base44);
 
                                     if (deepResult.results.length > 0) {
                                         const { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors } = transformResults(deepResult.results);

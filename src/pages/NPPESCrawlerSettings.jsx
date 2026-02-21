@@ -33,7 +33,9 @@ export default function NPPESCrawlerSettings() {
     ...DEFAULTS,
     auto_retry_enabled: false,
     retry_delay_minutes: 60,
-  };
+    max_pages_per_query: 6,
+    max_skip: 1000,
+    };
 
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['crawlerConfig'],
@@ -56,6 +58,8 @@ export default function NPPESCrawlerSettings() {
         max_crawl_duration_sec: existingConfig.max_crawl_duration_sec ?? DEFAULTS.max_crawl_duration_sec,
         auto_retry_enabled: existingConfig.auto_retry_enabled ?? false,
         retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
+        max_pages_per_query: existingConfig.max_pages_per_query ?? DEFAULTS.max_pages_per_query,
+        max_skip: existingConfig.max_skip ?? DEFAULTS.max_skip,
       });
     }
   }, [existingConfig]);
@@ -204,6 +208,20 @@ export default function NPPESCrawlerSettings() {
               value={form.max_crawl_duration_sec}
               onChange={(v) => updateField('max_crawl_duration_sec', clampInt(v, 30, 300))}
               min={30} max={300}
+            />
+            <SettingField
+              label="Max Pages Per Query"
+              description="Max API pages to fetch per zip prefix before splitting (200 records/page)"
+              value={form.max_pages_per_query}
+              onChange={(v) => updateField('max_pages_per_query', clampInt(v, 1, 50))}
+              min={1} max={50}
+            />
+            <SettingField
+              label="Max Skip Records"
+              description="Maximum records to skip (offset) for a single NPI API query"
+              value={form.max_skip}
+              onChange={(v) => updateField('max_skip', clampInt(v, 200, 5000))}
+              min={200} max={5000}
             />
           </div>
         </CardContent>
