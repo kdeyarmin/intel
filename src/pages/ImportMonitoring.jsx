@@ -34,6 +34,10 @@ import ResumeImportButton from '../components/imports/ResumeImportButton';
 import DetailedErrorRows from '../components/imports/DetailedErrorRows';
 import AIImportQualityAnalysis from '../components/imports/AIImportQualityAnalysis';
 import BatchFilterSort from '../components/imports/BatchFilterSort';
+import ImportOverviewKPIs from '../components/imports/ImportOverviewKPIs';
+import CriticalFailureAlerts from '../components/imports/CriticalFailureAlerts';
+import SuccessVsFailureChart from '../components/imports/SuccessVsFailureChart';
+import EnhancedErrorReport from '../components/imports/EnhancedErrorReport';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
