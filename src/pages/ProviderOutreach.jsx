@@ -278,12 +278,12 @@ export default function ProviderOutreach() {
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
               <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>
               <Button onClick={handleCreate} disabled={saving} className="bg-violet-600 hover:bg-violet-700 gap-2">
-                {saving ? <><span className="animate-spin">⏳</span> Creating...</> : <><Send className="w-4 h-4" /> Create Campaign</>}
+              {saving ? <><span className="animate-spin">⏳</span> Creating...</> : <><Send className="w-4 h-4" /> Create Campaign</>}
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+              </div>
+              </DialogContent>
+              </Dialog>
+              </div>
 
       {lc ? (
         <div className="space-y-4">

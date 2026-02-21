@@ -47,6 +47,17 @@ const QUALITY_RULES = [
     field: 'gender', entityType: 'Provider' },
   { id: 'deactivated_with_location', name: 'Deactivated Provider With Active Location', category: 'consistency', severity: 'medium',
     entityType: 'Provider', aggregate: true },
+
+  // Enhanced Rules (Duplicates & Formatting)
+  { id: 'invalid_phone', name: 'Invalid Phone Format', category: 'accuracy', severity: 'medium',
+    check: (l) => l.phone && !/^(\+?1[-.]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/.test(l.phone),
+    field: 'phone', entityType: 'ProviderLocation' },
+    
+  { id: 'missing_email', name: 'Missing Email Address', category: 'completeness', severity: 'medium',
+    check: (p) => !p.email, field: 'email', entityType: 'Provider' },
+
+  { id: 'duplicate_provider', name: 'Potential Duplicate Provider', category: 'duplicate', severity: 'high',
+    entityType: 'Provider', aggregate: true },
 ];
 
 Deno.serve(async (req) => {
@@ -203,6 +214,58 @@ Deno.serve(async (req) => {
     failing: deactivatedWithLoc.length,
     pct: 100,
   });
+
+  // Duplicate Check
+  // Simple check: Same NPI (should be unique by definition, but checks data integrity) or Same Name + First 3 Zip
+  const seenNPIs = new Set();
+  const duplicates = [];
+  
+  for (const p of providers) {
+    if (seenNPIs.has(p.npi)) {
+      duplicates.push(p);
+    } else {
+      seenNPIs.add(p.npi);
+    }
+  }
+
+  // Name fuzzy match check (simplified)
+  // Create a map key: "lastname_firstname_credential"
+  const nameMap = {};
+  for (const p of providers) {
+    if (p.entity_type === 'Individual') {
+       const key = `${p.last_name?.toLowerCase()}_${p.first_name?.toLowerCase()}`;
+       if (!nameMap[key]) nameMap[key] = [];
+       nameMap[key].push(p);
+    }
+  }
+
+  for (const key in nameMap) {
+     if (nameMap[key].length > 1) {
+         // Potential duplicates if more than 1 with same name
+         // We could add zip check here if we had location map handy for all
+         nameMap[key].forEach(p => duplicates.push(p));
+     }
+  }
+
+  const uniqueDuplicates = [...new Set(duplicates.map(d => d.id))]; // Dedup by ID
+  const duplicateCount = uniqueDuplicates.length;
+
+  ruleResults.push({
+    rule_id: 'duplicate_provider', rule_name: 'Potential Duplicate Provider', category: 'duplicate',
+    total: providers.length, passing: providers.length - duplicateCount, failing: duplicateCount,
+    pct: providers.length > 0 ? Math.round(((providers.length - duplicateCount) / providers.length) * 100) : 100
+  });
+
+  if (duplicateCount > 0) {
+      alertsToCreate.push({
+        rule_id: 'duplicate_provider', rule_name: 'Potential Duplicate Provider', category: 'duplicate',
+        severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
+        summary: `${duplicateCount} providers flagged as potential duplicates (Same NPI or Name)`,
+        affected_count: duplicateCount,
+        // We could list IDs in ai_root_cause or similar
+        ai_root_cause: `Found ${duplicateCount} records sharing NPIs or Names.`
+      });
+  }
 
   // Timeliness check
   const completedBatches = batches.filter(b => b.completed_at);
