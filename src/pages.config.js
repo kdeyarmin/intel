@@ -85,6 +85,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import AIAssistant from './pages/AIAssistant';
+import Organizations from './pages/Organizations';
 import __Layout from './Layout.jsx';
 
 
@@ -127,6 +128,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
     "AIAssistant": AIAssistant,
+    "Organizations": Organizations,
 }
 
 export const pagesConfig = {

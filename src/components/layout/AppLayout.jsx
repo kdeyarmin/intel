@@ -23,7 +23,7 @@ const NAV_SECTIONS = [
     label: 'Market Intelligence',
     items: [
       { name: 'Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
-      { name: 'Organizations', icon: Building2, page: 'OrganizationDetail', roles: ['admin', 'sales_rep'] },
+      { name: 'Organizations', icon: Building2, page: 'Organizations', roles: ['admin', 'sales_rep'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
       { name: 'Utilization', icon: Activity, page: 'Utilization', roles: ['admin', 'sales_rep'] },
       { name: 'Referrals', icon: GitBranch, page: 'Referrals', roles: ['admin', 'sales_rep'] },
