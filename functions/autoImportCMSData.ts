@@ -125,7 +125,20 @@ Deno.serve(async (req) => {
             const probeResp = await fetchWithTimeout(probeUrl);
             if (!probeResp.ok) throw new Error(`Failed to fetch: ${probeResp.status} ${probeResp.statusText}`);
             const probeText = await probeResp.text();
-            const isJsonApi = probeText.trim().startsWith('[') || probeText.trim().startsWith('{');
+
+            // Detect HTML responses (expired/changed URLs return CMS landing pages)
+            const trimmedProbe = probeText.trim().toLowerCase();
+            if (trimmedProbe.startsWith('<!doctype') || trimmedProbe.startsWith('<html') || trimmedProbe.startsWith('<head')) {
+                const preview = probeText.substring(0, 200);
+                throw new Error(`Downloaded file is an HTML page, not data. The CMS URL may have changed or expired. Content preview: ${preview}`);
+            }
+
+            // Detect suspiciously small files (likely error pages or redirects)
+            if (probeText.length < 50 && !probeText.trim().startsWith('[') && !probeText.trim().startsWith('{')) {
+                throw new Error(`Downloaded file is too small (${probeText.length} bytes) and likely invalid. Content: ${probeText.substring(0, 200)}`);
+            }
+
+            const isJsonApi = trimmedProbe.startsWith('[') || trimmedProbe.startsWith('{');
 
             let totalProcessed = 0;
             let validRows = 0;
