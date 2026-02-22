@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
 
             await base44.asServiceRole.entities.AuditEvent.create({
                 event_type: 'import',
-                user_email: user.email,
+                user_email: user?.email || 'system',
                 details: {
                     action: 'NPPES Registry API Import',
                     entity: 'nppes_registry',

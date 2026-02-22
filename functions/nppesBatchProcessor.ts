@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
         // Audit log
         await base44.asServiceRole.entities.AuditEvent.create({
             event_type: 'import',
-            user_email: user.email,
+            user_email: user?.email || 'system',
             details: {
                 action: 'NPPES Batch Process',
                 entity: 'nppes_registry',
