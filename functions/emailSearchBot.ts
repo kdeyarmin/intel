@@ -250,14 +250,18 @@ Return validation for ALL emails provided.`,
     // Check if there are more unsearched providers remaining
     let hasMore = false;
     if (mode !== 'single') {
-      // Fetch a small sample to check if more unsearched providers exist
-      const checkCandidates = await base44.asServiceRole.entities.Provider.list('-created_date', 50);
-      const unsearched = checkCandidates.filter(p => {
-        if (skip_already_searched && p.email_searched_at) return false;
-        if (p.email) return false;
-        return true;
-      });
-      hasMore = unsearched.length > 0;
+      // Check multiple pages to find unsearched providers
+      for (let page = 0; page < 5; page++) {
+        const checkCandidates = await base44.asServiceRole.entities.Provider.list('-created_date', 500, page * 500);
+        if (!checkCandidates || checkCandidates.length === 0) break;
+        const unsearched = checkCandidates.filter(p => {
+          if (skip_already_searched && p.email_searched_at) return false;
+          if (p.email) return false;
+          return true;
+        });
+        if (unsearched.length > 0) { hasMore = true; break; }
+        if (checkCandidates.length < 500) break;
+      }
     }
 
     return Response.json({
