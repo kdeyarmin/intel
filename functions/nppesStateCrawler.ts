@@ -503,7 +503,7 @@ Deno.serve(async (req) => {
         await loadConfig(base44);
 
         const payload = await req.json();
-        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', retry_count = 0, retry_of = null } = payload;
+        const { action = 'start', taxonomy_description = '', entity_type = '', dry_run = false, target_state = '', retry_count = 0, retry_of = null, ignore_history = false } = payload;
 
         // Normalize 'process_next' to 'start'
         const effectiveAction = (action === 'process_next') ? 'start' : action;
@@ -574,18 +574,24 @@ Deno.serve(async (req) => {
         if (!stateToProcess) {
              const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 300);
              const doneStates = new Set();
-             for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_'))) {
-                 const st = b.file_name.split('_')[1];
-                 if (st && b.status === 'completed') doneStates.add(st);
+             if (!ignore_history) {
+                 for (const b of crawlBatches.filter(b => b.file_name?.startsWith('crawler_'))) {
+                     const st = b.file_name.split('_')[1];
+                     if (st && st.length <= 2 && b.status === 'completed') doneStates.add(st);
+                 }
              }
-             const processingBatches = crawlBatches.filter(b => b.status === 'processing');
-             const processingStates = new Set(processingBatches.map(b => b.file_name?.split('_')[1]).filter(s => s));
+             const processingBatches = crawlBatches.filter(b => b.status === 'processing' && b.file_name?.startsWith('crawler_'));
+             const processingStates = new Set(processingBatches.map(b => b.file_name?.split('_')[1]).filter(s => s && s.length <= 2));
              
              stateToProcess = US_STATES.find(s => !doneStates.has(s) && !processingStates.has(s));
              
              if (!stateToProcess && processingBatches.length > 0) {
                  // Pick the oldest processing batch to resume if no new state is found
-                 const oldestProcessing = processingBatches.sort((a,b) => new Date(a.created_date).getTime() - new Date(b.created_date).getTime())[0];
+                 const crawlerProcessing = processingBatches.filter(b => {
+                     const st = b.file_name?.split('_')[1];
+                     return st && st.length <= 2;
+                 });
+                 const oldestProcessing = crawlerProcessing.sort((a,b) => new Date(a.created_date).getTime() - new Date(b.created_date).getTime())[0];
                  stateToProcess = oldestProcessing?.file_name.split('_')[1];
                  if (stateToProcess) {
                      console.log(`[Crawler] Resuming processing state ${stateToProcess} from batch ${oldestProcessing.id}`);
@@ -593,7 +599,7 @@ Deno.serve(async (req) => {
              }
         }
         
-        if (!stateToProcess) return Response.json({ success: true, message: 'All states processed!', done: true });
+        if (!stateToProcess) return Response.json({ success: true, message: 'All states processed!', done: true, resume_next: false });
 
         // RESUMPTION LOGIC
         let batch;
@@ -780,12 +786,15 @@ Deno.serve(async (req) => {
              }
         }
 
+        // done=true means THIS state is fully completed AND there may be more states to do
+        // resume_next=true means THIS state still has pending zip prefixes
+        // The caller (manual loop or auto-chain) uses resume_next to decide whether to
+        // re-invoke for the same state or move to the next one
         return Response.json({
             success: true,
             state: stateToProcess,
-            done: finalStatus === 'completed',
+            done: false,  // Never signal global "done" from here — let the caller check via status
             stats: stats,
-            // Flatten stats for nppesBatchProcessor compatibility
             valid_rows: stats.valid,
             imported_providers: stats.prov.imported,
             updated_providers: stats.prov.updated,
@@ -793,6 +802,7 @@ Deno.serve(async (req) => {
             
             batch_id: batch.id,
             resume_next: !allPendingProcessed,
+            state_completed: allPendingProcessed,
             elapsed_ms: Date.now() - execStartTime,
         });
 
