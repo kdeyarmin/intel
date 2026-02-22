@@ -813,7 +813,7 @@ export default function ImportMonitoring() {
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                           </h3>
                           {batch.retry_of && (
-                            <Badge variant="outline" className="text-xs gap-1">
+                            <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/20">
                               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
                             </Badge>
                           )}
