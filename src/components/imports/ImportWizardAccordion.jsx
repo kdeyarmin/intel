@@ -386,12 +386,32 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                   </div>
 
                   {processing && (
-                    <div className="p-3 bg-cyan-900/20 rounded-lg border border-cyan-700/30">
+                    <div className="p-3 bg-cyan-900/20 rounded-lg border border-cyan-700/30 space-y-2">
                       <div className="flex items-center gap-2 text-cyan-300 text-sm">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         {processingStatus}
                       </div>
-                      <Progress value={50} className="h-1.5 mt-2" />
+                      {liveStatus ? (
+                        <>
+                          <Progress
+                            value={
+                              liveStatus.total_rows > 0
+                                ? Math.round(((liveStatus.imported_rows || 0) + (liveStatus.updated_rows || 0) + (liveStatus.skipped_rows || 0)) / liveStatus.total_rows * 100)
+                                : liveStatus.status === 'validating' ? 20 : 50
+                            }
+                            className="h-1.5"
+                          />
+                          <div className="flex gap-4 text-[10px] text-slate-400">
+                            {liveStatus.total_rows > 0 && <span>Total: {liveStatus.total_rows.toLocaleString()}</span>}
+                            {liveStatus.valid_rows > 0 && <span className="text-emerald-400">Valid: {liveStatus.valid_rows.toLocaleString()}</span>}
+                            {liveStatus.imported_rows > 0 && <span className="text-blue-400">Imported: {liveStatus.imported_rows.toLocaleString()}</span>}
+                            {liveStatus.invalid_rows > 0 && <span className="text-red-400">Invalid: {liveStatus.invalid_rows.toLocaleString()}</span>}
+                          </div>
+                        </>
+                      ) : (
+                        <Progress value={15} className="h-1.5" />
+                      )}
+                      <p className="text-[10px] text-slate-500">Processing runs in the background — feel free to navigate away</p>
                     </div>
                   )}
 
