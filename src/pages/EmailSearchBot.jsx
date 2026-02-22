@@ -28,6 +28,9 @@ export default function EmailSearchBot() {
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, setAllRunProgress] = useState(null);
   const [activeTab, setActiveTab] = useState('search');
+  const [filters, setFilters] = useState({ validation: 'all', confidence: 'all', source: 'all' });
+  const [selectedNpis, setSelectedNpis] = useState(new Set());
+  const [showCampaignLauncher, setShowCampaignLauncher] = useState(false);
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
