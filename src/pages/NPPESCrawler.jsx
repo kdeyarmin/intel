@@ -9,8 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Layers } from 'lucide-react';
+import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Layers, Map, LayoutGrid } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
+import StateMap from '../components/nppes/StateMap';
 import CrawlerLog from '../components/nppes/CrawlerLog';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
@@ -35,6 +36,7 @@ export default function NPPESCrawler() {
   const [autoStarting, setAutoStarting] = useState(false);
   const [autoStopping, setAutoStopping] = useState(false);
   const [selectedState, setSelectedState] = useState(null);
+  const [viewMode, setViewMode] = useState('map'); // 'map' or 'grid'
   const pausedRef = useRef(false);
   const runningRef = useRef(false);
   const queryClient = useQueryClient();
@@ -376,12 +378,32 @@ export default function NPPESCrawler() {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-teal-600" />
-              Progress
+              State Progress
             </span>
-            <div className="flex gap-2">
-              <Badge className="bg-green-100 text-green-800">{completedCount} completed</Badge>
-              {failedCount > 0 && <Badge className="bg-red-100 text-red-800">{failedCount} failed</Badge>}
-              <Badge variant="outline">{status?.pending || 0} pending</Badge>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-2">
+                <Badge className="bg-green-900/40 text-green-400 border-green-800">{completedCount} completed</Badge>
+                {failedCount > 0 && <Badge className="bg-red-900/40 text-red-400 border-red-800">{failedCount} failed</Badge>}
+                <Badge variant="outline">{status?.pending || 0} pending</Badge>
+              </div>
+              <div className="flex border rounded-md overflow-hidden">
+                <Button
+                  variant={viewMode === 'map' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('map')}
+                  className="rounded-none h-7 px-2"
+                >
+                  <Map className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-none h-7 px-2"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
           </CardTitle>
         </CardHeader>
@@ -395,18 +417,27 @@ export default function NPPESCrawler() {
           </div>
 
           {currentState && running && (
-            <div className="flex items-center gap-2 text-sm text-teal-700 bg-teal-50 p-3 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-teal-300 bg-teal-900/30 border border-teal-800/50 p-3 rounded-lg">
               <Loader2 className="w-4 h-4 animate-spin" />
               Currently processing: <strong>{currentState}</strong>
             </div>
           )}
 
-          <StateCrawlerGrid 
-            status={status} 
-            currentState={currentState} 
-            running={running} 
-            onStateClick={setSelectedState}
-          />
+          {viewMode === 'map' ? (
+            <StateMap 
+              status={status} 
+              currentState={currentState} 
+              running={running} 
+              onStateClick={setSelectedState}
+            />
+          ) : (
+            <StateCrawlerGrid 
+              status={status} 
+              currentState={currentState} 
+              running={running} 
+              onStateClick={setSelectedState}
+            />
+          )}
         </CardContent>
       </Card>
 
