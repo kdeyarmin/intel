@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FileText, Upload, Download, Calculator } from 'lucide-react';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function AuditLog() {
   const { data: events = [], isLoading } = useQuery({
@@ -33,10 +34,12 @@ export default function AuditLog() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Audit Log</h1>
-        <p className="text-gray-600 mt-1">System activity and data operations</p>
-      </div>
+      <PageHeader
+        title="Audit Log"
+        subtitle="System activity and data operations"
+        icon={FileText}
+        breadcrumbs={[{ label: 'Admin' }, { label: 'Audit Log' }]}
+      />
 
       <Card>
         <CardHeader>

@@ -11,6 +11,7 @@ import { Save, Download, Users } from 'lucide-react';
 import LeadListFilters from '../components/leadlists/LeadListFilters';
 import LeadResultsTable from '../components/leadlists/LeadResultsTable';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function LeadListBuilder() {
   const [filters, setFilters] = useState({
@@ -275,11 +276,14 @@ export default function LeadListBuilder() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
+        <PageHeader
+          title="Lead List Builder"
+          subtitle="Build targeted provider lists with advanced filters"
+          icon={Users}
+          breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Lead Lists', page: 'LeadLists' }, { label: 'Builder' }]}
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Lead List Builder</h1>
-            <p className="text-sm text-slate-400 mt-1">Build targeted provider lists with advanced filters</p>
-          </div>
+          <div />
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="w-4 h-4 mr-2" />

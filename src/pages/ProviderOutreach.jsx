@@ -12,6 +12,7 @@ import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
   const [tab, setTab] = useState('campaigns');
@@ -47,13 +48,12 @@ export default function ProviderOutreach() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2 mb-1">
-          <Mail className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
-          Provider Outreach
-        </h1>
-        <p className="text-sm text-slate-600">Create and manage provider engagement campaigns</p>
-      </div>
+      <PageHeader
+        title="Provider Outreach"
+        subtitle="Create and manage provider engagement campaigns"
+        icon={Mail}
+        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Campaigns' }]}
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-slate-100">

@@ -13,6 +13,7 @@ import SearchFilterBar from '../components/filters/SearchFilterBar';
 import ExportDialog from '../components/exports/ExportDialog';
 import SavedFilterBar from '../components/filters/SavedFilterBar';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function Locations() {
   const [search, setSearch] = useState('');
@@ -81,11 +82,14 @@ export default function Locations() {
 
   return (
     <div className="p-8">
+      <PageHeader
+        title="Locations"
+        subtitle={`${locations.length} total locations`}
+        icon={MapPin}
+        breadcrumbs={[{ label: 'Providers', page: 'Providers' }, { label: 'Locations' }]}
+      />
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
-          <p className="text-gray-600 mt-1">{locations.length} total locations</p>
-        </div>
+        <div />
         <ExportDialog
           data={filtered.map(l => ({
             npi: l.npi, address: l.address_1 || '', city: l.city || '', state: l.state || '',

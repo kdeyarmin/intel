@@ -18,6 +18,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import NetworkInfluencerAnalysis from '../components/referralNetwork/NetworkInfluencerAnalysis';
 import NetworkGapAnalysis from '../components/referralNetwork/NetworkGapAnalysis';
 import AINetworkRecommendations from '../components/referralNetwork/AINetworkRecommendations';
+import PageHeader from '../components/shared/PageHeader';
 
 const HUB_THRESHOLD_PERCENTILE = 0.85;
 
@@ -153,13 +154,12 @@ export default function ReferralNetworkIntelligence() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Network className="w-6 h-6 text-cyan-400" />
-          Referral Network Analysis
-        </h1>
-        <p className="text-sm text-slate-400 mt-0.5">Visualize referral patterns, identify hubs, geographic clustering, and care gaps</p>
-      </div>
+      <PageHeader
+        title="Referral Network Analysis"
+        subtitle="Visualize referral patterns, identify hubs, geographic clustering, and care gaps"
+        icon={Network}
+        breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Network' }]}
+      />
 
       {loading ? (
         <div className="space-y-4">

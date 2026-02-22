@@ -15,6 +15,7 @@ import StateMap from '../components/nppes/StateMap';
 import CrawlerLog from '../components/nppes/CrawlerLog';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
+import PageHeader from '../components/shared/PageHeader';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -236,15 +237,12 @@ export default function NPPESCrawler() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-teal-600" />
-          NPPES State Crawler
-        </h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Automatically pull all providers from the NPPES registry, one state at a time
-        </p>
-      </div>
+      <PageHeader
+        title="NPPES State Crawler"
+        subtitle="Automatically pull all providers from the NPPES registry, one state at a time"
+        icon={Bot}
+        breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
+      />
 
       {/* Controls */}
       <Card>

@@ -22,6 +22,7 @@ import StateQualityBreakdown from '../components/dataQuality/StateQualityBreakdo
 import DuplicateStatsWidget from '../components/dataQuality/DuplicateStatsWidget';
 import ProactiveDQAlerts from '../components/dataQuality/ProactiveDQAlerts';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function DataQuality() {
   const queryClient = useQueryClient();
@@ -79,17 +80,16 @@ export default function DataQuality() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
-      {/* Header */}
+      <PageHeader
+        title="Data Quality Center"
+        subtitle="Automated quality monitoring, alerts, and AI-powered corrections"
+        icon={ShieldCheck}
+        breadcrumbs={[{ label: 'Admin' }, { label: 'Data Quality' }]}
+        actions={<>
+        </>}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-cyan-400" />
-            Data Quality Center
-          </h1>
-          <p className="text-sm text-slate-400 mt-0.5">
-            Automated quality monitoring, alerts, and AI-powered corrections
-          </p>
-        </div>
+        <div />
         <div className="flex items-center gap-3">
           {latestScan?.completed_at && (
             <span className="text-xs text-slate-500 flex items-center gap-1">

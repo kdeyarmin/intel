@@ -20,6 +20,7 @@ import { Search, Copy, Globe, List } from 'lucide-react';
 import AINPIFinder from '../components/providers/AINPIFinder';
 import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
 import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
+import PageHeader from '../components/shared/PageHeader';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -226,16 +227,14 @@ export default function Organizations() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title="Organizations"
+        subtitle={`${providers.length} organizations found`}
+        icon={Building2}
+        breadcrumbs={[{ label: 'Providers', page: 'Providers' }, { label: 'Organizations' }]}
+      />
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Organizations</h1>
-            <Badge className="bg-blue-500/15 text-blue-400 border border-blue-500/20 text-[10px]">
-              <Building2 className="w-3 h-3 mr-0.5" /> Directory
-            </Badge>
-          </div>
-          <p className="text-slate-500 mt-1">{providers.length} organizations found</p>
-        </div>
+        <div />
         <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders}

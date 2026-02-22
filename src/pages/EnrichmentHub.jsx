@@ -9,6 +9,7 @@ import EnrichmentStats from '../components/enrichment/EnrichmentStats';
 import EnrichmentActionability from '../components/enrichment/EnrichmentActionability';
 import BatchProviderUpdater from '../components/enrichment/BatchProviderUpdater';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function EnrichmentHub() {
   // Use dashboard stats for accurate total count
@@ -30,16 +31,12 @@ export default function EnrichmentHub() {
 
   return (
     <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-violet-400" />
-          Data Enrichment Hub
-        </h1>
-        <p className="text-sm text-slate-400 mt-0.5">
-          Enrich provider records with third-party data, review additions, and track enrichment quality
-        </p>
-      </div>
+      <PageHeader
+        title="Data Enrichment Hub"
+        subtitle="Enrich provider records with third-party data, review additions, and track enrichment quality"
+        icon={Sparkles}
+        breadcrumbs={[{ label: 'Admin' }, { label: 'Enrichment' }]}
+      />
 
       {/* Source info */}
       <div className="bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-xl p-4">

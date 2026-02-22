@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Calculator, Save, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PackageSelector from '../components/scoring/PackageSelector';
+import PageHeader from '../components/shared/PageHeader';
 
 export default function ScoringRules() {
   const [user, setUser] = useState(null);
@@ -224,14 +225,14 @@ export default function ScoringRules() {
 
   return (
     <div className="p-8">
+      <PageHeader
+        title="Scoring Configuration"
+        subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
+        icon={Calculator}
+        breadcrumbs={[{ label: 'Admin' }, { label: 'Scoring Rules' }]}
+      />
       <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Scoring Configuration</h1>
-          <p className="text-gray-600 mt-1">CareMetric Referral Propensity Score (0-100)</p>
-          <p className="text-sm text-gray-500 mt-1">
-            Configure weights for each factor. Total should equal 100%.
-          </p>
-        </div>
+        <div />
         <Button
           onClick={handleRecalculate}
           disabled={calculating}

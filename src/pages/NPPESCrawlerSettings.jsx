@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Save, RotateCcw, Zap, Clock, RefreshCw, Server, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PageHeader from '../components/shared/PageHeader';
 
 const DEFAULTS = {
   config_key: 'default',
@@ -112,13 +113,12 @@ export default function NPPESCrawlerSettings() {
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Settings className="w-6 h-6 text-teal-600" />
-            Crawler Settings
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Configure NPPES crawler parameters</p>
-        </div>
+        <PageHeader
+          title="Crawler Settings"
+          subtitle="Configure NPPES crawler parameters"
+          icon={Settings}
+          breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler', page: 'NPPESCrawler' }, { label: 'Settings' }]}
+        />
         <div className="flex gap-2">
           <Button variant="outline" onClick={resetDefaults} className="gap-1.5">
             <RotateCcw className="w-4 h-4" />
