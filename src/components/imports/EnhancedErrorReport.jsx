@@ -22,7 +22,8 @@ const IMPORT_TYPE_LABELS = {
 };
 
 function getSuggestedFix(error) {
-  const msg = (error.message || '').toLowerCase();
+  const msg = (error.message || error.detail || '').toLowerCase();
+  if (msg.includes('empty row') || msg.includes('empty_row') || msg.includes('no label or metrics')) return { fix: 'Safe to ignore — these are spacer/separator rows in CMS spreadsheets that contain no data.', severity: 'info', retryable: false };
   if (msg.includes('rate limit') || msg.includes('429')) return { fix: 'Reduce import speed or wait before retrying. The API is rate-limited.', severity: 'warning', retryable: true };
   if (msg.includes('missing required') || msg.includes('required field')) return { fix: `Populate the missing field "${error.field || 'unknown'}" in your source data before re-importing.`, severity: 'error', retryable: false };
   if (msg.includes('invalid npi') || msg.includes('npi')) return { fix: 'Verify this NPI is a valid 10-digit number. Remove spaces, dashes, or letters.', severity: 'error', retryable: false };
@@ -41,7 +42,8 @@ function downloadFullReport(batch) {
   const lines = [];
   lines.push('Row,NPI,Error Category,Severity,Error Message,Suggested Fix,Retryable,Field,Sheet,Phase');
   for (const err of errors) {
-    const cat = categorizeError(err.message);
+    const errMsg = err.message || err.detail || '';
+    const cat = categorizeError(errMsg);
     const config = ERROR_CATEGORIES[cat];
     const suggestion = getSuggestedFix(err);
     lines.push([
@@ -49,7 +51,7 @@ function downloadFullReport(batch) {
       err.npi ?? '',
       config?.label || 'Other',
       suggestion.severity,
-      `"${(err.message || '').replace(/"/g, '""')}"`,
+      `"${errMsg.replace(/"/g, '""')}"`,
       `"${suggestion.fix.replace(/"/g, '""')}"`,
       suggestion.retryable ? 'Yes' : 'No',
       err.field || '',
@@ -80,7 +82,8 @@ function downloadJSONReport(batch) {
     total_rows: batch.total_rows,
     total_errors: errors.length,
     errors: errors.map(err => {
-      const cat = categorizeError(err.message);
+      const errMsg = err.message || err.detail || '';
+      const cat = categorizeError(errMsg);
       const suggestion = getSuggestedFix(err);
       return {
         row: err.row,
@@ -90,7 +93,7 @@ function downloadJSONReport(batch) {
         phase: err.phase,
         category: ERROR_CATEGORIES[cat]?.label || 'Other',
         severity: suggestion.severity,
-        message: err.message,
+        message: errMsg,
         suggested_fix: suggestion.fix,
         retryable: suggestion.retryable,
       };
@@ -129,7 +132,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
   const filteredErrors = useMemo(() => {
     let result = errors;
     if (categoryFilter !== 'all') {
-      result = result.filter(e => categorizeError(e.message) === categoryFilter);
+      result = result.filter(e => categorizeError(e.message || e.detail || '') === categoryFilter);
     }
     if (severityFilter !== 'all') {
       result = result.filter(e => getSuggestedFix(e).severity === severityFilter);
@@ -137,7 +140,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(e =>
-        (e.message || '').toLowerCase().includes(q) ||
+        (e.message || e.detail || '').toLowerCase().includes(q) ||
         (e.field || '').toLowerCase().includes(q) ||
         String(e.row || '').includes(q) ||
         (e.npi || '').includes(q)
@@ -277,7 +280,8 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
               </div>
             ) : (
               filteredErrors.map((err, idx) => {
-                const cat = categorizeError(err.message);
+                const errMsg = err.message || err.detail || '';
+                const cat = categorizeError(errMsg);
                 const config = ERROR_CATEGORIES[cat];
                 const suggestion = getSuggestedFix(err);
                 const isExpanded = expandedRows.has(idx);
@@ -314,7 +318,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
                           )}
                         </div>
                         <p className="text-[11px] text-slate-400 truncate">
-                          {err.message || 'Unknown error'}
+                          {errMsg || 'Unknown error'}
                         </p>
                       </div>
                       {isExpanded
@@ -329,7 +333,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
                         <div className="bg-slate-900/50 rounded-md p-2">
                           <p className="text-[10px] text-slate-500 mb-1">Full Error Message</p>
                           <p className="text-[11px] text-slate-300 font-mono break-all whitespace-pre-wrap">
-                            {err.message || 'No details'}
+                            {err.message || err.detail || 'No details'}
                           </p>
                         </div>
 
