@@ -13,6 +13,7 @@ import { Loader2, Play, Pause, RotateCcw, XCircle, Globe, Bot, Zap, Monitor, Lay
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import StateMap from '../components/nppes/StateMap';
 import CrawlerLog from '../components/nppes/CrawlerLog';
+import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 import PageHeader from '../components/shared/PageHeader';
