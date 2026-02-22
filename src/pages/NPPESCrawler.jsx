@@ -82,7 +82,8 @@ export default function NPPESCrawler() {
 
       const data = res.data;
 
-      if (data.done && data.success !== false && !data.state) {
+      // "done: true" with no state means ALL states globally are finished
+      if (data.done && !data.resume_next && !data.state) {
         addLog('All states have been processed!', 'success');
         return false;
       }
@@ -90,22 +91,30 @@ export default function NPPESCrawler() {
       setCurrentState(data.state);
 
       if (data.success) {
+        const resumeNote = data.resume_next ? ' (partial — will continue)' : '';
         addLog(
-          `✓ ${data.state}: ${data.valid_rows} valid, ${data.imported_providers || 0} imported${dryRun ? ' (dry run)' : ''}`,
+          `✓ ${data.state}: ${data.valid_rows || 0} valid, ${data.imported_providers || 0} imported${dryRun ? ' (dry run)' : ''}${resumeNote}`,
           'success'
         );
       } else {
-        addLog(`✗ ${data.state}: ${data.error}`, 'error');
+        addLog(`✗ ${data.state}: ${data.error || 'Unknown error'}`, 'error');
       }
 
       refetchStatus();
       queryClient.invalidateQueries(['nppesImportBatches']);
 
+      // If this state still needs more work (resume_next), keep going — it will resume same state
+      if (data.resume_next) {
+        return true;
+      }
+
+      // If the crawler reports all states are done globally
       if (data.done) {
         addLog('All states have been processed!', 'success');
         return false;
       }
 
+      // State completed, move to next
       return true;
     } catch (err) {
       const msg = err.message || '';
