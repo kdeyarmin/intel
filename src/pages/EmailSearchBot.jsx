@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Search } from 'lucide-react';
+import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Search, Send, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
@@ -13,6 +13,9 @@ import EmailBotResults from '../components/emailBot/EmailBotResults';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
+import EmailResultFilters from '../components/emailBot/EmailResultFilters';
+import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
+import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function EmailSearchBot() {
