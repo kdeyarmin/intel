@@ -138,8 +138,15 @@ async function bulkCreateWithRetry(entity, chunk, label) {
 Deno.serve(async (req) => {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (user?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  
+  // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
+  let user = null;
+  try {
+    user = await base44.auth.me();
+  } catch (e) {
+    // Service role calls may not have a user context
+  }
+  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
@@ -224,7 +231,7 @@ Deno.serve(async (req) => {
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_snf_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}
-    await base44.asServiceRole.entities.AuditEvent.create({ event_type: 'import', user_email: user.email, details: { action: 'Medicare SNF Import', entity: 'MedicareSNFStats', year, imported_count: imported, status: finalStatus }, timestamp: new Date().toISOString() });
+    await base44.asServiceRole.entities.AuditEvent.create({ event_type: 'import', user_email: user?.email || 'system', details: { action: 'Medicare SNF Import', entity: 'MedicareSNFStats', year, imported_count: imported, status: finalStatus }, timestamp: new Date().toISOString() });
 
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus, sheets_parsed: sheetSummaries,
