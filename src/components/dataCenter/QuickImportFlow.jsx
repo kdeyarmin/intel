@@ -20,7 +20,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
   const handleSelectType = (type) => {
     setSelectedType(type);
     if (type.id === 'nppes_registry') {
-      window.location.href = '/NPPESImport';
+      window.location.href = '/NPPESCrawler';
       return;
     }
     if (type.requiredColumns.length === 0) {
