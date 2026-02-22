@@ -17,7 +17,7 @@ const statusColors = {
   'Not a fit': 'bg-gray-100 text-gray-800',
 };
 
-export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes }) {
+export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
   const [sortField, setSortField] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
   const [editingNotes, setEditingNotes] = useState(null);
