@@ -18,7 +18,7 @@ function StatCard({ title, value, subtitle, icon: Icon, iconColor, link, loading
             ) : (
               <>
                 <p className="text-2xl font-bold text-white mt-1 tracking-tight group-hover:text-cyan-400 transition-colors">{value}</p>
-                {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
+                {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
               </>
             )}
           </div>
@@ -46,7 +46,7 @@ export default function DatabaseOverview({ stats, loading }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Database Records</h2>
+      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="Providers"

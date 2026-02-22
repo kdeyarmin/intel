@@ -172,19 +172,19 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
         {/* Summary bar */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-2">
           <div className="bg-slate-800/50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-slate-500">Total Errors</p>
+            <p className="text-[10px] text-slate-400">Total Errors</p>
             <p className="text-lg font-bold text-red-400">{totalErrors}</p>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-slate-500">Categories</p>
+            <p className="text-[10px] text-slate-400">Categories</p>
             <p className="text-lg font-bold text-slate-200">{sortedCategories.length}</p>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-slate-500">Retryable</p>
+            <p className="text-[10px] text-slate-400">Retryable</p>
             <p className="text-lg font-bold text-amber-400">{retryableCount}</p>
           </div>
           <div className="bg-slate-800/50 rounded-lg p-2.5 text-center">
-            <p className="text-[10px] text-slate-500">Total Rows</p>
+            <p className="text-[10px] text-slate-400">Total Rows</p>
             <p className="text-lg font-bold text-slate-300">{(batch.total_rows || 0).toLocaleString()}</p>
           </div>
         </div>

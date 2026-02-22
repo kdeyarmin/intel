@@ -94,7 +94,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                         </Badge>
                       )}
                       {error.timestamp && (
-                        <span className="text-xs text-slate-600 ml-auto">
+                        <span className="text-xs text-slate-500 ml-auto">
                           {new Date(error.timestamp).toLocaleTimeString()}
                         </span>
                       )}
@@ -103,7 +103,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                       {error.message || error.detail || JSON.stringify(error)}
                     </p>
                     {error.retryable && (
-                      <p className="text-[10px] text-emerald-500/70 italic">
+                      <p className="text-[10px] text-emerald-400 italic">
                         Retryable error (transient)
                       </p>
                     )}

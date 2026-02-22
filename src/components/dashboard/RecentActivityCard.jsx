@@ -29,7 +29,7 @@ export default function RecentActivityCard({ events }) {
                    <p className="text-base font-medium text-white capitalize truncate">
                      {event.event_type?.replace(/_/g, ' ')}
                    </p>
-                   <p className="text-sm text-white mt-0.5">
+                   <p className="text-sm text-slate-400 mt-0.5">
                      {event.user_email?.split('@')[0]} • {event.created_date ? formatShortDateTimeET(event.created_date) : ''}
                    </p>
                  </div>

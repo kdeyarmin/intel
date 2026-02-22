@@ -219,7 +219,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                   placeholder="e.g. MA4, Sheet1"
                   className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
                 />
-                <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports</p>
+                <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports</p>
               </div>
             </TabsContent>
 
@@ -258,7 +258,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                 placeholder="e.g. MA4, Sheet1"
                 className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
               />
-              <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
+              <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
             </div>
           )}
 
@@ -271,7 +271,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-sm text-slate-300">Skip validation</Label>
-                <p className="text-xs text-slate-500">Import directly without re-validating rows</p>
+                <p className="text-xs text-slate-400">Import directly without re-validating rows</p>
               </div>
               <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
             </div>

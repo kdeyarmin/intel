@@ -168,7 +168,7 @@ export default function ExportImportData({ open, onOpenChange }) {
         <div className="space-y-4">
           {/* Target selector */}
           <div>
-            <label className="text-xs text-slate-500 mb-1.5 block">What to export</label>
+            <label className="text-xs text-slate-400 mb-1.5 block">What to export</label>
             <div className="flex gap-2">
               <button
                 onClick={() => { setExportTarget('history'); setStatusFilter('all'); setTypeFilter('all'); }}
@@ -197,7 +197,7 @@ export default function ExportImportData({ open, onOpenChange }) {
 
           {/* Format selector */}
           <div>
-            <label className="text-xs text-slate-500 mb-1.5 block">Export format</label>
+            <label className="text-xs text-slate-400 mb-1.5 block">Export format</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setFormat('csv')}
@@ -231,7 +231,7 @@ export default function ExportImportData({ open, onOpenChange }) {
             <div className="grid grid-cols-2 gap-3">
               {exportTarget === 'history' && (
                 <div>
-                  <label className="text-[10px] text-slate-500 block mb-1">Status</label>
+                  <label className="text-[10px] text-slate-400 block mb-1">Status</label>
                   <select
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                     value={statusFilter}
@@ -248,7 +248,7 @@ export default function ExportImportData({ open, onOpenChange }) {
               )}
 
               <div>
-                <label className="text-[10px] text-slate-500 block mb-1">Import Type</label>
+                <label className="text-[10px] text-slate-400 block mb-1">Import Type</label>
                 <select
                   className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                   value={typeFilter}
@@ -265,7 +265,7 @@ export default function ExportImportData({ open, onOpenChange }) {
             {exportTarget === 'history' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                  <label className="text-[10px] text-slate-400 block mb-1">From</label>
                   <input
                     type="date"
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
@@ -274,7 +274,7 @@ export default function ExportImportData({ open, onOpenChange }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                  <label className="text-[10px] text-slate-400 block mb-1">To</label>
                   <input
                     type="date"
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
@@ -287,7 +287,7 @@ export default function ExportImportData({ open, onOpenChange }) {
           </div>
 
           {/* Preview count */}
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-slate-400">
             <span>{previewCount} record{previewCount !== 1 ? 's' : ''} will be exported</span>
             {exported && (
               <span className="flex items-center gap-1 text-emerald-400">

@@ -113,7 +113,7 @@ export default function AlertNotificationSettings() {
             {settings.enabled ? <Bell className="w-4 h-4 text-cyan-400" /> : <BellOff className="w-4 h-4 text-slate-500" />}
             <div>
               <p className="text-sm font-medium text-slate-200">Import Alerts</p>
-              <p className="text-[10px] text-slate-500">Get notified about import job status changes</p>
+              <p className="text-[10px] text-slate-400">Get notified about import job status changes</p>
             </div>
           </div>
           <Switch checked={settings.enabled} onCheckedChange={(v) => update('enabled', v)} />
@@ -170,7 +170,7 @@ export default function AlertNotificationSettings() {
                   <Bell className="w-3.5 h-3.5 text-slate-400" />
                   <div>
                     <span className="text-sm text-slate-300">In-app toast notifications</span>
-                    <p className="text-[10px] text-slate-500">Always active when alerts are enabled</p>
+                    <p className="text-[10px] text-slate-400">Always active when alerts are enabled</p>
                   </div>
                 </div>
                 <Badge className="bg-emerald-500/15 text-emerald-400 text-[9px]">Active</Badge>
@@ -180,7 +180,7 @@ export default function AlertNotificationSettings() {
                   <Settings className="w-3.5 h-3.5 text-slate-400" />
                   <div>
                     <span className="text-sm text-slate-300">Browser push notifications</span>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-slate-400">
                       {notifPermission === 'granted' ? 'Enabled' : notifPermission === 'denied' ? 'Blocked by browser' : 'Not yet requested'}
                     </p>
                   </div>

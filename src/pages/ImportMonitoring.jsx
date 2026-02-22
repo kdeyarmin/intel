@@ -881,7 +881,7 @@ export default function ImportMonitoring() {
                         />
                       </div>
                       {batch.total_rows > 0 && (
-                        <div className="flex gap-4 mt-1 text-[10px] text-slate-500">
+                        <div className="flex gap-4 mt-1 text-[10px] text-slate-400">
                           {batch.status === 'validating' && (
                             <span>Validated: {((batch.valid_rows || 0) + (batch.invalid_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
                           )}
@@ -904,7 +904,7 @@ export default function ImportMonitoring() {
                   {/* Row 3: Stats */}
                   <div className="flex gap-6 text-sm flex-wrap">
                     {batch.status === 'failed' && (!batch.total_rows || batch.total_rows === 0) && !batch.error_samples?.length ? (
-                      <div className="text-red-400 text-xs">
+                      <div className="text-red-400/80 text-xs">
                         Import failed before data could be processed
                       </div>
                     ) : (
@@ -920,7 +920,7 @@ export default function ImportMonitoring() {
                         )}
                       </>
                     )}
-                    <div className="ml-auto text-slate-400 text-xs">{formatTimestamp(batch.created_date)}</div>
+                    <div className="ml-auto text-slate-500 text-xs">{formatTimestamp(batch.created_date)}</div>
                   </div>
                 </div>
               ))}

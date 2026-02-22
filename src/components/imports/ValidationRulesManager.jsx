@@ -159,7 +159,7 @@ export default function ValidationRulesManager() {
     <div className="flex gap-4 h-full">
       {/* Sidebar: import type selector */}
       <div className="w-56 flex-shrink-0 space-y-1 overflow-y-auto">
-        <p className="text-xs font-semibold text-slate-500 px-2 mb-2">Import Types</p>
+        <p className="text-xs font-semibold text-slate-400 px-2 mb-2">Import Types</p>
         {allTypes.map(t => {
           const count = (rulesByType[t] || []).length;
           const isActive = selectedType === t;
@@ -192,7 +192,7 @@ export default function ValidationRulesManager() {
             <h2 className="text-lg font-semibold text-slate-200">
               {IMPORT_TYPE_LABELS[selectedType] || selectedType}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               {typeCount} rule{typeCount !== 1 ? 's' : ''}
               {selectedType !== '_global' && globalCount > 0 && ` + ${globalCount} global`}
             </p>
@@ -278,7 +278,7 @@ export default function ValidationRulesManager() {
            <div className="text-center py-16 text-slate-500">
              <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
              <p className="font-medium">No validation rules</p>
-             <p className="text-xs mt-1 text-slate-600">Add rules to automatically validate data before import</p>
+             <p className="text-xs mt-1 text-slate-500">Add rules to automatically validate data before import</p>
            </div>
          ) : (
           <div className="space-y-2">
@@ -292,7 +292,7 @@ export default function ValidationRulesManager() {
                     rule.enabled ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-slate-800/50 opacity-50'
                   }`}
                 >
-                  <GripVertical className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                  <GripVertical className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-slate-200">{rule.rule_name}</span>
@@ -302,7 +302,7 @@ export default function ValidationRulesManager() {
                         {rule.severity}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       <code className="text-cyan-400/80">{rule.column}</code>
                       {' — '}
                       {rule.description || getRuleSummary(rule)}

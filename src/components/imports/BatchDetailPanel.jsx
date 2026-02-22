@@ -49,7 +49,7 @@ function StatBox({ label, value, color = 'text-slate-200', icon: Icon }) {
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-center">
       {Icon && <Icon className={`w-3.5 h-3.5 mx-auto mb-1 ${color}`} />}
-      <p className="text-[10px] text-slate-500 mb-0.5">{label}</p>
+      <p className="text-[10px] text-slate-400 mb-0.5">{label}</p>
       <p className={`text-lg font-bold ${color}`}>{value ?? '—'}</p>
     </div>
   );

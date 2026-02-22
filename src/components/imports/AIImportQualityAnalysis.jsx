@@ -233,7 +233,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
             {analyzing ? 'Analyzing...' : 'Run AI Analysis'}
           </Button>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           AI scans {providers.length} providers, {locations.length} locations, {utilization.length} utilization, and {referrals.length} referral records for anomalies.
         </p>
       </CardHeader>
@@ -242,7 +242,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
           <div className="text-center py-8">
             <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-600" />
             <p className="text-sm text-slate-400">Click "Run AI Analysis" to scan imported data for quality issues</p>
-            <p className="text-xs text-slate-500 mt-1">Checks for volume anomalies, address conflicts, missing data, and pattern inconsistencies</p>
+            <p className="text-xs text-slate-400 mt-1">Checks for volume anomalies, address conflicts, missing data, and pattern inconsistencies</p>
           </div>
         )}
 
@@ -250,7 +250,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
           <div className="text-center py-8">
             <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-violet-400" />
             <p className="text-sm text-slate-300">Analyzing data quality across all imported records...</p>
-            <p className="text-xs text-slate-500 mt-1">This may take 15-30 seconds</p>
+            <p className="text-xs text-slate-400 mt-1">This may take 15-30 seconds</p>
           </div>
         )}
 
@@ -262,7 +262,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
                 <p className={`text-4xl font-bold ${scoreColor(results.overall_health_score)}`}>
                   {results.overall_health_score}
                 </p>
-                <p className="text-[10px] text-slate-500">Health Score</p>
+                <p className="text-[10px] text-slate-400">Health Score</p>
               </div>
               <div className="flex-1">
                 <p className="text-sm text-slate-300 leading-relaxed">{results.summary}</p>
@@ -313,7 +313,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
               <div className="text-center py-6">
                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
                 <p className="text-sm text-emerald-400">No significant anomalies detected</p>
-                <p className="text-xs text-slate-500">Your imported data looks clean</p>
+                <p className="text-xs text-slate-400">Your imported data looks clean</p>
               </div>
             )}
           </div>

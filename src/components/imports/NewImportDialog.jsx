@@ -194,7 +194,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-200">{t.name}</p>
-                      <p className="text-xs text-slate-500">{t.desc}</p>
+                      <p className="text-xs text-slate-400">{t.desc}</p>
                     </div>
 
                   </button>
@@ -255,7 +255,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   </Button>
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[10px] text-slate-500">Or use a direct URL:</span>
+                  <span className="text-[10px] text-slate-400">Or use a direct URL:</span>
                   <Input
                     value={!uploadedFile ? fileUrl : ''}
                     onChange={(e) => { setFileUrl(e.target.value); setUploadedFile(null); }}
@@ -264,7 +264,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     disabled={!!uploadedFile}
                   />
                   {selectedType.hasUrl && (
-                    <p className="text-[10px] text-slate-600">Leave blank to use the default CMS API endpoint</p>
+                    <p className="text-[10px] text-slate-500">Leave blank to use the default CMS API endpoint</p>
                   )}
                 </div>
               </div>
@@ -320,14 +320,14 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm text-slate-300">Dry Run</Label>
-                  <p className="text-[10px] text-slate-500">Validate only — no data will be written</p>
+                  <p className="text-[10px] text-slate-400">Validate only — no data will be written</p>
                 </div>
                 <Switch checked={dryRun} onCheckedChange={setDryRun} />
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-sm text-slate-300">Skip Validation</Label>
-                  <p className="text-[10px] text-slate-500">Import directly without row-level validation</p>
+                  <p className="text-[10px] text-slate-400">Import directly without row-level validation</p>
                 </div>
                 <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
               </div>
@@ -355,7 +355,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="0 (start)"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
                       />
-                      <p className="text-[10px] text-slate-600">Skip N rows from the start</p>
+                      <p className="text-[10px] text-slate-500">Skip N rows from the start</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-slate-400">Row Limit</Label>
@@ -367,7 +367,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="All rows"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
                       />
-                      <p className="text-[10px] text-slate-600">Max rows to process</p>
+                      <p className="text-[10px] text-slate-500">Max rows to process</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -379,7 +379,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="1234567890, 0987654321"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
                       />
-                      <p className="text-[10px] text-slate-600">Comma-separated NPIs</p>
+                      <p className="text-[10px] text-slate-500">Comma-separated NPIs</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs text-slate-400">State Filter</Label>
@@ -390,7 +390,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         maxLength={2}
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
                       />
-                      <p className="text-[10px] text-slate-600">2-letter state code</p>
+                      <p className="text-[10px] text-slate-500">2-letter state code</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -401,7 +401,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       placeholder="e.g. MA4, Sheet1"
                       className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
                     />
-                    <p className="text-[10px] text-slate-600">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
+                    <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
                   </div>
                 </div>
               )}
@@ -419,8 +419,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-semibold text-slate-200">Import Triggered</p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {selectedType?.name} import has been queued and is now processing.
+                  <p className="text-sm text-slate-400 mt-1">
+                   {selectedType?.name} import has been queued and is now processing.
                   </p>
                   {dryRun && <Badge className="bg-violet-500/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
                 </div>
@@ -433,7 +433,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 <div className="text-center">
                   <p className="text-lg font-semibold text-slate-200">Import Failed to Start</p>
                   <p className="text-sm text-red-400 mt-1 max-w-sm">{error}</p>
-                  <p className="text-xs text-slate-500 mt-2">The batch record was created — check Import Monitoring for details.</p>
+                  <p className="text-xs text-slate-400 mt-2">The batch record was created — check Import Monitoring for details.</p>
                 </div>
               </>
             )}

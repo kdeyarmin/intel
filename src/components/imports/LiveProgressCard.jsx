@@ -59,8 +59,8 @@ function RowProgressBar({ label, current, total, color }) {
   return (
     <div className="space-y-0.5">
       <div className="flex justify-between text-[10px]">
-        <span className="text-slate-500">{label}</span>
-        <span className="text-slate-400">{current.toLocaleString()} / {total.toLocaleString()} ({pct}%)</span>
+        <span className="text-slate-400">{label}</span>
+        <span className="text-slate-300">{current.toLocaleString()} / {total.toLocaleString()} ({pct}%)</span>
       </div>
       <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />

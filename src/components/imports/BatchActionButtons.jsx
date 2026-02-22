@@ -87,7 +87,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   };
 
   if (isActing) {
-    return <Loader2 className="w-4 h-4 animate-spin text-gray-400" />;
+    return <Loader2 className="w-4 h-4 animate-spin text-slate-400" />;
   }
 
   return (

@@ -79,30 +79,30 @@ export default function SystemStatusPanel({ batches }) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <Zap className="w-3.5 h-3.5 text-blue-400 mx-auto mb-1" />
-            <p className="text-[10px] text-slate-500">Active Jobs</p>
+            <p className="text-[10px] text-slate-400">Active Jobs</p>
             <p className="text-lg font-bold text-blue-400">{stats.activeCount}</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
-            <p className="text-[10px] text-slate-500">Success Rate (24h)</p>
+            <p className="text-[10px] text-slate-400">Success Rate (24h)</p>
             <p className={`text-lg font-bold ${stats.successRate >= 80 ? 'text-emerald-400' : stats.successRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
               {stats.successRate}%
             </p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400 mx-auto mb-1" />
-            <p className="text-[10px] text-slate-500">Rows Processed (24h)</p>
+            <p className="text-[10px] text-slate-400">Rows Processed (24h)</p>
             <p className="text-lg font-bold text-slate-200">{stats.totalRowsProcessed.toLocaleString()}</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <Clock className="w-3.5 h-3.5 text-slate-400 mx-auto mb-1" />
-            <p className="text-[10px] text-slate-500">Avg Duration</p>
+            <p className="text-[10px] text-slate-400">Avg Duration</p>
             <p className="text-lg font-bold text-slate-200">{formatDuration(stats.avgDuration)}</p>
           </div>
         </div>
 
         {/* Recent activity summary */}
-        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-500">
+        <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
           <span>Last hour: <span className="text-slate-300 font-medium">{stats.lastHourCount}</span> jobs</span>
           <span>Last 24h: <span className="text-slate-300 font-medium">{stats.last24hCount}</span> jobs</span>
           {stats.failed24h > 0 && (

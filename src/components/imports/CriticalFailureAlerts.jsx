@@ -68,12 +68,12 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                     </span>
                     <Badge className={`${errorConfig.badgeColor} text-[9px]`}>{errorConfig.label}</Badge>
                   </div>
-                  <p className="text-[11px] text-slate-500 truncate">
+                  <p className="text-[11px] text-slate-400 truncate">
                     {topError?.message || 'Failed before processing'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {formatTimeAgo(batch.created_date)}
                   </span>
@@ -82,7 +82,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                       {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
                     </Badge>
                   )}
-                  <ChevronRight className="w-4 h-4 text-slate-600" />
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
                 </div>
               </div>
             );
