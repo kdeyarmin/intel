@@ -18,13 +18,29 @@ export const ERROR_CATEGORIES = {
     docUrl: 'https://npiregistry.cms.hhs.gov/',
     docLabel: 'CMS NPI Registry Lookup',
   },
+  empty_row: {
+    label: 'Empty / Spacer Row',
+    icon: 'FileWarning',
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/10 border-slate-500/20',
+    badgeColor: 'bg-slate-500/15 text-slate-400',
+    keywords: ['empty_row', 'empty row', 'no label or metrics', 'spacer row', 'no label', 'no data'],
+    description: 'Rows with no label and no numeric data — typically visual separators, headers, or footers in CMS Excel files.',
+    solutions: [
+      'These are safe to ignore — they are spacer/separator rows in CMS spreadsheets',
+      'The importer automatically skips these rows during processing',
+      'If you see many of these, the file may have complex multi-table layouts that need sheet-specific parsing',
+    ],
+    docUrl: null,
+    docLabel: null,
+  },
   missing_required: {
     label: 'Missing Required Field',
     icon: 'FileWarning',
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10 border-amber-500/20',
     badgeColor: 'bg-amber-500/15 text-amber-400',
-    keywords: ['missing', 'required', 'null', 'undefined', 'empty', 'blank', 'not provided', 'is required'],
+    keywords: ['missing', 'required', 'null', 'undefined', 'blank', 'not provided', 'is required'],
     description: 'One or more required fields are missing or empty in these records.',
     solutions: [
       'Check that all required columns are mapped in the Column Mapping step',
@@ -162,11 +178,16 @@ export function categorizeError(message) {
   return 'other';
 }
 
+// Extract the best message string from an error object (supports both .message and .detail)
+export function getErrorMessage(err) {
+  return err.message || err.detail || '';
+}
+
 export function groupErrors(errors) {
   if (!errors || errors.length === 0) return { grouped: {}, sortedCategories: [], totalErrors: 0 };
   const grouped = {};
   for (const err of errors) {
-    const cat = categorizeError(err.message);
+    const cat = categorizeError(getErrorMessage(err));
     if (!grouped[cat]) grouped[cat] = [];
     grouped[cat].push(err);
   }
@@ -176,12 +197,15 @@ export function groupErrors(errors) {
 
 export function downloadErrorCSV(errors, batchName) {
   const headers = ['Row', 'NPI', 'Category', 'Phase', 'Field', 'Message'];
-  const rows = errors.map(e => [
-    e.row ?? '', e.npi ?? '',
-    ERROR_CATEGORIES[categorizeError(e.message)]?.label || 'Other',
-    e.phase || '', e.field || '',
-    (e.message || '').replace(/"/g, '""'),
-  ]);
+  const rows = errors.map(e => {
+    const msg = getErrorMessage(e);
+    return [
+      e.row ?? '', e.npi ?? '',
+      ERROR_CATEGORIES[categorizeError(msg)]?.label || 'Other',
+      e.phase || '', e.field || '',
+      msg.replace(/"/g, '""'),
+    ];
+  });
   const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
