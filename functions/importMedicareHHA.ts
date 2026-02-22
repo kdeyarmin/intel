@@ -308,15 +308,20 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    const errorPhase = error.message?.includes('download') ? 'download' : error.message?.includes('ZIP') ? 'extraction' : error.message?.includes('XLSX') ? 'parsing' : 'unknown';
-    const errMsg = error.message.toLowerCase();
+    const errMsg = (error.message || '').toLowerCase();
+    const errorPhase = errMsg.includes('download') ? 'download' : errMsg.includes('zip') ? 'extraction' : errMsg.includes('xlsx') ? 'parsing' : errMsg.includes('rate limit') || errMsg.includes('429') ? 'rate_limit' : 'unknown';
     const isRetryable = errorPhase === 'download' || 
+                        errorPhase === 'rate_limit' ||
                         errMsg.includes('timeout') || 
                         errMsg.includes('central directory') || 
                         errMsg.includes('not a valid zip') ||
                         errMsg.includes('too small') ||
                         errMsg.includes('network') || 
-                        errMsg.includes('econnreset');
+                        errMsg.includes('econnreset') ||
+                        errMsg.includes('rate limit') ||
+                        errMsg.includes('429') ||
+                        errMsg.includes('503') ||
+                        errMsg.includes('502');
     
     const errorCategory = isRetryable ? 'network_error' : 'data_validation';
     
