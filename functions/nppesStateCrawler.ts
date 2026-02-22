@@ -101,12 +101,8 @@ async function fetchNPPESPage(params, batch, base44) {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-            // Increment API request count before making the request
-            if (batch?.id && base44) {
-                try {
-                   await base44.asServiceRole.entities.ImportBatch.update(batch.id, { api_requests_count: (batch.api_requests_count || 0) + 1 });
-                } catch(e) { /* ignore stats update error */ }
-            }
+            // Track API request count in memory (written to batch at end, not per-request)
+            if (batch) batch._api_count = (batch._api_count || 0) + 1;
             
             // Execute with rate limiting
             const response = await fetchLock.run(() => fetch(apiUrl, { signal: controller.signal }), API_DELAY_MS);
@@ -114,12 +110,8 @@ async function fetchNPPESPage(params, batch, base44) {
             clearTimeout(timeout);
             
             if (response.status === 429 || response.status >= 500) {
-                // Increment rate limit count on 429 error
-                if (response.status === 429 && batch?.id && base44) {
-                    try {
-                        await base44.asServiceRole.entities.ImportBatch.update(batch.id, { rate_limit_count: (batch.rate_limit_count || 0) + 1 });
-                    } catch(e) { /* ignore stats update error */ }
-                }
+                // Track rate limit count in memory
+                if (response.status === 429 && batch) batch._rate_limit_count = (batch._rate_limit_count || 0) + 1;
 
                 const isRateLimit = response.status === 429;
                 const backoff = attempt * (isRateLimit ? RETRY_BACKOFF_MS * 2 : RETRY_BACKOFF_MS);
