@@ -14,9 +14,9 @@ let MAX_PAGES_PER_QUERY = 10; // Increased to properly detect when API paging li
 let MAX_SKIP = 1000; // NPPES API hard limit
 let BULK_SIZE = 50;
 let CONCURRENCY_LIMIT = 4;
-let API_DELAY_MS = 200; // Increased default to reduce rate limits
+let API_DELAY_MS = 500; // Conservative default to reduce rate limits
 let MAX_RETRIES = 3;
-let RETRY_BACKOFF_MS = 5000; // Increased default for rate limits
+let RETRY_BACKOFF_MS = 8000; // Conservative default for rate limits
 let REQUEST_TIMEOUT_MS = 15000;
 let CRAWL_ENTITY_TYPES = ['NPI-1', 'NPI-2'];
 // Hard ceiling: respond before platform kills us (platform limit ~60s)
