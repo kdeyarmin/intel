@@ -117,6 +117,10 @@ Deno.serve(async (req) => {
               file_url: batch.file_url && batch.file_url !== '' ? batch.file_url : undefined,
               year: new Date().getFullYear() - 2,
               dry_run: batch.dry_run || false,
+              retry_of: batch.id,
+              retry_count: newRetryCount,
+              retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'auto-retry'), 'auto-retry'])],
+              category: batch.category || undefined,
             });
           }
         } catch (triggerErr) {
