@@ -25,7 +25,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
   const [isReverifying, setIsReverifying] = useState(false);
 
   const emailProviders = useMemo(() => {
-    return providers.filter(p => p.email && p.email_validation_status);
+    return providers.filter(p => p.email && p.email_validation_status != null && p.email_validation_status !== '');
   }, [providers]);
 
   const filtered = useMemo(() => {

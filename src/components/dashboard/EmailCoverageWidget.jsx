@@ -11,7 +11,7 @@ export default function EmailCoverageWidget({ providers }) {
   const total = providers.length;
   const withEmail = providers.filter(p => p.email).length;
   const searched = providers.filter(p => p.email_searched_at).length;
-  const remaining = total - searched;
+  const remaining = Math.max(0, total - searched);
   const coveragePct = total > 0 ? Math.round((withEmail / total) * 100) : 0;
   const searchedPct = total > 0 ? Math.round((searched / total) * 100) : 0;
 

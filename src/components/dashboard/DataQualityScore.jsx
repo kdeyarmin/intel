@@ -17,7 +17,7 @@ export default function DataQualityScore() {
   });
 
   const scoreColor = useMemo(() => {
-    if (!issues) return 'text-gray-400';
+    if (!issues?.summary) return 'text-gray-400';
     const score = issues.summary.qualityScore;
     if (score >= 90) return 'text-emerald-400';
     if (score >= 70) return 'text-amber-400';
@@ -25,7 +25,7 @@ export default function DataQualityScore() {
   }, [issues]);
 
   const scoreBackgroundColor = useMemo(() => {
-    if (!issues) return 'from-gray-600 to-gray-700';
+    if (!issues?.summary) return 'from-gray-600 to-gray-700';
     const score = issues.summary.qualityScore;
     if (score >= 90) return 'from-emerald-600 to-emerald-700';
     if (score >= 70) return 'from-amber-600 to-amber-700';
@@ -48,7 +48,7 @@ export default function DataQualityScore() {
     );
   }
 
-  if (!issues) {
+  if (!issues?.summary) {
     return null;
   }
 
