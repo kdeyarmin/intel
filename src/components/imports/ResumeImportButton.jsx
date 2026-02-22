@@ -19,6 +19,17 @@ export default function ResumeImportButton({ batch, onResumed }) {
     try {
       // Determine offset
       const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+
+      // Mark the current batch as cancelled so triggerImport's duplicate check won't 409
+      if (batch.status === 'failed' || batch.status === 'paused') {
+        try {
+          await base44.entities.ImportBatch.update(batch.id, {
+            status: 'cancelled',
+            cancel_reason: `Superseded by resume from row ${offset}`,
+            cancelled_at: new Date().toISOString(),
+          });
+        } catch (_) { /* best-effort */ }
+      }
       
       // Call backend to resume
       await base44.functions.invoke('triggerImport', {
@@ -26,14 +37,15 @@ export default function ResumeImportButton({ batch, onResumed }) {
         file_url: batch.file_url,
         year: batch.data_year || 2023,
         resume_offset: offset,
-        dry_run: batch.dry_run
+        dry_run: batch.dry_run,
+        retry_of: batch.id,
       });
 
       toast.success(`Resuming import from row ${offset.toLocaleString()}`);
       if (onResumed) onResumed();
     } catch (error) {
       console.error('Resume failed:', error);
-      toast.error('Failed to resume import: ' + error.message);
+      toast.error('Failed to resume import: ' + (error?.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
