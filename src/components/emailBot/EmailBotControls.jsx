@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Play, Loader2, Users, Zap, Square } from 'lucide-react';
+import { Bot, Loader2, Zap, Square } from 'lucide-react';
 import SearchAllProgressTracker from './SearchAllProgressTracker';
 
 export default function EmailBotControls({
   batchSize, setBatchSize,
   skipSearched, setSkipSearched,
-  onRunBatch, onRunAll, onStopAll, onRunSingle,
+  onRunAll, onStopAll, onRunSingle,
   singleNpi, setSingleNpi,
   isRunning, isRunningAll, stopRequested,
   stats,
@@ -30,9 +30,9 @@ export default function EmailBotControls({
             Search All Providers
           </CardTitle>
           <CardDescription className="text-slate-400">
-            Automatically search every provider in the database for emails, running in batches of {batchSize}. 
+            Automatically search every provider for emails, in batches of {batchSize}.
             {remainingForRun > 0 && (
-              <span className="font-medium text-violet-400"> ~{remainingForRun} providers remaining ({estimatedBatches} batches).</span>
+              <span className="font-medium text-violet-400"> ~{remainingForRun.toLocaleString()} providers remaining ({estimatedBatches} batches).</span>
             )}
           </CardDescription>
         </CardHeader>
@@ -41,25 +41,17 @@ export default function EmailBotControls({
             <div>
               <Label className="text-xs text-slate-300">Batch Size</Label>
               <Input
-                type="number" min="1" max="500" value={batchSize}
-                onChange={e => setBatchSize(Math.min(500, parseInt(e.target.value) || 10))}
+                type="number" min="1" max="50" value={batchSize}
+                onChange={e => setBatchSize(Math.min(50, parseInt(e.target.value) || 5))}
                 className="h-8 text-sm" disabled={isRunning}
               />
+              <p className="text-[10px] text-slate-500 mt-1">Providers per API call (max 50)</p>
             </div>
             <div className="flex items-center gap-2 pt-5">
               <Switch checked={skipSearched} onCheckedChange={setSkipSearched} disabled={isRunning} />
               <Label className="text-xs text-slate-300">Skip already searched</Label>
             </div>
           </div>
-
-          {stats && (
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400">{stats.total} total</Badge>
-              <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 text-[10px]">{stats.withEmail} have email</Badge>
-              <Badge className="bg-slate-800 text-slate-400 border border-slate-700 text-[10px]">{stats.searched} searched</Badge>
-              <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[10px]">{stats.remaining} remaining</Badge>
-            </div>
-          )}
 
           {/* Granular progress tracker */}
           <SearchAllProgressTracker
@@ -91,65 +83,37 @@ export default function EmailBotControls({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Single Batch */}
-        <Card className="bg-[#141d30] border-slate-700/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-slate-200">
-              <Users className="w-4 h-4 text-cyan-400" />
-              Single Batch Search
-            </CardTitle>
-            <CardDescription className="text-slate-400">Run one batch of {batchSize} providers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={onRunBatch}
-              disabled={isRunning}
-              className="w-full bg-cyan-600 hover:bg-cyan-700"
-            >
-              {isRunning && !isRunningAll ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Searching...</>
-              ) : (
-                <><Play className="w-4 h-4 mr-2" /> Run One Batch</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Single NPI */}
-        <Card className="bg-[#141d30] border-slate-700/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-slate-200">
-              <Bot className="w-4 h-4 text-violet-400" />
-              Single Provider Search
-            </CardTitle>
-            <CardDescription className="text-slate-400">Search email for a specific NPI</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label className="text-xs text-slate-400">Provider NPI</Label>
-              <Input
-                placeholder="e.g., 1234567890"
-                value={singleNpi}
-                onChange={e => setSingleNpi(e.target.value)}
-                className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-600"
-              />
-            </div>
+      {/* Single NPI Lookup */}
+      <Card className="bg-[#141d30] border-slate-700/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
+            <Bot className="w-4 h-4 text-violet-400" />
+            Single Provider Lookup
+          </CardTitle>
+          <CardDescription className="text-slate-400">Search email for one specific NPI</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter NPI, e.g. 1234567890"
+              value={singleNpi}
+              onChange={e => setSingleNpi(e.target.value)}
+              className="h-9 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-600 flex-1"
+            />
             <Button
               onClick={onRunSingle}
               disabled={isRunning || !singleNpi.trim()}
-              variant="outline"
-              className="w-full bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+              className="bg-cyan-600 hover:bg-cyan-700 h-9"
             >
               {isRunning ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Searching...</>
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <><Bot className="w-4 h-4 mr-2" /> Search This Provider</>
+                <Bot className="w-4 h-4" />
               )}
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
