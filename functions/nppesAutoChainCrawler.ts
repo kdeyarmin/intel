@@ -238,20 +238,30 @@ Deno.serve(async (req) => {
         const newStatesProcessed = states_processed + 1;
         const newTotalImported = total_imported + cumulativeImported;
 
-        console.log(`[AutoChain] State ${stateJustProcessed}: success=${crawlResult.success}, fetched=${crawlResult.total_fetched || 0}, imported=${crawlResult.imported_providers || 0}`);
+        console.log(`[AutoChain] State ${stateJustProcessed}: success=${crawlResult?.success}, imported=${cumulativeImported}, invocations=${stateInvocations}`);
 
-        let newConsecutiveFailures = crawlResult.success ? 0 : consecutive_failures + 1;
+        let newConsecutiveFailures = crawlResult?.success ? 0 : consecutive_failures + 1;
 
-        if (!crawlResult.success) {
-            console.warn(`[AutoChain] State ${stateJustProcessed} FAILED: ${crawlResult.error}`);
+        if (!crawlResult?.success) {
+            console.warn(`[AutoChain] State ${stateJustProcessed} FAILED: ${crawlResult?.error}`);
             await sendAdminEmail(base44, notifyEmail, `NPPES Crawler Failed — ${stateJustProcessed}`,
                 `The NPPES crawler failed on state ${stateJustProcessed}.\n\n` +
-                `Error: ${crawlResult.error}\n` +
+                `Error: ${crawlResult?.error}\n` +
                 `Consecutive failures: ${newConsecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}\n` +
                 `The crawler will continue to the next state automatically.`);
         }
 
-        if (crawlResult.done) {
+        // Check if ALL states are now done by querying status
+        let allDone = false;
+        try {
+            const statusRes = await base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', { action: 'status' });
+            const st = statusRes.data;
+            allDone = st.pending === 0 && st.processing === 0;
+        } catch (e) {
+            console.warn('[AutoChain] Status check failed:', e.message);
+        }
+
+        if (allDone) {
             console.log(`[AutoChain] All states processed! Total: ${newStatesProcessed} states, ${newTotalImported} providers`);
 
             await base44.asServiceRole.entities.AuditEvent.create({
