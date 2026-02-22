@@ -464,6 +464,16 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                     </div>
                   )}
 
+                  {/* AI Cleaning Suggestions */}
+                  <AICleaningSuggestions
+                    importType={selectedType?.id}
+                    fileName={file?.name}
+                    invalidRows={result.invalidRows || 0}
+                    duplicateRows={result.duplicateRows || 0}
+                    totalRows={result.totalRows || 0}
+                    errorSamples={result.errorSamples || []}
+                  />
+
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={onReset} className="flex-1 bg-transparent border-slate-700 text-slate-300">
                       <RotateCcw className="w-4 h-4 mr-2" /> New Import
