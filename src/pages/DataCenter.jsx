@@ -40,7 +40,7 @@ export default function DataCenter() {
         title="Data Center"
         subtitle="One place to import all your data — pick a category, upload, and go"
         icon={Database}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Data Center' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'Dashboard' }, { label: 'Data Center' }]}
       />
 
       {/* Stats Strip */}

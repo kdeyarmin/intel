@@ -35,7 +35,7 @@ export default function EnrichmentHub() {
         title="Data Enrichment Hub"
         subtitle="Enrich provider records with third-party data, review additions, and track enrichment quality"
         icon={Sparkles}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Enrichment' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Enrichment' }]}
       />
 
       {/* Source info */}

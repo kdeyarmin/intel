@@ -229,7 +229,7 @@ export default function ScoringRules() {
         title="Scoring Configuration"
         subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
         icon={Calculator}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Scoring Rules' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Scoring Rules' }]}
       />
       <div className="mb-8 flex items-center justify-between">
         <div />
