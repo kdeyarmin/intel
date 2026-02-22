@@ -450,13 +450,124 @@ export default function EmailSearchBot() {
           </div>
         </TabsContent>
 
+        {/* Providers with enriched data and filters */}
+        <TabsContent value="providers" className="space-y-4">
+          <EmailResultFilters filters={filters} onFiltersChange={setFilters} counts={filterCounts} />
+
+          {/* Selection actions bar */}
+          {selectedNpis.size > 0 && (
+            <div className="flex items-center gap-3 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+              <span className="text-xs text-cyan-300">{selectedNpis.size} selected</span>
+              <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 gap-1">
+                <Send className="w-3 h-3" /> Email Campaign
+              </Button>
+              <Button onClick={() => setSelectedNpis(new Set())} variant="ghost" size="sm" className="h-7 text-xs text-slate-400 ml-auto">
+                Clear selection
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
+                onChange={toggleSelectAll}
+                className="rounded border-slate-600"
+              />
+              <span className="text-xs text-slate-500">
+                {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} with email
+              </span>
+            </div>
+            <Button onClick={() => setShowCampaignLauncher(true)} disabled={selectedNpis.size === 0} variant="outline" size="sm" className="h-7 text-xs gap-1 border-slate-700 text-slate-300">
+              <Send className="w-3 h-3" /> Send to Selected
+            </Button>
+          </div>
+
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {filteredProviders.slice(0, 50).map((p) => {
+              const loc = allLocations.find(l => l.npi === p.npi && l.is_primary) || allLocations.find(l => l.npi === p.npi);
+              const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag) || allTaxonomies.find(t => t.npi === p.npi);
+              return (
+                <div key={p.id} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedNpis.has(p.npi)}
+                    onChange={() => toggleSelectProvider(p.npi)}
+                    className="rounded border-slate-600 mt-3.5"
+                  />
+                  <div className="flex-1">
+                    <EnrichedProviderCard
+                      provider={p}
+                      location={loc}
+                      taxonomy={tax}
+                      onEnriched={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {filteredProviders.length > 50 && (
+              <p className="text-xs text-slate-500 text-center py-2">Showing 50 of {filteredProviders.length} — use filters to narrow results</p>
+            )}
+            {filteredProviders.length === 0 && (
+              <div className="text-center py-8 text-slate-500 text-sm">No providers match current filters</div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="verify" className="space-y-5">
           <EmailVerificationPanel
             providers={providers}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
           />
         </TabsContent>
+
+        {/* Outreach tab - quick campaign creation */}
+        <TabsContent value="outreach" className="space-y-5">
+          <Card className="bg-[#141d30] border-slate-700/50">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-full bg-cyan-500/10 flex items-center justify-center">
+                <Send className="w-7 h-7 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-200">Email Campaigns</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  Select providers from the "Providers" tab and launch personalized email campaigns
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                  <div className="text-xl font-bold text-emerald-400">{stats.valid}</div>
+                  <div className="text-[10px] text-slate-500">Valid Emails</div>
+                </div>
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                  <div className="text-xl font-bold text-amber-400">{stats.risky}</div>
+                  <div className="text-[10px] text-slate-500">Risky Emails</div>
+                </div>
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                  <div className="text-xl font-bold text-red-400">{stats.invalid}</div>
+                  <div className="text-[10px] text-slate-500">Invalid Emails</div>
+                </div>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button onClick={() => setActiveTab('providers')} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
+                  <Users className="w-4 h-4" /> Select Providers
+                </Button>
+              </div>
+              <p className="text-[10px] text-slate-600">
+                Tip: Use the Providers tab to filter by validation status, then select providers and click "Email Campaign"
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <QuickCampaignLauncher
+        selectedProviders={selectedProviderObjects}
+        open={showCampaignLauncher}
+        onOpenChange={setShowCampaignLauncher}
+      />
     </div>
   );
 }
