@@ -169,7 +169,7 @@ export default function AppLayout({ children, currentPageName }) {
             {sidebarOpen && (
               <>
                 <span className="flex-1 text-left">Search...</span>
-                <kbd className="text-[10px] text-slate-600 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
+                <kbd className="text-[10px] text-slate-500 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
               </>
             )}
           </button>
@@ -189,7 +189,7 @@ export default function AppLayout({ children, currentPageName }) {
                 {sidebarOpen && (
                   <button
                     onClick={() => toggleSection(section.label)}
-                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors"
+                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     {section.label}
                     {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -226,7 +226,7 @@ export default function AppLayout({ children, currentPageName }) {
             <div className="mb-2 px-2 flex items-center justify-between">
               <div>
                 {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
-                {user && <p className="text-[10px] text-slate-600 capitalize">{user.role?.replace('_', ' ')}</p>}
+                {user && <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>}
               </div>
               <NotificationBell />
             </div>
@@ -274,11 +274,11 @@ export default function AppLayout({ children, currentPageName }) {
                 style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
               <span className="text-[11px] text-slate-500 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-700">•</span>
+              <span className="text-[11px] text-slate-500">•</span>
               <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-500/70 hover:text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-600 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-[9px] text-slate-500 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
             Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>

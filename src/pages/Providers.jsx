@@ -585,7 +585,7 @@ export default function Providers() {
                                )}
                              </div>
                            ) : (
-                            <span className="text-slate-600 text-xs">—</span>
+                            <span className="text-slate-500 text-xs">—</span>
                            )}
                         </TableCell>
                         <TableCell>
@@ -594,7 +594,7 @@ export default function Providers() {
                               {score.toFixed(0)}
                             </Badge>
                           ) : (
-                            <span className="text-slate-600">-</span>
+                            <span className="text-slate-500">—</span>
                           )}
                         </TableCell>
                         <TableCell>

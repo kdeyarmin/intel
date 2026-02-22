@@ -352,7 +352,7 @@ export default function EmailSearchBot() {
           </div>
 
           {stats.isEstimated && (
-            <p className="text-[10px] text-slate-600 text-center -mt-2">~ counts are estimated</p>
+            <p className="text-[10px] text-slate-500 text-center -mt-2">~ counts are estimated</p>
           )}
 
           {/* Controls */}
@@ -557,7 +557,7 @@ export default function EmailSearchBot() {
                   <Users className="w-4 h-4" /> Select Providers
                 </Button>
               </div>
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-slate-500">
                 Tip: Use the Providers tab to filter by validation status, then select providers and click "Email Campaign"
               </p>
             </CardContent>

@@ -55,7 +55,7 @@ export default function DatabaseOverview({ stats, loading }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
-        {est && <span className="text-[9px] text-slate-600">(+ means more records exist)</span>}
+        {est && <span className="text-[9px] text-slate-500">(+ means more records exist)</span>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard

@@ -98,7 +98,7 @@ export default function EmailBotControls({
               placeholder="Enter NPI, e.g. 1234567890"
               value={singleNpi}
               onChange={e => setSingleNpi(e.target.value)}
-              className="h-9 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-600 flex-1"
+              className="h-9 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500 flex-1"
             />
             <Button
               onClick={onRunSingle}

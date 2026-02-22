@@ -157,7 +157,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
             placeholder="Search by name, email, or NPI..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="h-8 text-xs pl-8 bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-600"
+            className="h-8 text-xs pl-8 bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500"
           />
         </div>
 
@@ -229,7 +229,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                 } border`}>
                   {status}
                 </Badge>
-                <span className="text-[10px] text-slate-600 font-mono shrink-0">{p.npi}</span>
+                <span className="text-[10px] text-slate-500 font-mono shrink-0">{p.npi}</span>
               </div>
             );
           })}
