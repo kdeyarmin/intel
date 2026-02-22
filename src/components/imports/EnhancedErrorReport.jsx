@@ -13,6 +13,8 @@ import {
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, groupErrors } from './errorCategories';
 import ValidationErrorBreakdown from './ValidationErrorBreakdown';
+import AIErrorTriage from './AIErrorTriage';
+import BulkErrorActions from './BulkErrorActions';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -118,12 +120,12 @@ const severityColors = {
   info: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
 };
 
-export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
+export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefresh }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
-  const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'list'
+  const [viewMode, setViewMode] = useState('grouped'); // 'grouped', 'list', or 'ai'
 
   const errors = batch?.error_samples || [];
 
@@ -206,6 +208,14 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
               Grouped by Type
             </button>
             <button
+              onClick={() => setViewMode('ai')}
+              className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                viewMode === 'ai' ? 'bg-violet-700 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              AI Triage
+            </button>
+            <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${
                 viewMode === 'list' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
@@ -218,8 +228,18 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
 
         {viewMode === 'grouped' ? (
           <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
-            <div className="p-3">
+            <div className="p-3 space-y-3">
+              <BulkErrorActions errors={errors} batch={batch} onActionComplete={() => onRefresh?.()} />
               <ValidationErrorBreakdown errors={errors} batchName={batch.file_name} />
+            </div>
+          </ScrollArea>
+        ) : viewMode === 'ai' ? (
+          <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
+            <div className="p-3 space-y-3">
+              <AIErrorTriage errors={errors} batch={batch} onBulkAction={(action, categoryLabel, catKey) => {
+                toast.info(`${action} action queued for "${categoryLabel}" errors`);
+              }} />
+              <BulkErrorActions errors={errors} batch={batch} onActionComplete={() => onRefresh?.()} />
             </div>
           </ScrollArea>
         ) : (
