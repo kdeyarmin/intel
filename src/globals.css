@@ -1,3 +1,4 @@
+css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,5 +34,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Ensure all placeholder text is visible on dark backgrounds */
+  ::placeholder {
+    color: hsl(215 20% 50%) !important;
+    opacity: 1;
+  }
+  /* Ensure native select options are readable */
+  select option {
+    background: hsl(222.2 47.4% 8.5%);
+    color: hsl(213 31% 91%);
   }
 }
