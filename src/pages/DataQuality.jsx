@@ -84,7 +84,7 @@ export default function DataQuality() {
         title="Data Quality Center"
         subtitle="Automated quality monitoring, alerts, and AI-powered corrections"
         icon={ShieldCheck}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Data Quality' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Data Quality' }]}
         actions={<>
         </>}
       />

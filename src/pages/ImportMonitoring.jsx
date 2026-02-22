@@ -404,7 +404,7 @@ export default function ImportMonitoring() {
         title="Import Monitoring"
         subtitle="Real-time monitoring, validation rules, and alert notifications"
         icon={Activity}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Import Monitor' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Import Monitor' }]}
       />
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div />

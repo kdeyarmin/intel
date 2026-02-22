@@ -38,7 +38,7 @@ export default function AuditLog() {
         title="Audit Log"
         subtitle="System activity and data operations"
         icon={FileText}
-        breadcrumbs={[{ label: 'Admin' }, { label: 'Audit Log' }]}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Audit Log' }]}
       />
 
       <Card className="bg-[#141d30] border-slate-700/50">
