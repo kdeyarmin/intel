@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     }
 
     if (providersToSearch.length === 0) {
-      return Response.json({ message: 'No providers to search', searched: 0 });
+      return Response.json({ message: 'No providers to search', searched: 0, found: 0, results: [], has_more: false });
     }
 
     const allLocations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', 500);
