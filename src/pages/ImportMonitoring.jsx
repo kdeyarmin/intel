@@ -677,7 +677,7 @@ export default function ImportMonitoring() {
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle className="text-slate-200">Import Jobs</CardTitle>
+            <CardTitle className="text-slate-200">Completed Jobs</CardTitle>
             <BatchFilterSort
               sortBy={sortBy}
               onSortChange={setSortBy}
