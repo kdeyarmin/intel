@@ -36,18 +36,35 @@ export const ERROR_CATEGORIES = {
     docLabel: 'NPPES File Layout Documentation',
   },
   formatting_error: {
-    label: 'Formatting Error',
+    label: 'Invalid Format',
     icon: 'Type',
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/10 border-orange-500/20',
     badgeColor: 'bg-orange-500/15 text-orange-400',
-    keywords: ['format', 'malformed', 'parse', 'invalid date', 'invalid number', 'not a number', 'NaN', 'JSON', 'encoding', 'charset', 'unexpected token', 'csv', 'column count'],
-    description: 'Data values are in the wrong format or cannot be parsed correctly.',
+    keywords: ['format', 'malformed', 'parse', 'invalid date', 'invalid number', 'not a number', 'NaN', 'JSON', 'encoding', 'charset', 'unexpected token', 'csv', 'column count', 'invalid format', 'wrong format'],
+    description: 'Data values are in the wrong format or cannot be parsed correctly (e.g., dates, numbers, encoded text).',
     solutions: [
       'Ensure dates are in YYYY-MM-DD or MM/DD/YYYY format',
       'Check that numeric fields contain only numbers (no commas, dollar signs, or text)',
       'Verify the CSV file uses UTF-8 encoding — re-save from Excel as "CSV UTF-8"',
       'If fields contain commas, ensure they are properly quoted in the CSV',
+    ],
+    docUrl: null,
+    docLabel: null,
+  },
+  out_of_range: {
+    label: 'Out of Range',
+    icon: 'AlertTriangle',
+    color: 'text-pink-400',
+    bgColor: 'bg-pink-500/10 border-pink-500/20',
+    badgeColor: 'bg-pink-500/15 text-pink-400',
+    keywords: ['out of range', 'exceeds', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'exceed', 'limit', 'range', 'below', 'above', 'boundary', 'invalid value'],
+    description: 'Values are outside the acceptable range for their field (e.g., negative counts, percentages over 100, dates in the future).',
+    solutions: [
+      'Review the expected ranges for each field (e.g., percentages 0-100, years 1900-2100)',
+      'Check for data entry errors like extra digits or misplaced decimal points',
+      'Filter outlier rows in the source file before re-importing',
+      'Use the Row Range retry option to skip over known problematic ranges',
     ],
     docUrl: null,
     docLabel: null,
@@ -158,10 +175,11 @@ export function groupErrors(errors) {
 }
 
 export function downloadErrorCSV(errors, batchName) {
-  const headers = ['Row', 'NPI', 'Category', 'Message'];
+  const headers = ['Row', 'NPI', 'Category', 'Phase', 'Field', 'Message'];
   const rows = errors.map(e => [
     e.row ?? '', e.npi ?? '',
     ERROR_CATEGORIES[categorizeError(e.message)]?.label || 'Other',
+    e.phase || '', e.field || '',
     (e.message || '').replace(/"/g, '""'),
   ]);
   const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
