@@ -16,16 +16,31 @@ Deno.serve(async (req) => {
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
     } else {
-      // Fetch a larger pool and filter client-side for reliability
-      // The DB filter email_searched_at='' doesn't catch providers where the field is null/undefined
-      const fetchSize = Math.min(batch_size * 5, 500);
-      const candidates = await base44.asServiceRole.entities.Provider.list('-created_date', fetchSize);
+      // Fetch providers in multiple pages to find unsearched ones
+      // The newest providers may already be searched, so we need to look deeper
+      const maxPages = 10;
+      const pageSize = 500;
+      let found = [];
       
-      providersToSearch = candidates.filter(p => {
-        if (skip_already_searched && p.email_searched_at) return false;
-        if (p.email) return false;
-        return true;
-      }).slice(0, batch_size);
+      for (let page = 0; page < maxPages && found.length < batch_size; page++) {
+        const candidates = await base44.asServiceRole.entities.Provider.list('-created_date', pageSize, page * pageSize);
+        if (!candidates || candidates.length === 0) break;
+        
+        const eligible = candidates.filter(p => {
+          if (skip_already_searched && p.email_searched_at) return false;
+          if (p.email) return false;
+          return true;
+        });
+        
+        found = [...found, ...eligible];
+        
+        // If most of this page was eligible, no need to keep paginating
+        if (eligible.length >= batch_size) break;
+        // If this page was smaller than pageSize, we've reached the end
+        if (candidates.length < pageSize) break;
+      }
+      
+      providersToSearch = found.slice(0, batch_size);
     }
 
     if (providersToSearch.length === 0) {
