@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import ImportTypeSelector from '../components/imports/ImportTypeSelector';
 import ImportWizardAccordion from '../components/imports/ImportWizardAccordion';
 import PageHeader from '../components/shared/PageHeader';
-import { Upload } from 'lucide-react';
+import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
+import RetryBatchDialog from '../components/imports/RetryBatchDialog';
 
 export default function DataImports() {
   const [selectedType, setSelectedType] = useState(null);
+  const [retryBatch, setRetryBatch] = useState(null);
+  const [retryDialogOpen, setRetryDialogOpen] = useState(false);
+  const [retryPresets, setRetryPresets] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data: batches = [] } = useQuery({
     queryKey: ['dataImportsBatches'],
@@ -20,6 +25,18 @@ export default function DataImports() {
 
   const handleReset = () => {
     setSelectedType(null);
+  };
+
+  const handleSmartRetry = (batch, suggestedSettings) => {
+    setRetryBatch(batch);
+    setRetryPresets(suggestedSettings);
+    setRetryDialogOpen(true);
+  };
+
+  const handleManualRetry = (batch) => {
+    setRetryBatch(batch);
+    setRetryPresets(null);
+    setRetryDialogOpen(true);
   };
 
   return (
@@ -47,27 +64,51 @@ export default function DataImports() {
                 <CardTitle>Recent Imports</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {batches.slice(0, 5).map(batch => (
-                    <div key={batch.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-slate-200">{batch.file_name}</p>
-                        <p className="text-sm text-slate-400">
-                          {batch.import_type?.replace(/_/g, ' ')} • {batch.valid_rows} valid rows
-                          {batch.imported_rows > 0 && ` • ${batch.imported_rows} imported`}
-                        </p>
+                    <div key={batch.id} className="space-y-2">
+                      <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                        <div>
+                          <p className="font-medium text-slate-200">{batch.file_name}</p>
+                          <p className="text-sm text-slate-400">
+                            {batch.import_type?.replace(/_/g, ' ')} • {batch.valid_rows || 0} valid rows
+                            {batch.imported_rows > 0 && ` • ${batch.imported_rows} imported`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {batch.status === 'failed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManualRetry(batch)}
+                              className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+                            >
+                              Retry
+                            </Button>
+                          )}
+                          <div className="text-right">
+                            <p className="text-sm text-slate-500">
+                              {new Date(batch.created_date).toLocaleDateString()}
+                            </p>
+                            {batch.dry_run && (
+                              <Badge className="text-xs bg-blue-900/50 text-blue-300 border-blue-700" variant="outline">Dry Run</Badge>
+                            )}
+                            {batch.status === 'completed' && !batch.dry_run && (
+                              <Badge className="text-xs bg-green-900/50 text-green-300 border-green-700" variant="outline">Imported</Badge>
+                            )}
+                            {batch.status === 'failed' && (
+                              <Badge className="text-xs bg-red-900/50 text-red-300 border-red-700" variant="outline">Failed</Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-slate-500">
-                          {new Date(batch.created_date).toLocaleDateString()}
-                        </p>
-                        {batch.dry_run && (
-                          <Badge className="text-xs bg-blue-900/50 text-blue-300 border-blue-700" variant="outline">Dry Run</Badge>
-                        )}
-                        {batch.status === 'completed' && !batch.dry_run && (
-                          <Badge className="text-xs bg-green-900/50 text-green-300 border-green-700" variant="outline">Imported</Badge>
-                        )}
-                      </div>
+                      {batch.status === 'failed' && (
+                        <AIFailureAnalysis
+                          batch={batch}
+                          compact={true}
+                          onRetryWithSettings={(settings) => handleSmartRetry(batch, settings)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -93,7 +134,18 @@ export default function DataImports() {
         </div>
       )}
 
-
+      <RetryBatchDialog
+        batch={retryBatch}
+        open={retryDialogOpen}
+        onOpenChange={(open) => {
+          setRetryDialogOpen(open);
+          if (!open) { setRetryBatch(null); setRetryPresets(null); }
+        }}
+        presets={retryPresets}
+        onRetryStarted={() => {
+          queryClient.invalidateQueries({ queryKey: ['dataImportsBatches'] });
+        }}
+      />
     </div>
   );
 }
