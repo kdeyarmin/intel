@@ -774,13 +774,13 @@ export default function ImportMonitoring() {
             <div className="space-y-4">
               {displayBatches.map((batch) => (
                 <div key={batch.id} className={`p-4 border rounded-lg hover:bg-slate-800/30 transition-colors ${
-                  bulkRetryMode && batch.status === 'failed'
+                  bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES
                     ? selectedForRerun.has(batch.id)
                       ? 'border-cyan-500/40 bg-cyan-500/5'
                       : 'border-slate-700/50 cursor-pointer'
                     : 'border-slate-700/50'
                 }`}
-                  onClick={bulkRetryMode && batch.status === 'failed' ? () => toggleSelectForRerun(batch.id) : undefined}
+                  onClick={bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES ? () => toggleSelectForRerun(batch.id) : undefined}
                 >
                   {/* Row 1: Title, status, actions */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
