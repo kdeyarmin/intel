@@ -754,6 +754,8 @@ Deno.serve(async (req) => {
              imported_rows: (batch.imported_rows || 0) + stats.prov.imported,
              updated_rows: (batch.updated_rows || 0) + stats.prov.updated,
              skipped_rows: (batch.skipped_rows || 0) + stats.prov.skipped,
+             api_requests_count: (batch.api_requests_count || 0) + (batch._api_count || 0),
+             rate_limit_count: (batch.rate_limit_count || 0) + (batch._rate_limit_count || 0),
              completed_at: allPendingProcessed ? new Date().toISOString() : undefined
         });
 
