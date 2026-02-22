@@ -85,6 +85,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   };
 
   const filteredTypes = IMPORT_TYPES.filter(t => {
+    if (!t.hasUrl) return false; // Only show types with automatic import URLs
     if (!typeSearch) return true;
     const q = typeSearch.toLowerCase();
     return t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
