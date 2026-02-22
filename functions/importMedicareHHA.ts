@@ -123,23 +123,22 @@ function mapRowToRecord(row, tableName, dataYear) {
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [];
   const warnings = [];
+  const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+
   if (!record.category || record.category.trim() === '') {
-    // Downgrade to warning instead of error — rows without labels are often subtotals/spacers
-    // but still contain valid data. Assign a placeholder and keep the row.
-    const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
     if (hasMetricData) {
+      // Has data but no label — assign placeholder and keep it
       record.category = `Row ${rowIndex}`;
       warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
     } else {
-      // No label AND no metrics — this is a header/footer/spacer row, skip it
-      errors.push({ rule: 'empty_row', field: 'category', message: 'Empty row (no label or metrics)', row: rowIndex, sheet: sheetName });
+      // No label AND no metrics — silently skip spacer/separator rows (not an error)
+      return { valid: false, skip: true, errors: [], warnings: [] };
     }
   }
   if (record.data_year < 2000 || record.data_year > 2030) {
     errors.push({ rule: 'data_year_range', field: 'data_year', message: `data_year ${record.data_year} outside 2000-2030`, row: rowIndex, sheet: sheetName });
   }
-  const hasMetric = NUMERIC_FIELDS.some(f => record[f] != null);
-  if (!hasMetric) {
+  if (!hasMetricData) {
     warnings.push({ rule: 'no_metrics', message: 'Row has no numeric values — may be header/footer', row: rowIndex, sheet: sheetName });
   }
   for (const f of NUMERIC_FIELDS) {
@@ -147,7 +146,7 @@ function validateRecord(record, rowIndex, sheetName) {
       errors.push({ rule: 'negative_value', field: f, message: `${f} is negative (${record[f]})`, row: rowIndex, sheet: sheetName });
     }
   }
-  return { valid: errors.length === 0, errors, warnings };
+  return { valid: errors.length === 0, skip: false, errors, warnings };
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
@@ -224,15 +223,16 @@ Deno.serve(async (req) => {
         addError('parse', `Sheet "${sheetName}": ${e.message}`, { sheet: sheetName, table: tableName });
         continue;
       }
-      let sheetValid = 0, sheetInvalid = 0;
+      let sheetValid = 0, sheetInvalid = 0, sheetSkipped = 0;
       for (const row of rows) {
         const record = mapRowToRecord(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
+        if (v.skip) { sheetSkipped++; continue; } // Silently skip empty spacer rows
         for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sheetValid++; } else { totalInvalid++; sheetInvalid++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sheetValid, invalid: sheetInvalid });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sheetValid, invalid: sheetInvalid, skipped_spacers: sheetSkipped });
     }
 
     // Apply offset/limit for resume
