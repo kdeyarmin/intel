@@ -43,7 +43,7 @@ export default function EmailBotControls({
               <Input
                 type="number" min="1" max="50" value={batchSize}
                 onChange={e => setBatchSize(Math.min(50, parseInt(e.target.value) || 5))}
-                className="h-8 text-sm" disabled={isRunning}
+                className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500" disabled={isRunning}
               />
               <p className="text-[10px] text-slate-500 mt-1">Providers per API call (max 50)</p>
             </div>
