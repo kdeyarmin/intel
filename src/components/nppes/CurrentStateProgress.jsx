@@ -44,7 +44,8 @@ export default function CurrentStateProgress({ status }) {
 
   const stateCode = useMemo(() => {
     if (!activeBatch) {
-      // Fallback: check processing_states from status
+      // Fallback: check currently_processing_state or processing_states from status
+      if (status?.currently_processing_state) return status.currently_processing_state;
       if (status?.processing_states?.length > 0) return status.processing_states[0];
       return null;
     }
