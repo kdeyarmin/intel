@@ -225,9 +225,16 @@ Deno.serve(async (req) => {
       }
       let sheetValid = 0, sheetInvalid = 0, sheetSkipped = 0;
       for (const row of rows) {
+        // Pre-filter: skip rows that are completely empty or only have whitespace/separator content
+        const cellValues = Object.keys(row).filter(k => k !== '_rowIndex').map(k => String(row[k] || '').trim()).filter(v => v !== '');
+        const numericCells = cellValues.filter(v => !isNaN(Number(v.replace(/[,$%\s]/g, ''))));
+        const hasAnyText = cellValues.some(v => v.length > 0 && isNaN(Number(v.replace(/[,$%\s]/g, ''))));
+        const hasAnyNumbers = numericCells.length > 0;
+        if (!hasAnyText && !hasAnyNumbers) { sheetSkipped++; continue; }
+        
         const record = mapRowToRecord(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
-        if (v.skip) { sheetSkipped++; continue; } // Silently skip empty spacer rows
+        if (v.skip) { sheetSkipped++; continue; }
         for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sheetValid++; } else { totalInvalid++; sheetInvalid++; }
