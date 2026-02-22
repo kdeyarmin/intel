@@ -519,56 +519,90 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     pct: 100,
   });
 
-  // Duplicate Check
-  // Simple check: Same NPI (should be unique by definition, but checks data integrity) or Same Name + First 3 Zip
-  const seenNPIs = new Set();
-  const duplicates = [];
-  
+  // Duplicate Check & Auto-Merge
+  // High confidence: Same NPI (exact duplicate)
+  // Medium confidence: Same first+last name + same credential
+  const npiMap = {};
+  let autoMergedCount = 0;
+
   for (const p of providers) {
-    if (seenNPIs.has(p.npi)) {
-      duplicates.push(p);
-    } else {
-      seenNPIs.add(p.npi);
+    if (!npiMap[p.npi]) npiMap[p.npi] = [];
+    npiMap[p.npi].push(p);
+  }
+
+  // Auto-merge exact NPI duplicates (high confidence) — keep the most recently updated
+  for (const npi in npiMap) {
+    const group = npiMap[npi];
+    if (group.length <= 1) continue;
+    // Sort: keep newest (by updated_date or created_date)
+    group.sort((a, b) => new Date(b.updated_date || b.created_date) - new Date(a.updated_date || a.created_date));
+    const keep = group[0];
+    for (let i = 1; i < group.length; i++) {
+      try {
+        // Merge any populated fields from duplicate into keeper before deleting
+        const dupeFields = {};
+        for (const field of ['email', 'cell_phone', 'website', 'linkedin_url', 'credential']) {
+          if (!keep[field] && group[i][field]) dupeFields[field] = group[i][field];
+        }
+        if (Object.keys(dupeFields).length > 0) {
+          await base44.asServiceRole.entities.Provider.update(keep.id, dupeFields);
+        }
+        await base44.asServiceRole.entities.Provider.delete(group[i].id);
+        autoMergedCount++;
+      } catch (e) { console.warn(`[DQ] Auto-merge NPI ${npi}: ${e.message}`); }
     }
   }
 
-  // Name fuzzy match check (simplified)
-  // Create a map key: "lastname_firstname_credential"
-  const nameMap = {};
-  for (const p of providers) {
-    if (p.entity_type === 'Individual') {
-       const key = `${p.last_name?.toLowerCase()}_${p.first_name?.toLowerCase()}`;
-       if (!nameMap[key]) nameMap[key] = [];
-       nameMap[key].push(p);
+  // Medium confidence: same name + credential for Individuals
+  const nameCredMap = {};
+  // Re-fetch surviving providers after NPI merge
+  const survivingProviders = providers.filter(p => {
+    const group = npiMap[p.npi];
+    return group && group[0]?.id === p.id;
+  });
+
+  for (const p of survivingProviders) {
+    if (p.entity_type !== 'Individual' || !p.last_name || !p.first_name) continue;
+    const key = `${p.last_name.toLowerCase().trim()}_${p.first_name.toLowerCase().trim()}_${(p.credential || '').toLowerCase().trim()}`;
+    if (!nameCredMap[key]) nameCredMap[key] = [];
+    nameCredMap[key].push(p);
+  }
+
+  for (const key in nameCredMap) {
+    const group = nameCredMap[key];
+    if (group.length <= 1) continue;
+    // Medium confidence — auto-merge: keep newest
+    group.sort((a, b) => new Date(b.updated_date || b.created_date) - new Date(a.updated_date || a.created_date));
+    const keep = group[0];
+    for (let i = 1; i < group.length; i++) {
+      try {
+        const dupeFields = {};
+        for (const field of ['email', 'cell_phone', 'website', 'linkedin_url']) {
+          if (!keep[field] && group[i][field]) dupeFields[field] = group[i][field];
+        }
+        if (Object.keys(dupeFields).length > 0) {
+          await base44.asServiceRole.entities.Provider.update(keep.id, dupeFields);
+        }
+        await base44.asServiceRole.entities.Provider.delete(group[i].id);
+        autoMergedCount++;
+      } catch (e) { console.warn(`[DQ] Auto-merge name+cred ${key}: ${e.message}`); }
     }
   }
-
-  for (const key in nameMap) {
-     if (nameMap[key].length > 1) {
-         // Potential duplicates if more than 1 with same name
-         // We could add zip check here if we had location map handy for all
-         nameMap[key].forEach(p => duplicates.push(p));
-     }
-  }
-
-  const uniqueDuplicates = [...new Set(duplicates.map(d => d.id))]; // Dedup by ID
-  const duplicateCount = uniqueDuplicates.length;
 
   ruleResults.push({
     rule_id: 'duplicate_provider', rule_name: 'Potential Duplicate Provider', category: 'duplicate',
-    total: providers.length, passing: providers.length - duplicateCount, failing: duplicateCount,
-    pct: providers.length > 0 ? Math.round(((providers.length - duplicateCount) / providers.length) * 100) : 100
+    total: providers.length, passing: providers.length - autoMergedCount, failing: autoMergedCount,
+    pct: providers.length > 0 ? Math.round(((providers.length - autoMergedCount) / providers.length) * 100) : 100
   });
 
-  if (duplicateCount > 0) {
-      alertsToCreate.push({
-        rule_id: 'duplicate_provider', rule_name: 'Potential Duplicate Provider', category: 'duplicate',
-        severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
-        summary: `${duplicateCount} providers flagged as potential duplicates (Same NPI or Name)`,
-        affected_count: duplicateCount,
-        // We could list IDs in ai_root_cause or similar
-        ai_root_cause: `Found ${duplicateCount} records sharing NPIs or Names.`
-      });
+  if (autoMergedCount > 0) {
+    alertsToCreate.push({
+      rule_id: 'duplicate_provider', rule_name: 'Potential Duplicate Provider', category: 'duplicate',
+      severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
+      summary: `Auto-merged ${autoMergedCount} duplicate providers (same NPI or same name+credential)`,
+      affected_count: autoMergedCount,
+      ai_root_cause: `Merged ${autoMergedCount} records: kept newest, transferred missing contact fields.`
+    });
   }
 
   // Timeliness check
