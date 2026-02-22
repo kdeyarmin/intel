@@ -32,7 +32,7 @@ export default function EmailBotControls({
             <Zap className="w-4 h-4 text-violet-400" />
             Search All Providers
           </CardTitle>
-          <CardDescription className="text-slate-500">
+          <CardDescription className="text-slate-400">
             Automatically search every provider in the database for emails, running in batches of {batchSize}. 
             {remainingForRun > 0 && (
               <span className="font-medium text-violet-400"> ~{remainingForRun} providers remaining ({estimatedBatches} batches).</span>
@@ -42,7 +42,7 @@ export default function EmailBotControls({
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs">Batch Size</Label>
+              <Label className="text-xs text-slate-300">Batch Size</Label>
               <Input
                 type="number" min="1" max="500" value={batchSize}
                 onChange={e => setBatchSize(Math.min(500, parseInt(e.target.value) || 10))}
@@ -51,7 +51,7 @@ export default function EmailBotControls({
             </div>
             <div className="flex items-center gap-2 pt-5">
               <Switch checked={skipSearched} onCheckedChange={setSkipSearched} disabled={isRunning} />
-              <Label className="text-xs">Skip already searched</Label>
+              <Label className="text-xs text-slate-300">Skip already searched</Label>
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export default function EmailBotControls({
             <div className="space-y-1.5">
               <Progress value={progressPct} className="h-2" />
               <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>Batch {allRunProgress.batchNumber} • {allRunProgress.totalSearched} searched • {allRunProgress.totalFound} found</span>
+                <span className="text-slate-400">Batch {allRunProgress.batchNumber} • {allRunProgress.totalSearched} searched • {allRunProgress.totalFound} found</span>
                 <span>{progressPct}%</span>
               </div>
             </div>
@@ -116,7 +116,7 @@ export default function EmailBotControls({
               <Users className="w-4 h-4 text-cyan-400" />
               Single Batch Search
             </CardTitle>
-            <CardDescription className="text-slate-500">Run one batch of {batchSize} providers</CardDescription>
+            <CardDescription className="text-slate-400">Run one batch of {batchSize} providers</CardDescription>
           </CardHeader>
           <CardContent>
             <Button
@@ -140,7 +140,7 @@ export default function EmailBotControls({
               <Bot className="w-4 h-4 text-violet-400" />
               Single Provider Search
             </CardTitle>
-            <CardDescription className="text-slate-500">Search email for a specific NPI</CardDescription>
+            <CardDescription className="text-slate-400">Search email for a specific NPI</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
