@@ -67,11 +67,12 @@ export default function EmailSearchBot() {
     const es = dashStats?.emailStats;
     if (es) {
       const searched = es.searched || 0;
+      const remaining = Math.max(0, total - searched);
       return {
         total,
         withEmail: es.withEmail || 0,
         searched,
-        remaining: total - searched,
+        remaining,
         validated: (es.valid || 0) + (es.risky || 0) + (es.invalid || 0),
         valid: es.valid || 0,
         risky: es.risky || 0,
@@ -81,11 +82,12 @@ export default function EmailSearchBot() {
     }
     const withEmail = providers.filter(p => p.email).length;
     const searched = providers.filter(p => p.email_searched_at).length;
+    const remaining = Math.max(0, total - searched);
     return {
       total,
       withEmail,
       searched,
-      remaining: total - searched,
+      remaining,
       validated: providers.filter(p => p.email_validation_status && p.email_validation_status !== '').length,
       valid: providers.filter(p => p.email_validation_status === 'valid').length,
       risky: providers.filter(p => p.email_validation_status === 'risky').length,
