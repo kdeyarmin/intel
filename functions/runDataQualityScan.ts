@@ -724,6 +724,8 @@ Key issues: ${ruleResults.filter(r => r.pct < 80).map(r => `${r.rule_name} (${r.
     scores,
     alerts_generated: alertsToCreate.length,
     ai_suggestions: aiSuggestionsCount,
+    auto_deleted: autoDeletedCount,
+    auto_merged: autoMergedCount,
     summary: aiSummary,
     rule_results: ruleResults,
   });
