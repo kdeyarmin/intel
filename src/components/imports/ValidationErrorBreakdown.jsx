@@ -90,7 +90,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
     return errors.filter(e =>
       String(e.row ?? e.row_index ?? '').includes(q) ||
       (e.npi || '').includes(q) ||
-      (e.message || '').toLowerCase().includes(q) ||
+      (e.message || e.detail || '').toLowerCase().includes(q) ||
       (e.field || '').toLowerCase().includes(q)
     );
   }, [errors, rowSearch]);
