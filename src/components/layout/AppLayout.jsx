@@ -32,7 +32,8 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
       { name: 'Email Bot', icon: Mail, page: 'EmailSearchBot', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
+      { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin', 'sales_rep'] },
+      { name: 'Outreach', icon: Mail, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
     ]
   },
   {
