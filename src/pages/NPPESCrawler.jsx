@@ -59,8 +59,12 @@ export default function NPPESCrawler() {
       // Detect if auto-chain is active on page load
       if (crawlStatus.auto_chain_active && !autoMode && !running) {
         setAutoMode(true);
-      } else if (!crawlStatus.auto_chain_active && autoMode && crawlStatus.pending === 0) {
+      } else if (!crawlStatus.auto_chain_active && autoMode) {
         setAutoMode(false);
+      }
+      // Sync currently processing state from backend
+      if (crawlStatus.currently_processing_state && autoMode) {
+        setCurrentState(crawlStatus.currently_processing_state);
       }
     }
   }, [crawlStatus]);
