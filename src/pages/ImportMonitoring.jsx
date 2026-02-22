@@ -21,6 +21,7 @@ import RetryBatchDialog from '../components/imports/RetryBatchDialog';
 import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
 import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
+import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
 import BatchDetailPanel from '../components/imports/BatchDetailPanel';
 import NewImportDialog from '../components/imports/NewImportDialog';
@@ -903,11 +904,14 @@ export default function ImportMonitoring() {
                     </div>
                   )}
 
-                  {/* Error summary for failed batches */}
+                  {/* Validation error breakdown for failed batches */}
                   {batch.status === 'failed' && batch.error_samples?.length > 0 && (
-                    <div className="mb-2 space-y-2">
-                      <ErrorSummaryPanel errors={batch.error_samples} batchName={batch.file_name} compact />
-                      <DetailedErrorRows errors={batch.error_samples} maxVisible={3} />
+                    <div className="mb-2">
+                      <ValidationErrorBreakdown
+                        errors={batch.error_samples}
+                        batchName={batch.file_name}
+                        compact={true}
+                      />
                     </div>
                   )}
 
