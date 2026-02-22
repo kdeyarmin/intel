@@ -62,16 +62,20 @@ Deno.serve(async (req) => {
           provider_id: provider.id,
         });
 
+        const d = resp.data || {};
         results.push({
           npi: provider.npi,
           name: provider.entity_type === 'Individual'
             ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
             : provider.organization_name || provider.npi,
           email: provider.email,
-          status: resp.data?.status || 'unknown',
-          score: resp.data?.score || 0,
-          confidence: resp.data?.confidence || 'low',
-          recommendation: resp.data?.recommendation || null,
+          status: d.status || 'unknown',
+          score: d.score || 0,
+          confidence: d.confidence || 'low',
+          recommendation: d.recommendation || null,
+          dns: d.dns || null,
+          smtp: d.smtp || null,
+          catchAll: d.catchAll || null,
         });
         verified++;
       } catch (e) {
