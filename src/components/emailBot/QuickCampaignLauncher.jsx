@@ -7,12 +7,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Send, Loader2, Mail, Users, Calendar } from 'lucide-react';
+import { Send, Loader2, Mail, Users, Sparkles, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import AICampaignDrafter from './AICampaignDrafter';
+import CampaignTemplatePicker from './CampaignTemplatePicker';
 
 export default function QuickCampaignLauncher({ selectedProviders = [], open, onOpenChange }) {
   const [step, setStep] = useState('setup');
   const [loading, setLoading] = useState(false);
+  const [aiTips, setAiTips] = useState([]);
   const [campaign, setCampaign] = useState({
     name: '',
     subject_template: '',
@@ -23,6 +26,45 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
   });
 
   const eligibleProviders = selectedProviders.filter(p => p.email && p.email_validation_status !== 'invalid');
+
+  // Enrich providers with location data for AI drafter context
+  const enrichedProviders = selectedProviders.map(p => ({
+    ...p,
+    _location_state: p._location_state || '',
+  }));
+
+  const handleAIDraft = (draft) => {
+    setCampaign(prev => ({
+      ...prev,
+      subject_template: draft.subject,
+      body_template: draft.body,
+    }));
+    setAiTips(draft.tips || []);
+  };
+
+  const handleTemplateSelect = ({ subject, body }) => {
+    setCampaign(prev => ({
+      ...prev,
+      subject_template: subject,
+      body_template: body,
+    }));
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!campaign.subject_template || !campaign.body_template) {
+      toast.error('Subject and body required to save template');
+      return;
+    }
+    await base44.entities.CampaignTemplate.create({
+      name: campaign.name || `Template ${new Date().toLocaleDateString()}`,
+      subject_template: campaign.subject_template,
+      body_template: campaign.body_template,
+      category: 'custom',
+      ai_generated: true,
+      use_count: 0,
+    });
+    toast.success('Template saved');
+  };
 
   const handleCreate = async () => {
     if (!campaign.name || !campaign.subject_template || !campaign.body_template) {
@@ -40,7 +82,6 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       source_criteria: 'custom',
     });
 
-    // Create outreach messages for each provider
     const messages = eligibleProviders.map(p => ({
       campaign_id: newCampaign.id,
       npi: p.npi,
@@ -60,27 +101,15 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
     setStep('done');
   };
 
-  const handleSend = async (campaignId) => {
-    setLoading(true);
-    await base44.functions.invoke('sendCampaignMessages', {
-      campaign_id: campaignId,
-      batch_size: 50,
-      send_now: true,
-    });
-    toast.success('Campaign is being sent!');
-    setLoading(false);
-    onOpenChange(false);
-    resetForm();
-  };
-
   const resetForm = () => {
     setStep('setup');
+    setAiTips([]);
     setCampaign({ name: '', subject_template: '', body_template: '', ai_personalization: true, schedule_send: false, scheduled_at: '' });
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto bg-[#0f1729] border-slate-700">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-[#0f1729] border-slate-700">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-slate-200">
             <Mail className="w-5 h-5 text-cyan-400" />
@@ -97,10 +126,37 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
               </span>
               {selectedProviders.length !== eligibleProviders.length && (
                 <Badge className="bg-amber-500/15 text-amber-400 text-[9px] border border-amber-500/20">
-                  {selectedProviders.length - eligibleProviders.length} excluded (no email / invalid)
+                  {selectedProviders.length - eligibleProviders.length} excluded
                 </Badge>
               )}
             </div>
+
+            {/* AI Draft Assistant */}
+            <AICampaignDrafter providers={enrichedProviders} onDraftReady={handleAIDraft} />
+
+            {/* AI Tips */}
+            {aiTips.length > 0 && (
+              <div className="p-2.5 bg-violet-500/5 border border-violet-500/15 rounded-lg">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Info className="w-3 h-3 text-violet-400" />
+                  <span className="text-[10px] font-medium text-violet-300">AI Tips</span>
+                </div>
+                <ul className="space-y-0.5">
+                  {aiTips.map((tip, i) => (
+                    <li key={i} className="text-[10px] text-slate-400 flex items-start gap-1">
+                      <span className="text-violet-400 mt-0.5">•</span> {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Templates */}
+            <CampaignTemplatePicker
+              onSelect={handleTemplateSelect}
+              currentSubject={campaign.subject_template}
+              currentBody={campaign.body_template}
+            />
 
             <div>
               <Label className="text-xs text-slate-400">Campaign Name *</Label>
@@ -184,6 +240,9 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
               <p className="text-xs text-slate-400 mt-1">{eligibleProviders.length} messages queued</p>
             </div>
             <div className="flex gap-2 justify-center">
+              <Button onClick={handleSaveAsTemplate} variant="outline" size="sm" className="border-slate-700 text-slate-300 gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Save as Template
+              </Button>
               <Button onClick={() => onOpenChange(false)} variant="outline" className="border-slate-700 text-slate-300">
                 Close
               </Button>

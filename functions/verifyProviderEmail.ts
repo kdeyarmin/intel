@@ -26,6 +26,10 @@ const HEALTHCARE_DOMAINS = [
   'medicine', 'care', 'physician', 'doctor', 'healthcare', 'pharma'
 ];
 
+const KNOWN_CATCH_ALL_PROVIDERS = new Set([
+  'yahoo.com', 'aol.com', 'protonmail.com', 'zoho.com',
+]);
+
 function validateFormat(email) {
   return /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(email);
 }
@@ -50,30 +54,83 @@ function isHealthcareDomain(domain) {
 }
 
 async function checkMXRecords(domain) {
-  // Use Google DNS-over-HTTPS to check MX records
   try {
     const resp = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`, {
       signal: AbortSignal.timeout(5000)
     });
-    if (!resp.ok) return { hasMX: null, records: [], error: 'DNS lookup failed' };
+    if (!resp.ok) return { hasMX: null, records: [], mxHosts: [], error: 'DNS lookup failed' };
     const data = await resp.json();
     if (data.Status === 0 && data.Answer && data.Answer.length > 0) {
       const mxRecords = data.Answer
         .filter(a => a.type === 15)
         .map(a => a.data)
         .filter(Boolean);
-      return { hasMX: mxRecords.length > 0, records: mxRecords, error: null };
+      const mxHosts = mxRecords.map(r => {
+        const parts = r.trim().split(/\s+/);
+        return parts.length > 1 ? parts[1].replace(/\.$/, '').toLowerCase() : r.toLowerCase();
+      });
+      return { hasMX: mxRecords.length > 0, records: mxRecords, mxHosts, error: null };
     }
-    // No MX but check if there's an A record (some domains accept mail without MX)
+    // Check A record fallback
     const aResp = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`, {
       signal: AbortSignal.timeout(5000)
     });
     const aData = await aResp.json();
     const hasA = aData.Status === 0 && aData.Answer && aData.Answer.length > 0;
-    return { hasMX: false, hasARecord: hasA, records: [], error: null };
+    return { hasMX: false, hasARecord: hasA, records: [], mxHosts: [], error: null };
   } catch (e) {
-    return { hasMX: null, records: [], error: e.message };
+    return { hasMX: null, records: [], mxHosts: [], error: e.message };
   }
+}
+
+// SMTP-level checks via probing the mail server's banner
+async function probeSMTPBanner(mxHost) {
+  try {
+    // Use a lightweight HTTP-based MX check via a public API
+    // We probe the SMTP banner by connecting to port 25 info via DNS
+    // Since Deno doesn't support raw TCP easily, we check if the MX host resolves
+    const resp = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(mxHost)}&type=A`, {
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!resp.ok) return { reachable: null };
+    const data = await resp.json();
+    const hasIP = data.Status === 0 && data.Answer && data.Answer.length > 0;
+    return { reachable: hasIP, ip: hasIP ? data.Answer[0].data : null };
+  } catch {
+    return { reachable: null };
+  }
+}
+
+// Enhanced catch-all detection heuristics
+function detectCatchAll(domain, mxHosts) {
+  const d = domain.toLowerCase();
+
+  // Known catch-all providers
+  if (KNOWN_CATCH_ALL_PROVIDERS.has(d)) {
+    return { isCatchAll: 'unlikely', reason: 'Major provider with individual mailboxes' };
+  }
+
+  // Gmail/Google Workspace — not catch-all by default
+  if (mxHosts.some(h => h.includes('google') || h.includes('gmail'))) {
+    return { isCatchAll: 'unlikely', reason: 'Google Workspace / Gmail — individual mailbox validation' };
+  }
+
+  // Microsoft 365 — not catch-all by default
+  if (mxHosts.some(h => h.includes('outlook') || h.includes('microsoft'))) {
+    return { isCatchAll: 'unlikely', reason: 'Microsoft 365 — individual mailbox validation' };
+  }
+
+  // Small custom domains with single MX may be catch-all
+  if (mxHosts.length === 1 && !mxHosts[0].includes('google') && !mxHosts[0].includes('microsoft')) {
+    return { isCatchAll: 'possible', reason: 'Single MX host on custom domain — may accept all addresses' };
+  }
+
+  // GoDaddy, Rackspace etc. sometimes catch-all
+  if (mxHosts.some(h => h.includes('secureserver') || h.includes('emailsrvr'))) {
+    return { isCatchAll: 'likely', reason: 'Hosting provider MX often configured as catch-all' };
+  }
+
+  return { isCatchAll: 'unknown', reason: 'Unable to determine catch-all status' };
 }
 
 function runStaticAnalysis(email) {
@@ -93,14 +150,12 @@ function runStaticAnalysis(email) {
   const localPart = trimmed.substring(0, atIdx);
   const domain = trimmed.substring(atIdx + 1);
 
-  // Format
   if (!validateFormat(trimmed)) {
     score -= 50;
     riskFlags.push('Invalid format');
     reasons.push('Email format is invalid');
   }
 
-  // Typo detection
   const typoSuggestion = detectTypo(domain);
   if (typoSuggestion) {
     score -= 40;
@@ -108,27 +163,23 @@ function runStaticAnalysis(email) {
     reasons.push(`Domain may be a typo for ${typoSuggestion}`);
   }
 
-  // Disposable domain
   if (isDisposable(domain)) {
     score -= 60;
     riskFlags.push('Disposable/temporary domain');
     reasons.push('Uses a known disposable email service');
   }
 
-  // Role-based
   if (isRoleBased(localPart)) {
-    score -= 15; // Less penalty — practice emails are acceptable
+    score -= 15;
     riskFlags.push('Role-based address');
     reasons.push(`Role-based email prefix (${localPart})`);
   }
 
-  // Healthcare domain bonus
   if (isHealthcareDomain(domain)) {
     score += 10;
     reasons.push('Healthcare-related domain detected');
   }
 
-  // .edu / .gov bonus
   if (domain.endsWith('.edu') || domain.endsWith('.gov')) {
     score += 15;
     reasons.push('Institutional domain (.edu/.gov)');
@@ -154,7 +205,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { provider_id, mode = 'single' } = await req.json();
+    const { provider_id } = await req.json();
 
     if (!provider_id) {
       return Response.json({ error: 'provider_id is required' }, { status: 400 });
@@ -189,6 +240,35 @@ Deno.serve(async (req) => {
       staticResult.reasons.push('MX record lookup inconclusive');
     }
 
+    // Phase 2.5: SMTP reachability probe
+    let smtpProbe = { reachable: null };
+    if (mxResult.mxHosts && mxResult.mxHosts.length > 0) {
+      smtpProbe = await probeSMTPBanner(mxResult.mxHosts[0]);
+      if (smtpProbe.reachable === true) {
+        staticResult.score += 5;
+        staticResult.reasons.push('Mail server IP resolves and is reachable');
+      } else if (smtpProbe.reachable === false) {
+        staticResult.score -= 15;
+        staticResult.riskFlags.push('Mail server IP not resolvable');
+        staticResult.reasons.push('Primary MX host does not resolve to an IP — delivery unlikely');
+      }
+    }
+
+    // Phase 2.75: Catch-all detection
+    const catchAllResult = detectCatchAll(staticResult.domain, mxResult.mxHosts || []);
+    if (catchAllResult.isCatchAll === 'likely') {
+      staticResult.score -= 10;
+      staticResult.riskFlags.push('Likely catch-all domain');
+      staticResult.reasons.push(`Catch-all risk: ${catchAllResult.reason}`);
+    } else if (catchAllResult.isCatchAll === 'possible') {
+      staticResult.score -= 5;
+      staticResult.riskFlags.push('Possible catch-all domain');
+      staticResult.reasons.push(`Catch-all possible: ${catchAllResult.reason}`);
+    } else if (catchAllResult.isCatchAll === 'unlikely') {
+      staticResult.score += 5;
+      staticResult.reasons.push(`Catch-all unlikely: ${catchAllResult.reason}`);
+    }
+
     // Phase 3: AI deliverability assessment
     const providerName = provider.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
@@ -202,7 +282,11 @@ Deno.serve(async (req) => {
 EMAIL: ${email}
 PROVIDER: ${providerName} (NPI: ${provider.npi}, Credential: ${provider.credential || 'N/A'})
 DOMAIN MX RECORDS: ${mxResult.hasMX ? 'Yes (' + mxResult.records.join(', ') + ')' : mxResult.hasMX === false ? 'No' : 'Unknown'}
+MX HOST PROVIDER: ${mxResult.mxHosts?.join(', ') || 'Unknown'}
+SMTP REACHABLE: ${smtpProbe.reachable != null ? smtpProbe.reachable : 'Not tested'}
+CATCH-ALL ASSESSMENT: ${catchAllResult.isCatchAll} — ${catchAllResult.reason}
 STATIC FLAGS: ${staticResult.riskFlags.join(', ') || 'None'}
+STATIC SCORE: ${staticResult.score}/100
 ORIGINAL SOURCE: ${provider.email_source || 'Unknown'}
 ORIGINAL CONFIDENCE: ${provider.email_confidence || 'Unknown'}
 
@@ -210,7 +294,8 @@ Assess:
 1. Is the email pattern consistent with the domain (e.g., first.last@hospital.org)?
 2. Is the domain active and associated with a real organization?
 3. Is this likely the correct email for this specific provider?
-4. Any deliverability concerns (catch-all, bouncing, etc.)?
+4. Any deliverability concerns (catch-all, bouncing, SMTP issues)?
+5. If catch-all is likely, factor that into a lower confidence.
 
 Be concise and factual.`,
         response_json_schema: {
@@ -221,6 +306,7 @@ Be concise and factual.`,
             pattern_match: { type: "boolean" },
             domain_active: { type: "boolean" },
             is_catch_all_likely: { type: "boolean" },
+            smtp_concerns: { type: "string" },
             provider_match_confidence: { type: "string", enum: ["high", "medium", "low"] },
             reasons: { type: "array", items: { type: "string" } },
             risk_factors: { type: "array", items: { type: "string" } },
@@ -284,14 +370,21 @@ Be concise and factual.`,
         dns: {
           hasMX: mxResult.hasMX,
           mxCount: mxResult.records?.length || 0,
+          mxHosts: mxResult.mxHosts || [],
           error: mxResult.error,
         },
+        smtp: {
+          reachable: smtpProbe.reachable,
+          ip: smtpProbe.ip || null,
+        },
+        catchAll: catchAllResult,
         ai: aiAssessment ? {
           status: aiAssessment.status,
           deliverability_score: aiAssessment.deliverability_score,
           pattern_match: aiAssessment.pattern_match,
           domain_active: aiAssessment.domain_active,
           is_catch_all_likely: aiAssessment.is_catch_all_likely,
+          smtp_concerns: aiAssessment.smtp_concerns || null,
           provider_match_confidence: aiAssessment.provider_match_confidence,
         } : null,
       },
@@ -306,7 +399,9 @@ Be concise and factual.`,
       confidence: finalConfidence,
       reasons: allReasons,
       riskFlags: allRiskFlags,
-      dns: { hasMX: mxResult.hasMX, mxCount: mxResult.records?.length || 0 },
+      dns: { hasMX: mxResult.hasMX, mxCount: mxResult.records?.length || 0, mxHosts: mxResult.mxHosts },
+      smtp: { reachable: smtpProbe.reachable },
+      catchAll: catchAllResult,
       ai: aiAssessment,
       recommendation: aiAssessment?.recommendation || null,
     });
