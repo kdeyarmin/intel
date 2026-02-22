@@ -7,7 +7,7 @@ const US_STATES = [
   'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 
-export default function StateCrawlerGrid({ status, currentState, running, onStateClick }) {
+export default function StateCrawlerGrid({ status, currentState, running, autoMode, onStateClick }) {
   const completedSet = new Set(status?.completed_states || []);
   const failedSet = new Set(status?.failed_states || []);
   const processingSet = new Set(status?.processing_states || []);

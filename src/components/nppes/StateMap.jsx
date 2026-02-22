@@ -19,7 +19,7 @@ const STATUS_COLORS = {
   pending:    { bg: '#1e293b', text: '#64748b', border: '#334155' },
 };
 
-export default function StateMap({ status, currentState, running, onStateClick }) {
+export default function StateMap({ status, currentState, running, autoMode, onStateClick }) {
   const completedSet = useMemo(() => new Set(status?.completed_states || []), [status]);
   const failedSet = useMemo(() => new Set(status?.failed_states || []), [status]);
   const processingSet = useMemo(() => new Set(status?.processing_states || []), [status]);
