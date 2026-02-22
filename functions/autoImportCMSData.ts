@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         }
 
         const payload = await req.json();
-        const { import_type: raw_import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null } = payload;
+        const { import_type: raw_import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null, retry_of = null, retry_count = 0, retry_tags = null, category: retryCategory = null } = payload;
 
         // Resolve aliases before validation
         const ALIASES = { cms_utilization: 'provider_service_utilization' };
@@ -113,6 +113,8 @@ Deno.serve(async (req) => {
                  data_year: parseInt(year),
                  status: 'processing',
                  dry_run,
+                 ...(retry_of ? { retry_of, retry_count: retry_count || 1, tags: retry_tags || ['retry'] } : {}),
+                 ...(retryCategory ? { category: retryCategory } : {}),
              });
          }
 
