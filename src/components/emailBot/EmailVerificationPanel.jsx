@@ -206,7 +206,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
       {/* Info */}
       <div className="flex items-start gap-2 bg-slate-800/40 border border-slate-700/30 rounded-lg p-3">
         <Info className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-slate-400">
           Verification performs 3-phase checks: format & pattern analysis, DNS/MX record validation, and AI deliverability assessment. 
           Provider records are automatically updated with verification results.
         </p>

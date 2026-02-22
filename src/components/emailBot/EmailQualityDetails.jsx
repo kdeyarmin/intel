@@ -101,19 +101,19 @@ export default function EmailQualityDetails({ analysis, email, compact = false }
       {analysis.analysis && (
         <div className="grid grid-cols-2 gap-2 text-[10px]">
           <div className="space-y-1">
-            <p className="text-slate-500">Format:</p>
+            <p className="text-slate-400">Format:</p>
             <Badge variant="outline" className={analysis.analysis.format ? 'border-emerald-500/30 text-emerald-400' : 'border-red-500/30 text-red-400'}>
               {analysis.analysis.format ? 'Valid' : 'Invalid'}
             </Badge>
           </div>
           <div className="space-y-1">
-            <p className="text-slate-500">Type:</p>
+            <p className="text-slate-400">Type:</p>
             <Badge variant="outline" className={analysis.analysis.isRoleBased ? 'border-amber-500/30 text-amber-400' : 'border-emerald-500/30 text-emerald-400'}>
               {analysis.analysis.isRoleBased ? 'Role-based' : 'Personal'}
             </Badge>
           </div>
           <div className="space-y-1">
-            <p className="text-slate-500">Domain:</p>
+            <p className="text-slate-400">Domain:</p>
             <Badge variant="outline" className={
               analysis.analysis.isSpamDomain ? 'border-red-500/30 text-red-400' :
               analysis.analysis.isReputable ? 'border-emerald-500/30 text-emerald-400' :
@@ -123,7 +123,7 @@ export default function EmailQualityDetails({ analysis, email, compact = false }
             </Badge>
           </div>
           <div className="space-y-1">
-            <p className="text-slate-500">Typos:</p>
+            <p className="text-slate-400">Typos:</p>
             <Badge variant="outline" className={analysis.analysis.hasTypo ? 'border-amber-500/30 text-amber-400' : 'border-emerald-500/30 text-emerald-400'}>
               {analysis.analysis.hasTypo ? 'Detected' : 'None found'}
             </Badge>

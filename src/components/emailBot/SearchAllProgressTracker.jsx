@@ -66,28 +66,28 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
             <p className="text-sm font-bold text-slate-200">
               {metrics.throughput.toFixed(1)}/s
             </p>
-            <p className="text-[9px] text-slate-400">Throughput</p>
+            <p className="text-[9px] text-slate-500">Throughput</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/40 rounded-lg p-2 text-center">
             <Clock className="w-3 h-3 text-cyan-400 mx-auto mb-0.5" />
             <p className="text-sm font-bold text-slate-200">
               {metrics.eta || '—'}
             </p>
-            <p className="text-[9px] text-slate-400">Est. Remaining</p>
+            <p className="text-[9px] text-slate-500">Est. Remaining</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/40 rounded-lg p-2 text-center">
             <TrendingUp className="w-3 h-3 text-emerald-400 mx-auto mb-0.5" />
             <p className="text-sm font-bold text-slate-200">
               {metrics.findRate.toFixed(0)}%
             </p>
-            <p className="text-[9px] text-slate-400">Find Rate</p>
+            <p className="text-[9px] text-slate-500">Find Rate</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/40 rounded-lg p-2 text-center">
             <Users className="w-3 h-3 text-amber-400 mx-auto mb-0.5" />
             <p className="text-sm font-bold text-slate-200">
               {Math.max(0, remainingForRun - totalSearched).toLocaleString()}
             </p>
-            <p className="text-[9px] text-slate-400">Still Remaining</p>
+            <p className="text-[9px] text-slate-500">Still Remaining</p>
           </div>
         </div>
       )}

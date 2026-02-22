@@ -43,7 +43,7 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
                 <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[9px]">{provider.credential}</Badge>
               )}
             </div>
-            <div className="text-xs text-slate-500 font-mono mb-2">{provider.npi}</div>
+            <div className="text-xs text-slate-400 font-mono mb-2">{provider.npi}</div>
 
             {/* Enriched data display */}
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">

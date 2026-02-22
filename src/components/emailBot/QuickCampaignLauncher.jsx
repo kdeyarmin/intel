@@ -176,7 +176,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
                 onChange={(e) => setCampaign({ ...campaign, subject_template: e.target.value })}
                 className="mt-1 bg-slate-800/50 border-slate-700 text-slate-200 font-mono text-xs"
               />
-              <p className="text-[10px] text-slate-600 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
+              <p className="text-[10px] text-slate-500 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
             </div>
 
             <div>

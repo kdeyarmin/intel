@@ -142,7 +142,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
       )}
 
       {templates.length === 0 && !isLoading && (
-        <p className="text-[10px] text-slate-600 text-center py-2">No saved templates yet</p>
+        <p className="text-[10px] text-slate-500 text-center py-2">No saved templates yet</p>
       )}
     </div>
   );

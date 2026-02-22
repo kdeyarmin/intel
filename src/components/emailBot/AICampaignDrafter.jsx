@@ -101,7 +101,7 @@ REQUIREMENTS:
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] text-slate-500 mb-1 block">Tone</label>
+          <label className="text-[10px] text-slate-400 mb-1 block">Tone</label>
           <Select value={tone} onValueChange={setTone}>
             <SelectTrigger className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />
@@ -112,7 +112,7 @@ REQUIREMENTS:
           </Select>
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 mb-1 block">Goal</label>
+          <label className="text-[10px] text-slate-400 mb-1 block">Goal</label>
           <Select value={goal} onValueChange={setGoal}>
             <SelectTrigger className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />

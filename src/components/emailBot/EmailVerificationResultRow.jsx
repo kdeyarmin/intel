@@ -85,7 +85,7 @@ export default function EmailVerificationResultRow({ result }) {
             )}
           </div>
           {result.catchAll?.reason && (
-            <p className="text-[9px] text-slate-500 mt-1">{result.catchAll.reason}</p>
+            <p className="text-[9px] text-slate-400 mt-1">{result.catchAll.reason}</p>
           )}
         </div>
       )}

@@ -60,9 +60,9 @@ export default function DataImports() {
           <ImportTypeSelector onSelect={(type) => setSelectedType(type)} />
 
           {batches.length > 0 && (
-            <Card>
+            <Card className="bg-[#141d30] border-slate-700/50">
               <CardHeader>
-                <CardTitle>Recent Imports</CardTitle>
+                <CardTitle className="text-slate-200">Recent Imports</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
