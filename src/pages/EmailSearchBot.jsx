@@ -15,6 +15,7 @@ import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailDeduplicationPanel from '../components/emailBot/EmailDeduplicationPanel';
 import OutreachEmailPreview from '../components/emailBot/OutreachEmailPreview';
 import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
+import EmailSearchScheduler from '../components/emailBot/EmailSearchScheduler';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function EmailSearchBot() {
@@ -189,12 +190,15 @@ export default function EmailSearchBot() {
     let batchNumber = 0;
     let hasMore = true;
 
-    setAllRunProgress({ totalSearched: 0, totalFound: 0, batchNumber: 0, status: 'running' });
+    const startTime = Date.now();
+    const batchTimesArr = [];
+    setAllRunProgress({ totalSearched: 0, totalFound: 0, batchNumber: 0, status: 'running', startTime, batchTimes: [] });
 
     while (hasMore && !stopRef.current) {
       batchNumber++;
       setAllRunProgress(prev => ({ ...prev, batchNumber, status: 'running' }));
 
+      const batchStart = Date.now();
       try {
         const response = await base44.functions.invoke('emailSearchBot', {
           mode: 'batch',
@@ -203,10 +207,13 @@ export default function EmailSearchBot() {
         });
         const data = response.data;
         
+        const batchDuration = (Date.now() - batchStart) / 1000;
+        batchTimesArr.push(batchDuration);
+
         totalSearched += data.searched || 0;
         totalFound += data.found || 0;
         allResults = [...allResults, ...(data.results || [])];
-        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running' });
+        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running', startTime, batchTimes: [...batchTimesArr] });
         setLastResults(allResults);
 
         // Stop only when backend confirms no more providers remain
@@ -369,6 +376,9 @@ export default function EmailSearchBot() {
           </Card>
         </div>
       )}
+
+      {/* Scheduler */}
+      <EmailSearchScheduler stats={stats} onTriggerRun={runSearchAll} />
 
       {/* Controls */}
       <EmailBotControls
