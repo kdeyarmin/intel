@@ -155,8 +155,8 @@ Deno.serve(async (req) => {
     // Individual import functions (HHA, SNF, Part D) handle their own fallbacks to LATEST_AVAILABLE_YEAR
     const resolvedYear = year || (new Date().getFullYear() - 2);
 
-    // Call autoImportCMSData — use user-scoped invoke so auth propagates
-    const response = await base44.functions.invoke('autoImportCMSData', {
+    // Call autoImportCMSData via service role
+    const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
