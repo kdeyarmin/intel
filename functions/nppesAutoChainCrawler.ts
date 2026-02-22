@@ -185,32 +185,58 @@ Deno.serve(async (req) => {
         }
 
         // Process one state via the existing crawler
+        // Keep re-invoking until the current state is fully done (handles timeout/resume_next)
         console.log(`[AutoChain] Invoking state crawler (states_processed=${states_processed}, failures=${consecutive_failures})`);
 
         let crawlResult;
-        try {
-            // Use service role for inner call to ensure it runs
-            const res = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                action: 'start',
-                taxonomy_description,
-                entity_type,
-                dry_run,
-            });
-            crawlResult = res.data;
-        } catch (invokeErr) {
-            console.error('[AutoChain] Crawler invocation failed:', invokeErr.message);
-            const isTimeout = /502|504|timeout|ECONNRESET|aborted/i.test(invokeErr.message);
-            if (isTimeout) {
-                console.warn('[AutoChain] Likely timeout — crawler may still be running in background. Proceeding to next state.');
-                crawlResult = { success: true, error: 'timeout_likely', done: false, timeout_assumed: true };
-            } else {
-                crawlResult = { success: false, error: invokeErr.message, done: false };
+        let stateInvocations = 0;
+        const MAX_STATE_INVOCATIONS = 25; // Safety limit per state
+        let cumulativeImported = 0;
+
+        while (stateInvocations < MAX_STATE_INVOCATIONS) {
+            stateInvocations++;
+            try {
+                const res = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
+                    action: 'start',
+                    taxonomy_description,
+                    entity_type,
+                    dry_run,
+                });
+                crawlResult = res.data;
+                cumulativeImported += (crawlResult.imported_providers || 0);
+
+                // If the state is fully done (no resume needed), break out
+                if (!crawlResult.resume_next) {
+                    break;
+                }
+
+                // State needs more invocations (timed out mid-zip-prefix)
+                console.log(`[AutoChain] State ${crawlResult.state} needs continuation (invocation ${stateInvocations}). Resuming...`);
+                // Brief pause before re-invoking
+                await new Promise(r => setTimeout(r, 2000));
+
+            } catch (invokeErr) {
+                console.error(`[AutoChain] Crawler invocation ${stateInvocations} failed:`, invokeErr.message);
+                const isTimeout = /502|504|500|timeout|ECONNRESET|aborted|failed to fetch/i.test(invokeErr.message);
+                if (isTimeout) {
+                    console.warn('[AutoChain] Likely timeout — crawler saved progress. Re-invoking to resume...');
+                    // Don't break — loop again to resume the same state
+                    await new Promise(r => setTimeout(r, 3000));
+                    continue;
+                } else {
+                    crawlResult = { success: false, error: invokeErr.message, done: false };
+                    break;
+                }
             }
         }
 
-        const stateJustProcessed = crawlResult.state || 'unknown';
+        if (stateInvocations >= MAX_STATE_INVOCATIONS && crawlResult?.resume_next) {
+            console.warn(`[AutoChain] State ${crawlResult?.state} hit max invocations (${MAX_STATE_INVOCATIONS}). Moving on.`);
+        }
+
+        const stateJustProcessed = crawlResult?.state || 'unknown';
         const newStatesProcessed = states_processed + 1;
-        const newTotalImported = total_imported + (crawlResult.imported_providers || 0);
+        const newTotalImported = total_imported + cumulativeImported;
 
         console.log(`[AutoChain] State ${stateJustProcessed}: success=${crawlResult.success}, fetched=${crawlResult.total_fetched || 0}, imported=${crawlResult.imported_providers || 0}`);
 
