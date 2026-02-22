@@ -40,6 +40,7 @@ import CriticalFailureAlerts from '../components/imports/CriticalFailureAlerts';
 import SuccessVsFailureChart from '../components/imports/SuccessVsFailureChart';
 import EnhancedErrorReport from '../components/imports/EnhancedErrorReport';
 import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
+import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 
 const CATEGORY_LABELS = {
@@ -561,11 +562,17 @@ export default function ImportMonitoring() {
       {/* Import Trend Charts */}
       <ImportTrendCharts batches={batches} />
 
+      {/* Cross-Batch Error Resolver */}
+      {failedBatches.length > 1 && (
+        <CrossBatchErrorResolver batches={batches} onActionComplete={refreshBatches} />
+      )}
+
       {/* Enhanced Error Report Dialog */}
       <EnhancedErrorReport
         batch={errorReportBatch}
         open={!!errorReportBatch}
         onOpenChange={(open) => { if (!open) setErrorReportBatch(null); }}
+        onRefresh={refreshBatches}
       />
 
       {/* Stale Jobs Warning */}
