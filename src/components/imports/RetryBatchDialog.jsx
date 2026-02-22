@@ -36,10 +36,14 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
   if (!batch) return null;
 
+  const MAX_RETRIES = 5;
+  const currentRetryCount = batch.retry_count || 0;
+  const retryLimitReached = currentRetryCount >= MAX_RETRIES;
   const hasValidatedRows = batch.valid_rows > 0 && !batch.imported_rows;
   const hasInvalidRows = batch.invalid_rows > 0;
 
   const handleRetry = async () => {
+    if (retryLimitReached) return;
     setIsRetrying(true);
     try {
       const retryParams = {
@@ -61,42 +65,48 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         retryParams.resume_from = batch.imported_rows || 0;
       }
 
-      await base44.entities.ImportBatch.create({
+      // Build invoke params — triggerImport will create the batch, we don't create one here
+      const invokeParams = {
         import_type: batch.import_type,
-        file_name: batch.file_name,
-        file_url: batch.file_url,
-        status: 'validating',
+        file_url: batch.file_url || undefined,
         dry_run: dryRun,
+        year: batch.data_year || undefined,
+        // Retry tracking
         retry_of: batch.id,
-        retry_count: (batch.retry_count || 0) + 1,
-        retry_params: retryParams,
-        tags: [...(batch.tags || []), 'retry'],
-        category: batch.category,
-      });
+        retry_count: currentRetryCount + 1,
+        retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry'), 'retry'])],
+        category: batch.category || undefined,
+      };
 
-      try {
-        const invokeParams = {
-          import_type: batch.import_type,
-          file_url: batch.file_url,
-          dry_run: dryRun,
-        };
-        // Pass range params for ZIP-based imports (Medicare MA, HHA, Part D, SNF)
-        if (retryMode === 'row_range') {
-          invokeParams.row_offset = rowOffset ? Number(rowOffset) : 0;
-          invokeParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
-        } else if (retryMode === 'resume') {
-          invokeParams.row_offset = batch.imported_rows || 0;
-        }
-        if (retryMode === 'criteria') {
-          if (npiFilter) invokeParams.npi_filter = npiFilter;
-          if (stateFilter) invokeParams.state_filter = stateFilter;
-        }
-        if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
-        if (skipValidation) invokeParams.skip_validation = true;
-        await base44.functions.invoke('triggerImport', invokeParams);
-      } catch (e) {
-        console.warn('triggerImport call failed, batch was still created:', e.message);
+      // Pass range params for ZIP-based or paginated imports
+      if (retryMode === 'row_range') {
+        invokeParams.row_offset = rowOffset ? Number(rowOffset) : 0;
+        invokeParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
+      } else if (retryMode === 'resume') {
+        invokeParams.resume_offset = batch.imported_rows || 0;
       }
+      if (retryMode === 'criteria') {
+        if (npiFilter) invokeParams.npi_filter = npiFilter;
+        if (stateFilter) invokeParams.state_filter = stateFilter;
+      }
+      if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+      if (skipValidation) invokeParams.skip_validation = true;
+
+      await base44.functions.invoke('triggerImport', invokeParams);
+
+      // Log the retry as an audit event
+      try {
+        await base44.entities.AuditEvent.create({
+          event_type: 'import',
+          user_email: 'user',
+          details: {
+            action: `Retry import: ${batch.import_type} (attempt ${currentRetryCount + 1}/${MAX_RETRIES})`,
+            entity: batch.import_type,
+            message: `Retry mode: ${retryMode}`,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) { /* audit logging is best-effort */ }
 
       onRetryStarted?.();
     } finally {
@@ -126,8 +136,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               {batch.imported_rows > 0 && <span className="text-blue-400">Imported: {batch.imported_rows?.toLocaleString()}</span>}
               {batch.invalid_rows > 0 && <span className="text-red-400">Invalid: {batch.invalid_rows?.toLocaleString()}</span>}
             </div>
-            {batch.retry_count > 0 && (
-              <p className="text-amber-400 text-xs mt-1">Previously retried {batch.retry_count} time(s)</p>
+            {currentRetryCount > 0 && (
+              <p className={`text-xs mt-1 ${retryLimitReached ? 'text-red-400' : 'text-amber-400'}`}>
+                Previously retried {currentRetryCount} time(s){retryLimitReached ? ` — retry limit reached (${MAX_RETRIES} max)` : ` — ${MAX_RETRIES - currentRetryCount} retries remaining`}
+              </p>
             )}
           </div>
 
@@ -280,9 +292,9 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-          <Button onClick={handleRetry} disabled={isRetrying} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Button onClick={handleRetry} disabled={isRetrying || retryLimitReached} className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50">
             {isRetrying ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            {isRetrying ? 'Starting...' : retryMode === 'resume' ? 'Resume Import' : 'Start Retry'}
+            {retryLimitReached ? 'Retry Limit Reached' : isRetrying ? 'Starting...' : retryMode === 'resume' ? 'Resume Import' : `Start Retry (${currentRetryCount + 1}/${MAX_RETRIES})`}
           </Button>
         </DialogFooter>
       </DialogContent>
