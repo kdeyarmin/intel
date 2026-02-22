@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import FileParser from './FileParser';
 import ColumnMapper from './ColumnMapper';
 import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from './columnMappingAI';
+import AIBatchCategorizer from './AIBatchCategorizer';
 
 function parseCSVLine(line) {
   const result = [];
@@ -93,6 +94,9 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
   const [mappingScores, setMappingScores] = useState({});
   const [optionalColumns, setOptionalColumns] = useState([]);
   const [aiMappingLoading, setAiMappingLoading] = useState(false);
+
+  // AI categorization
+  const [aiCategory, setAiCategory] = useState(null);
 
   // Import state
   const [dryRun, setDryRun] = useState(false);
@@ -176,6 +180,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         status: 'validating',
         dry_run: dryRun,
         column_mapping: columnMapping,
+        ...(aiCategory ? { category: aiCategory.category } : {}),
       });
 
       setProcessingStatus('Parsing file...');
@@ -281,8 +286,15 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         />
         {fileExpanded && (
           <CardContent className="pt-0 pb-4 px-4">
-            <div className="pl-8">
+            <div className="pl-8 space-y-3">
               <FileParser onParsed={handleFileParsed} selectedType={selectedType} />
+              {file && csvColumns.length > 0 && (
+                <AIBatchCategorizer
+                  fileName={file.name}
+                  fileHeaders={csvColumns}
+                  onSuggestionApplied={(suggestion) => setAiCategory(suggestion)}
+                />
+              )}
             </div>
           </CardContent>
         )}

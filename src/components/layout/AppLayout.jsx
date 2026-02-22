@@ -51,6 +51,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
       { name: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
+      { name: 'Import Analytics', icon: BarChart3, page: 'ImportAnalytics', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
