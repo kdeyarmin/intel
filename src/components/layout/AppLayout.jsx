@@ -23,7 +23,6 @@ const NAV_SECTIONS = [
     label: 'Providers',
     items: [
       { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
-      { name: 'Organizations', icon: Building2, page: 'Organizations', roles: ['admin', 'sales_rep'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
       { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'sales_rep'] },
     ]
@@ -32,7 +31,6 @@ const NAV_SECTIONS = [
     label: 'Sales & Outreach',
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
-      { name: 'Lead Builder', icon: Target, page: 'LeadListBuilder', roles: ['admin', 'sales_rep'] },
       { name: 'Email Bot', icon: Mail, page: 'EmailSearchBot', roles: ['admin'] },
       { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
     ]
@@ -50,8 +48,7 @@ const NAV_SECTIONS = [
     label: 'Admin',
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
-      { name: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
-      { name: 'Import Analytics', icon: BarChart3, page: 'ImportAnalytics', roles: ['admin'] },
+      { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
