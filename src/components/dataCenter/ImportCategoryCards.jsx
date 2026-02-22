@@ -72,11 +72,32 @@ const IMPORT_CATEGORIES = [
 
 export { IMPORT_CATEGORIES };
 
-export default function ImportCategoryCards({ onSelectCategory }) {
+export default function ImportCategoryCards({ onSelectCategory, batches = [] }) {
+  // Compute last completed import date per category
+  const categoryDates = React.useMemo(() => {
+    const dateMap = {};
+    IMPORT_CATEGORIES.forEach(cat => {
+      const typeIds = cat.types.map(t => t.id);
+      const completedBatches = batches
+        .filter(b => typeIds.includes(b.import_type) && b.status === 'completed' && b.completed_at)
+        .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+      
+      if (completedBatches.length > 0) {
+        const lastDate = new Date(completedBatches[0].completed_at);
+        dateMap[cat.id] = {
+          lastUpdate: lastDate,
+          nextExpected: addMonths(lastDate, 1),
+        };
+      }
+    });
+    return dateMap;
+  }, [batches]);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
       {IMPORT_CATEGORIES.map(cat => {
         const Icon = cat.icon;
+        const dates = categoryDates[cat.id];
         return (
           <Card
             key={cat.id}
@@ -89,7 +110,21 @@ export default function ImportCategoryCards({ onSelectCategory }) {
                 <h3 className="text-sm font-semibold text-slate-200">{cat.label}</h3>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">{cat.description}</p>
-              <p className="text-[10px] text-slate-600 mt-2">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
+              {dates ? (
+                <div className="mt-2 space-y-0.5">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                    <Clock className="w-3 h-3 text-slate-500" />
+                    <span>Updated {formatDistanceToNow(dates.lastUpdate, { addSuffix: true })}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                    <CalendarClock className="w-3 h-3 text-slate-600" />
+                    <span>Next: {format(dates.nextExpected, 'MMM d, yyyy')}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-600 mt-2">No imports yet</p>
+              )}
+              <p className="text-[10px] text-slate-600 mt-1">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
             </CardContent>
           </Card>
         );
