@@ -180,7 +180,12 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 return (
                   <button
                     key={t.id}
-                    onClick={() => { setSelectedType(t); setStep(2); }}
+                    onClick={() => { 
+                      setSelectedType(t); 
+                      const years = AVAILABLE_YEARS[t.id];
+                      setYear(years ? String(years[0]) : String(new Date().getFullYear() - 2));
+                      setStep(2); 
+                    }}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800/40 transition-colors text-left"
                   >
                     <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
