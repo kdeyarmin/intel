@@ -470,7 +470,7 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     }
   }
 
-  // Aggregate checks
+  // Aggregate checks — auto-delete providers with no location
   const noLocProviders = providers.filter(p => !locNPIs.has(p.npi));
   ruleResults.push({
     rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
@@ -478,14 +478,18 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     pct: providers.length > 0 ? Math.round(((providers.length - noLocProviders.length) / providers.length) * 100) : 100,
   });
   if (noLocProviders.length > 0) {
+    for (const p of noLocProviders) {
+      try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-loc provider ${p.npi}: ${e.message}`); }
+    }
     alertsToCreate.push({
       rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
-      severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
-      summary: `${noLocProviders.length} providers have no associated location record`,
+      severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
+      summary: `Auto-deleted ${noLocProviders.length} providers with no associated location record`,
       affected_count: noLocProviders.length,
     });
   }
 
+  // Auto-delete providers with no taxonomy
   const noTaxProviders = providers.filter(p => !taxNPIs.has(p.npi));
   ruleResults.push({
     rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
@@ -493,10 +497,13 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     pct: providers.length > 0 ? Math.round(((providers.length - noTaxProviders.length) / providers.length) * 100) : 100,
   });
   if (noTaxProviders.length > 0) {
+    for (const p of noTaxProviders) {
+      try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-tax provider ${p.npi}: ${e.message}`); }
+    }
     alertsToCreate.push({
       rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
-      severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
-      summary: `${noTaxProviders.length} providers have no associated taxonomy record`,
+      severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
+      summary: `Auto-deleted ${noTaxProviders.length} providers with no associated taxonomy record`,
       affected_count: noTaxProviders.length,
     });
   }
