@@ -223,6 +223,57 @@ export default function EmailSearchBot() {
       .slice(0, 10);
   }, [providers]);
 
+  const filterCounts = useMemo(() => {
+    const withEmail = providers.filter(p => p.email);
+    const sources = [...new Set(withEmail.map(p => p.email_source).filter(Boolean))];
+    return {
+      valid: withEmail.filter(p => p.email_validation_status === 'valid').length,
+      risky: withEmail.filter(p => p.email_validation_status === 'risky').length,
+      invalid: withEmail.filter(p => p.email_validation_status === 'invalid').length,
+      unknown: withEmail.filter(p => !p.email_validation_status || p.email_validation_status === '').length,
+      highConf: withEmail.filter(p => p.email_confidence === 'high').length,
+      medConf: withEmail.filter(p => p.email_confidence === 'medium').length,
+      lowConf: withEmail.filter(p => p.email_confidence === 'low').length,
+      sources,
+    };
+  }, [providers]);
+
+  const filteredProviders = useMemo(() => {
+    return providers.filter(p => {
+      if (!p.email) return false;
+      if (filters.validation !== 'all') {
+        if (filters.validation === 'unknown') {
+          if (p.email_validation_status && p.email_validation_status !== '') return false;
+        } else {
+          if (p.email_validation_status !== filters.validation) return false;
+        }
+      }
+      if (filters.confidence !== 'all' && p.email_confidence !== filters.confidence) return false;
+      if (filters.source !== 'all' && p.email_source !== filters.source) return false;
+      return true;
+    }).sort((a, b) => new Date(b.email_searched_at || 0) - new Date(a.email_searched_at || 0));
+  }, [providers, filters]);
+
+  const selectedProviderObjects = useMemo(() => {
+    return providers.filter(p => selectedNpis.has(p.npi));
+  }, [providers, selectedNpis]);
+
+  const toggleSelectProvider = (npi) => {
+    setSelectedNpis(prev => {
+      const next = new Set(prev);
+      if (next.has(npi)) next.delete(npi); else next.add(npi);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedNpis.size === filteredProviders.length) {
+      setSelectedNpis(new Set());
+    } else {
+      setSelectedNpis(new Set(filteredProviders.map(p => p.npi)));
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
