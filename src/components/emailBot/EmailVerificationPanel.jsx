@@ -18,12 +18,12 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
 
   const stats = useMemo(() => {
     const withEmail = providers.filter(p => p.email);
-    const analyzed = withEmail.filter(p => p.email_analyzed_at);
-    const unanalyzed = withEmail.filter(p => !p.email_analyzed_at);
     const valid = withEmail.filter(p => p.email_validation_status === 'valid');
     const risky = withEmail.filter(p => p.email_validation_status === 'risky');
     const invalid = withEmail.filter(p => p.email_validation_status === 'invalid');
-    return { withEmail: withEmail.length, analyzed: analyzed.length, unanalyzed: unanalyzed.length, valid: valid.length, risky: risky.length, invalid: invalid.length };
+    const verified = valid.length + risky.length + invalid.length;
+    const unverified = withEmail.length - verified;
+    return { withEmail: withEmail.length, analyzed: verified, unanalyzed: unverified, valid: valid.length, risky: risky.length, invalid: invalid.length };
   }, [providers]);
 
   const runVerification = async () => {

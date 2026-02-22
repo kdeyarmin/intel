@@ -17,7 +17,7 @@ export default function EmailBotControls({
   stats,
   allRunProgress,
 }) {
-  const remainingForRun = stats ? (skipSearched ? stats.remaining : stats.total - stats.withEmail) : 0;
+  const remainingForRun = stats ? (skipSearched ? stats.remaining : stats.total) : 0;
   const estimatedBatches = remainingForRun > 0 ? Math.ceil(remainingForRun / batchSize) : 0;
 
   return (

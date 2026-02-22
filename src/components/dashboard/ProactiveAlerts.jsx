@@ -4,14 +4,17 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, TrendingDown, TrendingUp, Clock, Users, Sparkles } from 'lucide-react';
 
 export default function ProactiveAlerts({ providers = [], utilizations = [], referrals = [], locations = [] }) {
+  const isSampled = providers.length >= 200 || locations.length >= 200;
+
   const insights = useMemo(() => {
     const alerts = [];
+    const approxSuffix = isSampled ? '+' : '';
 
     const needEnrichment = providers.filter(p => p.needs_nppes_enrichment);
     if (needEnrichment.length > 0) {
       alerts.push({
         id: 'enrichment', icon: Users, severity: 'medium',
-        title: `${needEnrichment.length} providers need NPPES enrichment`,
+        title: `${needEnrichment.length}${approxSuffix} providers need NPPES enrichment`,
         description: 'These providers were imported from CMS data without full NPPES details.',
         color: 'amber',
       });
@@ -22,7 +25,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     if (deactivatedWithUtil.length > 0) {
       alerts.push({
         id: 'deactivated-util', icon: AlertTriangle, severity: 'high',
-        title: `${new Set(deactivatedWithUtil.map(u => u.npi)).size} deactivated providers with utilization data`,
+        title: `${new Set(deactivatedWithUtil.map(u => u.npi)).size}${approxSuffix} deactivated providers with utilization data`,
         description: 'These providers are deactivated but still appear in utilization records.',
         color: 'red',
       });
@@ -41,7 +44,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     if (highGrowthCount > 0) {
       alerts.push({
         id: 'ref-growth', icon: TrendingUp, severity: 'info',
-        title: `${highGrowthCount} providers with 50%+ referral growth`,
+        title: `${highGrowthCount}${approxSuffix} providers with 50%+ referral growth`,
         description: 'These providers show significant referral volume growth — potential high-value targets.',
         color: 'emerald',
       });
@@ -51,7 +54,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     if (noPhone.length > 10) {
       alerts.push({
         id: 'missing-phone', icon: Clock, severity: 'low',
-        title: `${noPhone.length} locations missing phone numbers`,
+        title: `${noPhone.length}${approxSuffix} locations missing phone numbers`,
         description: 'Consider enriching contact data for better outreach capability.',
         color: 'blue',
       });
