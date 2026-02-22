@@ -424,12 +424,7 @@ export default function NPPESCrawler() {
             <Progress value={progress} className="h-3" />
           </div>
 
-          {currentState && running && (
-            <div className="flex items-center gap-2 text-sm text-teal-300 bg-teal-900/30 border border-teal-800/50 p-3 rounded-lg">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Currently processing: <strong>{currentState}</strong>
-            </div>
-          )}
+          <CurrentStateProgress status={status} />
 
           {viewMode === 'map' ? (
             <StateMap 
