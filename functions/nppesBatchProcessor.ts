@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
                     // (it may need multiple invocations if it times out mid-state)
                     let stateResult = null;
                     let invocations = 0;
-                    const MAX_INVOCATIONS_PER_STATE = 20; // Safety limit
+                    const MAX_INVOCATIONS_PER_STATE = 50; // Safety limit — states with many zip prefixes need more iterations
                     
                     while (invocations < MAX_INVOCATIONS_PER_STATE) {
                         invocations++;
