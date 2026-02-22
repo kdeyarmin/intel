@@ -83,6 +83,7 @@ export default function ImportMonitoring() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryBatch, setRetryBatch] = useState(null);
+  const [retryPresets, setRetryPresets] = useState(null);
   const [errorLogBatch, setErrorLogBatch] = useState(null);
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -895,8 +896,8 @@ export default function ImportMonitoring() {
                         batch={batch}
                         compact={true}
                         onRetryWithSettings={(settings) => {
+                          setRetryPresets(settings);
                           setRetryBatch(batch);
-                          // The RetryBatchDialog will pick up presets via state
                         }}
                       />
                     </div>
@@ -986,8 +987,9 @@ export default function ImportMonitoring() {
       <RetryBatchDialog
         batch={retryBatch}
         open={!!retryBatch}
-        onOpenChange={(open) => { if (!open) setRetryBatch(null); }}
+        onOpenChange={(open) => { if (!open) { setRetryBatch(null); setRetryPresets(null); } }}
         onRetryStarted={refreshBatches}
+        presets={retryPresets}
       />
       </>}
 
