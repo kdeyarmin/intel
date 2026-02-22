@@ -3,7 +3,7 @@ import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
 const MAX_EXEC_MS = 50_000;
-const CHUNK = 50;
+const CHUNK = 25;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
@@ -268,13 +268,19 @@ Deno.serve(async (req) => {
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, chunk, `chunk-${i}`);
         if (result.ok) { imported += chunk.length; }
-        else { chunkErrors++; addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(300);
+        else {
+          chunkErrors++;
+          addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length });
+          // If rate limited, pause longer before next chunk
+          if (/rate limit|429/i.test(result.error)) await delay(5000);
+        }
+        if (i + CHUNK < recordsToProcess.length) await delay(800);
       }
     }
 
     const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
-    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : chunkErrors > 0 && imported === 0 ? 'failed' : 'completed';
+    // Only mark as failed if zero rows imported AND chunk errors happened; partial success is still "completed"
+    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: imported, skipped_rows: chunkErrors * CHUNK,
