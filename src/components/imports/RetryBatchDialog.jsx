@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, AlertCircle, Filter, Rows3 } from 'lucide-react';
+import { RefreshCw, AlertCircle, Filter, Rows3, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted }) {
+export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted, presets }) {
   const [retryMode, setRetryMode] = useState('full');
   const [rowOffset, setRowOffset] = useState('');
   const [rowLimit, setRowLimit] = useState('');
@@ -20,19 +20,28 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
   const [skipValidation, setSkipValidation] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  // Reset state when batch changes
+  // Reset state when batch changes, apply presets if provided
   React.useEffect(() => {
     if (batch) {
-      setRetryMode('full');
-      setRowOffset(batch.imported_rows ? String(batch.imported_rows) : '');
-      setRowLimit('');
+      if (presets) {
+        setRetryMode(presets.mode || 'full');
+        setRowOffset(presets.row_offset ? String(presets.row_offset) : batch.imported_rows ? String(batch.imported_rows) : '');
+        setRowLimit(presets.row_limit ? String(presets.row_limit) : '');
+        setSheetFilter(presets.sheet_filter || '');
+        setDryRun(presets.dry_run_first || false);
+        setSkipValidation(presets.skip_validation || false);
+      } else {
+        setRetryMode('full');
+        setRowOffset(batch.imported_rows ? String(batch.imported_rows) : '');
+        setRowLimit('');
+        setSheetFilter('');
+        setDryRun(false);
+        setSkipValidation(false);
+      }
       setNpiFilter('');
       setStateFilter('');
-      setSheetFilter('');
-      setDryRun(false);
-      setSkipValidation(false);
     }
-  }, [batch?.id]);
+  }, [batch?.id, presets]);
 
   if (!batch) return null;
 
@@ -142,6 +151,14 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               </p>
             )}
           </div>
+
+          {/* AI preset indicator */}
+          {presets && (
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5 text-xs text-purple-400 flex items-start gap-2">
+              <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>Settings pre-filled by AI analysis: <strong>{presets.explanation || `${presets.mode} mode recommended`}</strong></span>
+            </div>
+          )}
 
           {/* Retry mode tabs */}
           <Tabs value={retryMode} onValueChange={setRetryMode}>
