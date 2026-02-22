@@ -321,6 +321,9 @@ export default function ImportMonitoring() {
       filtered = Array.from(seen.values());
     }
 
+    // Only show completed/failed jobs (active ones are in Live Progress)
+    filtered = filtered.filter(b => b.status === 'completed' || b.status === 'failed' || b.status === 'cancelled');
+
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
