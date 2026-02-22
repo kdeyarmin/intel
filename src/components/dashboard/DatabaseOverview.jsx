@@ -60,7 +60,7 @@ export default function DatabaseOverview({ stats, loading }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="Providers"
-          value={formatCount(stats?.totalProviders, stats?.totalProviders >= 1000)}
+          value={formatCount(stats?.totalProviders, est)}
           subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} need enrichment` : null}
           icon={Users}
           iconColor="text-cyan-400"
@@ -69,7 +69,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Locations"
-          value={formatCount(stats?.totalLocations, stats?.totalLocations >= 500)}
+          value={formatCount(stats?.totalLocations, est)}
           icon={MapPin}
           iconColor="text-sky-400"
           link="Locations"
@@ -77,7 +77,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Referrals"
-          value={formatCount(stats?.totalReferrals, stats?.totalReferrals >= 500)}
+          value={formatCount(stats?.totalReferrals, est)}
           icon={GitBranch}
           iconColor="text-violet-400"
           link="Referrals"
@@ -85,7 +85,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Utilization"
-          value={formatCount(stats?.totalUtilization, false)}
+          value={formatCount(stats?.totalUtilization, est)}
           icon={Activity}
           iconColor="text-emerald-400"
           link="Utilization"
@@ -93,7 +93,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Taxonomies"
-          value={formatCount(stats?.totalTaxonomies, stats?.totalTaxonomies >= 500)}
+          value={formatCount(stats?.totalTaxonomies, est)}
           icon={FileText}
           iconColor="text-amber-400"
           loading={loading}
@@ -101,7 +101,7 @@ export default function DatabaseOverview({ stats, loading }) {
         <StatCard
           title="Emails Found"
           value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
-          subtitle={`${emailPct}% coverage`}
+          subtitle={`${emailPct}%${stats?.emailStats?.isEstimated ? '~' : ''} coverage`}
           icon={Mail}
           iconColor="text-pink-400"
           link="EmailSearchBot"
