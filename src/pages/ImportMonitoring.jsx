@@ -38,6 +38,7 @@ import ImportOverviewKPIs from '../components/imports/ImportOverviewKPIs';
 import CriticalFailureAlerts from '../components/imports/CriticalFailureAlerts';
 import SuccessVsFailureChart from '../components/imports/SuccessVsFailureChart';
 import EnhancedErrorReport from '../components/imports/EnhancedErrorReport';
+import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import PageHeader from '../components/shared/PageHeader';
 
 const CATEGORY_LABELS = {
@@ -884,6 +885,20 @@ export default function ImportMonitoring() {
                           )}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* AI Failure Analysis for failed batches */}
+                  {batch.status === 'failed' && (
+                    <div className="mb-2">
+                      <AIFailureAnalysis
+                        batch={batch}
+                        compact={true}
+                        onRetryWithSettings={(settings) => {
+                          setRetryBatch(batch);
+                          // The RetryBatchDialog will pick up presets via state
+                        }}
+                      />
                     </div>
                   )}
 
