@@ -57,6 +57,7 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="CareMetric Provider Intelligence — all your data at a glance"
         icon={LayoutDashboard}
+        breadcrumbs={[{ label: 'Dashboard' }]}
       />
 
       {/* Quick Actions */}
