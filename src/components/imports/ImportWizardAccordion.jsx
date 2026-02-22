@@ -163,6 +163,45 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
     return null;
   };
 
+  // Track live batch for real-time updates
+  const [liveBatchId, setLiveBatchId] = useState(null);
+  const [liveStatus, setLiveStatus] = useState(null);
+
+  // Subscribe to batch updates for real-time progress
+  useEffect(() => {
+    if (!liveBatchId) return;
+    const unsub = base44.entities.ImportBatch.subscribe((event) => {
+      if (event.id === liveBatchId && event.data) {
+        setLiveStatus(event.data);
+        if (event.data.status === 'completed' || event.data.status === 'failed') {
+          const d = event.data;
+          const success = d.status === 'completed';
+          setResult({
+            success,
+            totalRows: d.total_rows || 0,
+            validRows: d.valid_rows || 0,
+            invalidRows: d.invalid_rows || 0,
+            duplicateRows: d.duplicate_rows || 0,
+            importedRows: d.imported_rows || 0,
+            updatedRows: d.updated_rows || 0,
+            skippedRows: d.skipped_rows || 0,
+            batchId: liveBatchId,
+            dryRun: d.dry_run,
+            errorSamples: d.error_samples || [],
+            error: success ? null : (d.error_samples?.[0]?.message || 'Import failed'),
+          });
+          setImportStep(success ? STEP_DONE : STEP_ERROR);
+          setProcessing(false);
+          setProcessingStatus('');
+          if (success) toast.success(`Imported ${(d.imported_rows || 0).toLocaleString()} records`);
+          queryClient.invalidateQueries();
+          if (success && onComplete) onComplete();
+        }
+      }
+    });
+    return unsub;
+  }, [liveBatchId]);
+
   const handleImport = async () => {
     if (!file || !fileUrl) return;
     setProcessing(true);
@@ -184,83 +223,37 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         ...(aiCategory ? { category: aiCategory.category } : {}),
       });
 
-      setProcessingStatus('Parsing file...');
-      const response = await fetch(fileUrl);
-      const text = await response.text();
-      const lines = text.split('\n').filter(l => l.trim());
+      setLiveBatchId(batch.id);
+      setProcessingStatus('Validating file in background...');
 
-      if (lines.length < 2) {
-        await base44.entities.ImportBatch.update(batch.id, { status: 'failed' });
-        setResult({ success: false, error: 'File has no data rows' });
-        setImportStep(STEP_ERROR);
-        setProcessing(false);
-        return;
-      }
-
-      const headers = parseCSVLine(lines[0]);
-      let validRows = 0, invalidRows = 0, duplicateRows = 0;
-      const npiTypes = ['nppes_monthly', 'cms_utilization', 'cms_part_d', 'cms_order_referring', 'pa_home_health', 'hospice_providers', 'provider_service_utilization'];
-      const requiresNPI = npiTypes.includes(selectedType.id);
-      const seenNPIs = new Set();
-
-      setProcessingStatus('Validating rows...');
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCSVLine(lines[i]);
-        if (values.length < 2) continue;
-        const row = {};
-        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
-        const npi = getNPIFromRow(row);
-        if (requiresNPI && (!npi || String(npi).replace(/\D/g, '').length !== 10)) {
-          invalidRows++;
-        } else if (requiresNPI && seenNPIs.has(npi)) {
-          duplicateRows++;
-        } else {
-          if (npi) seenNPIs.add(npi);
-          validRows++;
-        }
-      }
-
-      await base44.entities.ImportBatch.update(batch.id, {
-        status: 'processing',
-        total_rows: lines.length - 1,
-        valid_rows: validRows,
-        invalid_rows: invalidRows,
-        duplicate_rows: duplicateRows,
-      });
-
-      setProcessingStatus(`Importing ${validRows} records...`);
-      await base44.functions.invoke('triggerImport', {
+      // Fire validation + import in background — don't await
+      base44.functions.invoke('triggerImport', {
         import_type: selectedType.id,
         file_url: fileUrl,
         dry_run: dryRun,
+        batch_id: batch.id,
+      }).catch((err) => {
+        // If the background call itself fails, show error
+        setResult({ success: false, error: err.message });
+        setImportStep(STEP_ERROR);
+        setProcessing(false);
+        setProcessingStatus('');
+        toast.error('Import failed: ' + err.message);
       });
 
       await base44.entities.AuditEvent.create({
         event_type: 'import',
         user_email: user.email,
-        details: { action: 'Import', entity: selectedType.id, row_count: validRows, file_name: file.name },
+        details: { action: dryRun ? 'Dry Run' : 'Import', entity: selectedType.id, file_name: file.name },
       });
 
-      setResult({
-        success: true,
-        totalRows: lines.length - 1,
-        validRows,
-        invalidRows,
-        duplicateRows,
-        batchId: batch.id,
-        dryRun,
-      });
-      setImportStep(STEP_DONE);
-      toast.success(`Imported ${validRows} records`);
-      queryClient.invalidateQueries();
-      if (onComplete) onComplete();
+      setProcessingStatus('Processing in background — you can navigate away');
     } catch (error) {
       setResult({ success: false, error: error.message });
       setImportStep(STEP_ERROR);
-      toast.error('Import failed: ' + error.message);
-    } finally {
       setProcessing(false);
       setProcessingStatus('');
+      toast.error('Import failed: ' + error.message);
     }
   };
 
