@@ -9,8 +9,14 @@ import { Button } from '@/components/ui/button';
 export default function EmailHealthBar({ emailStats, totalProviders }) {
   if (!emailStats || totalProviders === 0) return null;
 
-  const coveragePct = Math.round((emailStats.withEmail / totalProviders) * 100);
-  const verifiedPct = emailStats.withEmail > 0 ? Math.round(((emailStats.valid + emailStats.risky + emailStats.invalid) / emailStats.withEmail) * 100) : 0;
+  const withEmail = emailStats.withEmail || 0;
+  const valid = emailStats.valid || 0;
+  const risky = emailStats.risky || 0;
+  const invalid = emailStats.invalid || 0;
+  const totalVerified = valid + risky + invalid;
+
+  const coveragePct = totalProviders > 0 ? Math.round((withEmail / totalProviders) * 100) : 0;
+  const verifiedPct = withEmail > 0 ? Math.round((totalVerified / withEmail) * 100) : 0;
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">
