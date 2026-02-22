@@ -617,7 +617,7 @@ export default function ImportMonitoring() {
               onClick={() => setBulkRetryMode(true)}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Bulk Re-run Failed ({failedBatches.length})
+              Bulk Re-run Failed ({failedBatches.filter(b => (b.retry_count || 0) < MAX_RETRIES).length})
             </Button>
           ) : (
             <>
@@ -647,10 +647,11 @@ export default function ImportMonitoring() {
                   size="sm"
                   className="text-xs text-slate-500 hover:text-slate-300"
                   onClick={() => {
-                    if (selectedForRerun.size === displayedFailedBatches.length) {
+                    const retryable = displayedFailedBatches.filter(b => (b.retry_count || 0) < MAX_RETRIES);
+                    if (selectedForRerun.size === retryable.length) {
                       setSelectedForRerun(new Set());
                     } else {
-                      setSelectedForRerun(new Set(displayedFailedBatches.map(b => b.id)));
+                      setSelectedForRerun(new Set(retryable.map(b => b.id)));
                     }
                   }}
                 >
