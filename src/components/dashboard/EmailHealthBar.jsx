@@ -57,15 +57,15 @@ export default function EmailHealthBar({ emailStats, totalProviders }) {
         <div className="flex gap-4 mt-3 pt-3 border-t border-slate-700/50">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span className="text-[11px] text-slate-400">Valid: <span className="text-emerald-400 font-medium">{emailStats.valid.toLocaleString()}</span></span>
+            <span className="text-[11px] text-slate-400">Valid: <span className="text-emerald-400 font-medium">{valid.toLocaleString()}</span></span>
           </div>
           <div className="flex items-center gap-1.5">
             <ShieldAlert className="w-3 h-3 text-amber-400" />
-            <span className="text-[11px] text-slate-400">Risky: <span className="text-amber-400 font-medium">{emailStats.risky.toLocaleString()}</span></span>
+            <span className="text-[11px] text-slate-400">Risky: <span className="text-amber-400 font-medium">{risky.toLocaleString()}</span></span>
           </div>
           <div className="flex items-center gap-1.5">
             <ShieldX className="w-3 h-3 text-red-400" />
-            <span className="text-[11px] text-slate-400">Invalid: <span className="text-red-400 font-medium">{emailStats.invalid.toLocaleString()}</span></span>
+            <span className="text-[11px] text-slate-400">Invalid: <span className="text-red-400 font-medium">{invalid.toLocaleString()}</span></span>
           </div>
         </div>
       </CardContent>
