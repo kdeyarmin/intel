@@ -15,10 +15,13 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
   const bulkAction = async (action) => {
     setProcessing(true);
     for (const id of selectedIds) {
+      const alert = alerts.find(a => a.id === id);
+      if (!alert) continue;
+      const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
       if (action === 'dismiss') {
-        await base44.entities.DataQualityAlert.update(id, { status: 'closed' });
+        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'closed' });
       } else if (action === 'apply_fix') {
-        await base44.entities.DataQualityAlert.update(id, { status: 'resolved', resolved_at: new Date().toISOString() });
+        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'resolved', resolved_at: new Date().toISOString() });
       }
     }
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
