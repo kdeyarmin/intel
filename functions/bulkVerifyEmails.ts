@@ -41,7 +41,8 @@ Deno.serve(async (req) => {
       const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', 500);
       toVerify = candidates.filter(p => p.email && p.email.trim());
       if (mode === 'unverified') {
-        toVerify = toVerify.filter(p => !p.email_analyzed_at);
+        // Unverified = has email but no validation status yet
+        toVerify = toVerify.filter(p => !p.email_validation_status || p.email_validation_status === '');
       }
     }
 

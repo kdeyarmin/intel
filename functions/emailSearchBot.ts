@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
         
         const eligible = candidates.filter(p => {
           if (skip_already_searched && p.email_searched_at) return false;
-          if (p.email) return false;
+          if (!skip_already_searched && p.email) return false;
           return true;
         });
         
@@ -248,20 +248,18 @@ Return validation for ALL emails provided.`,
     });
 
     // Check if there are more unsearched providers remaining
+    // Use a lightweight check — just see if the original search found more than we processed
     let hasMore = false;
     if (mode !== 'single') {
-      // Check multiple pages to find unsearched providers
-      for (let page = 0; page < 5; page++) {
-        const checkCandidates = await base44.asServiceRole.entities.Provider.list('-created_date', 500, page * 500);
-        if (!checkCandidates || checkCandidates.length === 0) break;
-        const unsearched = checkCandidates.filter(p => {
-          if (skip_already_searched && p.email_searched_at) return false;
-          if (p.email) return false;
-          return true;
-        });
-        if (unsearched.length > 0) { hasMore = true; break; }
-        if (checkCandidates.length < 500) break;
-      }
+      // If we found more eligible candidates than batch_size, there are more
+      const totalEligibleFound = (() => {
+        // Re-check the first page quickly
+        let count = 0;
+        for (const p of providersToSearch) count++;
+        return count;
+      })();
+      // If we filled our batch, assume there could be more
+      hasMore = providersToSearch.length >= batch_size;
     }
 
     return Response.json({
