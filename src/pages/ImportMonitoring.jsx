@@ -785,7 +785,7 @@ export default function ImportMonitoring() {
                   {/* Row 1: Title, status, actions */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-3">
-                      {bulkRetryMode && batch.status === 'failed' ? (
+                      {bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES ? (
                         <input
                           type="checkbox"
                           checked={selectedForRerun.has(batch.id)}
