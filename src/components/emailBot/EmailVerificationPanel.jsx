@@ -39,7 +39,8 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
       const data = resp.data;
       setResults(data);
       setProgress({ processed: data.batch_processed, total: data.total_candidates, status: 'done' });
-      toast.success(`Verified ${data.verified} emails (${data.remaining} remaining)`);
+      const smtpChecked = (data.results || []).filter(r => r.smtp?.reachable != null).length;
+      toast.success(`Verified ${data.verified} emails (${data.remaining} remaining)${smtpChecked > 0 ? ` — ${smtpChecked} SMTP-probed` : ''}`);
       onRefresh?.();
     } catch (err) {
       toast.error('Verification failed: ' + (err.response?.data?.error || err.message));
