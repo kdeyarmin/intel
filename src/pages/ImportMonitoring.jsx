@@ -184,37 +184,30 @@ export default function ImportMonitoring() {
     });
   };
 
+  const MAX_RETRIES = 5;
+
   const handleBulkRetry = async () => {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
-    const toRetry = batches.filter(b => selectedForRerun.has(b.id));
+    const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
+    let successCount = 0;
+    let skipCount = 0;
     for (const batch of toRetry) {
       try {
-        // First reset the failed batch back to validating so triggerImport doesn't see a conflict
-        await base44.entities.ImportBatch.update(batch.id, {
-          status: 'validating',
-          retry_count: (batch.retry_count || 0) + 1,
-          tags: [...new Set([...(batch.tags || []), 'retry', 'bulk-retry'])],
-          error_samples: [],
-          imported_rows: 0,
-          updated_rows: 0,
-          skipped_rows: 0,
-          invalid_rows: 0,
-          valid_rows: 0,
-        });
-        // Then trigger the import — triggerImport will see this batch as active and won't create a new one
         await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
           file_url: batch.file_url || undefined,
           dry_run: false,
+          year: batch.data_year || undefined,
+          retry_of: batch.id,
+          retry_count: (batch.retry_count || 0) + 1,
+          retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
+          category: batch.category || undefined,
         });
+        successCount++;
       } catch (e) {
-        // If triggerImport fails (e.g. conflict), mark batch back as failed with the error
         console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        await base44.entities.ImportBatch.update(batch.id, {
-          status: 'failed',
-          error_samples: [{ row: 0, message: `Bulk retry failed: ${e.message}` }],
-        });
+        skipCount++;
       }
     }
     setSelectedForRerun(new Set());
