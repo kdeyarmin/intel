@@ -778,7 +778,7 @@ export default function ImportMonitoring() {
           ) : displayBatches.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">No import jobs match filters</p>
+              <p className="font-medium">No completed jobs match filters</p>
               <p className="text-sm mt-1">Try adjusting your filters or start a new import</p>
             </div>
           ) : (
