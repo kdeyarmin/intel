@@ -136,13 +136,13 @@ export default function NPPESCrawlerSettings() {
       </div>
 
       {/* API Request Settings */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
             <Zap className="w-4 h-4 text-amber-500" />
             API Request Settings
           </CardTitle>
-          <CardDescription>Control how the crawler communicates with the NPPES API</CardDescription>
+          <CardDescription className="text-slate-400">Control how the crawler communicates with the NPPES API</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -186,13 +186,13 @@ export default function NPPESCrawlerSettings() {
       </Card>
 
       {/* Import Settings */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
             <Server className="w-4 h-4 text-blue-500" />
             Import Settings
           </CardTitle>
-          <CardDescription>Control how data is written to the database</CardDescription>
+          <CardDescription className="text-slate-400">Control how data is written to the database</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -236,18 +236,18 @@ export default function NPPESCrawlerSettings() {
       </Card>
 
       {/* Auto-Retry Settings */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
             <RotateCcw className="w-4 h-4 text-orange-500" />
             Auto-Retry Settings
           </CardTitle>
-          <CardDescription>Configure automatic retries for failed states</CardDescription>
+          <CardDescription className="text-slate-400">Configure automatic retries for failed states</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-           <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-50 border-slate-200">
+           <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
               <div className="space-y-0.5">
-                <Label className="text-base">Enable Auto-Retry</Label>
+                <Label className="text-base text-slate-200">Enable Auto-Retry</Label>
                 <p className="text-xs text-slate-500">Automatically re-queue failed states after delay</p>
               </div>
               <Switch 
@@ -271,13 +271,13 @@ export default function NPPESCrawlerSettings() {
       </Card>
 
       {/* Entity Type Filter */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
             <Users className="w-4 h-4 text-violet-500" />
             Entity Types to Crawl
           </CardTitle>
-          <CardDescription>Choose which provider types the crawler should fetch</CardDescription>
+          <CardDescription className="text-slate-400">Choose which provider types the crawler should fetch</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -298,7 +298,7 @@ export default function NPPESCrawlerSettings() {
               onToggle={() => toggleEntityType('NPI-2')}
             />
             {form.crawl_entity_types?.length === 0 && (
-              <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
                 At least one entity type must be selected for the crawler to function.
               </p>
             )}
@@ -308,7 +308,7 @@ export default function NPPESCrawlerSettings() {
 
       {/* Current Config Summary */}
       {existingConfig && (
-        <Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-4">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Last updated: {new Date(existingConfig.updated_date).toLocaleString()}</span>
@@ -324,7 +324,7 @@ export default function NPPESCrawlerSettings() {
 function SettingField({ label, description, value, onChange, min, max }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium">{label}</Label>
+      <Label className="text-sm font-medium text-slate-200">{label}</Label>
       <Input
         type="number"
         value={value}
@@ -340,12 +340,12 @@ function SettingField({ label, description, value, onChange, min, max }) {
 
 function EntityTypeToggle({ type, label, description, icon, enabled, onToggle }) {
   return (
-    <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${enabled ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-dashed border-slate-200'}`}>
+    <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${enabled ? 'bg-slate-800/40 border-slate-600' : 'bg-slate-800/20 border-dashed border-slate-700'}`}>
       <div className="flex items-center gap-3">
         {icon}
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-slate-700">{label}</p>
+            <p className="text-sm font-medium text-slate-200">{label}</p>
             <Badge variant="outline" className="text-[10px]">{type}</Badge>
           </div>
           <p className="text-xs text-slate-500">{description}</p>
