@@ -396,7 +396,7 @@ export default function NPPESCrawler() {
               <div className="flex gap-2">
                 <Badge className="bg-green-900/40 text-green-400 border-green-800">{completedCount} completed</Badge>
                 {failedCount > 0 && <Badge className="bg-red-900/40 text-red-400 border-red-800">{failedCount} failed</Badge>}
-                <Badge variant="outline">{status?.pending || 0} pending</Badge>
+                <Badge variant="outline" className="text-slate-300 border-slate-600">{status?.pending || 0} pending</Badge>
               </div>
               <div className="flex border rounded-md overflow-hidden">
                 <Button
