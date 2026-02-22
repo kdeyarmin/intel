@@ -94,6 +94,23 @@ Deno.serve(async (req) => {
                 b => b.file_name === 'crawler_auto_stop_signal' && b.status === 'validating'
             );
 
+            // Determine if auto-chain is truly active:
+            // It's active if there's no stop signal AND there was recent activity (a batch in last 5 min)
+            const recentThreshold = 5 * 60 * 1000; // 5 minutes
+            const hasRecentBatch = crawlerBatches.some(b => {
+                const age = Date.now() - new Date(b.created_date || b.updated_date).getTime();
+                return age < recentThreshold;
+            });
+            const autoChainActive = !stopSignalActive && hasRecentBatch && pendingStates.length > 0;
+
+            // If auto-chain is active but no batch is currently in "processing",
+            // the next pending state is effectively being processed (chain gap).
+            // Include it so the UI can show it as active.
+            let currentlyProcessingState = processingStates.length > 0 ? processingStates[0] : null;
+            if (autoChainActive && !currentlyProcessingState && pendingStates.length > 0) {
+                currentlyProcessingState = pendingStates[0];
+            }
+
             return Response.json({
                 total_states: US_STATES.length,
                 completed: completedStates.length,
@@ -104,7 +121,8 @@ Deno.serve(async (req) => {
                 failed_states: failedStates,
                 processing_states: processingStates,
                 pending_states: pendingStates,
-                auto_chain_active: (processingStates.length > 0 || pendingStates.length > 0) && !stopSignalActive && (completedStates.length > 0 || processingStates.length > 0),
+                auto_chain_active: autoChainActive,
+                currently_processing_state: currentlyProcessingState,
                 batches: crawlerBatches.slice(0, 60),
             });
         }
