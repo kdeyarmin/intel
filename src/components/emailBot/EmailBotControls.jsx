@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Bot, Play, Loader2, Users, Zap, Square } from 'lucide-react';
+import SearchAllProgressTracker from './SearchAllProgressTracker';
 
 export default function EmailBotControls({
   batchSize, setBatchSize,
@@ -19,9 +19,6 @@ export default function EmailBotControls({
 }) {
   const remainingForRun = stats ? (skipSearched ? stats.remaining : stats.total - stats.withEmail) : 0;
   const estimatedBatches = remainingForRun > 0 ? Math.ceil(remainingForRun / batchSize) : 0;
-  const progressPct = allRunProgress && estimatedBatches > 0
-    ? Math.min(100, Math.round((allRunProgress.totalSearched / Math.max(remainingForRun, 1)) * 100))
-    : 0;
 
   return (
     <div className="space-y-5">
@@ -64,26 +61,12 @@ export default function EmailBotControls({
             </div>
           )}
 
-          {/* Progress bar during Search All */}
-          {allRunProgress && isRunningAll && (
-            <div className="space-y-1.5">
-              <Progress value={progressPct} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="text-slate-400">Batch {allRunProgress.batchNumber} • {allRunProgress.totalSearched} searched • {allRunProgress.totalFound} found</span>
-                <span>{progressPct}%</span>
-              </div>
-            </div>
-          )}
-
-          {/* Completed summary */}
-          {allRunProgress && !isRunningAll && allRunProgress.status !== 'running' && (
-            <div className={`rounded-lg p-3 text-sm ${allRunProgress.status === 'complete' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-              {allRunProgress.status === 'complete'
-                ? `✅ Complete — searched ${allRunProgress.totalSearched} providers across ${allRunProgress.batchNumber} batches, found ${allRunProgress.totalFound} emails.`
-                : `⏹ Stopped after ${allRunProgress.batchNumber} batches — searched ${allRunProgress.totalSearched}, found ${allRunProgress.totalFound} emails.`
-              }
-            </div>
-          )}
+          {/* Granular progress tracker */}
+          <SearchAllProgressTracker
+            allRunProgress={allRunProgress}
+            remainingForRun={remainingForRun}
+            isRunningAll={isRunningAll}
+          />
 
           <div className="flex gap-2">
             {!isRunningAll ? (
