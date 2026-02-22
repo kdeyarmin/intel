@@ -52,7 +52,7 @@ export default function ProviderOutreach() {
         title="Provider Outreach"
         subtitle="Create and manage provider engagement campaigns"
         icon={Mail}
-        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Campaigns' }]}
+        breadcrumbs={[{ label: 'Sales & Outreach', page: 'ProviderOutreach' }, { label: 'Campaigns' }]}
       />
 
       <Tabs value={tab} onValueChange={setTab}>

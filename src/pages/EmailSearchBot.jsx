@@ -292,7 +292,7 @@ export default function EmailSearchBot() {
         title="Email Search Bot"
         subtitle="AI-powered search to find email addresses for providers and practices"
         icon={Bot}
-        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Email Bot' }]}
+        breadcrumbs={[{ label: 'Sales & Outreach', page: 'ProviderOutreach' }, { label: 'Email Bot' }]}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

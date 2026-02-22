@@ -78,7 +78,7 @@ export default function AdvancedAnalytics() {
         title="Advanced Analytics"
         subtitle="Deep insights, trend analysis, comparative reports & predictive models"
         icon={BarChart3}
-        breadcrumbs={[{ label: 'Analytics' }]}
+        breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }]}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
