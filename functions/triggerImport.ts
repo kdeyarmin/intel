@@ -51,16 +51,21 @@ Deno.serve(async (req) => {
     const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
 
     // Check for duplicate imports already in progress
+    // Filter out signal/control batches that aren't real imports
     const activeImports = await base44.asServiceRole.entities.ImportBatch.filter({
       import_type,
       status: { $in: ['validating', 'processing'] }
     });
+    const realActive = activeImports.filter(b => {
+      const fn = b.file_name || '';
+      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
+    });
 
-    if (activeImports.length > 0) {
-      const existing = activeImports[0];
-      // If the active batch has been stuck for over 3 hours, auto-cancel it
+    if (realActive.length > 0) {
+      const existing = realActive[0];
+      // If the active batch has been stuck for over 2 hours, auto-cancel it
       const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date).getTime();
-      if (stuckMs > 3 * 60 * 60 * 1000) {
+      if (stuckMs > 2 * 60 * 60 * 1000) {
         console.warn(`Auto-cancelling stale batch ${existing.id} (stuck ${Math.round(stuckMs / 60000)}min)`);
         await base44.asServiceRole.entities.ImportBatch.update(existing.id, {
           status: 'failed',
