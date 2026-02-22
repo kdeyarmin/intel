@@ -8,14 +8,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Download, Trash2, Eye, FileDown } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Plus, Trash2, Eye, BarChart3 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import LeadListTable from '../components/leadlists/LeadListTable';
+import AddProviderDialog from '../components/leadlists/AddProviderDialog';
+import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
+import LeadListStatusExport from '../components/leadlists/LeadListStatusExport';
 import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function LeadLists() {
   const [viewingListId, setViewingListId] = useState(null);
@@ -31,131 +37,11 @@ export default function LeadLists() {
     onSuccess: () => queryClient.invalidateQueries(['leadLists']),
   });
 
-
-
-  const buildExportRows = async (listId) => {
-    const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-    const providers = await base44.entities.Provider.list();
-    const scores = await base44.entities.LeadScore.list();
-    const locations = await base44.entities.ProviderLocation.list();
-    const utilizations = await base44.entities.CMSUtilization.list();
-    const referrals = await base44.entities.CMSReferral.list();
-
-    return members.map(member => {
-      const provider = providers.find(p => p.npi === member.npi);
-      const score = scores.find(s => s.npi === member.npi);
-      const location = locations.find(l => l.npi === member.npi && l.is_primary);
-      const util = utilizations.find(u => u.npi === member.npi);
-      const ref = referrals.find(r => r.npi === member.npi);
-      return {
-        npi: member.npi,
-        name: provider?.entity_type === 'Individual'
-          ? `${provider?.first_name} ${provider?.last_name}`
-          : provider?.organization_name || '',
-        score: score?.score ?? '',
-        city: location?.city || '',
-        state: location?.state || '',
-        phone: location?.phone || '',
-        beneficiaries: util?.total_medicare_beneficiaries ?? 0,
-        referrals: ref?.total_referrals ?? 0,
-        status: member.status || 'New',
-        notes: member.notes || '',
-      };
-    });
-  };
-
-  const LEAD_FIELDS = [
-    { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'score', label: 'Score' },
-    { key: 'city', label: 'City' }, { key: 'state', label: 'State' }, { key: 'phone', label: 'Phone' },
-    { key: 'beneficiaries', label: 'Beneficiaries' }, { key: 'referrals', label: 'Referrals' },
-    { key: 'status', label: 'Status' }, { key: 'notes', label: 'Notes' },
-  ];
-
-  const handleExport = async (listId, format = 'csv') => {
-    const rows = await buildExportRows(listId);
-    const list = lists.find(l => l.id === listId);
-    const name = `lead-list-${(list?.name || listId).replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}`;
-
-    if (format === 'csv') exportCSV(rows, LEAD_FIELDS, name);
-    else if (format === 'excel') exportExcel(rows, LEAD_FIELDS, name);
-    else if (format === 'pdf') exportPDF(rows, LEAD_FIELDS, name, list?.name || 'Lead List');
-
-    const user = await base44.auth.me();
-    await base44.entities.AuditEvent.create({
-      event_type: 'export',
-      user_email: user.email,
-      details: { action: 'Export Lead List', format, row_count: rows.length },
-      timestamp: new Date().toISOString(),
-    });
-  };
-
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
-    
     const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
     await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
-    
     deleteMutation.mutate(listId);
-  };
-
-  const ViewListDialog = ({ listId }) => {
-    const [leads, setLeads] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    React.useEffect(() => {
-      const loadLeads = async () => {
-        const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-        const providers = await base44.entities.Provider.list();
-        const scores = await base44.entities.LeadScore.list();
-        const locations = await base44.entities.ProviderLocation.list();
-        const utilizations = await base44.entities.CMSUtilization.list();
-        const referrals = await base44.entities.CMSReferral.list();
-        const taxonomies = await base44.entities.ProviderTaxonomy.list();
-
-        const enriched = members.map(member => ({
-          member,
-          provider: providers.find(p => p.npi === member.npi),
-          score: scores.find(s => s.npi === member.npi),
-          location: locations.find(l => l.npi === member.npi && l.is_primary),
-          utilization: utilizations.find(u => u.npi === member.npi),
-          referrals: referrals.find(r => r.npi === member.npi),
-          taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
-        }));
-
-        setLeads(enriched);
-        setLoading(false);
-      };
-
-      loadLeads();
-    }, [listId]);
-
-    const handleUpdateStatus = async (memberId, status) => {
-      await base44.entities.LeadListMember.update(memberId, { status });
-      setLeads(leads.map(l => 
-        l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
-      ));
-    };
-
-    const handleUpdateNotes = async (memberId, notes) => {
-      await base44.entities.LeadListMember.update(memberId, { notes });
-      setLeads(leads.map(l => 
-        l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
-      ));
-    };
-
-    if (loading) {
-      return <div className="p-6"><Skeleton className="h-64" /></div>;
-    }
-
-    return (
-      <div className="max-h-[70vh] overflow-y-auto">
-        <LeadListTable 
-          leads={leads}
-          onUpdateStatus={handleUpdateStatus}
-          onUpdateNotes={handleUpdateNotes}
-        />
-      </div>
-    );
   };
 
   return (
@@ -213,18 +99,13 @@ export default function LeadLists() {
                               <span className="hidden sm:inline">View</span>
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-[95vw]">
+                          <DialogContent className="max-w-[95vw] max-h-[90vh]">
                             <DialogHeader>
                               <DialogTitle>{list.name}</DialogTitle>
                             </DialogHeader>
-                            <ViewListDialog listId={list.id} />
+                            <ViewListDialog listId={list.id} listName={list.name} />
                           </DialogContent>
                         </Dialog>
-                        <div className="flex items-center border rounded-md overflow-hidden">
-                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'csv')} className="rounded-none text-xs px-2">CSV</Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'excel')} className="rounded-none border-x text-xs px-2">XLS</Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleExport(list.id, 'pdf')} className="rounded-none text-xs px-2">PDF</Button>
-                        </div>
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -241,8 +122,134 @@ export default function LeadLists() {
           )}
         </CardContent>
       </Card>
-
-
     </div>
+  );
+}
+
+function ViewListDialog({ listId, listName }) {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    loadLeads();
+  }, [listId]);
+
+  const loadLeads = async () => {
+    setLoading(true);
+    const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+    if (members.length === 0) { setLeads([]); setLoading(false); return; }
+
+    const npis = members.map(m => m.npi);
+    const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
+      base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
+      base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
+      base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
+      base44.entities.CMSUtilization.filter({ npi: { $in: npis } }, undefined, 1000),
+      base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
+      base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
+    ]);
+
+    const enriched = members.map(member => ({
+      member,
+      provider: providers.find(p => p.npi === member.npi),
+      score: scores.find(s => s.npi === member.npi),
+      location: locations.find(l => l.npi === member.npi && l.is_primary),
+      utilization: utilizations.find(u => u.npi === member.npi),
+      referrals: referrals.find(r => r.npi === member.npi),
+      taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
+    }));
+
+    setLeads(enriched);
+    setLoading(false);
+  };
+
+  const handleUpdateStatus = async (memberId, status) => {
+    await base44.entities.LeadListMember.update(memberId, { status });
+    setLeads(leads.map(l =>
+      l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
+    ));
+  };
+
+  const handleUpdateNotes = async (memberId, notes) => {
+    await base44.entities.LeadListMember.update(memberId, { notes });
+    setLeads(leads.map(l =>
+      l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
+    ));
+  };
+
+  const handleRemoveProvider = async (memberId) => {
+    await base44.entities.LeadListMember.delete(memberId);
+    setLeads(leads.filter(l => l.member.id !== memberId));
+    // Update list count
+    const list = await base44.entities.LeadList.filter({ id: listId });
+    if (list[0]) {
+      await base44.entities.LeadList.update(listId, { provider_count: Math.max((list[0].provider_count || 0) - 1, 0) });
+    }
+  };
+
+  const filteredLeads = statusFilter === 'all'
+    ? leads
+    : leads.filter(l => (l.member?.status || 'New') === statusFilter);
+
+  if (loading) {
+    return <div className="p-6"><Skeleton className="h-64" /></div>;
+  }
+
+  return (
+    <Tabs defaultValue="providers" className="w-full">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <TabsList>
+          <TabsTrigger value="providers">Providers ({leads.length})</TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="w-3.5 h-3.5 mr-1" /> Analytics
+          </TabsTrigger>
+        </TabsList>
+        <div className="flex items-center gap-2 flex-wrap">
+          <AddProviderDialog
+            listId={listId}
+            existingNpis={leads.map(l => l.member.npi)}
+            onAdded={loadLeads}
+          />
+          <LeadListStatusExport leads={leads} listName={listName} />
+        </div>
+      </div>
+
+      <TabsContent value="providers">
+        {/* Status segment filter */}
+        <div className="flex gap-1.5 mb-3 flex-wrap">
+          {['all', 'New', 'Contacted', 'Qualified', 'Not a fit'].map(s => {
+            const count = s === 'all' ? leads.length : leads.filter(l => (l.member?.status || 'New') === s).length;
+            const isActive = statusFilter === s;
+            return (
+              <Button
+                key={s}
+                size="sm"
+                variant={isActive ? 'default' : 'outline'}
+                onClick={() => setStatusFilter(s)}
+                className="text-xs h-7 gap-1"
+              >
+                {s === 'all' ? 'All' : s}
+                <Badge variant="secondary" className="text-[10px] h-4 px-1">{count}</Badge>
+              </Button>
+            );
+          })}
+        </div>
+
+        <div className="max-h-[55vh] overflow-y-auto">
+          <LeadListTable
+            leads={filteredLeads}
+            onUpdateStatus={handleUpdateStatus}
+            onUpdateNotes={handleUpdateNotes}
+            onRemove={handleRemoveProvider}
+          />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="analytics">
+        <LeadListAnalytics leads={leads} />
+      </TabsContent>
+    </Tabs>
   );
 }
