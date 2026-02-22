@@ -112,27 +112,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setError(null);
     setResult(null);
 
-    const retryParams = {};
-    if (skipValidation) retryParams.skip_validation = true;
-    if (rowOffset) retryParams.row_offset = Number(rowOffset);
-    if (rowLimit) retryParams.row_limit = Number(rowLimit);
-    if (npiFilter) retryParams.npi_filter = npiFilter;
-    if (stateFilter) retryParams.state_filter = stateFilter;
-    if (sheetFilter) retryParams.sheet_filter = sheetFilter;
-
-    const batchData = {
-      import_type: selectedType.id,
-      file_name: uploadedFile || `manual_${selectedType.id}_${Date.now()}`,
-      file_url: fileUrl || '',
-      status: 'validating',
-      dry_run: dryRun,
-      tags: tags.length > 0 ? tags : ['manual-import'],
-      retry_count: 0,
-      retry_params: Object.keys(retryParams).length > 0 ? retryParams : undefined,
-    };
-
-    await base44.entities.ImportBatch.create(batchData);
-
+    // Don't create a separate batch here — triggerImport and sub-functions create their own.
+    // Creating one here caused orphan "validating" batches that never got updated.
     try {
       const invokeParams = {
         import_type: selectedType.id,

@@ -23,7 +23,14 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' }, '-created_date', 100),
     ]);
 
+    // Filter out signal/control batches that aren't real imports
+    const isRealBatch = (batch) => {
+      const fn = batch.file_name || '';
+      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
+    };
+
     const stalledBatches = [...validating, ...processing].filter(batch => {
+      if (!isRealBatch(batch)) return false;
       const lastActivity = new Date(batch.updated_date || batch.created_date).getTime();
       return (now - lastActivity) > thresholdMs;
     });
@@ -78,62 +85,40 @@ Deno.serve(async (req) => {
           retry_count: retryCount,
         });
       } else {
-        // Auto-retry: mark as failed first, then re-trigger
+        // Mark current batch as failed, then re-trigger the import directly
+        // DO NOT create a new batch in "validating" — the triggered function creates its own
         const newRetryCount = retryCount + 1;
         await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
           status: 'failed',
-          cancel_reason: `Auto-cancelled (stalled in "${batch.status}" for ${thresholdHours}h). Will auto-retry (attempt ${newRetryCount}/${MAX_AUTO_RETRIES}).`,
+          cancel_reason: `Auto-cancelled (stalled in "${batch.status}" for ${thresholdHours}h). Re-triggering import (attempt ${newRetryCount}/${MAX_AUTO_RETRIES}).`,
+          retry_count: newRetryCount,
         });
 
-        // Create a new retry batch
+        // Re-trigger the import directly — let the target function create its own batch
         try {
-          await base44.asServiceRole.entities.ImportBatch.create({
-            import_type: batch.import_type,
-            file_name: batch.file_name,
-            file_url: batch.file_url,
-            status: 'validating',
-            dry_run: batch.dry_run || false,
-            retry_of: batch.id,
-            retry_count: newRetryCount,
-            retry_params: {
-              mode: 'full',
-              auto_retry: true,
-              previous_imported: batch.imported_rows || 0,
-            },
-            tags: [...(batch.tags || []), 'auto-retry'],
-            category: batch.category,
-          });
-
-          // Trigger the import — use appropriate function based on batch type
-          try {
-            const isCrawlerBatch = batch.file_name && batch.file_name.startsWith('crawler_');
-            if (isCrawlerBatch) {
-              // Extract state code from file_name like "crawler_AK_all_1234567"
-              const stateCode = batch.file_name.split('_')[1];
-              if (stateCode && stateCode.length === 2) {
-                await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                  action: 'start',
-                  target_state: stateCode,
-                  dry_run: batch.dry_run || false,
-                  retry_count: newRetryCount,
-                  retry_of: batch.id,
-                });
-              } else {
-                console.error(`Could not extract state from crawler batch file_name: ${batch.file_name}`);
-              }
-            } else {
-              await base44.asServiceRole.functions.invoke('autoImportCMSData', {
-                import_type: batch.import_type,
-                file_url: batch.file_url,
-                year: new Date().getFullYear(),
+          const isCrawlerBatch = batch.file_name && batch.file_name.startsWith('crawler_');
+          if (isCrawlerBatch) {
+            const stateCode = batch.file_name.split('_')[1];
+            if (stateCode && stateCode.length === 2) {
+              await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
+                action: 'start',
+                target_state: stateCode,
                 dry_run: batch.dry_run || false,
               });
+            } else {
+              console.error(`Could not extract state from crawler batch file_name: ${batch.file_name}`);
             }
-          } catch (triggerErr) {
-            console.error(`Failed to trigger retry for ${batch.id}:`, triggerErr.message);
+          } else {
+            // For CMS imports, use triggerImport which resolves URLs and routes correctly
+            await base44.asServiceRole.functions.invoke('triggerImport', {
+              import_type: batch.import_type,
+              file_url: batch.file_url && batch.file_url !== '' ? batch.file_url : undefined,
+              year: new Date().getFullYear() - 2,
+              dry_run: batch.dry_run || false,
+            });
           }
-        } catch (createErr) {
-          console.error(`Failed to create retry batch for ${batch.id}:`, createErr.message);
+        } catch (triggerErr) {
+          console.error(`Failed to trigger retry for ${batch.id}:`, triggerErr.message);
         }
 
         results.push({
