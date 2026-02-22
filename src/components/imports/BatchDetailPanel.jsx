@@ -176,7 +176,7 @@ export default function BatchDetailPanel({ batch }) {
           <Badge className={statusColors[batch.status] || ''}>{batch.status}</Badge>
           {batch.dry_run && <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20">Dry Run</Badge>}
           {batch.retry_of && (
-            <Badge variant="outline" className="text-xs gap-1 border-slate-600 text-slate-400">
+            <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/20">
               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
             </Badge>
           )}
