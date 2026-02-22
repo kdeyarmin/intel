@@ -12,9 +12,11 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   const [skipReason, setSkipReason] = useState('');
   const [isActing, setIsActing] = useState(false);
 
+  const MAX_RETRIES = 5;
   const isActive = batch.status === 'processing' || batch.status === 'validating';
   const isPaused = batch.status === 'paused';
-  const canRetry = batch.status === 'failed' || batch.status === 'cancelled';
+  const retryLimitReached = (batch.retry_count || 0) >= MAX_RETRIES;
+  const canRetry = (batch.status === 'failed' || batch.status === 'cancelled') && !retryLimitReached;
   const canSkip = batch.status === 'failed';
 
   const handlePause = async () => {
@@ -116,8 +118,11 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {canRetry && (
         <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={onRetryClick}>
-          <RefreshCw className="w-3 h-3" /> Retry
+          <RefreshCw className="w-3 h-3" /> Retry{batch.retry_count > 0 ? ` (${batch.retry_count}/${MAX_RETRIES})` : ''}
         </Button>
+      )}
+      {(batch.status === 'failed' || batch.status === 'cancelled') && retryLimitReached && (
+        <span className="text-[10px] text-red-400/70 px-1">Max retries reached</span>
       )}
 
       {canSkip && (
