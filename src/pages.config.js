@@ -136,7 +136,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "AIAssistant",
+    mainPage: "Dashboard",
     Pages: PAGES,
     Layout: __Layout,
 };
