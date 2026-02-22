@@ -10,7 +10,20 @@ import {
   Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus, Settings
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
+
+// Available data years per import type — only these years have actual CMS data
+const AVAILABLE_YEARS = {
+  cms_order_referring: [2023, 2022, 2021, 2020, 2019],
+  provider_service_utilization: [2022, 2021, 2020, 2019],
+  hospice_enrollments: [2024, 2023, 2022],
+  home_health_enrollments: [2024, 2023, 2022],
+  medicare_hha_stats: [2023, 2022, 2021, 2020],
+  medicare_ma_inpatient: [2023, 2022, 2021, 2020],
+  medicare_part_d_stats: [2023, 2022, 2021, 2020],
+  medicare_snf_stats: [2023, 2022, 2021, 2020],
+};
 
 const IMPORT_TYPES = [
   { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, hasUrl: false },
