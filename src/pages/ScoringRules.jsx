@@ -243,28 +243,28 @@ export default function ScoringRules() {
         </Button>
       </div>
 
-      <Card className="mb-6 bg-blue-50 border-blue-200">
+      <Card className="mb-6 bg-cyan-500/10 border-cyan-500/20">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-blue-900 mb-1">Scoring Methodology</h3>
-              <p className="text-sm text-blue-700">
+              <h3 className="font-semibold text-cyan-300 mb-1">Scoring Methodology</h3>
+              <p className="text-sm text-slate-300">
                 Each provider receives a score based on weighted factors. Adjust weights to match your targeting strategy.
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-900">
+              <p className="text-2xl font-bold text-cyan-300">
                 {rules.reduce((sum, r) => sum + (r.weight || 0), 0)}%
               </p>
-              <p className="text-xs text-blue-600">Total Weight</p>
+              <p className="text-xs text-cyan-400/70">Total Weight</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle>Scoring Components</CardTitle>
+          <CardTitle className="text-slate-200">Scoring Components</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -281,10 +281,10 @@ export default function ScoringRules() {
             <TableBody>
               {rules.map(rule => (
                 <TableRow key={rule.id}>
-                  <TableCell className="font-medium capitalize">
+                  <TableCell className="font-medium capitalize text-slate-200">
                     {rule.rule_name?.replace(/_/g, ' ')}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  <TableCell className="text-sm text-slate-400">
                     {rule.description || '-'}
                   </TableCell>
                   <TableCell>
@@ -301,7 +301,7 @@ export default function ScoringRules() {
                          })}
                          className="w-20"
                        />
-                       <span className="text-sm text-gray-500">%</span>
+                       <span className="text-sm text-slate-400">%</span>
                      </div>
                    ) : (
                      <Badge variant="outline">{rule.weight}%</Badge>

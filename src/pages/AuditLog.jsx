@@ -25,10 +25,10 @@ export default function AuditLog() {
 
   const getEventColor = (type) => {
     switch (type) {
-      case 'import': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'export': return 'bg-green-100 text-green-800 border-green-200';
-      case 'scoring_run': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'import': return 'bg-blue-500/15 text-blue-400 border-blue-500/20';
+      case 'export': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
+      case 'scoring_run': return 'bg-purple-500/15 text-purple-400 border-purple-500/20';
+      default: return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
     }
   };
 
@@ -41,9 +41,9 @@ export default function AuditLog() {
         breadcrumbs={[{ label: 'Admin' }, { label: 'Audit Log' }]}
       />
 
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle>Recent Events</CardTitle>
+          <CardTitle className="text-slate-200">Recent Events</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -70,7 +70,7 @@ export default function AuditLog() {
                   ))
                 ) : events.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
                       No audit events recorded yet
                     </TableCell>
                   </TableRow>
@@ -85,13 +85,13 @@ export default function AuditLog() {
                             {event.event_type?.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm">{event.user_email}</TableCell>
-                        <TableCell className="text-sm font-medium">
+                        <TableCell className="text-sm text-slate-300">{event.user_email}</TableCell>
+                        <TableCell className="text-sm font-medium text-slate-200">
                           {event.details?.action || '-'}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600">
+                        <TableCell className="text-sm text-slate-400">
                           {event.details?.row_count && (
-                            <span className="text-teal-600 font-semibold">
+                            <span className="text-cyan-400 font-semibold">
                               {event.details.row_count} rows
                             </span>
                           )}
@@ -99,7 +99,7 @@ export default function AuditLog() {
                             <span> • {event.details.message}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">
+                        <TableCell className="text-sm text-slate-500">
                           {new Date(event.created_date).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
                         </TableCell>
                       </TableRow>

@@ -108,7 +108,7 @@ export default function Locations() {
         />
       </div>
 
-      <Card className="mb-6 bg-white">
+      <Card className="mb-6 bg-[#141d30] border-slate-700/50">
         <CardContent className="pt-6 space-y-3">
           <SavedFilterBar
             page="Locations"
@@ -128,11 +128,11 @@ export default function Locations() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white">
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><MapPin className="w-5 h-5" /> Location Directory</span>
-            <span className="text-sm font-normal text-gray-500">{filtered.length} results</span>
+          <CardTitle className="flex items-center justify-between text-slate-200">
+            <span className="flex items-center gap-2"><MapPin className="w-5 h-5 text-cyan-400" /> Location Directory</span>
+            <span className="text-sm font-normal text-slate-500">{filtered.length} results</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -159,18 +159,18 @@ export default function Locations() {
                    </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">No locations found</TableCell></TableRow>
+                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-slate-500">No locations found</TableCell></TableRow>
                 ) : (
                   filtered.slice(0, 100).map(loc => (
                     <TableRow key={loc.id}>
-                      <TableCell className="font-mono text-sm">{loc.npi}</TableCell>
-                      <TableCell>{loc.address_1 || '-'}</TableCell>
-                      <TableCell>{loc.city || '-'}</TableCell>
-                      <TableCell>{loc.state || '-'}</TableCell>
-                      <TableCell>{loc.zip || '-'}</TableCell>
-                      <TableCell>{loc.phone || '-'}</TableCell>
-                      <TableCell><Badge variant="outline">{loc.location_type || '-'}</Badge></TableCell>
-                      <TableCell>{loc.is_primary ? <Badge className="bg-blue-100 text-blue-700">Primary</Badge> : '-'}</TableCell>
+                      <TableCell className="font-mono text-sm text-slate-400">{loc.npi}</TableCell>
+                       <TableCell className="text-slate-300">{loc.address_1 || '-'}</TableCell>
+                       <TableCell className="text-slate-300">{loc.city || '-'}</TableCell>
+                       <TableCell className="text-slate-300">{loc.state || '-'}</TableCell>
+                       <TableCell className="text-slate-300">{loc.zip || '-'}</TableCell>
+                       <TableCell className="text-slate-300">{loc.phone || '-'}</TableCell>
+                       <TableCell><Badge variant="outline" className="text-slate-300">{loc.location_type || '-'}</Badge></TableCell>
+                       <TableCell>{loc.is_primary ? <Badge className="bg-blue-500/15 text-blue-400 border border-blue-500/20">Primary</Badge> : <span className="text-slate-500">-</span>}</TableCell>
                       <TableCell>
                         <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>
                           <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
@@ -182,7 +182,7 @@ export default function Locations() {
               </TableBody>
             </Table>
           </div>
-          {filtered.length > 100 && <p className="text-xs text-gray-400 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
+          {filtered.length > 100 && <p className="text-xs text-slate-500 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
         </CardContent>
       </Card>
 

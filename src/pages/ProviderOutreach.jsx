@@ -56,23 +56,23 @@ export default function ProviderOutreach() {
       />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-slate-100">
-          <TabsTrigger value="campaigns" className="gap-2">
+        <TabsList className="bg-slate-800/60 border border-slate-700/50">
+          <TabsTrigger value="campaigns" className="gap-2 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Mail className="w-4 h-4" /> Campaigns
           </TabsTrigger>
-          <TabsTrigger value="new" className="gap-2">
+          <TabsTrigger value="new" className="gap-2 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Plus className="w-4 h-4" /> New Campaign
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
+          <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <TrendingUp className="w-4 h-4" /> Analytics
           </TabsTrigger>
         </TabsList>
 
         {/* View Campaigns */}
         <TabsContent value="campaigns" className="space-y-4">
-          <Card>
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-lg">Active Campaigns</CardTitle>
+              <CardTitle className="text-lg text-slate-200">Active Campaigns</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4">
@@ -90,7 +90,7 @@ export default function ProviderOutreach() {
                 </div>
               ) : filteredCampaigns.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-slate-600 mb-4">No campaigns yet</p>
+                  <p className="text-slate-400 mb-4">No campaigns yet</p>
                   <Button onClick={() => setTab('new')} className="gap-2">
                     <Plus className="w-4 h-4" /> Create First Campaign
                   </Button>
@@ -104,34 +104,34 @@ export default function ProviderOutreach() {
                         setSelectedCampaign(campaign);
                         setTab('analytics');
                       }}
-                      className="p-4 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                      className="p-4 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 cursor-pointer transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold text-sm">{campaign.name}</h3>
-                          <p className="text-xs text-slate-600 mt-1">{campaign.description}</p>
+                          <h3 className="font-semibold text-sm text-slate-200">{campaign.name}</h3>
+                          <p className="text-xs text-slate-400 mt-1">{campaign.description}</p>
                         </div>
                         <Badge className={getStatusColor(campaign.status)}>
                           {campaign.status}
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-700/50">
                         <div className="text-center">
-                          <p className="text-xs text-slate-600">Recipients</p>
-                          <p className="font-bold text-lg mt-1">{campaign.total_recipients || 0}</p>
+                          <p className="text-xs text-slate-500">Recipients</p>
+                          <p className="font-bold text-lg text-slate-200 mt-1">{campaign.total_recipients || 0}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-600">Sent</p>
-                          <p className="font-bold text-lg text-blue-600 mt-1">{campaign.sent_count || 0}</p>
+                          <p className="text-xs text-slate-500">Sent</p>
+                          <p className="font-bold text-lg text-blue-400 mt-1">{campaign.sent_count || 0}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-600">Opened</p>
-                          <p className="font-bold text-lg text-green-600 mt-1">{campaign.opened_count || 0}</p>
+                          <p className="text-xs text-slate-500">Opened</p>
+                          <p className="font-bold text-lg text-emerald-400 mt-1">{campaign.opened_count || 0}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-600">Responded</p>
-                          <p className="font-bold text-lg text-purple-600 mt-1">{campaign.responded_count || 0}</p>
+                          <p className="text-xs text-slate-500">Responded</p>
+                          <p className="font-bold text-lg text-purple-400 mt-1">{campaign.responded_count || 0}</p>
                         </div>
                       </div>
                     </div>
@@ -144,10 +144,10 @@ export default function ProviderOutreach() {
 
         {/* Create New Campaign */}
         <TabsContent value="new" className="space-y-4">
-          <Card>
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader>
-              <CardTitle>Create New Campaign</CardTitle>
-              <p className="text-sm text-slate-600 mt-2">
+              <CardTitle className="text-slate-200">Create New Campaign</CardTitle>
+              <p className="text-sm text-slate-400 mt-2">
                 Design a personalized outreach campaign for a specific provider segment
               </p>
             </CardHeader>
@@ -169,8 +169,8 @@ export default function ProviderOutreach() {
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{selectedCampaign.name}</h2>
-                  <p className="text-sm text-slate-600 mt-1">{selectedCampaign.description}</p>
+                  <h2 className="text-2xl font-bold text-white">{selectedCampaign.name}</h2>
+                  <p className="text-sm text-slate-400 mt-1">{selectedCampaign.description}</p>
                 </div>
                 <Badge className={getStatusColor(selectedCampaign.status)}>
                   {selectedCampaign.status}
@@ -180,20 +180,20 @@ export default function ProviderOutreach() {
               <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} />
 
               {/* Recent Messages */}
-              <Card>
+              <Card className="bg-[#141d30] border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-base">Recent Messages</CardTitle>
+                  <CardTitle className="text-base text-slate-200">Recent Messages</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {messages.slice(0, 5).length === 0 ? (
-                    <p className="text-slate-600 text-sm">No messages sent yet</p>
+                    <p className="text-slate-400 text-sm">No messages sent yet</p>
                   ) : (
                     <div className="space-y-2">
                       {messages.slice(0, 5).map(msg => (
-                        <div key={msg.id} className="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
+                        <div key={msg.id} className="flex items-center justify-between p-2 bg-slate-800/40 rounded text-sm">
                           <div>
-                            <p className="font-medium">{msg.recipient_name}</p>
-                            <p className="text-xs text-slate-600">{msg.npi}</p>
+                            <p className="font-medium text-slate-200">{msg.recipient_name}</p>
+                            <p className="text-xs text-slate-500">{msg.npi}</p>
                           </div>
                           <Badge variant="outline">{msg.status}</Badge>
                         </div>
@@ -204,10 +204,10 @@ export default function ProviderOutreach() {
               </Card>
             </>
           ) : (
-            <Card>
+            <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="pt-8 text-center">
-                <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-600 mb-4">Select a campaign to view performance metrics</p>
+                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-400 mb-4">Select a campaign to view performance metrics</p>
                 <Button onClick={() => setTab('campaigns')}>View Campaigns</Button>
               </CardContent>
             </Card>

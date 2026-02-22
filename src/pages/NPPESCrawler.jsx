@@ -245,15 +245,15 @@ export default function NPPESCrawler() {
       />
 
       {/* Controls */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle>Crawler Controls</CardTitle>
-          <CardDescription>Configure filters and start the crawl. The bot processes one state at a time sequentially.</CardDescription>
+          <CardTitle className="text-slate-200">Crawler Controls</CardTitle>
+          <CardDescription className="text-slate-400">Configure filters and start the crawl. The bot processes one state at a time sequentially.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Specialty Filter (optional)</Label>
+              <Label className="text-slate-300">Specialty Filter (optional)</Label>
               <Input
                 placeholder="e.g., Internal Medicine"
                 value={taxonomyFilter}
@@ -262,7 +262,7 @@ export default function NPPESCrawler() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Provider Type</Label>
+              <Label className="text-slate-300">Provider Type</Label>
               <Select value={entityType} onValueChange={setEntityType} disabled={running}>
                 <SelectTrigger>
                   <SelectValue placeholder="All types" />
@@ -275,15 +275,15 @@ export default function NPPESCrawler() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Mode</Label>
+              <Label className="text-slate-300">Mode</Label>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 h-9">
                   <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={running} />
-                  <span className="text-sm text-gray-600">{dryRun ? 'Dry Run' : 'Live Import'}</span>
+                  <span className="text-sm text-slate-300">{dryRun ? 'Dry Run' : 'Live Import'}</span>
                 </div>
                 <div className="flex items-center gap-3 h-9">
                   <Switch checked={ignoreHistory} onCheckedChange={setIgnoreHistory} disabled={running} />
-                  <span className="text-sm text-gray-600">Force Re-crawl (Ignore completed)</span>
+                  <span className="text-sm text-slate-300">Force Re-crawl (Ignore completed)</span>
                 </div>
               </div>
             </div>
@@ -292,8 +292,8 @@ export default function NPPESCrawler() {
           <div className="flex flex-wrap gap-3 pt-2">
             {/* Manual (browser-based) controls */}
             <div className="flex gap-2 items-center">
-              <Monitor className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-500 mr-1">Manual:</span>
+              <Monitor className="w-4 h-4 text-slate-400" />
+              <span className="text-xs text-slate-400 mr-1">Manual:</span>
               {!running ? (
                 <Button onClick={startCrawl} className="bg-teal-600 hover:bg-teal-700 gap-2" disabled={autoMode}>
                   <Play className="w-4 h-4" />
@@ -320,12 +320,12 @@ export default function NPPESCrawler() {
               )}
             </div>
 
-            <div className="w-px bg-gray-200 mx-1 self-stretch" />
+            <div className="w-px bg-slate-700 mx-1 self-stretch" />
 
             {/* Automated (server-side) controls */}
             <div className="flex gap-2 items-center">
               <Zap className="w-4 h-4 text-amber-500" />
-              <span className="text-xs text-gray-500 mr-1">Auto:</span>
+              <span className="text-xs text-slate-400 mr-1">Auto:</span>
               {!autoMode ? (
                 <Button
                   onClick={startAutoChain}
@@ -353,14 +353,14 @@ export default function NPPESCrawler() {
               Refresh Status
             </Button>
 
-            <Button onClick={resetCrawler} variant="outline" className="gap-2 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800">
+            <Button onClick={resetCrawler} variant="outline" className="gap-2 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300">
               <RotateCcw className="w-4 h-4" />
               Reset History
             </Button>
           </div>
 
           {autoMode && (
-            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2">
+            <div className="flex items-center gap-2 text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg mt-2">
               <Zap className="w-4 h-4" />
               <span><strong>Auto-crawler is running server-side.</strong></span>
             </div>
@@ -371,11 +371,11 @@ export default function NPPESCrawler() {
 
 
       {/* Progress */}
-      <Card>
+      <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between text-slate-200">
             <span className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-teal-600" />
+              <Globe className="w-5 h-5 text-cyan-400" />
               State Progress
             </span>
             <div className="flex items-center gap-3">
@@ -407,7 +407,7 @@ export default function NPPESCrawler() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm text-slate-300">
               <span>{completedCount + failedCount} / {totalStates} states</span>
               <span>{Math.round(progress)}%</span>
             </div>
