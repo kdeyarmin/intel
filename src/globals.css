@@ -35,6 +35,11 @@ css
   body {
     @apply bg-background text-foreground;
   }
+  /* Fix switch visibility on dark backgrounds */
+  [data-state="unchecked"][role="switch"] {
+    background-color: hsl(215 28% 25%) !important;
+    border: 1px solid hsl(215 28% 35%) !important;
+  }
   /* Ensure all placeholder text is visible on dark backgrounds */
   ::placeholder {
     color: hsl(215 20% 50%) !important;
