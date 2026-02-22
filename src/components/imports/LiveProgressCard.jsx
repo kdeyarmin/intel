@@ -164,7 +164,7 @@ export default function LiveProgressCard({ activeBatches }) {
                 )}
 
                 {/* File info */}
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                   <FileText className="w-3 h-3" />
                   <span className="truncate">{batch.file_name}</span>
                 </div>

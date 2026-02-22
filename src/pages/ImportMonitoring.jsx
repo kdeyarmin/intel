@@ -813,7 +813,7 @@ export default function ImportMonitoring() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500">{batch.file_name}</p>
+                        <p className="text-sm text-slate-400">{batch.file_name}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -867,10 +867,10 @@ export default function ImportMonitoring() {
                   {(batch.status === 'processing' || batch.status === 'validating' || batch.status === 'paused') && (
                     <div className="mb-2">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">
+                        <span className="text-slate-300">
                           {batch.status === 'validating' ? 'Validating rows...' : batch.status === 'processing' ? 'Importing data...' : 'Paused'}
                         </span>
-                        <span className="font-medium text-slate-300">{getProgress(batch)}%</span>
+                        <span className="font-medium text-slate-200">{getProgress(batch)}%</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-slate-700/80 overflow-hidden">
                         <div
