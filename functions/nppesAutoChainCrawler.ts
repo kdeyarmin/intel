@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
                 failed_states: failedStates,
                 processing_states: processingStates,
                 pending_states: pendingStates,
-                auto_chain_active: processingStates.length > 0 && !stopSignalActive,
+                auto_chain_active: (processingStates.length > 0 || pendingStates.length > 0) && !stopSignalActive && (completedStates.length > 0 || processingStates.length > 0),
                 batches: crawlerBatches.slice(0, 60),
             });
         }
