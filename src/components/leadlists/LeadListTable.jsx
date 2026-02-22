@@ -119,7 +119,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
               </Select>
             </TableCell>
             <TableCell>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <Link to={createPageUrl('ProviderDetail') + `?npi=${lead.provider.npi}`}>
                   <Button size="sm" variant="outline">
                     <Eye className="w-4 h-4" />
@@ -146,6 +146,20 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                     />
                   </DialogContent>
                 </Dialog>
+                {onRemove && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={() => {
+                      if (confirm('Remove this provider from the list?')) {
+                        onRemove(lead.member.id);
+                      }
+                    }}
+                  >
+                    <UserMinus className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             </TableCell>
           </TableRow>
