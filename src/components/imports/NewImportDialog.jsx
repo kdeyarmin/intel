@@ -272,14 +272,27 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             {/* Year */}
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-400">Data Year</Label>
-              <Input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                min={2015}
-                max={2030}
-                className="h-8 w-28 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
-              />
+              {AVAILABLE_YEARS[selectedType.id] ? (
+                <Select value={year} onValueChange={setYear}>
+                  <SelectTrigger className="h-8 w-36 text-sm bg-slate-800/50 border-slate-700 text-slate-300">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_YEARS[selectedType.id].map(y => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  min={2015}
+                  max={2030}
+                  className="h-8 w-28 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
+                />
+              )}
             </div>
 
 
