@@ -10,6 +10,7 @@ import ImportWizardAccordion from '../components/imports/ImportWizardAccordion';
 import PageHeader from '../components/shared/PageHeader';
 import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
+import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 
 export default function DataImports() {
   const [selectedType, setSelectedType] = useState(null);
@@ -102,6 +103,13 @@ export default function DataImports() {
                           </div>
                         </div>
                       </div>
+                      {batch.status === 'failed' && batch.error_samples?.length > 0 && (
+                        <ValidationErrorBreakdown
+                          errors={batch.error_samples}
+                          batchName={batch.file_name}
+                          compact={true}
+                        />
+                      )}
                       {batch.status === 'failed' && (
                         <AIFailureAnalysis
                           batch={batch}
