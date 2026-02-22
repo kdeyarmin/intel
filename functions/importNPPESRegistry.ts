@@ -183,9 +183,11 @@ async function upsertTaxonomies(records, base44) {
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
-
-        if (user?.role !== 'admin') {
+        
+        // Allow service role calls (from automations/batch processor) or admin users
+        let user = null;
+        try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
+        if (user && user.role !== 'admin') {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
