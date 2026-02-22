@@ -435,6 +435,7 @@ export default function NPPESCrawler() {
               status={status} 
               currentState={currentState} 
               running={running} 
+              autoMode={autoMode}
               onStateClick={setSelectedState}
             />
           ) : (
@@ -442,6 +443,7 @@ export default function NPPESCrawler() {
               status={status} 
               currentState={currentState} 
               running={running} 
+              autoMode={autoMode}
               onStateClick={setSelectedState}
             />
           )}
