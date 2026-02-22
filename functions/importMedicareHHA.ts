@@ -84,9 +84,11 @@ function mapRowToRecord(row, tableName, dataYear) {
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
   headers.forEach(h => { record.raw_data[h] = row[h]; });
 
+  // Try multiple strategies to find the category/label column
+  const categoryKeywords = ['type of entitlement', 'category', 'demographic', 'state', 'area', 'type of agency', 'type of control', 'number of', 'age group', 'sex', 'race', 'diagnosis', 'region', 'characteristic'];
   for (const h of headers) {
     const hl = h.toLowerCase();
-    if (!record.category && (hl.includes('type of entitlement') || hl.includes('category') || hl.includes('demographic') || hl.includes('state') || hl.includes('area') || hl.includes('type of agency') || hl.includes('type of control') || hl.includes('number of') || hl === headers[0].toLowerCase())) {
+    if (!record.category && (categoryKeywords.some(kw => hl.includes(kw)) || hl === headers[0].toLowerCase())) {
       record.category = String(row[h] || '').trim();
     }
     if (hl.includes('persons') && (hl.includes('served') || hl.includes('use'))) record.persons_served = safeNum(row[h]);
@@ -103,7 +105,15 @@ function mapRowToRecord(row, tableName, dataYear) {
     if (hl.includes('home health aide')) record.home_health_aide_visits = safeNum(row[h]);
     if (hl.includes('medical social')) record.medical_social_service_visits = safeNum(row[h]);
   }
+  // Fallback: try first non-empty cell value as category
   if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
+  // Last resort: try all columns for any non-empty string value
+  if (!record.category) {
+    for (const h of headers) {
+      const val = String(row[h] || '').trim();
+      if (val && isNaN(Number(val.replace(/[,$%]/g, '')))) { record.category = val; break; }
+    }
+  }
   if (tableName === 'HHA3') { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
   if (tableName === 'HHA4') record.agency_type = record.category;
   if (tableName === 'HHA5') record.control_type = record.category;
@@ -114,7 +124,16 @@ function validateRecord(record, rowIndex, sheetName) {
   const errors = [];
   const warnings = [];
   if (!record.category || record.category.trim() === '') {
-    errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label', row: rowIndex, sheet: sheetName });
+    // Downgrade to warning instead of error — rows without labels are often subtotals/spacers
+    // but still contain valid data. Assign a placeholder and keep the row.
+    const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+    if (hasMetricData) {
+      record.category = `Row ${rowIndex}`;
+      warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
+    } else {
+      // No label AND no metrics — this is a header/footer/spacer row, skip it
+      errors.push({ rule: 'empty_row', field: 'category', message: 'Empty row (no label or metrics)', row: rowIndex, sheet: sheetName });
+    }
   }
   if (record.data_year < 2000 || record.data_year > 2030) {
     errors.push({ rule: 'data_year_range', field: 'data_year', message: `data_year ${record.data_year} outside 2000-2030`, row: rowIndex, sheet: sheetName });
@@ -132,18 +151,19 @@ function validateRecord(record, rowIndex, sheetName) {
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       await entity.bulkCreate(chunk);
       return { ok: true };
     } catch (e) {
-      const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('network');
-      if (isRetryable && attempt < 2) {
+      const msg = e.message || '';
+      const isRetryable = /rate limit|timeout|network|429|503|502|ECONNRESET/i.test(msg);
+      if (isRetryable && attempt < 4) {
         const wait = jitteredBackoff(attempt);
-        console.warn(`[${label}] Retry ${attempt + 1}/3 after ${Math.round(wait)}ms: ${e.message}`);
+        console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
         await delay(wait);
       } else {
-        return { ok: false, error: e.message };
+        return { ok: false, error: msg };
       }
     }
   }
@@ -246,7 +266,7 @@ Deno.serve(async (req) => {
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, chunk, `chunk-${i}`);
         if (result.ok) { imported += chunk.length; }
         else { chunkErrors++; addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(150);
+        if (i + CHUNK < recordsToProcess.length) await delay(300);
       }
     }
 
