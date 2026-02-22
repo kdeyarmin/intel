@@ -405,6 +405,13 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
   const alertsToCreate = [];
 
   // Run individual record checks
+  let autoDeletedCount = 0;
+  const entityDeleter = {
+    'Provider': base44.asServiceRole.entities.Provider,
+    'ProviderLocation': base44.asServiceRole.entities.ProviderLocation,
+    'ProviderTaxonomy': base44.asServiceRole.entities.ProviderTaxonomy,
+  };
+
   for (const rule of QUALITY_RULES) {
     if (rule.aggregate) continue;
     const records = rule.entityType === 'Provider' ? providers : locations;
@@ -414,6 +421,27 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
       total: records.length, passing: records.length - failing.length, failing: failing.length,
       pct: records.length > 0 ? Math.round(((records.length - failing.length) / records.length) * 100) : 100,
     });
+
+    // Auto-delete records for rules flagged with autoDelete
+    if (rule.autoDelete && failing.length > 0) {
+      const entity = entityDeleter[rule.entityType];
+      if (entity) {
+        for (const rec of failing) {
+          try {
+            await entity.delete(rec.id);
+            autoDeletedCount++;
+          } catch (e) { console.warn(`[DQ] Auto-delete failed for ${rec.id}: ${e.message}`); }
+        }
+      }
+      alertsToCreate.push({
+        rule_id: rule.id, rule_name: rule.name, category: rule.category,
+        severity: rule.severity, entity_type: rule.entityType,
+        field_name: rule.field, status: 'auto_fixed', scan_batch_id: scanBatchId,
+        summary: `Auto-deleted ${failing.length} ${rule.entityType} records: ${rule.name}`,
+        affected_count: failing.length,
+      });
+      continue; // Skip creating open alerts for auto-deleted records
+    }
 
     if (failing.length > 0) {
       // Create aggregate alert
