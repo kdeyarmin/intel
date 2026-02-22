@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       body = {};
     }
-    const { import_type: raw_import_type, file_url, dry_run = false, year } = body;
+    const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset } = body;
 
     if (!raw_import_type) {
       return Response.json({ error: 'Missing required field: import_type' }, { status: 400 });
@@ -102,6 +102,11 @@ Deno.serve(async (req) => {
           sheet_filter: body.sheet_filter || undefined,
           row_offset: body.row_offset || undefined,
           row_limit: body.row_limit || undefined,
+          // Pass retry metadata so batch is tagged correctly
+          retry_of: retry_of || undefined,
+          retry_count: retry_count || undefined,
+          retry_tags: retry_tags || undefined,
+          category: category || undefined,
         });
         const result = res.data;
         // If the sub-function returned an error, surface it with details
@@ -156,6 +161,12 @@ Deno.serve(async (req) => {
       file_url: resolvedUrl,
       year: resolvedYear,
       dry_run,
+      resume_offset: resume_offset || body.row_offset || 0,
+      // Pass retry metadata
+      retry_of: retry_of || undefined,
+      retry_count: retry_count || undefined,
+      retry_tags: retry_tags || undefined,
+      category: category || undefined,
     });
 
     return Response.json({
