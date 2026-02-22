@@ -293,15 +293,22 @@ export default function EmailSearchBot() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 h-10 bg-slate-800/50 p-1 mb-5">
-          <TabsTrigger value="search" className="gap-2 h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
-            <Search className="w-3.5 h-3.5" /> Email Search
+        <TabsList className="w-full grid grid-cols-4 h-10 bg-slate-800/50 p-1 mb-5">
+          <TabsTrigger value="search" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Search className="w-3.5 h-3.5" /> Search
           </TabsTrigger>
-          <TabsTrigger value="verify" className="gap-2 h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
-            <ShieldCheck className="w-3.5 h-3.5" /> Email Verification
+          <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Users className="w-3.5 h-3.5" /> Providers
+            {stats.withEmail > 0 && <Badge className="bg-cyan-500/20 text-cyan-400 text-[9px] ml-1">{stats.withEmail}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <ShieldCheck className="w-3.5 h-3.5" /> Verify
             {stats.risky + stats.invalid > 0 && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Send className="w-3.5 h-3.5" /> Outreach
           </TabsTrigger>
         </TabsList>
 
