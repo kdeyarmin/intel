@@ -39,18 +39,28 @@ function StatCard({ title, value, subtitle, icon: Icon, iconColor, link, loading
   return content;
 }
 
+function formatCount(value, isTruncated) {
+  if (!value && value !== 0) return '0';
+  return value.toLocaleString() + (isTruncated ? '+' : '');
+}
+
 export default function DatabaseOverview({ stats, loading }) {
   const emailPct = stats?.totalProviders > 0 && stats?.emailStats
     ? Math.round((stats.emailStats.withEmail / stats.totalProviders) * 100)
     : 0;
 
+  const est = stats?.isEstimatedCounts;
+
   return (
     <div className="space-y-3">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
+        {est && <span className="text-[9px] text-slate-600">(+ means more records exist)</span>}
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="Providers"
-          value={stats?.totalProviders?.toLocaleString() || '0'}
+          value={formatCount(stats?.totalProviders, stats?.totalProviders >= 1000)}
           subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} need enrichment` : null}
           icon={Users}
           iconColor="text-cyan-400"
@@ -59,7 +69,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Locations"
-          value={stats?.totalLocations?.toLocaleString() || '0'}
+          value={formatCount(stats?.totalLocations, stats?.totalLocations >= 500)}
           icon={MapPin}
           iconColor="text-sky-400"
           link="Locations"
@@ -67,7 +77,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Referrals"
-          value={stats?.totalReferrals?.toLocaleString() || '0'}
+          value={formatCount(stats?.totalReferrals, stats?.totalReferrals >= 500)}
           icon={GitBranch}
           iconColor="text-violet-400"
           link="Referrals"
@@ -75,7 +85,7 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Utilization"
-          value={stats?.totalUtilization?.toLocaleString() || '0'}
+          value={formatCount(stats?.totalUtilization, false)}
           icon={Activity}
           iconColor="text-emerald-400"
           link="Utilization"
@@ -83,20 +93,19 @@ export default function DatabaseOverview({ stats, loading }) {
         />
         <StatCard
           title="Taxonomies"
-          value={stats?.totalTaxonomies?.toLocaleString() || '0'}
+          value={formatCount(stats?.totalTaxonomies, stats?.totalTaxonomies >= 500)}
           icon={FileText}
           iconColor="text-amber-400"
           loading={loading}
         />
         <StatCard
           title="Emails Found"
-          value={stats?.emailStats?.withEmail?.toLocaleString() || '0'}
+          value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
           subtitle={`${emailPct}% coverage`}
           icon={Mail}
           iconColor="text-pink-400"
           link="EmailSearchBot"
           loading={loading}
-          badge={stats?.emailStats?.isEstimated ? { label: '~est', className: 'bg-slate-700 text-slate-400' } : null}
         />
       </div>
     </div>
