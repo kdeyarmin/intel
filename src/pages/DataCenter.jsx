@@ -96,7 +96,7 @@ export default function DataCenter() {
       ) : (
         <div className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Choose a data source to import</h2>
-          <ImportCategoryCards onSelectCategory={setActiveCategory} />
+          <ImportCategoryCards onSelectCategory={setActiveCategory} batches={batches} />
         </div>
       )}
 
