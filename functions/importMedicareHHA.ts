@@ -173,8 +173,11 @@ async function bulkCreateWithRetry(entity, chunk, label) {
 Deno.serve(async (req) => {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (user?.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+  
+  // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
+  let user = null;
+  try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
+  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
@@ -289,7 +292,7 @@ Deno.serve(async (req) => {
     } catch (e) { console.warn('Schedule config update failed:', e.message); }
 
     await base44.asServiceRole.entities.AuditEvent.create({
-      event_type: 'import', user_email: user.email,
+      event_type: 'import', user_email: user?.email || 'system',
       details: { action: 'Medicare HHA Stats Import', entity: 'MedicareHHAStats', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
       timestamp: new Date().toISOString(),
     });
