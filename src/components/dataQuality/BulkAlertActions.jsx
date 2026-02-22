@@ -15,7 +15,11 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
   const bulkAction = async (action) => {
     setProcessing(true);
     for (const id of selectedIds) {
-      await base44.functions.invoke('runDataQualityScan', { action, alert_id: id });
+      if (action === 'dismiss') {
+        await base44.entities.DataQualityAlert.update(id, { status: 'closed' });
+      } else if (action === 'apply_fix') {
+        await base44.entities.DataQualityAlert.update(id, { status: 'resolved', resolved_at: new Date().toISOString() });
+      }
     }
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
     setProcessing(false);
