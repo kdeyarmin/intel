@@ -625,7 +625,10 @@ Deno.serve(async (req) => {
             });
         }
 
-        const zipPrefixes = STATE_ZIP_PREFIXES[stateToProcess] || [];
+        // Use ALL 2-digit zip prefixes (00-99) to ensure complete coverage.
+        // The NPPES API filters by state AND postal_code, so prefixes not in the
+        // state will simply return 0 results and be skipped quickly.
+        const zipPrefixes = ALL_ZIP_PREFIXES;
         const pendingPrefixes = zipPrefixes.filter(p => !processedPrefixes.has(p));
         
         if (pendingPrefixes.length === 0) {
