@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, groupErrors } from './errorCategories';
+import ValidationErrorBreakdown from './ValidationErrorBreakdown';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -119,6 +120,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'list'
 
   const errors = batch?.error_samples || [];
 
@@ -189,6 +191,36 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
           </div>
         </div>
 
+        {/* View mode toggle */}
+        <div className="flex items-center gap-2 py-1">
+          <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-slate-700/50">
+            <button
+              onClick={() => setViewMode('grouped')}
+              className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                viewMode === 'grouped' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Grouped by Type
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Row List
+            </button>
+          </div>
+        </div>
+
+        {viewMode === 'grouped' ? (
+          <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
+            <div className="p-3">
+              <ValidationErrorBreakdown errors={errors} batchName={batch.file_name} />
+            </div>
+          </ScrollArea>
+        ) : (
+        <>
         {/* Category breakdown */}
         <div className="flex gap-2 flex-wrap py-1">
           {sortedCategories.map(cat => {
@@ -325,6 +357,8 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange }) {
             )}
           </div>
         </ScrollArea>
+        </>
+        )}
 
         <DialogFooter className="flex items-center justify-between gap-2">
           <div className="flex gap-2">
