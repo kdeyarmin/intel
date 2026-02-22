@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     if (zipFunctionMap[import_type]) {
       // Route to the specialized ZIP handler, passing through all params
       try {
-        const res = await base44.functions.invoke(zipFunctionMap[import_type], {
+        const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
           action: 'import',
           year: parseInt(year || 2023),
           custom_url: file_url || undefined,
