@@ -704,8 +704,6 @@ export default function ImportMonitoring() {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
                 <option value="completed">Completed</option>
                 <option value="failed">Failed</option>
                 <option value="cancelled">Cancelled</option>
