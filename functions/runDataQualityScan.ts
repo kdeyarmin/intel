@@ -8,24 +8,19 @@ const QUALITY_RULES = [
     field: 'first_name/last_name', entityType: 'Provider' },
   { id: 'missing_credential', name: 'Missing Credential', category: 'completeness', severity: 'medium',
     check: (p) => p.entity_type === 'Individual' && (!p.credential || p.credential.trim() === ''),
-    field: 'credential', entityType: 'Provider' },
-  { id: 'missing_gender', name: 'Missing Gender', category: 'completeness', severity: 'low',
-    check: (p) => p.entity_type === 'Individual' && (!p.gender || p.gender === ''),
-    field: 'gender', entityType: 'Provider' },
+    field: 'credential', entityType: 'Provider', autoDelete: true },
   { id: 'missing_enum_date', name: 'Missing Enumeration Date', category: 'completeness', severity: 'medium',
     check: (p) => !p.enumeration_date, field: 'enumeration_date', entityType: 'Provider' },
   { id: 'no_location', name: 'Provider Has No Location', category: 'completeness', severity: 'high',
-    entityType: 'Provider', aggregate: true },
+    entityType: 'Provider', aggregate: true, autoDelete: true },
   { id: 'no_taxonomy', name: 'Provider Has No Taxonomy', category: 'completeness', severity: 'high',
-    entityType: 'Provider', aggregate: true },
+    entityType: 'Provider', aggregate: true, autoDelete: true },
 
   // Accuracy rules
   { id: 'invalid_npi', name: 'Invalid NPI Format', category: 'accuracy', severity: 'critical',
     check: (p) => { const c = String(p.npi || '').replace(/\D/g, ''); return c.length !== 10; },
     field: 'npi', entityType: 'Provider' },
-  { id: 'invalid_zip', name: 'Invalid ZIP Code Format', category: 'accuracy', severity: 'medium',
-    check: (l) => l.zip && !/^\d{5}(-?\d{4})?$/.test(l.zip.trim()),
-    field: 'zip', entityType: 'ProviderLocation' },
+  // Invalid ZIP codes are ignored per policy
   { id: 'invalid_state', name: 'Invalid State Code', category: 'accuracy', severity: 'high',
     check: (l) => {
       const VALID = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
