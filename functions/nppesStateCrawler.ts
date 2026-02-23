@@ -12,9 +12,9 @@ const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 let BATCH_LIMIT = 200;
 let MAX_PAGES_PER_QUERY = 12; // Fetch up to 2400 results per query before expanding
 let MAX_SKIP = 1200; // NPPES API hard limit is ~1200
-let BULK_SIZE = 50;
-let CONCURRENCY_LIMIT = 2;
-let API_DELAY_MS = 500; // Conservative default to reduce rate limits
+let BULK_SIZE = 10;
+let CONCURRENCY_LIMIT = 1;
+let API_DELAY_MS = 1000; // Conservative default to reduce rate limits
 let MAX_RETRIES = 3;
 let RETRY_BACKOFF_MS = 8000; // Conservative default for rate limits
 let REQUEST_TIMEOUT_MS = 15000;
@@ -43,15 +43,15 @@ async function loadConfig(base44) {
         if (configs.length > 0) {
             const c = configs[0];
             BATCH_LIMIT = c.api_batch_size || 200;
-            BULK_SIZE = c.import_chunk_size || 50;
+            BULK_SIZE = c.import_chunk_size || 10;
             MAX_RETRIES = c.max_retries || 3;
-            API_DELAY_MS = Math.max(c.api_delay_ms ?? 100, 50); // Minimum 50ms
+            API_DELAY_MS = Math.max(c.api_delay_ms ?? 1000, 500); // Minimum 500ms
             RETRY_BACKOFF_MS = c.retry_backoff_ms || 2000;
             REQUEST_TIMEOUT_MS = Math.min(c.request_timeout_ms || 10000, 10000);
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
             MAX_PAGES_PER_QUERY = c.max_pages_per_query || 6;
             MAX_SKIP = c.max_skip || 1000;
-            CONCURRENCY_LIMIT = c.concurrency || 2;
+            CONCURRENCY_LIMIT = c.concurrency || 1;
         }
     } catch (e) {
         console.warn('[Config] Failed to load:', e.message);
@@ -291,7 +291,7 @@ async function upsertProviders(records, base44) {
                 } catch (err) {
                     console.error(`[UpsertProviders] Fallback failed for NPI ${p.npi}:`, err.message);
                 }
-                await sleep(50); // Small delay for individual writes
+                await sleep(150); // Small delay for individual writes
             }
         }
     }
@@ -326,7 +326,7 @@ async function upsertLocations(records, base44) {
                 });
             }
         }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 1); updated += updateTasks.length; }
         if (toCreate.length > 0) {
             try {
                 await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate));
@@ -339,7 +339,7 @@ async function upsertLocations(records, base44) {
                 }
             }
         }
-        await sleep(100); // Throttle between chunks
+        await sleep(400); // Throttle between chunks
     }
     return { imported, updated, skipped };
 }
@@ -367,7 +367,7 @@ async function upsertTaxonomies(records, base44) {
                 });
             }
         }
-        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 2); updated += updateTasks.length; }
+        if (updateTasks.length > 0) { await runConcurrent(updateTasks, 1); updated += updateTasks.length; }
         if (toCreate.length > 0) {
             try {
                 await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate));
@@ -380,7 +380,7 @@ async function upsertTaxonomies(records, base44) {
                 }
             }
         }
-        await sleep(100); // Throttle between chunks
+        await sleep(400); // Throttle between chunks
     }
     return { imported, updated, skipped };
 }
