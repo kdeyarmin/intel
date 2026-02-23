@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, AlertCircle, Filter, Rows3, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
 export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted, presets }) {
   const [retryMode, setRetryMode] = useState('full');
@@ -117,10 +118,15 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         });
       } catch (e) { /* audit logging is best-effort */ }
 
+      toast.success('Retry started successfully');
       onRetryStarted?.();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Retry error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+      toast.error(`Retry failed: ${errorMessage}`);
     } finally {
       setIsRetrying(false);
-      onOpenChange(false);
     }
   };
 
