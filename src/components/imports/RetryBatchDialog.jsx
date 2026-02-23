@@ -137,8 +137,8 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         <div className="space-y-4 py-2">
           {/* Batch info summary */}
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-sm space-y-1">
-            <p><span className="font-medium text-slate-500">Type:</span> <span className="text-slate-200">{batch.import_type}</span></p>
-            <p><span className="font-medium text-slate-500">File:</span> <span className="text-slate-200">{batch.file_name}</span></p>
+            <p><span className="font-medium text-slate-400">Type:</span> <span className="text-slate-100 font-semibold">{batch.import_type}</span></p>
+            <p><span className="font-medium text-slate-400">File:</span> <span className="text-slate-100">{batch.file_name}</span></p>
             <div className="flex gap-4 mt-1 text-xs text-slate-500">
               {batch.total_rows > 0 && <span>Total: {batch.total_rows?.toLocaleString()}</span>}
               {batch.valid_rows > 0 && <span className="text-emerald-400">Valid: {batch.valid_rows?.toLocaleString()}</span>}
