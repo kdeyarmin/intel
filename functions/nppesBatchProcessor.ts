@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
             b => b.file_name === 'batch_process_active'
         );
 
-        const effectiveConcurrency = Math.min(Math.max(1, concurrency), 2); // cap at 2
+        const effectiveConcurrency = 1; // force sequential processing for reliability
 
         if (activeBatchSignals.length > 0) {
             await base44.asServiceRole.entities.ImportBatch.update(activeBatchSignals[0].id, {
