@@ -13,7 +13,7 @@ let BATCH_LIMIT = 200;
 let MAX_PAGES_PER_QUERY = 12; // Fetch up to 2400 results per query before expanding
 let MAX_SKIP = 1200; // NPPES API hard limit is ~1200
 let BULK_SIZE = 50;
-let CONCURRENCY_LIMIT = 4;
+let CONCURRENCY_LIMIT = 2;
 let API_DELAY_MS = 500; // Conservative default to reduce rate limits
 let MAX_RETRIES = 3;
 let RETRY_BACKOFF_MS = 8000; // Conservative default for rate limits
@@ -51,7 +51,7 @@ async function loadConfig(base44) {
             CRAWL_ENTITY_TYPES = (c.crawl_entity_types && c.crawl_entity_types.length > 0) ? c.crawl_entity_types : ['NPI-1', 'NPI-2'];
             MAX_PAGES_PER_QUERY = c.max_pages_per_query || 6;
             MAX_SKIP = c.max_skip || 1000;
-            CONCURRENCY_LIMIT = c.concurrency || 4;
+            CONCURRENCY_LIMIT = c.concurrency || 2;
         }
     } catch (e) {
         console.warn('[Config] Failed to load:', e.message);
@@ -159,14 +159,15 @@ async function fetchAllPages(baseParams, batch, base44) {
 // ---- WRITE HELPERS ----
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function withRetry(fn, maxRetries = 3) {
+async function withRetry(fn, maxRetries = 5) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             return await fn();
         } catch (e) {
-            const is429 = /429|rate limit/i.test(e.message);
+            const is429 = /429|rate limit|too many requests/i.test(e.message);
             if (is429 && attempt < maxRetries) {
-                await sleep(attempt * 1000);
+                const backoff = (Math.pow(2, attempt) * 1000) + (Math.random() * 1000);
+                await sleep(backoff);
                 continue;
             }
             throw e;

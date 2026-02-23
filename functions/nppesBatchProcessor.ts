@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
             action = 'batch_start',
             states = [],                // specific states to process
             region = '',                // alternative: use a region name
-            concurrency = 3,            // how many states to process in parallel
+            concurrency = 1,            // how many states to process in parallel
             taxonomy_description = '',
             entity_type = '',
             dry_run = false,
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
             b => b.file_name === 'batch_process_active'
         );
 
-        const effectiveConcurrency = Math.min(Math.max(1, concurrency), 5); // cap at 5
+        const effectiveConcurrency = Math.min(Math.max(1, concurrency), 2); // cap at 2
 
         if (activeBatchSignals.length > 0) {
             await base44.asServiceRole.entities.ImportBatch.update(activeBatchSignals[0].id, {
