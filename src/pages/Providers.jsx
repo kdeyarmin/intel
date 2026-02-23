@@ -489,11 +489,14 @@ export default function Providers() {
             className="flex-1"
           />
 
+          {/* Quick Filter Presets */}
+          <FilterPresets onApplyPreset={handleApplyPreset} activePresetId={activePresetId} />
+
           {/* Advanced filters + sort */}
           <div className="flex items-start justify-between gap-3">
             <ProviderAdvancedFilters
               filters={filters}
-              onFilterChange={setFilters}
+              onFilterChange={(f) => { setFilters(f); setActivePresetId(null); }}
               onReset={resetFilters}
               specialtyOptions={specialtyOptions}
               stateOptions={stateOptions}
@@ -504,6 +507,23 @@ export default function Providers() {
               sortDir={sortDir}
               onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
               sortOptions={SORT_OPTIONS}
+            />
+          </div>
+
+          {/* Date Range + Text Matching Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <DateRangeFilterInline dateRange={dateRange} onDateRangeChange={setDateRange} />
+            <TextMatchFilter
+              columns={[
+                { value: 'npi', label: 'NPI' },
+                { value: 'first_name', label: 'First Name' },
+                { value: 'last_name', label: 'Last Name' },
+                { value: 'organization_name', label: 'Organization' },
+                { value: 'credential', label: 'Credential' },
+                { value: 'email', label: 'Email' },
+              ]}
+              activeTextFilters={textFilters}
+              onFiltersChange={setTextFilters}
             />
           </div>
         </CardContent>
