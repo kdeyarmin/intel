@@ -32,18 +32,31 @@ Deno.serve(async (req) => {
                 if (!resp.ok) throw new Error(`Page fetch failed: ${resp.status}`);
                 const html = await resp.text();
 
-                // Look for ZIP links or XLSX, specifically for the target year if possible
-                // Pattern: href="..." containing .zip or .xlsx and maybe the year
-                const linkRegex = /href="([^"]+\.(zip|xlsx))"/gi;
-                let match;
+                // Look for ZIP/XLSX links in JSON-LD (structured data) first
                 let foundUrl = null;
                 const candidates = [];
+                
+                const jsonLdRegex = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi;
+                let jsonMatch;
+                while ((jsonMatch = jsonLdRegex.exec(html)) !== null) {
+                    try {
+                        const json = JSON.parse(jsonMatch[1]);
+                        const dists = json.distribution ? (Array.isArray(json.distribution) ? json.distribution : [json.distribution]) : [];
+                        for (const d of dists) {
+                             if (d.contentUrl && (d.encodingFormat === 'application/zip' || d.encodingFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || d.contentUrl.endsWith('.zip') || d.contentUrl.endsWith('.xlsx'))) {
+                                 candidates.push(d.contentUrl);
+                             }
+                        }
+                    } catch (e) { console.warn('JSON-LD parse error', e.message); }
+                }
 
+                // Also regex search for direct links in HTML
+                const linkRegex = /href="([^"]+\.(zip|xlsx))"/gi;
+                let match;
                 while ((match = linkRegex.exec(html)) !== null) {
                     const url = match[1];
                     const fullUrl = url.startsWith('http') ? url : `https://data.cms.gov${url.startsWith('/') ? '' : '/'}${url}`;
-                    // Filter out non-data links if possible (e.g. documentation)
-                    if (!fullUrl.includes('methodology') && !fullUrl.includes('glossary')) {
+                    if (!fullUrl.includes('methodology') && !fullUrl.includes('glossary') && !candidates.includes(fullUrl)) {
                         candidates.push(fullUrl);
                     }
                 }
@@ -125,13 +138,14 @@ Deno.serve(async (req) => {
                         // Check if the URL was different
                         if (batch.file_url !== foundUrl) {
                             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                                cancel_reason: `Auto-detected new URL: ${foundUrl}. Old URL: ${batch.file_url}`,
+                                cancel_reason: `Auto-detected new URL: ${foundUrl}. Old URL: ${batch.file_url}. PLEASE RETRY THIS BATCH.`,
                                 error_samples: [
                                     ...(batch.error_samples || []),
                                     { 
                                         phase: 'url_monitor', 
-                                        detail: `New URL found: ${foundUrl}`, 
-                                        timestamp: new Date().toISOString() 
+                                        detail: `New URL detected: ${foundUrl}. Recommended action: Retry this batch.`, 
+                                        timestamp: new Date().toISOString(),
+                                        category: 'url_update'
                                     }
                                 ]
                             });
