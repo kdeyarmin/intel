@@ -126,41 +126,10 @@ Deno.serve(async (req) => {
         }
 
         // ---- BATCH_START & RETRY_FAILED ----
-        // Resolve which states to process
-        let targetStates = [];
-        if (action === 'retry_failed') {
-            const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter(
-                { import_type: 'nppes_registry', status: 'failed' }, '-created_date', 100
-            );
-            targetStates = [...new Set(failedBatches.map(b => b.file_name?.split('_')[1]).filter(s => s && s.length <= 2))];
-        } else if (states && states.length > 0) {
-            targetStates = states.filter(s => US_STATES.includes(s));
-        } else if (region && REGIONS[region]) {
-            targetStates = REGIONS[region];
-        } else {
-            // Default: all states
-            targetStates = [...US_STATES];
-        }
-
-        // Optionally skip already-completed states
-        if (skip_completed && action !== 'retry_failed') {
-            const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
-                { import_type: 'nppes_registry' }, '-created_date', 300
-            );
-            const completedSet = new Set();
-            for (const b of crawlBatches) {
-                if (b.file_name && b.file_name.startsWith('crawler_') && b.status === 'completed') {
-                    completedSet.add(b.file_name.split('_')[1]);
-                }
-            }
-            targetStates = targetStates.filter(s => !completedSet.has(s));
-        }
-
-        if (targetStates.length === 0) {
-            return Response.json({ success: true, message: 'No states to process — all selected states are already completed.', states_queued: 0 });
-        }
-
-        // Clear any existing batch stop signal
+        // This is now an orchestrator tick designed to run frequently (e.g. every 5 mins).
+        // It checks for a stop signal, and if clear, invokes the crawler ONCE.
+        // The crawler handles up to 45-50s of work, and the next tick resumes.
+        
         const existingSignals = await base44.asServiceRole.entities.ImportBatch.filter(
             { import_type: 'nppes_registry' }, '-created_date', 50
         );
@@ -168,160 +137,41 @@ Deno.serve(async (req) => {
             b => b.file_name === 'crawler_batch_stop_signal' && b.status === 'validating'
         );
         if (activeStop) {
-            await base44.asServiceRole.entities.ImportBatch.update(activeStop.id, { status: 'completed' });
+            return Response.json({ success: true, message: 'Batch stopped by admin signal. Not starting new crawl tick.' });
         }
 
-        // Create/Update batch process signal for automation
-        const activeBatchSignals = existingSignals.filter(
-            b => b.file_name === 'batch_process_active'
-        );
-
-        const effectiveConcurrency = 1; // force sequential processing for reliability
-
-        if (activeBatchSignals.length > 0) {
-            await base44.asServiceRole.entities.ImportBatch.update(activeBatchSignals[0].id, {
-                status: 'processing',
-                retry_params: {
-                    target_states: targetStates,
-                    skip_completed: skip_completed,
-                    stopped: false,
-                    started_at: new Date().toISOString(),
-                    concurrency: effectiveConcurrency
-                }
-            });
-        } else {
-            await base44.asServiceRole.entities.ImportBatch.create({
-                import_type: 'nppes_registry',
-                file_name: 'batch_process_active',
-                file_url: 'Automated batch orchestration signal',
-                status: 'processing',
-                retry_params: {
-                    target_states: targetStates,
-                    skip_completed: skip_completed,
-                    stopped: false,
-                    started_at: new Date().toISOString(),
-                    concurrency: effectiveConcurrency
-                }
-            });
-        }
-
-        console.log(`[BatchProcessor] Starting batch: ${targetStates.length} states, concurrency=${effectiveConcurrency}`);
-
-        // Process states in concurrent batches
-        const results = [];
-        let statesCompleted = 0;
-        let statesFailed = 0;
-        let totalImported = 0;
-        let stopped = false;
-
-        for (let i = 0; i < targetStates.length; i += effectiveConcurrency) {
-            // Check for stop signal before each wave
-            const signals = await base44.asServiceRole.entities.ImportBatch.filter(
-                { import_type: 'nppes_registry' }, '-created_date', 20
+        let targetState = undefined;
+        if (action === 'retry_failed') {
+            const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter(
+                { import_type: 'nppes_registry', status: 'failed' }, '-created_date', 100
             );
-            const batchStop = signals.find(
-                b => b.file_name === 'crawler_batch_stop_signal' && b.status === 'validating'
-            );
-            if (batchStop) {
-                await base44.asServiceRole.entities.ImportBatch.update(batchStop.id, { status: 'completed' });
-                stopped = true;
-                console.log(`[BatchProcessor] Stop signal detected after ${statesCompleted + statesFailed} states`);
-                break;
-            }
-
-            const wave = targetStates.slice(i, i + effectiveConcurrency);
-            console.log(`[BatchProcessor] Wave ${Math.floor(i / effectiveConcurrency) + 1}: processing ${wave.join(', ')}`);
-
-            // Fire all states in this wave concurrently
-            // Use the user-scoped client (which has admin auth) so the nested
-            // function call inherits the admin user's authentication
-            const wavePromises = wave.map(async (stateCode) => {
-                try {
-                    // Keep calling nppesStateCrawler until the state is fully done
-                    // (it may need multiple invocations if it times out mid-state)
-                    let stateResult = null;
-                    let invocations = 0;
-                    const MAX_INVOCATIONS_PER_STATE = 50; // Safety limit — states with many zip prefixes need more iterations
-                    
-                    while (invocations < MAX_INVOCATIONS_PER_STATE) {
-                        invocations++;
-                        const res = await base44.functions.invoke('nppesStateCrawler', {
-                            action: 'start',
-                            target_state: stateCode,
-                            taxonomy_description,
-                            entity_type,
-                            dry_run,
-                        });
-                        stateResult = res.data;
-                        
-                        // If the state is fully done or failed, stop looping
-                        if (stateResult.done || !stateResult.resume_next || !stateResult.success) {
-                            break;
-                        }
-                        
-                        console.log(`[BatchProcessor] State ${stateCode} needs continuation (invocation ${invocations}). Resuming...`);
-                    }
-                    
-                    if (invocations >= MAX_INVOCATIONS_PER_STATE && stateResult?.resume_next) {
-                        console.warn(`[BatchProcessor] State ${stateCode} hit max invocations (${MAX_INVOCATIONS_PER_STATE}). May be incomplete.`);
-                    }
-                    
-                    return { state: stateCode, ...stateResult, invocations };
-                } catch (err) {
-                    return { state: stateCode, success: false, error: err.message };
-                }
-            });
-
-            const waveResults = await Promise.all(wavePromises);
-
-            for (const result of waveResults) {
-                results.push(result);
-                if (result.success) {
-                    statesCompleted++;
-                    totalImported += (result.imported_providers || 0);
-                } else {
-                    statesFailed++;
-                }
-            }
-
-            console.log(`[BatchProcessor] Wave done. Completed: ${statesCompleted}, Failed: ${statesFailed}, Imported: ${totalImported}`);
+            const failedStates = [...new Set(failedBatches.map(b => b.file_name?.split('_')[1]).filter(s => s && s.length <= 2))];
+            if (failedStates.length > 0) targetState = failedStates[0];
+            else return Response.json({ success: true, message: 'No failed states to retry.' });
+        } else if (states && states.length > 0) {
+            targetState = states[0];
         }
 
-        const statusText = stopped ? 'stopped by admin' : 'completed';
+        console.log(`[BatchProcessor] Tick started. Triggering crawler for state: ${targetState || 'auto'}`);
 
-        // Audit log
-        await base44.asServiceRole.entities.AuditEvent.create({
-            event_type: 'import',
-            user_email: user?.email || 'system',
-            details: {
-                action: 'NPPES Batch Process',
-                entity: 'nppes_registry',
-                states_completed: statesCompleted,
-                states_failed: statesFailed,
-                total_imported: totalImported,
-                concurrency: effectiveConcurrency,
-                stopped,
-                message: `Batch ${statusText}: ${statesCompleted}/${targetStates.length} states, ${totalImported} providers`,
-            },
-            timestamp: new Date().toISOString(),
-        });
-
-        return Response.json({
-            success: true,
-            stopped,
-            states_queued: targetStates.length,
-            states_completed: statesCompleted,
-            states_failed: statesFailed,
-            total_imported: totalImported,
-            concurrency: effectiveConcurrency,
-            results: results.map(r => ({
-                state: r.state,
-                success: r.success,
-                valid_rows: r.valid_rows || 0,
-                imported_providers: r.imported_providers || 0,
-                error: r.error || null,
-            })),
-        });
+        try {
+            const res = await base44.functions.invoke('nppesStateCrawler', {
+                action: 'start',
+                target_state: targetState,
+                taxonomy_description,
+                entity_type,
+                dry_run,
+            });
+            
+            return Response.json({
+                success: true,
+                message: 'Crawler tick executed successfully.',
+                crawler_result: res.data
+            });
+        } catch (err) {
+            console.error('[BatchProcessor] Error invoking crawler:', err.message);
+            return Response.json({ success: false, error: err.message }, { status: 500 });
+        }
 
     } catch (error) {
         console.error('[BatchProcessor] Top-level error:', error.message);
