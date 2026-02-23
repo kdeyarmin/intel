@@ -29,27 +29,11 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
-  // Small samples for proactive alerts only
-  const { data: providersSample = [] } = useQuery({
-    queryKey: ['providersSample'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 200),
-    staleTime: 120000,
-  });
-  const { data: utilizationSample = [] } = useQuery({
-    queryKey: ['utilizationSample'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 200),
-    staleTime: 120000,
-  });
-  const { data: referralsSample = [] } = useQuery({
-    queryKey: ['referralsSample'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 200),
-    staleTime: 120000,
-  });
-  const { data: locationsSample = [] } = useQuery({
-    queryKey: ['locationsSample'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 200),
-    staleTime: 120000,
-  });
+  // Extract samples from dashboard stats
+  const providersSample = stats?.samples?.providers || [];
+  const utilizationSample = stats?.samples?.utilizations || [];
+  const referralsSample = stats?.samples?.referrals || [];
+  const locationsSample = stats?.samples?.locations || [];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">

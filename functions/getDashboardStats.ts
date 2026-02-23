@@ -7,15 +7,14 @@ Deno.serve(async (req) => {
         // Fetch one page per entity. If we get exactly PAGE_SIZE, the real total is likely higher.
         const PAGE = 500;
 
-        const [providers, locations, referrals, utilization, taxonomies, batches, dqScans] = await Promise.all([
-            base44.asServiceRole.entities.Provider.list('-created_date', PAGE),
-            base44.asServiceRole.entities.ProviderLocation.list('-created_date', PAGE),
-            base44.asServiceRole.entities.CMSReferral.list('-created_date', PAGE),
-            base44.asServiceRole.entities.CMSUtilization.list('-created_date', PAGE),
-            base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', PAGE),
-            base44.asServiceRole.entities.ImportBatch.list('-created_date', 100),
-            base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1),
-        ]);
+        // Fetch sequentially to prevent rate limits
+        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', PAGE);
+        const locations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', PAGE);
+        const referrals = await base44.asServiceRole.entities.CMSReferral.list('-created_date', PAGE);
+        const utilization = await base44.asServiceRole.entities.CMSUtilization.list('-created_date', PAGE);
+        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', PAGE);
+        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 100);
+        const dqScans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1);
 
         // Provider email stats
         let withEmail = 0, searched = 0, valid = 0, risky = 0, invalid = 0, needsEnrichment = 0;
@@ -101,6 +100,12 @@ Deno.serve(async (req) => {
                 totalRecords: latestScan.total_records || 0,
             } : null,
             openAlerts,
+            samples: {
+                providers: providers.slice(0, 200),
+                locations: locations.slice(0, 200),
+                referrals: referrals.slice(0, 200),
+                utilizations: utilization.slice(0, 200),
+            },
         });
 
     } catch (error) {
