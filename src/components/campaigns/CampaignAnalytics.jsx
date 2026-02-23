@@ -10,7 +10,7 @@ import { Users, UserCheck, ArrowLeft, BarChart3, ListTodo, Target, Zap } from 'l
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
-import CampaignAutomationPanel from './CampaignAutomationPanel';
+// Removed invalid import
 
 const STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
