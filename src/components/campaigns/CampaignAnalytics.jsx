@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Users, UserCheck, ArrowLeft, BarChart3, ListTodo, Target } from 'lucide-react';
+import { Users, UserCheck, ArrowLeft, BarChart3, ListTodo, Target, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
+import CampaignAutomationPanel from './CampaignAutomationPanel';
 
 const STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
@@ -109,7 +110,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-3 bg-slate-800/50 h-9">
+        <TabsList className="w-full grid grid-cols-4 bg-slate-800/50 h-9">
           <TabsTrigger value="performance" className="text-xs gap-1 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <BarChart3 className="w-3.5 h-3.5" /> Performance
           </TabsTrigger>
@@ -119,6 +120,9 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
           </TabsTrigger>
           <TabsTrigger value="tasks" className="text-xs gap-1 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ListTodo className="w-3.5 h-3.5" /> Tasks
+          </TabsTrigger>
+          <TabsTrigger value="automation" className="text-xs gap-1 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Zap className="w-3.5 h-3.5" /> Automation
           </TabsTrigger>
         </TabsList>
 
