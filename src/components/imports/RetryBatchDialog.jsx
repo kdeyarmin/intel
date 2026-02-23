@@ -221,12 +221,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">NPI Filter (comma-separated)</Label>
+                  <Label className="text-xs text-slate-300 font-medium">NPI Filter (comma-separated)</Label>
                   <Input
                     value={npiFilter}
                     onChange={(e) => setNpiFilter(e.target.value)}
                     placeholder="1234567890, 0987654321"
-                    className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
+                    className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                   />
                 </div>
                 <div className="space-y-1">
