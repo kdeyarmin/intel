@@ -229,6 +229,11 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
         <TabsContent value="tasks" className="mt-4">
           <CampaignTaskManager campaignId={campaign.id} />
         </TabsContent>
+
+        {/* Automation Tab */}
+        <TabsContent value="automation" className="mt-4">
+          <CampaignAutomationPanel campaign={campaign} />
+        </TabsContent>
       </Tabs>
 
       {/* Target vs Actual */}
