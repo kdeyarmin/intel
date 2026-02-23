@@ -23,7 +23,8 @@ import TextMatchFilter, { applyTextFilters } from '../components/filters/TextMat
 import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filters/DateRangeFilterInline';
 import FilterPresets from '../components/filters/FilterPresets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Copy, Globe, List } from 'lucide-react';
+import { Search, Copy, Globe, List, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -345,6 +346,26 @@ export default function Providers() {
     }
   };
 
+  const stateData = useMemo(() => {
+    const counts = {};
+    sortedProviders.forEach(p => {
+      const loc = locationByNpi[p.npi]?.find(l => l.is_primary) || locationByNpi[p.npi]?.[0];
+      const st = loc?.state || 'Unknown';
+      counts[st] = (counts[st] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [sortedProviders, locationByNpi]);
+
+  const typeData = useMemo(() => {
+    const counts = { Individual: 0, Organization: 0 };
+    sortedProviders.forEach(p => {
+      counts[p.entity_type] = (counts[p.entity_type] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [sortedProviders]);
+
+  const COLORS = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#f43f5e'];
+
   const handleSaveList = async () => {
     const user = await base44.auth.me();
     const listName = prompt('Enter lead list name:');
@@ -473,6 +494,45 @@ export default function Providers() {
         </TabsContent>
 
         <TabsContent value="directory">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card className="bg-[#141d30] border-slate-700/50">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-300 flex items-center gap-2"><PieChartIcon className="w-4 h-4"/> Providers by State (Top 10)</CardTitle></CardHeader>
+              <CardContent className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stateData} margin={{ top: 5, right: 5, bottom: 20, left: -20 }}>
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tick={{fill: '#94a3b8'}} angle={-45} textAnchor="end" />
+                    <YAxis stroke="#64748b" fontSize={10} tick={{fill: '#94a3b8'}} />
+                    <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px', color: '#fff'}} />
+                    <Bar dataKey="value" fill="#0ea5e9" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card className="bg-[#141d30] border-slate-700/50">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-300 flex items-center gap-2"><PieChartIcon className="w-4 h-4"/> Entity Type Distribution</CardTitle></CardHeader>
+              <CardContent className="h-48 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={typeData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="value">
+                      {typeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px', color: '#fff'}} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex flex-col gap-2 ml-4">
+                  {typeData.map((entry, idx) => (
+                    <div key={entry.name} className="flex items-center gap-2 text-xs text-slate-300">
+                      <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS[idx % COLORS.length]}}></div>
+                      {entry.name} ({entry.value})
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
       <Card className="mb-6 bg-[#141d30] border-slate-700/50">
         <CardContent className="pt-6 space-y-3">
           <SavedFilterBar

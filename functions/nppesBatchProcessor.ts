@@ -125,10 +125,15 @@ Deno.serve(async (req) => {
             return Response.json({ success: true, message: 'Batch stop signal set. Running states will complete, but no new states will start.' });
         }
 
-        // ---- BATCH_START ----
+        // ---- BATCH_START & RETRY_FAILED ----
         // Resolve which states to process
         let targetStates = [];
-        if (states && states.length > 0) {
+        if (action === 'retry_failed') {
+            const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter(
+                { import_type: 'nppes_registry', status: 'failed' }, '-created_date', 100
+            );
+            targetStates = [...new Set(failedBatches.map(b => b.file_name?.split('_')[1]).filter(s => s && s.length <= 2))];
+        } else if (states && states.length > 0) {
             targetStates = states.filter(s => US_STATES.includes(s));
         } else if (region && REGIONS[region]) {
             targetStates = REGIONS[region];
@@ -138,7 +143,7 @@ Deno.serve(async (req) => {
         }
 
         // Optionally skip already-completed states
-        if (skip_completed) {
+        if (skip_completed && action !== 'retry_failed') {
             const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter(
                 { import_type: 'nppes_registry' }, '-created_date', 300
             );

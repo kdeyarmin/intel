@@ -446,7 +446,16 @@ function transformResults(allResults) {
 
         const basic = result.basic || {};
         const isIndividual = result.enumeration_type === 'NPI-1';
-        const provider = { npi, entity_type: isIndividual ? 'Individual' : 'Organization', status: basic.status === 'A' ? 'Active' : 'Deactivated', needs_nppes_enrichment: false };
+        const status = basic.status === 'A' ? 'Active' : 'Deactivated';
+        
+        // NEW VALIDATION: Active providers must have dates
+        if (status === 'Active' && !basic.enumeration_date && !basic.last_updated) {
+            invalidRows++;
+            if (errors.length < 10) errors.push({ npi, message: 'Active provider missing enumeration and update dates' });
+            continue; 
+        }
+
+        const provider = { npi, entity_type: isIndividual ? 'Individual' : 'Organization', status, needs_nppes_enrichment: false };
         if (isIndividual) {
             provider.first_name = (basic.first_name || '').trim();
             provider.last_name = (basic.last_name || '').trim();
@@ -459,13 +468,25 @@ function transformResults(allResults) {
         providers.push(provider);
 
         for (const addr of (result.addresses || [])) {
+            let zip = (addr.postal_code || '').substring(0, 10);
+            const rawZip = zip.replace(/[^0-9]/g, '');
+            if (rawZip && rawZip.length !== 5 && rawZip.length !== 9) {
+                if (errors.length < 10) errors.push({ npi, message: `Invalid ZIP format: ${zip}` });
+            }
+            
+            let phone = (addr.telephone_number || '').trim();
+            const rawPhone = phone.replace(/[^0-9]/g, '');
+            if (phone && rawPhone.length < 10) {
+                 if (errors.length < 10) errors.push({ npi, message: `Invalid phone format: ${phone}` });
+                 phone = ''; // Clear invalid phone
+            }
+
             locations.push({
                 npi, location_type: addr.address_purpose === 'MAILING' ? 'Mailing' : 'Practice',
                 is_primary: addr.address_purpose === 'LOCATION',
                 address_1: (addr.address_1 || '').trim(), address_2: (addr.address_2 || '').trim(),
                 city: (addr.city || '').trim(), state: (addr.state || '').trim(),
-                zip: (addr.postal_code || '').substring(0, 10),
-                phone: (addr.telephone_number || '').trim(), fax: (addr.fax_number || '').trim(),
+                zip: zip, phone: phone, fax: (addr.fax_number || '').trim(),
             });
         }
         for (const tax of (result.taxonomies || [])) {

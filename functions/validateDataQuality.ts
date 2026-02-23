@@ -108,6 +108,45 @@ Deno.serve(async (req) => {
       issues.summary.qualityScore = Math.max(0, Math.round((1 - (issues.summary.totalIssues / totalRecords)) * 100));
     }
 
+    // AI Anomaly Detection on a sample of data
+    try {
+      const sample = providers.slice(0, 20).map(p => ({
+        npi: p.npi,
+        type: p.entity_type,
+        status: p.status,
+        dates: [p.enumeration_date, p.last_update_date],
+        email: p.email
+      }));
+      
+      const prompt = `Analyze this JSON sample of healthcare providers and identify any unusual anomalies or logical inconsistencies across the dataset. Return a list of anomalies.
+      Data: ${JSON.stringify(sample)}
+      Focus on weird patterns like everyone having the same date, lots of missing emails if they are active, etc.`;
+
+      const aiRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            anomalies: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  description: { type: "string" },
+                  severity: { type: "string" },
+                  affected_npis: { type: "array", items: { type: "string" } }
+                }
+              }
+            }
+          }
+        }
+      });
+      issues.ai_anomalies = aiRes.anomalies || [];
+    } catch (aiErr) {
+      console.warn("AI Anomaly detection failed:", aiErr.message);
+      issues.ai_anomalies = [];
+    }
+
     return Response.json(issues);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
