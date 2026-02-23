@@ -146,9 +146,9 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               {batch.invalid_rows > 0 && <span className="text-red-400">Invalid: <span className="font-semibold">{batch.invalid_rows?.toLocaleString()}</span></span>}
             </div>
             {currentRetryCount > 0 && (
-              <p className={`text-xs mt-1 ${retryLimitReached ? 'text-red-400' : 'text-amber-400'}`}>
+              <div className={`text-xs mt-2 px-2.5 py-1.5 rounded-md ${retryLimitReached ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-amber-500/10 border border-amber-500/20 text-amber-300'}`}>
                 Previously retried {currentRetryCount} time(s){retryLimitReached ? ` — retry limit reached (${MAX_RETRIES} max)` : ` — ${MAX_RETRIES - currentRetryCount} retries remaining`}
-              </p>
+              </div>
             )}
           </div>
 
