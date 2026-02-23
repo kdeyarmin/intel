@@ -256,7 +256,7 @@ export default function Providers() {
 
   // Filtering
   const filteredProviders = useMemo(() => {
-    return providers.filter(p => {
+    const basic = providers.filter(p => {
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
         const match = (p.npi || '').includes(q) ||
