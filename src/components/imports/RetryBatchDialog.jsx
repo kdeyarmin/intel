@@ -162,12 +162,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
           {/* Retry mode tabs */}
           <Tabs value={retryMode} onValueChange={setRetryMode}>
-            <TabsList className="grid grid-cols-5 h-8 bg-slate-800/50">
-              <TabsTrigger value="full" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Full</TabsTrigger>
-              <TabsTrigger value="row_range" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Row Range</TabsTrigger>
-              <TabsTrigger value="criteria" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Criteria</TabsTrigger>
-              <TabsTrigger value="failed_only" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200">Failed Only</TabsTrigger>
-              <TabsTrigger value="resume" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-200" disabled={!batch.imported_rows}>Resume</TabsTrigger>
+            <TabsList className="grid grid-cols-5 h-8 bg-slate-800/80 border border-slate-700/50">
+              <TabsTrigger value="full" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Full</TabsTrigger>
+              <TabsTrigger value="row_range" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Row Range</TabsTrigger>
+              <TabsTrigger value="criteria" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Criteria</TabsTrigger>
+              <TabsTrigger value="failed_only" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Failed Only</TabsTrigger>
+              <TabsTrigger value="resume" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white" disabled={!batch.imported_rows}>Resume</TabsTrigger>
             </TabsList>
 
             <TabsContent value="full" className="mt-3">
