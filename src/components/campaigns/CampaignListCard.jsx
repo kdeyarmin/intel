@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2, Eye, Calendar, DollarSign, Target, Users } from 'lucide-react';
+import { Trash2, Eye, Calendar, DollarSign, Target, Users, Mail, MessageSquare } from 'lucide-react';
 
 const STATUS_STYLES = {
   draft: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
@@ -14,6 +14,12 @@ const STATUS_STYLES = {
 
 export default function CampaignListCard({ campaign, listNames = {}, totalProviders = 0, onView, onDelete }) {
   const linkedLists = (campaign.lead_list_ids || []).map(id => listNames[id] || 'Unknown List');
+  const sent = campaign.emails_sent || 0;
+  const opened = campaign.emails_opened || 0;
+  const responded = campaign.emails_responded || 0;
+  const conversions = campaign.conversions || 0;
+  const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(0) : '-';
+  const audienceSize = campaign.audience_size || totalProviders;
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50 hover:border-slate-600/60 transition-colors">
@@ -26,7 +32,12 @@ export default function CampaignListCard({ campaign, listNames = {}, totalProvid
                 {campaign.status}
               </Badge>
             </div>
-            {campaign.description && (
+            {campaign.goal && (
+              <p className="text-xs text-cyan-400/80 mt-0.5 flex items-center gap-1">
+                <Target className="w-3 h-3" /> {campaign.goal}
+              </p>
+            )}
+            {campaign.description && !campaign.goal && (
               <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{campaign.description}</p>
             )}
           </div>
@@ -40,37 +51,63 @@ export default function CampaignListCard({ campaign, listNames = {}, totalProvid
           </div>
         </div>
 
-        {/* Lead lists pills */}
+        {/* Lead lists / audience pills */}
         <div className="flex flex-wrap gap-1 mb-3">
-          {linkedLists.length === 0 ? (
-            <span className="text-[10px] text-slate-500 italic">No lists linked</span>
-          ) : linkedLists.map((name, i) => (
-            <Badge key={i} variant="outline" className="text-[10px] px-1.5">{name}</Badge>
-          ))}
+          {linkedLists.length > 0 ? (
+            linkedLists.map((name, i) => (
+              <Badge key={i} variant="outline" className="text-[10px] px-1.5">{name}</Badge>
+            ))
+          ) : campaign.audience_filters && Object.keys(campaign.audience_filters).length > 0 ? (
+            <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
+              Filtered Audience · {audienceSize} providers
+            </Badge>
+          ) : (
+            <span className="text-[10px] text-slate-500 italic">No audience selected</span>
+          )}
         </div>
 
-        <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-700/40">
+        <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-700/40">
           <div className="text-center">
             <Users className="w-3 h-3 mx-auto text-slate-500 mb-0.5" />
-            <p className="text-sm font-bold text-slate-200">{totalProviders}</p>
-            <p className="text-[9px] text-slate-500">Providers</p>
+            <p className="text-sm font-bold text-slate-200">{audienceSize}</p>
+            <p className="text-[9px] text-slate-500">Audience</p>
           </div>
           <div className="text-center">
-            <Target className="w-3 h-3 mx-auto text-slate-500 mb-0.5" />
-            <p className="text-sm font-bold text-slate-200">{campaign.target_conversion_rate || '-'}%</p>
-            <p className="text-[9px] text-slate-500">Target CVR</p>
+            <Mail className="w-3 h-3 mx-auto text-cyan-500 mb-0.5" />
+            <p className="text-sm font-bold text-slate-200">{sent}</p>
+            <p className="text-[9px] text-slate-500">Sent</p>
           </div>
           <div className="text-center">
-            <DollarSign className="w-3 h-3 mx-auto text-slate-500 mb-0.5" />
-            <p className="text-sm font-bold text-slate-200">{campaign.budget ? `$${campaign.budget.toLocaleString()}` : '-'}</p>
-            <p className="text-[9px] text-slate-500">Budget</p>
+            <Eye className="w-3 h-3 mx-auto text-blue-500 mb-0.5" />
+            <p className="text-sm font-bold text-slate-200">{openRate}%</p>
+            <p className="text-[9px] text-slate-500">Open Rate</p>
           </div>
           <div className="text-center">
-            <Calendar className="w-3 h-3 mx-auto text-slate-500 mb-0.5" />
-            <p className="text-sm font-bold text-slate-200">{campaign.start_date ? new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}</p>
-            <p className="text-[9px] text-slate-500">Start</p>
+            <MessageSquare className="w-3 h-3 mx-auto text-green-500 mb-0.5" />
+            <p className="text-sm font-bold text-slate-200">{responded}</p>
+            <p className="text-[9px] text-slate-500">Responses</p>
+          </div>
+          <div className="text-center">
+            <Target className="w-3 h-3 mx-auto text-emerald-500 mb-0.5" />
+            <p className="text-sm font-bold text-slate-200">{conversions}</p>
+            <p className="text-[9px] text-slate-500">Converts</p>
           </div>
         </div>
+
+        {/* Date range */}
+        {(campaign.start_date || campaign.end_date) && (
+          <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-500">
+            <Calendar className="w-3 h-3" />
+            {campaign.start_date && new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {campaign.start_date && campaign.end_date && ' – '}
+            {campaign.end_date && new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {campaign.budget > 0 && (
+              <span className="ml-auto flex items-center gap-0.5">
+                <DollarSign className="w-3 h-3" />{campaign.budget.toLocaleString()} budget
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
