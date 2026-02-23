@@ -139,11 +139,11 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-sm space-y-1">
             <p><span className="font-medium text-slate-400">Type:</span> <span className="text-slate-100 font-semibold">{batch.import_type}</span></p>
             <p><span className="font-medium text-slate-400">File:</span> <span className="text-slate-100">{batch.file_name}</span></p>
-            <div className="flex gap-4 mt-1 text-xs text-slate-500">
-              {batch.total_rows > 0 && <span>Total: {batch.total_rows?.toLocaleString()}</span>}
-              {batch.valid_rows > 0 && <span className="text-emerald-400">Valid: {batch.valid_rows?.toLocaleString()}</span>}
-              {batch.imported_rows > 0 && <span className="text-blue-400">Imported: {batch.imported_rows?.toLocaleString()}</span>}
-              {batch.invalid_rows > 0 && <span className="text-red-400">Invalid: {batch.invalid_rows?.toLocaleString()}</span>}
+            <div className="flex gap-4 mt-1.5 text-xs">
+              {batch.total_rows > 0 && <span className="text-slate-300">Total: <span className="font-semibold">{batch.total_rows?.toLocaleString()}</span></span>}
+              {batch.valid_rows > 0 && <span className="text-emerald-400">Valid: <span className="font-semibold">{batch.valid_rows?.toLocaleString()}</span></span>}
+              {batch.imported_rows > 0 && <span className="text-blue-400">Imported: <span className="font-semibold">{batch.imported_rows?.toLocaleString()}</span></span>}
+              {batch.invalid_rows > 0 && <span className="text-red-400">Invalid: <span className="font-semibold">{batch.invalid_rows?.toLocaleString()}</span></span>}
             </div>
             {currentRetryCount > 0 && (
               <p className={`text-xs mt-1 ${retryLimitReached ? 'text-red-400' : 'text-amber-400'}`}>
