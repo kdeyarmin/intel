@@ -19,6 +19,9 @@ import EnrichProviderButton from '../components/providers/EnrichProviderButton';
 import AINPIFinder from '../components/providers/AINPIFinder';
 import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
 import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
+import TextMatchFilter, { applyTextFilters } from '../components/filters/TextMatchFilter';
+import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filters/DateRangeFilterInline';
+import FilterPresets from '../components/filters/FilterPresets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List } from 'lucide-react';
 
@@ -46,6 +49,9 @@ export default function Providers() {
   const [sortDir, setSortDir] = useState('asc');
   const [selectedNpis, setSelectedNpis] = useState(new Set());
   const [activeTab, setActiveTab] = useState('directory');
+  const [textFilters, setTextFilters] = useState([]);
+  const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
+  const [activePresetId, setActivePresetId] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -103,6 +109,26 @@ export default function Providers() {
     });
     setSortField('default');
     setSortDir('asc');
+    setTextFilters([]);
+    setDateRange({ preset: 'all', startDate: '', endDate: '' });
+    setActivePresetId(null);
+  };
+
+  const handleApplyPreset = (preset) => {
+    if (!preset) {
+      resetFilters();
+      return;
+    }
+    setActivePresetId(preset.id);
+    setFilters(prev => ({
+      entityTypeFilter: 'all', statusFilter: 'all', credentialFilter: 'all',
+      enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
+      ...preset.filters,
+    }));
+    if (preset.sortOverride) {
+      setSortField(preset.sortOverride.field);
+      setSortDir(preset.sortOverride.dir);
+    }
   };
 
   const currentFilters = { searchTerm, ...filters };
@@ -264,7 +290,13 @@ export default function Providers() {
       }
       return true;
     });
-  }, [providers, searchTerm, filters, locationByNpi, taxonomyByNpi]);
+
+    // Apply date range filter on created_date
+    let dateFiltered = applyDateRangeFilter(basic, 'created_date', dateRange);
+
+    // Apply text match filters
+    return applyTextFilters(dateFiltered, textFilters);
+  }, [providers, searchTerm, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
 
   // Sorting
   const sortedProviders = useMemo(() => {
