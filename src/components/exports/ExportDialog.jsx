@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Download, FileText, Sheet, FileDown } from 'lucide-react';
-import { exportCSV, exportExcel, exportPDF, filterByDateRange, pickFields } from './exportUtils';
+import { Download, Calendar } from 'lucide-react';
+import { exportCSV, exportExcel, exportPDF, exportJSON, filterByDateRange, pickFields } from './exportUtils';
+import ExportFormatSelector from './ExportFormatSelector';
+import ColumnSelector from './ColumnSelector';
+import ScheduleExportForm from './ScheduleExportForm';
+import DateRangeFilterInline, { applyDateRangeFilter } from '../filters/DateRangeFilterInline';
 
-const FORMAT_OPTIONS = [
-  { key: 'csv', label: 'CSV', icon: FileText, desc: 'Comma-separated values' },
-  { key: 'excel', label: 'Excel', icon: Sheet, desc: 'Excel-compatible spreadsheet' },
-  { key: 'pdf', label: 'PDF', icon: FileDown, desc: 'Printable document' },
-];
-
-export default function ExportDialog({ data, fields, fileName, title, dateField, trigger }) {
+export default function ExportDialog({ data, fields, fileName, title, dateField, trigger, dataset, activeFilters }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState('csv');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
   const [selectedFields, setSelectedFields] = useState(fields.map(f => f.key));
+  const [exporting, setExporting] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
 
   const toggleField = (key) => {
     setSelectedFields(prev =>
@@ -26,16 +23,11 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
     );
   };
 
-  const selectAll = () => setSelectedFields(fields.map(f => f.key));
-  const selectNone = () => setSelectedFields([]);
-
-  const [exporting, setExporting] = useState(false);
-
   const handleExport = async () => {
     setExporting(true);
     let rows = data;
     if (dateField) {
-      rows = filterByDateRange(rows, dateField, startDate, endDate);
+      rows = applyDateRangeFilter(rows, dateField, dateRange);
     }
     const activeFields = fields.filter(f => selectedFields.includes(f.key));
     const picked = pickFields(rows, activeFields);
@@ -44,6 +36,7 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
 
     if (format === 'csv') exportCSV(picked, activeFields, name);
     else if (format === 'excel') exportExcel(picked, activeFields, name);
+    else if (format === 'json') exportJSON(picked, activeFields, name);
     else if (format === 'pdf') await exportPDF(picked, activeFields, name, title);
 
     setExporting(false);
@@ -59,82 +52,64 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Export {title || 'Data'}</DialogTitle>
+          <DialogTitle className="text-slate-100">Export {title || 'Data'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 pt-2">
           {/* Format */}
           <div>
-            <Label className="text-xs text-gray-500 uppercase tracking-wider">Format</Label>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {FORMAT_OPTIONS.map(opt => {
-                const Icon = opt.icon;
-                const active = format === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => setFormat(opt.key)}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-sm ${
-                      active ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{opt.label}</span>
-                  </button>
-                );
-              })}
+            <Label className="text-xs text-slate-400 uppercase tracking-wider">Format</Label>
+            <div className="mt-2">
+              <ExportFormatSelector format={format} onFormatChange={setFormat} />
             </div>
           </div>
 
           {/* Date Range */}
           {dateField && (
-            <div>
-              <Label className="text-xs text-gray-500 uppercase tracking-wider">Date Range (optional)</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                <div>
-                  <Label className="text-xs">From</Label>
-                  <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                </div>
-                <div>
-                  <Label className="text-xs">To</Label>
-                  <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                </div>
-              </div>
-            </div>
+            <DateRangeFilterInline dateRange={dateRange} onDateRangeChange={setDateRange} />
           )}
 
-          {/* Field Selection */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-xs text-gray-500 uppercase tracking-wider">Fields</Label>
-              <div className="flex gap-2">
-                <button onClick={selectAll} className="text-xs text-blue-600 hover:underline">Select All</button>
-                <button onClick={selectNone} className="text-xs text-gray-500 hover:underline">Clear</button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
-              {fields.map(f => (
-                <label key={f.key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white rounded p-1">
-                  <Checkbox
-                    checked={selectedFields.includes(f.key)}
-                    onCheckedChange={() => toggleField(f.key)}
-                  />
-                  <span>{f.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          {/* Column Selection */}
+          <ColumnSelector
+            fields={fields}
+            selectedFields={selectedFields}
+            onToggle={toggleField}
+            onSelectAll={() => setSelectedFields(fields.map(f => f.key))}
+            onSelectNone={() => setSelectedFields([])}
+          />
 
-          {/* Export Button */}
+          {/* Export Now + Schedule */}
           <div className="flex items-center justify-between pt-2">
-            <span className="text-sm text-gray-500">
-              {data.length} records{selectedFields.length < fields.length ? ` • ${selectedFields.length}/${fields.length} fields` : ''}
-            </span>
-            <Button onClick={handleExport} disabled={selectedFields.length === 0 || exporting} className="bg-blue-600 hover:bg-blue-700">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-400">
+                {data.length} records{selectedFields.length < fields.length ? ` · ${selectedFields.length}/${fields.length} cols` : ''}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSchedule(!showSchedule)}
+                className="text-xs text-slate-400 hover:text-cyan-400 gap-1"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                {showSchedule ? 'Hide Schedule' : 'Schedule'}
+              </Button>
+            </div>
+            <Button onClick={handleExport} disabled={selectedFields.length === 0 || exporting} className="bg-cyan-600 hover:bg-cyan-700">
               <Download className="w-4 h-4 mr-2" /> {exporting ? 'Exporting...' : `Export ${format.toUpperCase()}`}
             </Button>
           </div>
+
+          {/* Schedule recurring export */}
+          {showSchedule && (
+            <ScheduleExportForm
+              dataset={dataset || 'providers'}
+              format={format}
+              selectedColumns={selectedFields}
+              filters={activeFilters}
+              onClose={() => setShowSchedule(false)}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
