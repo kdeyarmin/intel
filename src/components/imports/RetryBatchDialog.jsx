@@ -294,12 +294,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           {/* Options */}
           <div className="space-y-2 border-t border-slate-700/50 pt-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-slate-300">Dry run (validate only)</Label>
+              <Label className="text-sm text-slate-200">Dry run (validate only)</Label>
               <Switch checked={dryRun} onCheckedChange={setDryRun} />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-sm text-slate-300">Skip validation</Label>
+                <Label className="text-sm text-slate-200">Skip validation</Label>
                 <p className="text-xs text-slate-400">Import directly without re-validating rows</p>
               </div>
               <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
