@@ -184,7 +184,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Start from row</Label>
+                  <Label className="text-xs text-slate-300 font-medium">Start from row</Label>
                   <Input
                     type="number"
                     value={rowOffset}
@@ -192,7 +192,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                     min={0}
                     max={batch.total_rows || undefined}
                     placeholder="0"
-                    className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
+                    className="h-8 text-sm bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                   />
                 </div>
                 <div className="space-y-1">
