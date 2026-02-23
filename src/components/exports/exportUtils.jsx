@@ -202,6 +202,19 @@ export async function exportPDF(rows, fields, fileName, title) {
   doc.save(fileName + '.pdf');
 }
 
+/**
+ * Export rows to JSON and trigger download.
+ */
+export function exportJSON(rows, fields, fileName) {
+  const filtered = rows.map(row => {
+    const obj = {};
+    fields.forEach(f => { obj[f.key] = row[f.key] ?? null; });
+    return obj;
+  });
+  const json = JSON.stringify(filtered, null, 2);
+  downloadBlob(new Blob([json], { type: 'application/json' }), fileName + '.json');
+}
+
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
