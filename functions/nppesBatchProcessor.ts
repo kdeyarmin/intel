@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
         console.log(`[BatchProcessor] Tick started. Triggering crawler for state: ${targetState || 'auto'}`);
 
         try {
-            const res = await base44.functions.invoke('nppesStateCrawler', {
+            // Use service role to ensure permission to invoke crawler even from scheduled tasks
+            const res = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
                 action: 'start',
                 target_state: targetState,
                 taxonomy_description,
