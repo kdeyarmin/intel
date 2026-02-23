@@ -32,29 +32,49 @@ Deno.serve(async (req) => {
                 if (!resp.ok) throw new Error(`Page fetch failed: ${resp.status}`);
                 const html = await resp.text();
 
-                // Look for ZIP links, specifically for the target year if possible
-                // Pattern: href="..." containing .zip and maybe the year
-                // data.cms.gov links often look like /sites/default/files/...2023.zip
-                
-                // Regex to capture all zip links
-                const zipRegex = /href="([^"]+\.zip)"/gi;
+                // Look for ZIP links or XLSX, specifically for the target year if possible
+                // Pattern: href="..." containing .zip or .xlsx and maybe the year
+                const linkRegex = /href="([^"]+\.(zip|xlsx))"/gi;
                 let match;
                 let foundUrl = null;
                 const candidates = [];
 
-                while ((match = zipRegex.exec(html)) !== null) {
+                while ((match = linkRegex.exec(html)) !== null) {
                     const url = match[1];
-                    // Normalize URL
                     const fullUrl = url.startsWith('http') ? url : `https://data.cms.gov${url.startsWith('/') ? '' : '/'}${url}`;
-                    candidates.push(fullUrl);
+                    // Filter out non-data links if possible (e.g. documentation)
+                    if (!fullUrl.includes('methodology') && !fullUrl.includes('glossary')) {
+                        candidates.push(fullUrl);
+                    }
                 }
 
                 // Filter candidates for the target year
+                // Prioritize exact year match in filename
                 foundUrl = candidates.find(u => u.includes(String(target.year)));
                 
                 // Fallback: take the first candidate if it looks like a dataset
                 if (!foundUrl && candidates.length > 0) {
                     foundUrl = candidates[0];
+                }
+
+                // Validate the found URL (head request)
+                if (foundUrl) {
+                    try {
+                        const head = await fetch(foundUrl, { method: 'HEAD' });
+                        if (!head.ok) {
+                            console.warn(`URL found but not accessible: ${foundUrl} (${head.status})`);
+                            foundUrl = null;
+                        } else {
+                            const size = head.headers.get('content-length');
+                            if (size && parseInt(size) < 2000) {
+                                console.warn(`URL found but too small (${size} bytes): ${foundUrl}`);
+                                foundUrl = null;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Error verifying URL ${foundUrl}: ${e.message}`);
+                        foundUrl = null;
+                    }
                 }
 
                 if (foundUrl) {
