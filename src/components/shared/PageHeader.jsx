@@ -13,7 +13,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, a
             <Home className="w-3 h-3" />
           </Link>
           {breadcrumbs.map((crumb, i) => (
-            <React.Fragment key={i}>
+            <span key={i} className="flex items-center gap-1">
               <ChevronRight className="w-3 h-3 text-slate-500" />
               {crumb.page ? (
                 <Link to={createPageUrl(crumb.page)} className="hover:text-cyan-400 transition-colors">
@@ -22,7 +22,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, a
               ) : (
                 <span className="text-slate-400">{crumb.label}</span>
               )}
-            </React.Fragment>
+            </span>
           ))}
         </nav>
       )}
