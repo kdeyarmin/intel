@@ -241,12 +241,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Sheet Filter</Label>
+                <Label className="text-xs text-slate-300 font-medium">Sheet Filter</Label>
                 <Input
                   value={sheetFilter}
                   onChange={(e) => setSheetFilter(e.target.value)}
                   placeholder="e.g. MA4, Sheet1"
-                  className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"
+                  className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                 />
                 <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports</p>
               </div>
