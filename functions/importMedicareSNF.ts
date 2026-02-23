@@ -118,10 +118,36 @@ function mapSNFRow(row, tableName, dataYear) {
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
   if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label', row: rowIndex, sheet: sheetName });
-  if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'data_year_range', field: 'data_year', message: `data_year ${record.data_year} outside 2000-2030`, row: rowIndex, sheet: sheetName });
+  
+  if (record.data_year < 2000 || record.data_year > 2030) {
+      errors.push({ 
+          rule: 'data_year_range', 
+          field: 'data_year', 
+          value: record.data_year,
+          message: `data_year ${record.data_year} outside 2000-2030`, 
+          row: rowIndex, 
+          sheet: sheetName 
+      });
+  }
+  
   if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
-  for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'negative_value', field: f, message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
-  if (record.avg_length_of_stay != null && (record.avg_length_of_stay <= 0 || record.avg_length_of_stay > 365)) errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', message: 'ALOS outside 0-365', row: rowIndex, sheet: sheetName });
+  
+  for (const f of NUMERIC_FIELDS) { 
+      if (record[f] != null && record[f] < 0) {
+          errors.push({ 
+              rule: 'negative_value', 
+              field: f, 
+              value: record[f],
+              message: `${f} is negative`, 
+              row: rowIndex, 
+              sheet: sheetName 
+          }); 
+      }
+  }
+  
+  if (record.avg_length_of_stay != null && (record.avg_length_of_stay <= 0 || record.avg_length_of_stay > 365)) {
+      errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', value: record.avg_length_of_stay, message: 'ALOS outside 0-365', row: rowIndex, sheet: sheetName });
+  }
   return { valid: errors.length === 0, errors, warnings };
 }
 
@@ -159,7 +185,18 @@ Deno.serve(async (req) => {
 
   if (action === 'list_years') return Response.json({ available_years: Object.keys(CMS_SNF_URLS).map(Number).sort((a, b) => b - a) });
 
-  const downloadUrl = custom_url || CMS_SNF_URLS[year];
+  // Check for override in ImportScheduleConfig
+  let downloadUrl = custom_url || CMS_SNF_URLS[year];
+  try {
+    const config = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_snf_stats' });
+    if (config.length > 0 && config[0].api_url) {
+       if (year === LATEST_YEAR || config[0].api_url.includes(String(year))) {
+          downloadUrl = config[0].api_url; 
+          console.log(`Using configured URL for SNF ${year}: ${downloadUrl}`);
+       }
+    }
+  } catch(e) { console.warn('Config lookup failed', e); }
+
   if (!downloadUrl) return Response.json({ error: `No URL for year ${year}. Available: ${Object.keys(CMS_SNF_URLS).join(', ')}` }, { status: 400 });
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
@@ -168,7 +205,15 @@ Deno.serve(async (req) => {
     retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
   });
   const errorSamples = [];
-  const addError = (phase, detail, ctx) => { if (errorSamples.length < 50) errorSamples.push({ phase, detail: String(detail).substring(0, 500), timestamp: new Date().toISOString(), ...ctx }); };
+  const addError = (phase, detail, ctx) => { 
+      const entry = { 
+          phase, 
+          detail: String(detail).substring(0, 500), 
+          timestamp: new Date().toISOString(), 
+          ...ctx 
+      };
+      if (errorSamples.length < 100) errorSamples.push(entry); 
+  };
 
   try {
     const workbook = await downloadAndParseZip(downloadUrl);
@@ -186,7 +231,16 @@ Deno.serve(async (req) => {
       for (const row of rows) {
         const record = mapSNFRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
-        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
+        for (const e of v.errors) { 
+            ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; 
+            addError('validation', `[${e.rule}] ${e.message}`, { 
+                sheet: sheetName, 
+                row: e.row, 
+                field: e.field,
+                value: e.value,
+                rule: e.rule
+            }); 
+        }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }

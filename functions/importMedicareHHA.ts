@@ -127,23 +127,38 @@ function validateRecord(record, rowIndex, sheetName) {
 
   if (!record.category || record.category.trim() === '') {
     if (hasMetricData) {
-      // Has data but no label — assign placeholder and keep it
       record.category = `Row ${rowIndex}`;
       warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
     } else {
-      // No label AND no metrics — silently skip spacer/separator rows (not an error)
       return { valid: false, skip: true, errors: [], warnings: [] };
     }
   }
+  
   if (record.data_year < 2000 || record.data_year > 2030) {
-    errors.push({ rule: 'data_year_range', field: 'data_year', message: `data_year ${record.data_year} outside 2000-2030`, row: rowIndex, sheet: sheetName });
+    errors.push({ 
+      rule: 'data_year_range', 
+      field: 'data_year', 
+      value: record.data_year,
+      message: `data_year ${record.data_year} outside 2000-2030`, 
+      row: rowIndex, 
+      sheet: sheetName 
+    });
   }
+  
   if (!hasMetricData) {
     warnings.push({ rule: 'no_metrics', message: 'Row has no numeric values — may be header/footer', row: rowIndex, sheet: sheetName });
   }
+  
   for (const f of NUMERIC_FIELDS) {
     if (record[f] != null && record[f] < 0) {
-      errors.push({ rule: 'negative_value', field: f, message: `${f} is negative (${record[f]})`, row: rowIndex, sheet: sheetName });
+      errors.push({ 
+        rule: 'negative_value', 
+        field: f, 
+        value: record[f],
+        message: `${f} is negative (${record[f]})`, 
+        row: rowIndex, 
+        sheet: sheetName 
+      });
     }
   }
   return { valid: errors.length === 0, skip: false, errors, warnings };
@@ -188,7 +203,19 @@ Deno.serve(async (req) => {
     return Response.json({ available_years: Object.keys(CMS_HHA_URLS).map(Number).sort((a, b) => b - a), source: 'CMS Program Statistics - Medicare HHA' });
   }
 
-  const downloadUrl = custom_url || CMS_HHA_URLS[year];
+  // Check for override in ImportScheduleConfig
+  let downloadUrl = custom_url || CMS_HHA_URLS[year];
+  try {
+    const config = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_hha_stats' });
+    if (config.length > 0 && config[0].api_url) {
+       // Only use config URL if it matches the requested year or if year matches latest
+       if (year === LATEST_AVAILABLE_YEAR || config[0].api_url.includes(String(year))) {
+          downloadUrl = config[0].api_url; 
+          console.log(`Using configured URL for HHA ${year}: ${downloadUrl}`);
+       }
+    }
+  } catch(e) { console.warn('Config lookup failed', e); }
+
   if (!downloadUrl) return Response.json({ error: `No URL for year ${year}`, hint: `Latest available: ${LATEST_AVAILABLE_YEAR}` }, { status: 400 });
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
@@ -199,8 +226,14 @@ Deno.serve(async (req) => {
 
   const errorSamples = [];
   const addError = (phase, detail, ctx) => {
-    const entry = { phase, detail: String(detail).substring(0, 500), timestamp: new Date().toISOString(), ...ctx };
-    if (errorSamples.length < 50) errorSamples.push(entry);
+    // preserve explicit values in ctx if present
+    const entry = { 
+        phase, 
+        detail: String(detail).substring(0, 500), 
+        timestamp: new Date().toISOString(), 
+        ...ctx 
+    };
+    if (errorSamples.length < 100) errorSamples.push(entry);
   };
 
   try {
@@ -235,7 +268,16 @@ Deno.serve(async (req) => {
         const record = mapRowToRecord(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
         if (v.skip) { sheetSkipped++; continue; }
-        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
+        for (const e of v.errors) { 
+            ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; 
+            addError('validation', `[${e.rule}] ${e.message}`, { 
+                sheet: sheetName, 
+                row: e.row, 
+                field: e.field, 
+                value: e.value, 
+                rule: e.rule 
+            }); 
+        }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sheetValid++; } else { totalInvalid++; sheetInvalid++; }
       }
