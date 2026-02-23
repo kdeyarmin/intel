@@ -196,14 +196,14 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Number of rows</Label>
+                  <Label className="text-xs text-slate-300 font-medium">Number of rows</Label>
                   <Input
                     type="number"
                     value={rowLimit}
                     onChange={(e) => setRowLimit(e.target.value)}
                     min={1}
                     placeholder="All remaining"
-                    className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-300"
+                    className="h-8 text-sm bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                   />
                 </div>
               </div>
