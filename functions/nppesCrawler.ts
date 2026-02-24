@@ -334,10 +334,10 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_stop') {
         if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000);
+        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
         for (let i = 0; i < pending.length; i += 50) {
            const chunk = pending.slice(i, i+50);
-           await Promise.all(chunk.map(p => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' })));
+           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
         }
         return Response.json({ success: true, message: 'All pending tasks stopped.' });
     }
@@ -345,10 +345,10 @@ Deno.serve(async (req) => {
     // --- WORKER LOGIC ---
     if (action === 'process_queue') {
         // Recover stuck items (older than 10 mins)
-        const stuck = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'created_date', 50);
+        const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'created_date', 50));
         for (const item of stuck) {
             if (Date.now() - new Date(item.updated_date).getTime() > 600000) {
-                await base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 });
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 }));
             }
         }
 
@@ -356,16 +356,16 @@ Deno.serve(async (req) => {
         
         // Process loop until time limit
         while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
-            const pendingList = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 1);
+            const pendingList = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 1));
             if (pendingList.length === 0) {
                 // Check if any batches are fully done
-                const processingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' });
+                const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
                 for (const b of processingBatches) {
-                    const items = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000);
+                    const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
                     const allDone = items.length > 0 && items.every(i => i.status === 'completed' || i.status === 'failed');
                     if (allDone) {
                         const hasErrors = items.some(i => i.status === 'failed');
-                        await base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() });
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
                     }
                 }
                 return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
@@ -373,12 +373,12 @@ Deno.serve(async (req) => {
 
             const task = pendingList[0];
             if (task.retry_count > 3) {
-                await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' });
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' }));
                 continue;
             }
 
             // Mark processing
-            await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' });
+            await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
             
             try {
                 const params = new URLSearchParams();
@@ -399,8 +399,8 @@ Deno.serve(async (req) => {
                     for(let i=0; i<=9; i++) {
                         subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
                     }
-                    await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks);
-                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else if (firstPage.count > 0) {
                     // Fetch all pages (up to skip 1200)
                     let allResults = [...firstPage.results];
@@ -425,15 +425,15 @@ Deno.serve(async (req) => {
                         await upsertTaxonomies(transformed.taxonomies, base44);
                     }
                     
-                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                     await updateBatchStats(base44, task.batch_id, stats);
                 } else {
                     // Zero results
-                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 }
                 tasksProcessed++;
             } catch (e) {
-                await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: e.message, retry_count: (task.retry_count || 0) + 1 });
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: e.message, retry_count: (task.retry_count || 0) + 1 }));
             }
         }
         
