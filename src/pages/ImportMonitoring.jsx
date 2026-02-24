@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -42,6 +42,7 @@ import EnhancedErrorReport from '../components/imports/EnhancedErrorReport';
 import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
+import ImportAgentChat from '../components/imports/ImportAgentChat';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -499,6 +500,15 @@ export default function ImportMonitoring() {
           <Sparkles className="w-3.5 h-3.5 inline mr-1" />
           AI
         </button>
+        <button
+          onClick={() => setActiveTab('agent')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'agent' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 inline mr-1" />
+          AI Manager
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -521,6 +531,12 @@ export default function ImportMonitoring() {
 
       {activeTab === 'ai_quality' && (
         <AIImportQualityAnalysis />
+      )}
+
+      {activeTab === 'agent' && (
+        <div className="h-[600px] border border-slate-700/50 rounded-xl overflow-hidden bg-[#141d30]">
+          <ImportAgentChat />
+        </div>
       )}
 
       {activeTab === 'monitoring' && <>
