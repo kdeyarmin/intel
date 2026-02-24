@@ -42,6 +42,15 @@ export default function AIFailureAnalysis({ batch, onRetryWithSettings, compact 
       const sheetInfo = batch.column_mapping?.sheets 
         ? batch.column_mapping.sheets.map(s => `${s.sheet}: ${s.valid} valid, ${s.invalid} invalid`).join('; ')
         : 'N/A';
+        
+      let retryPolicyInfo = '';
+      try {
+        const configs = await base44.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+        if (config.auto_retry_enabled) {
+           retryPolicyInfo = `\nRETRY POLICY:\n- Auto Retry: Enabled\n- Delay: ${config.retry_delay_minutes} mins\n- Max Retries before escalation: ${config.retry_escalation_threshold || 3}`;
+        }
+      } catch(e) {}
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a data import failure analyst. Analyze this failed import batch and provide a structured diagnosis.
@@ -60,6 +69,7 @@ BATCH DETAILS:
 
 SHEET BREAKDOWN: ${sheetInfo}
 VALIDATION SUMMARY: ${dedupSummary}
+${retryPolicyInfo}
 
 ERROR SAMPLES (up to 10):
 ${errorDetails || 'No error samples available'}

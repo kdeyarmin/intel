@@ -4,16 +4,25 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
+        // Fetch crawler config
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+        
+        // Check if auto-retry is enabled
+        if (config.auto_retry_enabled === false) {
+            return Response.json({ success: true, message: 'Auto-retry is disabled in crawler settings.' });
+        }
+
         // Find failed NPPES batches
-        // Only look for nppes_registry type
         const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter({ 
             import_type: 'nppes_registry', 
             status: 'failed' 
         }, '-updated_date', 100);
 
         const now = Date.now();
-        const COOL_OFF_MS = 60 * 60 * 1000; // 1 hour
-        const MAX_RETRIES = 3;
+        const COOL_OFF_MS = (config.retry_delay_minutes || 60) * 60 * 1000;
+        const MAX_RETRIES = config.retry_escalation_threshold || 3;
+        const escalationTags = config.escalation_tags || ['manual_review_required'];
 
         let retriedCount = 0;
         let escalatedCount = 0;
@@ -91,11 +100,11 @@ Deno.serve(async (req) => {
                         }
                     });
                     
-                    // Mark batch as requiring manual intervention if possible, or just leave as failed
-                    // We can add a tag or update cancel_reason
+                    // Mark batch as requiring manual intervention
+                    const newTags = new Set([...(batch.tags || []), ...escalationTags]);
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         cancel_reason: `Escalated to manual review after ${retryCount} failed retries.`,
-                        tags: [...(batch.tags || []), 'manual_review_required']
+                        tags: Array.from(newTags)
                     });
 
                     escalatedCount++;
