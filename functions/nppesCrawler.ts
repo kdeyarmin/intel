@@ -6,7 +6,7 @@ const US_STATES = [
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
-const MAX_EXEC_MS = 40000;
+const MAX_EXEC_MS = 20000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -438,7 +438,10 @@ Deno.serve(async (req) => {
         }
         
         // Re-invoke to continue processing if queue not empty
-        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+        // Adding a small delay to avoid overwhelming the platform with rapid self-invocations
+        setTimeout(() => {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
+        }, 1000);
         
         return Response.json({ success: true, processed: tasksProcessed, message: 'Time limit reached, re-invoked' });
     }
