@@ -9,6 +9,7 @@ import { CheckCircle2, AlertTriangle, Clock, Loader2, RefreshCw, ChevronDown } f
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReconciliationSettingsPanel from './ReconciliationSettingsPanel';
+import ReconciliationAnalyticsPanel from './ReconciliationAnalyticsPanel';
 
 export default function ReconciliationDashboard() {
   const [runningJob, setRunningJob] = useState(null);
@@ -68,6 +69,7 @@ export default function ReconciliationDashboard() {
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics & Reporting</TabsTrigger>
           <TabsTrigger value="settings">API Settings & Logs</TabsTrigger>
         </TabsList>
 
@@ -241,6 +243,10 @@ export default function ReconciliationDashboard() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <ReconciliationAnalyticsPanel />
         </TabsContent>
 
         <TabsContent value="settings">
