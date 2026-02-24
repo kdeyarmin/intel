@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, AlertTriangle, Clock, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ReconciliationSettingsPanel from './ReconciliationSettingsPanel';
 
 export default function ReconciliationDashboard() {
   const [runningJob, setRunningJob] = useState(null);
@@ -63,9 +65,16 @@ export default function ReconciliationDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Control Panel */}
-      <Card>
-        <CardHeader>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="settings">API Settings & Logs</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6">
+          {/* Control Panel */}
+          <Card>
+            <CardHeader>
           <CardTitle>Start Reconciliation</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -232,6 +241,12 @@ export default function ReconciliationDashboard() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <ReconciliationSettingsPanel />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
