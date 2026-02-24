@@ -275,7 +275,14 @@ Deno.serve(async (req) => {
             south_central: ['TX','OK','NM','AR']
         };
 
+        // Determine if crawler is paused (has paused tasks) or running (has processing/pending tasks)
+        const allItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({}, undefined, 100);
+        const hasPaused = allItems.some(i => i.status === 'paused');
+        const hasPending = allItems.some(i => i.status === 'pending' || i.status === 'processing');
+        const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
+
         return Response.json({
+            crawler_status,
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,
             completed_states: completedStates, failed_states: failedStates,
