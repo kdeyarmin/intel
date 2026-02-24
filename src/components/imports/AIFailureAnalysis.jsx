@@ -79,8 +79,9 @@ ${batch.cancel_reason ? `CANCEL/PAUSE REASON: ${batch.cancel_reason}` : ''}
 Analyze the root cause and provide actionable recommendations. Consider:
 1. Is this a data format/schema issue, network/rate-limit issue, or data quality issue?
 2. What specific fields or rows are problematic?
-3. Can this be fixed by retrying with different settings?
-4. What retry mode would be most effective (full, row_range, resume, criteria)?
+3. Are there common data formatting issues (e.g., incorrect date formats, invalid zip codes, phone number patterns)?
+4. Suggest specific data cleaning steps or source file corrections if applicable.
+5. Can this be fixed by retrying with different settings, or what retry mode would be most effective?
 
 Be specific and actionable. Reference actual error details from the samples.`,
         response_json_schema: {
@@ -90,6 +91,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
             error_category: { type: "string", enum: ["network_error", "rate_limit", "data_format", "schema_mismatch", "missing_fields", "data_quality", "timeout", "configuration", "unknown"] },
             severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
             affected_area: { type: "string", description: "Which part of the data/process is affected" },
+            data_cleaning_suggestions: { type: "string", description: "Specific steps to clean source data, e.g. date formats or zip codes" },
             recommendations: {
               type: "array",
               items: {
@@ -219,6 +221,12 @@ Be specific and actionable. Reference actual error details from the samples.`,
                     <p className="text-xs text-slate-400 leading-relaxed">{analysis.root_cause}</p>
                     {analysis.affected_area && (
                       <p className="text-[11px] text-slate-500 mt-1">Affected: {analysis.affected_area}</p>
+                    )}
+                    {analysis.data_cleaning_suggestions && (
+                      <div className="mt-2 p-2 bg-slate-900/50 rounded border border-slate-700/50">
+                        <p className="text-[10px] font-semibold text-cyan-400 mb-1">Data Cleaning Suggestion</p>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">{analysis.data_cleaning_suggestions}</p>
+                      </div>
                     )}
                   </div>
                 </div>

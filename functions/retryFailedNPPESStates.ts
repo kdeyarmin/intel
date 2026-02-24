@@ -86,13 +86,25 @@ Deno.serve(async (req) => {
                 if (existingErrors.length === 0) {
                     console.log(`Escalating batch ${batch.id} to manual review`);
                     
+                    let aiSummary = "No AI analysis available.";
+                    try {
+                        const errorDetails = (batch.error_samples || []).slice(0, 10).map(e => `[${e.phase || 'unknown'}] ${e.message || e.detail || 'No detail'}`).join('\n');
+                        const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                            prompt: `Analyze this failed import batch. Batch: ${batch.file_name}\nErrors: ${errorDetails}\n\nCategorize the failure type (e.g., rate limit, data format issue, stalled process), suggest actionable fixes, and identify any common data formatting issues (e.g., incorrect date formats, invalid zip codes) with suggested data cleaning steps. Be concise.`
+                        });
+                        aiSummary = typeof res === 'string' ? res : (res.text || JSON.stringify(res));
+                    } catch (err) {
+                        console.error("AI Analysis failed during escalation:", err);
+                    }
+                    
                     await base44.asServiceRole.entities.ErrorReport.create({
                         title: 'State Crawl Escalated',
-                        description: `State crawler batch ${batch.file_name} repeatedly failed after ${retryCount} automated retry attempts. Manual review required.`,
+                        description: `State crawler batch ${batch.file_name} repeatedly failed after ${retryCount} automated retry attempts. Manual review required.\n\nAI Analysis:\n${aiSummary}`,
                         source: batch.id,
                         error_type: 'system_error',
                         severity: 'high',
                         status: 'new',
+                        error_samples: batch.error_samples || [],
                         context: {
                             batch_id: batch.id,
                             file_name: batch.file_name,
