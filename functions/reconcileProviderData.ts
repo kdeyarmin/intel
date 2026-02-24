@@ -28,8 +28,9 @@ Deno.serve(async (req) => {
         if (p) providers.push(p);
       }
     } else {
-      // All providers
-      providers = await base44.entities.Provider.list();
+      // All providers - for scheduled runs, limit batch size to prevent timeouts with AI
+      const allProviders = await base44.entities.Provider.list();
+      providers = job_type === 'scheduled' ? allProviders.slice(0, 5) : allProviders.slice(0, 10);
     }
 
     let matched = 0;
@@ -113,37 +114,56 @@ async function reconcileProvider(provider, source, base44) {
   };
 
   try {
-    // Fetch external data (simulated - in production, call actual APIs)
-    const externalData = await fetchExternalProviderData(provider.npi, source);
+    // Fetch external data using AI as a dynamic external API
+    const externalData = await fetchExternalProviderData(provider.npi, source, base44);
 
     if (!externalData) {
       reconciliation.status = 'missing_external';
       return reconciliation;
     }
 
+    // Fetch internal taxonomy for comparison
+    const taxonomies = await base44.entities.ProviderTaxonomy.filter({ npi: provider.npi });
+    const primaryTaxonomy = taxonomies.find(t => t.primary_flag) || taxonomies[0];
+    const internalSpecialty = primaryTaxonomy ? primaryTaxonomy.taxonomy_description : '';
+
     // Compare key fields
     const fieldsToCheck = [
-      { internal: 'first_name', external: 'firstName', type: 'string' },
-      { internal: 'last_name', external: 'lastName', type: 'string' },
-      { internal: 'organization_name', external: 'organizationName', type: 'string' },
-      { internal: 'status', external: 'status', type: 'string' },
+      { internal: 'first_name', external: 'firstName', type: 'string', internalVal: provider.first_name },
+      { internal: 'last_name', external: 'lastName', type: 'string', internalVal: provider.last_name },
+      { internal: 'organization_name', external: 'organizationName', type: 'string', internalVal: provider.organization_name },
+      { internal: 'status', external: 'status', type: 'string', internalVal: provider.status },
+      { internal: 'specialty', external: 'specialty', type: 'string', internalVal: internalSpecialty },
     ];
 
     for (const field of fieldsToCheck) {
-      const internalVal = String(provider[field.internal] || '').toLowerCase().trim();
+      const internalVal = String(field.internalVal || '').toLowerCase().trim();
       const externalVal = String(externalData[field.external] || '').toLowerCase().trim();
 
-      if (internalVal && externalVal && internalVal !== externalVal) {
-        const similarity = calculateSimilarity(internalVal, externalVal);
-        if (similarity < 0.8) {
+      if (externalVal && externalVal !== 'null' && externalVal !== 'undefined') {
+        if (!internalVal || internalVal === 'null' || internalVal === 'undefined') {
           reconciliation.discrepancies.push({
             field: field.internal,
-            internal_value: provider[field.internal],
+            internal_value: 'Missing',
             external_value: externalData[field.external],
-            confidence: similarity,
-            severity: similarity < 0.5 ? 'high' : 'medium'
+            confidence: 0,
+            severity: 'high'
           });
           reconciliation.status = 'discrepancy';
+        } else {
+          const similarity = calculateSimilarity(internalVal, externalVal);
+          const threshold = field.internal === 'specialty' ? 0.6 : 0.8;
+          
+          if (similarity < threshold) {
+            reconciliation.discrepancies.push({
+              field: field.internal,
+              internal_value: field.internalVal,
+              external_value: externalData[field.external],
+              confidence: similarity,
+              severity: similarity < 0.5 ? 'high' : 'medium'
+            });
+            reconciliation.status = 'discrepancy';
+          }
         }
       }
     }
@@ -167,21 +187,30 @@ async function reconcileProvider(provider, source, base44) {
   return reconciliation;
 }
 
-async function fetchExternalProviderData(npi, source) {
-  // Placeholder for actual API calls to NPPES, PECOS, etc.
-  // In production, you'd call real APIs or use cached data
+async function fetchExternalProviderData(npi, source, base44) {
   try {
-    if (source === 'nppes') {
-      // Simulate NPPES lookup
-      return {
-        firstName: 'John',
-        lastName: 'Doe',
-        organizationName: null,
-        status: 'Active'
-      };
-    }
+    // In production this would call PECOS, State APIs, or NPPES.
+    // For this automated setup, we use AI with web context to query external sources dynamically.
+    const prompt = `Look up the medical provider with NPI ${npi} on the internet. Return a JSON object with their firstName, lastName, organizationName, status (Active/Inactive), and their primary specialty or taxonomy. Only output valid JSON matching this schema: {"firstName": "string", "lastName": "string", "organizationName": "string", "status": "string", "specialty": "string"}`;
+    
+    const res = await base44.integrations.Core.InvokeLLM({
+      prompt,
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          firstName: {type: "string"},
+          lastName: {type: "string"},
+          organizationName: {type: "string"},
+          status: {type: "string"},
+          specialty: {type: "string"}
+        }
+      }
+    });
+
+    return res;
   } catch (err) {
-    console.error(`Failed to fetch ${source} data:`, err);
+    console.error(`Failed to fetch ${source} data for NPI ${npi}:`, err);
     return null;
   }
 }
