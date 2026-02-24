@@ -19,7 +19,10 @@ export default function ReconciliationSettingsPanel() {
     pecos_api_key: '',
     cms_endpoint: '',
     cms_api_key: '',
-    enable_ai_fallback: true
+    enable_ai_fallback: true,
+    auto_accept_threshold: 90,
+    auto_accept_low_severity: false,
+    enable_ai_suggestions: true
   });
 
   const { data: settings, isLoading } = useQuery({
@@ -45,7 +48,10 @@ export default function ReconciliationSettingsPanel() {
         pecos_api_key: settings.pecos_api_key || '',
         cms_endpoint: settings.cms_endpoint || '',
         cms_api_key: settings.cms_api_key || '',
-        enable_ai_fallback: settings.enable_ai_fallback ?? true
+        enable_ai_fallback: settings.enable_ai_fallback ?? true,
+        auto_accept_threshold: settings.auto_accept_threshold ?? 90,
+        auto_accept_low_severity: settings.auto_accept_low_severity ?? false,
+        enable_ai_suggestions: settings.enable_ai_suggestions ?? true
       });
     }
   }, [settings]);
@@ -142,16 +148,51 @@ export default function ReconciliationSettingsPanel() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-medium text-slate-200 border-b border-slate-700 pb-2">AI Settings</h3>
+              <h3 className="font-medium text-slate-200 border-b border-slate-700 pb-2">Workflow & AI Rules</h3>
               <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                 <div>
                   <p className="font-medium text-slate-200">AI Web Search Fallback</p>
-                  <p className="text-xs text-slate-400">Use AI to search the internet if API fails or is not configured.</p>
+                  <p className="text-xs text-slate-400">Use AI to search the internet if API fails.</p>
                 </div>
                 <Switch 
                   checked={formData.enable_ai_fallback} 
                   onCheckedChange={(c) => setFormData(p => ({ ...p, enable_ai_fallback: c }))} 
                 />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div>
+                  <p className="font-medium text-slate-200">AI Reconciliation Suggestions</p>
+                  <p className="text-xs text-slate-400">Generate AI resolution suggestions for discrepancies.</p>
+                </div>
+                <Switch 
+                  checked={formData.enable_ai_suggestions} 
+                  onCheckedChange={(c) => setFormData(p => ({ ...p, enable_ai_suggestions: c }))} 
+                />
+              </div>
+              <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-slate-200">Auto-Accept Low Severity</p>
+                    <p className="text-xs text-slate-400">Automatically accept minor differences.</p>
+                  </div>
+                  <Switch 
+                    checked={formData.auto_accept_low_severity} 
+                    onCheckedChange={(c) => setFormData(p => ({ ...p, auto_accept_low_severity: c }))} 
+                  />
+                </div>
+                <div className="pt-2 border-t border-slate-700/50">
+                  <Label className="text-slate-200 block mb-2">Auto-Accept Confidence Threshold (%)</Label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="range" 
+                      min="50" max="100" 
+                      value={formData.auto_accept_threshold} 
+                      onChange={(e) => setFormData(p => ({ ...p, auto_accept_threshold: Number(e.target.value) }))}
+                      className="flex-1"
+                    />
+                    <span className="text-sm font-medium text-slate-300 w-8 text-right">{formData.auto_accept_threshold}%</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

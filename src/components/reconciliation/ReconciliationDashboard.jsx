@@ -15,6 +15,7 @@ export default function ReconciliationDashboard() {
   const [runningJob, setRunningJob] = useState(null);
   const [selectedSources, setSelectedSources] = useState(['nppes']);
   const [expandedId, setExpandedId] = useState(null);
+  const [severityFilter, setSeverityFilter] = useState('all');
 
   const queryClient = useQueryClient();
 
@@ -25,7 +26,17 @@ export default function ReconciliationDashboard() {
 
   const { data: reconciliations = [] } = useQuery({
     queryKey: ['reconciliations'],
-    queryFn: () => base44.entities.ProviderReconciliation.filter({ status: 'discrepancy' }),
+    queryFn: async () => {
+      const all = await base44.entities.ProviderReconciliation.filter({ status: 'discrepancy' });
+      return all.filter(r => r.resolution_status === 'pending' || !r.resolution_status);
+    }
+  });
+
+  const filteredReconciliations = reconciliations.filter(recon => {
+    if (severityFilter === 'all') return true;
+    const maxSeverity = recon.discrepancies?.some(d => d.severity === 'high') ? 'high' 
+      : recon.discrepancies?.some(d => d.severity === 'medium') ? 'medium' : 'low';
+    return maxSeverity === severityFilter;
   });
 
   const recentJob = jobs[0];
@@ -164,12 +175,18 @@ export default function ReconciliationDashboard() {
       {/* Discrepancies List */}
       {reconciliations.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Active Discrepancies ({reconciliations.length})</CardTitle>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-4">
+            <CardTitle>Manual Review Queue ({reconciliations.length})</CardTitle>
+            <div className="flex gap-2 mt-2 sm:mt-0">
+              <Button size="sm" variant={severityFilter === 'all' ? 'default' : 'outline'} onClick={() => setSeverityFilter('all')}>All</Button>
+              <Button size="sm" variant={severityFilter === 'high' ? 'default' : 'outline'} onClick={() => setSeverityFilter('high')} className={severityFilter === 'high' ? 'bg-red-600 hover:bg-red-700 text-white' : 'text-red-400 border-red-500/30'}>High</Button>
+              <Button size="sm" variant={severityFilter === 'medium' ? 'default' : 'outline'} onClick={() => setSeverityFilter('medium')} className={severityFilter === 'medium' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-amber-400 border-amber-500/30'}>Medium</Button>
+              <Button size="sm" variant={severityFilter === 'low' ? 'default' : 'outline'} onClick={() => setSeverityFilter('low')} className={severityFilter === 'low' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-blue-400 border-blue-500/30'}>Low</Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {reconciliations.slice(0, 10).map(recon => (
+              {filteredReconciliations.slice(0, 10).map(recon => (
                 <div key={recon.id} className="border border-slate-700/50 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setExpandedId(expandedId === recon.id ? null : recon.id)}

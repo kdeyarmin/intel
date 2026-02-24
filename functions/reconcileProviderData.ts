@@ -176,9 +176,33 @@ async function reconcileProvider(provider, source, base44, config) {
       }
     }
 
-    // Generate AI suggestions if discrepancies found
+    // Evaluate Auto-Accept Rules
     if (reconciliation.discrepancies.length > 0) {
-      reconciliation.ai_suggestions = await generateAISuggestions(provider, reconciliation.discrepancies, base44);
+      const autoAcceptLowSeverity = config?.auto_accept_low_severity || false;
+      const autoAcceptThreshold = (config?.auto_accept_threshold || 90) / 100;
+      
+      const canAutoAccept = reconciliation.discrepancies.every(disc => {
+        return (autoAcceptLowSeverity && disc.severity === 'low') || (disc.confidence >= autoAcceptThreshold);
+      });
+
+      if (canAutoAccept) {
+        reconciliation.resolution_status = 'accepted';
+        reconciliation.resolved_at = new Date().toISOString();
+        reconciliation.resolved_by = 'system_auto_accept';
+        reconciliation.notes = 'Auto-accepted based on workflow rules';
+        
+        // Apply the accepted values to the provider
+        const updates = {};
+        for (const disc of reconciliation.discrepancies) {
+          updates[disc.field] = disc.external_value;
+        }
+        await base44.asServiceRole.entities.Provider.update(provider.id, updates).catch(e => console.error("Auto-update failed", e));
+      } else {
+        // Generate AI suggestions if not auto-accepted and feature is enabled
+        if (config?.enable_ai_suggestions !== false) {
+          reconciliation.ai_suggestions = await generateAISuggestions(provider, reconciliation.discrepancies, base44);
+        }
+      }
     }
 
   } catch (err) {
