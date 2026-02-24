@@ -15,34 +15,34 @@ const NAV_SECTIONS = [
   {
     label: 'Overview',
     items: [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'sales_rep'] },
-      { name: 'AI Assistant', icon: Bot, page: 'AIAssistant', roles: ['admin', 'sales_rep'] },
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'user'] },
+      { name: 'AI Assistant', icon: Bot, page: 'AIAssistant', roles: ['admin', 'user'] },
     ]
   },
   {
     label: 'Providers',
     items: [
-      { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'sales_rep'] },
-      { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'sales_rep'] },
-      { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'sales_rep'] },
+      { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
+      { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
+      { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
     ]
   },
   {
     label: 'Sales & Outreach',
     items: [
-      { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'sales_rep'] },
+      { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Email Bot', icon: Mail, page: 'EmailSearchBot', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin', 'sales_rep'] },
-      { name: 'Outreach', icon: Mail, page: 'ProviderOutreach', roles: ['admin', 'sales_rep'] },
+      { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin'] },
+      { name: 'Outreach', icon: Mail, page: 'ProviderOutreach', roles: ['admin'] },
     ]
   },
   {
     label: 'Analytics',
     items: [
-      { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'sales_rep'] },
-      { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'sales_rep'] },
-      { name: 'Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'sales_rep'] },
-      { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'sales_rep'] },
+      { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'user'] },
+      { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'user'] },
+      { name: 'Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
+      { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'user'] },
     ]
   },
   {
@@ -54,8 +54,8 @@ const NAV_SECTIONS = [
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin', 'sales_rep'] },
-      { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'sales_rep'] },
+      { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin'] },
+      { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
     ]
   },
 ];
