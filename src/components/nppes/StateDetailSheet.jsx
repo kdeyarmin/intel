@@ -36,10 +36,10 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'text-green-400 bg-green-950/40 border-green-800';
-      case 'failed': return 'text-red-400 bg-red-950/40 border-red-800';
-      case 'processing': return 'text-amber-400 bg-amber-950/40 border-amber-800';
-      default: return 'text-slate-400 bg-slate-800/40 border-slate-700';
+      case 'completed': return 'text-green-700 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950/40 dark:border-green-800';
+      case 'failed': return 'text-red-700 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/40 dark:border-red-800';
+      case 'processing': return 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800';
+      default: return 'text-slate-700 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800/40 dark:border-slate-700';
     }
   };
 
@@ -108,14 +108,14 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Total Fetched', value: batch.total_rows, color: '' },
-                    { label: 'Imported', value: batch.imported_rows, color: 'text-green-400' },
-                    { label: 'Updated', value: batch.updated_rows, color: 'text-blue-400' },
-                    { label: 'Skipped', value: batch.skipped_rows, color: '' },
+                    { label: 'Total Fetched', value: batch.total_rows, color: 'text-slate-900 dark:text-slate-100' },
+                    { label: 'Imported', value: batch.imported_rows, color: 'text-green-600 dark:text-green-400' },
+                    { label: 'Updated', value: batch.updated_rows, color: 'text-blue-600 dark:text-blue-400' },
+                    { label: 'Skipped', value: batch.skipped_rows, color: 'text-slate-600 dark:text-slate-400' },
                   ].map(item => (
-                    <div key={item.label} className="p-3 bg-slate-800/30 rounded-lg border border-slate-700/50">
+                    <div key={item.label} className="p-3 bg-white dark:bg-slate-800/30 rounded-lg border border-slate-200 dark:border-slate-700/50 shadow-sm">
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{item.label}</div>
-                      <div className={`text-2xl font-bold ${item.color || 'text-slate-300'}`}>
+                      <div className={`text-2xl font-bold ${item.color}`}>
                         {item.value?.toLocaleString() || '—'}
                       </div>
                     </div>

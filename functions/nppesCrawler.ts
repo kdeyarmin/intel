@@ -413,10 +413,13 @@ Deno.serve(async (req) => {
     // --- WORKER LOGIC ---
     if (action === 'process_queue') {
         // Recover stuck items (older than 10 mins)
-        const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'created_date', 50));
+        const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 200));
+        let recoveredCount = 0;
         for (const item of stuck) {
+            // Check if stuck for more than 10 minutes
             if (Date.now() - new Date(item.updated_date).getTime() > 600000) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 }));
+                recoveredCount++;
             }
         }
 
@@ -426,19 +429,47 @@ Deno.serve(async (req) => {
         while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
             const pendingList = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 1));
             if (pendingList.length === 0) {
+                // Double check for any stuck items that we might have missed in the initial check
+                // This handles cases where items got stuck *during* this execution cycle or the initial check didn't catch them
+                const recentStuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 50));
+                const actuallyStuck = recentStuck.filter(i => Date.now() - new Date(i.updated_date).getTime() > 600000);
+                
+                if (actuallyStuck.length > 0) {
+                    for (const item of actuallyStuck) {
+                        await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 }));
+                    }
+                    // Continue the loop to pick up these newly recovered items
+                    continue;
+                }
+
                 // Check if any batches are fully done
                 const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
+                let batchesClosed = 0;
                 for (const b of processingBatches) {
                     const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
-                    const allDone = items.length > 0 && items.every(i => i.status === 'completed' || i.status === 'failed');
+                    // If no items found, it's an empty batch or error, verify if we should close it
+                    if (items.length === 0) {
+                        // Empty batch?
+                        continue;
+                    }
+                    
+                    const allDone = items.every(i => i.status === 'completed' || i.status === 'failed');
                     if (allDone) {
                         const hasErrors = items.some(i => i.status === 'failed');
                         await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
+                        batchesClosed++;
                         
                         // Trigger automated data validation checks
                         base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
                     }
                 }
+                
+                if (batchesClosed > 0) {
+                    // If we closed batches, maybe return success but indicate we are done
+                    return Response.json({ success: true, message: `Queue empty. Closed ${batchesClosed} batches.`, processed: tasksProcessed });
+                }
+                
+                // If we are here, queue is empty and no batches to close, and no stuck items recovered.
                 return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
             }
 
