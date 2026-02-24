@@ -10,15 +10,8 @@ function elapsed() { return Date.now() - execStart; }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
 
-const CMS_PART_D_URLS = {
-  // URLs may be unstable/broken. Users might need to provide custom_url.
-  2023: 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip',
-  2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20UTLZN%20D%202022.zip',
-  2021: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202021.zip',
-  2020: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202020.zip',
-  2019: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202019.zip',
-  2018: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202018.zip',
-};
+// URLs are now managed via ImportScheduleConfig entity
+const FALLBACK_PART_D_URL = 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip';
 const NUMERIC_FIELDS = ['total_enrollees','total_utilizers','avg_annual_fills','avg_annual_gross_cost','generic_dispensing_rate','brand_cost','generic_cost','total_drug_cost'];
 
 async function downloadAndParseZip(url) {
@@ -147,8 +140,16 @@ Deno.serve(async (req) => {
 
   if (action === 'list_years') return Response.json({ available_years: Object.keys(CMS_PART_D_URLS).map(Number).sort((a, b) => b - a) });
 
-  const downloadUrl = custom_url || CMS_PART_D_URLS[year];
-  if (!downloadUrl) return Response.json({ error: `No URL for year ${year}` }, { status: 400 });
+  let downloadUrl = custom_url;
+  if (!downloadUrl) {
+    const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_part_d_stats' });
+    if (configs.length > 0) {
+      downloadUrl = configs[0].api_url;
+    } else {
+      downloadUrl = FALLBACK_PART_D_URL;
+    }
+  }
+  if (!downloadUrl) return Response.json({ error: `No URL for Medicare Part D Stats` }, { status: 400 });
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
     import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl,

@@ -12,6 +12,18 @@ const TARGETS = [
         label: 'Medicare SNF Stats',
         page: 'https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-service-type-reports/cms-program-statistics-medicare-skilled-nursing-facility',
         year: 2023
+    },
+    {
+        type: 'medicare_ma_inpatient',
+        label: 'Medicare Advantage Inpatient',
+        page: 'https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-service-type-reports/cms-program-statistics-medicare-advantage-inpatient-hospital',
+        year: 2021
+    },
+    {
+        type: 'medicare_part_d_stats',
+        label: 'Medicare Part D Stats',
+        page: 'https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-service-type-reports/cms-program-statistics-medicare-part-d',
+        year: 2023
     }
 ];
 

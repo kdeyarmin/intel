@@ -5,14 +5,8 @@ let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
 
-const CMS_MA_INPT_URLS = {
-  2021: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip',
-  2020: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202020%20FINAL_0.zip',
-  2019: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202019.zip',
-  2018: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202018.zip',
-  2017: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202017.zip',
-  2016: 'https://data.cms.gov/sites/default/files/2023-06/CPS%20MDCR%20INPT%20MA%202016.zip',
-};
+// URLs are now managed via ImportScheduleConfig entity
+const FALLBACK_MA_URL = 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip';
 
 const MAX_NETWORK_RETRIES = 3;
 const RETRY_BACKOFF_MS = 2000;
@@ -292,13 +286,18 @@ Deno.serve(async (req) => {
     });
   }
 
-  const downloadUrl = custom_url || CMS_MA_INPT_URLS[year];
+  let downloadUrl = custom_url;
   if (!downloadUrl) {
-    return Response.json({
-      error: `No download URL configured for year ${year}`,
-      available_years: Object.keys(CMS_MA_INPT_URLS).map(Number),
-      hint: 'Provide a custom_url or choose an available year',
-    }, { status: 400 });
+    const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
+    if (configs.length > 0) {
+      downloadUrl = configs[0].api_url;
+    } else {
+      downloadUrl = FALLBACK_MA_URL;
+    }
+  }
+
+  if (!downloadUrl) {
+    return Response.json({ error: `No download URL configured for Medicare MA Inpatient`, hint: 'Check ImportScheduleConfig' }, { status: 400 });
   }
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
