@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StateBatchHistory from './StateBatchHistory';
+import AIFailureAnalysis from '@/components/imports/AIFailureAnalysis';
 
 export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
   const { data: batch, isLoading: batchLoading } = useQuery({
@@ -138,6 +139,12 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                       <span>{batch.total_rows || '?'} rows</span>
                     </div>
                     <Progress value={100} className="h-1 animate-pulse" />
+                  </div>
+                )}
+
+                {batch.status === 'failed' && (
+                  <div className="mb-2">
+                    <AIFailureAnalysis batch={batch} compact={true} />
                   </div>
                 )}
 

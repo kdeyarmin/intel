@@ -13,6 +13,7 @@ import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
+import AIFailureAnalysis from './AIFailureAnalysis';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -310,6 +311,11 @@ export default function BatchDetailPanel({ batch }) {
         </h4>
         <ValidationRuleResults batch={batch} />
       </div>
+
+      {/* AI Failure Analysis */}
+      {batch.status === 'failed' && (
+        <AIFailureAnalysis batch={batch} />
+      )}
 
       {/* Error Visualization & Filtering */}
       {batch.error_samples?.length > 0 && (
