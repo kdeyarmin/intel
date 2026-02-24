@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Play, Pause, XCircle, Globe, Bot, Map, LayoutGrid, Clock, AlertTriangle } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import StateMap from '../components/nppes/StateMap';
-import CrawlerLog from '../components/nppes/CrawlerLog';
 import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
@@ -34,7 +33,6 @@ export default function NPPESCrawler() {
   const [selectedState, setSelectedState] = useState(null);
   const [viewMode, setViewMode] = useState('map');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
-  const [logs, setLogs] = useState([]);
   const queryClient = useQueryClient();
 
   const { data: status, refetch: refetchStatus } = useQuery({
@@ -51,10 +49,6 @@ export default function NPPESCrawler() {
   const isPaused = crawlerState === 'paused';
   const isIdle = crawlerState === 'idle';
 
-  const addLog = (message, type = 'info') => {
-    setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) }].slice(-100));
-  };
-
   const handleAction = async (actionName, successMsg) => {
     setIsProcessingAction(true);
     try {
@@ -70,14 +64,11 @@ export default function NPPESCrawler() {
       const res = await base44.functions.invoke('nppesCrawler', payload);
       if (res.data?.success) {
         toast.success(successMsg);
-        addLog(successMsg, 'success');
       } else {
         toast.error(res.data?.error || 'Action failed');
-        addLog(res.data?.error || 'Action failed', 'error');
       }
     } catch (e) {
       toast.error(e.message);
-      addLog(e.message, 'error');
     } finally {
       setIsProcessingAction(false);
       refetchStatus();
@@ -86,22 +77,18 @@ export default function NPPESCrawler() {
   };
 
   const startCrawler = () => {
-    addLog(`Starting queue-based crawler...`, 'info');
     handleAction('batch_start', 'Crawler started successfully');
   };
 
   const pauseCrawler = () => {
-    addLog(`Pausing crawler...`, 'info');
     handleAction('batch_pause', 'Crawler paused');
   };
 
   const resumeCrawler = () => {
-    addLog(`Resuming crawler...`, 'info');
     handleAction('batch_resume', 'Crawler resumed');
   };
 
   const stopCrawler = () => {
-    addLog(`Stopping crawler and cancelling pending tasks...`, 'info');
     handleAction('batch_stop', 'Crawler stopped');
   };
 
@@ -318,14 +305,12 @@ export default function NPPESCrawler() {
                   <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-800">Errors Detected</p>
-                    <p className="text-xs text-red-600 mt-1">{failedCount} states failed. Check the logs and Error Reports in Data Quality.</p>
+                    <p className="text-xs text-red-600 mt-1">{failedCount} states failed. Check Error Reports in Data Quality.</p>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          <CrawlerLog logs={logs} />
         </div>
       </div>
 
