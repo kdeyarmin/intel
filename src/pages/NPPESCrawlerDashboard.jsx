@@ -9,6 +9,7 @@ import RecentCrawlActivity from '../components/crawlerDashboard/RecentCrawlActiv
 import ErrorRateTrend from '../components/crawlerDashboard/ErrorRateTrend';
 import ProcessingStates from '../components/crawlerDashboard/ProcessingStates';
 import CrawlerKPIs from '../components/crawlerDashboard/CrawlerKPIs';
+import CrawlerGranularMetrics from '../components/crawlerDashboard/CrawlerGranularMetrics';
 import ProcessingTimeChart from '../components/crawlerDashboard/ProcessingTimeChart';
 import ApiUsageChart from '../components/crawlerDashboard/ApiUsageChart';
 import LastFiveRunsMetrics from '../components/crawlerDashboard/LastFiveRunsMetrics';
@@ -60,6 +61,8 @@ export default function NPPESCrawlerDashboard() {
       </div>
 
       <CrawlerKPIs nppesImports={nppesImports} loading={loading} />
+
+      <CrawlerGranularMetrics crawlStatus={crawlStatus} loading={loadingStatus} />
 
       <CrawlProgressSummary
         crawlStatus={crawlStatus}

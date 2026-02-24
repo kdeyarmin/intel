@@ -192,7 +192,7 @@ function transformResults(allResults) {
     return { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors };
 }
 
-async function fetchNPPESPage(params) {
+async function fetchNPPESPage(params, stats) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -201,6 +201,9 @@ async function fetchNPPESPage(params) {
             const response = await fetch(apiUrl, { signal: controller.signal });
             clearTimeout(timeout);
             
+            if (response.status === 429 && stats) {
+                stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
+            }
             if (response.status === 429 || response.status >= 500) {
                 await sleep(attempt * 2000);
                 continue;
@@ -221,13 +224,24 @@ async function updateBatchStats(base44, batchId, stats) {
     try {
         const batch = await base44.asServiceRole.entities.ImportBatch.get(batchId);
         if (batch) {
+            const retry_params = batch.retry_params || {};
+            if (stats.time_ms) {
+                retry_params.total_time_ms = (retry_params.total_time_ms || 0) + stats.time_ms;
+                retry_params.completed_items = (retry_params.completed_items || 0) + 1;
+                retry_params.processed_prefixes = retry_params.processed_prefixes || [];
+                if (stats.prefix && !retry_params.processed_prefixes.includes(stats.prefix)) {
+                    retry_params.processed_prefixes.push(stats.prefix);
+                }
+            }
             await base44.asServiceRole.entities.ImportBatch.update(batchId, {
                 valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
                 invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
                 imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
                 updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
                 skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
-                api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0)
+                api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
+                rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
+                retry_params
             });
         }
     } catch(e) {}
@@ -276,13 +290,38 @@ Deno.serve(async (req) => {
         };
 
         // Determine if crawler is paused (has paused tasks) or running (has processing/pending tasks)
+        const processingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100);
+        const active_workers = processingItems.length;
+
         const allItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({}, undefined, 100);
         const hasPaused = allItems.some(i => i.status === 'paused');
         const hasPending = allItems.some(i => i.status === 'pending' || i.status === 'processing');
         const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
 
+        const granular_metrics = {};
+        for (const st of processingStates) {
+            const b = stateLatest[st];
+            if (b) {
+                const rp = b.retry_params || {};
+                const avg_time_ms = rp.completed_items > 0 ? Math.round(rp.total_time_ms / rp.completed_items) : 0;
+                const pendingCountItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id, status: 'pending' }, undefined, 1000);
+                const pending_items = pendingCountItems.length;
+                const estimated_remaining_ms = pending_items * avg_time_ms;
+
+                granular_metrics[st] = {
+                    avg_prefix_time_ms: avg_time_ms,
+                    rate_limit_hits: b.rate_limit_count || 0,
+                    estimated_remaining_ms,
+                    pending_items,
+                    completed_items: rp.completed_items || 0
+                };
+            }
+        }
+
         return Response.json({
             crawler_status,
+            active_workers,
+            granular_metrics,
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,
             completed_states: completedStates, failed_states: failedStates,
@@ -412,6 +451,7 @@ Deno.serve(async (req) => {
             // Mark processing
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
             
+            const taskStartTime = Date.now();
             try {
                 const params = new URLSearchParams();
                 params.set('version', '2.1');
@@ -419,11 +459,11 @@ Deno.serve(async (req) => {
                 params.set('state', task.state);
                 params.set('postal_code', `${task.zip_prefix}*`);
                 
-                // First query to get count
-                const firstPage = await fetchNPPESPage(params);
-                if (firstPage.error) throw new Error(firstPage.error);
+                let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
                 
-                let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1 };
+                // First query to get count
+                const firstPage = await fetchNPPESPage(params, stats);
+                if (firstPage.error) throw new Error(firstPage.error);
                 
                 if (firstPage.count > 1000 && task.zip_prefix.length < 5) {
                     // Split task: Create 10 sub-tasks and complete current
@@ -439,7 +479,7 @@ Deno.serve(async (req) => {
                     let skip = 200;
                     while (skip < firstPage.count && skip <= 1200 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
                         params.set('skip', String(skip));
-                        const page = await fetchNPPESPage(params);
+                        const page = await fetchNPPESPage(params, stats);
                         stats.api_calls++;
                         if (page.error || page.results.length === 0) break;
                         allResults.push(...page.results);
@@ -458,10 +498,13 @@ Deno.serve(async (req) => {
                     }
                     
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                    stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
                 } else {
                     // Zero results
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                    stats.time_ms = Date.now() - taskStartTime;
+                    await updateBatchStats(base44, task.batch_id, stats);
                 }
                 tasksProcessed++;
             } catch (e) {
