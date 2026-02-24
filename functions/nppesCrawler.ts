@@ -395,6 +395,9 @@ Deno.serve(async (req) => {
                     if (allDone) {
                         const hasErrors = items.some(i => i.status === 'failed');
                         await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
+                        
+                        // Trigger automated data validation checks
+                        base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
                     }
                 }
                 return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
