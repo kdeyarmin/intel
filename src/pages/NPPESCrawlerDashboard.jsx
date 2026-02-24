@@ -23,7 +23,7 @@ export default function NPPESCrawlerDashboard() {
   const { data: crawlStatus, isLoading: loadingStatus } = useQuery({
     queryKey: ['crawlerDashStatus'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('nppesAutoChainCrawler', { action: 'status' });
+      const res = await base44.functions.invoke('nppesCrawler', { action: 'status' });
       return res.data;
     },
     refetchInterval: 15000,

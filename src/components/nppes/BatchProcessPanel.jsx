@@ -35,7 +35,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   useEffect(() => {
     const loadRegions = async () => {
       try {
-        const res = await base44.functions.invoke('nppesBatchProcessor', { action: 'batch_status' });
+        const res = await base44.functions.invoke('nppesCrawler', { action: 'batch_status' });
         if (res.data?.regions) setRegionStates(res.data.regions);
       } catch (e) { /* ignore */ }
     };
@@ -87,7 +87,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       }
       // selectionMode === 'all' → no states/region passed, defaults to all
 
-      const res = await base44.functions.invoke('nppesBatchProcessor', params);
+      const res = await base44.functions.invoke('nppesCrawler', params);
       const data = res.data;
       setBatchResults(data);
 
@@ -107,7 +107,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   const stopBatch = async () => {
     setBatchStopping(true);
     try {
-      const res = await base44.functions.invoke('nppesBatchProcessor', { action: 'batch_stop' });
+      const res = await base44.functions.invoke('nppesCrawler', { action: 'batch_stop' });
       onLog?.(res.data?.message || 'Batch stop signal sent', 'info');
     } catch (err) {
       onLog?.(`Stop failed: ${err.message}`, 'error');

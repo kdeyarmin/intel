@@ -1,0 +1,447 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+
+const US_STATES = [
+    'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
+    'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
+    'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
+];
+const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
+const MAX_EXEC_MS = 40000;
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function withRetry(fn, maxRetries = 5) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try { return await fn(); } catch (e) {
+            if (/429|rate limit|too many requests/i.test(e.message) && attempt < maxRetries) {
+                await sleep((Math.pow(2, attempt) * 1000) + (Math.random() * 1000)); continue;
+            }
+            throw e;
+        }
+    }
+}
+
+function isIdentical(a, b, fields) {
+    for (const f of fields) { if ((a[f] ?? '').toString().trim() !== (b[f] ?? '').toString().trim()) return false; }
+    return true;
+}
+
+async function batchLookupByNPI(entity, npis, base44) {
+    const resultMap = {};
+    if (!npis || npis.length === 0) return resultMap;
+    try {
+        const limit = npis.length * 20 + 100;
+        const found = await withRetry(() => base44.asServiceRole.entities[entity].filter({ npi: { $in: npis } }, undefined, limit));
+        for (const record of found) {
+            if (!resultMap[record.npi]) resultMap[record.npi] = [];
+            resultMap[record.npi].push(record);
+        }
+    } catch (e) { console.warn(`[BatchLookup] Error for ${entity}: ${e.message}`); }
+    return resultMap;
+}
+
+async function upsertProviders(records, base44) {
+    const FIELDS = ['first_name','last_name','organization_name','status','entity_type','last_update_date'];
+    let imported = 0, updated = 0, skipped = 0;
+    const BULK_SIZE = 50;
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = chunk.map(p => p.npi);
+        try {
+            const existing = await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000));
+            const existingMap = new Map(existing.map(e => [e.npi, e]));
+            const toCreate = [], updatePromises = [];
+            for (const p of chunk) {
+                const ex = existingMap.get(p.npi);
+                if (!ex) { toCreate.push(p); }
+                else {
+                    if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
+                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, p).catch(() => {}));
+                    } else { skipped++; }
+                }
+            }
+            if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
+            if (updatePromises.length > 0) { await Promise.all(updatePromises); updated += updatePromises.length; }
+        } catch (e) {
+            for (const p of chunk) {
+                try {
+                    const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
+                    if (!ex) { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
+                    else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) { await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, p)); updated++; }
+                    else { skipped++; }
+                } catch (err) {}
+            }
+        }
+    }
+    return { imported, updated, skipped };
+}
+
+async function upsertLocations(records, base44) {
+    const FIELDS = ['address_1','address_2','city','state','zip','phone','fax'];
+    let imported = 0, updated = 0, skipped = 0;
+    const BULK_SIZE = 50;
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = [...new Set(chunk.map(l => l.npi))];
+        const existingMap = await batchLookupByNPI('ProviderLocation', npis, base44);
+        const toCreate = [], updateTasks = [];
+        for (const loc of chunk) {
+            const exLocs = existingMap[loc.npi] || [];
+            const match = exLocs.find(ex => ex.location_type === loc.location_type && (ex.address_1 || '').trim().toLowerCase() === (loc.address_1 || '').trim().toLowerCase() && (ex.zip || '').substring(0, 5) === (loc.zip || '').substring(0, 5));
+            if (!match) { toCreate.push(loc); }
+            else if (isIdentical(loc, match, FIELDS)) { skipped++; }
+            else {
+                const merged = { ...loc };
+                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                updateTasks.push(base44.asServiceRole.entities.ProviderLocation.update(match.id, merged).catch(()=>{}));
+            }
+        }
+        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (toCreate.length > 0) {
+            try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
+            catch (e) { for (const loc of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} } }
+        }
+    }
+    return { imported, updated, skipped };
+}
+
+async function upsertTaxonomies(records, base44) {
+    const FIELDS = ['taxonomy_description','primary_flag','license_number','state'];
+    let imported = 0, updated = 0, skipped = 0;
+    const BULK_SIZE = 50;
+    for (let i = 0; i < records.length; i += BULK_SIZE) {
+        const chunk = records.slice(i, i + BULK_SIZE);
+        const npis = [...new Set(chunk.map(t => t.npi))];
+        const existingMap = await batchLookupByNPI('ProviderTaxonomy', npis, base44);
+        const toCreate = [], updateTasks = [];
+        for (const tax of chunk) {
+            const exTaxes = existingMap[tax.npi] || [];
+            const match = exTaxes.find(ex => (ex.taxonomy_code || '').trim() === (tax.taxonomy_code || '').trim());
+            if (!match) { toCreate.push(tax); }
+            else if (isIdentical(tax, match, FIELDS)) { skipped++; }
+            else {
+                const merged = { ...tax };
+                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                updateTasks.push(base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged).catch(()=>{}));
+            }
+        }
+        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (toCreate.length > 0) {
+            try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
+            catch (e) { for (const tax of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} } }
+        }
+    }
+    return { imported, updated, skipped };
+}
+
+function transformResults(allResults) {
+    let validRows = 0, invalidRows = 0, duplicateRows = 0;
+    const seenNPIs = new Set();
+    const providers = [], locations = [], taxonomies = [], errors = [];
+    for (const result of allResults) {
+        const npi = String(result.number || '');
+        if (!npi || npi.length !== 10) { invalidRows++; if (errors.length < 10) errors.push({ npi: npi || 'missing', message: 'Invalid NPI' }); continue; }
+        if (seenNPIs.has(npi)) { duplicateRows++; continue; }
+        seenNPIs.add(npi);
+        validRows++;
+
+        const basic = result.basic || {};
+        const isIndividual = result.enumeration_type === 'NPI-1';
+        const status = basic.status === 'A' ? 'Active' : 'Deactivated';
+        
+        if (status === 'Active' && !basic.enumeration_date && !basic.last_updated) {
+            invalidRows++;
+            if (errors.length < 10) errors.push({ npi, message: 'Active provider missing enumeration and update dates' });
+            continue; 
+        }
+
+        const provider = { npi, entity_type: isIndividual ? 'Individual' : 'Organization', status, needs_nppes_enrichment: false };
+        if (isIndividual) {
+            provider.first_name = (basic.first_name || '').trim();
+            provider.last_name = (basic.last_name || '').trim();
+            provider.middle_name = (basic.middle_name || '').trim();
+            provider.credential = (basic.credential || '').trim();
+            provider.gender = basic.gender === 'M' ? 'M' : basic.gender === 'F' ? 'F' : '';
+        } else { provider.organization_name = (basic.organization_name || '').trim(); }
+        if (basic.enumeration_date) provider.enumeration_date = basic.enumeration_date;
+        if (basic.last_updated) provider.last_update_date = basic.last_updated;
+        providers.push(provider);
+
+        for (const addr of (result.addresses || [])) {
+            let zip = (addr.postal_code || '').substring(0, 10);
+            const rawZip = zip.replace(/[^0-9]/g, '');
+            if (rawZip && rawZip.length !== 5 && rawZip.length !== 9) { if (errors.length < 10) errors.push({ npi, message: `Invalid ZIP format: ${zip}` }); }
+            let phone = (addr.telephone_number || '').trim();
+            const rawPhone = phone.replace(/[^0-9]/g, '');
+            if (phone && rawPhone.length < 10) { if (errors.length < 10) errors.push({ npi, message: `Invalid phone format: ${phone}` }); phone = ''; }
+            locations.push({
+                npi, location_type: addr.address_purpose === 'MAILING' ? 'Mailing' : 'Practice',
+                is_primary: addr.address_purpose === 'LOCATION',
+                address_1: (addr.address_1 || '').trim(), address_2: (addr.address_2 || '').trim(),
+                city: (addr.city || '').trim(), state: (addr.state || '').trim(),
+                zip: zip, phone: phone, fax: (addr.fax_number || '').trim(),
+            });
+        }
+        for (const tax of (result.taxonomies || [])) {
+            taxonomies.push({
+                npi, taxonomy_code: (tax.code || '').trim(), taxonomy_description: (tax.desc || '').trim(),
+                primary_flag: tax.primary === true, license_number: (tax.license || '').trim(), state: (tax.state || '').trim(),
+            });
+        }
+    }
+    return { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors };
+}
+
+async function fetchNPPESPage(params) {
+    const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch(apiUrl, { signal: controller.signal });
+            clearTimeout(timeout);
+            
+            if (response.status === 429 || response.status >= 500) {
+                await sleep(attempt * 2000);
+                continue;
+            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            if (data.Errors && data.Errors.length > 0) return { error: data.Errors.map(e => e.description).join('; '), results: [], count: 0 };
+            return { results: data.results || [], count: data.result_count || 0 };
+        } catch (e) {
+            if (attempt === 3) throw e;
+            await sleep(attempt * 1000);
+        }
+    }
+}
+
+async function updateBatchStats(base44, batchId, stats) {
+    try {
+        const batch = await base44.asServiceRole.entities.ImportBatch.get(batchId);
+        if (batch) {
+            await base44.asServiceRole.entities.ImportBatch.update(batchId, {
+                valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
+                invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
+                imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
+                updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
+                skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
+                api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0)
+            });
+        }
+    } catch(e) {}
+}
+
+Deno.serve(async (req) => {
+    let execStartTime = Date.now();
+    const base44 = createClientFromRequest(req);
+    let user = null;
+    try { user = await base44.auth.me(); } catch(e) {}
+    
+    let payload = {};
+    try { payload = await req.json(); } catch(e) {}
+    
+    const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false } = payload;
+
+    // --- UI COMPATIBILITY ACTIONS ---
+    if (action === 'status' || action === 'batch_status') {
+        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+        const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_'));
+        
+        const stateLatest = {};
+        for (const b of crawlerBatches) {
+            const st = b.file_name.split('_')[1];
+            if (!st || st.length > 2) continue;
+            if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
+                stateLatest[st] = b;
+            }
+        }
+        
+        const completedStates = [], failedStates = [], processingStates = [];
+        for (const [st, b] of Object.entries(stateLatest)) {
+            if (b.status === 'completed') completedStates.push(st);
+            else if (b.status === 'failed') failedStates.push(st);
+            else processingStates.push(st);
+        }
+        const doneSet = new Set([...completedStates, ...failedStates]);
+        const pendingStates = US_STATES.filter(s => !doneSet.has(s) && !processingStates.includes(s));
+        
+        const REGION_STATES = {
+            northeast: ['CT','ME','MA','NH','RI','VT','NJ','NY','PA','DE','MD','DC'],
+            southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
+            midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
+            west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
+            south_central: ['TX','OK','NM','AR']
+        };
+
+        return Response.json({
+            total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
+            processing: processingStates.length, pending: pendingStates.length,
+            completed_states: completedStates, failed_states: failedStates,
+            processing_states: processingStates, pending_states: pendingStates,
+            batches: crawlerBatches.slice(0, 60),
+            regions: REGION_STATES
+        });
+    }
+
+    if (action === 'batch_start') {
+        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        
+        let targetStates = states;
+        if (region) {
+            const REGION_STATES = {
+                northeast: ['CT','ME','MA','NH','RI','VT','NJ','NY','PA','DE','MD','DC'],
+                southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
+                midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
+                west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
+                south_central: ['TX','OK','NM','AR']
+            };
+            targetStates = REGION_STATES[region] || US_STATES;
+        }
+        if (!targetStates || targetStates.length === 0) targetStates = US_STATES;
+
+        let queued = 0, skipped = 0;
+        for (const st of targetStates) {
+            if (skip_completed) {
+                const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
+                const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
+                if (stBatch && stBatch.status === 'completed') { skipped++; continue; }
+            }
+            
+            const batch = await base44.asServiceRole.entities.ImportBatch.create({
+                import_type: 'nppes_registry',
+                file_name: `crawler_${st}_all_${Date.now()}`,
+                status: 'processing',
+                dry_run: !!dry_run
+            });
+            const items = [];
+            for (let i = 0; i <= 99; i++) {
+                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: 'pending' });
+            }
+            await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items);
+            queued++;
+        }
+        
+        // Trigger worker pool
+        const workers = Math.min(concurrency, 5);
+        for(let i=0; i<workers; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+        }
+        
+        return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
+    }
+
+    if (action === 'batch_stop') {
+        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const pending = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000);
+        for (let i = 0; i < pending.length; i += 50) {
+           const chunk = pending.slice(i, i+50);
+           await Promise.all(chunk.map(p => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' })));
+        }
+        return Response.json({ success: true, message: 'All pending tasks stopped.' });
+    }
+
+    // --- WORKER LOGIC ---
+    if (action === 'process_queue') {
+        // Recover stuck items (older than 10 mins)
+        const stuck = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'created_date', 50);
+        for (const item of stuck) {
+            if (Date.now() - new Date(item.updated_date).getTime() > 600000) {
+                await base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 });
+            }
+        }
+
+        let tasksProcessed = 0;
+        
+        // Process loop until time limit
+        while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
+            const pendingList = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 1);
+            if (pendingList.length === 0) {
+                // Check if any batches are fully done
+                const processingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' });
+                for (const b of processingBatches) {
+                    const items = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000);
+                    const allDone = items.length > 0 && items.every(i => i.status === 'completed' || i.status === 'failed');
+                    if (allDone) {
+                        const hasErrors = items.some(i => i.status === 'failed');
+                        await base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() });
+                    }
+                }
+                return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
+            }
+
+            const task = pendingList[0];
+            if (task.retry_count > 3) {
+                await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' });
+                continue;
+            }
+
+            // Mark processing
+            await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' });
+            
+            try {
+                const params = new URLSearchParams();
+                params.set('version', '2.1');
+                params.set('limit', '200'); // Batch limit
+                params.set('state', task.state);
+                params.set('postal_code', `${task.zip_prefix}*`);
+                
+                // First query to get count
+                const firstPage = await fetchNPPESPage(params);
+                if (firstPage.error) throw new Error(firstPage.error);
+                
+                let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1 };
+                
+                if (firstPage.count > 1000 && task.zip_prefix.length < 5) {
+                    // Split task: Create 10 sub-tasks and complete current
+                    const subTasks = [];
+                    for(let i=0; i<=9; i++) {
+                        subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
+                    }
+                    await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks);
+                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                } else if (firstPage.count > 0) {
+                    // Fetch all pages (up to skip 1200)
+                    let allResults = [...firstPage.results];
+                    let skip = 200;
+                    while (skip < firstPage.count && skip <= 1200 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
+                        params.set('skip', String(skip));
+                        const page = await fetchNPPESPage(params);
+                        stats.api_calls++;
+                        if (page.error || page.results.length === 0) break;
+                        allResults.push(...page.results);
+                        skip += 200;
+                    }
+                    
+                    const transformed = transformResults(allResults);
+                    stats.valid += transformed.validRows;
+                    stats.invalid += transformed.invalidRows;
+                    
+                    if (!dry_run) {
+                        const provRes = await upsertProviders(transformed.providers, base44);
+                        stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
+                        await upsertLocations(transformed.locations, base44);
+                        await upsertTaxonomies(transformed.taxonomies, base44);
+                    }
+                    
+                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                    await updateBatchStats(base44, task.batch_id, stats);
+                } else {
+                    // Zero results
+                    await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' });
+                }
+                tasksProcessed++;
+            } catch (e) {
+                await base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: e.message, retry_count: (task.retry_count || 0) + 1 });
+            }
+        }
+        
+        // Re-invoke to continue processing if queue not empty
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+        
+        return Response.json({ success: true, processed: tasksProcessed, message: 'Time limit reached, re-invoked' });
+    }
+    
+    return Response.json({ error: 'Unknown action' }, { status: 400 });
+});
