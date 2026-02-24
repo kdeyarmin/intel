@@ -334,12 +334,34 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_stop') {
         if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
+        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused'] } }, undefined, 1000));
         for (let i = 0; i < pending.length; i += 50) {
            const chunk = pending.slice(i, i+50);
            await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
         }
-        return Response.json({ success: true, message: 'All pending tasks stopped.' });
+        return Response.json({ success: true, message: 'All tasks stopped.' });
+    }
+
+    if (action === 'batch_pause') {
+        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
+        for (let i = 0; i < pending.length; i += 50) {
+           const chunk = pending.slice(i, i+50);
+           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'paused' }))));
+        }
+        return Response.json({ success: true, message: 'Crawler paused.' });
+    }
+
+    if (action === 'batch_resume') {
+        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1000));
+        for (let i = 0; i < pausedItems.length; i += 50) {
+           const chunk = pausedItems.slice(i, i+50);
+           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'pending' }))));
+        }
+        // Trigger worker pool
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(()=>{});
+        return Response.json({ success: true, message: 'Crawler resumed.' });
     }
 
     // --- WORKER LOGIC ---
