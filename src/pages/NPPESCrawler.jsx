@@ -193,17 +193,15 @@ export default function NPPESCrawler() {
                   </Button>
                 )}
 
-                {(isRunning || isPaused) && (
-                  <Button 
-                    onClick={stopCrawler} 
-                    disabled={isProcessingAction}
-                    variant="destructive"
-                    className="gap-2 min-w-[140px]"
-                  >
-                    {isProcessingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                    Stop & Cancel
-                  </Button>
-                )}
+                <Button 
+                  onClick={stopCrawler} 
+                  disabled={isProcessingAction}
+                  variant="destructive"
+                  className="gap-2 min-w-[140px]"
+                >
+                  {isProcessingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  Stop & Cancel
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -380,12 +380,19 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_stop') {
         if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused'] } }, undefined, 1000));
+        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
         for (let i = 0; i < pending.length; i += 50) {
            const chunk = pending.slice(i, i+50);
            await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
         }
-        return Response.json({ success: true, message: 'All tasks stopped.' });
+        
+        // Also cancel any active batches
+        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused'] } }));
+        for (const b of processingBatches) {
+            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'cancelled', cancel_reason: 'Stopped by user', cancelled_at: new Date().toISOString() }));
+        }
+
+        return Response.json({ success: true, message: 'All tasks and batches stopped.' });
     }
 
     if (action === 'batch_pause') {
