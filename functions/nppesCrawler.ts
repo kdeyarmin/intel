@@ -260,9 +260,17 @@ Deno.serve(async (req) => {
 
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
-        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 200);
+        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 1000);
         const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_'));
         
+        let total_imported = 0, total_updated = 0, total_skipped = 0, total_api_calls = 0;
+        for (const b of crawlerBatches) {
+            total_imported += (b.imported_rows || 0);
+            total_updated += (b.updated_rows || 0);
+            total_skipped += (b.skipped_rows || 0);
+            total_api_calls += (b.api_requests_count || 0);
+        }
+
         const stateLatest = {};
         for (const b of crawlerBatches) {
             const st = b.file_name.split('_')[1];
@@ -327,7 +335,14 @@ Deno.serve(async (req) => {
             completed_states: completedStates, failed_states: failedStates,
             processing_states: processingStates, pending_states: pendingStates,
             batches: crawlerBatches.slice(0, 60),
-            regions: REGION_STATES
+            regions: REGION_STATES,
+            totals: {
+                imported: total_imported,
+                updated: total_updated,
+                skipped: total_skipped,
+                api_calls: total_api_calls,
+                processed: total_imported + total_updated + total_skipped
+            }
         });
     }
 

@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Play, Pause, XCircle, Globe, Bot, Map, LayoutGrid, Clock, AlertTriangle } from 'lucide-react';
+import { Loader2, Play, Pause, XCircle, Globe, Bot, Map, LayoutGrid, Clock, AlertTriangle, Database, ArrowDownToLine, RefreshCw, SkipForward, Activity } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import StateMap from '../components/nppes/StateMap';
 import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
@@ -275,6 +275,51 @@ export default function NPPESCrawler() {
         </div>
 
         <div className="space-y-6">
+          <Card className="bg-white border-slate-200 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-slate-900 text-lg flex items-center gap-2">
+                <Database className="w-5 h-5 text-indigo-500" />
+                Data Collection Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <ArrowDownToLine className="w-4 h-4" />
+                    <p className="text-xs font-medium">New Records</p>
+                  </div>
+                  <p className="text-xl font-bold text-slate-900">{status?.totals?.imported?.toLocaleString() || 0}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <RefreshCw className="w-4 h-4" />
+                    <p className="text-xs font-medium">Updated</p>
+                  </div>
+                  <p className="text-xl font-bold text-slate-900">{status?.totals?.updated?.toLocaleString() || 0}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <SkipForward className="w-4 h-4" />
+                    <p className="text-xs font-medium">Skipped</p>
+                  </div>
+                  <p className="text-xl font-bold text-slate-900">{status?.totals?.skipped?.toLocaleString() || 0}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                    <Activity className="w-4 h-4" />
+                    <p className="text-xs font-medium">API Calls</p>
+                  </div>
+                  <p className="text-xl font-bold text-slate-900">{status?.totals?.api_calls?.toLocaleString() || 0}</p>
+                </div>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mt-2">
+                 <p className="text-sm font-medium text-indigo-800">Total Processed</p>
+                 <p className="text-2xl font-bold text-indigo-900">{(status?.totals?.processed || 0).toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-white border-slate-200 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-slate-900 text-lg">Current Status</CardTitle>
