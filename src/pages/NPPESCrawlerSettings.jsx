@@ -34,9 +34,11 @@ export default function NPPESCrawlerSettings() {
     ...DEFAULTS,
     auto_retry_enabled: false,
     retry_delay_minutes: 60,
+    retry_escalation_threshold: 3,
+    escalation_tags: ['manual_review_required'],
     max_pages_per_query: 6,
     max_skip: 1000,
-    };
+  };
 
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['crawlerConfig'],
@@ -59,6 +61,8 @@ export default function NPPESCrawlerSettings() {
         max_crawl_duration_sec: existingConfig.max_crawl_duration_sec ?? DEFAULTS.max_crawl_duration_sec,
         auto_retry_enabled: existingConfig.auto_retry_enabled ?? false,
         retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
+        retry_escalation_threshold: existingConfig.retry_escalation_threshold ?? 3,
+        escalation_tags: existingConfig.escalation_tags ?? ['manual_review_required'],
         max_pages_per_query: existingConfig.max_pages_per_query ?? DEFAULTS.max_pages_per_query,
         max_skip: existingConfig.max_skip ?? DEFAULTS.max_skip,
         concurrency: existingConfig.concurrency ?? 4,
@@ -265,6 +269,23 @@ export default function NPPESCrawlerSettings() {
                   onChange={(v) => updateField('retry_delay_minutes', clampInt(v, 5, 1440))}
                   min={5} max={1440}
                 />
+                <SettingField
+                  label="Escalation Threshold"
+                  description="Failed auto-retries before manual review escalation"
+                  value={form.retry_escalation_threshold}
+                  onChange={(v) => updateField('retry_escalation_threshold', clampInt(v, 1, 10))}
+                  min={1} max={10}
+                />
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-slate-200">Escalation Tags</Label>
+                  <Input
+                    type="text"
+                    value={form.escalation_tags?.join(', ') || ''}
+                    onChange={(e) => updateField('escalation_tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                    className="max-w-48"
+                  />
+                  <p className="text-xs text-slate-500">Comma-separated tags to add on escalation</p>
+                </div>
                </div>
             )}
         </CardContent>
