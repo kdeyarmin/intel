@@ -10,7 +10,7 @@ function elapsed() { return Date.now() - execStart; }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
 
-// URLs are now managed via ImportScheduleConfig entity
+// URLs are now managed via ImportScheduleConfig entity.
 const FALLBACK_PART_D_URL = 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip';
 const NUMERIC_FIELDS = ['total_enrollees','total_utilizers','avg_annual_fills','avg_annual_gross_cost','generic_dispensing_rate','brand_cost','generic_cost','total_drug_cost'];
 
