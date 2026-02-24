@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
 
   if (action === 'list_years') {
     return Response.json({
-      available_years: Object.keys(CMS_MA_INPT_URLS).map(Number).sort((a, b) => b - a),
+      available_years: [2021, 2020, 2019, 2018, 2017, 2016],
       source: 'CMS Program Statistics - Medicare Advantage Inpatient Hospital',
     });
   }

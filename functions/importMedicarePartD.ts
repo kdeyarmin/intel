@@ -133,12 +133,11 @@ Deno.serve(async (req) => {
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
 
-  const LATEST_YEAR = Math.max(...Object.keys(CMS_PART_D_URLS).map(Number));
+  const LATEST_YEAR = 2023;
   const requestedYear = parseInt(payload.year || LATEST_YEAR);
-  const year = CMS_PART_D_URLS[requestedYear] ? requestedYear : LATEST_YEAR;
-  if (requestedYear !== year) console.log(`Year ${requestedYear} unavailable for Part D, falling back to ${year}`);
+  const year = requestedYear;
 
-  if (action === 'list_years') return Response.json({ available_years: Object.keys(CMS_PART_D_URLS).map(Number).sort((a, b) => b - a) });
+  if (action === 'list_years') return Response.json({ available_years: [2023, 2022, 2021, 2020, 2019, 2018] });
 
   let downloadUrl = custom_url;
   if (!downloadUrl) {
