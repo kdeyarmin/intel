@@ -98,13 +98,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if it's a ZIP-based Medicare stats import
     const zipFunctionMap = {
       medicare_hha_stats: 'importMedicareHHA',
       medicare_ma_inpatient: 'importMedicareMAInpatient',
       medicare_part_d_stats: 'importMedicarePartD',
       medicare_snf_stats: 'importMedicareSNF',
     };
+
+    const specialFunctionMap = {
+      nppes_monthly: 'importNPPESFlatFile',
+      nppes_registry: 'nppesCrawler',
+    };
+
+    if (specialFunctionMap[import_type]) {
+      try {
+        const res = await base44.asServiceRole.functions.invoke(specialFunctionMap[import_type], {
+          action: 'import',
+          import_type,
+          file_url: file_url || undefined,
+          dry_run,
+          row_offset: body.row_offset || undefined,
+          resume_offset: resume_offset || undefined,
+          retry_of: retry_of || undefined,
+          retry_count: retry_count || undefined,
+          category: category || undefined,
+        });
+        const result = res.data;
+        if (result?.error) {
+          return Response.json({
+            error: result.error, import_type,
+            batch_id: result.batch_id,
+            hint: result.hint || 'Check the batch error log for details.',
+          }, { status: 500 });
+        }
+        return Response.json({ success: true, import_type, result });
+      } catch (e) {
+        let errorData;
+        try { errorData = e.response?.data || JSON.parse(e.message); } catch (_) { errorData = null; }
+        return Response.json({
+          error: errorData?.error || e.message || 'Import function failed',
+          import_type,
+          batch_id: errorData?.batch_id,
+          hint: errorData?.hint || `The ${import_type} import function returned an error.`,
+        }, { status: 500 });
+      }
+    }
 
     if (zipFunctionMap[import_type]) {
       // Route to the specialized ZIP handler, passing through all params
@@ -154,11 +192,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // CMS API-based imports
     const validTypes = Object.keys(IMPORT_TYPE_URLS);
     if (!validTypes.includes(import_type)) {
+      const allValid = [...validTypes, ...Object.keys(zipFunctionMap), ...Object.keys(specialFunctionMap)];
       return Response.json({
-        error: `Invalid import_type. Must be one of: ${[...validTypes, ...Object.keys(zipFunctionMap)].join(', ')}`,
+        error: `Invalid import_type. Must be one of: ${allValid.join(', ')}`,
       }, { status: 400 });
     }
 

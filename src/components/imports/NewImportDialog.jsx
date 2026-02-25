@@ -43,8 +43,6 @@ const IMPORT_TYPES = [
   { id: 'dmepos_suppliers', name: 'DMEPOS Suppliers', desc: 'DME supplier enrollment', icon: Database, hasUrl: true },
   { id: 'medicare_inpatient_charges', name: 'Inpatient Charges', desc: 'Hospital DRG-level charges', icon: TrendingUp, hasUrl: true },
   { id: 'medicare_outpatient_charges', name: 'Outpatient Charges', desc: 'Hospital APC-level charges', icon: TrendingUp, hasUrl: true },
-  { id: 'home_health_cost_reports', name: 'HH Cost Reports', desc: 'Financial & utilization', icon: TrendingUp, hasUrl: false },
-  { id: 'nursing_home_chains', name: 'Nursing Home Chains', desc: 'Chain performance', icon: TrendingUp, hasUrl: false },
   { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, hasUrl: true },
   { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
   { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
