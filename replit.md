@@ -74,9 +74,10 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `DatabaseOverview.jsx` displays exact numbers without the "+" estimated indicator
 
 ### Email Search Bot
-- `emailSearchBot.ts` - AI-powered email discovery: paginates through all providers (not just 500), searches using LLM with internet context, validates results
-- `bulkVerifyEmails.ts` - Bulk email verification: paginates through providers, runs DNS/AI validation in batches
+- `emailSearchBot.ts` - AI-powered email discovery: paginates through ALL providers (no page cap), searches using LLM with internet context, validates results; 25s scan timeout prevents Deno timeouts on large datasets
+- `bulkVerifyEmails.ts` - Bulk email verification: paginates through ALL providers (no page cap), runs DNS/AI validation in batches; same 25s scan timeout
 - Both frontend search and verification auto-loop through all batches without user intervention (with Stop button and progress tracking)
+- `has_more` logic: based on actual `totalEligibleRemaining` count + `reachedEndOfProviders` flag — no false-negative stops
 
 ### URL Monitoring
 - `checkCMSUrls.ts` - Scans CMS data.json for updated dataset URLs

@@ -13,45 +13,49 @@ Deno.serve(async (req) => {
 
     let providersToSearch = [];
     let totalEligibleRemaining = 0;
+    let reachedEndOfProviders = false;
 
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
+      reachedEndOfProviders = true;
     } else {
       const needed = batch_size;
       let page = 0;
       const pageSize = 500;
-      const maxPages = 20;
+      let batchFull = false;
+      const scanStart = Date.now();
+      const SCAN_TIMEOUT_MS = 25000;
 
-      while (providersToSearch.length < needed && page < maxPages) {
+      while (!reachedEndOfProviders) {
+        if (Date.now() - scanStart > SCAN_TIMEOUT_MS) {
+          if (!batchFull) break;
+          totalEligibleRemaining = Math.max(totalEligibleRemaining, 1);
+          break;
+        }
+
         const batch = await base44.asServiceRole.entities.Provider.list('-created_date', pageSize, page * pageSize);
-        if (!batch || batch.length === 0) break;
+        if (!batch || batch.length === 0) {
+          reachedEndOfProviders = true;
+          break;
+        }
 
         for (const p of batch) {
           if (skip_already_searched && p.email_searched_at) continue;
-          if (providersToSearch.length < needed) {
+          if (!batchFull && providersToSearch.length < needed) {
             providersToSearch.push(p);
+            if (providersToSearch.length >= needed) batchFull = true;
           } else {
             totalEligibleRemaining++;
           }
         }
 
-        if (batch.length < pageSize) break;
-        if (providersToSearch.length >= needed && totalEligibleRemaining > 0) break;
-        page++;
-      }
-
-      if (providersToSearch.length >= needed && totalEligibleRemaining === 0) {
-        const nextPage = page + 1;
-        if (nextPage < maxPages) {
-          const peek = await base44.asServiceRole.entities.Provider.list('-created_date', pageSize, nextPage * pageSize);
-          if (peek && peek.length > 0) {
-            for (const p of peek) {
-              if (skip_already_searched && p.email_searched_at) continue;
-              totalEligibleRemaining++;
-              break;
-            }
-          }
+        if (batch.length < pageSize) {
+          reachedEndOfProviders = true;
+          break;
         }
+
+        if (batchFull && totalEligibleRemaining > 0) break;
+        page++;
       }
     }
 
@@ -273,7 +277,7 @@ Return validation for ALL emails provided.`,
 
     let hasMore = false;
     if (mode !== 'single') {
-      hasMore = totalEligibleRemaining > 0 || providersToSearch.length >= batch_size;
+      hasMore = totalEligibleRemaining > 0 || (!reachedEndOfProviders && providersToSearch.length >= batch_size);
     }
 
     return Response.json({

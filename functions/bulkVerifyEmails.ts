@@ -42,24 +42,33 @@ Deno.serve(async (req) => {
       const needed = Math.min(batch_size, 25);
       let page = 0;
       const pageSize = 500;
-      const maxPages = 20;
+      let batchFull = false;
+      const scanStart = Date.now();
+      const SCAN_TIMEOUT_MS = 25000;
 
-      while (toVerify.length < needed && page < maxPages) {
+      while (true) {
+        if (Date.now() - scanStart > SCAN_TIMEOUT_MS) {
+          if (!batchFull) break;
+          totalRemaining = Math.max(totalRemaining, 1);
+          break;
+        }
+
         const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', pageSize, page * pageSize);
         if (!candidates || candidates.length === 0) break;
 
         for (const p of candidates) {
           if (!p.email || !p.email.trim()) continue;
           if (mode === 'unverified' && p.email_validation_status && p.email_validation_status !== '') continue;
-          if (toVerify.length < needed) {
+          if (!batchFull && toVerify.length < needed) {
             toVerify.push(p);
+            if (toVerify.length >= needed) batchFull = true;
           } else {
             totalRemaining++;
           }
         }
 
         if (candidates.length < pageSize) break;
-        if (toVerify.length >= needed && totalRemaining > 0) break;
+        if (batchFull && totalRemaining > 0) break;
         page++;
       }
     }
