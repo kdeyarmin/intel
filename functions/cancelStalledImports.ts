@@ -31,10 +31,13 @@ Deno.serve(async (req) => {
       return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
     };
 
+    const CRAWLER_THRESHOLD_MS = 2 * 60 * 60 * 1000;
     const stalledBatches = [...validating, ...processing].filter(batch => {
       if (!isRealBatch(batch)) return false;
+      const isCrawlerBatch = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
+      const activeThreshold = isCrawlerBatch ? CRAWLER_THRESHOLD_MS : thresholdMs;
       const lastActivity = new Date(batch.updated_date || batch.created_date).getTime();
-      return (now - lastActivity) > thresholdMs;
+      return (now - lastActivity) > activeThreshold;
     });
 
     if (stalledBatches.length === 0) {

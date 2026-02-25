@@ -71,6 +71,11 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - Failed/paused batches can be resumed from where they left off via the Resume button (uses `resume_offset`/`row_offset`)
 - Records committed before a failure remain in the database; resume skips already-processed rows
 
+### Stall Detection
+- `ImportMonitoring.jsx` auto-fails batches stuck in processing/validating: 15 min for normal imports, 2 hours for NPPES crawler batches
+- `cancelStalledImports.ts` backend stall checker also uses 2-hour threshold for crawler batches (vs 1 hour default)
+- `CriticalFailureAlerts.jsx` reads both `message` and `detail` fields from error_samples, plus `cancel_reason` as fallback
+
 ### Numeric Field Clamping (Out of Range Protection)
 - All 4 Medicare ZIP importers (`importMedicareHHA`, `importMedicareMAInpatient`, `importMedicarePartD`, `importMedicareSNF`) and `autoImportCMSData` have `clampNumericFields()` applied before database writes
 - Numeric values are clamped to Int32 range (−2,147,483,647 to 2,147,483,647) to prevent "Out of Range" database errors

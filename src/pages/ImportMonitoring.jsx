@@ -172,10 +172,13 @@ export default function ImportMonitoring() {
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
+  const CRAWLER_STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
   const isStale = (batch) => {
     if (batch.status !== 'processing' && batch.status !== 'validating') return false;
+    const isCrawlerBatch = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
+    const threshold = isCrawlerBatch ? CRAWLER_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
     const updated = new Date(batch.updated_date || batch.created_date);
-    return (Date.now() - updated.getTime()) > STALE_THRESHOLD_MS;
+    return (Date.now() - updated.getTime()) > threshold;
   };
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
@@ -235,11 +238,13 @@ export default function ImportMonitoring() {
     (async () => {
       for (const batch of toFail) {
         autoFailProcessed.current.add(batch.id);
+        const isCrawler = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
+        const threshold = isCrawler ? '2 hours' : '15 minutes';
         await base44.entities.ImportBatch.update(batch.id, {
           status: 'failed',
           error_samples: [
             ...(batch.error_samples || []),
-            { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
+            { row: 0, message: `Job stalled due to inactivity — automatically marked as failed after ${threshold} with no progress` }
           ]
         });
         setAutoFailedIds(prev => new Set([...prev, batch.id]));
@@ -631,7 +636,7 @@ export default function ImportMonitoring() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated in over 15 minutes and are likely stalled.
+              These jobs haven't updated recently and are likely stalled.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (
