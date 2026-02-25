@@ -50,7 +50,13 @@ Deno.serve(async (req) => {
                 const candidates = [];
 
                 // Find the specific dataset by title
-                const dataset = data.dataset.find(d => d.title.includes(target.label) || d.title.includes(target.label.replace('Stats', '').trim()));
+                let searchTitle = target.label;
+                if (target.type === 'medicare_hha_stats') searchTitle = 'Medicare Home Health Agency';
+                if (target.type === 'medicare_snf_stats') searchTitle = 'Medicare Skilled Nursing Facility';
+                if (target.type === 'medicare_ma_inpatient') searchTitle = 'Medicare Advantage-Inpatient Hospital';
+                if (target.type === 'medicare_part_d_stats') searchTitle = 'Medicare Part D';
+
+                const dataset = data.dataset.find(d => d.title.includes(searchTitle));
                 
                 if (dataset && dataset.distribution) {
                     const dists = Array.isArray(dataset.distribution) ? dataset.distribution : [dataset.distribution];
