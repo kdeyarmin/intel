@@ -81,12 +81,15 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+const FINANCIAL_FIELDS = new Set(['total_spending', 'total_drug_cost', 'opp_spending', 'beneficiary_cost', 'spending_per_beneficiary', 'cost_per_claim', 'total_costs', 'out_of_pocket_costs']);
 function clampNumericFields(record) {
   const MAX_INT = 2147483647;
+  const MAX_FLOAT = 999999999999.99;
   for (const key of Object.keys(record)) {
     if (typeof record[key] === 'number') {
-      if (record[key] > MAX_INT) record[key] = MAX_INT;
-      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+      const limit = FINANCIAL_FIELDS.has(key) ? MAX_FLOAT : MAX_INT;
+      if (record[key] > limit) record[key] = limit;
+      if (record[key] < -limit) record[key] = -limit;
     }
     if (typeof record[key] === 'string' && record[key].length > 500) {
       record[key] = record[key].substring(0, 500);
@@ -104,7 +107,7 @@ function classifyPartDTable(sheetName) {
 function mapPartDRow(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
-  headers.forEach(h => { record.raw_data[h] = row[h]; });
+  headers.forEach(h => { record.raw_data[h] = String(row[h] ?? ''); });
   for (const h of headers) {
     const hl = h.toLowerCase();
     if (!record.category && (hl.includes('plan') || hl.includes('lis') || hl.includes('demographic') || hl.includes('state') || hl.includes('area') || hl.includes('phase') || hl.includes('age') || hl.includes('sex') || hl.includes('race') || hl === headers[0].toLowerCase())) record.category = String(row[h] || '').trim();

@@ -419,12 +419,21 @@ Deno.serve(async (req) => {
     }
 });
 
+const CMS_FINANCIAL_FIELDS = new Set([
+  'average_medicare_payments', 'average_total_payments', 'average_covered_charges',
+  'total_charges', 'total_payments', 'total_covered_charges', 'program_payments',
+  'average_medicare_payment_amt', 'average_submitted_charge_amt', 'average_allowed_amt',
+  'total_submitted_charges', 'total_medicare_payments', 'total_drug_costs',
+  'total_spending', 'beneficiary_cost', 'payment_amount'
+]);
 function clampNumericFields(record) {
   const MAX_INT = 2147483647;
+  const MAX_FLOAT = 999999999999.99;
   for (const key of Object.keys(record)) {
     if (typeof record[key] === 'number') {
-      if (record[key] > MAX_INT) record[key] = MAX_INT;
-      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+      const limit = CMS_FINANCIAL_FIELDS.has(key) ? MAX_FLOAT : MAX_INT;
+      if (record[key] > limit) record[key] = limit;
+      if (record[key] < -limit) record[key] = -limit;
     }
     if (typeof record[key] === 'string' && record[key].length > 500) {
       record[key] = record[key].substring(0, 500);

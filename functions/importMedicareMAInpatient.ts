@@ -69,12 +69,15 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+const FINANCIAL_FIELDS = new Set(['total_charges', 'program_payments', 'payment_per_discharge', 'beneficiary_payments', 'covered_charges', 'total_covered_charges']);
 function clampNumericFields(record) {
   const MAX_INT = 2147483647;
+  const MAX_FLOAT = 999999999999.99;
   for (const key of Object.keys(record)) {
     if (typeof record[key] === 'number') {
-      if (record[key] > MAX_INT) record[key] = MAX_INT;
-      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+      const limit = FINANCIAL_FIELDS.has(key) ? MAX_FLOAT : MAX_INT;
+      if (record[key] > limit) record[key] = limit;
+      if (record[key] < -limit) record[key] = -limit;
     }
     if (typeof record[key] === 'string' && record[key].length > 500) {
       record[key] = record[key].substring(0, 500);
@@ -255,7 +258,9 @@ function validateAllRecords(records) {
 
 function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
   const headers = Object.keys(row);
-  const record = { table_name: tableName, data_year: dataYear, raw_data: row };
+  const safeRawData = {};
+  for (const h of headers) { safeRawData[h] = String(row[h] ?? ''); }
+  const record = { table_name: tableName, data_year: dataYear, raw_data: safeRawData };
   try {
     for (const h of headers) {
       const hl = h.toLowerCase();

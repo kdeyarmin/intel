@@ -72,27 +72,34 @@ function classifyTable(sheetName) {
   return null;
 }
 
-function safeNum(val) {
+const INT32_MAX = 2147483647;
+const FLOAT_MAX = 999999999999.99;
+
+function safeNum(val, isFinancial = false) {
   if (val === '' || val === null || val === undefined || val === '*' || val === '—' || val === '-' || val === 'N/A') return null;
   const cleaned = String(val).replace(/[,$%\s]/g, '');
   const num = parseFloat(cleaned);
-  return isNaN(num) ? null : num;
+  if (isNaN(num)) return null;
+  const limit = isFinancial ? FLOAT_MAX : INT32_MAX;
+  return Math.max(0, Math.min(num, limit));
 }
 
+const FINANCIAL_FIELDS = new Set(['total_charges', 'program_payments', 'payment_per_person']);
+
 const FIELD_LIMITS = {
-  persons_served: { min: 0, max: 2147483647 },
-  total_visits: { min: 0, max: 2147483647 },
-  total_episodes: { min: 0, max: 2147483647 },
-  total_charges: { min: 0, max: 2147483647 },
-  program_payments: { min: 0, max: 2147483647 },
-  payment_per_person: { min: 0, max: 2147483647 },
-  visits_per_person: { min: 0, max: 2147483647 },
-  skilled_nursing_visits: { min: 0, max: 2147483647 },
-  pt_visits: { min: 0, max: 2147483647 },
-  ot_visits: { min: 0, max: 2147483647 },
-  speech_therapy_visits: { min: 0, max: 2147483647 },
-  home_health_aide_visits: { min: 0, max: 2147483647 },
-  medical_social_service_visits: { min: 0, max: 2147483647 },
+  persons_served: { min: 0, max: INT32_MAX },
+  total_visits: { min: 0, max: INT32_MAX },
+  total_episodes: { min: 0, max: INT32_MAX },
+  total_charges: { min: 0, max: FLOAT_MAX },
+  program_payments: { min: 0, max: FLOAT_MAX },
+  payment_per_person: { min: 0, max: FLOAT_MAX },
+  visits_per_person: { min: 0, max: INT32_MAX },
+  skilled_nursing_visits: { min: 0, max: INT32_MAX },
+  pt_visits: { min: 0, max: INT32_MAX },
+  ot_visits: { min: 0, max: INT32_MAX },
+  speech_therapy_visits: { min: 0, max: INT32_MAX },
+  home_health_aide_visits: { min: 0, max: INT32_MAX },
+  medical_social_service_visits: { min: 0, max: INT32_MAX },
   data_year: { min: 1900, max: 2100 },
 };
 
@@ -121,9 +128,8 @@ function clampRecord(record) {
 function mapRowToRecord(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
-  headers.forEach(h => { record.raw_data[h] = row[h]; });
+  headers.forEach(h => { record.raw_data[h] = String(row[h] ?? ''); });
 
-  // Try multiple strategies to find the category/label column
   const categoryKeywords = ['type of entitlement', 'category', 'demographic', 'state', 'area', 'type of agency', 'type of control', 'number of', 'age group', 'sex', 'race', 'diagnosis', 'region', 'characteristic'];
   for (const h of headers) {
     const hl = h.toLowerCase();
@@ -133,9 +139,9 @@ function mapRowToRecord(row, tableName, dataYear) {
     if (hl.includes('persons') && (hl.includes('served') || hl.includes('use'))) record.persons_served = safeNum(row[h]);
     if (hl.includes('total') && hl.includes('visit')) record.total_visits = safeNum(row[h]);
     if (hl.includes('episode')) record.total_episodes = safeNum(row[h]);
-    if (hl.includes('charge')) record.total_charges = safeNum(row[h]);
-    if (hl.includes('program payment') || (hl.includes('payment') && !hl.includes('per'))) record.program_payments = safeNum(row[h]);
-    if (hl.includes('payment') && hl.includes('per')) record.payment_per_person = safeNum(row[h]);
+    if (hl.includes('charge')) record.total_charges = safeNum(row[h], true);
+    if (hl.includes('program payment') || (hl.includes('payment') && !hl.includes('per'))) record.program_payments = safeNum(row[h], true);
+    if (hl.includes('payment') && hl.includes('per')) record.payment_per_person = safeNum(row[h], true);
     if (hl.includes('visit') && hl.includes('per')) record.visits_per_person = safeNum(row[h]);
     if (hl.includes('skilled nursing')) record.skilled_nursing_visits = safeNum(row[h]);
     if (hl.includes('physical therapy') || (hl.includes('pt') && hl.includes('visit'))) record.pt_visits = safeNum(row[h]);
@@ -339,9 +345,8 @@ Deno.serve(async (req) => {
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
-    let imported = 0, chunkErrors = 0;
+    let imported = 0, chunkErrors = 0, consecutiveRateLimits = 0;
     if (!dry_run && recordsToProcess.length > 0) {
-      // Only clear existing on fresh import (no offset)
       if (effectiveOffset === 0) {
         const existing = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1);
         if (existing.length > 0) {
@@ -353,28 +358,36 @@ Deno.serve(async (req) => {
 
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) { console.warn(`Time limit at ${imported}/${recordsToProcess.length}`); break; }
+        if (consecutiveRateLimits >= 3) {
+          console.warn(`Pausing import after ${consecutiveRateLimits} consecutive rate limits at ${imported}/${recordsToProcess.length}`);
+          addError('rate_limit', `Paused: ${consecutiveRateLimits} consecutive rate limit failures`, { chunk_start: i + effectiveOffset });
+          break;
+        }
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, chunk, `chunk-${i}`);
-        if (result.ok) { imported += chunk.length; }
+        if (result.ok) { imported += chunk.length; consecutiveRateLimits = 0; }
         else {
           chunkErrors++;
+          const isRateLimit = /rate limit|429/i.test(result.error);
+          if (isRateLimit) {
+            consecutiveRateLimits++;
+            await delay(8000 * consecutiveRateLimits);
+          }
           addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length });
-          // If rate limited, pause longer before next chunk
-          if (/rate limit|429/i.test(result.error)) await delay(5000);
         }
-        if (i + CHUNK < recordsToProcess.length) await delay(800);
+        if (i + CHUNK < recordsToProcess.length) await delay(1200);
       }
     }
 
     const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
-    // Only mark as failed if zero rows imported AND chunk errors happened; partial success is still "completed"
-    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
+    const rateLimitPaused = consecutiveRateLimits >= 3;
+    const finalStatus = dry_run ? 'completed' : (timedOut || rateLimitPaused) ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: imported, skipped_rows: chunkErrors * CHUNK,
       completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      ...((timedOut || rateLimitPaused) ? { paused_at: new Date().toISOString(), cancel_reason: `${rateLimitPaused ? 'Rate limited' : 'Time limit'}. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
     });
 
     try {
@@ -397,7 +410,7 @@ Deno.serve(async (req) => {
       records_validated: allRecords.length, records_rejected: totalInvalid, records_in_range: recordsToProcess.length,
       imported, chunk_errors: chunkErrors, validation_warnings: totalWarnings, validation_rule_summary: ruleSummary,
       elapsed_ms: elapsed(),
-      ...(timedOut ? { timed_out: true, resume_offset: effectiveOffset + imported, remaining: recordsToProcess.length - imported, hint: `Re-run with row_offset=${effectiveOffset + imported}` } : {}),
+      ...((timedOut || rateLimitPaused) ? { timed_out: timedOut, rate_limited: rateLimitPaused, resume_offset: effectiveOffset + imported, remaining: recordsToProcess.length - imported, hint: `Re-run with row_offset=${effectiveOffset + imported}` } : {}),
       ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
     });
 

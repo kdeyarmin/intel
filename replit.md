@@ -81,10 +81,13 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `CriticalFailureAlerts.jsx` reads both `message` and `detail` fields from error_samples, plus `cancel_reason` as fallback
 
 ### Numeric Field Clamping (Out of Range Protection)
-- All 4 Medicare ZIP importers (`importMedicareHHA`, `importMedicareMAInpatient`, `importMedicarePartD`, `importMedicareSNF`) and `autoImportCMSData` have `clampNumericFields()` applied before database writes
-- Numeric values are clamped to Int32 range (−2,147,483,647 to 2,147,483,647) to prevent "Out of Range" database errors
+- All 4 Medicare ZIP importers and `autoImportCMSData` have `clampNumericFields()` applied before database writes
+- **Financial fields** (charges, payments, costs, spending) use float range (max ~999 billion) to accommodate national-level Medicare financial data
+- **Count/integer fields** (visits, stays, persons) use Int32 range (max ~2.14 billion)
 - String values are truncated to 500 chars max
-- In `importMedicareHHA.ts`, there is also a separate `FIELD_LIMITS` + `clampRecord()` system with per-field limits
+- `raw_data` JSON stores all values as strings to prevent numeric overflow in JSON serialization
+- HHA importer also has field-aware `safeNum(val, isFinancial)` that clamps at parse time
+- Rate-limit resilience: imports pause (status='paused') after 3 consecutive rate limit failures instead of continuing to error; inter-chunk delay 1200ms; resumable from saved offset
 
 ### Dashboard Stats
 - `getDashboardStats.ts` paginates through all entity records for exact counts (no more 500-record caps)
