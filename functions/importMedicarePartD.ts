@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
 
-  const LATEST_YEAR = 2023;
+  const LATEST_YEAR = 2023; // force reload
   const requestedYear = parseInt(payload.year || LATEST_YEAR);
   const year = requestedYear;
 
