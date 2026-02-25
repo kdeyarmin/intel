@@ -89,6 +89,20 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+function clampNumericFields(record) {
+  const MAX_INT = 2147483647;
+  for (const key of Object.keys(record)) {
+    if (typeof record[key] === 'number') {
+      if (record[key] > MAX_INT) record[key] = MAX_INT;
+      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+    }
+    if (typeof record[key] === 'string' && record[key].length > 500) {
+      record[key] = record[key].substring(0, 500);
+    }
+  }
+  return record;
+}
+
 function mapSNFRow(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
@@ -242,7 +256,7 @@ Deno.serve(async (req) => {
             }); 
         }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
-        if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
+        if (v.valid) { clampNumericFields(record); allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
       sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
     }

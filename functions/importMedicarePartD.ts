@@ -81,6 +81,20 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+function clampNumericFields(record) {
+  const MAX_INT = 2147483647;
+  for (const key of Object.keys(record)) {
+    if (typeof record[key] === 'number') {
+      if (record[key] > MAX_INT) record[key] = MAX_INT;
+      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+    }
+    if (typeof record[key] === 'string' && record[key].length > 500) {
+      record[key] = record[key].substring(0, 500);
+    }
+  }
+  return record;
+}
+
 function classifyPartDTable(sheetName) {
   const name = sheetName.toUpperCase().replace(/\s+/g, ' ');
   for (let i = 11; i >= 1; i--) { if (name.includes(`D ${i}`) || name.includes(`D${i}`) || name.includes(`TABLE ${i}`)) return `D${i}`; }
@@ -185,7 +199,7 @@ Deno.serve(async (req) => {
         const v = validateRecord(record, row._rowIndex, sheetName);
         for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
-        if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
+        if (v.valid) { clampNumericFields(record); allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
       sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
     }

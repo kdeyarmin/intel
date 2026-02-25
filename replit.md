@@ -63,6 +63,12 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - Failed/paused batches can be resumed from where they left off via the Resume button (uses `resume_offset`/`row_offset`)
 - Records committed before a failure remain in the database; resume skips already-processed rows
 
+### Numeric Field Clamping (Out of Range Protection)
+- All 4 Medicare ZIP importers (`importMedicareHHA`, `importMedicareMAInpatient`, `importMedicarePartD`, `importMedicareSNF`) and `autoImportCMSData` have `clampNumericFields()` applied before database writes
+- Numeric values are clamped to Int32 range (−2,147,483,647 to 2,147,483,647) to prevent "Out of Range" database errors
+- String values are truncated to 500 chars max
+- In `importMedicareHHA.ts`, there is also a separate `FIELD_LIMITS` + `clampRecord()` system with per-field limits
+
 ### Dashboard Stats
 - `getDashboardStats.ts` paginates through all entity records for exact counts (no more 500-record caps)
 - `DatabaseOverview.jsx` displays exact numbers without the "+" estimated indicator

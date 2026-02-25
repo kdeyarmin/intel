@@ -419,6 +419,20 @@ Deno.serve(async (req) => {
     }
 });
 
+function clampNumericFields(record) {
+  const MAX_INT = 2147483647;
+  for (const key of Object.keys(record)) {
+    if (typeof record[key] === 'number') {
+      if (record[key] > MAX_INT) record[key] = MAX_INT;
+      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+    }
+    if (typeof record[key] === 'string' && record[key].length > 500) {
+      record[key] = record[key].substring(0, 500);
+    }
+  }
+  return record;
+}
+
 // === MAPPERS: Transform raw API rows to entity fields ===
 
 function mapRowToEntity(row, importType, year) {
@@ -813,7 +827,7 @@ async function importChunk(base44, importType, records, startTime) {
 
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
-        const chunk = records.slice(i, i + BULK_SIZE);
+        const chunk = records.slice(i, i + BULK_SIZE).map(r => clampNumericFields({...r}));
         let success = false;
 
         for (let attempt = 0; attempt < 4; attempt++) {

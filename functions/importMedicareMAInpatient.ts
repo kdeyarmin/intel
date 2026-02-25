@@ -69,6 +69,20 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+function clampNumericFields(record) {
+  const MAX_INT = 2147483647;
+  for (const key of Object.keys(record)) {
+    if (typeof record[key] === 'number') {
+      if (record[key] > MAX_INT) record[key] = MAX_INT;
+      if (record[key] < -MAX_INT) record[key] = -MAX_INT;
+    }
+    if (typeof record[key] === 'string' && record[key].length > 500) {
+      record[key] = record[key].substring(0, 500);
+    }
+  }
+  return record;
+}
+
 // ============================================================
 // Validation Rules
 // ============================================================
@@ -421,7 +435,7 @@ Deno.serve(async (req) => {
             addError('mapping', record._errorMsg, { sheet: sheetName, table: tableName, row_index: i });
             continue;
           }
-          if (record.category) { allRecords.push(record); rowCount++; }
+          if (record.category) { clampNumericFields(record); allRecords.push(record); rowCount++; }
         }
         console.log(`[parse] ${sheetName} -> ${tableName}: ${rowCount} valid rows, ${sheetRowErrors} errors`);
         sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount, errors: sheetRowErrors });

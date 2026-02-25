@@ -79,6 +79,45 @@ function safeNum(val) {
   return isNaN(num) ? null : num;
 }
 
+const FIELD_LIMITS = {
+  persons_served: { min: 0, max: 2147483647 },
+  total_visits: { min: 0, max: 2147483647 },
+  total_episodes: { min: 0, max: 2147483647 },
+  total_charges: { min: 0, max: 2147483647 },
+  program_payments: { min: 0, max: 2147483647 },
+  payment_per_person: { min: 0, max: 2147483647 },
+  visits_per_person: { min: 0, max: 2147483647 },
+  skilled_nursing_visits: { min: 0, max: 2147483647 },
+  pt_visits: { min: 0, max: 2147483647 },
+  ot_visits: { min: 0, max: 2147483647 },
+  speech_therapy_visits: { min: 0, max: 2147483647 },
+  home_health_aide_visits: { min: 0, max: 2147483647 },
+  medical_social_service_visits: { min: 0, max: 2147483647 },
+  data_year: { min: 1900, max: 2100 },
+};
+
+function clampRecord(record) {
+  for (const [field, limits] of Object.entries(FIELD_LIMITS)) {
+    if (record[field] != null) {
+      if (record[field] > limits.max) record[field] = limits.max;
+      if (record[field] < limits.min) record[field] = limits.min;
+    }
+  }
+  if (record.category && record.category.length > 500) {
+    record.category = record.category.substring(0, 500);
+  }
+  if (record.state && record.state.length > 10) {
+    record.state = record.state.substring(0, 10);
+  }
+  if (record.agency_type && record.agency_type.length > 500) {
+    record.agency_type = record.agency_type.substring(0, 500);
+  }
+  if (record.control_type && record.control_type.length > 500) {
+    record.control_type = record.control_type.substring(0, 500);
+  }
+  return record;
+}
+
 function mapRowToRecord(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
@@ -279,7 +318,7 @@ Deno.serve(async (req) => {
             }); 
         }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
-        if (v.valid) { allRecords.push(record); sheetValid++; } else { totalInvalid++; sheetInvalid++; }
+        if (v.valid) { clampRecord(record); allRecords.push(record); sheetValid++; } else { totalInvalid++; sheetInvalid++; }
       }
       sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sheetValid, invalid: sheetInvalid, skipped_spacers: sheetSkipped });
     }
