@@ -37,3 +37,8 @@ externalPort = 80
 deploymentTarget = "static"
 build = ["npm", "run", "build"]
 publicDir = "dist"
+
+[userenv]
+
+[userenv.shared]
+VITE_BASE44_APP_BASE_URL = "https://base44.app"
