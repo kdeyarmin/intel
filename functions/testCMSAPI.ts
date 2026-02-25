@@ -2,11 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
-    const url = 'https://data.cms.gov/data-api/v1/dataset/search?title=Medicare%20Part%20D';
+    const url = 'https://data.cms.gov/data.json';
     const resp = await fetch(url);
-    const json = await resp.json().catch(() => ({ error: 'not json', text: resp.statusText }));
+    const text = await resp.text();
+    const data = JSON.parse(text);
     
-    return Response.json({ status: resp.status, data: json });
+    const results = data.dataset.filter(d => 
+        (d.title.includes('Medicare Part D') || d.title.includes('CPS MDCR')) && 
+        d.distribution && d.distribution.some(dist => dist.downloadURL?.endsWith('.zip'))
+    ).map(d => ({
+        title: d.title,
+        zips: d.distribution.filter(dist => dist.downloadURL?.endsWith('.zip')).map(dist => dist.downloadURL)
+    }));
+    
+    return Response.json({ count: results.length, matches: results.slice(0, 10) });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
