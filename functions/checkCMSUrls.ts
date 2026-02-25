@@ -36,14 +36,16 @@ Deno.serve(async (req) => {
         if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         const results = [];
+        
+        console.log('Downloading data.json...');
+        const resp = await fetch('https://data.cms.gov/data.json');
+        if (!resp.ok) throw new Error(`data.json fetch failed: ${resp.status}`);
+        const data = await resp.json();
+        console.log(`Downloaded data.json with ${data.dataset?.length || 0} datasets.`);
 
         for (const target of TARGETS) {
             try {
                 console.log(`Searching data.json for ${target.label}...`);
-                const resp = await fetch('https://data.cms.gov/data.json');
-                if (!resp.ok) throw new Error(`data.json fetch failed: ${resp.status}`);
-                
-                const data = await resp.json();
                 let foundUrl = null;
                 const candidates = [];
 
