@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
         const validTypes = [
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
-            'provider_service_utilization',
+            'provider_service_utilization', 'cms_part_d',
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -511,6 +511,26 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'cms_part_d') {
+            const npi = row['Prscrbr_NPI'] || row['prscrbr_npi'] || row['NPI'] || row['npi'];
+            if (!npi || !validateNPI(npi)) return null;
+            return {
+                npi: String(npi).trim(),
+                last_name: row['Prscrbr_Last_Org_Name'] || row['Last Name'] || '',
+                first_name: row['Prscrbr_First_Name'] || row['First Name'] || '',
+                city: row['Prscrbr_City'] || row['City'] || '',
+                state: row['Prscrbr_State_Abrvtn'] || row['State'] || '',
+                specialty: row['Prscrbr_Type'] || row['Specialty'] || '',
+                drug_name: row['Brnd_Name'] || row['Drug Name'] || '',
+                generic_name: row['Gnrc_Name'] || row['Generic Name'] || '',
+                total_claims: safeNum(row['Tot_Clms'] || row['Total Claims']),
+                total_drug_cost: safeNum(row['Tot_Drug_Cst'] || row['Total Drug Cost']),
+                total_beneficiaries: safeNum(row['Tot_Benes'] || row['Total Medicare Beneficiaries']),
+                total_day_supply: safeNum(row['Tot_Day_Suply'] || row['Total Day Supply']),
+                data_year: parseInt(year),
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -524,6 +544,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'home_health_enrollments') return mapped.enrollment_id || null;
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
+    if (importType === 'cms_part_d') return mapped.npi ? `${mapped.npi}_${mapped.drug_name}_${mapped.data_year}` : null;
     return null;
 }
 
@@ -564,6 +585,7 @@ async function importChunk(base44, importType, records, startTime) {
         'hospice_enrollments': 'HospiceEnrollment',
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',
+        'cms_part_d': 'PartDPrescriber',
     };
 
     const entityName = entityMap[importType];

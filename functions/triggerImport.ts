@@ -17,6 +17,8 @@ const IMPORT_TYPE_URLS = {
   home_health_enrollments: 'https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data',
   // Hospice Enrollments
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
+  // Part D Prescriber (NPI-level prescription claims)
+  cms_part_d: 'https://data.cms.gov/data-api/v1/dataset/4e0e6415-e6bf-4e42-8e07-a29f90c23ded/data',
 };
 
 Deno.serve(async (req) => {

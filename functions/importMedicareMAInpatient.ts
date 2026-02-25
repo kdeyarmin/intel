@@ -306,6 +306,7 @@ Deno.serve(async (req) => {
     file_url: downloadUrl,
     status: 'processing',
     dry_run,
+    data_year: year,
     retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
   });
 

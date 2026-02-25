@@ -23,13 +23,14 @@ const AVAILABLE_YEARS = {
   medicare_ma_inpatient: [2023, 2022, 2021, 2020],
   medicare_part_d_stats: [2023, 2022, 2021, 2020],
   medicare_snf_stats: [2023, 2022, 2021, 2020],
+  cms_part_d: [2022, 2021, 2020, 2019],
 };
 
 const IMPORT_TYPES = [
   { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, hasUrl: false },
   { id: 'nppes_registry', name: 'NPPES Registry', desc: 'Full NPI registry', icon: FileText, hasUrl: false },
   { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, hasUrl: false },
-  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: false },
+  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: true },
   { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, hasUrl: true },
   { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
   { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
