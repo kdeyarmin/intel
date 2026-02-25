@@ -20,7 +20,8 @@ A React/Vite frontend application built on the Base44 SDK for provider intellige
 
 ## Configuration
 - Vite dev server: `0.0.0.0:5000`, `allowedHosts: true` (required for Replit proxy)
-- Base44 App ID configured via `VITE_BASE44_APP_ID` environment variable
+- Base44 App ID configured via `VITE_BASE44_APP_ID` environment variable (set as env var, not just a secret)
+- Base44 API proxy: `VITE_BASE44_APP_BASE_URL` must be set to `https://base44.app` for the Vite dev proxy to route `/api` calls to the Base44 backend (handled by `@base44/vite-plugin`)
 - Deployment: Static site (build: `npm run build`, publicDir: `dist`)
 
 ## Running the App
