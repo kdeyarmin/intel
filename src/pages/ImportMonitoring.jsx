@@ -102,6 +102,8 @@ export default function ImportMonitoring() {
   const [sortBy, setSortBy] = useState('created_date_desc');
   const [importTypeFilter, setImportTypeFilter] = useState('');
   const [errorReportBatch, setErrorReportBatch] = useState(null);
+  const [isPurging, setIsPurging] = useState(false);
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -396,6 +398,22 @@ export default function ImportMonitoring() {
     return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
 
+  const handlePurgeAll = async () => {
+    setIsPurging(true);
+    try {
+      const toDelete = batches.filter(b => b.status === 'error' || b.status === 'completed');
+      for (const batch of toDelete) {
+        await base44.entities.ImportBatch.delete(batch.id);
+      }
+      await refreshBatches();
+    } catch (e) {
+      console.error('Purge failed:', e);
+    } finally {
+      setIsPurging(false);
+      setShowPurgeConfirm(false);
+    }
+  };
+
   const formatTimestamp = (ts) => {
     if (!ts) return 'N/A';
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -417,6 +435,14 @@ export default function ImportMonitoring() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div />
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => setShowPurgeConfirm(true)}
+            variant="outline"
+            className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30 hover:text-red-300"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Purge Done/Errors
+          </Button>
           <Button
             onClick={() => setShowExport(true)}
             variant="outline"
@@ -1033,6 +1059,34 @@ export default function ImportMonitoring() {
         open={showExport}
         onOpenChange={setShowExport}
       />
+
+      {/* Purge Confirmation Dialog */}
+      <Dialog open={showPurgeConfirm} onOpenChange={setShowPurgeConfirm}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-red-400">Purge Completed & Error Batches</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will permanently delete all import batches with status "completed" or "error".
+              Running and pending batches will not be affected.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-slate-300">
+              Found <span className="font-bold text-red-400">{batches.filter(b => b.status === 'error').length}</span> error
+              {' '}and <span className="font-bold text-green-400">{batches.filter(b => b.status === 'completed').length}</span> completed batches to delete.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPurgeConfirm(false)} className="bg-transparent border-slate-600 text-slate-300">
+              Cancel
+            </Button>
+            <Button onClick={handlePurgeAll} disabled={isPurging} className="bg-red-600 hover:bg-red-700 text-white">
+              {isPurging ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              {isPurging ? 'Deleting...' : 'Delete All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
