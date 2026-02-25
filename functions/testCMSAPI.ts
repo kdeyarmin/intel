@@ -7,8 +7,15 @@ Deno.serve(async (req) => {
     const text = await resp.text();
     const data = JSON.parse(text);
     
+    const targets = [
+        'Medicare Skilled Nursing Facility',
+        'Medicare Home Health Agency',
+        'Medicare Advantage-Inpatient Hospital',
+        'Medicare Advantage Inpatient Hospital'
+    ];
+    
     const results = data.dataset.filter(d => 
-        (d.title.includes('Medicare Part D') || d.title.includes('CPS MDCR')) && 
+        targets.some(t => d.title.includes(t)) && 
         d.distribution && d.distribution.some(dist => dist.downloadURL?.endsWith('.zip'))
     ).map(d => ({
         title: d.title,
