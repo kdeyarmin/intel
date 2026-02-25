@@ -17,6 +17,7 @@ import ColumnMapper from './ColumnMapper';
 import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from './columnMappingAI';
 import AIBatchCategorizer from './AIBatchCategorizer';
 import AICleaningSuggestions from './AICleaningSuggestions';
+import { invokeWithRetry } from '@/utils';
 import NPPESFlatFileHelper from './NPPESFlatFileHelper';
 
 function parseCSVLine(line) {
@@ -227,8 +228,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
       setLiveBatchId(batch.id);
       setProcessingStatus('Validating file in background...');
 
-      // Fire validation + import in background — don't await
-      base44.functions.invoke('triggerImport', {
+      invokeWithRetry(base44, 'triggerImport', {
         import_type: selectedType.id,
         file_url: fileUrl,
         dry_run: dryRun,

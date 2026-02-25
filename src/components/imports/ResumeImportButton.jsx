@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Loader2, RefreshCw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { invokeWithRetry } from '@/utils';
 
 export default function ResumeImportButton({ batch, onResumed }) {
   const [loading, setLoading] = useState(false);
@@ -29,8 +30,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
         } catch (_) { /* best-effort */ }
       }
       
-      // Call backend to resume
-      await base44.functions.invoke('triggerImport', {
+      await invokeWithRetry(base44, 'triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url,
         year: batch.data_year || 2023,
@@ -38,6 +38,8 @@ export default function ResumeImportButton({ batch, onResumed }) {
         row_offset: offset,
         dry_run: batch.dry_run,
         retry_of: batch.id,
+      }, {
+        onRetry: (msg) => toast.info(msg),
       });
 
       toast.success(`Resuming import from row ${offset.toLocaleString()}`);

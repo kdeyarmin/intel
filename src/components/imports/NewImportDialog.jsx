@@ -12,6 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
+import { invokeWithRetry } from '@/utils';
 
 const AVAILABLE_YEARS = {
   cms_order_referring: [2023, 2022, 2021, 2020, 2019],
@@ -142,7 +143,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       if (rowLimit) invokeParams.row_limit = Number(rowLimit);
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
 
-      const response = await base44.functions.invoke('triggerImport', invokeParams);
+      const response = await invokeWithRetry(base44, 'triggerImport', invokeParams, {
+        onRetry: (msg) => setError(msg),
+      });
+      setError(null);
       setResult({ success: true, data: response.data });
       setStep(3);
     } catch (e) {

@@ -10,6 +10,7 @@ import {
   AlertTriangle, ChevronDown, ChevronRight, Sparkles, X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { invokeWithRetry } from '@/utils';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage, groupErrors } from './errorCategories';
 
 const IMPORT_TYPE_LABELS = {
@@ -79,7 +80,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
       const batch = failedBatches.find(b => b.id === batchId);
       if (!batch) continue;
       try {
-        await base44.functions.invoke('triggerImport', {
+        await invokeWithRetry(base44, 'triggerImport', {
           import_type: batch.import_type,
           file_url: batch.file_url || undefined,
           dry_run: false,

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Upload, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { invokeWithRetry } from '@/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ImportWizardAccordion from '../imports/ImportWizardAccordion';
@@ -37,7 +38,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
     setProcessing(true);
     setProcessingStatus('Starting import...');
     try {
-      const res = await base44.functions.invoke('triggerImport', {
+      const res = await invokeWithRetry(base44, 'triggerImport', {
         import_type: selectedType.id,
         dry_run: false,
       });

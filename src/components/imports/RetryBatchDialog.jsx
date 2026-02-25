@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, AlertCircle, Filter, Rows3, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { invokeWithRetry } from '@/utils';
 
 export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted, presets }) {
   const [retryMode, setRetryMode] = useState('full');
@@ -102,7 +103,9 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
       if (skipValidation) invokeParams.skip_validation = true;
 
-      await base44.functions.invoke('triggerImport', invokeParams);
+      await invokeWithRetry(base44, 'triggerImport', invokeParams, {
+        onRetry: (msg) => toast.info(msg),
+      });
 
       // Log the retry as an audit event
       try {

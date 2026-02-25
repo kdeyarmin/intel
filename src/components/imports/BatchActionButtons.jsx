@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Pause, StopCircle, RefreshCw, Loader2, SkipForward } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { invokeWithRetry } from '@/utils';
 
 export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -40,13 +41,12 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
         paused_at: null,
       });
 
-      // Trigger resumption
-      await base44.functions.invoke('triggerImport', {
+      await invokeWithRetry(base44, 'triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url,
         batch_id: batch.id,
         resume_offset: offset,
-        year: batch.data_year // Ensure year is passed if available
+        year: batch.data_year,
       });
       
       onAction?.();

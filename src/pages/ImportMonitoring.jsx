@@ -12,7 +12,7 @@ import {
   Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import { createPageUrl, invokeWithRetry } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
@@ -201,7 +201,7 @@ export default function ImportMonitoring() {
     let skipCount = 0;
     for (const batch of toRetry) {
       try {
-        await base44.functions.invoke('triggerImport', {
+        await invokeWithRetry(base44, 'triggerImport', {
           import_type: batch.import_type,
           file_url: batch.file_url || undefined,
           dry_run: false,

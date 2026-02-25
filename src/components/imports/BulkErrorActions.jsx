@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeWithRetry } from '@/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
     const maxRow = rows.length > 0 ? Math.max(...rows) : undefined;
 
     try {
-      await base44.functions.invoke('triggerImport', {
+      await invokeWithRetry(base44, 'triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url || undefined,
         dry_run: false,
