@@ -75,6 +75,12 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
 }
 
 export default function ImportWizardAccordion({ selectedType, onReset, onComplete, compact = false }) {
+  // Find the exact selected type to get the downloadUrl if it exists
+  const downloadUrl = React.useMemo(() => {
+    // Look it up from the IMPORT_CATEGORIES in ImportCategoryCards since that's where we added them
+    // or we can pass it down. But selectedType already has everything ImportTypeSelector provides.
+    return selectedType?.downloadUrl;
+  }, [selectedType]);
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -272,7 +278,15 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         <StepHeader
           number={1}
           title="Upload File"
-          subtitle={fileStep === STEP_DONE ? file?.name : 'Upload CSV, Excel, or JSON file'}
+          subtitle={
+            fileStep === STEP_DONE 
+              ? file?.name 
+              : downloadUrl ? (
+                <span className="flex items-center gap-1 text-slate-500">
+                  Upload CSV, Excel, or JSON file. <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline" onClick={e => e.stopPropagation()}>Download source data here.</a>
+                </span>
+              ) : 'Upload CSV, Excel, or JSON file'
+          }
           status={fileStep}
           expanded={fileExpanded}
           onClick={() => fileStep !== STEP_PENDING && setFileExpanded(!fileExpanded)}
