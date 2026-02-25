@@ -57,11 +57,7 @@ Deno.serve(async (req) => {
             try {
                 if (!p.npi) continue; // Skip if still no NPI
 
-                // Invoke the existing enrichment API logic (we can't call the endpoint easily from here without full URL, 
-                // so we'll reimplement the core logic or assume we can invoke it if it was a function. 
-                // Since providerEnrichmentApi is a function, let's use base44.functions.invoke)
-                
-                const enrichmentRes = await base44.functions.invoke('providerEnrichmentApi', { npi: p.npi });
+                const enrichmentRes = await base44.functions.invoke('enrichProviderWithAI', { npi: p.npi });
                 
                 if (enrichmentRes.data && enrichmentRes.data.ai_enrichment_suggestions) {
                     const suggestions = enrichmentRes.data.ai_enrichment_suggestions;

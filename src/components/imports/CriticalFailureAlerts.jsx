@@ -5,22 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, XCircle, Clock, ChevronRight, Trash2, Loader2, X } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES } from './errorCategories';
 import { base44 } from '@/api/base44Client';
-
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring', 'opt_out_physicians': 'Opt-Out Physicians',
-  'hospice_enrollments': 'Hospice Enrollments',
-  'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
-  'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
-  'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
-  'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
-  'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
-  'medicare_snf_stats': 'Medicare SNF Stats',
-  'hospital_general_info': 'Hospital General Info', 'nursing_home_compare': 'Nursing Home Compare',
-  'home_health_compare': 'Home Health Compare', 'dmepos_suppliers': 'DMEPOS Suppliers',
-  'medicare_inpatient_charges': 'Inpatient Charges', 'medicare_outpatient_charges': 'Outpatient Charges',
-};
+import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
 
 export default function CriticalFailureAlerts({ batches, onViewErrors, onRefresh }) {
   const [isDismissing, setIsDismissing] = useState(false);

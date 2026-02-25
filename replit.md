@@ -97,6 +97,16 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `has_more` logic: based on actual `totalEligibleRemaining` count + `reachedEndOfProviders` flag — no false-negative stops
 
 ### URL Monitoring
-- `checkCMSUrls.ts` - Scans CMS data.json for updated dataset URLs
-- `checkPartDUrl.ts` - Probes Part D URL variants
-- `checkSNFUrls.ts` - Probes SNF URL variants
+- `checkCMSUrls.ts` - Consolidated CMS URL monitor: primary lookup via data.json catalog, with brute-force URL pattern probing as fallback for Part D and SNF datasets
+
+### Provider Enrichment (consolidated)
+- `enrichProviderData.ts` - NPPES Registry API lookup (demographics, locations, taxonomies)
+- `enrichProviderWithAI.ts` - Unified AI enrichment: supports single provider (by ID), NPI-based lookup (DB + NPPES + AI), and batch mode with EnrichmentRecord creation
+- `autoEnrichProvider.ts` - Event-triggered wrapper (on provider create), calls enrichProviderWithAI
+- `autoEnrichmentAgent.ts` - Background agent for providers with missing NPIs or pending enrichment
+- `batchEnrichExternalData.ts` - Batch orchestrator for Medicare + DEA enrichment
+- `enrichProviderMedicareData.ts` - Medicare Provider Compare API
+- `enrichProviderDEAData.ts` - DEA Registry lookup
+
+### Shared Constants
+- `src/constants/importTypes.js` - Single source of truth for IMPORT_TYPE_LABELS (27 types), IMPORT_TYPE_SHORT_LABELS, and IMPORT_TYPES list (with icons/descriptions for NewImportDialog)

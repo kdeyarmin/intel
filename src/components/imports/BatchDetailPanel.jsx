@@ -14,19 +14,7 @@ import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
 import AIFailureAnalysis from './AIFailureAnalysis';
-
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring', 'pa_home_health': 'PA Home Health',
-  'hospice_providers': 'Hospice Providers', 'nursing_home_chains': 'Nursing Home Chains',
-  'hospice_enrollments': 'Hospice Enrollments', 'home_health_enrollments': 'Home Health Enrollments',
-  'home_health_cost_reports': 'Home Health Cost Reports', 'cms_service_utilization': 'Service Utilization',
-  'provider_service_utilization': 'Provider Service Utilization', 'home_health_pdgm': 'Home Health PDGM',
-  'inpatient_drg': 'Inpatient DRG', 'provider_ownership': 'Provider Ownership',
-  'medicare_hha_stats': 'Medicare HHA Stats', 'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_part_d_stats': 'Medicare Part D Stats', 'medicare_snf_stats': 'Medicare SNF Stats',
-};
+import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
 
 const statusColors = {
   processing: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',

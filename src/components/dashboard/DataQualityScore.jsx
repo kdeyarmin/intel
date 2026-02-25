@@ -6,31 +6,31 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
 
 export default function DataQualityScore() {
-  const { data: issues, isLoading } = useQuery({
-    queryKey: ['dataQualityValidation'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('validateDataQuality', {});
-      return res.data;
-    },
-    staleTime: 300000, // 5 minutes
-    refetchInterval: 600000, // 10 minutes
+  const { data: scans, isLoading } = useQuery({
+    queryKey: ['dataQualityScanLatest'],
+    queryFn: () => base44.entities.DataQualityScan.list('-created_date', 1),
+    staleTime: 300000,
+    refetchInterval: 600000,
   });
 
+  const latestScan = scans?.[0];
+  const scores = latestScan?.scores;
+
   const scoreColor = useMemo(() => {
-    if (!issues?.summary) return 'text-gray-400';
-    const score = issues.summary.qualityScore;
+    if (!scores?.overall && scores?.overall !== 0) return 'text-gray-400';
+    const score = scores.overall;
     if (score >= 90) return 'text-emerald-400';
     if (score >= 70) return 'text-amber-400';
     return 'text-red-400';
-  }, [issues]);
+  }, [scores]);
 
   const scoreBackgroundColor = useMemo(() => {
-    if (!issues?.summary) return 'from-gray-600 to-gray-700';
-    const score = issues.summary.qualityScore;
+    if (!scores?.overall && scores?.overall !== 0) return 'from-gray-600 to-gray-700';
+    const score = scores.overall;
     if (score >= 90) return 'from-emerald-600 to-emerald-700';
     if (score >= 70) return 'from-amber-600 to-amber-700';
     return 'from-red-600 to-red-700';
-  }, [issues]);
+  }, [scores]);
 
   if (isLoading) {
     return (
@@ -48,17 +48,18 @@ export default function DataQualityScore() {
     );
   }
 
-  if (!issues?.summary) {
+  if (!scores) {
     return null;
   }
 
-  const issuesList = [
-    { label: 'Missing Required Fields', count: issues.providers.missingRequired.length + issues.locations.missingRequired.length, type: 'error' },
-    { label: 'Invalid NPI Format', count: issues.providers.invalidNPI.length, type: 'error' },
-    { label: 'Invalid Phone Format', count: issues.providers.invalidPhone.length + issues.locations.invalidPhone.length, type: 'warning' },
-    { label: 'Missing City/State', count: issues.locations.missingCity.length + issues.locations.missingState.length, type: 'warning' },
-    { label: 'Duplicate NPIs', count: issues.providers.duplicateNPIs.length, type: 'error' },
-  ].filter(i => i.count > 0);
+  const ruleResults = latestScan?.rule_results || [];
+  const issuesList = ruleResults
+    .filter(r => r.failing > 0)
+    .map(r => ({
+      label: r.rule_name,
+      count: r.failing,
+      type: r.category === 'accuracy' || r.category === 'duplicate' ? 'error' : 'warning',
+    }));
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
@@ -69,17 +70,15 @@ export default function DataQualityScore() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Score Display */}
         <div className={`bg-gradient-to-r ${scoreBackgroundColor} rounded-lg p-6 text-center`}>
           <div className={`text-5xl font-bold ${scoreColor} mb-1`}>
-            {issues.summary.qualityScore}%
+            {scores.overall}%
           </div>
           <p className="text-sm text-slate-300">
-            {issues.summary.totalProviders} providers, {issues.summary.totalLocations} locations
+            {latestScan.total_records_scanned || 0} records scanned
           </p>
         </div>
 
-        {/* Issues List */}
         {issuesList.length > 0 ? (
           <div className="space-y-2">
             <p className="text-xs text-slate-400 font-semibold">Areas Needing Attention:</p>
@@ -106,9 +105,8 @@ export default function DataQualityScore() {
           </div>
         )}
 
-        {/* Summary */}
         <div className="text-xs text-slate-400 pt-2 border-t border-slate-700">
-          <p>Total Issues: <span className="font-semibold text-slate-300">{issues.summary.totalIssues}</span></p>
+          <p>Alerts Generated: <span className="font-semibold text-slate-300">{latestScan.alerts_generated || 0}</span></p>
         </div>
       </CardContent>
     </Card>

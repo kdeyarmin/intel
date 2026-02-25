@@ -6,13 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-  Upload, FileText, Database, TrendingUp, Activity,
+  Upload, FileText,
   Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus, Settings
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
 import { invokeWithRetry } from '@/utils';
+import { IMPORT_TYPES } from '@/constants/importTypes';
 
 const AVAILABLE_YEARS = {
   cms_order_referring: [2023, 2022, 2021, 2020, 2019],
@@ -27,29 +28,6 @@ const AVAILABLE_YEARS = {
   medicare_inpatient_charges: [2023, 2022, 2021, 2020],
   medicare_outpatient_charges: [2023, 2022, 2021, 2020],
 };
-
-const IMPORT_TYPES = [
-  { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, hasUrl: false },
-  { id: 'nppes_registry', name: 'NPPES Registry', desc: 'Full NPI registry', icon: FileText, hasUrl: false },
-  { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, hasUrl: false },
-  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: true },
-  { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, hasUrl: true },
-  { id: 'opt_out_physicians', name: 'Opt-Out Physicians', desc: 'Physicians who opted out of Medicare', icon: Database, hasUrl: true },
-  { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
-  { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
-  { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, hasUrl: true },
-  { id: 'hospital_general_info', name: 'Hospital General Info', desc: 'Hospital locations, types & ratings', icon: Database, hasUrl: true },
-  { id: 'nursing_home_compare', name: 'Nursing Home Compare', desc: 'SNF quality ratings & staffing', icon: TrendingUp, hasUrl: true },
-  { id: 'home_health_compare', name: 'Home Health Compare', desc: 'HH quality & patient care ratings', icon: TrendingUp, hasUrl: true },
-  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, hasUrl: true },
-  { id: 'dmepos_suppliers', name: 'DMEPOS Suppliers', desc: 'DME supplier enrollment', icon: Database, hasUrl: true },
-  { id: 'medicare_inpatient_charges', name: 'Inpatient Charges', desc: 'Hospital DRG-level charges', icon: TrendingUp, hasUrl: true },
-  { id: 'medicare_outpatient_charges', name: 'Outpatient Charges', desc: 'Hospital APC-level charges', icon: TrendingUp, hasUrl: true },
-  { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, hasUrl: true },
-  { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
-  { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
-  { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, hasUrl: true },
-];
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
   const [step, setStep] = useState(1);

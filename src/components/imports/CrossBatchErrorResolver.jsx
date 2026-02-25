@@ -12,13 +12,7 @@ import {
 import { toast } from 'sonner';
 import { invokeWithRetry } from '@/utils';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage, groupErrors } from './errorCategories';
-
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'medicare_hha_stats': 'Medicare HHA Stats', 'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_part_d_stats': 'Medicare Part D Stats', 'medicare_snf_stats': 'Medicare SNF Stats',
-};
+import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
 
 export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
   const [selectedBatches, setSelectedBatches] = useState(new Set());

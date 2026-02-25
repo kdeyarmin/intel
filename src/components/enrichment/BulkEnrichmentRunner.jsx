@@ -57,7 +57,7 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
       const chunk = npis.slice(i, i + CHUNK_SIZE);
       setProgress({ current: i, total: npis.length });
 
-      const res = await base44.functions.invoke('enrichProviderThirdParty', {
+      const res = await base44.functions.invoke('enrichProviderWithAI', {
         npis: chunk,
         batch_size: chunk.length,
         auto_apply_high_confidence: autoApply,

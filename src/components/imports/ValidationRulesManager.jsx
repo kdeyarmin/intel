@@ -13,27 +13,9 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import ValidationRuleEditor from './ValidationRuleEditor';
 import AIRuleSuggestions from './AIRuleSuggestions';
+import { IMPORT_TYPE_LABELS as _IMPORT_TYPE_LABELS } from '@/constants/importTypes';
 
-const IMPORT_TYPE_LABELS = {
-  '_global': 'All Import Types (Global)',
-  'nppes_monthly': 'NPPES Monthly',
-  'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization',
-  'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring',
-  'provider_service_utilization': 'Provider Service Util',
-  'hospice_enrollments': 'Hospice Enrollments',
-  'home_health_enrollments': 'HH Enrollments',
-  'home_health_cost_reports': 'HH Cost Reports',
-  'nursing_home_chains': 'Nursing Home Chains',
-  'home_health_pdgm': 'HH PDGM',
-  'inpatient_drg': 'Inpatient DRG',
-  'provider_ownership': 'Provider Ownership',
-  'medicare_hha_stats': 'Medicare HHA Stats',
-  'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_part_d_stats': 'Medicare Part D Stats',
-  'medicare_snf_stats': 'Medicare SNF Stats',
-};
+const IMPORT_TYPE_LABELS = { '_global': 'All Import Types (Global)', ..._IMPORT_TYPE_LABELS };
 
 const RULE_TYPE_LABELS = {
   required: 'Required',
