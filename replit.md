@@ -58,11 +58,15 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `importNPPESFlatFile.ts` - Streaming CSV processor for NPPES flat files
 
 ### NPPES Crawler (nppesCrawler.ts)
+- **Wave-based state batching**: `STATE_WAVE_SIZE = 5` — only 5 states are queued at a time; when all 5 complete, the next wave of 5 is automatically queued
+- A master batch (`crawler_master_*`) tracks all target states, queued states, current wave states, and wave progress in `retry_params`
+- Wave progression is gated: next wave only starts when ALL current wave state batches are completed/failed (prevents premature queue flooding)
+- Only considers batches created after the master batch timestamp to avoid mixing with historical runs
 - `MAX_EXEC_MS = 45000` (45s) per worker invocation; workers self-re-invoke with `await` (not setTimeout) for reliable chaining
 - `batch_start` caps concurrency at 3, staggers worker launches by 2s to prevent rate-limit storms
 - Queue items with transient errors (429/timeout/network) auto-retry up to 5 times by being set back to `pending`
 - 500ms delay between NPPES API page fetches to reduce rate limiting
-- Frontend `BatchProcessPanel` polls every 15s for live batch status instead of treating initial response as final
+- Frontend `BatchProcessPanel` polls every 15s for live batch status, shows wave progress (Wave X/Y with state names)
 - Per-state results show Processing/Success/Failed badges with live updates
 
 ### Import Resilience

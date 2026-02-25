@@ -30,6 +30,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchStopping, setBatchStopping] = useState(false);
   const [batchResults, setBatchResults] = useState(null);
+  const [waveInfo, setWaveInfo] = useState(null);
   const [regionStates, setRegionStates] = useState({});
 
   useEffect(() => {
@@ -71,12 +72,19 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       const pending = s.pending || 0;
       const totalImported = s.totals?.imported || 0;
 
+      if (s.wave_info) {
+        setWaveInfo(s.wave_info);
+      }
+
       setBatchResults({
         success: true,
         states_queued: completed + failed + processing + pending,
         states_completed: completed,
         states_failed: failed,
         total_imported: totalImported,
+        current_wave: s.wave_info?.current_wave,
+        total_waves: s.wave_info?.total_waves,
+        wave_states: s.wave_info?.states_in_current_wave,
         results: [
           ...(s.completed_states || []).map(st => ({ state: st, success: true, imported_providers: 0 })),
           ...(s.failed_states || []).map(st => ({ state: st, success: false, error: 'Failed' })),
@@ -134,7 +142,19 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       setBatchResults(data);
 
       if (data.success) {
-        onLog?.(`Batch queued: ${data.states_queued} states. Workers started — polling for progress...`, 'info');
+        if (data.total_waves && data.total_waves > 1) {
+          setWaveInfo({
+            current_wave: data.current_wave || 1,
+            total_waves: data.total_waves,
+            wave_size: data.wave_states?.length || 5,
+            states_in_current_wave: data.wave_states || [],
+            total_target_states: data.total_states || 0,
+            queued_so_far: data.states_queued || 0,
+          });
+          onLog?.(`Batch queued: Wave 1/${data.total_waves} — ${data.states_queued} of ${data.total_states} states. Polling for progress...`, 'info');
+        } else {
+          onLog?.(`Batch queued: ${data.states_queued} states. Workers started — polling for progress...`, 'info');
+        }
         pollIntervalRef.current = setInterval(pollBatchStatus, 15000);
         setTimeout(pollBatchStatus, 5000);
       } else {
@@ -299,6 +319,16 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Batch processing in progress...</span>
               </div>
+              {waveInfo && waveInfo.total_waves > 1 && (
+                <div className="flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span className="font-medium">Wave {waveInfo.current_wave}/{waveInfo.total_waves}</span>
+                  <span className="text-indigo-400">—</span>
+                  <span>Processing: {(waveInfo.states_in_current_wave || []).join(', ')}</span>
+                  <span className="text-indigo-400">|</span>
+                  <span>{waveInfo.queued_so_far || 0}/{waveInfo.total_target_states || 0} states queued</span>
+                </div>
+              )}
               <Button
                 onClick={stopBatch}
                 disabled={batchStopping}
@@ -326,7 +356,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 Batch {batchResults.stopped ? 'Stopped' : 'Complete'}
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className={`grid grid-cols-2 ${batchResults.total_waves > 1 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3`}>
               <div className="text-center p-2 bg-white rounded-lg border">
                 <p className="text-lg font-bold text-slate-900">{batchResults.states_queued}</p>
                 <p className="text-[10px] text-slate-500">Queued</p>
@@ -343,7 +373,19 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 <p className="text-lg font-bold text-blue-600">{batchResults.total_imported?.toLocaleString()}</p>
                 <p className="text-[10px] text-slate-500">Imported</p>
               </div>
+              {batchResults.total_waves > 1 && (
+                <div className="text-center p-2 bg-white rounded-lg border">
+                  <p className="text-lg font-bold text-indigo-600">{batchResults.current_wave}/{batchResults.total_waves}</p>
+                  <p className="text-[10px] text-slate-500">Waves</p>
+                </div>
+              )}
             </div>
+            {batchResults.total_waves > 1 && batchResults.wave_states && batchResults.wave_states.length > 0 && (
+              <div className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                <span className="font-medium">Current Wave ({batchResults.current_wave}/{batchResults.total_waves}):</span>{' '}
+                {batchResults.wave_states.join(', ')}
+              </div>
+            )}
 
             {batchResults.results && batchResults.results.length > 0 && (
               <div className="max-h-48 overflow-y-auto space-y-1">

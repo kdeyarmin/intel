@@ -7,6 +7,7 @@ const US_STATES = [
 ];
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 const MAX_EXEC_MS = 45000;
+const STATE_WAVE_SIZE = 5;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -326,10 +327,27 @@ Deno.serve(async (req) => {
             }
         }
 
+        const masterBatch = crawlerBatches.find(b => b.file_name?.startsWith('crawler_master_') && b.status === 'processing');
+        let wave_info = null;
+        if (masterBatch) {
+            const rp = masterBatch.retry_params || {};
+            const queuedStates = rp.queued_states || [];
+            wave_info = {
+                current_wave: rp.current_wave || 1,
+                total_waves: rp.total_waves || 1,
+                wave_size: rp.state_wave_size || STATE_WAVE_SIZE,
+                states_in_current_wave: rp.current_wave_states || queuedStates.slice(0, rp.state_wave_size || STATE_WAVE_SIZE),
+                total_target_states: (rp.all_states || []).length,
+                queued_so_far: queuedStates.length,
+                master_batch_id: masterBatch.id,
+            };
+        }
+
         return Response.json({
             crawler_status,
             active_workers,
             granular_metrics,
+            wave_info,
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,
             completed_states: completedStates, failed_states: failedStates,
@@ -362,19 +380,51 @@ Deno.serve(async (req) => {
         }
         if (!targetStates || targetStates.length === 0) targetStates = US_STATES;
 
-        let queued = 0, skipped = 0;
-        for (const st of targetStates) {
-            if (skip_completed) {
-                const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
-                const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
-                if (stBatch && stBatch.status === 'completed') { skipped++; continue; }
+        let statesToProcess = [...targetStates];
+        let skipped = 0;
+        if (skip_completed) {
+            const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
+            const completedSet = new Set();
+            for (const b of existingBatches) {
+                if (b.status === 'completed' && b.file_name?.startsWith('crawler_')) {
+                    const st = b.file_name.split('_')[1];
+                    if (st && st.length <= 2) completedSet.add(st);
+                }
             }
-            
+            const before = statesToProcess.length;
+            statesToProcess = statesToProcess.filter(st => !completedSet.has(st));
+            skipped = before - statesToProcess.length;
+        }
+
+        if (statesToProcess.length === 0) {
+            return Response.json({ success: true, states_queued: 0, total_states: 0, skipped, message: 'All states already completed.' });
+        }
+
+        const totalWaves = Math.ceil(statesToProcess.length / STATE_WAVE_SIZE);
+        const firstWave = statesToProcess.slice(0, STATE_WAVE_SIZE);
+
+        const masterBatch = await base44.asServiceRole.entities.ImportBatch.create({
+            import_type: 'nppes_registry',
+            file_name: `crawler_master_${Date.now()}`,
+            status: 'processing',
+            retry_params: {
+                all_states: statesToProcess,
+                queued_states: [...firstWave],
+                current_wave_states: [...firstWave],
+                state_wave_size: STATE_WAVE_SIZE,
+                current_wave: 1,
+                total_waves: totalWaves,
+            },
+            dry_run: !!dry_run,
+        });
+
+        let queued = 0;
+        for (const st of firstWave) {
             const batch = await base44.asServiceRole.entities.ImportBatch.create({
                 import_type: 'nppes_registry',
                 file_name: `crawler_${st}_all_${Date.now()}`,
                 status: 'processing',
-                dry_run: !!dry_run
+                dry_run: !!dry_run,
             });
             const items = [];
             for (let i = 0; i <= 99; i++) {
@@ -385,12 +435,24 @@ Deno.serve(async (req) => {
         }
         
         const workers = Math.min(concurrency, 3);
-        for(let i=0; i<workers; i++) {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+        for (let i = 0; i < workers; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(() => {});
             await sleep(2000);
         }
         
-        return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
+        return Response.json({
+            success: true,
+            states_queued: queued,
+            total_states: statesToProcess.length,
+            states_completed: 0,
+            states_failed: 0,
+            total_imported: 0,
+            skipped,
+            current_wave: 1,
+            total_waves: totalWaves,
+            wave_states: firstWave,
+            master_batch_id: masterBatch.id,
+        });
     }
 
     if (action === 'batch_stop') {
@@ -464,34 +526,111 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
-                // Check if any batches are fully done
                 const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
                 let batchesClosed = 0;
                 for (const b of processingBatches) {
+                    if (b.file_name?.startsWith('crawler_master_')) continue;
                     const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
-                    // If no items found, it's an empty batch or error, verify if we should close it
-                    if (items.length === 0) {
-                        // Empty batch?
-                        continue;
-                    }
+                    if (items.length === 0) continue;
                     
                     const allDone = items.every(i => i.status === 'completed' || i.status === 'failed');
                     if (allDone) {
                         const hasErrors = items.some(i => i.status === 'failed');
                         await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
                         batchesClosed++;
-                        
-                        // Trigger automated data validation checks
                         base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
                     }
                 }
                 
+                const masterBatches = processingBatches.filter(b => b.file_name?.startsWith('crawler_master_'));
+                let queuedNextWave = false;
+                for (const master of masterBatches) {
+                    const rp = master.retry_params || {};
+                    const allStates = rp.all_states || [];
+                    const queuedStates = rp.queued_states || [];
+                    const currentWaveStates = rp.current_wave_states || queuedStates.slice(0, rp.state_wave_size || STATE_WAVE_SIZE);
+                    const waveSize = rp.state_wave_size || STATE_WAVE_SIZE;
+                    const masterCreatedAt = new Date(master.created_date).getTime();
+
+                    const allStateBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500));
+                    const relevantBatches = allStateBatches.filter(b => 
+                        b.file_name?.startsWith('crawler_') && 
+                        !b.file_name?.startsWith('crawler_master_') &&
+                        new Date(b.created_date).getTime() >= masterCreatedAt
+                    );
+
+                    const currentWaveDone = currentWaveStates.every(st => {
+                        const sb = relevantBatches.find(b => {
+                            const batchState = b.file_name.split('_')[1];
+                            return batchState === st;
+                        });
+                        return sb && (sb.status === 'completed' || sb.status === 'failed');
+                    });
+
+                    if (!currentWaveDone) {
+                        continue;
+                    }
+
+                    const unqueued = allStates.filter(s => !queuedStates.includes(s));
+                    
+                    if (unqueued.length > 0) {
+                        const nextWave = unqueued.slice(0, waveSize);
+                        const newCurrentWave = (rp.current_wave || 1) + 1;
+                        
+                        for (const st of nextWave) {
+                            const batch = await base44.asServiceRole.entities.ImportBatch.create({
+                                import_type: 'nppes_registry',
+                                file_name: `crawler_${st}_all_${Date.now()}`,
+                                status: 'processing',
+                                dry_run: !!master.dry_run,
+                            });
+                            const items = [];
+                            for (let i = 0; i <= 99; i++) {
+                                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: 'pending' });
+                            }
+                            await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
+                        }
+                        
+                        const newQueued = [...queuedStates, ...nextWave];
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(master.id, {
+                            retry_params: { ...rp, queued_states: newQueued, current_wave: newCurrentWave, current_wave_states: nextWave },
+                        }));
+                        queuedNextWave = true;
+                        console.log(`[Wave ${newCurrentWave}/${rp.total_waves}] Queued states: ${nextWave.join(', ')}`);
+                    } else {
+                        const allStateDone = allStates.every(st => {
+                            const sb = relevantBatches.find(b => {
+                                const batchState = b.file_name.split('_')[1];
+                                return batchState === st;
+                            });
+                            return sb && (sb.status === 'completed' || sb.status === 'failed');
+                        });
+                        if (allStateDone) {
+                            const failedCount = allStates.filter(st => {
+                                const sb = relevantBatches.find(b => {
+                                    const batchState = b.file_name.split('_')[1];
+                                    return batchState === st;
+                                });
+                                return sb && sb.status === 'failed';
+                            }).length;
+                            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(master.id, {
+                                status: failedCount > 0 ? 'failed' : 'completed',
+                                completed_at: new Date().toISOString(),
+                                retry_params: { ...rp, completed: true, failed_count: failedCount },
+                            }));
+                            console.log(`[Master] All ${allStates.length} states done. ${failedCount} failed.`);
+                        }
+                    }
+                }
+                
+                if (queuedNextWave) {
+                    continue;
+                }
+                
                 if (batchesClosed > 0) {
-                    // If we closed batches, maybe return success but indicate we are done
                     return Response.json({ success: true, message: `Queue empty. Closed ${batchesClosed} batches.`, processed: tasksProcessed });
                 }
                 
-                // If we are here, queue is empty and no batches to close, and no stuck items recovered.
                 return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
             }
 
