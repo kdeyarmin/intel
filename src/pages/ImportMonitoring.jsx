@@ -401,7 +401,7 @@ export default function ImportMonitoring() {
   const handlePurgeAll = async () => {
     setIsPurging(true);
     try {
-      const toDelete = batches.filter(b => b.status === 'error' || b.status === 'completed');
+      const toDelete = batches.filter(b => b.status === 'failed' || b.status === 'completed' || b.status === 'cancelled');
       for (const batch of toDelete) {
         await base44.entities.ImportBatch.delete(batch.id);
       }
@@ -1066,13 +1066,13 @@ export default function ImportMonitoring() {
           <DialogHeader>
             <DialogTitle className="text-red-400">Purge Completed & Error Batches</DialogTitle>
             <DialogDescription className="text-slate-400">
-              This will permanently delete all import batches with status "completed" or "error".
+              This will permanently delete all import batches with status "failed", "cancelled", or "completed".
               Running and pending batches will not be affected.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <p className="text-sm text-slate-300">
-              Found <span className="font-bold text-red-400">{batches.filter(b => b.status === 'error').length}</span> error
+              Found <span className="font-bold text-red-400">{batches.filter(b => b.status === 'failed' || b.status === 'cancelled').length}</span> failed/cancelled
               {' '}and <span className="font-bold text-green-400">{batches.filter(b => b.status === 'completed').length}</span> completed batches to delete.
             </p>
           </div>
