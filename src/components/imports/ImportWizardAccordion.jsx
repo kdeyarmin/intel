@@ -262,8 +262,6 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
   const requiredMapped = selectedType?.requiredColumns?.filter(c => columnMapping[c]).length || 0;
   const requiredTotal = selectedType?.requiredColumns?.length || 0;
 
-  import NPPESFlatFileHelper from './NPPESFlatFileHelper';
-
   return (
     <div className="space-y-2">
       {selectedType?.id === 'nppes_registry' && (
