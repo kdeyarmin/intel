@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
-  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
+  Shield, ShieldCheck, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database, Wrench, HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ const NAV_SECTIONS = [
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin'] },
+      { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
       { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
       { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
     ]

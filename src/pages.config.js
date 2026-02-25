@@ -80,6 +80,7 @@ import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import AdminSettings from './pages/AdminSettings';
+import SecurityAudit from './pages/SecurityAudit';
 import __Layout from './Layout.jsx';
 
 
@@ -117,6 +118,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "AdminSettings": AdminSettings,
+    "SecurityAudit": SecurityAudit,
 }
 
 export const pagesConfig = {
