@@ -8,9 +8,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ImportWizardAccordion from '../imports/ImportWizardAccordion';
 
+import { IMPORT_CATEGORIES } from './ImportCategoryCards';
+
 export default function QuickImportFlow({ category, onClose, onComplete }) {
-  const [selectedType, setSelectedType] = useState(category.types.length === 1 ? category.types[0] : null);
-  const [step, setStep] = useState(category.types.length === 1 ? 'wizard' : 'pickType');
+  const actualCategory = IMPORT_CATEGORIES.find(c => c.id === category?.id) || category;
+  const [selectedType, setSelectedType] = useState(actualCategory.types.length === 1 ? actualCategory.types[0] : null);
+  const [step, setStep] = useState(actualCategory.types.length === 1 ? 'wizard' : 'pickType');
   const [processing, setProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [result, setResult] = useState(null);
@@ -76,7 +79,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
               </Button>
             )}
             <CardTitle className="text-lg text-slate-200">
-              {step === 'pickType' ? `Import ${category.label}` : selectedType?.name || 'Import'}
+              {step === 'pickType' ? `Import ${actualCategory.label}` : selectedType?.name || 'Import'}
             </CardTitle>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-slate-500 hover:text-white">
@@ -88,7 +91,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
         {/* Pick Type */}
         {step === 'pickType' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {category.types.map(type => (
+            {actualCategory.types.map(type => (
               <button
                 key={type.id}
                 onClick={() => handleSelectType(type)}
