@@ -11,6 +11,8 @@ const DATASET_ENTITY_MAP = {
   snf_stats: 'MedicareSNFStats',
   providers: 'Provider',
   locations: 'ProviderLocation',
+  reconciliation_discrepancies: 'ProviderReconciliation',
+  outreach_metrics: 'Campaign',
 };
 
 const DATASET_LABELS = {
@@ -23,6 +25,8 @@ const DATASET_LABELS = {
   snf_stats: 'Medicare SNF',
   providers: 'Providers',
   locations: 'Provider Locations',
+  reconciliation_discrepancies: 'Reconciliation Discrepancies',
+  outreach_metrics: 'Outreach Metrics',
 };
 
 function buildFilterQuery(filters) {

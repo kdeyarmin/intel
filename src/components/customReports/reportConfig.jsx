@@ -147,6 +147,49 @@ export const DATASET_CONFIG = {
     filters: ['year', 'state', 'table_name'],
     yearField: 'data_year',
   },
+  providers: {
+    label: 'Providers',
+    entity: 'Provider',
+    metrics: [
+      { key: 'completeness_score', label: 'Completeness Score' },
+      { key: 'email_quality_score', label: 'Email Quality Score' },
+    ],
+    groupOptions: [
+      { key: 'entity_type', label: 'Entity Type' },
+      { key: 'status', label: 'Status' },
+      { key: 'email_validation_status', label: 'Email Validation' },
+      { key: 'ai_enrichment_status', label: 'Enrichment Status' },
+    ],
+    filters: [],
+  },
+  reconciliation_discrepancies: {
+    label: 'Reconciliation Discrepancies',
+    entity: 'ProviderReconciliation',
+    metrics: [],
+    groupOptions: [
+      { key: 'source', label: 'Source' },
+      { key: 'status', label: 'Status' },
+      { key: 'resolution_status', label: 'Resolution Status' },
+    ],
+    filters: [],
+  },
+  outreach_metrics: {
+    label: 'Outreach Metrics',
+    entity: 'Campaign',
+    metrics: [
+      { key: 'emails_sent', label: 'Emails Sent' },
+      { key: 'emails_opened', label: 'Emails Opened' },
+      { key: 'emails_responded', label: 'Emails Responded' },
+      { key: 'emails_bounced', label: 'Emails Bounced' },
+      { key: 'conversions', label: 'Conversions' },
+      { key: 'budget', label: 'Budget ($)' },
+      { key: 'revenue_generated', label: 'Revenue Generated ($)' },
+    ],
+    groupOptions: [
+      { key: 'status', label: 'Campaign Status' },
+    ],
+    filters: [],
+  },
 };
 
 export const CHART_COLORS = [

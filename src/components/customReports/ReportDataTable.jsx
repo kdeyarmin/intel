@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download } from 'lucide-react';
 import { DATASET_CONFIG } from './reportConfig';
-import { exportCSV } from '../exports/exportUtils';
+import { exportCSV, exportExcel, exportPDF } from '../exports/exportUtils';
 
 function fmt(n) {
   if (n === null || n === undefined) return '—';
@@ -23,21 +23,34 @@ export default function ReportDataTable({ chartData, config }) {
 
   if (!chartData.length) return null;
 
-  const handleExport = () => {
-    const fields = [
+  const getFields = () => {
+    return [
       { key: 'group', label: config.group_by || 'Group' },
       ...metrics.map(m => ({ key: m, label: metricLabels[m] || m })),
     ];
-    exportCSV(chartData, fields, (config.name || 'report').replace(/\s+/g, '_'));
   };
+
+  const getFileName = () => (config.name || 'report').replace(/\s+/g, '_');
+
+  const handleExportCSV = () => exportCSV(chartData, getFields(), getFileName());
+  const handleExportExcel = () => exportExcel(chartData, getFields(), getFileName());
+  const handleExportPDF = () => exportPDF(chartData, getFields(), getFileName(), config.name || 'Report');
 
   return (
     <Card>
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+      <CardHeader className="pb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <CardTitle className="text-sm font-semibold text-slate-700">Data Table</CardTitle>
-        <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 h-7 text-xs">
-          <Download className="w-3 h-3" /> Export CSV
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 h-7 text-xs">
+            <Download className="w-3 h-3" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5 h-7 text-xs">
+            <Download className="w-3 h-3" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1.5 h-7 text-xs">
+            <Download className="w-3 h-3" /> PDF
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="max-h-80 overflow-auto border rounded-lg">
