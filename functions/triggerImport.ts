@@ -19,6 +19,20 @@ const IMPORT_TYPE_URLS = {
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
   // Part D Prescriber (NPI-level prescription claims)
   cms_part_d: 'https://data.cms.gov/data-api/v1/dataset/4e0e6415-e6bf-4e42-8e07-a29f90c23ded/data',
+  // Hospital General Information (hospital name, address, type, ownership, quality ratings)
+  hospital_general_info: 'https://data.cms.gov/data-api/v1/dataset/xubh-q36u/data',
+  // Nursing Home / SNF Quality (Care Compare - facility ratings, staffing, penalties)
+  nursing_home_compare: 'https://data.cms.gov/data-api/v1/dataset/4pq5-n9py/data',
+  // Home Health Quality (Care Compare - quality of patient care star ratings)
+  home_health_compare: 'https://data.cms.gov/data-api/v1/dataset/6jpm-sxkc/data',
+  // Provider Ownership & Association (ownership control, managing employees)
+  provider_ownership: 'https://data.cms.gov/data-api/v1/dataset/y2hd-n93e/data',
+  // DMEPOS Referring/Ordering (DME provider enrollment)
+  dmepos_suppliers: 'https://data.cms.gov/data-api/v1/dataset/csjk-9iis/data',
+  // Medicare Inpatient Hospitals - by Provider and Service (DRG-level charges)
+  medicare_inpatient_charges: 'https://data.cms.gov/data-api/v1/dataset/97k6-zzrs/data',
+  // Medicare Outpatient Hospitals - by Provider and Service (APC-level charges)
+  medicare_outpatient_charges: 'https://data.cms.gov/data-api/v1/dataset/fece-7tet/data',
 };
 
 Deno.serve(async (req) => {

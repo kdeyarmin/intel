@@ -10,8 +10,13 @@ function elapsed() { return Date.now() - execStart; }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
 
-// URLs are now managed via ImportScheduleConfig entity.
-const FALLBACK_PART_D_URL = 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip';
+const CMS_PART_D_URLS = {
+  2023: 'https://data.cms.gov/sites/default/files/2025-09/CPS%20MDCR%20UTLZN%20D%202023.zip',
+  2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20UTLZN%20D%202022.zip',
+  2021: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202021.zip',
+  2020: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20UTLZN%20D%202020.zip',
+};
+const LATEST_AVAILABLE_YEAR = Math.max(...Object.keys(CMS_PART_D_URLS).map(Number));
 const NUMERIC_FIELDS = ['total_enrollees','total_utilizers','avg_annual_fills','avg_annual_gross_cost','generic_dispensing_rate','brand_cost','generic_cost','total_drug_cost'];
 
 async function downloadAndParseZip(url) {
@@ -138,22 +143,21 @@ Deno.serve(async (req) => {
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
 
-  const LATEST_YEAR = 2023; // force reload
-  const requestedYear = parseInt(payload.year || LATEST_YEAR);
-  const year = requestedYear;
+  const requestedYear = parseInt(payload.year || LATEST_AVAILABLE_YEAR);
+  const year = CMS_PART_D_URLS[requestedYear] ? requestedYear : LATEST_AVAILABLE_YEAR;
 
-  if (action === 'list_years') return Response.json({ available_years: [2023, 2022, 2021, 2020, 2019, 2018] });
+  if (action === 'list_years') return Response.json({ available_years: Object.keys(CMS_PART_D_URLS).map(Number).sort((a, b) => b - a), source: 'CMS Program Statistics - Medicare Part D' });
 
   let downloadUrl = custom_url;
   if (!downloadUrl) {
     const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_part_d_stats' });
-    if (configs.length > 0) {
+    if (configs.length > 0 && configs[0].api_url) {
       downloadUrl = configs[0].api_url;
     } else {
-      downloadUrl = FALLBACK_PART_D_URL;
+      downloadUrl = CMS_PART_D_URLS[year];
     }
   }
-  if (!downloadUrl) return Response.json({ error: `No URL for Medicare Part D Stats` }, { status: 400 });
+  if (!downloadUrl) return Response.json({ error: `No URL for Medicare Part D Stats year ${year}` }, { status: 400 });
 
   const batch = await base44.asServiceRole.entities.ImportBatch.create({
     import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl,

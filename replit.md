@@ -45,7 +45,7 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `importMedicareSNF.ts` - Skilled Nursing Facility stats (entity: MedicareSNFStats)
 
 ### CMS API-Based Imports (JSON API pagination)
-- `autoImportCMSData.ts` - Handles: cms_order_referring, opt_out_physicians, hospice_enrollments, home_health_enrollments, provider_service_utilization, cms_part_d
+- `autoImportCMSData.ts` - Handles: cms_order_referring, opt_out_physicians, hospice_enrollments, home_health_enrollments, provider_service_utilization, cms_part_d, hospital_general_info, nursing_home_compare, home_health_compare, provider_ownership, dmepos_suppliers, medicare_inpatient_charges, medicare_outpatient_charges
 
 ### Orchestration
 - `triggerImport.ts` - Central dispatcher routing to ZIP handlers or autoImportCMSData

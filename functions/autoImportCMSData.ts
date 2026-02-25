@@ -51,6 +51,10 @@ Deno.serve(async (req) => {
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
             'provider_service_utilization', 'cms_part_d',
+            'hospital_general_info', 'nursing_home_compare',
+            'home_health_compare', 'provider_ownership',
+            'dmepos_suppliers', 'medicare_inpatient_charges',
+            'medicare_outpatient_charges',
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -276,7 +280,7 @@ Deno.serve(async (req) => {
                 if (!fullResp.ok) throw new Error(`Failed to fetch: ${fullResp.statusText}`);
                 const text = await fullResp.text();
                 const lines = text.split('\n').filter(l => l.trim());
-                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                const headers = parseCSVLine(lines[0]);
                 columnMapping = headers;
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
@@ -289,7 +293,7 @@ Deno.serve(async (req) => {
 
                 for (let i = 1; i < lines.length; i++) {
                     if (isTimeUp(startTime)) break;
-                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    const values = parseCSVLine(lines[i]);
                     const row = {};
                     headers.forEach((h, idx) => { row[h] = values[idx]; });
                     totalProcessed++;
@@ -531,6 +535,167 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'hospital_general_info') {
+            const facilityId = row['Facility ID'] || row['facility_id'] || row['Provider ID'] || row['provider_id'] || row['Facility Id'] || '';
+            if (!facilityId) return null;
+            return {
+                facility_id: String(facilityId).trim(),
+                facility_name: row['Facility Name'] || row['facility_name'] || row['Hospital Name'] || row['hospital_name'] || '',
+                address: row['Address'] || row['address'] || '',
+                city: row['City'] || row['city'] || row['City/Town'] || '',
+                state: row['State'] || row['state'] || '',
+                zip_code: row['ZIP Code'] || row['zip_code'] || row['ZIP'] || row['zip'] || '',
+                county: row['County Name'] || row['county_name'] || row['County/Parish'] || '',
+                phone: row['Phone Number'] || row['phone_number'] || row['Telephone Number'] || row['telephone_number'] || '',
+                hospital_type: row['Hospital Type'] || row['hospital_type'] || '',
+                hospital_ownership: row['Hospital Ownership'] || row['hospital_ownership'] || '',
+                emergency_services: row['Emergency Services'] || row['emergency_services'] || '',
+                overall_rating: safeNum(row['Hospital overall rating'] || row['hospital_overall_rating']),
+                mortality_rating: row['Mortality national comparison'] || row['mortality_national_comparison'] || '',
+                safety_rating: row['Safety of care national comparison'] || row['safety_of_care_national_comparison'] || '',
+                readmission_rating: row['Readmission national comparison'] || row['readmission_national_comparison'] || '',
+                patient_experience_rating: row['Patient experience national comparison'] || row['patient_experience_national_comparison'] || '',
+                effectiveness_rating: row['Effectiveness of care national comparison'] || row['effectiveness_of_care_national_comparison'] || '',
+                timeliness_rating: row['Timeliness of care national comparison'] || row['timeliness_of_care_national_comparison'] || '',
+                imaging_rating: row['Efficient use of medical imaging national comparison'] || row['efficient_use_of_medical_imaging_national_comparison'] || '',
+            };
+        }
+
+        if (importType === 'nursing_home_compare') {
+            const providerId = row['Federal Provider Number'] || row['federal_provider_number'] || row['CMS Certification Number (CCN)'] || row['cms_certification_number_ccn'] || row['provnum'] || '';
+            if (!providerId) return null;
+            return {
+                provider_id: String(providerId).trim(),
+                provider_name: row['Provider Name'] || row['provider_name'] || row['provname'] || '',
+                address: row['Provider Address'] || row['provider_address'] || '',
+                city: row['Provider City'] || row['provider_city'] || row['city'] || '',
+                state: row['Provider State'] || row['provider_state'] || row['state'] || '',
+                zip_code: row['Provider Zip Code'] || row['provider_zip_code'] || row['zip'] || '',
+                phone: row['Provider Phone Number'] || row['provider_phone_number'] || row['phone'] || '',
+                provider_type: row['Provider Type'] || row['provider_type'] || '',
+                ownership_type: row['Ownership Type'] || row['ownership_type'] || '',
+                number_of_beds: safeNum(row['Number of Certified Beds'] || row['number_of_certified_beds'] || row['bedcnt']),
+                number_of_residents: safeNum(row['Average Number of Residents per Day'] || row['average_number_of_residents_per_day'] || row['restot']),
+                overall_rating: safeNum(row['Overall Rating'] || row['overall_rating']),
+                health_inspection_rating: safeNum(row['Health Inspection Rating'] || row['health_inspection_rating']),
+                staffing_rating: safeNum(row['Staffing Rating'] || row['staffing_rating']),
+                quality_rating: safeNum(row['QM Rating'] || row['qm_rating'] || row['Quality Measure Rating'] || row['quality_measure_rating']),
+                total_penalties_amount: safeNum(row['Total Amount of Fines in Dollars'] || row['total_amount_of_fines_in_dollars'] || row['fine_tot']),
+                number_of_penalties: safeNum(row['Total Number of Penalties'] || row['total_number_of_penalties']),
+                abuse_icon: row['Abuse Icon'] || row['abuse_icon'] || '',
+                special_focus: row['SFF'] || row['sff'] || row['special_focus_status'] || '',
+            };
+        }
+
+        if (importType === 'home_health_compare') {
+            const ccn = row['CMS Certification Number (CCN)'] || row['cms_certification_number_ccn'] || row['Federal Provider Number'] || row['federal_provider_number'] || '';
+            if (!ccn) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['Provider Name'] || row['provider_name'] || '',
+                address: row['Address'] || row['address'] || '',
+                city: row['City'] || row['city'] || row['City/Town'] || row['city_town'] || '',
+                state: row['State'] || row['state'] || '',
+                zip_code: row['Zip'] || row['zip'] || row['ZIP Code'] || row['zip_code'] || '',
+                phone: row['Phone'] || row['phone'] || row['Telephone Number'] || row['telephone_number'] || '',
+                ownership_type: row['Type of Ownership'] || row['type_of_ownership'] || '',
+                offers_nursing: row['Offers Nursing Care Services'] || row['offers_nursing_care_services'] || '',
+                offers_pt: row['Offers Physical Therapy Services'] || row['offers_physical_therapy_services'] || '',
+                offers_ot: row['Offers Occupational Therapy Services'] || row['offers_occupational_therapy_services'] || '',
+                offers_speech: row['Offers Speech Pathology Services'] || row['offers_speech_pathology_services'] || '',
+                offers_medical_social: row['Offers Medical Social Services'] || row['offers_medical_social_services'] || '',
+                offers_aide: row['Offers Home Health Aide Services'] || row['offers_home_health_aide_services'] || '',
+                quality_star_rating: safeNum(row['Quality of Patient Care Star Rating'] || row['quality_of_patient_care_star_rating']),
+                patient_survey_star_rating: safeNum(row['Patient Survey Star Rating'] || row['patient_survey_star_rating'] || row['HHCAHPS Survey Summary Star Rating'] || row['hhcahps_survey_summary_star_rating']),
+                how_often_timely_care: row['How often the home health team began their patients\' care in a timely manner'] || row['how_often_the_home_health_team_began_their_patients_care_in_a_timely_manner'] || '',
+                how_often_taught_drugs: row['How often the home health team taught patients (or their family caregivers) about their drugs'] || row['how_often_the_home_health_team_taught_patients_or_their_family_caregivers_about_their_drugs'] || '',
+            };
+        }
+
+        if (importType === 'provider_ownership') {
+            const enrollmentId = row['ENROLLMENT ID'] || row['enrollment_id'] || row['Enrollment Id'] || '';
+            const associateId = row['ASSOCIATE ID'] || row['associate_id'] || row['Associate Id'] || '';
+            if (!enrollmentId) return null;
+            return {
+                enrollment_id: String(enrollmentId).trim(),
+                associate_id: String(associateId).trim(),
+                npi: String(row['NPI'] || row['npi'] || '').trim(),
+                organization_name: row['ORGANIZATION NAME'] || row['organization_name'] || '',
+                doing_business_as: row['DOING BUSINESS AS NAME'] || row['doing_business_as_name'] || '',
+                associate_id_owner: row['ASSOCIATE ID - OWNER'] || row['associate_id_owner'] || row['associate_id___owner'] || '',
+                owner_type: row['OWNER TYPE'] || row['owner_type'] || '',
+                owner_name: row['OWNER NAME'] || row['owner_name'] || '',
+                owner_first_name: row['FIRST NAME'] || row['first_name'] || '',
+                owner_last_name: row['LAST NAME'] || row['last_name'] || '',
+                owner_title: row['TITLE'] || row['title'] || '',
+                ownership_percentage: safeNum(row['PERCENTAGE OWNERSHIP'] || row['percentage_ownership']),
+                address_1: row['ADDRESS LINE 1'] || row['address_line_1'] || '',
+                city: row['CITY'] || row['city'] || '',
+                state: row['STATE'] || row['state'] || '',
+                zip: row['ZIP CODE'] || row['zip_code'] || '',
+                role_code: row['ROLE CODE'] || row['role_code'] || '',
+                role_text: row['ROLE TEXT'] || row['role_text'] || '',
+            };
+        }
+
+        if (importType === 'dmepos_suppliers') {
+            const npi = row['NPI'] || row['npi'] || '';
+            if (!npi || !validateNPI(npi)) return null;
+            return {
+                npi: String(npi).trim(),
+                supplier_name: row['SUPPLIER NAME'] || row['supplier_name'] || row['Organization Name'] || row['organization_name'] || '',
+                address_1: row['ADDRESS LINE 1'] || row['address_line_1'] || '',
+                address_2: row['ADDRESS LINE 2'] || row['address_line_2'] || '',
+                city: row['CITY'] || row['city'] || '',
+                state: row['STATE'] || row['state'] || '',
+                zip: row['ZIP CODE'] || row['zip_code'] || '',
+                phone: row['PHONE'] || row['phone'] || row['Telephone Number'] || row['telephone_number'] || '',
+                supplier_type: row['SUPPLIER TYPE'] || row['supplier_type'] || row['Provider Type'] || row['provider_type'] || '',
+                accepts_assignment: row['ACCEPTS ASSIGNMENT'] || row['accepts_assignment'] || '',
+                participates_medicare: row['PARTICIPATES IN MEDICARE'] || row['participates_in_medicare'] || '',
+            };
+        }
+
+        if (importType === 'medicare_inpatient_charges') {
+            const providerId = row['Rndrng_Prvdr_CCN'] || row['rndrng_prvdr_ccn'] || row['Provider Id'] || row['provider_id'] || '';
+            const drgCode = row['DRG_Cd'] || row['drg_cd'] || row['DRG Definition'] || row['drg_definition'] || '';
+            if (!providerId) return null;
+            return {
+                provider_id: String(providerId).trim(),
+                provider_name: row['Rndrng_Prvdr_Org_Name'] || row['rndrng_prvdr_org_name'] || row['Provider Name'] || row['provider_name'] || '',
+                provider_city: row['Rndrng_Prvdr_City'] || row['rndrng_prvdr_city'] || row['Provider City'] || row['provider_city'] || '',
+                provider_state: row['Rndrng_Prvdr_State_Abrvtn'] || row['rndrng_prvdr_state_abrvtn'] || row['Provider State'] || row['provider_state'] || '',
+                provider_zip: row['Rndrng_Prvdr_Zip5'] || row['rndrng_prvdr_zip5'] || row['Provider Zip Code'] || row['provider_zip_code'] || '',
+                drg_code: String(drgCode).trim(),
+                drg_description: row['DRG_Desc'] || row['drg_desc'] || row['DRG Description'] || '',
+                total_discharges: safeNum(row['Tot_Dschrgs'] || row['tot_dschrgs'] || row['Total Discharges'] || row['total_discharges']),
+                avg_covered_charges: safeNum(row['Avg_Submtd_Cvrd_Chrg'] || row['avg_submtd_cvrd_chrg'] || row['Average Covered Charges'] || row['average_covered_charges']),
+                avg_total_payments: safeNum(row['Avg_Tot_Pymt_Amt'] || row['avg_tot_pymt_amt'] || row['Average Total Payments'] || row['average_total_payments']),
+                avg_medicare_payments: safeNum(row['Avg_Mdcr_Pymt_Amt'] || row['avg_mdcr_pymt_amt'] || row['Average Medicare Payments'] || row['average_medicare_payments']),
+                data_year: parseInt(year),
+            };
+        }
+
+        if (importType === 'medicare_outpatient_charges') {
+            const providerId = row['Rndrng_Prvdr_CCN'] || row['rndrng_prvdr_ccn'] || row['Provider Id'] || row['provider_id'] || '';
+            const apcCode = row['APC_Cd'] || row['apc_cd'] || row['APC'] || row['apc'] || '';
+            if (!providerId) return null;
+            return {
+                provider_id: String(providerId).trim(),
+                provider_name: row['Rndrng_Prvdr_Org_Name'] || row['rndrng_prvdr_org_name'] || row['Provider Name'] || row['provider_name'] || '',
+                provider_city: row['Rndrng_Prvdr_City'] || row['rndrng_prvdr_city'] || row['Provider City'] || row['provider_city'] || '',
+                provider_state: row['Rndrng_Prvdr_State_Abrvtn'] || row['rndrng_prvdr_state_abrvtn'] || row['Provider State'] || row['provider_state'] || '',
+                provider_zip: row['Rndrng_Prvdr_Zip5'] || row['rndrng_prvdr_zip5'] || row['Provider Zip Code'] || row['provider_zip_code'] || '',
+                apc_code: String(apcCode).trim(),
+                apc_description: row['APC_Desc'] || row['apc_desc'] || row['APC Description'] || '',
+                total_services: safeNum(row['Capc_Srvcs'] || row['capc_srvcs'] || row['Outpatient Services'] || row['outpatient_services']),
+                avg_charges: safeNum(row['Avg_Submtd_Cvrd_Chrg'] || row['avg_submtd_cvrd_chrg'] || row['Average Estimated Submitted Charges'] || row['average_estimated_submitted_charges']),
+                avg_total_payments: safeNum(row['Avg_Tot_Pymt_Amt'] || row['avg_tot_pymt_amt'] || row['Average Total Payments'] || row['average_total_payments']),
+                avg_medicare_payments: safeNum(row['Avg_Mdcr_Pymt_Amt'] || row['avg_mdcr_pymt_amt'] || row['Average Medicare Payments'] || row['average_medicare_payments']),
+                data_year: parseInt(year),
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -545,6 +710,13 @@ function getDedupKey(mapped, importType) {
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
     if (importType === 'cms_part_d') return mapped.npi ? `${mapped.npi}_${mapped.drug_name}_${mapped.data_year}` : null;
+    if (importType === 'hospital_general_info') return mapped.facility_id || null;
+    if (importType === 'nursing_home_compare') return mapped.provider_id || null;
+    if (importType === 'home_health_compare') return mapped.ccn || null;
+    if (importType === 'provider_ownership') return mapped.enrollment_id ? `${mapped.enrollment_id}_${mapped.associate_id_owner || mapped.associate_id}` : null;
+    if (importType === 'dmepos_suppliers') return mapped.npi || null;
+    if (importType === 'medicare_inpatient_charges') return mapped.provider_id ? `${mapped.provider_id}_${mapped.drg_code}_${mapped.data_year}` : null;
+    if (importType === 'medicare_outpatient_charges') return mapped.provider_id ? `${mapped.provider_id}_${mapped.apc_code}_${mapped.data_year}` : null;
     return null;
 }
 
@@ -574,6 +746,38 @@ function parseDate(dateStr) {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
+function parseCSVLine(line) {
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += ch;
+            }
+        } else {
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                fields.push(current.trim());
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+    }
+    fields.push(current.trim());
+    return fields;
+}
+
 // Bulk importer with exponential backoff + jitter for rate limit handling
 async function importChunk(base44, importType, records, startTime) {
     let imported = 0, updated = 0, skipped = 0;
@@ -586,6 +790,13 @@ async function importChunk(base44, importType, records, startTime) {
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',
         'cms_part_d': 'PartDPrescriber',
+        'hospital_general_info': 'HospitalGeneralInfo',
+        'nursing_home_compare': 'NursingHomeCompare',
+        'home_health_compare': 'HomeHealthCompare',
+        'provider_ownership': 'ProviderOwnership',
+        'dmepos_suppliers': 'DMEPOSSupplier',
+        'medicare_inpatient_charges': 'MedicareInpatientCharge',
+        'medicare_outpatient_charges': 'MedicareOutpatientCharge',
     };
 
     const entityName = entityMap[importType];

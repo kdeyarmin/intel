@@ -13,17 +13,18 @@ import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
 
-// Available data years per import type — only these years have actual CMS data
 const AVAILABLE_YEARS = {
   cms_order_referring: [2023, 2022, 2021, 2020, 2019],
-  provider_service_utilization: [2022, 2021, 2020, 2019],
+  provider_service_utilization: [2023, 2022, 2021, 2020, 2019],
   hospice_enrollments: [2024, 2023, 2022],
   home_health_enrollments: [2024, 2023, 2022],
   medicare_hha_stats: [2023, 2022, 2021, 2020],
   medicare_ma_inpatient: [2023, 2022, 2021, 2020],
   medicare_part_d_stats: [2023, 2022, 2021, 2020],
-  medicare_snf_stats: [2023, 2022, 2021, 2020],
-  cms_part_d: [2022, 2021, 2020, 2019],
+  medicare_snf_stats: [2023, 2022, 2021, 2020, 2019, 2018],
+  cms_part_d: [2023, 2022, 2021, 2020, 2019],
+  medicare_inpatient_charges: [2023, 2022, 2021, 2020],
+  medicare_outpatient_charges: [2023, 2022, 2021, 2020],
 };
 
 const IMPORT_TYPES = [
@@ -35,11 +36,15 @@ const IMPORT_TYPES = [
   { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
   { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
   { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, hasUrl: true },
+  { id: 'hospital_general_info', name: 'Hospital General Info', desc: 'Hospital locations, types & ratings', icon: Database, hasUrl: true },
+  { id: 'nursing_home_compare', name: 'Nursing Home Compare', desc: 'SNF quality ratings & staffing', icon: TrendingUp, hasUrl: true },
+  { id: 'home_health_compare', name: 'Home Health Compare', desc: 'HH quality & patient care ratings', icon: TrendingUp, hasUrl: true },
+  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, hasUrl: true },
+  { id: 'dmepos_suppliers', name: 'DMEPOS Suppliers', desc: 'DME supplier enrollment', icon: Database, hasUrl: true },
+  { id: 'medicare_inpatient_charges', name: 'Inpatient Charges', desc: 'Hospital DRG-level charges', icon: TrendingUp, hasUrl: true },
+  { id: 'medicare_outpatient_charges', name: 'Outpatient Charges', desc: 'Hospital APC-level charges', icon: TrendingUp, hasUrl: true },
   { id: 'home_health_cost_reports', name: 'HH Cost Reports', desc: 'Financial & utilization', icon: TrendingUp, hasUrl: false },
   { id: 'nursing_home_chains', name: 'Nursing Home Chains', desc: 'Chain performance', icon: TrendingUp, hasUrl: false },
-  { id: 'home_health_pdgm', name: 'HH PDGM', desc: 'PDGM utilization', icon: TrendingUp, hasUrl: false },
-  { id: 'inpatient_drg', name: 'Inpatient DRG', desc: 'Hospital DRG data', icon: TrendingUp, hasUrl: false },
-  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, hasUrl: false },
   { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, hasUrl: true },
   { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
   { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
