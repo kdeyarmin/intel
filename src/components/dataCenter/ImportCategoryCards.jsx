@@ -5,6 +5,17 @@ import { format, formatDistanceToNow, addMonths } from 'date-fns';
 
 const IMPORT_CATEGORIES = [
   {
+    id: 'providers',
+    label: 'Provider Data',
+    description: 'NPPES provider registry, monthly downloads',
+    icon: Users,
+    color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    types: [
+      { id: 'nppes_monthly', name: 'NPPES File Upload', description: 'Upload NPPES CSV file', requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
+      { id: 'nppes_registry', name: 'NPPES Registry Search', description: 'Search & import from NPPES API', requiredColumns: [], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
+    ]
+  },
+  {
     id: 'claims',
     label: 'CMS Claims & Utilization',
     description: 'Utilization, Part D, referrals, services',
