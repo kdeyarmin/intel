@@ -62,10 +62,12 @@ const IMPORT_CATEGORIES = [
 export { IMPORT_CATEGORIES };
 
 export default function ImportCategoryCards({ onSelectCategory, batches = [] }) {
+  // Only use categories that have items in them
+  const activeCategories = IMPORT_CATEGORIES.filter(cat => cat.types.length > 0);
   // Compute last completed import date per category
   const categoryDates = React.useMemo(() => {
     const dateMap = {};
-    IMPORT_CATEGORIES.forEach(cat => {
+    activeCategories.forEach(cat => {
       const typeIds = cat.types.map(t => t.id);
       const completedBatches = batches
         .filter(b => typeIds.includes(b.import_type) && b.status === 'completed' && b.completed_at)
@@ -84,7 +86,7 @@ export default function ImportCategoryCards({ onSelectCategory, batches = [] }) 
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-      {IMPORT_CATEGORIES.map(cat => {
+      {activeCategories.map(cat => {
         const Icon = cat.icon;
         const dates = categoryDates[cat.id];
         return (
