@@ -36,25 +36,8 @@ const IMPORT_CATEGORIES = [
     icon: FileText,
     color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     types: [
-      { id: 'pa_home_health', name: 'PA Home Health Agencies', description: 'PA home health list', requiredColumns: ['NPI', 'Agency Name', 'City', 'State', 'License Number'] },
-      { id: 'hospice_providers', name: 'Hospice Providers', description: 'Certified hospice providers', requiredColumns: ['NPI', 'Provider Name', 'City', 'State', 'Certification Date'] },
       { id: 'nursing_home_chains', name: 'Nursing Home Chains', description: 'Chain performance data', requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'], downloadUrl: 'https://data.cms.gov/provider-data/dataset/b2ux-wtdv' },
       { id: 'home_health_cost_reports', name: 'Cost Reports', description: 'HHA financial data', requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'], downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report' },
-      { id: 'home_health_pdgm', name: 'PDGM Data', description: 'Patient-Driven Groupings', requiredColumns: ['PRVDR_ID', 'GRPNG', 'GRPNG_DESC', 'BENE_DSTNCT_CNT'] },
-      { id: 'inpatient_drg', name: 'Inpatient DRG', description: 'Hospital DRG data', requiredColumns: ['Rndrng_Prvdr_CCN', 'DRG_Cd', 'DRG_Desc', 'Tot_Dschrgs'] },
-    ]
-  },
-  {
-    id: 'medicare_stats',
-    label: 'Medicare Statistics',
-    description: 'HHA, MA inpatient, Part D, SNF stats',
-    icon: BarChart3,
-    color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    types: [
-      { id: 'medicare_hha_stats', name: 'HHA Stats', description: 'Home health use & payments', requiredColumns: [] },
-      { id: 'medicare_ma_inpatient', name: 'MA Inpatient', description: 'Medicare Advantage hospital', requiredColumns: [] },
-      { id: 'medicare_part_d_stats', name: 'Part D Stats', description: 'Part D use & payments', requiredColumns: [] },
-      { id: 'medicare_snf_stats', name: 'SNF Stats', description: 'Skilled nursing stats', requiredColumns: [] },
     ]
   },
 ];
