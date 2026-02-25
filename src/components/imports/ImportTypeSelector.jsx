@@ -1,9 +1,25 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Database, TrendingUp, Activity } from 'lucide-react';
+import { FileText, Database, TrendingUp, Activity, Users } from 'lucide-react';
 
 const importTypes = [
+  {
+    id: 'nppes_monthly',
+    name: 'NPPES File Upload',
+    description: 'Upload NPPES CSV file',
+    icon: Users,
+    requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'],
+    downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html'
+  },
+  {
+    id: 'nppes_registry',
+    name: 'NPPES Registry Search',
+    description: 'Search & import from NPPES API',
+    icon: Users,
+    requiredColumns: [],
+    downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html'
+  },
   {
     id: 'cms_utilization',
     name: 'CMS Provider Utilization',
