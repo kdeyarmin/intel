@@ -237,7 +237,14 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const isRetryable = error.message?.includes('download') || error.message?.includes('timeout');
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, { phase: 'fatal', detail: error.message }] });
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+      status: isRetryable ? 'paused' : 'failed',
+      imported_rows: imported || 0,
+      error_samples: [...errorSamples, { phase: 'fatal', detail: error.message }],
+      retry_params: { row_offset: (effectiveOffset || 0) + (imported || 0) },
+      cancel_reason: `Failed. ${imported || 0} rows already saved. Resume with row_offset=${(effectiveOffset || 0) + (imported || 0)}`,
+      ...(isRetryable ? { paused_at: new Date().toISOString() } : {}),
+    });
     return Response.json({ error: error.message, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }
 });

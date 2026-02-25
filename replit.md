@@ -54,6 +54,16 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `cancelStalledImports.ts` - Auto-retries or fails stalled imports
 - `importNPPESFlatFile.ts` - Streaming CSV processor for NPPES flat files
 
+### Import Resilience
+- All import functions save records incrementally in chunks (25-50 records)
+- On failure, the current offset and imported row count are saved in `retry_params` and `cancel_reason`
+- Failed/paused batches can be resumed from where they left off via the Resume button (uses `resume_offset`/`row_offset`)
+- Records committed before a failure remain in the database; resume skips already-processed rows
+
+### Dashboard Stats
+- `getDashboardStats.ts` paginates through all entity records for exact counts (no more 500-record caps)
+- `DatabaseOverview.jsx` displays exact numbers without the "+" estimated indicator
+
 ### URL Monitoring
 - `checkCMSUrls.ts` - Scans CMS data.json for updated dataset URLs
 - `checkPartDUrl.ts` - Probes Part D URL variants

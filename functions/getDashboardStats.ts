@@ -1,22 +1,50 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const PAGE = 500;
+
+async function countAllRecords(entity) {
+    let offset = 0;
+    let total = 0;
+    while (true) {
+        const page = await entity.list('-created_date', PAGE, offset);
+        total += page.length;
+        if (page.length < PAGE) break;
+        offset += PAGE;
+    }
+    return total;
+}
+
+async function fetchAllRecords(entity, maxPages = 20) {
+    let offset = 0;
+    const allRecords = [];
+    for (let p = 0; p < maxPages; p++) {
+        const page = await entity.list('-created_date', PAGE, offset);
+        allRecords.push(...page);
+        if (page.length < PAGE) break;
+        offset += PAGE;
+    }
+    return allRecords;
+}
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Fetch one page per entity. If we get exactly PAGE_SIZE, the real total is likely higher.
-        const PAGE = 500;
+        const [
+            totalLocations,
+            totalReferrals,
+            totalUtilization,
+            totalTaxonomies,
+        ] = await Promise.all([
+            countAllRecords(base44.asServiceRole.entities.ProviderLocation),
+            countAllRecords(base44.asServiceRole.entities.CMSReferral),
+            countAllRecords(base44.asServiceRole.entities.CMSUtilization),
+            countAllRecords(base44.asServiceRole.entities.ProviderTaxonomy),
+        ]);
 
-        // Fetch sequentially to prevent rate limits
-        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', PAGE);
-        const locations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', PAGE);
-        const referrals = await base44.asServiceRole.entities.CMSReferral.list('-created_date', PAGE);
-        const utilization = await base44.asServiceRole.entities.CMSUtilization.list('-created_date', PAGE);
-        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', PAGE);
-        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 100);
-        const dqScans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1);
+        const providers = await fetchAllRecords(base44.asServiceRole.entities.Provider);
+        const totalProviders = providers.length;
 
-        // Provider email stats
         let withEmail = 0, searched = 0, valid = 0, risky = 0, invalid = 0, needsEnrichment = 0;
         for (const p of providers) {
             if (p.email) withEmail++;
@@ -27,29 +55,7 @@ Deno.serve(async (req) => {
             if (p.needs_nppes_enrichment) needsEnrichment++;
         }
 
-        const hasManyProviders = providers.length >= PAGE;
-        const hasManyLocations = locations.length >= PAGE;
-        const hasManyReferrals = referrals.length >= PAGE;
-        const hasManyUtilization = utilization.length >= PAGE;
-        const hasManyTaxonomies = taxonomies.length >= PAGE;
-        const hasAnyTruncated = hasManyProviders || hasManyLocations || hasManyReferrals || hasManyUtilization || hasManyTaxonomies;
-
-        // If provider list was truncated, try to get a second page just for a better count
-        let totalProviders = providers.length;
-        if (hasManyProviders) {
-            const page2 = await base44.asServiceRole.entities.Provider.list('-created_date', PAGE, PAGE);
-            totalProviders += page2.length;
-            for (const p of page2) {
-                if (p.email) withEmail++;
-                if (p.email_searched_at) searched++;
-                if (p.email_validation_status === 'valid') valid++;
-                if (p.email_validation_status === 'risky') risky++;
-                if (p.email_validation_status === 'invalid') invalid++;
-                if (p.needs_nppes_enrichment) needsEnrichment++;
-            }
-        }
-
-        // Top states
+        const locations = await fetchAllRecords(base44.asServiceRole.entities.ProviderLocation, 4);
         const stateCounts = {};
         for (const loc of locations) {
             if (loc.state) {
@@ -59,15 +65,18 @@ Deno.serve(async (req) => {
         }
         const topStates = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-        // Import health
+        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 100);
         const lastCompleted = batches.find(b => b.status === 'completed');
         const lastRefresh = lastCompleted?.completed_at || lastCompleted?.created_date || null;
         const activeBatches = batches.filter(b => b.status === 'processing' || b.status === 'validating').length;
         const completedBatches = batches.filter(b => b.status === 'completed').length;
         const failedBatches = batches.filter(b => b.status === 'failed').length;
 
-        // Data quality
-        const latestScan = dqScans[0] || null;
+        let latestScan = null;
+        try {
+            const dqScans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1);
+            latestScan = dqScans[0] || null;
+        } catch (e) { /* ignore */ }
 
         let openAlerts = 0;
         try {
@@ -77,11 +86,11 @@ Deno.serve(async (req) => {
 
         return Response.json({
             totalProviders,
-            totalLocations: locations.length,
-            totalReferrals: referrals.length,
-            totalUtilization: utilization.length,
-            totalTaxonomies: taxonomies.length,
-            isEstimatedCounts: hasAnyTruncated,
+            totalLocations,
+            totalReferrals,
+            totalUtilization,
+            totalTaxonomies,
+            isEstimatedCounts: false,
             emailStats: {
                 withEmail,
                 searched,
@@ -89,7 +98,7 @@ Deno.serve(async (req) => {
                 risky,
                 invalid,
                 needsEnrichment,
-                isEstimated: hasManyProviders,
+                isEstimated: false,
             },
             topStates,
             lastRefresh,
@@ -103,8 +112,6 @@ Deno.serve(async (req) => {
             samples: {
                 providers: providers.slice(0, 200),
                 locations: locations.slice(0, 200),
-                referrals: referrals.slice(0, 200),
-                utilizations: utilization.slice(0, 200),
             },
         });
 

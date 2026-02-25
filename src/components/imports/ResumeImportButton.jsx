@@ -7,9 +7,8 @@ import { toast } from 'sonner';
 export default function ResumeImportButton({ batch, onResumed }) {
   const [loading, setLoading] = useState(false);
 
-  // Can resume if paused or failed, and has resume params or progress
   const canResume = (batch.status === 'paused' || batch.status === 'failed') && 
-                    (batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
+                    (batch.retry_params?.resume_offset > 0 || batch.retry_params?.row_offset > 0 || batch.imported_rows > 0);
 
   if (!canResume) return null;
 
@@ -17,8 +16,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
     e.stopPropagation();
     setLoading(true);
     try {
-      // Determine offset
-      const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+      const offset = batch.retry_params?.resume_offset || batch.retry_params?.row_offset || batch.imported_rows || 0;
 
       // Mark the current batch as cancelled so triggerImport's duplicate check won't 409
       if (batch.status === 'failed' || batch.status === 'paused') {
@@ -37,6 +35,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
         file_url: batch.file_url,
         year: batch.data_year || 2023,
         resume_offset: offset,
+        row_offset: offset,
         dry_run: batch.dry_run,
         retry_of: batch.id,
       });

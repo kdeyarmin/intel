@@ -381,9 +381,12 @@ Deno.serve(async (req) => {
     const errorCategory = isRetryable ? 'network_error' : 'data_validation';
     
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: 'failed',
+      status: isRetryable ? 'paused' : 'failed',
+      imported_rows: imported || 0,
       error_samples: [...errorSamples, { phase: errorPhase, detail: error.message, timestamp: new Date().toISOString(), retryable: isRetryable, category: errorCategory }],
-      completed_at: new Date().toISOString(),
+      retry_params: { row_offset: (effectiveOffset || 0) + (imported || 0) },
+      cancel_reason: `Failed at ${errorPhase}. ${imported || 0} rows already saved. Resume with row_offset=${(effectiveOffset || 0) + (imported || 0)}`,
+      ...(isRetryable ? { paused_at: new Date().toISOString() } : { completed_at: new Date().toISOString() }),
     });
     
     // Create error report for tracking and retry

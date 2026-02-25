@@ -308,8 +308,11 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, { 
       status: isRetryable ? 'paused' : 'failed', 
-      error_samples: [...errorSamples, { phase: 'fatal', detail: errorMsg }], 
-      ...(isRetryable ? { paused_at: new Date().toISOString() } : {}) 
+      imported_rows: imported || 0,
+      error_samples: [...errorSamples, { phase: 'fatal', detail: errorMsg }],
+      retry_params: { row_offset: (effectiveOffset || 0) + (imported || 0) },
+      cancel_reason: `Failed. ${imported || 0} rows already saved. Resume with row_offset=${(effectiveOffset || 0) + (imported || 0)}`,
+      ...(isRetryable ? { paused_at: new Date().toISOString() } : {}),
     });
 
     // Create Error Report for tracking and retry logic

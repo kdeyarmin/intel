@@ -377,16 +377,24 @@ Deno.serve(async (req) => {
 
         } catch (error) {
             console.error(`Import error for ${import_type}:`, error.message);
-            // If it's a rate limit error, mark as paused (retryable) not failed
             const isRateLimit = error.message && error.message.includes('Rate limit');
             try {
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                     status: isRateLimit ? 'paused' : 'failed',
                     error_samples: [{ message: error.message }],
+                    imported_rows: importedCount || 0,
+                    updated_rows: updatedCount || 0,
+                    skipped_rows: skippedCount || 0,
+                    valid_rows: validRows || 0,
+                    invalid_rows: invalidRows || 0,
+                    total_rows: totalProcessed || 0,
+                    retry_params: { resume_offset: offset || 0 },
                     ...(isRateLimit ? {
                         paused_at: new Date().toISOString(),
                         cancel_reason: 'Rate limited by platform. Wait a few minutes and resume.',
-                    } : {}),
+                    } : {
+                        cancel_reason: `Failed at offset ${offset || 0}. ${importedCount || 0} rows already saved. Resume with resume_offset=${offset || 0}`,
+                    }),
                 });
             } catch (e) { console.error('Batch update failed:', e.message); }
 

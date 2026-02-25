@@ -614,8 +614,13 @@ Deno.serve(async (req) => {
     try {
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         status: batchStatus,
+        imported_rows: imported || 0,
         error_samples: [...errorSamples, { phase: errorPhase, detail: errorMessage, timestamp: new Date().toISOString(), retryable: isRetryable }],
-        ...(isRetryable ? { paused_at: new Date().toISOString(), cancel_reason: `${errorPhase} error (retryable): ${errorMessage}` } : {}),
+        retry_params: { row_offset: (effectiveOffset || 0) + (imported || 0) },
+        cancel_reason: isRetryable
+          ? `${errorPhase} error (retryable): ${errorMessage}`
+          : `Failed at ${errorPhase}. ${imported || 0} rows already saved. Resume with row_offset=${(effectiveOffset || 0) + (imported || 0)}`,
+        ...(isRetryable ? { paused_at: new Date().toISOString() } : {}),
       });
     } catch (e) { console.error('[fatal] Batch status update failed:', e.message); }
 
