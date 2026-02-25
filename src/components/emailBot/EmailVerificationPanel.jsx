@@ -15,6 +15,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
   const [batchSize, setBatchSize] = useState(10);
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState(null);
+  const stopRef = React.useRef(false);
 
   const stats = useMemo(() => {
     const withEmail = providers.filter(p => p.email);
@@ -29,25 +30,76 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
   const runVerification = async () => {
     setIsRunning(true);
     setResults(null);
-    setProgress({ processed: 0, total: batchSize, status: 'running' });
+    stopRef.current = false;
 
-    try {
-      const resp = await base44.functions.invoke('bulkVerifyEmails', {
-        mode,
-        batch_size: batchSize,
-      });
-      const data = resp.data;
-      setResults(data);
-      setProgress({ processed: data.batch_processed, total: data.total_candidates, status: 'done' });
-      const smtpChecked = (data.results || []).filter(r => r.smtp?.reachable != null).length;
-      toast.success(`Verified ${data.verified} emails (${data.remaining} remaining)${smtpChecked > 0 ? ` — ${smtpChecked} SMTP-probed` : ''}`);
-      onRefresh?.();
-    } catch (err) {
-      toast.error('Verification failed: ' + (err.response?.data?.error || err.message));
-      setProgress(null);
-    } finally {
-      setIsRunning(false);
+    let totalVerified = 0;
+    let totalFailed = 0;
+    let allResults = [];
+    let batchNumber = 0;
+    let hasMore = true;
+    let consecutiveErrors = 0;
+    let totalCandidates = 0;
+
+    setProgress({ processed: 0, total: 0, status: 'running', batchNumber: 0 });
+
+    while (hasMore && !stopRef.current) {
+      batchNumber++;
+      setProgress(prev => ({ ...prev, batchNumber, status: 'running' }));
+
+      try {
+        const resp = await base44.functions.invoke('bulkVerifyEmails', {
+          mode,
+          batch_size: batchSize,
+        });
+        const data = resp.data;
+        consecutiveErrors = 0;
+
+        totalVerified += data.verified || 0;
+        totalFailed += data.failed || 0;
+        totalCandidates = totalVerified + totalFailed + (data.remaining || 0);
+        allResults = [...allResults, ...(data.results || [])];
+
+        setProgress({
+          processed: totalVerified + totalFailed,
+          total: totalCandidates,
+          status: 'running',
+          batchNumber,
+          verified: totalVerified,
+          remaining: data.remaining || 0,
+        });
+        setResults({ verified: totalVerified, failed: totalFailed, remaining: data.remaining || 0, results: allResults });
+
+        if (!data.remaining || data.remaining <= 0 || data.batch_processed === 0) {
+          hasMore = false;
+        }
+
+        onRefresh?.();
+
+        if (hasMore && !stopRef.current) {
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (err) {
+        consecutiveErrors++;
+        console.error(`Verification batch ${batchNumber} failed:`, err);
+        toast.error(`Batch ${batchNumber} failed: ${err.response?.data?.error || err.message}`);
+
+        if (consecutiveErrors >= 3) {
+          toast.error('Stopped after 3 consecutive errors.');
+          hasMore = false;
+        } else {
+          await new Promise(r => setTimeout(r, 5000));
+        }
+      }
     }
+
+    setProgress(prev => ({ ...prev, status: stopRef.current ? 'stopped' : 'done' }));
+    setIsRunning(false);
+    toast.success(`Done! Verified ${totalVerified} emails across ${batchNumber} batches.`);
+    onRefresh?.();
+  };
+
+  const handleStop = () => {
+    stopRef.current = true;
   };
 
   const modeOptions = [
@@ -154,21 +206,38 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
               {[5, 10, 15, 20, 25].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
 
-            <Button
-              onClick={runVerification}
-              disabled={isRunning}
-              className="ml-auto bg-cyan-600 hover:bg-cyan-700 gap-2"
-              size="sm"
-            >
-              {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-              {isRunning ? 'Verifying...' : 'Start Verification'}
-            </Button>
+            {!isRunning ? (
+              <Button
+                onClick={runVerification}
+                className="ml-auto bg-cyan-600 hover:bg-cyan-700 gap-2"
+                size="sm"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Verify All
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStop}
+                variant="destructive"
+                className="ml-auto gap-2"
+                size="sm"
+              >
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Stop
+              </Button>
+            )}
           </div>
 
           {isRunning && progress && (
-            <div className="flex items-center gap-2 text-xs text-cyan-400">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Processing... this may take a minute per provider (DNS + AI checks)
+            <div className="space-y-2">
+              <Progress value={progress.total > 0 ? (progress.processed / progress.total) * 100 : 0} className="h-2" />
+              <div className="flex items-center justify-between text-xs text-cyan-400">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Batch {progress.batchNumber} — {progress.processed} processed, {progress.remaining || '?'} remaining
+                </span>
+                <span>{progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0}%</span>
+              </div>
             </div>
           )}
         </CardContent>

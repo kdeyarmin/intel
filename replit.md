@@ -48,8 +48,11 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 ### CMS API-Based Imports (JSON API pagination)
 - `autoImportCMSData.ts` - Handles: cms_order_referring, opt_out_physicians, hospice_enrollments, home_health_enrollments, provider_service_utilization, cms_part_d, hospital_general_info, nursing_home_compare, home_health_compare, provider_ownership, dmepos_suppliers, medicare_inpatient_charges, medicare_outpatient_charges
 
+### NPPES/Special Imports
+- `triggerImport.ts` routes `nppes_monthly` → `importNPPESFlatFile`, `nppes_registry` → `nppesCrawler`
+
 ### Orchestration
-- `triggerImport.ts` - Central dispatcher routing to ZIP handlers or autoImportCMSData
+- `triggerImport.ts` - Central dispatcher routing to ZIP handlers, special handlers (NPPES), or autoImportCMSData
 - `runScheduledImports.ts` - Runs scheduled imports from ImportScheduleConfig
 - `cancelStalledImports.ts` - Auto-retries or fails stalled imports
 - `importNPPESFlatFile.ts` - Streaming CSV processor for NPPES flat files
@@ -63,6 +66,11 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 ### Dashboard Stats
 - `getDashboardStats.ts` paginates through all entity records for exact counts (no more 500-record caps)
 - `DatabaseOverview.jsx` displays exact numbers without the "+" estimated indicator
+
+### Email Search Bot
+- `emailSearchBot.ts` - AI-powered email discovery: paginates through all providers (not just 500), searches using LLM with internet context, validates results
+- `bulkVerifyEmails.ts` - Bulk email verification: paginates through providers, runs DNS/AI validation in batches
+- Both frontend search and verification auto-loop through all batches without user intervention (with Stop button and progress tracking)
 
 ### URL Monitoring
 - `checkCMSUrls.ts` - Scans CMS data.json for updated dataset URLs

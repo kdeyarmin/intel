@@ -12,27 +12,67 @@ Deno.serve(async (req) => {
     const { mode = 'batch', npi = null, batch_size = 10, skip_already_searched = true } = payload;
 
     let providersToSearch = [];
+    let totalEligibleRemaining = 0;
 
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
     } else {
-      // Fetch all providers and filter client-side for unsearched ones
-      const allProviders = await base44.asServiceRole.entities.Provider.list('-created_date', 500);
-      
-      const eligible = (allProviders || []).filter(p => {
-        if (skip_already_searched && p.email_searched_at) return false;
-        return true;
-      });
-      
-      providersToSearch = eligible.slice(0, batch_size);
+      const needed = batch_size;
+      let page = 0;
+      const pageSize = 500;
+      const maxPages = 20;
+
+      while (providersToSearch.length < needed && page < maxPages) {
+        const batch = await base44.asServiceRole.entities.Provider.list('-created_date', pageSize, page * pageSize);
+        if (!batch || batch.length === 0) break;
+
+        for (const p of batch) {
+          if (skip_already_searched && p.email_searched_at) continue;
+          if (providersToSearch.length < needed) {
+            providersToSearch.push(p);
+          } else {
+            totalEligibleRemaining++;
+          }
+        }
+
+        if (batch.length < pageSize) break;
+        if (providersToSearch.length >= needed && totalEligibleRemaining > 0) break;
+        page++;
+      }
+
+      if (providersToSearch.length >= needed && totalEligibleRemaining === 0) {
+        const nextPage = page + 1;
+        if (nextPage < maxPages) {
+          const peek = await base44.asServiceRole.entities.Provider.list('-created_date', pageSize, nextPage * pageSize);
+          if (peek && peek.length > 0) {
+            for (const p of peek) {
+              if (skip_already_searched && p.email_searched_at) continue;
+              totalEligibleRemaining++;
+              break;
+            }
+          }
+        }
+      }
     }
 
     if (providersToSearch.length === 0) {
       return Response.json({ message: 'No providers to search', searched: 0, found: 0, results: [], has_more: false });
     }
 
-    const allLocations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', 500);
-    const allTaxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', 500);
+    const batchNpis = providersToSearch.map(p => p.npi);
+    let allLocations = [];
+    let allTaxonomies = [];
+    try {
+      const [locs, taxs] = await Promise.all([
+        base44.asServiceRole.entities.ProviderLocation.filter({ npi: { $in: batchNpis } }),
+        base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi: { $in: batchNpis } }),
+      ]);
+      allLocations = locs || [];
+      allTaxonomies = taxs || [];
+    } catch (_) {
+      allLocations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', 500);
+      allTaxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', 500);
+    }
 
     let searchedCount = 0;
     let foundCount = 0;
@@ -231,19 +271,9 @@ Return validation for ALL emails provided.`,
       timestamp: new Date().toISOString(),
     });
 
-    // Check if there are more unsearched providers remaining
-    // Use a lightweight check — just see if the original search found more than we processed
     let hasMore = false;
     if (mode !== 'single') {
-      // If we found more eligible candidates than batch_size, there are more
-      const totalEligibleFound = (() => {
-        // Re-check the first page quickly
-        let count = 0;
-        for (const p of providersToSearch) count++;
-        return count;
-      })();
-      // If we filled our batch, assume there could be more
-      hasMore = providersToSearch.length >= batch_size;
+      hasMore = totalEligibleRemaining > 0 || providersToSearch.length >= batch_size;
     }
 
     return Response.json({
@@ -252,6 +282,7 @@ Return validation for ALL emails provided.`,
       found: foundCount,
       results,
       has_more: hasMore,
+      remaining_estimate: totalEligibleRemaining,
     });
 
   } catch (error) {

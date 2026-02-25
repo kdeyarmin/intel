@@ -151,7 +151,7 @@ export default function EmailSearchBot() {
         totalSearched += data.searched || 0;
         totalFound += data.found || 0;
         allResults = [...allResults, ...(data.results || [])];
-        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running', startTime, batchTimes: [...batchTimesArr] });
+        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running', startTime, batchTimes: [...batchTimesArr], remainingEstimate: data.remaining_estimate });
         setLastResults(allResults);
 
         if (!data.has_more || data.searched === 0) {

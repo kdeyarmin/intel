@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
     const { mode = 'unverified', batch_size = 10, filter_status, npis } = await req.json();
 
     let toVerify = [];
+    let totalRemaining = 0;
 
     if (mode === 'specific_npis' && npis && npis.length > 0) {
       // Re-verify specific providers by NPI list
@@ -38,16 +39,32 @@ Deno.serve(async (req) => {
         filter = { email_validation_status: { $in: ['risky', 'invalid'] } };
       }
 
-      const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', 500);
-      toVerify = candidates.filter(p => p.email && p.email.trim());
-      if (mode === 'unverified') {
-        // Unverified = has email but no validation status yet
-        toVerify = toVerify.filter(p => !p.email_validation_status || p.email_validation_status === '');
+      const needed = Math.min(batch_size, 25);
+      let page = 0;
+      const pageSize = 500;
+      const maxPages = 20;
+
+      while (toVerify.length < needed && page < maxPages) {
+        const candidates = await base44.asServiceRole.entities.Provider.filter(filter, '-created_date', pageSize, page * pageSize);
+        if (!candidates || candidates.length === 0) break;
+
+        for (const p of candidates) {
+          if (!p.email || !p.email.trim()) continue;
+          if (mode === 'unverified' && p.email_validation_status && p.email_validation_status !== '') continue;
+          if (toVerify.length < needed) {
+            toVerify.push(p);
+          } else {
+            totalRemaining++;
+          }
+        }
+
+        if (candidates.length < pageSize) break;
+        if (toVerify.length >= needed && totalRemaining > 0) break;
+        page++;
       }
     }
 
-    // Take batch
-    const maxBatch = mode === 'specific_npis' ? Math.min(toVerify.length, 50) : Math.min(batch_size, 25);
+    const maxBatch = mode === 'specific_npis' ? Math.min(toVerify.length, 50) : toVerify.length;
     const batch = toVerify.slice(0, maxBatch);
 
     const results = [];
@@ -90,14 +107,16 @@ Deno.serve(async (req) => {
       }
     }
 
+    const remainingCount = Math.max(0, (toVerify.length - batch.length) + totalRemaining);
+
     return Response.json({
       success: true,
       mode,
-      total_candidates: toVerify.length,
+      total_candidates: toVerify.length + totalRemaining,
       batch_processed: batch.length,
       verified,
       failed,
-      remaining: Math.max(0, toVerify.length - batch.length),
+      remaining: remainingCount,
       results,
     });
 
