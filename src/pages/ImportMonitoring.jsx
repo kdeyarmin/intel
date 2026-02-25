@@ -612,7 +612,7 @@ export default function ImportMonitoring() {
       <ImportOverviewKPIs batches={batches} onFilterChange={setStatusFilter} />
 
       {/* Critical Failure Alerts */}
-      <CriticalFailureAlerts batches={batches} onViewErrors={(b) => setErrorReportBatch(b)} />
+      <CriticalFailureAlerts batches={batches} onViewErrors={(b) => setErrorReportBatch(b)} onRefresh={refreshBatches} />
 
       {/* System Status */}
       <SystemStatusPanel batches={batches} />

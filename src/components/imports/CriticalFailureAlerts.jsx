@@ -1,23 +1,31 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, XCircle, Clock, ChevronRight, Siren } from 'lucide-react';
+import { AlertTriangle, XCircle, Clock, ChevronRight, Trash2, Loader2, X } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES } from './errorCategories';
+import { base44 } from '@/api/base44Client';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
   'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
+  'cms_order_referring': 'Order & Referring', 'opt_out_physicians': 'Opt-Out Physicians',
+  'hospice_enrollments': 'Hospice Enrollments',
   'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
   'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
   'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
   'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
   'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
   'medicare_snf_stats': 'Medicare SNF Stats',
+  'hospital_general_info': 'Hospital General Info', 'nursing_home_compare': 'Nursing Home Compare',
+  'home_health_compare': 'Home Health Compare', 'dmepos_suppliers': 'DMEPOS Suppliers',
+  'medicare_inpatient_charges': 'Inpatient Charges', 'medicare_outpatient_charges': 'Outpatient Charges',
 };
 
-export default function CriticalFailureAlerts({ batches, onViewErrors }) {
+export default function CriticalFailureAlerts({ batches, onViewErrors, onRefresh }) {
+  const [isDismissing, setIsDismissing] = useState(false);
+  const [dismissingId, setDismissingId] = useState(null);
+
   const criticalBatches = useMemo(() => {
     const now = new Date();
     const last48h = new Date(now - 48 * 60 * 60 * 1000);
@@ -38,14 +46,53 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const handleDismissOne = async (e, batchId) => {
+    e.stopPropagation();
+    setDismissingId(batchId);
+    try {
+      await base44.entities.ImportBatch.delete(batchId);
+      onRefresh?.();
+    } catch (err) {
+      console.error('Failed to dismiss alert:', err);
+    } finally {
+      setDismissingId(null);
+    }
+  };
+
+  const handleDismissAll = async () => {
+    setIsDismissing(true);
+    try {
+      for (const batch of criticalBatches) {
+        await base44.entities.ImportBatch.delete(batch.id);
+      }
+      onRefresh?.();
+    } catch (err) {
+      console.error('Failed to dismiss all alerts:', err);
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
   return (
     <Card className="border-red-500/30 bg-red-500/5">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2 text-red-400">
-          <AlertTriangle className="w-5 h-5" />
-          Critical Import Failures ({criticalBatches.length})
-          <Badge className="bg-red-500/20 text-red-300 text-[10px] ml-2">Last 48h</Badge>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2 text-red-400">
+            <AlertTriangle className="w-5 h-5" />
+            Critical Import Failures ({criticalBatches.length})
+            <Badge className="bg-red-500/20 text-red-300 text-[10px] ml-2">Last 48h</Badge>
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDismissAll}
+            disabled={isDismissing}
+            className="h-7 text-[11px] bg-transparent border-red-800/50 text-red-400 hover:bg-red-900/30 hover:text-red-300"
+          >
+            {isDismissing ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1.5" />}
+            {isDismissing ? 'Clearing...' : 'Clear All'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
@@ -58,7 +105,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
             return (
               <div
                 key={batch.id}
-                className="flex items-center gap-3 bg-slate-800/60 border border-red-500/15 rounded-lg p-3 hover:bg-slate-800/80 transition-colors cursor-pointer"
+                className="flex items-center gap-3 bg-slate-800/60 border border-red-500/15 rounded-lg p-3 hover:bg-slate-800/80 transition-colors cursor-pointer group"
                 onClick={() => onViewErrors?.(batch)}
               >
                 <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -83,6 +130,18 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                       {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
                     </Badge>
                   )}
+                  <button
+                    onClick={(e) => handleDismissOne(e, batch.id)}
+                    disabled={dismissingId === batch.id}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400"
+                    title="Dismiss this alert"
+                  >
+                    {dismissingId === batch.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <X className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                   <ChevronRight className="w-4 h-4 text-slate-500" />
                 </div>
               </div>
