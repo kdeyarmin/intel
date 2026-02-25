@@ -38,8 +38,8 @@ const importTypes = [
   },
   {
     id: 'cms_order_referring',
-    name: 'Order & Referring Providers',
-    description: 'Medicare ordering and referring provider data',
+    name: 'Order & Referring',
+    description: 'Ordering and referring data',
     icon: Database,
     requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'],
     downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring'
@@ -54,8 +54,8 @@ const importTypes = [
   },
   {
     id: 'home_health_cost_reports',
-    name: 'Home Health Cost Reports',
-    description: 'CMS home health agency financial and utilization data',
+    name: 'Cost Reports',
+    description: 'HHA financial data',
     icon: TrendingUp,
     requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'],
     downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report'
