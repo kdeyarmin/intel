@@ -261,7 +261,9 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
   const mappedCount = Object.keys(columnMapping).length;
   const requiredMapped = selectedType?.requiredColumns?.filter(c => columnMapping[c]).length || 0;
   const requiredTotal = selectedType?.requiredColumns?.length || 0;
-  const downloadUrl = selectedType?.downloadUrl;
+  const downloadUrl = React.useMemo(() => {
+    return selectedType?.downloadUrl;
+  }, [selectedType]);
 
   return (
     <div className="space-y-2">
