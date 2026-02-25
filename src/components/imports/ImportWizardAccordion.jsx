@@ -75,12 +75,6 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
 }
 
 export default function ImportWizardAccordion({ selectedType, onReset, onComplete, compact = false }) {
-  // Find the exact selected type to get the downloadUrl if it exists
-  const downloadUrl = React.useMemo(() => {
-    // Look it up from the IMPORT_CATEGORIES in ImportCategoryCards since that's where we added them
-    // or we can pass it down. But selectedType already has everything ImportTypeSelector provides.
-    return selectedType?.downloadUrl;
-  }, [selectedType]);
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -267,6 +261,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
   const mappedCount = Object.keys(columnMapping).length;
   const requiredMapped = selectedType?.requiredColumns?.filter(c => columnMapping[c]).length || 0;
   const requiredTotal = selectedType?.requiredColumns?.length || 0;
+  const downloadUrl = selectedType?.downloadUrl;
 
   return (
     <div className="space-y-2">
