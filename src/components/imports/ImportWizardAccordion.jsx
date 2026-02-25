@@ -267,7 +267,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
 
   return (
     <div className="space-y-2">
-      {selectedType?.id === 'nppes_registry' && (
+      {selectedType?.id === 'nppes_monthly' && (
         <NPPESFlatFileHelper />
       )}
       {/* STEP 1: File Upload */}
