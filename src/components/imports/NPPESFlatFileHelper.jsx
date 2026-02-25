@@ -6,6 +6,51 @@ import { toast } from 'sonner';
 
 export default function NPPESFlatFileHelper() {
   const [copied, setCopied] = useState(false);
+  const [streamUrl, setStreamUrl] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [streamResult, setStreamResult] = useState('');
+  
+  const startStream = async () => {
+    if (!streamUrl) return toast.error('Please enter a valid CSV URL');
+    setStreaming(true);
+    setStreamResult('Initializing...');
+    
+    try {
+      const { base44 } = await import('@/api/base44Client');
+      const batch = await base44.entities.ImportBatch.create({
+        import_type: 'nppes_registry',
+        file_name: 'Distributed Stream',
+        file_url: streamUrl,
+        status: 'processing',
+        dry_run: false,
+        column_mapping: {
+            'NPI': 'NPI',
+            'Entity Type Code': 'Entity Type Code',
+            'Provider First Name': 'Provider First Name',
+            'Provider Last Name (Legal Name)': 'Provider Last Name (Legal Name)',
+            'Provider Organization Name (Legal Business Name)': 'Provider Organization Name (Legal Business Name)'
+        }
+      });
+      
+      setStreamResult('Batch created! Starting background processing...');
+      
+      base44.functions.invoke('importNPPESFlatFile', {
+        batch_id: batch.id,
+        file_url: streamUrl,
+        byte_offset: 0
+      }).catch(err => {
+        toast.error('Stream processing error: ' + err.message);
+      });
+      
+      toast.success('Streaming started in the background!');
+      setStreamResult('Processing running in background. You can monitor it in the Data Center dashboard.');
+    } catch (e) {
+      toast.error('Failed to start stream: ' + e.message);
+      setStreamResult('Error: ' + e.message);
+    } finally {
+      setStreaming(false);
+    }
+  };
 
   const pythonScript = `import pandas as pd
 import math
@@ -85,9 +130,17 @@ split_nppes_csv("npidata_pfile_20050523-20240107.csv")
               Our servers will use HTTP Range requests to chunk the download automatically.
             </p>
             <div className="flex flex-col gap-2 mt-4">
-              <Button className="w-full bg-cyan-700 hover:bg-cyan-600">
-                <FileText className="w-4 h-4 mr-2" /> Start Distributed Stream
+              <input 
+                type="text" 
+                placeholder="https://your-bucket.s3.amazonaws.com/nppes_extracted.csv"
+                className="w-full p-2 text-xs bg-slate-900 border border-slate-700 rounded text-slate-300 placeholder-slate-600"
+                value={streamUrl}
+                onChange={e => setStreamUrl(e.target.value)}
+              />
+              <Button onClick={startStream} disabled={streaming} className="w-full bg-cyan-700 hover:bg-cyan-600">
+                <FileText className="w-4 h-4 mr-2" /> {streaming ? 'Starting...' : 'Start Distributed Stream'}
               </Button>
+              {streamResult && <p className="text-xs text-cyan-400 mt-2">{streamResult}</p>}
               <p className="text-[10px] text-center text-slate-500">
                 Requires the CSV to be accessible via URL and server to support Range headers.
               </p>
