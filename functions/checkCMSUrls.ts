@@ -39,42 +39,27 @@ Deno.serve(async (req) => {
 
         for (const target of TARGETS) {
             try {
-                console.log(`Checking ${target.label} at ${target.page}...`);
-                const resp = await fetch(target.page);
-                if (!resp.ok) throw new Error(`Page fetch failed: ${resp.status}`);
-                const html = await resp.text();
-
-                // Look for ZIP/XLSX links in JSON-LD (structured data) first
+                console.log(`Searching data.json for ${target.label}...`);
+                const resp = await fetch('https://data.cms.gov/data.json');
+                if (!resp.ok) throw new Error(`data.json fetch failed: ${resp.status}`);
+                
+                const data = await resp.json();
                 let foundUrl = null;
                 const candidates = [];
-                
-                const jsonLdRegex = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi;
-                let jsonMatch;
-                while ((jsonMatch = jsonLdRegex.exec(html)) !== null) {
-                    try {
-                        const json = JSON.parse(jsonMatch[1]);
-                        const dists = json.distribution ? (Array.isArray(json.distribution) ? json.distribution : [json.distribution]) : [];
-                        for (const d of dists) {
-                             if (d.contentUrl && (d.encodingFormat === 'application/zip' || d.encodingFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || d.contentUrl.endsWith('.zip') || d.contentUrl.endsWith('.xlsx'))) {
-                                 candidates.push(d.contentUrl);
-                             }
-                        }
-                    } catch (e) { console.warn('JSON-LD parse error', e.message); }
-                }
 
-                // Also regex search for direct links in HTML
-                const linkRegex = /href="([^"]+\.(zip|xlsx))"/gi;
-                let match;
-                while ((match = linkRegex.exec(html)) !== null) {
-                    const url = match[1];
-                    const fullUrl = url.startsWith('http') ? url : `https://data.cms.gov${url.startsWith('/') ? '' : '/'}${url}`;
-                    if (!fullUrl.includes('methodology') && !fullUrl.includes('glossary') && !candidates.includes(fullUrl)) {
-                        candidates.push(fullUrl);
+                // Find the specific dataset by title
+                const dataset = data.dataset.find(d => d.title.includes(target.label) || d.title.includes(target.label.replace('Stats', '').trim()));
+                
+                if (dataset && dataset.distribution) {
+                    const dists = Array.isArray(dataset.distribution) ? dataset.distribution : [dataset.distribution];
+                    for (const d of dists) {
+                        if (d.downloadURL && (d.downloadURL.endsWith('.zip') || d.downloadURL.endsWith('.xlsx'))) {
+                            candidates.push(d.downloadURL);
+                        }
                     }
                 }
 
-                // Filter candidates for the target year
-                // Prioritize exact year match in filename
+                // Filter candidates for the target year (prioritize exact year match in URL)
                 foundUrl = candidates.find(u => u.includes(String(target.year)));
                 
                 // Fallback: take the first candidate if it looks like a dataset
