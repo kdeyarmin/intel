@@ -17,6 +17,7 @@ import ColumnMapper from './ColumnMapper';
 import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from './columnMappingAI';
 import AIBatchCategorizer from './AIBatchCategorizer';
 import AICleaningSuggestions from './AICleaningSuggestions';
+import NPPESFlatFileHelper from './NPPESFlatFileHelper';
 
 function parseCSVLine(line) {
   const result = [];
