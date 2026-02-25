@@ -34,6 +34,7 @@ const IMPORT_TYPES = [
   { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, hasUrl: false },
   { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: true },
   { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, hasUrl: true },
+  { id: 'opt_out_physicians', name: 'Opt-Out Physicians', desc: 'Physicians who opted out of Medicare', icon: Database, hasUrl: true },
   { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
   { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
   { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, hasUrl: true },

@@ -71,6 +71,12 @@ const IMPORT_TYPE_LABELS = {
   'inpatient_drg': 'Inpatient DRG',
   'provider_ownership': 'Provider Ownership',
   'opt_out_physicians': 'Opt-Out Physicians',
+  'hospital_general_info': 'Hospital General Info',
+  'nursing_home_compare': 'Nursing Home Compare',
+  'home_health_compare': 'Home Health Compare',
+  'dmepos_suppliers': 'DMEPOS Suppliers',
+  'medicare_inpatient_charges': 'Inpatient Charges',
+  'medicare_outpatient_charges': 'Outpatient Charges',
   'medicare_hha_stats': 'Medicare HHA Stats',
   'medicare_ma_inpatient': 'Medicare MA Inpatient',
   'medicare_part_d_stats': 'Medicare Part D Stats',
@@ -104,6 +110,8 @@ export default function ImportMonitoring() {
   const [errorReportBatch, setErrorReportBatch] = useState(null);
   const [isPurging, setIsPurging] = useState(false);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [isCancellingAll, setIsCancellingAll] = useState(false);
+  const [showCancelAllConfirm, setShowCancelAllConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -419,6 +427,26 @@ export default function ImportMonitoring() {
     }
   };
 
+  const handleCancelAllActive = async () => {
+    setIsCancellingAll(true);
+    try {
+      const activeBatches = batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused');
+      for (const batch of activeBatches) {
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'cancelled',
+          cancel_reason: 'Bulk cancelled by admin to restart fresh',
+          cancelled_at: new Date().toISOString(),
+        });
+      }
+      await refreshBatches();
+    } catch (e) {
+      console.error('Cancel all failed:', e);
+    } finally {
+      setIsCancellingAll(false);
+      setShowCancelAllConfirm(false);
+    }
+  };
+
   const formatTimestamp = (ts) => {
     if (!ts) return 'N/A';
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -440,6 +468,15 @@ export default function ImportMonitoring() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div />
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={() => setShowCancelAllConfirm(true)}
+            variant="outline"
+            disabled={isCancellingAll || batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused').length === 0}
+            className="bg-transparent border-orange-800 text-orange-400 hover:bg-orange-900/30 hover:text-orange-300"
+          >
+            {isCancellingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+            Cancel All Active
+          </Button>
           <Button
             onClick={() => setShowPurgeConfirm(true)}
             variant="outline"
@@ -1065,6 +1102,35 @@ export default function ImportMonitoring() {
         onOpenChange={setShowExport}
       />
 
+      {/* Cancel All Active Confirmation Dialog */}
+      <Dialog open={showCancelAllConfirm} onOpenChange={setShowCancelAllConfirm}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-orange-400">Cancel All Active Imports</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will cancel all imports currently in "processing", "validating", or "paused" status.
+              You can restart them fresh afterwards.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-slate-300">
+              Found <span className="font-bold text-orange-400">
+                {batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused').length}
+              </span> active imports to cancel.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowCancelAllConfirm(false)} className="bg-transparent border-slate-600 text-slate-300">
+              Keep Running
+            </Button>
+            <Button onClick={handleCancelAllActive} disabled={isCancellingAll} className="bg-orange-600 hover:bg-orange-700 text-white">
+              {isCancellingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+              {isCancellingAll ? 'Cancelling...' : 'Cancel All'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Purge Confirmation Dialog */}
       <Dialog open={showPurgeConfirm} onOpenChange={setShowPurgeConfirm}>
         <DialogContent className="bg-slate-900 border-slate-700 text-white">
@@ -1103,13 +1169,17 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   const IMPORT_TYPE_LABELS = {
     'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
     'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-    'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
+    'cms_order_referring': 'Order & Referring', 'opt_out_physicians': 'Opt-Out Physicians',
+    'hospice_enrollments': 'Hospice Enrollments',
     'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
     'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
     'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
     'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
     'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
     'medicare_snf_stats': 'Medicare SNF Stats',
+    'hospital_general_info': 'Hospital General Info', 'nursing_home_compare': 'Nursing Home Compare',
+    'home_health_compare': 'Home Health Compare', 'dmepos_suppliers': 'DMEPOS Suppliers',
+    'medicare_inpatient_charges': 'Inpatient Charges', 'medicare_outpatient_charges': 'Outpatient Charges',
   };
 
   const statusColors = {
