@@ -5,18 +5,12 @@ import { FileText, Database, TrendingUp, Activity } from 'lucide-react';
 
 const importTypes = [
   {
-    id: 'nppes_monthly',
-    name: 'NPPES Monthly Download',
-    description: 'National Provider Identifier registry data',
-    icon: FileText,
-    requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'],
-  },
-  {
     id: 'cms_utilization',
     name: 'CMS Provider Utilization',
     description: 'Medicare Part B utilization and payment data',
     icon: TrendingUp,
     requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'],
+    downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service'
   },
   {
     id: 'cms_part_d',
@@ -24,6 +18,7 @@ const importTypes = [
     description: 'Medicare prescription drug claims data',
     icon: Activity,
     requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'],
+    downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug'
   },
   {
     id: 'cms_order_referring',
@@ -31,20 +26,7 @@ const importTypes = [
     description: 'Medicare ordering and referring provider data',
     icon: Database,
     requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'],
-  },
-  {
-    id: 'pa_home_health',
-    name: 'PA Home Health Agencies',
-    description: 'Pennsylvania home health agency provider list',
-    icon: FileText,
-    requiredColumns: ['NPI', 'Agency Name', 'City', 'State', 'License Number'],
-  },
-  {
-    id: 'hospice_providers',
-    name: 'Hospice Provider List',
-    description: 'Medicare-certified hospice providers',
-    icon: Database,
-    requiredColumns: ['NPI', 'Provider Name', 'City', 'State', 'Certification Date'],
+    downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring'
   },
   {
     id: 'nursing_home_chains',
@@ -52,20 +34,7 @@ const importTypes = [
     description: 'CMS nursing home chain performance measures',
     icon: TrendingUp,
     requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'],
-  },
-  {
-    id: 'hospice_enrollments',
-    name: 'Hospice Enrollments',
-    description: 'CMS hospice provider enrollment data',
-    icon: Database,
-    requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
-  },
-  {
-    id: 'home_health_enrollments',
-    name: 'Home Health Enrollments',
-    description: 'CMS home health agency enrollment data',
-    icon: Database,
-    requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'],
+    downloadUrl: 'https://data.cms.gov/provider-data/dataset/b2ux-wtdv'
   },
   {
     id: 'home_health_cost_reports',
@@ -73,34 +42,7 @@ const importTypes = [
     description: 'CMS home health agency financial and utilization data',
     icon: TrendingUp,
     requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'],
-  },
-  {
-    id: 'cms_service_utilization',
-    name: 'Medicare Service Utilization',
-    description: 'CMS Medicare service utilization by HCPCS code',
-    icon: Activity,
-    requiredColumns: ['HCPCS_Cd', 'HCPCS_Desc', 'Tot_Rndrng_Prvdrs', 'Tot_Benes'],
-  },
-  {
-    id: 'provider_service_utilization',
-    name: 'Provider Service Utilization',
-    description: 'Provider-level Medicare service utilization by HCPCS',
-    icon: Activity,
-    requiredColumns: ['Rndrng_NPI', 'HCPCS_Cd', 'HCPCS_Desc', 'Tot_Benes'],
-  },
-  {
-    id: 'home_health_pdgm',
-    name: 'Home Health PDGM Data',
-    description: 'Patient-Driven Groupings Model utilization by provider',
-    icon: TrendingUp,
-    requiredColumns: ['PRVDR_ID', 'GRPNG', 'GRPNG_DESC', 'BENE_DSTNCT_CNT'],
-  },
-  {
-    id: 'inpatient_drg',
-    name: 'Inpatient DRG Data',
-    description: 'Hospital inpatient DRG utilization and payment data',
-    icon: TrendingUp,
-    requiredColumns: ['Rndrng_Prvdr_CCN', 'DRG_Cd', 'DRG_Desc', 'Tot_Dschrgs'],
+    downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report'
   },
   {
     id: 'provider_ownership',
@@ -108,8 +50,8 @@ const importTypes = [
     description: 'CMS provider ownership and organizational control information',
     icon: Database,
     requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'],
+    downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership'
   },
-
 ];
 
 export default function ImportTypeSelector({ onSelect }) {
@@ -127,6 +69,11 @@ export default function ImportTypeSelector({ onSelect }) {
                 <div>
                   <CardTitle className="text-lg">{type.name}</CardTitle>
                   <p className="text-sm text-gray-500">{type.description}</p>
+                  {type.downloadUrl && (
+                    <a href={type.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-1 inline-block" onClick={e => e.stopPropagation()}>
+                      Download source file
+                    </a>
+                  )}
                 </div>
               </div>
             </CardHeader>
