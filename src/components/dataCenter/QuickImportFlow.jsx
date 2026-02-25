@@ -26,7 +26,7 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
       window.location.href = '/NPPESCrawler';
       return;
     }
-    if (type.requiredColumns.length === 0) {
+    if (type.requiredColumns?.length === 0) {
       setStep('autoImport');
     } else {
       setStep('wizard');
