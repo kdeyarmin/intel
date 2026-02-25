@@ -14,7 +14,7 @@ const IMPORT_CATEGORIES = [
       { id: 'cms_utilization', name: 'Provider Utilization', description: 'Medicare Part B utilization', requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service' },
       { id: 'cms_part_d', name: 'Part D Prescriber', description: 'Prescription drug claims', requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug' },
       { id: 'cms_order_referring', name: 'Order & Referring', description: 'Ordering and referring data', requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring' },
-      { id: 'provider_service_utilization', name: 'Service Utilization', description: 'Provider-level HCPCS', requiredColumns: ['Rndrng_NPI', 'HCPCS_Cd', 'HCPCS_Desc', 'Tot_Benes'] },
+
     ]
   },
   {
@@ -24,8 +24,6 @@ const IMPORT_CATEGORIES = [
     icon: Building2,
     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
     types: [
-      { id: 'home_health_enrollments', name: 'Home Health Enrollments', description: 'HHA enrollment data', requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'] },
-      { id: 'hospice_enrollments', name: 'Hospice Enrollments', description: 'Hospice enrollment data', requiredColumns: ['ENROLLMENT ID', 'NPI', 'CCN', 'ORGANIZATION NAME'] },
       { id: 'provider_ownership', name: 'Provider Ownership', description: 'Ownership & control info', requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership' },
     ]
   },
