@@ -6,7 +6,7 @@ const US_STATES = [
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
-const MAX_EXEC_MS = 20000;
+const MAX_EXEC_MS = 45000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -384,10 +384,10 @@ Deno.serve(async (req) => {
             queued++;
         }
         
-        // Trigger worker pool
-        const workers = Math.min(concurrency, 5);
+        const workers = Math.min(concurrency, 3);
         for(let i=0; i<workers; i++) {
             base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+            await sleep(2000);
         }
         
         return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
@@ -496,7 +496,7 @@ Deno.serve(async (req) => {
             }
 
             const task = pendingList[0];
-            if (task.retry_count > 3) {
+            if (task.retry_count > 5) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' }));
                 continue;
             }
@@ -527,10 +527,10 @@ Deno.serve(async (req) => {
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else if (firstPage.count > 0) {
-                    // Fetch all pages (up to skip 1200)
                     let allResults = [...firstPage.results];
                     let skip = 200;
                     while (skip < firstPage.count && skip <= 1200 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
+                        await sleep(500);
                         params.set('skip', String(skip));
                         const page = await fetchNPPESPage(params, stats);
                         stats.api_calls++;
@@ -561,15 +561,23 @@ Deno.serve(async (req) => {
                 }
                 tasksProcessed++;
             } catch (e) {
-                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: e.message, retry_count: (task.retry_count || 0) + 1 }));
+                const newRetryCount = (task.retry_count || 0) + 1;
+                const isRetryable = /429|rate limit|timeout|abort|network|ECONNRESET|503|502/i.test(e.message);
+                const newStatus = (isRetryable && newRetryCount <= 5) ? 'pending' : 'failed';
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: newStatus, error_message: e.message, retry_count: newRetryCount }));
+                if (newStatus === 'pending') {
+                    await sleep(3000);
+                }
             }
         }
         
         // Re-invoke to continue processing if queue not empty
-        // Adding a small delay to avoid overwhelming the platform with rapid self-invocations
-        setTimeout(() => {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
-        }, 1000);
+        try {
+            await sleep(1500);
+            await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
+        } catch (e) {
+            console.error("Self-invoke error:", e);
+        }
         
         return Response.json({ success: true, processed: tasksProcessed, message: 'Time limit reached, re-invoked' });
     }

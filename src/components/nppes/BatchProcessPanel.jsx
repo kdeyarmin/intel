@@ -59,6 +59,49 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
     return [];
   };
 
+  const pollIntervalRef = React.useRef(null);
+
+  const pollBatchStatus = async () => {
+    try {
+      const statusRes = await base44.functions.invoke('nppesCrawler', { action: 'batch_status' });
+      const s = statusRes.data;
+      const completed = s.completed || 0;
+      const failed = s.failed || 0;
+      const processing = s.processing || 0;
+      const pending = s.pending || 0;
+      const totalImported = s.totals?.imported || 0;
+
+      setBatchResults({
+        success: true,
+        states_queued: completed + failed + processing + pending,
+        states_completed: completed,
+        states_failed: failed,
+        total_imported: totalImported,
+        results: [
+          ...(s.completed_states || []).map(st => ({ state: st, success: true, imported_providers: 0 })),
+          ...(s.failed_states || []).map(st => ({ state: st, success: false, error: 'Failed' })),
+          ...(s.processing_states || []).map(st => ({ state: st, success: true, processing: true })),
+        ],
+      });
+
+      if (processing === 0 && pending === 0 && s.crawler_status !== 'running') {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+        setBatchRunning(false);
+        onLog?.(`Batch complete: ${completed} succeeded, ${failed} failed, ${totalImported} providers imported`, failed > 0 ? 'warning' : 'success');
+        onRefresh?.();
+      }
+    } catch (e) {
+      console.error('Poll error:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
   const startBatch = async () => {
     const targetStates = getStatesForBatch();
     if (targetStates.length === 0 && selectionMode !== 'all') {
@@ -85,21 +128,21 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       } else if (selectionMode === 'custom' && targetStates.length > 0) {
         params.states = targetStates;
       }
-      // selectionMode === 'all' → no states/region passed, defaults to all
 
       const res = await base44.functions.invoke('nppesCrawler', params);
       const data = res.data;
       setBatchResults(data);
 
       if (data.success) {
-        onLog?.(`Batch complete: ${data.states_completed} succeeded, ${data.states_failed} failed, ${data.total_imported} providers imported`, 'success');
+        onLog?.(`Batch queued: ${data.states_queued} states. Workers started — polling for progress...`, 'info');
+        pollIntervalRef.current = setInterval(pollBatchStatus, 15000);
+        setTimeout(pollBatchStatus, 5000);
       } else {
         onLog?.(`Batch failed: ${data.error || 'Unknown error'}`, 'error');
+        setBatchRunning(false);
       }
-      onRefresh?.();
     } catch (err) {
       onLog?.(`Batch error: ${err.message}`, 'error');
-    } finally {
       setBatchRunning(false);
     }
   };
@@ -107,8 +150,13 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   const stopBatch = async () => {
     setBatchStopping(true);
     try {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
       const res = await base44.functions.invoke('nppesCrawler', { action: 'batch_stop' });
       onLog?.(res.data?.message || 'Batch stop signal sent', 'info');
+      setBatchRunning(false);
     } catch (err) {
       onLog?.(`Stop failed: ${err.message}`, 'error');
     } finally {
@@ -297,23 +345,26 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
               </div>
             </div>
 
-            {/* Per-state results */}
             {batchResults.results && batchResults.results.length > 0 && (
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {batchResults.results.map((r, idx) => (
                   <div key={idx} className="flex items-center justify-between text-xs px-2 py-1.5 bg-white rounded border">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-700 w-6">{r.state}</span>
-                      {r.success ? (
+                      {r.processing ? (
+                        <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">Processing</Badge>
+                      ) : r.success ? (
                         <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">Success</Badge>
                       ) : (
                         <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px]">Failed</Badge>
                       )}
                     </div>
                     <span className="text-slate-500">
-                      {r.success
-                        ? `${r.valid_rows || 0} valid, ${r.imported_providers || 0} imported`
-                        : r.error?.substring(0, 60) || 'Error'
+                      {r.processing
+                        ? 'In progress...'
+                        : r.success
+                          ? `${r.valid_rows || 0} valid, ${r.imported_providers || 0} imported`
+                          : r.error?.substring(0, 60) || 'Error'
                       }
                     </span>
                   </div>

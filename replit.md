@@ -57,6 +57,14 @@ These are Base44 serverless functions (Deno-based) that handle data imports:
 - `cancelStalledImports.ts` - Auto-retries or fails stalled imports
 - `importNPPESFlatFile.ts` - Streaming CSV processor for NPPES flat files
 
+### NPPES Crawler (nppesCrawler.ts)
+- `MAX_EXEC_MS = 45000` (45s) per worker invocation; workers self-re-invoke with `await` (not setTimeout) for reliable chaining
+- `batch_start` caps concurrency at 3, staggers worker launches by 2s to prevent rate-limit storms
+- Queue items with transient errors (429/timeout/network) auto-retry up to 5 times by being set back to `pending`
+- 500ms delay between NPPES API page fetches to reduce rate limiting
+- Frontend `BatchProcessPanel` polls every 15s for live batch status instead of treating initial response as final
+- Per-state results show Processing/Success/Failed badges with live updates
+
 ### Import Resilience
 - All import functions save records incrementally in chunks (25-50 records)
 - On failure, the current offset and imported row count are saved in `retry_params` and `cancel_reason`
