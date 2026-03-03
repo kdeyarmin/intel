@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
                 if (batch.length === 0) break;
                 for (const rec of batch) {
                     await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
-                    await delay(20);
+                    await delay(100);
                 }
             }
         }
