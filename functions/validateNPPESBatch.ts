@@ -67,10 +67,12 @@ Deno.serve(async (req) => {
         for (const l of recentLocations) {
             if (!l.address_1 || !l.city || !l.state || !l.zip) {
                 alertsToCreate.push({
-                    rule_id: 'incomplete_address', rule_name: 'Incomplete Address', category: 'completeness', severity: 'medium',
-                    entity_type: 'ProviderLocation', entity_id: l.id, npi: l.npi, field_name: 'address',
-                    current_value: `${l.address_1}, ${l.city}, ${l.state} ${l.zip}`, status: 'open', scan_batch_id: scanBatchId,
-                    summary: `Incomplete address for NPI: ${l.npi}`, affected_count: 1
+                    alert_type: 'low_location_completeness',
+                    severity: 'medium',
+                    title: 'Incomplete Address',
+                    description: `Incomplete address for NPI: ${l.npi}`,
+                    status: 'new',
+                    action_required: false
                 });
             }
         }
