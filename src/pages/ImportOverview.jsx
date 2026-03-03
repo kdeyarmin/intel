@@ -68,13 +68,13 @@ export default function ImportOverviewPage() {
         recentErrors.sort((a, b) => new Date(b.timestamp || b.batch_date) - new Date(a.timestamp || a.batch_date));
 
         return {
-            total: batches.length,
+            total: filteredBatches.length,
             success: successCount,
             failed: failCount,
             avgTime: timedBatchesCount > 0 ? (totalTimeMs / timedBatchesCount / 1000).toFixed(1) : 0,
             recentErrors: recentErrors.slice(0, 50)
         };
-    }, [batches]);
+    }, [filteredBatches]);
 
     if (isLoading) {
         return <div className="p-8 flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
