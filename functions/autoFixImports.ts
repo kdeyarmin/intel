@@ -64,20 +64,24 @@ Deno.serve(async (req) => {
             if (isTransient) {
                 action = 'retry';
                 reason = 'Transient error, rate limit, or stalled process detected';
+            } else if (errorStr.includes('missing') || errorStr.includes('out of range')) {
+                // Known data errors where we can attempt a fix/retry (since the backend might have been patched, or we want to try a default correction)
+                action = 'auto_correct_and_retry';
+                reason = 'Detected missing field or out-of-range error; applying default corrections and retrying.';
             } else if (errorSamples.length > 0) {
                 // Use LLM to classify if it's retryable
                 try {
                     const llmRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                        prompt: `You are an AI data engineer. Analyze this import batch error and decide if it's a transient/system issue (like a temporary API failure, timeout, rate limit, connection drop) that should be retried, or a fatal data/schema issue (like missing columns, missing required fields, bad data types) that requires human intervention and code changes.
+                        prompt: `You are an AI data engineer. Analyze this import batch error and decide if it's a transient/system issue (like a temporary API failure, timeout, rate limit, connection drop) that should be retried, a data issue that can be auto-corrected (like missing columns, bad data types where defaults can be set) that should be retried, or a truly fatal issue that must be ignored.
                         
                         Import Type: ${batch.import_type}
                         Errors: ${JSON.stringify(errorSamples.slice(0, 3))}
                         
-                        Respond with JSON: { "action": "retry" | "ignore", "reason": "short explanation" }`,
+                        Respond with JSON: { "action": "retry" | "auto_correct_and_retry" | "ignore", "reason": "short explanation" }`,
                         response_json_schema: {
                             type: "object",
                             properties: {
-                                action: { type: "string", enum: ["retry", "ignore"] },
+                                action: { type: "string", enum: ["retry", "auto_correct_and_retry", "ignore"] },
                                 reason: { type: "string" }
                             }
                         }
@@ -91,7 +95,7 @@ Deno.serve(async (req) => {
                 }
             }
 
-            if (action === 'retry') {
+            if (action === 'retry' || action === 'auto_correct_and_retry') {
                 try {
                     // Mark as cancelled so we don't pick it up again
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, { 
