@@ -317,11 +317,8 @@ Deno.serve(async (req) => {
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
         // Fetch more batches to ensure we don't drop counts as the history grows
-        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ 
-            import_type: 'nppes_registry',
-            file_name: { $like: 'crawler_%' }
-        }, '-created_date', 5000);
-        const crawlerBatches = crawlBatches;
+        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 5000);
+        const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_'));
         
         let total_imported = 0, total_updated = 0, total_skipped = 0, total_api_calls = 0;
         for (const b of crawlerBatches) {
