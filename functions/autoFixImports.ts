@@ -15,31 +15,17 @@ Deno.serve(async (req) => {
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
         const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
 
-        // 1. Find failed/paused imports (No $in to be safe)
-        const failed = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: 'failed',
-            created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 10);
-        const paused = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: 'paused',
-            created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 10);
+        // 1. Find failed/paused imports 
+        const failed = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'failed' }, '-created_date', 20);
+        const paused = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'paused' }, '-created_date', 20);
         
-        const failedBatches = [...failed, ...paused];
+        const failedBatches = [...failed, ...paused].filter(b => b.created_date >= seventyTwoHoursAgo);
 
         // 2. Find stalled processing imports
-        const processing = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: 'processing',
-            updated_date: { $lte: oneHourAgo },
-            created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 10);
-        const validating = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: 'validating',
-            updated_date: { $lte: oneHourAgo },
-            created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 10);
+        const processing = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' }, '-created_date', 20);
+        const validating = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'validating' }, '-created_date', 20);
         
-        const stalledBatches = [...processing, ...validating];
+        const stalledBatches = [...processing, ...validating].filter(b => b.updated_date <= oneHourAgo && b.created_date >= seventyTwoHoursAgo);
 
         const allBatches = [...failedBatches, ...stalledBatches];
         const results = [];
