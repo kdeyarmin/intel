@@ -10,11 +10,16 @@ const MAX_EXEC_MS = 20000;
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function withRetry(fn, maxRetries = 5) {
+async function withRetry(fn, maxRetries = 8) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try { return await fn(); } catch (e) {
-            if (/429|rate limit|too many requests/i.test(e.message) && attempt < maxRetries) {
-                await sleep((Math.pow(2, attempt) * 1000) + (Math.random() * 1000)); continue;
+            const isRateLimit = /429|rate limit|too many requests/i.test(e.message);
+            const isNetwork = /network|connection|reset|timeout/i.test(e.message);
+            if ((isRateLimit || isNetwork) && attempt < maxRetries) {
+                const backoff = (Math.pow(2, attempt) * 1000) + (Math.random() * 2000);
+                console.warn(`[Retry] Attempt ${attempt} failed (${e.message}). Retrying in ${backoff}ms...`);
+                await sleep(backoff); 
+                continue;
             }
             throw e;
         }
