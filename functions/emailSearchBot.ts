@@ -212,7 +212,7 @@ Return validation for ALL emails provided.`,
              return confB - confA;
           });
           
-          const newBest = combined[0];
+          newBest = combined[0];
           
           providerUpdate.email = newBest.email;
           providerUpdate.email_confidence = newBest.confidence;
