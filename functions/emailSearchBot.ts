@@ -9,7 +9,46 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { mode = 'batch', npi = null, batch_size = 10, skip_already_searched = true, offset = 0 } = payload;
+    let { mode = 'batch', npi = null, batch_size = 10, skip_already_searched = true, offset = 0 } = payload;
+
+    if (mode === 'start_background') {
+      const task = await base44.asServiceRole.entities.BackgroundTask.create({
+        task_type: 'email_search',
+        status: 'processing',
+        total_items: payload.total_items || 0,
+        processed_items: 0,
+        success_count: 0,
+        error_count: 0,
+        current_batch_number: 0,
+        started_at: new Date().toISOString(),
+        params: { batch_size, skip_already_searched }
+      });
+
+      base44.asServiceRole.functions.invoke('emailSearchBot', {
+        mode: 'process_background',
+        task_id: task.id
+      }).catch(console.error);
+
+      return Response.json({ success: true, task_id: task.id });
+    }
+
+    if (mode === 'stop_background') {
+      if (payload.task_id) {
+         await base44.asServiceRole.entities.BackgroundTask.update(payload.task_id, { status: 'cancelled' });
+      }
+      return Response.json({ success: true });
+    }
+
+    let currentTask = null;
+    if (mode === 'process_background') {
+      if (!payload.task_id) return Response.json({ error: 'No task_id' }, { status: 400 });
+      currentTask = await base44.asServiceRole.entities.BackgroundTask.get(payload.task_id);
+      if (!currentTask || currentTask.status !== 'processing') {
+        return Response.json({ message: 'Task not processing or not found' });
+      }
+      batch_size = currentTask.params.batch_size || 10;
+      skip_already_searched = currentTask.params.skip_already_searched ?? true;
+    }
 
     let providersToSearch = [];
 
