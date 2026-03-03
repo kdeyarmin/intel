@@ -169,14 +169,12 @@ export default function EmailSearchBot() {
       } catch (err) {
         consecutiveErrors++;
         console.error(`Batch ${batchNumber} failed:`, err);
-        toast.error(`Batch ${batchNumber} failed: ${err.response?.data?.error || err.message}`);
         
-        if (consecutiveErrors >= 3) {
-          toast.error('Stopped after 3 consecutive errors.');
-          hasMore = false;
-        } else {
-          // Wait longer after an error before retrying
-          await new Promise(r => setTimeout(r, 5000));
+        const backoff = Math.min(60000, 5000 * consecutiveErrors);
+        toast.error(`Batch ${batchNumber} failed. Retrying in ${backoff/1000}s...`);
+        
+        if (!stopRef.current) {
+          await new Promise(r => setTimeout(r, backoff));
         }
       }
     }
