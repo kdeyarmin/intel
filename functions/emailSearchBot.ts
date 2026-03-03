@@ -185,7 +185,7 @@ INSTRUCTIONS:
           const emailList = emails.map(e => e.email).join(', ');
           
           const doValidation = async () => base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `You are an email deliverability expert. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
+            prompt: `You are an advanced email deliverability expert AI. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
 
 EMAIL ADDRESSES TO VALIDATE:
 ${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
@@ -196,19 +196,17 @@ PROVIDER CONTEXT:
 - Credential: ${provider.credential || 'N/A'}
 - Location: ${locationInfo}
 
-VALIDATION CRITERIA - For each email, check:
-1. FORMAT: Is the email format valid? (proper syntax, no spaces, valid TLD)
-2. DOMAIN: Is the domain a real, active organization? (hospital, clinic, health system, or known provider like gmail)
-3. PATTERN: Does the email follow typical patterns for that domain? (first.last@, flast@, info@, etc.)
-4. RELEVANCE: Does the email domain match the provider's known organization or practice?
-5. DISPOSABLE: Is it a disposable/temporary email service?
-6. ROLE-BASED: Is it a role-based address like info@, admin@, contact@ (less likely to reach the specific person)?
-7. CATCH-ALL: Does the domain likely use a catch-all (accepts all emails but may not deliver)?
+VALIDATION CRITERIA & SCORING:
+1. Analyze FORMAT, DOMAIN validity, PATTERN matching, RELEVANCE to provider.
+2. Check for DISPOSABLE, ROLE-BASED, or CATCH-ALL characteristics.
+3. Assign a quality score from 0-100 based on likelihood of reaching the provider directly.
+4. Determine risk flags (e.g., 'role-based', 'generic-domain', 'pattern-mismatch').
+5. Provide detailed reasons for the score.
 
 For each email, assign:
-- "valid" = high likelihood of being deliverable and reaching the intended person
-- "risky" = might work but has concerns (pattern mismatch, role-based, catch-all domain, generic provider)
-- "invalid" = likely undeliverable (bad format, non-existent domain, clearly wrong person, disposable)
+- "valid" (score > 75)
+- "risky" (score 40-75)
+- "invalid" (score < 40)
 
 Return validation for ALL emails provided.`,
             response_json_schema: {
@@ -221,7 +219,10 @@ Return validation for ALL emails provided.`,
                     properties: {
                       email: { type: "string" },
                       status: { type: "string", enum: ["valid", "risky", "invalid"] },
-                      reason: { type: "string" }
+                      score: { type: "number" },
+                      confidence: { type: "string", enum: ["high", "medium", "low"] },
+                      reasons: { type: "array", items: { type: "string" } },
+                      risk_flags: { type: "array", items: { type: "string" } }
                     }
                   }
                 }
