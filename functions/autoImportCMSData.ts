@@ -165,7 +165,10 @@ Deno.serve(async (req) => {
                 // Streaming page-by-page approach
                 while (!isTimeUp(startTime) && !reachedEnd) {
                     const separator = file_url.includes('?') ? '&' : '?';
-                    const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
+                    const isDkanApi = file_url.includes('provider-data/api');
+                    const offsetParam = isDkanApi ? `offset=${offset}` : `$offset=${offset}`;
+                    const limitParam = isDkanApi ? `limit=${PAGE_SIZE}` : `$limit=${PAGE_SIZE}`;
+                    const pageUrl = `${file_url}${separator}${offsetParam}&${limitParam}`;
                     console.log(`Fetching offset ${offset}...`);
 
                     let pageResponse;
