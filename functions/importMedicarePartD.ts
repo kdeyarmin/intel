@@ -239,9 +239,10 @@ Deno.serve(async (req) => {
                             try {
                                 await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
                             } catch (retryEx) {
-                                if (!retryEx.message?.includes('not found')) throw retryEx;
+                                const retryMsg = retryEx.message || '';
+                                if (!retryMsg.toLowerCase().includes('not found')) throw retryEx;
                             }
-                        } else if (!msg.includes('not found')) {
+                        } else if (!msg.toLowerCase().includes('not found')) {
                             throw e;
                         }
                     }
