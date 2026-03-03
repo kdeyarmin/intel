@@ -300,9 +300,13 @@ Return validation for ALL emails provided.`,
 
       } catch (err) {
         console.error(`Email search failed for NPI ${provider.npi}:`, err.message);
-        await base44.asServiceRole.entities.Provider.update(provider.id, {
-          email_searched_at: new Date().toISOString(),
-        });
+        try {
+          await base44.asServiceRole.entities.Provider.update(provider.id, {
+            email_searched_at: new Date().toISOString(),
+          });
+        } catch (updateErr) {
+          console.error(`Failed to update provider status for ${provider.npi}:`, updateErr.message);
+        }
         searchedCount++;
         results.push({
           npi: provider.npi,
