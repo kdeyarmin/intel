@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-export default async function fetch(req) {
+Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
