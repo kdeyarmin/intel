@@ -76,14 +76,22 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
             <div>
               <h4 className="text-sm font-semibold mb-2 text-slate-300">Column Mapping</h4>
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {Object.entries(batch.column_mapping).map(([key, val]) => (
-                    <div key={key} className="flex justify-between py-0.5 border-b border-slate-700/30">
-                      <span className="font-medium text-slate-300">{key}</span>
-                      <span className="text-slate-500">{val}</span>
-                    </div>
-                  ))}
-                </div>
+                {Array.isArray(batch.column_mapping) ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {batch.column_mapping.map((f, i) => (
+                      <Badge key={i} className="bg-slate-700/50 text-slate-300 text-[10px] font-mono">{f}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {Object.entries(batch.column_mapping).map(([key, val]) => (
+                      <div key={key} className="flex justify-between py-0.5 border-b border-slate-700/30">
+                        <span className="font-medium text-slate-300">{key}</span>
+                        <span className="text-slate-500">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
