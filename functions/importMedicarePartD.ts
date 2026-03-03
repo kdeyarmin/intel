@@ -119,9 +119,13 @@ function validateRecord(record, rowIndex, sheetName) {
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try { await entity.bulkCreate(chunk); return { ok: true }; } catch (e) {
-      if ((e.message?.includes('Rate limit') || e.message?.includes('timeout')) && attempt < 2) { await delay(jitteredBackoff(attempt)); } else { return { ok: false, error: e.message }; }
+      if ((e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('429')) && attempt < 4) { 
+        await delay(jitteredBackoff(attempt)); 
+      } else { 
+        return { ok: false, error: e.message }; 
+      }
     }
   }
   return { ok: false, error: 'Max retries' };
