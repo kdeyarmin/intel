@@ -301,14 +301,32 @@ Deno.serve(async (req) => {
     return Response.json({ error: `No download URL configured for Medicare MA Inpatient`, hint: 'Check ImportScheduleConfig' }, { status: 400 });
   }
 
-  const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_ma_inpatient',
-    file_name: `medicare_ma_inpatient_${year}`,
-    file_url: downloadUrl,
-    status: 'processing',
-    dry_run,
-    retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
-  });
+  let batch;
+  if (action === 'resume' && payload.batch_id) {
+    batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
+    if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+  } else {
+    // try to find existing batch if not resuming to avoid duplicate active ones
+    const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
+        import_type: 'medicare_ma_inpatient',
+        status: { $in: ['processing', 'validating'] }
+    });
+    
+    if (existingActive.length > 0) {
+        batch = existingActive[0];
+        console.log(`Using existing active batch: ${batch.id}`);
+    } else {
+        batch = await base44.asServiceRole.entities.ImportBatch.create({
+          import_type: 'medicare_ma_inpatient',
+          file_name: `medicare_ma_inpatient_${year}`,
+          file_url: downloadUrl,
+          status: 'processing',
+          dry_run,
+          retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
+        });
+    }
+  }
 
   const errorSamples = [];
   const addError = (phase, detail, context) => {
