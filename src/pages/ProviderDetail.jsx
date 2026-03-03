@@ -372,7 +372,7 @@ export default function ProviderDetail() {
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              <div className="lg:col-span-2 space-y-6">
                <DataQualityInsightsCard npi={npi} provider={provider} />
-               <ExternalDataDisplay npi={npi} onEnrichmentComplete={() => {
+               <ExternalDataDisplay npi={npi} provider={provider} onEnrichmentComplete={() => {
                  queryClient.invalidateQueries({ queryKey: ['provider', npi] });
                }} />
                <ProviderAIQualityInsights
