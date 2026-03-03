@@ -134,7 +134,21 @@ Deno.serve(async (req) => {
             }
         }
 
-        return Response.json({ success: true, processed: allBatches.length, results });
+        // For debugging, summarize results
+        const restarted = results.filter(r => r.action === 'restarted');
+        const skipped = results.filter(r => r.action === 'skipped');
+        const ignored = results.filter(r => r.action === 'ignored');
+        
+        return Response.json({ 
+            success: true, 
+            processed: allBatches.length, 
+            summary: {
+                restarted: restarted.length,
+                skipped: skipped.length,
+                ignored: ignored.length
+            },
+            restarted_details: restarted
+        });
 
     } catch (error) {
         console.error('Import bot error:', error);
