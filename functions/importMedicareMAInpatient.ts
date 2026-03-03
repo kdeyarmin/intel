@@ -476,6 +476,15 @@ Deno.serve(async (req) => {
       const CHUNK = 50;
 
       if (!dry_run && recordsToProcess.length > 0) {
+        if (effectiveOffset === 0) {
+          const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
+          if (existing.length > 0) {
+            console.log(`Clearing existing ${year} records...`);
+            const all = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
+            for (const rec of all) { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); await delay(50); }
+          }
+        }
+
         for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
           if (isTimeUp()) {
             console.warn(`[import] Time limit reached at ${imported}/${recordsToProcess.length} (${elapsed()}ms)`);
