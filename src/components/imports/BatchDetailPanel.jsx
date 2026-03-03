@@ -14,6 +14,7 @@ import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
 import AIFailureAnalysis from './AIFailureAnalysis';
+import AIDatasetAnalysis from './AIDatasetAnalysis';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -310,6 +311,11 @@ export default function BatchDetailPanel({ batch }) {
         </h4>
         <ValidationRuleResults batch={batch} />
       </div>
+
+      {/* AI Dataset Analysis (for completed batches) */}
+      {batch.status === 'completed' && (
+        <AIDatasetAnalysis batch={batch} />
+      )}
 
       {/* AI Failure Analysis */}
       {batch.status === 'failed' && (
