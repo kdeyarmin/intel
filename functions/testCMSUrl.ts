@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
                 const size = head.headers.get('content-length');
                 const lastModified = head.headers.get('last-modified');
                 metadata = {
-                    content_length: size,
+                    content_length: size ? parseInt(size, 10) : null,
                     last_modified: lastModified,
                     status: head.status
                 };
