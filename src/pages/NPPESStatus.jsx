@@ -37,9 +37,24 @@ export default function NPPESStatus() {
     }
   });
 
-  const handleAction = (action) => {
-    crawlerMutation.mutate(action);
+  const handleAction = (action, payload = {}) => {
+    crawlerMutation.mutate({ action, ...payload });
   };
+
+  const crawlerMutation = useMutation({
+    mutationFn: async (payload) => {
+      const { data } = await base44.functions.invoke('nppesCrawler', payload);
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(data.message || `Action successful`);
+      queryClient.invalidateQueries({ queryKey: ['nppes-crawler-status'] });
+    },
+    onError: (err) => {
+      toast.error(`Failed: ${err.message}`);
+    }
+  });
 
   if (isLoading && !statusData) {
     return <div className="p-8 text-center text-slate-400">Loading crawler status...</div>;
