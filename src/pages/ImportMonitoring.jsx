@@ -79,6 +79,7 @@ const IMPORT_TYPE_LABELS = {
   'hospice_provider_measures': 'Hospice Provider Measures',
   'hospice_state_measures': 'Hospice State Measures',
   'hospice_national_measures': 'Hospice National Measures',
+  'snf_provider_measures': 'SNF Provider Measures',
 };
 
 export default function ImportMonitoring() {
@@ -1058,6 +1059,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'hospice_provider_measures': 'Hospice Provider Measures',
     'hospice_state_measures': 'Hospice State Measures',
     'hospice_national_measures': 'Hospice National Measures',
+    'snf_provider_measures': 'SNF Provider Measures',
   };
 
   const statusColors = {

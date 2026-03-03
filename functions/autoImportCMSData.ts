@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
             'hospice_enrollments', 'home_health_enrollments',
             'provider_service_utilization', 'medical_equipment_suppliers',
             'hospice_provider_measures', 'hospice_state_measures',
-            'hospice_national_measures'
+            'hospice_national_measures', 'snf_provider_measures'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -590,6 +590,30 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'snf_provider_measures') {
+            const ccn = row['cms_certification_number_ccn'];
+            const measureCode = row['measure_code'];
+            if (!ccn || !measureCode) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['provider_name'] || '',
+                address_1: row['address_line_1'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                county: row['countyparish'] || '',
+                phone: row['telephone_number'] || '',
+                cms_region: row['cms_region'] || '',
+                measure_code: String(measureCode).trim(),
+                score: row['score'] || '',
+                footnote: row['footnote'] || '',
+                start_date: row['start_date'] || '',
+                end_date: row['end_date'] || '',
+                measure_date_range: row['measure_date_range'] || '',
+                location_string: row['location1'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -607,6 +631,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'hospice_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     if (importType === 'hospice_state_measures') return (mapped.state && mapped.measure_code) ? `${mapped.state}_${mapped.measure_code}` : null;
     if (importType === 'hospice_national_measures') return mapped.measure_code || null;
+    if (importType === 'snf_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     return null;
 }
 
@@ -651,6 +676,7 @@ async function importChunk(base44, importType, records, startTime) {
         'hospice_provider_measures': 'HospiceProviderMeasure',
         'hospice_state_measures': 'HospiceStateMeasure',
         'hospice_national_measures': 'HospiceNationalMeasure',
+        'snf_provider_measures': 'SNFProviderMeasure',
     };
 
     const entityName = entityMap[importType];
