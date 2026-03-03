@@ -689,7 +689,7 @@ Deno.serve(async (req) => {
                     // Fetch all pages (up to skip 1200)
                     let allResults = [...firstPage.results];
                     let skip = 200;
-                    while (skip < firstPage.count && skip <= 1200 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
+                    while (skip < firstPage.count && skip <= 1000 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
                         params.set('skip', String(skip));
                         const page = await fetchNPPESPage(params, stats);
                         stats.api_calls++;
