@@ -110,7 +110,16 @@ async function upsertLocations(records, base44) {
         for (const loc of chunk) {
             const exLocs = existingMap[loc.npi] || [];
             const match = exLocs.find(ex => ex.location_type === loc.location_type && (ex.address_1 || '').trim().toLowerCase() === (loc.address_1 || '').trim().toLowerCase() && (ex.zip || '').substring(0, 5) === (loc.zip || '').substring(0, 5));
-            if (!match) { toCreate.push(loc); }
+            if (!match) { 
+                // Inherit email from any existing location of this provider if the new one doesn't have it
+                const oldLocWithEmail = exLocs.find(ex => ex.email);
+                if (oldLocWithEmail) {
+                    loc.email = oldLocWithEmail.email;
+                    loc.email_confidence = oldLocWithEmail.email_confidence;
+                    loc.email_source = oldLocWithEmail.email_source;
+                }
+                toCreate.push(loc); 
+            }
             else if (isIdentical(loc, match, FIELDS)) { skipped++; }
             else {
                 const merged = { ...match, ...loc };
