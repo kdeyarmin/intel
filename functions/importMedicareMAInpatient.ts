@@ -498,6 +498,7 @@ Deno.serve(async (req) => {
       // === Step 4: Import with retry per chunk ===
       let imported = 0;
       let chunkErrors = 0;
+      let fatalRateLimit = false;
       const CHUNK = 30;
 
       if (!dry_run && recordsToProcess.length > 0) {
