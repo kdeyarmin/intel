@@ -77,7 +77,14 @@ async function upsertProviders(records, base44) {
                 try {
                     const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
                     if (!ex) { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
-                    else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) { await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, p)); updated++; }
+                    else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
+                        const merged = { ...ex, ...p };
+                        for (const k of Object.keys(merged)) {
+                            if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
+                        }
+                        await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                        updated++;
+                    }
                     else { skipped++; }
                 } catch (err) {}
             }
@@ -101,8 +108,10 @@ async function upsertLocations(records, base44) {
             if (!match) { toCreate.push(loc); }
             else if (isIdentical(loc, match, FIELDS)) { skipped++; }
             else {
-                const merged = { ...loc };
-                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                const merged = { ...match, ...loc };
+                for (const k of Object.keys(merged)) {
+                    if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
+                }
                 updateTasks.push(base44.asServiceRole.entities.ProviderLocation.update(match.id, merged).catch(()=>{}));
             }
         }
@@ -130,8 +139,10 @@ async function upsertTaxonomies(records, base44) {
             if (!match) { toCreate.push(tax); }
             else if (isIdentical(tax, match, FIELDS)) { skipped++; }
             else {
-                const merged = { ...tax };
-                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
+                const merged = { ...match, ...tax };
+                for (const k of Object.keys(merged)) {
+                    if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
+                }
                 updateTasks.push(base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged).catch(()=>{}));
             }
         }
