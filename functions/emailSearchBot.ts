@@ -225,11 +225,11 @@ Return validation for ALL emails provided.`,
         await base44.asServiceRole.entities.Provider.update(provider.id, providerUpdate);
 
         // Also update primary location
-        if (bestEmail && primaryLoc && !primaryLoc.email) {
+        if (newBest && primaryLoc && !primaryLoc.email) {
           await base44.asServiceRole.entities.ProviderLocation.update(primaryLoc.id, {
-            email: bestEmail.email,
-            email_confidence: bestEmail.confidence,
-            email_source: bestEmail.source || '',
+            email: newBest.email,
+            email_confidence: newBest.confidence,
+            email_source: newBest.source || '',
           });
         }
 
