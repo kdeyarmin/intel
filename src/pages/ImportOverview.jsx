@@ -174,6 +174,65 @@ export default function ImportOverviewPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5 text-indigo-500" />
+                        Recent Import Batches
+                    </CardTitle>
+                    <CardDescription>A list of import batches matching your filters.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>ID</TableHead>
+                                    <TableHead>File Name</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Year</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Valid / Total Rows</TableHead>
+                                    <TableHead>Last Run</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredBatches.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No batches found matching criteria.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredBatches.slice(0, 50).map(batch => (
+                                        <TableRow key={batch.id}>
+                                            <TableCell className="font-mono text-xs text-gray-500">{batch.id.substring(0, 8)}...</TableCell>
+                                            <TableCell className="font-medium">{batch.file_name || 'N/A'}</TableCell>
+                                            <TableCell><Badge variant="outline">{batch.import_type}</Badge></TableCell>
+                                            <TableCell>{batch.data_year || '-'}</TableCell>
+                                            <TableCell>
+                                                <Badge className={
+                                                    batch.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' :
+                                                    batch.status === 'failed' ? 'bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' :
+                                                    batch.status === 'processing' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                    'bg-gray-100 text-gray-800 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400'
+                                                }>
+                                                    {batch.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                {batch.valid_rows || 0} / {batch.total_rows || batch.valid_rows || 0}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                {batch.updated_date || batch.created_date ? format(new Date(batch.updated_date || batch.created_date), 'MMM d, HH:mm') : 'N/A'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-amber-500" />
                         Recent Import Errors
                     </CardTitle>
