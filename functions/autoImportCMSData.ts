@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// Strict time budget: 45s to leave buffer before platform kills us
-const MAX_EXEC_MS = 40_000; // Reduced to 40s to be safer
-const FETCH_TIMEOUT_MS = 15_000;
+// Strict time budget: 25s to leave buffer before platform 30s timeout kills us
+const MAX_EXEC_MS = 25_000; 
+const FETCH_TIMEOUT_MS = 10_000;
 const PAGE_SIZE = 300; // Reduced page size for more frequent updates
 const BULK_SIZE = 30;
 
