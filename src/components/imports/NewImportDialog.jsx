@@ -43,6 +43,15 @@ const IMPORT_TYPES = [
   { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
   { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
   { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, hasUrl: true },
+  { id: 'opt_out_physicians', name: 'Opt-Out Physicians', desc: 'CMS Opt-Out', icon: Database, hasUrl: true },
+  { id: 'medical_equipment_suppliers', name: 'Med Equip Suppliers', desc: 'DMEPOS Suppliers', icon: Database, hasUrl: true },
+  { id: 'hospice_provider_measures', name: 'Hospice Provider Measures', desc: 'Hospice quality', icon: Activity, hasUrl: true },
+  { id: 'hospice_state_measures', name: 'Hospice State Measures', desc: 'Hospice state aggregate', icon: Activity, hasUrl: true },
+  { id: 'hospice_national_measures', name: 'Hospice National Measures', desc: 'Hospice national aggregate', icon: Activity, hasUrl: true },
+  { id: 'snf_provider_measures', name: 'SNF Provider Measures', desc: 'SNF quality', icon: Activity, hasUrl: true },
+  { id: 'nursing_home_providers', name: 'Nursing Home Providers', desc: 'Nursing home details', icon: Database, hasUrl: true },
+  { id: 'nursing_home_deficiencies', name: 'Nursing Home Deficiencies', desc: 'Nursing home inspections', icon: Activity, hasUrl: true },
+  { id: 'home_health_national_measures', name: 'HH National Measures', desc: 'Home health national aggregate', icon: Activity, hasUrl: true },
 ];
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
