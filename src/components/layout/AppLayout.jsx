@@ -50,6 +50,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
       { name: 'CMS Data Sources', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
+      { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
       { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
