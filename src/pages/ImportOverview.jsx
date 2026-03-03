@@ -82,9 +82,54 @@ export default function ImportOverviewPage() {
 
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Import Overview</h1>
-                <p className="text-muted-foreground mt-1">Comprehensive overview of all data import processes and system health.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Import Overview</h1>
+                    <p className="text-muted-foreground mt-1">Comprehensive overview of all data import processes and system health.</p>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border">
+                <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input 
+                        placeholder="Search by file name or ID..." 
+                        className="pl-9" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                <Select value={importTypeFilter} onValueChange={setImportTypeFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Import Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        {uniqueTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Select value={dataYearFilter} onValueChange={setDataYearFilter}>
+                    <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Data Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Years</SelectItem>
+                        {uniqueYears.map(y => <SelectItem key={String(y)} value={String(y)}>{y}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="validating">Validating</SelectItem>
+                        <SelectItem value="paused">Paused</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
