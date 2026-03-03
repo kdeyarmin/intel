@@ -450,9 +450,16 @@ Deno.serve(async (req) => {
         let queued = 0, skipped = 0;
         for (const st of targetStates) {
             if (skip_completed) {
-                const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 100);
-                const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
-                if (stBatch && stBatch.status === 'completed') { skipped++; continue; }
+                // Fetch the latest batch specifically for this state
+                const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ 
+                    import_type: 'nppes_registry',
+                    file_name: { $like: `crawler_${st}_%` }
+                }, '-created_date', 5);
+                const stBatch = existingBatches[0];
+                if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'processing' || stBatch.status === 'validating')) { 
+                    skipped++; 
+                    continue; 
+                }
             }
             
             const batch = await base44.asServiceRole.entities.ImportBatch.create({
