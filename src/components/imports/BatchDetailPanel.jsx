@@ -149,6 +149,7 @@ export default function BatchDetailPanel({ batch }) {
 
   const columnFields = useMemo(() => {
     if (!batch.column_mapping) return null;
+    if (Array.isArray(batch.column_mapping)) return batch.column_mapping;
     if (batch.column_mapping.fields) return batch.column_mapping.fields;
     if (typeof batch.column_mapping === 'object') return Object.entries(batch.column_mapping);
     return null;
