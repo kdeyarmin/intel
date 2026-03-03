@@ -4,15 +4,17 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Fetch one page per entity. If we get exactly PAGE_SIZE, the real total is likely higher.
-        const PAGE = 500;
+        // Real totals usually require .count() or similar, but since we can't reliably get full counts fast without a specific query, we'll try to fetch more pages to get a better estimate.
+        // We can do an empty filter to get all records, but there's a limit. 
+        // Using a high limit to get actual totals for the dashboard
+        const LIMIT = 10000; 
 
         // Fetch sequentially to prevent rate limits
-        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', PAGE);
-        const locations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', PAGE);
-        const referrals = await base44.asServiceRole.entities.CMSReferral.list('-created_date', PAGE);
-        const utilization = await base44.asServiceRole.entities.CMSUtilization.list('-created_date', PAGE);
-        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', PAGE);
+        const providers = await base44.asServiceRole.entities.Provider.filter({}, undefined, LIMIT);
+        const locations = await base44.asServiceRole.entities.ProviderLocation.filter({}, undefined, LIMIT);
+        const referrals = await base44.asServiceRole.entities.CMSReferral.filter({}, undefined, LIMIT);
+        const utilization = await base44.asServiceRole.entities.CMSUtilization.filter({}, undefined, LIMIT);
+        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.filter({}, undefined, LIMIT);
         const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 100);
         const dqScans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1);
 
@@ -27,27 +29,14 @@ Deno.serve(async (req) => {
             if (p.needs_nppes_enrichment) needsEnrichment++;
         }
 
-        const hasManyProviders = providers.length >= PAGE;
-        const hasManyLocations = locations.length >= PAGE;
-        const hasManyReferrals = referrals.length >= PAGE;
-        const hasManyUtilization = utilization.length >= PAGE;
-        const hasManyTaxonomies = taxonomies.length >= PAGE;
+        const hasManyProviders = providers.length >= LIMIT;
+        const hasManyLocations = locations.length >= LIMIT;
+        const hasManyReferrals = referrals.length >= LIMIT;
+        const hasManyUtilization = utilization.length >= LIMIT;
+        const hasManyTaxonomies = taxonomies.length >= LIMIT;
         const hasAnyTruncated = hasManyProviders || hasManyLocations || hasManyReferrals || hasManyUtilization || hasManyTaxonomies;
 
-        // If provider list was truncated, try to get a second page just for a better count
         let totalProviders = providers.length;
-        if (hasManyProviders) {
-            const page2 = await base44.asServiceRole.entities.Provider.list('-created_date', PAGE, PAGE);
-            totalProviders += page2.length;
-            for (const p of page2) {
-                if (p.email) withEmail++;
-                if (p.email_searched_at) searched++;
-                if (p.email_validation_status === 'valid') valid++;
-                if (p.email_validation_status === 'risky') risky++;
-                if (p.email_validation_status === 'invalid') invalid++;
-                if (p.needs_nppes_enrichment) needsEnrichment++;
-            }
-        }
 
         // Top states
         const stateCounts = {};
