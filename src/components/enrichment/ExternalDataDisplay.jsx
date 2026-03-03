@@ -208,6 +208,16 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
                   ))}
                 </div>
               )}
+
+              {provider && npi_val.is_valid && (
+                 <div className="mt-4">
+                    <EnrichmentMergePanel 
+                       provider={provider} 
+                       npiValidation={npi_val} 
+                       onMergeComplete={onEnrichmentComplete}
+                    />
+                 </div>
+              )}
             </TabsContent>
           )}
 
