@@ -94,13 +94,14 @@ Deno.serve(async (req) => {
     if (zipFunctionMap[import_type]) {
       // Route to the specialized ZIP handler, passing through all params, but run in background
       base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
-        action: 'import',
+        action: body.batch_id ? 'resume' : 'import',
+        batch_id: body.batch_id || undefined,
         year: parseInt(year || 2023),
         custom_url: file_url || undefined,
         dry_run,
         // Pass through retry/range params
         sheet_filter: body.sheet_filter || undefined,
-        row_offset: body.row_offset || undefined,
+        row_offset: body.row_offset || body.resume_offset || undefined,
         row_limit: body.row_limit || undefined,
         // Pass retry metadata so batch is tagged correctly
         retry_of: retry_of || undefined,
