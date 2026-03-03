@@ -244,9 +244,15 @@ Deno.serve(async (req) => {
                             } catch (retryEx) {
                                 const retryMsg = retryEx.message || '';
                                 const retryIsNotFound = retryMsg.toLowerCase().includes('not found') || retryEx.status === 404 || retryEx.response?.status === 404;
-                                if (!retryIsNotFound) throw retryEx;
+                                if (!retryIsNotFound) {
+                                    throw retryEx;
+                                } else {
+                                    console.log(`[delete] Swallowed 404 on retry for ${rec.id}`);
+                                }
                             }
-                        } else if (!isNotFound) {
+                        } else if (isNotFound) {
+                            console.log(`[delete] Swallowed 404 for ${rec.id}`);
+                        } else {
                             throw e;
                         }
                     }
