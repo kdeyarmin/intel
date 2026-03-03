@@ -628,16 +628,48 @@ Deno.serve(async (req) => {
                     await updateBatchStats(base44, task.batch_id, stats);
                 }
                 tasksProcessed++;
+                consecutiveErrors = 0; // Reset error counter on success
+                
+                // Dynamic Delay: if we hit rate limits, slow down this worker significantly
+                if (stats.shouldSlowDown) {
+                     await sleep(3000 + Math.random() * 2000);
+                } else {
+                     await sleep(200); // Standard small delay between successful calls to be polite
+                }
+                
             } catch (e) {
+                consecutiveErrors++;
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: e.message, retry_count: (task.retry_count || 0) + 1 }));
+                // If we're failing repeatedly, break the loop early to let the worker die/backoff
+                if (consecutiveErrors >= 3) {
+                     console.warn(`Worker hit 3 consecutive errors, backing off. Last error: ${e.message}`);
+                     break; 
+                }
+                await sleep(consecutiveErrors * 2000); // Backoff before picking up next task
             }
         }
         
-        // Re-invoke to continue processing if queue not empty
-        // Adding a small delay to avoid overwhelming the platform with rapid self-invocations
-        setTimeout(() => {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
-        }, 1000);
+        // Intelligent Re-invocation based on performance and queue depth
+        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 100).then(r => r.length).catch(() => 0);
+        
+        if (remainingQueueSize > 0) {
+            // Determine if we should spawn another worker to help, or just re-invoke self
+            // If the queue is large and we didn't have many errors, spawn an extra helper (up to a reasonable limit)
+            const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
+            
+            // Re-invoke self
+            const reInvokeDelay = consecutiveErrors > 0 ? 5000 : 1000; 
+            setTimeout(() => {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
+            }, reInvokeDelay);
+
+            // Dynamically scale up if queue is large, we are healthy, and under worker cap
+            if (remainingQueueSize > 50 && consecutiveErrors === 0 && activeWorkersCount < 8) {
+                 setTimeout(() => {
+                     base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+                 }, 2000);
+            }
+        }
         
         return Response.json({ success: true, processed: tasksProcessed, message: 'Time limit reached, re-invoked' });
     }
