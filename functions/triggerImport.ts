@@ -19,6 +19,8 @@ const IMPORT_TYPE_URLS = {
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
   // Medical Equipment Suppliers
   medical_equipment_suppliers: 'https://data.cms.gov/provider-data/api/1/datastore/query/ct36-nrcq/0',
+  // Hospice Provider Measures
+  hospice_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/gxki-hrr8/0',
 };
 
 async function withRetry(fn, retries = 5, backoff = 1500) {

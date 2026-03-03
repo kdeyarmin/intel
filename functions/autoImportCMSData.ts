@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
         const validTypes = [
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
-            'provider_service_utilization', 'medical_equipment_suppliers'
+            'provider_service_utilization', 'medical_equipment_suppliers',
+            'hospice_provider_measures'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -538,6 +539,30 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'hospice_provider_measures') {
+            const ccn = row['cms_certification_number_ccn'];
+            const measureCode = row['measure_code'];
+            if (!ccn || !measureCode) return null;
+            return {
+                ccn: String(ccn).trim(),
+                facility_name: row['facility_name'] || '',
+                address_1: row['address_line_1'] || '',
+                address_2: row['address_line_2'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                county: row['countyparish'] || '',
+                phone: row['telephone_number'] || '',
+                cms_region: row['cms_region'] || '',
+                measure_code: String(measureCode).trim(),
+                measure_name: row['measure_name'] || '',
+                score: row['score'] || '',
+                star_rating: row['star_rating'] || '',
+                footnote: row['footnote'] || '',
+                date_range: row['date'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -552,6 +577,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
     if (importType === 'medical_equipment_suppliers') return mapped.provider_id || null;
+    if (importType === 'hospice_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     return null;
 }
 
@@ -593,6 +619,7 @@ async function importChunk(base44, importType, records, startTime) {
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',
         'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
+        'hospice_provider_measures': 'HospiceProviderMeasure',
     };
 
     const entityName = entityMap[importType];
