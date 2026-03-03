@@ -482,8 +482,27 @@ Deno.serve(async (req) => {
                     
                     const allDone = items.every(i => i.status === 'completed' || i.status === 'failed');
                     if (allDone) {
-                        const hasErrors = items.some(i => i.status === 'failed');
-                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
+                        const failedItems = items.filter(i => i.status === 'failed');
+                        const hasErrors = failedItems.length > 0;
+                        const updates = { 
+                            status: hasErrors ? 'failed' : 'completed', 
+                            completed_at: new Date().toISOString() 
+                        };
+                        
+                        if (hasErrors) {
+                            // Collect error samples from failed items
+                            const errorSamples = failedItems.slice(0, 5).map(i => ({
+                                phase: 'crawler',
+                                detail: i.error_message || 'Unknown error',
+                                item_id: i.id,
+                                zip_prefix: i.zip_prefix,
+                                timestamp: new Date().toISOString()
+                            }));
+                            updates.error_samples = errorSamples;
+                            updates.cancel_reason = `Batch failed with ${failedItems.length} errors. Sample: ${errorSamples[0].detail}`;
+                        }
+
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, updates));
                         batchesClosed++;
                         
                         // Trigger automated data validation checks
