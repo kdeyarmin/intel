@@ -12,19 +12,19 @@ Deno.serve(async (req) => {
 
         const now = new Date();
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
 
         // 1. Find failed/paused imports
         const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter({
             status: { $in: ['failed', 'paused'] },
-            created_date: { $gte: twentyFourHoursAgo }
+            created_date: { $gte: seventyTwoHoursAgo }
         }, '-created_date', 20);
 
         // 2. Find stalled processing imports
         const stalledBatches = await base44.asServiceRole.entities.ImportBatch.filter({
             status: { $in: ['processing', 'validating'] },
             updated_date: { $lte: oneHourAgo },
-            created_date: { $gte: twentyFourHoursAgo }
+            created_date: { $gte: seventyTwoHoursAgo }
         }, '-created_date', 20);
 
         const allBatches = [...failedBatches, ...stalledBatches];
