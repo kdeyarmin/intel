@@ -27,6 +27,8 @@ const IMPORT_TYPE_URLS = {
   hospice_national_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/7cv8-v37d/0',
   // SNF Provider Measures
   snf_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0',
+  // Nursing Home Providers
+  nursing_home_providers: 'https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0',
 };
 
 async function withRetry(fn, retries = 5, backoff = 1500) {
