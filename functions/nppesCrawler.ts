@@ -657,7 +657,7 @@ Deno.serve(async (req) => {
                 const firstPage = await fetchNPPESPage(params, stats);
                 if (firstPage.error) throw new Error(firstPage.error);
                 
-                if (firstPage.count > 1000 && task.zip_prefix.length < 5) {
+                if (firstPage.count > 1000 && task.zip_prefix.length < 9) {
                     // Split task: Create 10 sub-tasks and complete current
                     const subTasks = [];
                     for(let i=0; i<=9; i++) {
