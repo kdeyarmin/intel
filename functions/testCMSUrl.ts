@@ -47,6 +47,49 @@ Deno.serve(async (req) => {
                     status: head.status
                 };
                 summary = `URL validated successfully.`;
+
+                try {
+                    const dataJsonResp = await fetch('https://data.cms.gov/data.json', {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                            'Accept': 'application/json'
+                        }
+                    });
+                    if (dataJsonResp.ok) {
+                        const dataJson = await dataJsonResp.json();
+                        let foundDataset = null;
+                        let foundDistribution = null;
+
+                        if (dataJson && Array.isArray(dataJson.dataset)) {
+                            for (const dataset of dataJson.dataset) {
+                                if (Array.isArray(dataset.distribution)) {
+                                    for (const dist of dataset.distribution) {
+                                        if (dist.downloadURL === config.api_url || dist.accessURL === config.api_url) {
+                                            foundDataset = dataset;
+                                            foundDistribution = dist;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (foundDataset) break;
+                            }
+                        }
+
+                        if (foundDataset) {
+                            metadata = {
+                                ...metadata,
+                                dataset_title: foundDataset.title,
+                                dataset_description: foundDataset.description,
+                                official_modified_date: foundDataset.modified || foundDistribution?.modified || lastModified,
+                                publisher: foundDataset.publisher?.name,
+                                format: foundDistribution?.format,
+                            };
+                            summary = `URL validated and enriched with CMS metadata.`;
+                        }
+                    }
+                } catch (jsonErr) {
+                    console.error("Failed to fetch or parse CMS data.json:", jsonErr);
+                }
             } else {
                 summary = `URL validation failed with status: ${head.status}`;
             }
