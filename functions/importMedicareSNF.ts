@@ -3,7 +3,7 @@ import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
 const MAX_EXEC_MS = 50_000;
-const CHUNK = 50;
+const CHUNK = 30;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, chunk, `chunk-${i}`);
         if (result.ok) imported += chunk.length; else { chunkErrors++; addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(150);
+        if (i + CHUNK < recordsToProcess.length) await delay(350);
       }
     }
 

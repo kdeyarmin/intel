@@ -3,8 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // Strict time budget: 45s to leave buffer before platform kills us
 const MAX_EXEC_MS = 40_000; // Reduced to 40s to be safer
 const FETCH_TIMEOUT_MS = 15_000;
-const PAGE_SIZE = 500; // Reduced page size for more frequent updates
-const BULK_SIZE = 50;
+const PAGE_SIZE = 300; // Reduced page size for more frequent updates
+const BULK_SIZE = 30;
 
 function isTimeUp(startTime) {
     return Date.now() - startTime > MAX_EXEC_MS;
@@ -597,7 +597,7 @@ async function importChunk(base44, importType, records, startTime) {
         }
         // Adaptive delay: longer after retries, shorter on clean runs
         if (i + BULK_SIZE < records.length) {
-            await delay(success ? 150 : 500);
+            await delay(success ? 350 : 1500);
         }
     }
 

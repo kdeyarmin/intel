@@ -353,7 +353,7 @@ Deno.serve(async (req) => {
           // If rate limited, pause longer before next chunk
           if (/rate limit|429/i.test(result.error)) await delay(5000);
         }
-        if (i + CHUNK < recordsToProcess.length) await delay(200); // reduced delay to speed things up
+        if (i + CHUNK < recordsToProcess.length) await delay(350); // increased delay to prevent rate limit
       }
     }
 

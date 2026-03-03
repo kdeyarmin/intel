@@ -55,7 +55,7 @@ async function upsertProviders(records, base44) {
         try {
             const existing = await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000));
             const existingMap = new Map(existing.map(e => [e.npi, e]));
-            const toCreate = [], updatePromises = [];
+            const toCreate = [], updateTasks = [];
             for (const p of chunk) {
                 const ex = existingMap.get(p.npi);
                 if (!ex) { toCreate.push(p); }
@@ -65,12 +65,17 @@ async function upsertProviders(records, base44) {
                         for (const k of Object.keys(merged)) {
                             if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
                         }
-                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, merged).catch(() => {}));
+                        updateTasks.push(async () => {
+                            await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                        });
                     } else { skipped++; }
                 }
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
-            if (updatePromises.length > 0) { await Promise.all(updatePromises); updated += updatePromises.length; }
+            if (updateTasks.length > 0) {
+                for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+                updated += updateTasks.length;
+            }
             await sleep(100); // Throttle DB writes
         } catch (e) {
             for (const p of chunk) {
@@ -112,10 +117,15 @@ async function upsertLocations(records, base44) {
                 for (const k of Object.keys(merged)) {
                     if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
                 }
-                updateTasks.push(base44.asServiceRole.entities.ProviderLocation.update(match.id, merged).catch(()=>{}));
+                updateTasks.push(async () => {
+                    await withRetry(() => base44.asServiceRole.entities.ProviderLocation.update(match.id, merged));
+                });
             }
         }
-        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (updateTasks.length > 0) {
+            for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+            updated += updateTasks.length;
+        }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
             catch (e) { for (const loc of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} } }
@@ -143,10 +153,15 @@ async function upsertTaxonomies(records, base44) {
                 for (const k of Object.keys(merged)) {
                     if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
                 }
-                updateTasks.push(base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged).catch(()=>{}));
+                updateTasks.push(async () => {
+                    await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged));
+                });
             }
         }
-        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (updateTasks.length > 0) {
+            for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+            updated += updateTasks.length;
+        }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
             catch (e) { for (const tax of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} } }

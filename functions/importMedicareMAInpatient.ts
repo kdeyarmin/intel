@@ -498,7 +498,7 @@ Deno.serve(async (req) => {
       // === Step 4: Import with retry per chunk ===
       let imported = 0;
       let chunkErrors = 0;
-      const CHUNK = 50;
+      const CHUNK = 30;
 
       if (!dry_run && recordsToProcess.length > 0) {
         if (effectiveOffset === 0) {
@@ -554,7 +554,7 @@ Deno.serve(async (req) => {
 
           // Small delay between successful chunks to avoid rate limits
           if (chunkImported && i + CHUNK < recordsToProcess.length) {
-            await delay(150);
+            await delay(350);
           }
         }
       }
