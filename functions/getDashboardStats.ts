@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
         // Real totals usually require .count() or similar, but since we can't reliably get full counts fast without a specific query, we'll try to fetch more pages to get a better estimate.
         // We can do an empty filter to get all records, but there's a limit. 
         // Using a high limit to get actual totals for the dashboard
-        const LIMIT = 10000; 
+        const LIMIT = 100000; 
 
         // Fetch sequentially to prevent rate limits
         const providers = await base44.asServiceRole.entities.Provider.filter({}, undefined, LIMIT);
