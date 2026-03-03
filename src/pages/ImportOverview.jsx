@@ -10,13 +10,33 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ImportOverviewPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [importTypeFilter, setImportTypeFilter] = useState('all');
+    const [dataYearFilter, setDataYearFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+
     const { data: batches = [], isLoading } = useQuery({
         queryKey: ['import_batches_overview'],
         queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
     });
 
+    const filteredBatches = useMemo(() => {
+        return batches.filter(b => {
+            const matchesSearch = !searchQuery || 
+                b.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                (b.file_name && b.file_name.toLowerCase().includes(searchQuery.toLowerCase()));
+            const matchesType = importTypeFilter === 'all' || b.import_type === importTypeFilter;
+            const matchesYear = dataYearFilter === 'all' || String(b.data_year) === dataYearFilter;
+            const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+            return matchesSearch && matchesType && matchesYear && matchesStatus;
+        });
+    }, [batches, searchQuery, importTypeFilter, dataYearFilter, statusFilter]);
+
+    const uniqueTypes = useMemo(() => [...new Set(batches.map(b => b.import_type).filter(Boolean))], [batches]);
+    const uniqueYears = useMemo(() => [...new Set(batches.map(b => b.data_year).filter(Boolean))], [batches]);
+
     const metrics = useMemo(() => {
-        if (!batches.length) return { total: 0, success: 0, failed: 0, avgTime: 0, recentErrors: [] };
+        if (!filteredBatches.length) return { total: 0, success: 0, failed: 0, avgTime: 0, recentErrors: [] };
 
         let successCount = 0;
         let failCount = 0;
@@ -24,7 +44,7 @@ export default function ImportOverviewPage() {
         let timedBatchesCount = 0;
         const recentErrors = [];
 
-        batches.forEach(batch => {
+        filteredBatches.forEach(batch => {
             if (batch.status === 'completed') successCount++;
             if (batch.status === 'failed') failCount++;
             
