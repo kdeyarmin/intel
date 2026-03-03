@@ -141,6 +141,7 @@ export default function EmailSearchBot() {
           mode: 'batch',
           batch_size: batchSize,
           skip_already_searched: skipSearched,
+          offset: totalSearched,
         });
         const data = response.data;
         consecutiveErrors = 0; // Reset on success

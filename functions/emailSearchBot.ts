@@ -9,30 +9,35 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { mode = 'batch', npi = null, batch_size = 10, skip_already_searched = true } = payload;
+    const { mode = 'batch', npi = null, batch_size = 10, skip_already_searched = true, offset = 0 } = payload;
 
     let providersToSearch = [];
 
     if (mode === 'single' && npi) {
       providersToSearch = await base44.asServiceRole.entities.Provider.filter({ npi });
     } else {
-      // Fetch all providers and filter client-side for unsearched ones
-      const allProviders = await base44.asServiceRole.entities.Provider.list('-created_date', 500);
+      let query = {};
+      if (skip_already_searched) {
+        query = { 
+          $or: [
+            { email_searched_at: null },
+            { email_searched_at: "" },
+            { email_searched_at: { $exists: false } }
+          ]
+        };
+      }
       
-      const eligible = (allProviders || []).filter(p => {
-        if (skip_already_searched && p.email_searched_at) return false;
-        return true;
-      });
-      
-      providersToSearch = eligible.slice(0, batch_size);
+      const skip = skip_already_searched ? 0 : offset;
+      providersToSearch = await base44.asServiceRole.entities.Provider.filter(query, '-created_date', batch_size, skip);
     }
 
     if (providersToSearch.length === 0) {
       return Response.json({ message: 'No providers to search', searched: 0, found: 0, results: [], has_more: false });
     }
 
-    const allLocations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', 500);
-    const allTaxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', 500);
+    const npisToSearch = providersToSearch.map(p => p.npi);
+    const allLocations = await base44.asServiceRole.entities.ProviderLocation.filter({ npi: { $in: npisToSearch } }, undefined, batch_size * 5);
+    const allTaxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi: { $in: npisToSearch } }, undefined, batch_size * 5);
 
     let searchedCount = 0;
     let foundCount = 0;
@@ -278,17 +283,8 @@ Return validation for ALL emails provided.`,
     });
 
     // Check if there are more unsearched providers remaining
-    // Use a lightweight check — just see if the original search found more than we processed
     let hasMore = false;
     if (mode !== 'single') {
-      // If we found more eligible candidates than batch_size, there are more
-      const totalEligibleFound = (() => {
-        // Re-check the first page quickly
-        let count = 0;
-        for (const p of providersToSearch) count++;
-        return count;
-      })();
-      // If we filled our batch, assume there could be more
       hasMore = providersToSearch.length >= batch_size;
     }
 
