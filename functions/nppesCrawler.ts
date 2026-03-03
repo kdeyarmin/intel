@@ -509,6 +509,29 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, message: 'Crawler resumed.' });
     }
 
+    if (action === 'retry_errors') {
+        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const { item_ids } = payload;
+        if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) return Response.json({ error: 'No item IDs provided' }, { status: 400 });
+        
+        let retried = 0;
+        for (let i = 0; i < item_ids.length; i += 50) {
+            const chunk = item_ids.slice(i, i+50);
+            await Promise.all(chunk.map(id => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(id, { status: 'pending', retry_count: 0, error_message: '' }))));
+            retried += chunk.length;
+        }
+
+        // Make sure associated batches are set back to processing if they were failed
+        const items = await base44.asServiceRole.entities.NPPESQueueItem.filter({ id: { $in: item_ids } });
+        const batchIds = [...new Set(items.map(i => i.batch_id))];
+        for (const bid of batchIds) {
+            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(bid, { status: 'processing' }));
+        }
+
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(()=>{});
+        return Response.json({ success: true, message: `Queued ${retried} failed tasks for retry.` });
+    }
+
     // --- WORKER LOGIC ---
     if (action === 'process_queue') {
         // Recover stuck items (older than 10 mins)
