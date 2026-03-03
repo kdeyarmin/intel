@@ -244,8 +244,9 @@ Deno.serve(async (req) => {
       ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
     });
   } catch (error) {
-    const isRetryable = error.message?.includes('download') || error.message?.includes('timeout');
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, { phase: 'fatal', detail: error.message }] });
-    return Response.json({ error: error.message, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
+    const msg = error.message || '';
+    const isRetryable = msg.includes('download') || msg.includes('timeout') || msg.includes('Rate limit') || msg.includes('429');
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, { phase: 'fatal', detail: msg }] });
+    return Response.json({ error: msg, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }
 });
