@@ -115,11 +115,11 @@ function mapPartDRow(row, tableName, dataYear) {
 
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
-  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category', row: rowIndex, sheet: sheetName });
-  if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'data_year_range', message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
+  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', value: record.category, message: 'Missing category', row: rowIndex, sheet: sheetName });
+  if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'out_of_range', field: 'data_year', value: record.data_year, message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
   if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
-  for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'negative_value', field: f, message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
-  if (record.generic_dispensing_rate != null && (record.generic_dispensing_rate < 0 || record.generic_dispensing_rate > 100)) warnings.push({ rule: 'gdr_range', message: `GDR ${record.generic_dispensing_rate} outside 0-100%`, row: rowIndex, sheet: sheetName });
+  for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'out_of_range', field: f, value: record[f], message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
+  if (record.generic_dispensing_rate != null && (record.generic_dispensing_rate < 0 || record.generic_dispensing_rate > 100)) warnings.push({ rule: 'out_of_range', field: 'generic_dispensing_rate', value: record.generic_dispensing_rate, message: `GDR ${record.generic_dispensing_rate} outside 0-100%`, row: rowIndex, sheet: sheetName });
   return { valid: errors.length === 0, errors, warnings };
 }
 
