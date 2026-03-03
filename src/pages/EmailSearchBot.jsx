@@ -34,6 +34,16 @@ export default function EmailSearchBot() {
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
+  const { data: activeTask } = useQuery({
+    queryKey: ['emailSearchTask'],
+    queryFn: async () => {
+      const tasks = await base44.entities.BackgroundTask.list('-created_date', 1);
+      const active = tasks.find(t => t.task_type === 'email_search' && t.status === 'processing');
+      return active || tasks.find(t => t.task_type === 'email_search');
+    },
+    refetchInterval: 3000
+  });
+
   const { data: dashStats } = useQuery({
     queryKey: ['emailBotDashStats'],
     queryFn: async () => {
