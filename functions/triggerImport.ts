@@ -68,10 +68,10 @@ Deno.serve(async (req) => {
 
     // Check for duplicate imports already in progress
     // Filter out signal/control batches that aren't real imports
-    const activeImports = await base44.asServiceRole.entities.ImportBatch.filter({
+    const activeImports = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({
       import_type,
       status: { $in: ['validating', 'processing'] }
-    });
+    }));
     const realActive = activeImports.filter(b => {
       const fn = b.file_name || '';
       return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
