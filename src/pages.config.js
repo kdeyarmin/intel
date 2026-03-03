@@ -63,6 +63,7 @@ import EnrichmentHub from './pages/EnrichmentHub';
 import Help from './pages/Help';
 import ImportAnalytics from './pages/ImportAnalytics';
 import ImportMonitoring from './pages/ImportMonitoring';
+import ImportOverview from './pages/ImportOverview';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
 import LocationDetail from './pages/LocationDetail';
@@ -81,7 +82,6 @@ import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import ImportOverview from './pages/ImportOverview';
 import __Layout from './Layout.jsx';
 
 
@@ -102,6 +102,7 @@ export const PAGES = {
     "Help": Help,
     "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
+    "ImportOverview": ImportOverview,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationDetail": LocationDetail,
@@ -120,7 +121,6 @@ export const PAGES = {
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "ImportOverview": ImportOverview,
 }
 
 export const pagesConfig = {

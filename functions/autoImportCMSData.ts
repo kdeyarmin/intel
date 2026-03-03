@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
         const validTypes = [
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
-            'provider_service_utilization',
+            'provider_service_utilization', 'medical_equipment_suppliers'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -190,6 +190,9 @@ Deno.serve(async (req) => {
                     try { pageData = JSON.parse(pageText); } catch (e) {
                         console.warn(`JSON parse failed at offset ${offset}`);
                         break;
+                    }
+                    if (pageData && pageData.results && Array.isArray(pageData.results)) {
+                        pageData = pageData.results;
                     }
                     if (!Array.isArray(pageData) || pageData.length === 0) {
                         reachedEnd = true;
@@ -511,6 +514,30 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'medical_equipment_suppliers') {
+            const providerId = row['provider_id'];
+            if (!providerId) return null;
+            return {
+                provider_id: String(providerId).trim(),
+                accepts_assignment: row['acceptsassignement'] || '',
+                participation_begin_date: parseDate(row['participationbegindate'] || ''),
+                business_name: row['businessname'] || '',
+                practice_name: row['practicename'] || '',
+                address_1: row['practiceaddress1'] || '',
+                address_2: row['practiceaddress2'] || '',
+                city: row['practicecity'] || '',
+                state: row['practicestate'] || '',
+                zip: row['practicezip9code'] || '',
+                phone: row['telephonenumber'] || '',
+                specialties: row['specialitieslist'] || '',
+                provider_type: row['providertypelist'] || '',
+                supplies: row['supplieslist'] || '',
+                latitude: row['latitude'] || '',
+                longitude: row['longitude'] || '',
+                is_contracted_for_cba: row['is_contracted_for_cba'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -524,6 +551,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'home_health_enrollments') return mapped.enrollment_id || null;
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
+    if (importType === 'medical_equipment_suppliers') return mapped.provider_id || null;
     return null;
 }
 
@@ -564,6 +592,7 @@ async function importChunk(base44, importType, records, startTime) {
         'hospice_enrollments': 'HospiceEnrollment',
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',
+        'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
     };
 
     const entityName = entityMap[importType];

@@ -75,6 +75,7 @@ const IMPORT_TYPE_LABELS = {
   'medicare_ma_inpatient': 'Medicare MA Inpatient',
   'medicare_part_d_stats': 'Medicare Part D Stats',
   'medicare_snf_stats': 'Medicare SNF Stats',
+  'medical_equipment_suppliers': 'Medical Equipment Suppliers',
 };
 
 export default function ImportMonitoring() {
@@ -1050,7 +1051,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
     'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
     'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
-    'medicare_snf_stats': 'Medicare SNF Stats',
+    'medicare_snf_stats': 'Medicare SNF Stats', 'medical_equipment_suppliers': 'Medical Equipment Suppliers',
   };
 
   const statusColors = {
