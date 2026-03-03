@@ -156,27 +156,69 @@ Return validation for ALL emails provided.`,
         const validations = validationResult?.validations || [];
         const getValidation = (email) => validations.find(v => v.email === email) || { status: 'unknown', reason: '' };
 
-        // Update Provider with best email + validation
-        const bestValidation = bestEmail ? getValidation(bestEmail.email) : null;
+        // Update Provider with best email + validation, preserving existing emails
         const providerUpdate = {
           email_searched_at: new Date().toISOString(),
         };
 
-        if (bestEmail) {
-          providerUpdate.email = bestEmail.email;
-          providerUpdate.email_confidence = bestEmail.confidence;
-          providerUpdate.email_source = bestEmail.source || '';
-          providerUpdate.email_validation_status = bestValidation?.status || 'unknown';
-          providerUpdate.email_validation_reason = bestValidation?.reason || '';
-          providerUpdate.additional_emails = emails.slice(1).map(e => {
-            const v = getValidation(e.email);
-            return {
-              email: e.email,
-              confidence: e.confidence,
-              source: e.source,
-              validation_status: v.status || 'unknown',
-            };
+        if (emails.length > 0) {
+          const existingEmailsList = [];
+          if (provider.email) {
+            existingEmailsList.push({
+              email: provider.email,
+              confidence: provider.email_confidence || 'medium',
+              source: provider.email_source || 'existing',
+              validation_status: provider.email_validation_status || 'unknown',
+              validation_reason: provider.email_validation_reason || ''
+            });
+          }
+          if (provider.additional_emails && Array.isArray(provider.additional_emails)) {
+            existingEmailsList.push(...provider.additional_emails);
+          }
+          
+          const combined = [...existingEmailsList];
+          for (const e of emails) {
+            if (!combined.some(c => c.email.toLowerCase() === e.email.toLowerCase())) {
+              const v = getValidation(e.email);
+              combined.push({
+                email: e.email,
+                confidence: e.confidence,
+                source: e.source || 'ai_search',
+                validation_status: v.status || 'unknown',
+                validation_reason: v.reason || ''
+              });
+            } else {
+              // Update validation status if the newly verified one is better
+              const existingIdx = combined.findIndex(c => c.email.toLowerCase() === e.email.toLowerCase());
+              const v = getValidation(e.email);
+              if (v.status === 'valid' || v.status === 'risky') {
+                 combined[existingIdx].validation_status = v.status;
+                 combined[existingIdx].validation_reason = v.reason || '';
+              }
+            }
+          }
+          
+          // Rank: valid > risky > unknown > invalid. High > Medium > Low.
+          const statusRank = { 'valid': 3, 'risky': 2, 'unknown': 1, 'invalid': 0 };
+          const confRank = { 'high': 3, 'medium': 2, 'low': 1 };
+          
+          combined.sort((a, b) => {
+             const statA = statusRank[a.validation_status] ?? 1;
+             const statB = statusRank[b.validation_status] ?? 1;
+             if (statA !== statB) return statB - statA;
+             const confA = confRank[a.confidence] ?? 1;
+             const confB = confRank[b.confidence] ?? 1;
+             return confB - confA;
           });
+          
+          const newBest = combined[0];
+          
+          providerUpdate.email = newBest.email;
+          providerUpdate.email_confidence = newBest.confidence;
+          providerUpdate.email_source = newBest.source;
+          providerUpdate.email_validation_status = newBest.validation_status;
+          providerUpdate.email_validation_reason = newBest.validation_reason;
+          providerUpdate.additional_emails = combined.slice(1);
           foundCount++;
         }
 
