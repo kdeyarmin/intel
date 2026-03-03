@@ -61,7 +61,11 @@ async function upsertProviders(records, base44) {
                 if (!ex) { toCreate.push(p); }
                 else {
                     if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
-                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, p).catch(() => {}));
+                        const merged = { ...ex, ...p };
+                        for (const k of Object.keys(merged)) {
+                            if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
+                        }
+                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, merged).catch(() => {}));
                     } else { skipped++; }
                 }
             }
