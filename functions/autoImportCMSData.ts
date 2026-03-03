@@ -726,7 +726,14 @@ function parseDate(dateStr) {
     return '';
 }
 
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function delay(ms, startTime) {
+    if (startTime) {
+        const remaining = MAX_EXEC_MS - (Date.now() - startTime);
+        if (remaining <= 0) return Promise.resolve();
+        return new Promise(r => setTimeout(r, Math.min(ms, remaining)));
+    }
+    return new Promise(r => setTimeout(r, ms));
+}
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
 // Bulk importer with exponential backoff + jitter for rate limit handling
