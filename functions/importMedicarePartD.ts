@@ -22,7 +22,13 @@ async function downloadAndParseZip(url) {
       'Accept': 'application/zip, application/octet-stream, */*'
     }
   });
-  if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+  if (!resp.ok) {
+    const bodyText = await resp.text().catch(()=>'');
+    const err = new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+    err.status = resp.status;
+    err.responseBody = bodyText.substring(0, 1000);
+    throw err;
+  }
   
   const arrayBuffer = await resp.arrayBuffer();
   if (arrayBuffer.byteLength < 1000) {
