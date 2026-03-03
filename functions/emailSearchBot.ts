@@ -161,6 +161,7 @@ Return validation for ALL emails provided.`,
           email_searched_at: new Date().toISOString(),
         };
 
+        let newBest = null;
         if (emails.length > 0) {
           const existingEmailsList = [];
           if (provider.email) {
