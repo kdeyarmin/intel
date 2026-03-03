@@ -198,30 +198,65 @@ function transformResults(allResults) {
     return { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors };
 }
 
+// In-memory cache for NPPES API responses
+const apiCache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
+
 async function fetchNPPESPage(params, stats) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    
+    // Check Cache
+    if (apiCache.has(apiUrl)) {
+        const cached = apiCache.get(apiUrl);
+        if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            return cached.data;
+        } else {
+            apiCache.delete(apiUrl);
+        }
+    }
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000);
+            const timeout = setTimeout(() => controller.abort(), 10000 + (attempt * 2000)); // Increase timeout per attempt
             const response = await fetch(apiUrl, { signal: controller.signal });
             clearTimeout(timeout);
             
             if (response.status === 429 && stats) {
                 stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
+                // dynamic concurrency adjustment indicator: tell caller to slow down
+                stats.shouldSlowDown = true; 
             }
             if (response.status === 429 || response.status >= 500) {
-                await sleep(attempt * 2000);
+                const backoff = Math.min(attempt * 3000 + (Math.random() * 1000), 15000); // Exponential-ish backoff with max 15s
+                await sleep(backoff);
                 continue;
             }
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
-            if (data.Errors && data.Errors.length > 0) return { error: data.Errors.map(e => e.description).join('; '), results: [], count: 0 };
-            return { results: data.results || [], count: data.result_count || 0 };
+            const resultData = { 
+                results: data.results || [], 
+                count: data.result_count || 0,
+                error: data.Errors && data.Errors.length > 0 ? data.Errors.map(e => e.description).join('; ') : null
+            };
+
+            // Only cache successful, non-error responses
+            if (!resultData.error) {
+                apiCache.set(apiUrl, { timestamp: Date.now(), data: resultData });
+                // Clean up old cache entries randomly to prevent memory bloat
+                if (Math.random() < 0.05 && apiCache.size > 1000) {
+                    const now = Date.now();
+                    for (const [key, value] of apiCache.entries()) {
+                        if (now - value.timestamp > CACHE_TTL_MS) apiCache.delete(key);
+                    }
+                }
+            }
+            
+            return resultData;
         } catch (e) {
-            if (attempt === 3) throw e;
-            await sleep(attempt * 1000);
+            if (attempt === 5) throw e;
+            await sleep(attempt * 1500);
         }
     }
 }
