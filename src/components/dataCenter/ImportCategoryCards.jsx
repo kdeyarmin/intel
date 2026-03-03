@@ -37,6 +37,8 @@ const IMPORT_CATEGORIES = [
     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
     types: [
       { id: 'provider_ownership', name: 'Provider Ownership', description: 'Ownership & control info', requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership' },
+      { id: 'hospice_enrollments', name: 'Hospice Enrollments', description: 'Hospice provider enrollment', requiredColumns: ['ENROLLMENT ID', 'NPI'], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'home_health_enrollments', name: 'Home Health Enrollments', description: 'Home health enrollment', requiredColumns: ['ENROLLMENT ID', 'NPI'], downloadUrl: 'https://data.cms.gov/' }
     ]
   },
   {
@@ -48,6 +50,9 @@ const IMPORT_CATEGORIES = [
     types: [
       { id: 'nursing_home_chains', name: 'Nursing Home Chains', description: 'Chain performance data', requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'], downloadUrl: 'https://data.cms.gov/provider-data/dataset/b2ux-wtdv' },
       { id: 'home_health_cost_reports', name: 'Cost Reports', description: 'HHA financial data', requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'], downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report' },
+      { id: 'medicare_hha_stats', name: 'HHA Use & Payments', description: 'Home Health Agency statistics', requiredColumns: ['Year', 'NPI', 'Total_Episodes'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-home-health-agency-providers' },
+      { id: 'medicare_snf_stats', name: 'SNF Statistics', description: 'Skilled Nursing Facility stats', requiredColumns: ['Year', 'NPI', 'Total_Stays'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-skilled-nursing-facility-providers' },
+      { id: 'medicare_ma_inpatient', name: 'MA Inpatient Hospital', description: 'Medicare Advantage Inpatient', requiredColumns: ['Year', 'NPI', 'Total_Discharges'], downloadUrl: 'https://data.cms.gov/' }
     ]
   },
 ];
