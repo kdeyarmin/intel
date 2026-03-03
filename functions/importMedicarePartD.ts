@@ -102,6 +102,7 @@ function mapPartDRow(row, tableName, dataYear) {
     if (hl.includes('phase') || hl.includes('coverage')) record.coverage_phase = String(row[h] || '').trim();
   }
   if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
+  if (!record.category || record.category === '') record.category = 'Overall';
   if (['D6', 'D7', 'D11'].includes(tableName)) { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
   if (['D4', 'D5', 'D10'].includes(tableName)) record.demographic_group = record.category;
   return record;
