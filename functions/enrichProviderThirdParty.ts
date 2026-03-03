@@ -47,6 +47,8 @@ Find the following:
 5. Medical school / education
 6. Languages spoken
 7. Whether they are accepting new patients
+8. Social media profiles (LinkedIn, Twitter URLs)
+9. Firmographics of their primary group/practice (employee count, estimated revenue, founding year)
 
 Only return information you can verify from public sources. Be specific with hospital names and group names.`,
           add_context_from_internet: true,
@@ -62,6 +64,16 @@ Only return information you can verify from public sources. Be specific with hos
               education: { type: ["string", "null"], description: "Medical school" },
               languages: { type: "array", items: { type: "string" } },
               accepting_new_patients: { type: ["boolean", "null"] },
+              linkedin_url: { type: ["string", "null"] },
+              twitter_url: { type: ["string", "null"] },
+              firmographics: {
+                type: ["object", "null"],
+                properties: {
+                  employee_count: { type: ["string", "null"] },
+                  estimated_revenue: { type: ["string", "null"] },
+                  founding_year: { type: ["number", "null"] }
+                }
+              },
               confidence: { type: "string", enum: ["high", "medium", "low"] },
               data_found: { type: "boolean" }
             }
