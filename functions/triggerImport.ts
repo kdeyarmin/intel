@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
       year: resolvedYear,
       dry_run,
       resume_offset: resume_offset || body.row_offset || 0,
+      batch_id: body.batch_id || undefined,
       // Pass retry metadata
       retry_of: retry_of || undefined,
       retry_count: retry_count || undefined,
