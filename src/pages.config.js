@@ -84,6 +84,7 @@ import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import APIConnectors from './pages/APIConnectors';
 import Utilization from './pages/Utilization';
+import ReconciliationDashboard from './pages/ReconciliationDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -125,6 +126,7 @@ export const PAGES = {
     "TerritoryIntelligence": TerritoryIntelligence,
     "APIConnectors": APIConnectors,
     "Utilization": Utilization,
+    "ReconciliationDashboard": ReconciliationDashboard,
 }
 
 export const pagesConfig = {

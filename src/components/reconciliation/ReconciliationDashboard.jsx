@@ -63,12 +63,12 @@ export default function ReconciliationDashboard() {
 
   const handleResolveDiscrepancy = async (reconciliationId, action) => {
     try {
-      await base44.entities.ProviderReconciliation.update(reconciliationId, {
-        resolution_status: action === 'accept' ? 'accepted' : 'rejected',
-        resolved_at: new Date().toISOString(),
-        resolved_by: (await base44.auth.me()).email,
+      await base44.functions.invoke('reconcileProviderData', {
+        action: 'resolve',
+        reconciliation_id: reconciliationId,
+        resolution: action
       });
-      toast.success(`Discrepancy ${action === 'accept' ? 'accepted' : 'rejected'}`);
+      toast.success(`Discrepancy ${action === 'accept' ? 'accepted and merged' : 'rejected'}`);
       queryClient.invalidateQueries();
     } catch (error) {
       toast.error('Failed to update resolution');

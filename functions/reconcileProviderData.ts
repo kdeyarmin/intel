@@ -9,7 +9,33 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { sources = ['nppes'], provider_ids = [], job_type = 'manual' } = await req.json();
+    const { action, reconciliation_id, resolution, sources = ['nppes'], provider_ids = [], job_type = 'manual' } = await req.json();
+
+    if (action === 'resolve') {
+      const recon = await base44.asServiceRole.entities.ProviderReconciliation.get(reconciliation_id);
+      if (!recon) return Response.json({ error: 'Not found' }, { status: 404 });
+      
+      if (resolution === 'accept' && recon.discrepancies?.length > 0) {
+        // Find provider by NPI
+        const providers = await base44.asServiceRole.entities.Provider.filter({ npi: recon.npi });
+        if (providers.length > 0) {
+          const provider = providers[0];
+          const updates = {};
+          for (const disc of recon.discrepancies) {
+            updates[disc.field] = disc.external_value;
+          }
+          await base44.asServiceRole.entities.Provider.update(provider.id, updates);
+        }
+      }
+
+      const updated = await base44.asServiceRole.entities.ProviderReconciliation.update(reconciliation_id, {
+        resolution_status: resolution === 'accept' ? 'accepted' : 'rejected',
+        resolved_at: new Date().toISOString(),
+        resolved_by: user.email,
+      });
+
+      return Response.json({ success: true, reconciliation: updated });
+    }
 
     let config = null;
     try {
