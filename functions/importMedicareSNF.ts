@@ -172,7 +172,8 @@ Deno.serve(async (req) => {
   } catch (e) {
     // Service role calls may not have a user context
   }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;

@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
   // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
   let user = null;
   try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
