@@ -328,6 +328,7 @@ Deno.serve(async (req) => {
                         importedCount += result.imported;
                         updatedCount += result.updated;
                         skippedCount += result.skipped;
+                        if (result.aborted) break;
                     }
                 }
 
