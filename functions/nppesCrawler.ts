@@ -73,7 +73,7 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+                for (const task of updateTasks) { await task().catch(()=>{}); await sleep(100); }
                 updated += updateTasks.length;
             }
             await sleep(100); // Throttle DB writes
