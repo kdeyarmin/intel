@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AIAssistant from './pages/AIAssistant';
+import AdminSettings from './pages/AdminSettings';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import AuditLog from './pages/AuditLog';
 import CMSAnalytics from './pages/CMSAnalytics';
@@ -79,12 +80,13 @@ import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import AdminSettings from './pages/AdminSettings';
+import CMSDataSources from './pages/CMSDataSources';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistant": AIAssistant,
+    "AdminSettings": AdminSettings,
     "AdvancedAnalytics": AdvancedAnalytics,
     "AuditLog": AuditLog,
     "CMSAnalytics": CMSAnalytics,
@@ -116,7 +118,7 @@ export const PAGES = {
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "AdminSettings": AdminSettings,
+    "CMSDataSources": CMSDataSources,
 }
 
 export const pagesConfig = {
