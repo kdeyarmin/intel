@@ -53,6 +53,8 @@ Deno.serve(async (req) => {
           ? `${primaryLoc.address_1 || ''}, ${primaryLoc.city || ''}, ${primaryLoc.state || ''} ${primaryLoc.zip || ''}`.trim()
           : 'N/A';
 
+        const existingEmails = [provider.email, ...(provider.additional_emails || []).map(e => e.email)].filter(Boolean);
+
         const prompt = `Find professional email addresses for this healthcare provider/practice. Search public directories, practice websites, and healthcare databases.
 
 PROVIDER:
@@ -64,15 +66,16 @@ PROVIDER:
 - Specialty: ${primaryTax?.taxonomy_description || 'N/A'}
 - Address: ${locationInfo}
 - Phone: ${primaryLoc?.phone || 'N/A'}
+- Existing Emails: ${existingEmails.length > 0 ? existingEmails.join(', ') : 'None known'}
 
 INSTRUCTIONS:
 1. Search for this provider's practice website or employer website.
 2. Look for publicly listed email addresses on practice websites, healthcare directories (Healthgrades, Vitals, WebMD, Zocdoc, NPI databases, hospital/health system staff pages).
 3. If you find a website domain, try to infer email patterns (first.last@domain.com, flast@domain.com, etc.).
 4. Rate each email: "high" = found on a public page, "medium" = inferred from a verified domain, "low" = guessed.
-5. Return up to 5 emails sorted by confidence.
+5. Return up to 5 emails sorted by confidence. Include existing emails if you can verify them.
 6. IMPORTANT: Only return plausible professional medical emails. No generic gmail/yahoo unless that's what's publicly listed.
-7. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email for the provider, it is perfectly fine to return practice-level or office-level emails (e.g., info@practice.com, office@clinic.com, frontdesk@hospital.org, contact@practicegroup.com). Mark these with source "practice email" and note that it is a shared/practice email. These are still valuable for outreach. Always prefer a direct provider email, but never return zero results if a practice email exists.`;
+7. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email for the provider, it is perfectly fine to return practice-level or office-level emails. Always prefer a direct provider email, but never return zero results if a practice email exists.`;
 
         const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt,
