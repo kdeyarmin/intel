@@ -150,8 +150,8 @@ function validateRecord(record, rowIndex, sheetName) {
       }
   }
   
-  if (record.avg_length_of_stay != null && (record.avg_length_of_stay <= 0 || record.avg_length_of_stay > 365)) {
-      errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', value: record.avg_length_of_stay, message: 'ALOS outside 0-365', row: rowIndex, sheet: sheetName });
+  if (record.avg_length_of_stay != null && record.avg_length_of_stay < 0) {
+      errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', value: record.avg_length_of_stay, message: 'ALOS cannot be negative', row: rowIndex, sheet: sheetName });
   }
   return { valid: errors.length === 0, errors, warnings };
 }
