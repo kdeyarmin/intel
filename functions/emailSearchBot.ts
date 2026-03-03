@@ -187,6 +187,8 @@ INSTRUCTIONS:
           const doValidation = async () => base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt: `You are an advanced email deliverability expert AI. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
 
+Please perform a deep web search to verify the existence of these emails or their domains. Look for MX records if possible, and check if the email has been seen on the internet.
+
 EMAIL ADDRESSES TO VALIDATE:
 ${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
 
@@ -201,7 +203,7 @@ VALIDATION CRITERIA & SCORING:
 2. Check for DISPOSABLE, ROLE-BASED, or CATCH-ALL characteristics.
 3. Assign a quality score from 0-100 based on likelihood of reaching the provider directly.
 4. Determine risk flags (e.g., 'role-based', 'generic-domain', 'pattern-mismatch').
-5. Provide detailed reasons for the score.
+5. Provide detailed reasons for the score. Include details about web presence of the email domain.
 
 For each email, assign:
 - "valid" (score > 75)
@@ -209,6 +211,7 @@ For each email, assign:
 - "invalid" (score < 40)
 
 Return validation for ALL emails provided.`,
+            add_context_from_internet: true,
             response_json_schema: {
               type: "object",
               properties: {
