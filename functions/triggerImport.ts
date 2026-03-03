@@ -19,6 +19,21 @@ const IMPORT_TYPE_URLS = {
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
 };
 
+async function withRetry(fn, retries = 3, backoff = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i === retries - 1) throw e;
+      if (e.message?.includes('Rate limit') || e.status === 429) {
+        await new Promise(r => setTimeout(r, backoff * (i + 1)));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
