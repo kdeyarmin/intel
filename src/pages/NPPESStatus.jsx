@@ -221,6 +221,52 @@ export default function NPPESStatus() {
           </CardContent>
         </Card>
       </div>
+
+      {s.errors && s.errors.length > 0 && (
+        <Card className="bg-[#111827] border-slate-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  Crawler Error Summary
+                </CardTitle>
+                <CardDescription className="text-slate-400">Recurring task failures that may require attention</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {s.errors.map((err, idx) => (
+                <div key={idx} className="bg-red-950/20 border border-red-900/30 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <div className="font-medium text-red-300 text-sm">{err.original_message}</div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        Affected States: {err.affected_states.join(', ')} | Sample Prefixes: {err.sample_prefixes.join(', ')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="bg-red-900/50 text-red-200 border-red-800">
+                        {err.count} {err.count === 1 ? 'task' : 'tasks'}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700 h-7 text-xs"
+                        disabled={crawlerMutation.isPending}
+                        onClick={() => handleAction('retry_errors', { item_ids: err.item_ids })}
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" /> Retry These
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
