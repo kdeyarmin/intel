@@ -189,6 +189,18 @@ Return validation for ALL emails provided.`,
               }
             }
           });
+
+          try {
+            validationResult = await doValidation();
+          } catch (valErr) {
+            if (valErr.message?.includes('Rate limit') || valErr.response?.status === 429) {
+              console.warn(`[Retry] LLM Validation Rate limit hit for NPI ${provider.npi}. Waiting 5s...`);
+              await new Promise(r => setTimeout(r, 5000));
+              validationResult = await doValidation();
+            } else {
+              throw valErr;
+            }
+          }
         }
 
         const validations = validationResult?.validations || [];
