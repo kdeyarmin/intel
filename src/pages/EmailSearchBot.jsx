@@ -143,15 +143,6 @@ export default function EmailSearchBot() {
       setIsRunningAll(false);
     }
   };
-      });
-      toast.success('Background search started. You can safely navigate away.');
-      queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
-    } catch (e) {
-      toast.error('Failed to start background search');
-      setIsRunning(false);
-      setIsRunningAll(false);
-    }
-  };
 
   const handleStopAll = async () => {
     setStopRequested(true);
