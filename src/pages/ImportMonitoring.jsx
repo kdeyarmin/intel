@@ -81,6 +81,7 @@ const IMPORT_TYPE_LABELS = {
   'hospice_national_measures': 'Hospice National Measures',
   'snf_provider_measures': 'SNF Provider Measures',
   'nursing_home_providers': 'Nursing Home Providers',
+  'nursing_home_deficiencies': 'Nursing Home Deficiencies',
 };
 
 export default function ImportMonitoring() {
@@ -1062,6 +1063,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'hospice_national_measures': 'Hospice National Measures',
     'snf_provider_measures': 'SNF Provider Measures',
     'nursing_home_providers': 'Nursing Home Providers',
+    'nursing_home_deficiencies': 'Nursing Home Deficiencies',
   };
 
   const statusColors = {

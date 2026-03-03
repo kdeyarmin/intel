@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
             'provider_service_utilization', 'medical_equipment_suppliers',
             'hospice_provider_measures', 'hospice_state_measures',
             'hospice_national_measures', 'snf_provider_measures',
-            'nursing_home_providers'
+            'nursing_home_providers', 'nursing_home_deficiencies'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -638,6 +638,25 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'nursing_home_deficiencies') {
+            const ccn = row['cms_certification_number_ccn'];
+            if (!ccn) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['provider_name'] || '',
+                provider_address: row['provider_address'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                inspection_cycle: row['inspection_cycle'] || '',
+                health_survey_date: row['health_survey_date'] || '',
+                fire_safety_survey_date: row['fire_safety_survey_date'] || '',
+                total_number_of_health_deficiencies: row['total_number_of_health_deficiencies'] || '',
+                total_number_of_fire_safety_deficiencies: row['total_number_of_fire_safety_deficiencies'] || '',
+                location_string: row['location'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -657,6 +676,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'hospice_national_measures') return mapped.measure_code || null;
     if (importType === 'snf_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     if (importType === 'nursing_home_providers') return mapped.ccn || null;
+    if (importType === 'nursing_home_deficiencies') return mapped.ccn || null;
     return null;
 }
 
@@ -703,6 +723,7 @@ async function importChunk(base44, importType, records, startTime) {
         'hospice_national_measures': 'HospiceNationalMeasure',
         'snf_provider_measures': 'SNFProviderMeasure',
         'nursing_home_providers': 'NursingHomeProvider',
+        'nursing_home_deficiencies': 'NursingHomeDeficiency',
     };
 
     const entityName = entityMap[importType];

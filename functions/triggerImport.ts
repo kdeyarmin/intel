@@ -29,6 +29,8 @@ const IMPORT_TYPE_URLS = {
   snf_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0',
   // Nursing Home Providers
   nursing_home_providers: 'https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0',
+  // Nursing Home Deficiencies
+  nursing_home_deficiencies: 'https://data.cms.gov/provider-data/api/1/datastore/query/tbry-pc2d/0',
 };
 
 async function withRetry(fn, retries = 5, backoff = 1500) {
