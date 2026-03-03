@@ -52,6 +52,7 @@ import AdminSettings from './pages/AdminSettings';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import AuditLog from './pages/AuditLog';
 import CMSAnalytics from './pages/CMSAnalytics';
+import CMSDataSources from './pages/CMSDataSources';
 import Campaigns from './pages/Campaigns';
 import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
@@ -80,7 +81,7 @@ import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import CMSDataSources from './pages/CMSDataSources';
+import NPPESStatus from './pages/NPPESStatus';
 import __Layout from './Layout.jsx';
 
 
@@ -90,6 +91,7 @@ export const PAGES = {
     "AdvancedAnalytics": AdvancedAnalytics,
     "AuditLog": AuditLog,
     "CMSAnalytics": CMSAnalytics,
+    "CMSDataSources": CMSDataSources,
     "Campaigns": Campaigns,
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
@@ -118,7 +120,7 @@ export const PAGES = {
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "CMSDataSources": CMSDataSources,
+    "NPPESStatus": NPPESStatus,
 }
 
 export const pagesConfig = {
