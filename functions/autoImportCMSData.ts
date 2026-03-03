@@ -251,13 +251,19 @@ Deno.serve(async (req) => {
                         }
 
                         // Import this chunk
+                        let chunkAborted = false;
                         if (!dry_run && validDataChunk.length > 0) {
                             const result = await importChunk(base44, import_type, validDataChunk, startTime);
                             importedCount += result.imported;
                             updatedCount += result.updated;
                             skippedCount += result.skipped;
+                            if (result.aborted) {
+                                chunkAborted = true;
+                            }
                         }
                         
+                        if (chunkAborted) break;
+
                         // Increment offset by the number of raw rows we successfully processed/attempted
                         pageProcessedRaw += rawChunk.length;
                     }
