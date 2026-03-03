@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
                             if (pageResponse.status === 429 || pageResponse.status >= 500) {
                                 const wait = jitteredBackoff(fetchAttempt);
                                 console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset}, backing off ${Math.round(wait)}ms (attempt ${fetchAttempt + 1}/3)`);
-                                await delay(wait);
+                                await delay(wait, startTime);
                             } else {
                                 console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset} (non-retryable)`);
                                 break;
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
                             if (fetchAttempt < 2) {
                                 const wait = jitteredBackoff(fetchAttempt);
                                 console.warn(`[fetch] Error at offset ${offset}: ${e.message}, backing off ${Math.round(wait)}ms`);
-                                await delay(wait);
+                                await delay(wait, startTime);
                             } else {
                                 console.warn(`[fetch] Failed after 3 attempts at offset ${offset}: ${e.message}`);
                             }
@@ -776,8 +776,11 @@ async function importChunk(base44, importType, records, startTime) {
                 const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('network') || e.message?.includes('503');
                 if (isRetryable && attempt < 3) {
                     const wait = jitteredBackoff(attempt);
+                    if (Date.now() - startTime + wait > MAX_EXEC_MS) {
+                        return { imported, updated, skipped, errors: chunkErrors, aborted: true };
+                    }
                     console.warn(`[importChunk] Attempt ${attempt + 1}/4 failed (${e.message}), backing off ${Math.round(wait)}ms`);
-                    await delay(wait);
+                    await delay(wait, startTime);
                 } else {
                     chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
                     console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
@@ -788,7 +791,7 @@ async function importChunk(base44, importType, records, startTime) {
         }
         // Adaptive delay: longer after retries, shorter on clean runs
         if (i + BULK_SIZE < records.length) {
-            await delay(success ? 350 : 1500);
+            await delay(success ? 350 : 1500, startTime);
         }
     }
 
