@@ -127,6 +127,10 @@ Only return information you can verify from public sources. Be specific with hos
           summaryParts.push(`Review: ${enrichmentDetails.review_score}/5 (${enrichmentDetails.review_count || 0} reviews)`);
         if (enrichmentDetails.board_certifications.length > 0)
           summaryParts.push(`Board Certs: ${enrichmentDetails.board_certifications.join(', ')}`);
+        if (enrichmentDetails.linkedin_url)
+          summaryParts.push(`LinkedIn Found`);
+        if (enrichmentDetails.firmographics)
+          summaryParts.push(`Firmographics Found`);
 
         await base44.asServiceRole.entities.EnrichmentRecord.create({
           npi,
