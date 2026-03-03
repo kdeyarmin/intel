@@ -77,6 +77,7 @@ const IMPORT_TYPE_LABELS = {
   'medicare_snf_stats': 'Medicare SNF Stats',
   'medical_equipment_suppliers': 'Medical Equipment Suppliers',
   'hospice_provider_measures': 'Hospice Provider Measures',
+  'hospice_state_measures': 'Hospice State Measures',
 };
 
 export default function ImportMonitoring() {
@@ -1054,6 +1055,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
     'medicare_snf_stats': 'Medicare SNF Stats', 'medical_equipment_suppliers': 'Medical Equipment Suppliers',
     'hospice_provider_measures': 'Hospice Provider Measures',
+    'hospice_state_measures': 'Hospice State Measures',
   };
 
   const statusColors = {

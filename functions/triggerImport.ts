@@ -21,6 +21,8 @@ const IMPORT_TYPE_URLS = {
   medical_equipment_suppliers: 'https://data.cms.gov/provider-data/api/1/datastore/query/ct36-nrcq/0',
   // Hospice Provider Measures
   hospice_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/gxki-hrr8/0',
+  // Hospice State Measures
+  hospice_state_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/eda0-92f0/0',
 };
 
 async function withRetry(fn, retries = 5, backoff = 1500) {
