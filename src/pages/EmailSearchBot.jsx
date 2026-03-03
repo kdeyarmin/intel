@@ -126,81 +126,49 @@ export default function EmailSearchBot() {
   const runSearchAll = async () => {
     setIsRunningAll(true);
     setIsRunning(true);
-    stopRef.current = false;
     setStopRequested(false);
-    setLastResults(null);
-
-    let totalSearched = 0;
-    let totalFound = 0;
-    let allResults = [];
-    let batchNumber = 0;
-    let hasMore = true;
-    let consecutiveErrors = 0;
-
-    const startTime = Date.now();
-    const batchTimesArr = [];
-    setAllRunProgress({ totalSearched: 0, totalFound: 0, batchNumber: 0, status: 'running', startTime, batchTimes: [] });
-
-    while (hasMore && !stopRef.current) {
-      batchNumber++;
-      setAllRunProgress(prev => ({ ...prev, batchNumber, status: 'running' }));
-
-      const batchStart = Date.now();
-      try {
-        const response = await base44.functions.invoke('emailSearchBot', {
-          mode: 'batch',
-          batch_size: batchSize,
-          skip_already_searched: skipSearched,
-          offset: totalSearched,
-        });
-        const data = response.data;
-        consecutiveErrors = 0; // Reset on success
-
-        const batchDuration = (Date.now() - batchStart) / 1000;
-        batchTimesArr.push(batchDuration);
-
-        totalSearched += data.searched || 0;
-        totalFound += data.found || 0;
-        allResults = [...allResults, ...(data.results || [])];
-        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running', startTime, batchTimes: [...batchTimesArr] });
-        setLastResults(allResults);
-
-        if (!data.has_more || data.searched === 0) {
-          hasMore = false;
-        }
-
-        queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-        queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
-
-        // Brief pause between batches to avoid hammering the API
-        if (hasMore && !stopRef.current) {
-          await new Promise(r => setTimeout(r, 2000));
-        }
-      } catch (err) {
-        consecutiveErrors++;
-        console.error(`Batch ${batchNumber} failed:`, err);
-        
-        const backoff = Math.min(60000, 5000 * consecutiveErrors);
-        toast.error(`Batch ${batchNumber} failed. Retrying in ${backoff/1000}s...`);
-        
-        if (!stopRef.current) {
-          await new Promise(r => setTimeout(r, backoff));
-        }
-      }
+    
+    try {
+      await base44.functions.invoke('emailSearchBot', {
+        mode: 'start_background',
+        batch_size: batchSize,
+        skip_already_searched: skipSearched,
+        total_items: stats.remaining
+      });
+      toast.success('Background search started. You can safely navigate away.');
+      queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
+    } catch (e) {
+      toast.error('Failed to start background search');
+      setIsRunning(false);
+      setIsRunningAll(false);
     }
-
-    setAllRunProgress(prev => ({ ...prev, status: stopRef.current ? 'stopped' : 'complete' }));
-    setIsRunning(false);
-    setIsRunningAll(false);
-    toast.success(`Done! Searched ${totalSearched} providers, found ${totalFound} emails.`);
-    queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-    queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
   };
 
-  const handleStopAll = () => {
-    stopRef.current = true;
+  const handleStopAll = async () => {
     setStopRequested(true);
+    if (activeTask?.id) {
+      await base44.functions.invoke('emailSearchBot', {
+        mode: 'stop_background',
+        task_id: activeTask.id
+      });
+      queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
+      setIsRunning(false);
+      setIsRunningAll(false);
+    }
   };
+
+  const isBackgroundRunning = activeTask?.status === 'processing';
+  const derivedRunProgress = useMemo(() => {
+    if (!activeTask) return allRunProgress;
+    return {
+      totalSearched: activeTask.processed_items || 0,
+      totalFound: activeTask.success_count || 0,
+      batchNumber: activeTask.current_batch_number || 0,
+      status: activeTask.status === 'cancelled' ? 'stopped' : activeTask.status === 'processing' ? 'running' : 'complete',
+      startTime: activeTask.started_at ? new Date(activeTask.started_at).getTime() : Date.now(),
+      batchTimes: []
+    };
+  }, [activeTask, allRunProgress]);
 
   const downloadFullEmailCSV = () => {
     const withEmail = providers.filter(p => p.email);
