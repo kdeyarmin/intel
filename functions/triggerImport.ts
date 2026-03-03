@@ -156,8 +156,9 @@ Deno.serve(async (req) => {
     // Individual import functions (HHA, SNF, Part D) handle their own fallbacks to LATEST_AVAILABLE_YEAR
     const resolvedYear = year || (new Date().getFullYear() - 2);
 
-    // Call autoImportCMSData via service role
-    const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
+    // Call autoImportCMSData via service role, but don't wait for completion
+    // The autoImportCMSData function handles the full process and takes a long time
+    base44.asServiceRole.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
@@ -168,15 +169,15 @@ Deno.serve(async (req) => {
       retry_count: retry_count || undefined,
       retry_tags: retry_tags || undefined,
       category: category || undefined,
-    });
+    }).catch(e => console.error(`[triggerImport] Async invoke error for ${import_type}:`, e));
 
     return Response.json({
       success: true,
+      message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
-      dry_run,
-      result: response.data,
+      dry_run
     });
   } catch (error) {
     let errorData;
