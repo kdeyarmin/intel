@@ -206,11 +206,24 @@ Deno.serve(async (req) => {
         if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
             while (true) {
-                const batch = await base44.asServiceRole.entities.MedicarePartDStats.filter({ data_year: year }, '-created_date', 500);
-                if (batch.length === 0) break;
-                for (const rec of batch) {
-                    await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
-                    await delay(100);
+                let existingBatch;
+                try {
+                    existingBatch = await base44.asServiceRole.entities.MedicarePartDStats.filter({ data_year: year }, '-created_date', 500);
+                } catch(e) {
+                    if (e.message?.includes('Rate limit') || e.message?.includes('429')) { await delay(5000); continue; }
+                    throw e;
+                }
+                if (existingBatch.length === 0) break;
+                for (const rec of existingBatch) {
+                    try {
+                        await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
+                    } catch(e) {
+                        if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                            await delay(5000);
+                            await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
+                        } else throw e;
+                    }
+                    await delay(150);
                 }
             }
         }
