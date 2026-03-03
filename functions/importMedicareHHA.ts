@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
         if (existing.length > 0) {
           console.log(`Clearing existing ${year} records...`);
           const all = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 500);
-          for (const rec of all) await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id);
+          for (const rec of all) { await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id); await delay(50); }
         }
       }
 
