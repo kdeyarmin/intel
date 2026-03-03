@@ -52,7 +52,6 @@ const NAV_SECTIONS = [
       { name: 'CMS Data Sources', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
       { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
-      { name: 'NPPES Status', icon: Activity, page: 'NPPESStatus', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
