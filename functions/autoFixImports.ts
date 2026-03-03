@@ -31,16 +31,9 @@ Deno.serve(async (req) => {
         const results = [];
 
         for (const batch of allBatches) {
-            // Check recent retries to prevent infinite loops
-            const recentSimilarBatches = await base44.asServiceRole.entities.ImportBatch.filter({
-                import_type: batch.import_type,
-                file_url: batch.file_url || null
-            }, '-created_date', 10);
-            
-            const recentCount = recentSimilarBatches.filter(b => b.created_date >= twentyFourHoursAgo).length;
-
-            if (recentCount > 4) {
-                results.push({ batch_id: batch.id, action: 'skipped', reason: 'Too many recent attempts for this import type/file' });
+            // Prevent infinite loops on a single import chain
+            if ((batch.retry_count || 0) >= 3) {
+                results.push({ batch_id: batch.id, action: 'skipped', reason: 'Max auto-retries reached for this batch' });
                 continue;
             }
 
