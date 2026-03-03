@@ -74,7 +74,7 @@ export const ERROR_CATEGORIES = {
     color: 'text-pink-400',
     bgColor: 'bg-pink-500/10 border-pink-500/20',
     badgeColor: 'bg-pink-500/15 text-pink-400',
-    keywords: ['out of range', 'exceeds', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'exceed', 'limit', 'range', 'below', 'above', 'boundary', 'invalid value'],
+    keywords: ['out of range', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'range', 'below', 'above', 'boundary', 'invalid value'],
     description: 'Values are outside the acceptable range for their field (e.g., negative counts, percentages over 100, dates in the future).',
     solutions: [
       'Review the expected ranges for each field (e.g., percentages 0-100, years 1900-2100)',
