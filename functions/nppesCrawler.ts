@@ -202,6 +202,9 @@ function transformResults(allResults) {
 const apiCache = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
+let globalRateLimitDelay = 0;
+let lastRateLimitHit = 0;
+
 async function fetchNPPESPage(params, stats) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
     
@@ -215,8 +218,18 @@ async function fetchNPPESPage(params, stats) {
         }
     }
 
+    if (globalRateLimitDelay > 0) {
+        if (Date.now() - lastRateLimitHit > 60000) {
+            globalRateLimitDelay = 0;
+        } else {
+            console.log(`[Crawler Worker] Applying dynamic rate limit delay: ${globalRateLimitDelay}ms`);
+            await sleep(globalRateLimitDelay);
+        }
+    }
+
     for (let attempt = 1; attempt <= 5; attempt++) {
         try {
+            console.log(`[Crawler Worker] Fetching page: ${apiUrl.replace(NPPES_API_BASE, '')} (Attempt ${attempt})`);
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000 + (attempt * 2000)); // Increase timeout per attempt
             const response = await fetch(apiUrl, { signal: controller.signal });
@@ -224,8 +237,10 @@ async function fetchNPPESPage(params, stats) {
             
             if (response.status === 429 && stats) {
                 stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
-                // dynamic concurrency adjustment indicator: tell caller to slow down
                 stats.shouldSlowDown = true; 
+                globalRateLimitDelay = Math.min((globalRateLimitDelay || 2000) * 1.5, 15000);
+                lastRateLimitHit = Date.now();
+                console.warn(`[Crawler Worker] Rate limit 429 encountered. Backing off for ${globalRateLimitDelay}ms`);
             }
             if (response.status === 429 || response.status >= 500) {
                 const backoff = Math.min(attempt * 3000 + (Math.random() * 1000), 15000); // Exponential-ish backoff with max 15s
@@ -704,22 +719,30 @@ Deno.serve(async (req) => {
         // Intelligent Re-invocation based on performance and queue depth
         const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 100).then(r => r.length).catch(() => 0);
         
+        console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
+
         if (remainingQueueSize > 0) {
             // Determine if we should spawn another worker to help, or just re-invoke self
             // If the queue is large and we didn't have many errors, spawn an extra helper (up to a reasonable limit)
-            const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
+            const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
             
             // Re-invoke self
             const reInvokeDelay = consecutiveErrors > 0 ? 5000 : 1000; 
             setTimeout(() => {
+                console.log(`[Crawler Worker] Re-invoking self with ${reInvokeDelay}ms delay...`);
                 base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
             }, reInvokeDelay);
 
             // Dynamically scale up if queue is large, we are healthy, and under worker cap
-            if (remainingQueueSize > 50 && consecutiveErrors === 0 && activeWorkersCount < 8) {
+            // More granular scaling: add more workers as queue gets deeper
+            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 12);
+            if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
+                 console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  setTimeout(() => {
                      base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
                  }, 2000);
+            } else if (consecutiveErrors > 2 && activeWorkersCount > 2) {
+                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API.`);
             }
         }
         

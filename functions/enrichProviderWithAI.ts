@@ -47,6 +47,9 @@ Find and provide:
 2. Primary specialty/credentials (if missing)
 3. Practice address and phone number (if missing)
 4. Practice name and type
+5. Broad category based on taxonomy/specialty (e.g. Primary Care, Surgical, Mental Health, DME)
+6. Predicted potential outreach engagement score from 0-100 based on typical responsiveness and data completeness
+7. A 2-3 sentence summarized profile of the provider for quick review
 
 Format response as JSON:
 {
@@ -57,6 +60,9 @@ Format response as JSON:
   "practice_name": "...",
   "address": "123 Main St, City, ST 12345",
   "phone": "555-0123",
+  "ai_category": "Specialty Care",
+  "ai_outreach_score": 85,
+  "ai_profile_summary": "Dr. Smith is a Board Certified Cardiologist with over 15 years of experience. He operates a private practice in New York and is highly engaged with modern medical technologies.",
   "found_sources": ["CMS Provider Directory", "Practice Website", "State Medical Board"],
   "confidence": "high",
   "notes": "Information verified from multiple sources"
@@ -78,6 +84,9 @@ Return ONLY valid JSON with no markdown formatting.`;
           practice_name: { type: "string" },
           address: { type: "string" },
           phone: { type: "string" },
+          ai_category: { type: "string" },
+          ai_outreach_score: { type: "number" },
+          ai_profile_summary: { type: "string" },
           found_sources: { type: "array", items: { type: "string" } },
           confidence: { type: "string" },
           notes: { type: "string" }
@@ -89,7 +98,10 @@ Return ONLY valid JSON with no markdown formatting.`;
     const updateData = {
       ai_enrichment_timestamp: new Date().toISOString(),
       ai_enrichment_notes: enrichmentData.notes,
-      completeness_score: calculateCompleteness(provider, enrichmentData)
+      completeness_score: calculateCompleteness(provider, enrichmentData),
+      ai_category: enrichmentData.ai_category,
+      ai_outreach_score: enrichmentData.ai_outreach_score,
+      ai_profile_summary: enrichmentData.ai_profile_summary
     };
 
     const enrichedFields = [];
