@@ -22,21 +22,6 @@ export default function NPPESStatus() {
     refetchInterval: 5000,
   });
 
-  const crawlerMutation = useMutation({
-    mutationFn: async (action) => {
-      const { data } = await base44.functions.invoke('nppesCrawler', { action });
-      if (data.error) throw new Error(data.error);
-      return data;
-    },
-    onSuccess: (data, action) => {
-      toast.success(`Crawler ${action.replace('batch_', '')} successful`);
-      queryClient.invalidateQueries({ queryKey: ['nppes-crawler-status'] });
-    },
-    onError: (err) => {
-      toast.error(`Failed: ${err.message}`);
-    }
-  });
-
   const handleAction = (action, payload = {}) => {
     crawlerMutation.mutate({ action, ...payload });
   };
