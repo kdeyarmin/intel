@@ -52,10 +52,12 @@ Deno.serve(async (req) => {
         for (const p of recentProviders) {
             if (!p.npi || !/^\d{10}$/.test(p.npi)) {
                 alertsToCreate.push({
-                    rule_id: 'invalid_npi', rule_name: 'Invalid NPI Format', category: 'accuracy', severity: 'critical',
-                    entity_type: 'Provider', entity_id: p.id, npi: p.npi, field_name: 'npi',
-                    current_value: p.npi || '(empty)', status: 'open', scan_batch_id: scanBatchId,
-                    summary: `Invalid NPI format imported: ${p.npi}`, affected_count: 1
+                    alert_type: 'data_inconsistency',
+                    severity: 'critical',
+                    title: 'Invalid NPI Format',
+                    description: `Invalid NPI format imported: ${p.npi}`,
+                    status: 'new',
+                    action_required: true
                 });
             }
         }
