@@ -95,13 +95,19 @@ Only return information you can verify from public sources. Be specific with hos
           education: aiRes.education,
           languages: aiRes.languages || [],
           accepting_new_patients: aiRes.accepting_new_patients,
+          linkedin_url: aiRes.linkedin_url,
+          twitter_url: aiRes.twitter_url,
+          firmographics: aiRes.firmographics,
         };
 
         const hasData = (enrichmentDetails.hospital_affiliations.length > 0 ||
           enrichmentDetails.group_practices.length > 0 ||
           enrichmentDetails.review_score ||
           enrichmentDetails.board_certifications.length > 0 ||
-          enrichmentDetails.education);
+          enrichmentDetails.education ||
+          enrichmentDetails.linkedin_url ||
+          enrichmentDetails.twitter_url ||
+          enrichmentDetails.firmographics);
 
         if (!hasData) {
           results.push({ npi, status: 'no_data', name: providerName });
