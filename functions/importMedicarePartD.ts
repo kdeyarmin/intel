@@ -234,15 +234,19 @@ Deno.serve(async (req) => {
                         await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
                     } catch(e) {
                         const msg = e.message || '';
-                        if (msg.includes('Rate limit') || msg.includes('429')) {
+                        const isNotFound = msg.toLowerCase().includes('not found') || e.status === 404 || e.response?.status === 404;
+                        const isRateLimit = msg.includes('Rate limit') || msg.includes('429') || e.status === 429 || e.response?.status === 429;
+                        
+                        if (isRateLimit) {
                             await delay(5000);
                             try {
                                 await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
                             } catch (retryEx) {
                                 const retryMsg = retryEx.message || '';
-                                if (!retryMsg.toLowerCase().includes('not found')) throw retryEx;
+                                const retryIsNotFound = retryMsg.toLowerCase().includes('not found') || retryEx.status === 404 || retryEx.response?.status === 404;
+                                if (!retryIsNotFound) throw retryEx;
                             }
-                        } else if (!msg.toLowerCase().includes('not found')) {
+                        } else if (!isNotFound) {
                             throw e;
                         }
                     }
