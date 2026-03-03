@@ -92,51 +92,28 @@ Deno.serve(async (req) => {
     };
 
     if (zipFunctionMap[import_type]) {
-      // Route to the specialized ZIP handler, passing through all params
-      try {
-        const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
-          action: 'import',
-          year: parseInt(year || 2023),
-          custom_url: file_url || undefined,
-          dry_run,
-          // Pass through retry/range params
-          sheet_filter: body.sheet_filter || undefined,
-          row_offset: body.row_offset || undefined,
-          row_limit: body.row_limit || undefined,
-          // Pass retry metadata so batch is tagged correctly
-          retry_of: retry_of || undefined,
-          retry_count: retry_count || undefined,
-          retry_tags: retry_tags || undefined,
-          category: category || undefined,
-        });
-        const result = res.data;
-        // If the sub-function returned an error, surface it with details
-        if (result?.error) {
-          return Response.json({
-            error: result.error,
-            error_phase: result.error_phase || 'unknown',
-            retryable: result.retryable || false,
-            batch_id: result.batch_id,
-            error_samples: result.error_samples,
-            hint: result.hint || 'Check the batch error log for details.',
-            import_type,
-          }, { status: 500 });
-        }
-        return Response.json({ success: true, import_type, result });
-      } catch (e) {
-        // Extract useful info from the sub-function error
-        let errorData;
-        try { errorData = e.response?.data || JSON.parse(e.message); } catch (_) { errorData = null; }
-        return Response.json({
-          error: errorData?.error || e.message || 'Import function failed',
-          error_phase: errorData?.error_phase || 'invocation',
-          retryable: errorData?.retryable || false,
-          batch_id: errorData?.batch_id,
-          error_samples: errorData?.error_samples,
-          hint: errorData?.hint || `The ${import_type} import function returned an error. Check backend logs for details.`,
-          import_type,
-        }, { status: 500 });
-      }
+      // Route to the specialized ZIP handler, passing through all params, but run in background
+      base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
+        action: 'import',
+        year: parseInt(year || 2023),
+        custom_url: file_url || undefined,
+        dry_run,
+        // Pass through retry/range params
+        sheet_filter: body.sheet_filter || undefined,
+        row_offset: body.row_offset || undefined,
+        row_limit: body.row_limit || undefined,
+        // Pass retry metadata so batch is tagged correctly
+        retry_of: retry_of || undefined,
+        retry_count: retry_count || undefined,
+        retry_tags: retry_tags || undefined,
+        category: category || undefined,
+      }).catch(e => console.error(`[triggerImport] Async invoke error for ${import_type}:`, e));
+      
+      return Response.json({ 
+        success: true, 
+        message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
+        import_type 
+      });
     }
 
     // CMS API-based imports
