@@ -127,7 +127,8 @@ Deno.serve(async (req) => {
                         timestamp: new Date().toISOString()
                     });
                 } catch (err) {
-                    results.push({ batch_id: batch.id, action: 'restart_failed', error: err.message });
+                    const responseBody = err.response?.data ? JSON.stringify(err.response.data) : 'no data';
+                    results.push({ batch_id: batch.id, action: 'restart_failed', error: err.message, responseBody });
                 }
             } else {
                 results.push({ batch_id: batch.id, action: 'ignored', reason: reason || 'Not a transient error, requires manual fix' });
