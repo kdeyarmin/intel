@@ -171,9 +171,23 @@ export const ERROR_CATEGORIES = {
 export function categorizeError(message) {
   if (!message) return 'other';
   const lower = message.toLowerCase();
-  for (const [key, config] of Object.entries(ERROR_CATEGORIES)) {
-    if (key === 'other') continue;
-    if (config.keywords.some(kw => lower.includes(kw))) return key;
+  
+  // Define priority order for evaluation to prevent generic categories catching specific errors
+  const priorityOrder = [
+    'network_api',
+    'timeout_stall',
+    'invalid_npi',
+    'missing_required',
+    'duplicate_record',
+    'formatting_error',
+    'empty_row',
+    'out_of_range',
+    'manual_action'
+  ];
+
+  for (const key of priorityOrder) {
+    const config = ERROR_CATEGORIES[key];
+    if (config && config.keywords.some(kw => lower.includes(kw.toLowerCase()))) return key;
   }
   return 'other';
 }
