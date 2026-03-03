@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Activity, Play, Pause, Square, RotateCcw, Users, Server, CheckCircle2 } from 'lucide-react';
+import { Activity, Play, Pause, Square, RotateCcw, Users, Server, CheckCircle2, AlertTriangle } from 'lucide-react';
 import moment from 'moment';
 
 export default function NPPESStatus() {
