@@ -25,7 +25,8 @@ const IMPORT_CATEGORIES = [
       { id: 'cms_utilization', name: 'Provider Utilization', description: 'Medicare Part B utilization', requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service' },
       { id: 'cms_part_d', name: 'Part D Prescriber', description: 'Prescription drug claims', requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug' },
       { id: 'cms_order_referring', name: 'Order & Referring', description: 'Ordering and referring data', requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring' },
-
+      { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', description: 'Detailed Part D statistics', requiredColumns: ['Year', 'NPI', 'Total_Claims'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers' },
+      { id: 'cms_service_utilization', name: 'CMS Service Utilization', description: 'Detailed service utilization', requiredColumns: ['NPI', 'Service_Code'], downloadUrl: 'https://data.cms.gov/' }
     ]
   },
   {
