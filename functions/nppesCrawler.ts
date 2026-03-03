@@ -494,6 +494,7 @@ Deno.serve(async (req) => {
         }
 
         let tasksProcessed = 0;
+        let consecutiveErrors = 0;
         
         // Process loop until time limit
         while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
