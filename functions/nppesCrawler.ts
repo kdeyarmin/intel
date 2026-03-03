@@ -367,6 +367,34 @@ Deno.serve(async (req) => {
             }
         }
 
+        // Collect Error Summary
+        const allFailedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'failed' }, undefined, 500);
+        const errorSummary = {};
+        for (const item of allFailedItems) {
+            const msg = item.error_message || 'Unknown Error';
+            // Simplify error message for grouping (e.g. remove specific numbers if any)
+            const simpleMsg = msg.replace(/\d+/g, '#').substring(0, 100); 
+            if (!errorSummary[simpleMsg]) {
+                errorSummary[simpleMsg] = {
+                    count: 0,
+                    original_message: msg,
+                    affected_states: new Set(),
+                    sample_prefixes: new Set(),
+                    item_ids: []
+                };
+            }
+            errorSummary[simpleMsg].count++;
+            errorSummary[simpleMsg].affected_states.add(item.state);
+            if (errorSummary[simpleMsg].sample_prefixes.size < 5) errorSummary[simpleMsg].sample_prefixes.add(item.zip_prefix);
+            if (errorSummary[simpleMsg].item_ids.length < 50) errorSummary[simpleMsg].item_ids.push(item.id);
+        }
+
+        const formattedErrors = Object.values(errorSummary).map(e => ({
+            ...e,
+            affected_states: Array.from(e.affected_states),
+            sample_prefixes: Array.from(e.sample_prefixes)
+        })).sort((a,b) => b.count - a.count);
+
         return Response.json({
             crawler_status,
             active_workers,
@@ -377,6 +405,7 @@ Deno.serve(async (req) => {
             processing_states: processingStates, pending_states: pendingStates,
             batches: crawlerBatches.slice(0, 60),
             regions: REGION_STATES,
+            errors: formattedErrors,
             totals: {
                 imported: total_imported,
                 updated: total_updated,
