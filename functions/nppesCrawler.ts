@@ -630,6 +630,18 @@ Deno.serve(async (req) => {
                         
                         // Trigger automated data validation checks
                         base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
+                        
+                        // Wake up next paused batch to maintain concurrency limit
+                        try {
+                            const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 5));
+                            const nextPaused = pausedBatches.find(pb => pb.file_name?.startsWith('crawler_'));
+                            if (nextPaused) {
+                                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(nextPaused.id, { status: 'processing' }));
+                                const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 100));
+                                await Promise.all(pausedItems.map(pi => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(pi.id, { status: 'pending' }))));
+                                console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name}`);
+                            }
+                        } catch(e) { console.error("Failed to wake up next batch:", e); }
                     }
                 }
                 
