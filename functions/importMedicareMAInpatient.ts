@@ -481,8 +481,14 @@ Deno.serve(async (req) => {
           const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
           if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
-            const all = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
-            for (const rec of all) { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); await delay(50); }
+            while (true) {
+                const batch = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
+                if (batch.length === 0) break;
+                for (const rec of batch) {
+                    await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
+                    await delay(20);
+                }
+            }
           }
         }
 

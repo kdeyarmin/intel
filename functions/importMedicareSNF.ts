@@ -266,7 +266,17 @@ Deno.serve(async (req) => {
     if (!dry_run && recordsToProcess.length > 0) {
       if (effectiveOffset === 0) {
         const existing = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1);
-        if (existing.length > 0) { const all = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500); for (const r of all) { await base44.asServiceRole.entities.MedicareSNFStats.delete(r.id); await delay(50); } }
+        if (existing.length > 0) {
+            console.log(`Clearing existing ${year} records...`);
+            while (true) {
+                const batch = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
+                if (batch.length === 0) break;
+                for (const rec of batch) {
+                    await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
+                    await delay(20);
+                }
+            }
+        }
       }
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) break;
