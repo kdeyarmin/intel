@@ -102,9 +102,9 @@ Deno.serve(async (req) => {
           if (isCrawlerBatch) {
             const stateCode = batch.file_name.split('_')[1];
             if (stateCode && stateCode.length === 2) {
-              await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                action: 'start',
-                target_state: stateCode,
+              await base44.asServiceRole.functions.invoke('nppesCrawler', {
+                action: 'batch_start',
+                states: [stateCode],
                 dry_run: batch.dry_run || false,
               });
             } else {
