@@ -82,7 +82,9 @@ INSTRUCTIONS:
 6. IMPORTANT: Only return plausible professional medical emails. No generic gmail/yahoo unless that's what's publicly listed.
 7. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email for the provider, it is perfectly fine to return practice-level or office-level emails. Always prefer a direct provider email, but never return zero results if a practice email exists.`;
 
-        const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        let res;
+        try {
+          res = await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt,
           add_context_from_internet: true,
           response_json_schema: {
