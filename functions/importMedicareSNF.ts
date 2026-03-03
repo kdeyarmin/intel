@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
-const MAX_EXEC_MS = 50_000;
+const MAX_EXEC_MS = 25_000;
 const CHUNK = 30;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
@@ -295,8 +295,22 @@ Deno.serve(async (req) => {
                 const batch = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
                 if (batch.length === 0) break;
                 for (const rec of batch) {
-                    await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
-                    await delay(100);
+                    try {
+                        await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
+                    } catch (e) {
+                        const msg = e.message || '';
+                        if (msg.includes('Rate limit') || msg.includes('429')) {
+                            await delay(5000);
+                            try {
+                                await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
+                            } catch (retryEx) {
+                                if (!retryEx.message?.includes('not found')) throw retryEx;
+                            }
+                        } else if (!msg.includes('not found')) {
+                            console.warn(`Failed to delete record ${rec.id}: ${msg}`);
+                        }
+                    }
+                    await delay(150);
                 }
             }
         }
