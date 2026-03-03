@@ -34,13 +34,12 @@ Deno.serve(async (req) => {
                 
                 if (pctChange > 15) { // 15% variance threshold
                     alertsToCreate.push({
-                        rule_id: 'nppes_consistency', rule_name: 'Significant Variance from Previous Run',
-                        category: 'consistency', severity: pctChange > 50 ? 'critical' : 'high', 
-                        entity_type: 'ImportBatch', entity_id: batch_id, field_name: 'valid_rows',
-                        current_value: String(currentCount),
-                        status: 'open', scan_batch_id: scanBatchId,
-                        summary: `${state} providers count changed by ${pctChange.toFixed(1)}% compared to previous run (${prevCount} -> ${currentCount})`,
-                        affected_count: 1
+                        alert_type: 'data_inconsistency',
+                        severity: pctChange > 50 ? 'critical' : 'high',
+                        title: 'Significant Variance from Previous Run',
+                        description: `${state} providers count changed by ${pctChange.toFixed(1)}% compared to previous run (${prevCount} -> ${currentCount}) in batch ${batch_id}`,
+                        status: 'new',
+                        action_required: pctChange > 50
                     });
                 }
             }
