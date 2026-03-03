@@ -118,10 +118,12 @@ Return a list of flagged anomalies that might require manual review. For example
             if (aiRes?.anomalies?.length > 0) {
                 for (const anomaly of aiRes.anomalies) {
                     alertsToCreate.push({
-                        rule_id: 'ai_anomaly', rule_name: 'AI Detected Import Anomaly', category: 'anomaly', severity: anomaly.severity || 'medium',
-                        entity_type: 'ImportBatch', entity_id: batch_id,
-                        status: 'open', scan_batch_id: scanBatchId,
-                        summary: anomaly.description, affected_count: 1
+                        alert_type: 'new_issue_detected',
+                        severity: anomaly.severity || 'medium',
+                        title: 'AI Detected Import Anomaly',
+                        description: anomaly.description + ` (Batch ID: ${batch_id})`,
+                        status: 'new',
+                        action_required: true
                     });
                 }
             }
