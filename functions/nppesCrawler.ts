@@ -343,15 +343,16 @@ async function updateBatchStats(base44, batchId, stats) {
 }
 
 Deno.serve(async (req) => {
-    let execStartTime = Date.now();
-    const base44 = createClientFromRequest(req);
-    let user = null;
-    try { user = await base44.auth.me(); } catch(e) {}
-    
-    let payload = {};
-    try { payload = await req.json(); } catch(e) {}
-    
-    const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false } = payload;
+    try {
+        let execStartTime = Date.now();
+        const base44 = createClientFromRequest(req);
+        let user = null;
+        try { user = await base44.auth.me(); } catch(e) {}
+        
+        let payload = {};
+        try { payload = await req.json(); } catch(e) {}
+        
+        const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false } = payload;
 
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
@@ -807,4 +808,8 @@ Deno.serve(async (req) => {
     }
     
     return Response.json({ error: 'Unknown action' }, { status: 400 });
+    } catch (err) {
+        console.error("Crawler crash:", err);
+        return Response.json({ error: err.message }, { status: 500 });
+    }
 });
