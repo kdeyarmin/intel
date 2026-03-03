@@ -425,10 +425,17 @@ Deno.serve(async (req) => {
             queued++;
         }
         
-        // Trigger worker pool
-        const workers = Math.min(concurrency, 5);
-        for(let i=0; i<workers; i++) {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+        // Dynamic worker pool initialization
+        // We start with a lower base concurrency and let the queue processor self-adjust
+        const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
+        
+        const targetWorkers = Math.min(concurrency, 8); // Max initial cluster
+        const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
+        
+        for(let i = 0; i < workersToStart; i++) {
+            setTimeout(() => {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
+            }, i * 500); // Stagger worker starts to prevent initial thundering herd
         }
         
         return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
