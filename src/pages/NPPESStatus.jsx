@@ -22,10 +22,6 @@ export default function NPPESStatus() {
     refetchInterval: 5000,
   });
 
-  const handleAction = (action, payload = {}) => {
-    crawlerMutation.mutate({ action, ...payload });
-  };
-
   const crawlerMutation = useMutation({
     mutationFn: async (payload) => {
       const { data } = await base44.functions.invoke('nppesCrawler', payload);
@@ -40,6 +36,10 @@ export default function NPPESStatus() {
       toast.error(`Failed: ${err.message}`);
     }
   });
+
+  const handleAction = (action, payload = {}) => {
+    crawlerMutation.mutate({ action, ...payload });
+  };
 
   if (isLoading && !statusData) {
     return <div className="p-8 text-center text-slate-400">Loading crawler status...</div>;
