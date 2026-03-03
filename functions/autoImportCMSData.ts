@@ -795,6 +795,10 @@ async function importChunk(base44, importType, records, startTime) {
                     chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
                     console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
                     skipped += chunk.length;
+                    if (isRetryable) {
+                        // Rate limit exhausted retries, abort the whole chunk processing
+                        return { imported, updated, skipped, errors: chunkErrors, aborted: true, fatalError: true };
+                    }
                     break;
                 }
             }
