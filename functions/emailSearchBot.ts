@@ -313,6 +313,10 @@ Return validation for ALL emails provided.`,
           providerUpdate.email_source = newBest.source;
           providerUpdate.email_validation_status = newBest.validation_status;
           providerUpdate.email_validation_reason = newBest.validation_reason;
+          if (newBest.quality_score !== undefined) providerUpdate.email_quality_score = newBest.quality_score;
+          if (newBest.quality_confidence) providerUpdate.email_quality_confidence = newBest.quality_confidence;
+          if (newBest.quality_reasons) providerUpdate.email_quality_reasons = newBest.quality_reasons;
+          if (newBest.quality_risk_flags) providerUpdate.email_quality_risk_flags = newBest.quality_risk_flags;
           providerUpdate.additional_emails = combined.slice(1);
           foundCount++;
         }
