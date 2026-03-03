@@ -85,29 +85,59 @@ INSTRUCTIONS:
         let res;
         try {
           res = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt,
-          add_context_from_internet: true,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              emails: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    email: { type: "string" },
-                    confidence: { type: "string", enum: ["high", "medium", "low"] },
-                    source: { type: "string" }
+            prompt,
+            add_context_from_internet: true,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                emails: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      email: { type: "string" },
+                      confidence: { type: "string", enum: ["high", "medium", "low"] },
+                      source: { type: "string" }
+                    }
                   }
-                }
-              },
-              practice_website: { type: "string" },
-              notes: { type: "string" }
+                },
+                practice_website: { type: "string" },
+                notes: { type: "string" }
+              }
             }
+          });
+        } catch (llmErr) {
+          if (llmErr.message?.includes('Rate limit') || llmErr.response?.status === 429) {
+            console.warn(`[Retry] LLM Rate limit hit for NPI ${provider.npi}. Waiting 5 seconds...`);
+            await new Promise(r => setTimeout(r, 5000));
+            res = await base44.asServiceRole.integrations.Core.InvokeLLM({
+              prompt,
+              add_context_from_internet: true,
+              response_json_schema: {
+                type: "object",
+                properties: {
+                  emails: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        email: { type: "string" },
+                        confidence: { type: "string", enum: ["high", "medium", "low"] },
+                        source: { type: "string" }
+                      }
+                    }
+                  },
+                  practice_website: { type: "string" },
+                  notes: { type: "string" }
+                }
+              }
+            });
+          } else {
+            throw llmErr;
           }
-        });
+        }
 
-        const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
+        const emails = (res?.emails || []).filter(e => e.email && e.email.includes('@'));
         const bestEmail = emails[0] || null;
 
         // --- AI Email Validation Step ---
