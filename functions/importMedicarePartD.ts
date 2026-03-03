@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
       for (const row of rows) {
         const record = mapPartDRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
-        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field, value: e.value, rule: e.rule }); }
+        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, file_name: batch.file_name, row: e.row, field: e.field, value: e.value, rule: e.rule }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
@@ -275,6 +275,8 @@ Deno.serve(async (req) => {
     const msg = error.message || '';
     const isRetryable = msg.includes('download') || msg.includes('timeout') || msg.includes('Rate limit') || msg.includes('429');
     const fatalError = { phase: 'fatal', detail: msg, timestamp: new Date().toISOString(), operation: 'API Request / Import', endpoint: downloadUrl, rule: isRetryable ? (msg.includes('timeout') ? 'timeout' : 'rate_limit') : 'fatal_error' };
+    if (error.status) fatalError.status_code = error.status;
+    if (error.responseBody) fatalError.response_body = error.responseBody;
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, fatalError], dedup_summary: { detailed_errors: [...errorSamples, fatalError] } });
     return Response.json({ error: msg, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }

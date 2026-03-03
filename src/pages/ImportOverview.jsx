@@ -144,11 +144,15 @@ export default function ImportOverviewPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="text-sm">
+                                                    {err.file_name && <span className="font-semibold mr-2">File: {err.file_name}</span>}
+                                                    {err.sheet && <span className="font-semibold mr-2">Sheet: {err.sheet}</span>}
                                                     {err.field && <span className="font-semibold mr-2">Field: {err.field}</span>}
                                                     {err.row && <span className="text-muted-foreground mr-2">Row: {err.row}</span>}
                                                     {err.value !== undefined && <span className="text-amber-600 mr-2">Value: '{err.value}'</span>}
                                                     {err.endpoint && <span className="text-blue-600 truncate max-w-xs block">Endpoint: {err.endpoint}</span>}
+                                                    {err.status_code && <span className="text-red-500 mr-2">Status: {err.status_code}</span>}
                                                     <div className="text-muted-foreground mt-1 truncate max-w-md" title={err.detail}>{err.detail}</div>
+                                                    {err.response_body && <div className="text-xs text-muted-foreground mt-1 bg-gray-100 dark:bg-gray-800 p-1 rounded max-h-20 overflow-auto whitespace-pre-wrap">{err.response_body}</div>}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
