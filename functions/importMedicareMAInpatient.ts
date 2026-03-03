@@ -574,9 +574,17 @@ Deno.serve(async (req) => {
                   first_record_table: chunk[0]?.table_name,
                 });
                 chunkErrors++;
+                if (isRateLimit || e.message?.includes('timeout') || e.message?.includes('network')) {
+                  fatalRateLimit = true;
+                }
                 break;
               }
             }
+          }
+
+          if (fatalRateLimit) {
+            console.error(`[import] Fatal error (rate limit/timeout) at chunk ${i}, stopping chunk loop.`);
+            break;
           }
 
           // Larger delay between successful chunks to avoid rate limits
@@ -586,7 +594,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
+      const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || fatalRateLimit);
       const finalStatus = dry_run ? 'completed'
         : timedOut ? 'paused'
         : chunkErrors > 0 && imported === 0 ? 'failed'
@@ -601,7 +609,8 @@ Deno.serve(async (req) => {
         error_samples: errorSamples.length > 0 ? errorSamples : undefined,
         ...(timedOut ? {
           paused_at: new Date().toISOString(),
-          cancel_reason: `Time limit reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
+          cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
+          retry_params: { row_offset: effectiveOffset + imported }
         } : {}),
       });
 
