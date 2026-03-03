@@ -385,6 +385,32 @@ Return validation for ALL emails provided.`,
       hasMore = providersToSearch.length >= batch_size;
     }
 
+    if (currentTask) {
+      const newProcessed = (currentTask.processed_items || 0) + searchedCount;
+      const newSuccess = (currentTask.success_count || 0) + foundCount;
+      const newError = (currentTask.error_count || 0) + (searchedCount - foundCount);
+      const isDone = !hasMore || currentTask.status === 'cancelled';
+
+      await base44.asServiceRole.entities.BackgroundTask.update(currentTask.id, {
+        processed_items: newProcessed,
+        success_count: newSuccess,
+        error_count: newError,
+        current_batch_number: (currentTask.current_batch_number || 0) + 1,
+        status: isDone ? 'completed' : 'processing',
+        completed_at: isDone ? new Date().toISOString() : undefined
+      });
+
+      if (!isDone) {
+        // Self invoke for next batch
+        setTimeout(() => {
+          base44.asServiceRole.functions.invoke('emailSearchBot', {
+            mode: 'process_background',
+            task_id: currentTask.id
+          }).catch(console.error);
+        }, 2000);
+      }
+    }
+
     return Response.json({
       success: true,
       searched: searchedCount,
