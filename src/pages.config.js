@@ -83,6 +83,7 @@ import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import APIConnectors from './pages/APIConnectors';
+import Utilization from './pages/Utilization';
 import __Layout from './Layout.jsx';
 
 
@@ -123,6 +124,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "APIConnectors": APIConnectors,
+    "Utilization": Utilization,
 }
 
 export const pagesConfig = {
