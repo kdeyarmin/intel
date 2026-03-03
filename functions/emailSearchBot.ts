@@ -276,7 +276,11 @@ Return validation for ALL emails provided.`,
                 confidence: e.confidence,
                 source: e.source || 'ai_search',
                 validation_status: v.status || 'unknown',
-                validation_reason: v.reason || ''
+                validation_reason: v.reasons ? v.reasons.join('; ') : v.reason || '',
+                quality_score: v.score,
+                quality_confidence: v.confidence,
+                quality_reasons: v.reasons,
+                quality_risk_flags: v.risk_flags
               });
             } else {
               // Update validation status if the newly verified one is better
