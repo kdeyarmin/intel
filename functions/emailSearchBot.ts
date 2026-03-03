@@ -144,7 +144,8 @@ INSTRUCTIONS:
         let validationResult = null;
         if (emails.length > 0) {
           const emailList = emails.map(e => e.email).join(', ');
-          validationResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          
+          const doValidation = async () => base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt: `You are an email deliverability expert. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
 
 EMAIL ADDRESSES TO VALIDATE:
