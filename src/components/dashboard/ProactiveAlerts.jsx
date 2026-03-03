@@ -4,13 +4,19 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, TrendingDown, TrendingUp, Clock, Users, Sparkles } from 'lucide-react';
 
 export default function ProactiveAlerts({ providers = [], utilizations = [], referrals = [], locations = [] }) {
-  const isSampled = providers.length >= 200 || locations.length >= 200;
+  // Ensure we're working with arrays
+  const safeProviders = Array.isArray(providers) ? providers : [];
+  const safeUtilizations = Array.isArray(utilizations) ? utilizations : [];
+  const safeReferrals = Array.isArray(referrals) ? referrals : [];
+  const safeLocations = Array.isArray(locations) ? locations : [];
+
+  const isSampled = safeProviders.length >= 200 || safeLocations.length >= 200;
 
   const insights = useMemo(() => {
     const alerts = [];
     const approxSuffix = isSampled ? '+' : '';
 
-    const needEnrichment = providers.filter(p => p.needs_nppes_enrichment);
+    const needEnrichment = safeProviders.filter(p => p.needs_nppes_enrichment);
     if (needEnrichment.length > 0) {
       alerts.push({
         id: 'enrichment', icon: Users, severity: 'medium',
@@ -20,8 +26,8 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
       });
     }
 
-    const deactivatedNPIs = new Set(providers.filter(p => p.status === 'Deactivated').map(p => p.npi));
-    const deactivatedWithUtil = utilizations.filter(u => deactivatedNPIs.has(u.npi));
+    const deactivatedNPIs = new Set(safeProviders.filter(p => p.status === 'Deactivated').map(p => p.npi));
+    const deactivatedWithUtil = safeUtilizations.filter(u => deactivatedNPIs.has(u.npi));
     if (deactivatedWithUtil.length > 0) {
       alerts.push({
         id: 'deactivated-util', icon: AlertTriangle, severity: 'high',
@@ -32,7 +38,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     }
 
     const refByNPI = {};
-    referrals.forEach(r => { if (!refByNPI[r.npi]) refByNPI[r.npi] = []; refByNPI[r.npi].push(r); });
+    safeReferrals.forEach(r => { if (!refByNPI[r.npi]) refByNPI[r.npi] = []; refByNPI[r.npi].push(r); });
     let highGrowthCount = 0;
     Object.values(refByNPI).forEach(refs => {
       if (refs.length < 2) return;
@@ -50,7 +56,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
       });
     }
 
-    const noPhone = locations.filter(l => !l.phone);
+    const noPhone = safeLocations.filter(l => !l.phone);
     if (noPhone.length > 10) {
       alerts.push({
         id: 'missing-phone', icon: Clock, severity: 'low',
@@ -61,7 +67,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     }
 
     const currentYear = new Date().getFullYear();
-    const latestUtilYear = utilizations.reduce((max, u) => Math.max(max, u.year || 0), 0);
+    const latestUtilYear = safeUtilizations.reduce((max, u) => Math.max(max, u.year || 0), 0);
     if (latestUtilYear > 0 && currentYear - latestUtilYear >= 2) {
       alerts.push({
         id: 'stale-data', icon: TrendingDown, severity: 'medium',
@@ -72,7 +78,7 @@ export default function ProactiveAlerts({ providers = [], utilizations = [], ref
     }
 
     return alerts;
-  }, [providers, utilizations, referrals, locations]);
+  }, [safeProviders, safeUtilizations, safeReferrals, safeLocations, isSampled]);
 
   if (insights.length === 0) return null;
 
