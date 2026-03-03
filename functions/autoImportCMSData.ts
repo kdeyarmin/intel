@@ -10,7 +10,12 @@ function isTimeUp(startTime) {
     return Date.now() - startTime > MAX_EXEC_MS;
 }
 
-async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
+async function fetchWithTimeout(url, startTime, defaultTimeoutMs = FETCH_TIMEOUT_MS) {
+    const remaining = startTime ? MAX_EXEC_MS - (Date.now() - startTime) : defaultTimeoutMs;
+    const timeoutMs = Math.min(defaultTimeoutMs, Math.max(100, remaining));
+    
+    if (timeoutMs <= 100) throw new Error('Time limit reached before fetch');
+    
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
