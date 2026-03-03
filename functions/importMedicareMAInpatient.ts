@@ -538,7 +538,7 @@ Deno.serve(async (req) => {
           const chunk = recordsToProcess.slice(i, i + CHUNK);
           let chunkImported = false;
 
-          for (let attempt = 1; attempt <= 3; attempt++) {
+          for (let attempt = 1; attempt <= 6; attempt++) {
             try {
               await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
               imported += chunk.length;
@@ -546,13 +546,13 @@ Deno.serve(async (req) => {
               break;
             } catch (e) {
               const isRateLimit = e.message?.includes('Rate limit');
-              if (isRateLimit && attempt < 3) {
-                const waitMs = attempt * 5000 + Math.random() * 2000;
+              if (isRateLimit && attempt < 6) {
+                const waitMs = attempt * 10000 + Math.random() * 5000; // Exponentially longer wait
                 console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
                 await delay(waitMs);
-              } else if (attempt < 3 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
-                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/3): ${e.message}`);
-                await delay(attempt * 1000);
+              } else if (attempt < 6 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
+                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/6): ${e.message}`);
+                await delay(attempt * 2000);
               } else {
                 addError('import', `Chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
                   chunk_start: i + effectiveOffset,
@@ -567,9 +567,9 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Small delay between successful chunks to avoid rate limits
+          // Larger delay between successful chunks to avoid rate limits
           if (chunkImported && i + CHUNK < recordsToProcess.length) {
-            await delay(1000);
+            await delay(2500);
           }
         }
       }
