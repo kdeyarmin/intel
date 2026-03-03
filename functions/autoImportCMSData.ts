@@ -51,7 +51,8 @@ Deno.serve(async (req) => {
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
             'provider_service_utilization', 'medical_equipment_suppliers',
-            'hospice_provider_measures', 'hospice_state_measures'
+            'hospice_provider_measures', 'hospice_state_measures',
+            'hospice_national_measures'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -577,6 +578,18 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'hospice_national_measures') {
+            const measureCode = row['measure_code'];
+            if (!measureCode) return null;
+            return {
+                measure_code: String(measureCode).trim(),
+                measure_name: row['measure_name'] || '',
+                score: row['score'] || '',
+                footnote: row['footnote'] || '',
+                date_range: row['date'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -593,6 +606,7 @@ function getDedupKey(mapped, importType) {
     if (importType === 'medical_equipment_suppliers') return mapped.provider_id || null;
     if (importType === 'hospice_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     if (importType === 'hospice_state_measures') return (mapped.state && mapped.measure_code) ? `${mapped.state}_${mapped.measure_code}` : null;
+    if (importType === 'hospice_national_measures') return mapped.measure_code || null;
     return null;
 }
 
@@ -636,6 +650,7 @@ async function importChunk(base44, importType, records, startTime) {
         'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
         'hospice_provider_measures': 'HospiceProviderMeasure',
         'hospice_state_measures': 'HospiceStateMeasure',
+        'hospice_national_measures': 'HospiceNationalMeasure',
     };
 
     const entityName = entityMap[importType];

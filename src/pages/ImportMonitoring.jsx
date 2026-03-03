@@ -78,6 +78,7 @@ const IMPORT_TYPE_LABELS = {
   'medical_equipment_suppliers': 'Medical Equipment Suppliers',
   'hospice_provider_measures': 'Hospice Provider Measures',
   'hospice_state_measures': 'Hospice State Measures',
+  'hospice_national_measures': 'Hospice National Measures',
 };
 
 export default function ImportMonitoring() {
@@ -1056,6 +1057,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'medicare_snf_stats': 'Medicare SNF Stats', 'medical_equipment_suppliers': 'Medical Equipment Suppliers',
     'hospice_provider_measures': 'Hospice Provider Measures',
     'hospice_state_measures': 'Hospice State Measures',
+    'hospice_national_measures': 'Hospice National Measures',
   };
 
   const statusColors = {
