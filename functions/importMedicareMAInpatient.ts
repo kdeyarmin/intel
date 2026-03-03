@@ -509,8 +509,22 @@ Deno.serve(async (req) => {
                 const batch = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
                 if (batch.length === 0) break;
                 for (const rec of batch) {
-                    await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
-                    await delay(100);
+                    try {
+                        await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
+                    } catch (e) {
+                        const msg = e.message || '';
+                        if (msg.includes('Rate limit') || msg.includes('429')) {
+                            await delay(5000);
+                            try {
+                                await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
+                            } catch (retryEx) {
+                                if (!retryEx.message?.includes('not found')) throw retryEx;
+                            }
+                        } else if (!msg.includes('not found')) {
+                            console.warn(`Failed to delete record ${rec.id}: ${msg}`);
+                        }
+                    }
+                    await delay(150);
                 }
             }
           }
@@ -533,8 +547,9 @@ Deno.serve(async (req) => {
             } catch (e) {
               const isRateLimit = e.message?.includes('Rate limit');
               if (isRateLimit && attempt < 3) {
-                console.warn(`[import] Rate limited at chunk ${i}, waiting ${attempt * 2}s...`);
-                await delay(attempt * 2000);
+                const waitMs = attempt * 5000 + Math.random() * 2000;
+                console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
+                await delay(waitMs);
               } else if (attempt < 3 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
                 console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/3): ${e.message}`);
                 await delay(attempt * 1000);
@@ -554,7 +569,7 @@ Deno.serve(async (req) => {
 
           // Small delay between successful chunks to avoid rate limits
           if (chunkImported && i + CHUNK < recordsToProcess.length) {
-            await delay(350);
+            await delay(1000);
           }
         }
       }

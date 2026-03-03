@@ -233,10 +233,17 @@ Deno.serve(async (req) => {
                     try {
                         await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
                     } catch(e) {
-                        if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                        const msg = e.message || '';
+                        if (msg.includes('Rate limit') || msg.includes('429')) {
                             await delay(5000);
-                            await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
-                        } else throw e;
+                            try {
+                                await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
+                            } catch (retryEx) {
+                                if (!retryEx.message?.includes('not found')) throw retryEx;
+                            }
+                        } else if (!msg.includes('not found')) {
+                            throw e;
+                        }
                     }
                     await delay(150);
                 }
