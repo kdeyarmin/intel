@@ -340,14 +340,14 @@ export default function EmailSearchBot() {
             setSkipSearched={setSkipSearched}
             singleNpi={singleNpi}
             setSingleNpi={setSingleNpi}
-            isRunning={isRunning}
-            isRunningAll={isRunningAll}
+            isRunning={isRunning || isBackgroundRunning}
+            isRunningAll={isRunningAll || isBackgroundRunning}
             onRunAll={runSearchAll}
             onStopAll={handleStopAll}
             stopRequested={stopRequested}
             onRunSingle={() => runSearch('single', singleNpi.trim())}
             stats={stats}
-            allRunProgress={allRunProgress}
+            allRunProgress={derivedRunProgress}
           />
 
           {/* Running indicator */}
