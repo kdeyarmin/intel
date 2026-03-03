@@ -21,7 +21,12 @@ const NUMERIC_FIELDS = ['persons_served','total_visits','total_episodes','total_
 
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
-  const resp = await fetch(url);
+  const resp = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'Accept': 'application/zip, application/octet-stream, */*'
+    }
+  });
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
   const contentType = resp.headers.get('content-type') || '';
   const arrayBuffer = await resp.arrayBuffer();

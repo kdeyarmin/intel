@@ -320,7 +320,13 @@ Deno.serve(async (req) => {
   try {
     // === Step 1: Download ZIP with retry ===
     console.log(`[download] Fetching: ${downloadUrl}`);
-    const resp = await fetchWithRetry(downloadUrl, { timeoutMs: 30000 }, 'ZIP download');
+    const resp = await fetchWithRetry(downloadUrl, { 
+      timeoutMs: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'application/zip, application/octet-stream, */*'
+      }
+    }, 'ZIP download');
     const arrayBuffer = await resp.arrayBuffer();
     const sizeMB = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1);
     console.log(`[download] Complete: ${sizeMB}MB in ${elapsed()}ms`);
