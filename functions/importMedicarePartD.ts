@@ -104,6 +104,11 @@ function mapPartDRow(row, tableName, dataYear) {
   if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
   if (!record.category || record.category === '') record.category = 'Overall';
   if (['D6', 'D7', 'D11'].includes(tableName)) { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
+  
+  // Auto-correct out of range metrics
+  if (record.metric_value !== undefined && (record.metric_value < 0 || record.metric_value > 999999999)) {
+    record.metric_value = Math.max(0, Math.min(record.metric_value, 999999999));
+  }
   if (['D4', 'D5', 'D10'].includes(tableName)) record.demographic_group = record.category;
   return record;
 }
