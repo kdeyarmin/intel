@@ -761,7 +761,7 @@ Deno.serve(async (req) => {
 
             // Dynamically scale up if queue is large, we are healthy, and under worker cap
             // More granular scaling: add more workers as queue gets deeper
-            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 12);
+            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 6);
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  setTimeout(() => {
