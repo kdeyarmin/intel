@@ -449,6 +449,9 @@ Deno.serve(async (req) => {
         if (!targetStates || targetStates.length === 0) targetStates = US_STATES;
 
         let queued = 0, skipped = 0;
+        let processingCount = 0;
+        const maxConcurrent = concurrency || 3;
+
         for (const st of targetStates) {
             if (skip_completed) {
                 const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
@@ -459,25 +462,30 @@ Deno.serve(async (req) => {
                 }
             }
             
+            const isInitial = processingCount < maxConcurrent;
+            const batchStatus = isInitial ? 'processing' : 'paused';
+            
             const batch = await base44.asServiceRole.entities.ImportBatch.create({
                 import_type: 'nppes_registry',
                 file_name: `crawler_${st}_all_${Date.now()}`,
-                status: 'processing',
+                status: batchStatus,
                 dry_run: !!dry_run
             });
             const items = [];
+            const itemStatus = isInitial ? 'pending' : 'paused';
             for (let i = 0; i <= 99; i++) {
-                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: 'pending' });
+                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: itemStatus });
             }
             await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items);
             queued++;
+            if (isInitial) processingCount++;
         }
         
         // Dynamic worker pool initialization
         // We start with a lower base concurrency and let the queue processor self-adjust
         const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
         
-        const targetWorkers = Math.min(concurrency, 8); // Max initial cluster
+        const targetWorkers = Math.min(maxConcurrent * 2, 6); // Max initial cluster
         const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
         
         for(let i = 0; i < workersToStart; i++) {
