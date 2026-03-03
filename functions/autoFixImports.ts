@@ -12,20 +12,34 @@ Deno.serve(async (req) => {
 
         const now = new Date();
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
         const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
 
-        // 1. Find failed/paused imports
-        const failedBatches = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: { $in: ['failed', 'paused'] },
+        // 1. Find failed/paused imports (No $in to be safe)
+        const failed = await base44.asServiceRole.entities.ImportBatch.filter({
+            status: 'failed',
             created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 20);
+        }, '-created_date', 10);
+        const paused = await base44.asServiceRole.entities.ImportBatch.filter({
+            status: 'paused',
+            created_date: { $gte: seventyTwoHoursAgo }
+        }, '-created_date', 10);
+        
+        const failedBatches = [...failed, ...paused];
 
         // 2. Find stalled processing imports
-        const stalledBatches = await base44.asServiceRole.entities.ImportBatch.filter({
-            status: { $in: ['processing', 'validating'] },
+        const processing = await base44.asServiceRole.entities.ImportBatch.filter({
+            status: 'processing',
             updated_date: { $lte: oneHourAgo },
             created_date: { $gte: seventyTwoHoursAgo }
-        }, '-created_date', 20);
+        }, '-created_date', 10);
+        const validating = await base44.asServiceRole.entities.ImportBatch.filter({
+            status: 'validating',
+            updated_date: { $lte: oneHourAgo },
+            created_date: { $gte: seventyTwoHoursAgo }
+        }, '-created_date', 10);
+        
+        const stalledBatches = [...processing, ...validating];
 
         const allBatches = [...failedBatches, ...stalledBatches];
         const results = [];
