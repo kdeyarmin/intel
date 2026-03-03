@@ -172,6 +172,22 @@ Only return information you can verify from public sources. Be specific with hos
           }
         }
 
+        if (auto_apply_high_confidence && status === 'auto_applied') {
+          const existingProviders = await base44.asServiceRole.entities.Provider.filter({ npi });
+          if (existingProviders.length > 0) {
+            const prov = existingProviders[0];
+            const updates = {};
+            if (enrichmentDetails.linkedin_url && !prov.linkedin_url) updates.linkedin_url = enrichmentDetails.linkedin_url;
+            if (enrichmentDetails.twitter_url && !prov.twitter_url) updates.twitter_url = enrichmentDetails.twitter_url;
+            if (enrichmentDetails.firmographics && (!prov.firmographics || Object.keys(prov.firmographics).length === 0)) {
+              updates.firmographics = enrichmentDetails.firmographics;
+            }
+            if (Object.keys(updates).length > 0) {
+              await base44.asServiceRole.entities.Provider.update(prov.id, updates);
+            }
+          }
+        }
+
         results.push({ npi, status: 'enriched', name: providerName, confidence, fieldsFound: summaryParts.length });
 
         // Rate limit
