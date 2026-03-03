@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
             // Probe the URL to detect format
             const probeUrl = file_url + (file_url.includes('?') ? '&' : '?') + '$limit=1';
             console.log(`Probing URL: ${probeUrl}`);
-            const probeResp = await fetchWithTimeout(probeUrl);
+            const probeResp = await fetchWithTimeout(probeUrl, startTime);
             if (!probeResp.ok) throw new Error(`Failed to fetch: ${probeResp.status} ${probeResp.statusText}`);
             const probeText = await probeResp.text();
 
@@ -171,8 +171,9 @@ Deno.serve(async (req) => {
                     let pageResponse;
                     let fetchSuccess = false;
                     for (let fetchAttempt = 0; fetchAttempt < 3; fetchAttempt++) {
+                        if (isTimeUp(startTime)) break;
                         try {
-                            pageResponse = await fetchWithTimeout(pageUrl);
+                            pageResponse = await fetchWithTimeout(pageUrl, startTime);
                             if (pageResponse.ok) { fetchSuccess = true; break; }
                             if (pageResponse.status === 429 || pageResponse.status >= 500) {
                                 const wait = jitteredBackoff(fetchAttempt);
@@ -284,7 +285,7 @@ Deno.serve(async (req) => {
                 }
             } else {
                 // CSV fallback
-                const fullResp = await fetchWithTimeout(file_url, 30000);
+                const fullResp = await fetchWithTimeout(file_url, startTime, 30000);
                 if (!fullResp.ok) throw new Error(`Failed to fetch: ${fullResp.statusText}`);
                 const text = await fullResp.text();
                 const lines = text.split('\n').filter(l => l.trim());
