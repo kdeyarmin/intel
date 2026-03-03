@@ -13,8 +13,12 @@ Deno.serve(async (req) => {
         const { id } = payload;
         if (!id) return Response.json({ error: 'Missing config ID' }, { status: 400 });
 
-        const config = await base44.asServiceRole.entities.ImportScheduleConfig.get(id);
-        if (!config) return Response.json({ error: 'Config not found' }, { status: 404 });
+        let config;
+        try {
+            config = await base44.asServiceRole.entities.ImportScheduleConfig.get(id);
+        } catch (e) {
+            return Response.json({ error: 'Config not found' }, { status: 404 });
+        }
 
         if (!config.api_url) {
             return Response.json({ error: 'No API URL defined' }, { status: 400 });
