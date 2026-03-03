@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
         const restarted = results.filter(r => r.action === 'restarted');
         const skipped = results.filter(r => r.action === 'skipped');
         const ignored = results.filter(r => r.action === 'ignored');
+        const restartFailed = results.filter(r => r.action === 'restart_failed');
         
         return Response.json({ 
             success: true, 
@@ -145,9 +146,10 @@ Deno.serve(async (req) => {
             summary: {
                 restarted: restarted.length,
                 skipped: skipped.length,
-                ignored: ignored.length
+                ignored: ignored.length,
+                restart_failed: restartFailed.length
             },
-            restarted_details: restarted
+            restart_failed_details: restartFailed
         });
 
     } catch (error) {
