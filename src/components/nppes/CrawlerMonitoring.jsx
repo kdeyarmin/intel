@@ -30,7 +30,7 @@ export default function CrawlerMonitoring({ status }) {
     <div className="space-y-6 mt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Real-Time Telemetry</h2>
+          <h2 className="text-xl font-bold text-white">Real-Time Telemetry</h2>
           <p className="text-sm text-slate-500">Live performance & error monitoring</p>
         </div>
         <div className="flex gap-2">
@@ -111,9 +111,9 @@ export default function CrawlerMonitoring({ status }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-slate-200 shadow-sm lg:col-span-2">
+        <Card className="bg-[#141d30] border-slate-700/50 shadow-sm lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-700 flex items-center gap-2">
+            <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-500" />
               Top Error Frequencies
             </CardTitle>

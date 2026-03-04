@@ -57,7 +57,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
   });
 
   const SortButton = ({ field, children }) => (
-    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-teal-600">
+    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-teal-400">
       {children}
       <ArrowUpDown className="w-3 h-3" />
     </button>
@@ -83,7 +83,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
         {sortedLeads.map(lead => (
           <TableRow key={lead.member.id}>
             <TableCell>
-              <div className="text-lg font-bold text-teal-600">
+              <div className="text-lg font-bold text-teal-400">
                 {lead.score?.score || 'N/A'}
               </div>
             </TableCell>
@@ -92,7 +92,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                 ? `${lead.provider.last_name}, ${lead.provider.first_name}`
                 : lead.provider?.organization_name}
             </TableCell>
-            <TableCell className="text-sm text-gray-600">
+            <TableCell className="text-sm text-slate-400">
               {lead.taxonomy?.taxonomy_description || '-'}
             </TableCell>
             <TableCell className="text-sm">
