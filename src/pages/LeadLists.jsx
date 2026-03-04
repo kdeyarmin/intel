@@ -73,52 +73,54 @@ export default function LeadLists() {
           ) : lists.length === 0 ? (
             <p className="text-slate-500 text-center py-8">No lead lists yet. Create one to get started!</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Providers</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lists.map(list => (
-                  <TableRow key={list.id}>
-                    <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
-                    <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
-                    <TableCell className="text-slate-300">{list.provider_count}</TableCell>
-                    <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 flex-wrap">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                              <Eye className="w-4 h-4 mr-1" />
-                              <span className="hidden sm:inline">View</span>
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-[95vw] max-h-[90vh]">
-                            <DialogHeader>
-                              <DialogTitle>{list.name}</DialogTitle>
-                            </DialogHeader>
-                            <ViewListDialog listId={list.id} listName={list.name} />
-                          </DialogContent>
-                        </Dialog>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleDelete(list.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Providers</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {lists.map(list => (
+                    <TableRow key={list.id}>
+                      <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
+                      <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
+                      <TableCell className="text-slate-300">{list.provider_count}</TableCell>
+                      <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2 flex-wrap">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Eye className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">View</span>
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>{list.name}</DialogTitle>
+                              </DialogHeader>
+                              <ViewListDialog listId={list.id} listName={list.name} />
+                            </DialogContent>
+                          </Dialog>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDelete(list.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
