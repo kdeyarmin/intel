@@ -483,6 +483,10 @@ Deno.serve(async (req) => {
     if (action === 'batch_start') {
         if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
         
+        // Load configuration
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+
         let targetStates = states;
         if (region) {
             const REGION_STATES = {
@@ -494,11 +498,15 @@ Deno.serve(async (req) => {
             };
             targetStates = REGION_STATES[region] || US_STATES;
         }
-        if (!targetStates || targetStates.length === 0) targetStates = US_STATES;
+        
+        if (!targetStates || targetStates.length === 0) {
+            targetStates = config.crawl_all_states !== false ? US_STATES : (config.selected_states || US_STATES);
+            if (targetStates.length === 0) targetStates = US_STATES;
+        }
 
         let queued = 0, skipped = 0;
         let processingCount = 0;
-        const maxConcurrent = concurrency || 3;
+        const maxConcurrent = concurrency || config.concurrency || 4;
 
         for (const st of targetStates) {
             if (skip_completed) {
@@ -608,6 +616,12 @@ Deno.serve(async (req) => {
 
     // --- WORKER LOGIC ---
     if (action === 'process_queue') {
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+        const apiBatchSize = config.api_batch_size || 200;
+        const maxRetries = config.max_retries || 3;
+        const apiDelayMs = config.api_delay_ms !== undefined ? config.api_delay_ms : 200;
+        
         // Recover stuck items (older than 10 mins)
         const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 200));
         let recoveredCount = 0;
@@ -702,7 +716,7 @@ Deno.serve(async (req) => {
             }
 
             const task = pendingList[0];
-            if (task.retry_count > 3) {
+            if (task.retry_count > maxRetries) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' }));
                 continue;
             }
@@ -714,7 +728,7 @@ Deno.serve(async (req) => {
             try {
                 const params = new URLSearchParams();
                 params.set('version', '2.1');
-                params.set('limit', '200'); // Batch limit
+                params.set('limit', String(apiBatchSize));
                 params.set('state', task.state);
                 params.set('postal_code', `${task.zip_prefix}*`);
                 
@@ -733,16 +747,16 @@ Deno.serve(async (req) => {
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else if (firstPage.count > 0) {
-                    // Fetch all pages (up to skip 1200)
                     let allResults = [...firstPage.results];
-                    let skip = 200;
-                    while (skip < firstPage.count && skip <= 1000 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
+                    let skip = apiBatchSize;
+                    const maxSkip = config.max_skip || 1000;
+                    while (skip < firstPage.count && skip <= maxSkip && (Date.now() - execStartTime) < MAX_EXEC_MS) {
                         params.set('skip', String(skip));
                         const page = await fetchNPPESPage(params, stats);
                         stats.api_calls++;
                         if (page.error || page.results.length === 0) break;
                         allResults.push(...page.results);
-                        skip += 200;
+                        skip += apiBatchSize;
                     }
                     
                     const transformed = transformResults(allResults);
@@ -770,9 +784,9 @@ Deno.serve(async (req) => {
                 
                 // Dynamic Delay: if we hit rate limits, slow down this worker significantly
                 if (stats.shouldSlowDown) {
-                     await sleep(3000 + Math.random() * 2000);
+                     await sleep(config.retry_backoff_ms || 5000);
                 } else {
-                     await sleep(200); // Standard small delay between successful calls to be polite
+                     await sleep(apiDelayMs);
                 }
                 
             } catch (e) {
