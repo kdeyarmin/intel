@@ -2,14 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 Deno.serve(async (req) => {
     try {
-        const headers = new Headers(req.headers);
-        const appId = Deno.env.get("BASE44_APP_ID");
-        if (appId) {
-            headers.set("host", `${appId}.apps.base44.ai`);
-            headers.set("x-forwarded-host", `${appId}.apps.base44.ai`);
-        }
-        const fakeReq = new Request(req.url, { headers });
-        const base44 = createClientFromRequest(fakeReq);
+        const base44 = createClientFromRequest(req);
         
         // Ensure admin or service role
         const user = await base44.auth.me();
