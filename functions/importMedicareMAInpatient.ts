@@ -507,36 +507,22 @@ Deno.serve(async (req) => {
           if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
             while (true) {
-                const batch = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
-                if (batch.length === 0) break;
-                for (const rec of batch) {
-                    try {
-                        await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
-                    } catch (e) {
-                        const msg = e.message || '';
-                        const isNotFound = msg.toLowerCase().includes('not found') || e.status === 404 || e.response?.status === 404;
-                        const isRateLimit = msg.includes('Rate limit') || msg.includes('429') || e.status === 429 || e.response?.status === 429;
-
-                        if (isRateLimit) {
-                            await delay(5000);
-                            try {
-                                await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
-                            } catch (retryEx) {
-                                const retryMsg = retryEx.message || '';
-                                const retryIsNotFound = retryMsg.toLowerCase().includes('not found') || retryEx.status === 404 || retryEx.response?.status === 404;
-                                if (!retryIsNotFound) {
-                                    throw retryEx;
-                                } else {
-                                    console.log(`[delete] Swallowed 404 on retry for ${rec.id}`);
-                                }
+                const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
+                if (batchRecs.length === 0) break;
+                
+                for (let i = 0; i < batchRecs.length; i += 50) {
+                    const chunk = batchRecs.slice(i, i + 50);
+                    await Promise.all(chunk.map(async (rec) => {
+                        try {
+                            await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
+                        } catch (e) {
+                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                                await delay(3000);
+                                try { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); } catch(e2) {}
                             }
-                        } else if (isNotFound) {
-                            console.log(`[delete] Swallowed 404 for ${rec.id}`);
-                        } else {
-                            console.warn(`Failed to delete record ${rec.id}: ${msg}`);
                         }
-                    }
-                    await delay(150);
+                    }));
+                    await delay(100);
                 }
             }
           }
@@ -603,8 +589,8 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         status: finalStatus,
-        imported_rows: imported,
-        skipped_rows: chunkErrors * CHUNK,
+        imported_rows: (batch.imported_rows || 0) + imported,
+        skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
         completed_at: new Date().toISOString(),
         error_samples: errorSamples.length > 0 ? errorSamples : undefined,
         ...(timedOut ? {

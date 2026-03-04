@@ -149,13 +149,20 @@ Deno.serve(async (req) => {
 
             const isJsonApi = trimmedProbe.startsWith('[') || trimmedProbe.startsWith('{');
 
-            let totalProcessed = 0;
+            let totalProcessed = resume_offset || 0;
             let validRows = 0;
             let invalidRows = 0;
             let duplicateRows = 0;
             let importedCount = 0;
             let updatedCount = 0;
             let skippedCount = 0;
+            
+            const initialImported = batch.imported_rows || 0;
+            const initialUpdated = batch.updated_rows || 0;
+            const initialSkipped = batch.skipped_rows || 0;
+            const initialValid = batch.valid_rows || 0;
+            const initialInvalid = batch.invalid_rows || 0;
+            const initialDupes = batch.duplicate_rows || 0;
             const errorSamples = [];
             let columnMapping = {};
             let offset = resume_offset;
@@ -280,12 +287,12 @@ Deno.serve(async (req) => {
                     // Update progress (heartbeat)
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                         total_rows: offset,
-                        valid_rows: validRows,
-                        invalid_rows: invalidRows,
-                        duplicate_rows: duplicateRows,
-                        imported_rows: importedCount,
-                        updated_rows: updatedCount,
-                        skipped_rows: skippedCount,
+                        valid_rows: initialValid + validRows,
+                        invalid_rows: initialInvalid + invalidRows,
+                        duplicate_rows: initialDupes + duplicateRows,
+                        imported_rows: initialImported + importedCount,
+                        updated_rows: initialUpdated + updatedCount,
+                        skipped_rows: initialSkipped + skippedCount,
                         updated_date: new Date().toISOString() // Force updated_date refresh
                     });
 
@@ -308,8 +315,13 @@ Deno.serve(async (req) => {
 
                 const validDataChunk = [];
                 const seenIds = new Set();
+                
+                let startIdx = 1;
+                if (resume_offset > 0) {
+                    startIdx = resume_offset + 1; // +1 for header
+                }
 
-                for (let i = 1; i < lines.length; i++) {
+                for (let i = startIdx; i < lines.length; i++) {
                     if (isTimeUp(startTime)) break;
                     const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
                     const row = {};
@@ -351,12 +363,12 @@ Deno.serve(async (req) => {
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: finalStatus,
                 total_rows: offset || totalProcessed,
-                valid_rows: validRows,
-                invalid_rows: invalidRows,
-                duplicate_rows: duplicateRows,
-                imported_rows: importedCount,
-                updated_rows: updatedCount,
-                skipped_rows: skippedCount,
+                valid_rows: initialValid + validRows,
+                invalid_rows: initialInvalid + invalidRows,
+                duplicate_rows: initialDupes + duplicateRows,
+                imported_rows: initialImported + importedCount,
+                updated_rows: initialUpdated + updatedCount,
+                skipped_rows: initialSkipped + skippedCount,
                 error_samples: errorSamples,
                 dedup_summary: { created: importedCount, updated: updatedCount, skipped: skippedCount },
                 ...(partial ? {
