@@ -513,21 +513,21 @@ Deno.serve(async (req) => {
             const isInitial = processingCount < maxConcurrent;
             const batchStatus = isInitial ? 'processing' : 'paused';
             
-            const batch = await base44.asServiceRole.entities.ImportBatch.create({
+            const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.create({
                 import_type: 'nppes_registry',
                 file_name: `crawler_${st}_all_${Date.now()}`,
                 status: batchStatus,
                 dry_run: !!dry_run
-            });
+            }));
             const items = [];
             const itemStatus = isInitial ? 'pending' : 'paused';
             for (let i = 0; i <= 99; i++) {
                 items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: itemStatus });
             }
-            await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items);
+            await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
             queued++;
             if (isInitial) processingCount++;
-            await sleep(150);
+            await sleep(300);
         }
         
         // Dynamic worker pool initialization
