@@ -118,9 +118,9 @@ export default function CMSAnalytics() {
         icon={BarChart3}
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'CMS Data' }]}
         actions={
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-3 sm:mt-0">
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="Year" />
             </SelectTrigger>
             <SelectContent>
@@ -131,7 +131,7 @@ export default function CMSAnalytics() {
             </SelectContent>
           </Select>
           <Select value={selectedDataset} onValueChange={setSelectedDataset}>
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-full sm:w-52">
               <SelectValue placeholder="Dataset" />
             </SelectTrigger>
             <SelectContent>
