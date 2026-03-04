@@ -106,35 +106,18 @@ Deno.serve(async (req) => {
 
                     // Trigger the import again
                     if (batch.import_type === 'nppes_registry') {
-                        await base44.functions.invoke('nppesCrawler', { action: 'retry_errors' });
+                        await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'retry_errors' });
                     } else {
                         const resumeOffset = batch.retry_params?.resume_offset || batch.retry_params?.row_offset || batch.imported_rows || 0;
-                        const appId = Deno.env.get("BASE44_APP_ID");
-                        const url = `https://${appId}.apps.base44.ai/api/v1/functions/triggerImport`;
-                        
-                        const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-                        
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                ...(authHeader ? { 'Authorization': authHeader } : {})
-                            },
-                            body: JSON.stringify({
-                                import_type: batch.import_type,
-                                file_url: batch.file_url,
-                                year: batch.data_year,
-                                retry_of: batch.id,
-                                retry_count: (batch.retry_count || 0) + 1,
-                                resume_offset: resumeOffset,
-                                retry_tags: ['auto-bot-retry']
-                            })
+                        await base44.asServiceRole.functions.invoke('triggerImport', {
+                            import_type: batch.import_type,
+                            file_url: batch.file_url,
+                            year: batch.data_year,
+                            retry_of: batch.id,
+                            retry_count: (batch.retry_count || 0) + 1,
+                            resume_offset: resumeOffset,
+                            retry_tags: ['auto-bot-retry']
                         });
-                        
-                        if (!res.ok) {
-                            const txt = await res.text();
-                            throw new Error(`Direct fetch failed: ${res.status} ${txt}`);
-                        }
                     }
 
                     results.push({ batch_id: batch.id, import_type: batch.import_type, action: 'restarted', reason });
