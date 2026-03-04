@@ -64,7 +64,8 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
   );
 
   return (
-    <Table>
+    <div className="overflow-x-auto">
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead><SortButton field="score">Score</SortButton></TableHead>
@@ -165,6 +166,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
           </TableRow>
         ))}
       </TableBody>
-    </Table>
+      </Table>
+    </div>
   );
 }
