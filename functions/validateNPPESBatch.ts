@@ -49,32 +49,88 @@ Deno.serve(async (req) => {
         // Check a sample of recently updated providers
         const recentProviders = await base44.asServiceRole.entities.Provider.list('-updated_date', 200);
         
+        let invalidNpiCount = 0;
+        let missingNameCount = 0;
         for (const p of recentProviders) {
             if (!p.npi || !/^\d{10}$/.test(p.npi)) {
-                alertsToCreate.push({
-                    alert_type: 'data_inconsistency',
-                    severity: 'critical',
-                    title: 'Invalid NPI Format',
-                    description: `Invalid NPI format imported: ${p.npi}`,
-                    status: 'new',
-                    action_required: true
-                });
+                invalidNpiCount++;
+            }
+            if (p.entity_type === 'Individual' && !p.first_name && !p.last_name) {
+                missingNameCount++;
+            } else if (p.entity_type === 'Organization' && !p.organization_name) {
+                missingNameCount++;
             }
         }
+        
+        if (invalidNpiCount > 0) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'critical',
+                title: 'Invalid NPI Format Detected',
+                description: `${invalidNpiCount} recent providers have invalid NPI formats.`,
+                status: 'new',
+                action_required: true
+            });
+        }
+        if (missingNameCount > 10) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'high',
+                title: 'Missing Provider Names',
+                description: `${missingNameCount} recent providers are missing core name fields.`,
+                status: 'new',
+                action_required: true
+            });
+        }
 
-        // Check a sample of recent locations for address completeness
+        // Check a sample of recent locations for address completeness and formats
         const recentLocations = await base44.asServiceRole.entities.ProviderLocation.list('-updated_date', 200);
+        let incompleteAddressCount = 0;
+        let invalidZipCount = 0;
+        let invalidPhoneCount = 0;
+        
         for (const l of recentLocations) {
             if (!l.address_1 || !l.city || !l.state || !l.zip) {
-                alertsToCreate.push({
-                    alert_type: 'low_location_completeness',
-                    severity: 'medium',
-                    title: 'Incomplete Address',
-                    description: `Incomplete address for NPI: ${l.npi}`,
-                    status: 'new',
-                    action_required: false
-                });
+                incompleteAddressCount++;
             }
+            if (l.zip && !/^\d{5}(-\d{4})?$/.test(l.zip)) {
+                invalidZipCount++;
+            }
+            if (l.phone && l.phone.length > 0) {
+                const digits = l.phone.replace(/\D/g, '');
+                if (digits.length < 10) invalidPhoneCount++;
+            }
+        }
+        
+        if (incompleteAddressCount > 20) {
+            alertsToCreate.push({
+                alert_type: 'low_location_completeness',
+                severity: 'high',
+                title: 'High Volume of Incomplete Addresses',
+                description: `${incompleteAddressCount} recent locations missing core address fields.`,
+                status: 'new',
+                action_required: true
+            });
+        }
+        if (invalidZipCount > 5) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'medium',
+                title: 'Invalid ZIP Formats',
+                description: `${invalidZipCount} recent locations have invalid ZIP formats.`,
+                status: 'new',
+                action_required: false
+            });
+        }
+        if (invalidPhoneCount > 20) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'medium',
+                title: 'Invalid Phone Formats',
+                description: `${invalidPhoneCount} recent locations have invalid phone formats.`,
+                status: 'new',
+                action_required: false
+            });
         }
 
         // 3. Flagging anomalies using LLM
