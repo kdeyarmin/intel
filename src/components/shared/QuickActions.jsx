@@ -23,7 +23,7 @@ export default function QuickActions() {
   const visibleActions = ACTIONS.filter(action => user?.role ? action.roles.includes(user.role) : false);
 
   return (
-    <div className={`grid grid-cols-3 sm:grid-cols-${Math.min(visibleActions.length, 6)} gap-2`}>
+    <div className={`grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-${Math.min(visibleActions.length, 6)} gap-2`}>
       {visibleActions.map(action => {
         const Icon = action.icon;
         return (
