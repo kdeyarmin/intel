@@ -527,6 +527,7 @@ Deno.serve(async (req) => {
             await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items);
             queued++;
             if (isInitial) processingCount++;
+            await sleep(150);
         }
         
         // Dynamic worker pool initialization
