@@ -54,6 +54,7 @@ const NAV_SECTIONS = [
       { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
       { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
+      { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
