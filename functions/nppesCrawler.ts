@@ -797,6 +797,17 @@ Deno.serve(async (req) => {
                 // If we're failing repeatedly, break the loop early to let the worker die/backoff
                 if (consecutiveErrors >= 3) {
                      console.warn(`Worker hit 3 consecutive errors, backing off. Last error: ${e.message}`);
+                     
+                     // Create an alert for sustained high error rates
+                     await withRetry(() => base44.asServiceRole.entities.DataQualityAlert.create({
+                        alert_type: 'new_issue_detected',
+                        severity: 'high',
+                        title: 'Sustained Crawler Error Rate',
+                        description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
+                        status: 'new',
+                        action_required: true
+                     }));
+
                      break; 
                 }
                 await sleep(consecutiveErrors * 2000); // Backoff before picking up next task

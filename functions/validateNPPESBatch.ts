@@ -135,6 +135,15 @@ Return a list of flagged anomalies that might require manual review. For example
         if (alertsToCreate.length > 0) {
             const toCreate = alertsToCreate.slice(0, 50); // Cap at 50 to avoid payload issues
             await base44.asServiceRole.entities.DataQualityAlert.bulkCreate(toCreate);
+
+            // Flag/quarantine batch for manual review if there are high/critical severity alerts
+            const hasSevere = alertsToCreate.some(a => a.severity === 'high' || a.severity === 'critical');
+            if (hasSevere) {
+                const tags = batch.tags || [];
+                if (!tags.includes('manual_review_required')) tags.push('manual_review_required');
+                if (!tags.includes('quarantined')) tags.push('quarantined');
+                await base44.asServiceRole.entities.ImportBatch.update(batch_id, { tags });
+            }
         }
 
         return Response.json({ success: true, alerts_created: Math.min(alertsToCreate.length, 50) });
