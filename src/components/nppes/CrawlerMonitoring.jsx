@@ -48,9 +48,9 @@ export default function CrawlerMonitoring({ status }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-white border-slate-200 shadow-sm">
+        <Card className="bg-[#141d30] border-slate-700/50 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-700 flex items-center gap-2">
+            <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-500" />
               Avg Processing Time (sec/prefix)
             </CardTitle>
@@ -77,9 +77,9 @@ export default function CrawlerMonitoring({ status }) {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-slate-200 shadow-sm">
+        <Card className="bg-[#141d30] border-slate-700/50 shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-700 flex items-center gap-2">
+            <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-500" />
               Rate Limits & Throttling
             </CardTitle>
