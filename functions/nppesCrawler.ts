@@ -46,7 +46,7 @@ async function batchLookupByNPI(entity, npis, base44) {
 }
 
 async function upsertProviders(records, base44) {
-    const FIELDS = ['first_name','last_name','organization_name','status','entity_type','last_update_date'];
+    const FIELDS = ['first_name','last_name','middle_name','credential','gender','organization_name','status','entity_type','last_update_date'];
     let imported = 0, updated = 0, skipped = 0;
     const BULK_SIZE = 50;
     for (let i = 0; i < records.length; i += BULK_SIZE) {
@@ -73,7 +73,10 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (const task of updateTasks) { await task().catch(()=>{}); await sleep(100); }
+                for (let j = 0; j < updateTasks.length; j += 10) {
+                    await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
+                    await sleep(40);
+                }
                 updated += updateTasks.length;
             }
             await sleep(100); // Throttle DB writes
@@ -132,7 +135,10 @@ async function upsertLocations(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+            for (let j = 0; j < updateTasks.length; j += 10) {
+                await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
+                await sleep(40);
+            }
             updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
@@ -168,7 +174,10 @@ async function upsertTaxonomies(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (const task of updateTasks) { await task().catch(()=>{}); await sleep(40); }
+            for (let j = 0; j < updateTasks.length; j += 10) {
+                await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
+                await sleep(40);
+            }
             updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
