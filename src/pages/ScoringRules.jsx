@@ -224,7 +224,7 @@ export default function ScoringRules() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Scoring Configuration"
         subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
