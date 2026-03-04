@@ -296,13 +296,47 @@ export default function CMSDataSources() {
 
             <div className="space-y-2">
               <Label>Source URL</Label>
-              <Input
-                required
-                placeholder="https://data.cms.gov/..."
-                value={formData.api_url || ''}
-                onChange={(e) => setFormData({ ...formData, api_url: e.target.value })}
-                className="bg-slate-950 border-slate-800"
-              />
+              <div className="flex gap-2">
+                <Input
+                  required
+                  placeholder="https://data.cms.gov/..."
+                  value={formData.api_url || ''}
+                  onChange={(e) => setFormData({ ...formData, api_url: e.target.value })}
+                  className="bg-slate-950 border-slate-800 flex-1"
+                />
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    if (!formData.api_url) {
+                      toast.error("Please enter a URL first");
+                      return;
+                    }
+                    const toastId = toast.loading("Analyzing format with AI...");
+                    try {
+                      const res = await base44.functions.invoke('predictImportFormat', { url: formData.api_url });
+                      if (res.data.success && res.data.prediction) {
+                        const { import_type, data_year, explanation } = res.data.prediction;
+                        setFormData(prev => ({
+                          ...prev,
+                          import_type: import_type || prev.import_type,
+                          data_year: data_year || prev.data_year
+                        }));
+                        toast.success("Format detected successfully", { id: toastId });
+                        if (explanation) toast(explanation);
+                      } else {
+                        toast.error(res.data.error || "Failed to predict format", { id: toastId });
+                      }
+                    } catch (e) {
+                      toast.error("Error connecting to AI", { id: toastId });
+                    }
+                  }}
+                  className="bg-slate-900 border-slate-700 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Auto-Detect
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
