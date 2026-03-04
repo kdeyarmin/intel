@@ -36,7 +36,7 @@ export default function Dashboard() {
   const locationsSample = stats?.samples?.locations || [];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
         subtitle="CareMetric Provider Intelligence — all your data at a glance"
