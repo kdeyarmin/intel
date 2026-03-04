@@ -517,9 +517,13 @@ Deno.serve(async (req) => {
         let processingCount = 0;
         const maxConcurrent = concurrency || config.concurrency || 4;
 
+        let existingBatches = [];
+        if (skip_completed) {
+            existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
+        }
+
         for (const st of targetStates) {
             if (skip_completed) {
-                const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
                 const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
                 if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'processing' || stBatch.status === 'validating')) { 
                     skipped++; 
