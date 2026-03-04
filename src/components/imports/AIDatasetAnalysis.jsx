@@ -56,12 +56,45 @@ export default function AIDatasetAnalysis({ batch }) {
 
   return (
     <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 space-y-4 mt-4">
-      <div className="flex items-center gap-2 mb-2 pb-3 border-b border-slate-700/50">
-        <Sparkles className="w-5 h-5 text-cyan-400" />
-        <h4 className="text-sm font-semibold text-slate-200">AI Dataset Analysis</h4>
+      <div className="flex items-center justify-between mb-2 pb-3 border-b border-slate-700/50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-cyan-400" />
+          <h4 className="text-sm font-semibold text-slate-200">AI Dataset Analysis</h4>
+        </div>
+        {(analysis.quality_score !== undefined || analysis.completeness_score !== undefined) && (
+          <div className="flex gap-4">
+            {analysis.quality_score !== undefined && (
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Quality</p>
+                <p className={`text-lg font-bold leading-none ${analysis.quality_score >= 80 ? 'text-emerald-400' : analysis.quality_score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {analysis.quality_score}
+                </p>
+              </div>
+            )}
+            {analysis.completeness_score !== undefined && (
+              <div className="text-right">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Completeness</p>
+                <p className={`text-lg font-bold leading-none ${analysis.completeness_score >= 80 ? 'text-blue-400' : analysis.completeness_score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {analysis.completeness_score}%
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <div className="space-y-4">
+        {analysis.completeness_report && (
+          <div>
+            <h5 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Completeness Report
+            </h5>
+            <p className="text-xs text-slate-400 leading-relaxed bg-slate-900/50 p-3 rounded-md">
+              {analysis.completeness_report}
+            </p>
+          </div>
+        )}
+
         <div>
           <h5 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">
             <BarChart className="w-3.5 h-3.5 text-blue-400" /> Key Metrics Summary
