@@ -272,7 +272,7 @@ export default function EmailSearchBot() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-10 bg-slate-800/50 p-1 mb-5">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
           <TabsTrigger value="search" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Search className="w-3.5 h-3.5" /> Search
           </TabsTrigger>
