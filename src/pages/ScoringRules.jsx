@@ -212,7 +212,7 @@ export default function ScoringRules() {
 
   if (user?.role !== 'admin') {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -267,8 +267,9 @@ export default function ScoringRules() {
           <CardTitle className="text-slate-200">Scoring Components</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Rule Name</TableHead>
                 <TableHead>Description</TableHead>
@@ -359,7 +360,8 @@ export default function ScoringRules() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
