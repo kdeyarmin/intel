@@ -61,14 +61,28 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'No data found to analyze in this entity' }, { status: 400 });
         }
 
+        // Calculate basic completeness statistics
+        let totalFields = 0;
+        let filledFields = 0;
+        sampleRecords.forEach(record => {
+            const keys = Object.keys(record);
+            totalFields += keys.length;
+            filledFields += keys.filter(k => record[k] !== null && record[k] !== undefined && record[k] !== '').length;
+        });
+        const rawCompleteness = totalFields > 0 ? Math.round((filledFields / totalFields) * 100) : 0;
+
         const prompt = `
         You are a top-tier healthcare data analyst.
         Analyze the following sample dataset from a recent CMS data import (Import Type: ${batch.import_type}).
         
+        The raw completeness ratio (filled fields vs total fields) is ${rawCompleteness}%.
+        
         Tasks:
-        1. Suggest potential data quality issues (e.g., missing values, formatting inconsistencies).
-        2. Identify trends or anomalies in the data.
-        3. Provide a high-level summary of key metrics for this dataset.
+        1. Generate a summary report on import quality and completeness.
+        2. Assign a 'completeness_score' (0-100) and a 'quality_score' (0-100) based on your expert analysis of the data's utility and accuracy.
+        3. Suggest potential data quality issues (e.g., missing critical values, formatting inconsistencies).
+        4. Identify trends or anomalies in the data.
+        5. Provide a high-level summary of key metrics for this dataset.
         
         Sample Data (up to 20 records):
         ${JSON.stringify(sampleRecords, null, 2)}
@@ -79,11 +93,15 @@ Deno.serve(async (req) => {
             response_json_schema: {
                 type: "object",
                 properties: {
+                    completeness_score: { type: "number" },
+                    quality_score: { type: "number" },
+                    completeness_report: { type: "string" },
                     quality_issues: { type: "array", items: { type: "string" } },
                     trends_anomalies: { type: "array", items: { type: "string" } },
                     key_metrics_summary: { type: "string" },
                     overall_assessment: { type: "string" }
-                }
+                },
+                required: ["completeness_score", "quality_score", "completeness_report"]
             }
         });
 
