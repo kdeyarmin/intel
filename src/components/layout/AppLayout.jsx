@@ -263,7 +263,7 @@ export default function AppLayout({ children, currentPageName }) {
       </div>
 
       {/* Main content */}
-      <main ref={mainRef} className="flex-1 overflow-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0">
+      <main ref={mainRef} className="flex-1 overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0 w-full">
         <div className="flex-1">
           {children}
         </div>
