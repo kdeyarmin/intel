@@ -404,13 +404,21 @@ Deno.serve(async (req) => {
         const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
 
         const granular_metrics = {};
+        
+        // Optimize: Fetch all pending items for the current batches in one go to avoid rate limits
+        const processingBatchIds = processingStates.map(st => stateLatest[st]?.id).filter(Boolean);
+        let allPendingItems = [];
+        if (processingBatchIds.length > 0) {
+            // we can only do $in for a reasonable amount, let's just fetch up to 10000 pending items globally
+            allPendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 5000);
+        }
+        
         for (const st of processingStates) {
             const b = stateLatest[st];
             if (b) {
                 const rp = b.retry_params || {};
                 const avg_time_ms = rp.completed_items > 0 ? Math.round(rp.total_time_ms / rp.completed_items) : 0;
-                const pendingCountItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id, status: 'pending' }, undefined, 1000);
-                const pending_items = pendingCountItems.length;
+                const pending_items = allPendingItems.filter(i => i.batch_id === b.id).length;
                 const estimated_remaining_ms = pending_items * avg_time_ms;
 
                 granular_metrics[st] = {
