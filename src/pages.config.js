@@ -48,6 +48,7 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AIAssistant from './pages/AIAssistant';
+import APIConnectors from './pages/APIConnectors';
 import AdminSettings from './pages/AdminSettings';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import AuditLog from './pages/AuditLog';
@@ -78,18 +79,19 @@ import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import ProviderOutreach from './pages/ProviderOutreach';
 import Providers from './pages/Providers';
+import ReconciliationDashboard from './pages/ReconciliationDashboard';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import APIConnectors from './pages/APIConnectors';
 import Utilization from './pages/Utilization';
-import ReconciliationDashboard from './pages/ReconciliationDashboard';
+import ProjectManagement from './pages/ProjectManagement';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistant": AIAssistant,
+    "APIConnectors": APIConnectors,
     "AdminSettings": AdminSettings,
     "AdvancedAnalytics": AdvancedAnalytics,
     "AuditLog": AuditLog,
@@ -120,13 +122,13 @@ export const PAGES = {
     "ProviderLocationMatching": ProviderLocationMatching,
     "ProviderOutreach": ProviderOutreach,
     "Providers": Providers,
+    "ReconciliationDashboard": ReconciliationDashboard,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "APIConnectors": APIConnectors,
     "Utilization": Utilization,
-    "ReconciliationDashboard": ReconciliationDashboard,
+    "ProjectManagement": ProjectManagement,
 }
 
 export const pagesConfig = {
