@@ -24,15 +24,23 @@ Deno.serve(async (req) => {
             if (batch.import_type === 'nppes_registry') {
                 hasNppes = true;
                 
-                // If it's NPPES, also check for queue items linking to this batch and reset them
+                // Set related queue items to pending so they can be re-run
                 const qItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: batch.id });
                 for (const q of qItems) {
                     await base44.asServiceRole.entities.NPPESQueueItem.update(q.id, {
                         status: 'pending',
-                        batch_id: null,
                         error_message: null
                     });
                 }
+                
+                // Do not delete the NPPES batch if it has queue items attached, just change it back to processing
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                    status: 'processing',
+                    cancel_reason: null,
+                    cancelled_at: null
+                });
+                restartedCount++;
+                continue; // Skip deletion for NPPES to preserve the batch_id link
             } else if (batch.file_url) {
                 // restart regular ones
                 const resumeOffset = batch.retry_params?.resume_offset || batch.retry_params?.row_offset || batch.imported_rows || 0;
@@ -49,7 +57,7 @@ Deno.serve(async (req) => {
                 });
             }
             
-            // Delete the batch
+            // Delete the regular batch
             await base44.asServiceRole.entities.ImportBatch.delete(batch.id);
             deletedCount++;
             restartedCount++;
