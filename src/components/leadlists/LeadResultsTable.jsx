@@ -33,7 +33,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
