@@ -160,17 +160,17 @@ export default function TerritoryIntelligence() {
 
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
         <Skeleton className="h-10 w-80 mb-4" />
         <Skeleton className="h-14 w-full mb-4" />
-        <div className="grid grid-cols-5 gap-3 mb-4">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
         <Skeleton className="h-[500px] w-full" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -199,7 +199,7 @@ export default function TerritoryIntelligence() {
         </div>
         <div className="lg:col-span-9">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-slate-100 mb-3">
+            <TabsList className="bg-slate-100 mb-3 h-auto flex flex-wrap">
               <TabsTrigger value="map" className="gap-1.5 text-xs">
                 <Map className="w-3.5 h-3.5" /> Interactive Map
               </TabsTrigger>

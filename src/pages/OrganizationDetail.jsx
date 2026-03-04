@@ -114,7 +114,7 @@ export default function OrganizationDetail() {
 
   if (loadingProv) {
     return (
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-48" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><Skeleton className="h-64" /><Skeleton className="h-64" /></div>
@@ -132,7 +132,7 @@ export default function OrganizationDetail() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
         <ArrowLeft className="w-4 h-4 mr-2" /> Back
       </Button>
