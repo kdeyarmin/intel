@@ -56,7 +56,7 @@ export default function ProviderOutreach() {
       />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-slate-800/60 border border-slate-700/50">
+        <TabsList className="bg-slate-800/60 border border-slate-700/50 h-auto flex flex-wrap gap-1">
           <TabsTrigger value="campaigns" className="gap-2 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Mail className="w-4 h-4" /> Campaigns
           </TabsTrigger>
