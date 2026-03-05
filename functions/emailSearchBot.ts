@@ -353,13 +353,11 @@ INSTRUCTIONS:
       });
 
       if (!isDone) {
-        // Self invoke for next batch
-        setTimeout(() => {
-          base44.asServiceRole.functions.invoke('emailSearchBot', {
-            mode: 'process_background',
-            task_id: currentTask.id
-          }).catch(console.error);
-        }, 2000);
+        // Self invoke for next batch immediately before returning response
+        base44.asServiceRole.functions.invoke('emailSearchBot', {
+          mode: 'process_background',
+          task_id: currentTask.id
+        }).catch(console.error);
       }
     }
 
