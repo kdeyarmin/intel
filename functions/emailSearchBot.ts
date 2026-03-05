@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
 
         const existingEmails = [provider.email, ...(provider.additional_emails || []).map(e => e.email)].filter(Boolean);
 
-        const prompt = `Find professional email addresses for this healthcare provider/practice. Search public directories, practice websites, and healthcare databases.
+        const prompt = `Find and validate professional email addresses for this healthcare provider/practice. Search public directories, practice websites, and healthcare databases.
 
 PROVIDER:
 - Name: ${name}
@@ -114,139 +114,69 @@ PROVIDER:
 
 INSTRUCTIONS:
 1. Search for this provider's practice website or employer website.
-2. Look for publicly listed email addresses on practice websites, healthcare directories (Healthgrades, Vitals, WebMD, Zocdoc, NPI databases, hospital/health system staff pages).
+2. Look for publicly listed email addresses on practice websites, healthcare directories (Healthgrades, Vitals, WebMD, Zocdoc, NPI databases, hospital staff pages).
 3. If you find a website domain, try to infer email patterns (first.last@domain.com, flast@domain.com, etc.).
-4. Rate each email: "high" = found on a public page, "medium" = inferred from a verified domain, "low" = guessed.
-5. Return up to 5 emails sorted by confidence. Include existing emails if you can verify them.
-6. IMPORTANT: Only return plausible professional medical emails. No generic gmail/yahoo unless that's what's publicly listed.
-7. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email for the provider, it is perfectly fine to return practice-level or office-level emails. Always prefer a direct provider email, but never return zero results if a practice email exists.`;
+4. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a direct email, it is perfectly fine to return practice-level or office-level emails. Do not return 0 results if a practice email exists.
+5. Rate each email's find confidence: "high", "medium", "low".
+6. VALIDATION STEP: For each email you find, validate it. Assign a quality score (0-100), a status ("valid", "risky", "invalid"), risk flags (e.g. "role-based"), and detailed reasons for the score. Include details about web presence of the email domain.
+7. Return up to 5 emails, prioritizing valid and direct emails.`;
 
-        let res;
-        try {
-          res = await base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt,
-            add_context_from_internet: true,
-            response_json_schema: {
-              type: "object",
-              properties: {
-                emails: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      email: { type: "string" },
-                      confidence: { type: "string", enum: ["high", "medium", "low"] },
-                      source: { type: "string" }
-                    }
-                  }
-                },
-                practice_website: { type: "string" },
-                notes: { type: "string" }
-              }
-            }
-          });
-        } catch (llmErr) {
-          if (llmErr.message?.includes('Rate limit') || llmErr.response?.status === 429) {
-            console.warn(`[Retry] LLM Rate limit hit for NPI ${provider.npi}. Waiting 5 seconds...`);
-            await new Promise(r => setTimeout(r, 5000));
-            res = await base44.asServiceRole.integrations.Core.InvokeLLM({
-              prompt,
-              add_context_from_internet: true,
-              response_json_schema: {
+        const LLM_SCHEMA = {
+          type: "object",
+          properties: {
+            emails: {
+              type: "array",
+              items: {
                 type: "object",
                 properties: {
-                  emails: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        email: { type: "string" },
-                        confidence: { type: "string", enum: ["high", "medium", "low"] },
-                        source: { type: "string" }
-                      }
-                    }
-                  },
-                  practice_website: { type: "string" },
-                  notes: { type: "string" }
+                  email: { type: "string" },
+                  confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  source: { type: "string" },
+                  validation_status: { type: "string", enum: ["valid", "risky", "invalid"] },
+                  quality_score: { type: "number" },
+                  quality_confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  quality_reasons: { type: "array", items: { type: "string" } },
+                  quality_risk_flags: { type: "array", items: { type: "string" } }
                 }
               }
-            });
-          } else {
-            throw llmErr;
+            },
+            practice_website: { type: "string" },
+            notes: { type: "string" }
           }
-        }
+        };
+
+        const invokeWithRetry = async (attempt = 1) => {
+          try {
+            return await base44.asServiceRole.integrations.Core.InvokeLLM({
+              prompt,
+              add_context_from_internet: true,
+              response_json_schema: LLM_SCHEMA
+            });
+          } catch (err) {
+            if ((err.message?.includes('Rate limit') || err.response?.status === 429) && attempt <= 3) {
+              console.warn(`[Retry] Rate limit hit for NPI ${provider.npi}. Waiting ${attempt * 5}s...`);
+              await new Promise(r => setTimeout(r, attempt * 5000));
+              return await invokeWithRetry(attempt + 1);
+            }
+            throw err;
+          }
+        };
+
+        const res = await invokeWithRetry();
 
         const emails = (res?.emails || []).filter(e => e.email && e.email.includes('@'));
-        const bestEmail = emails[0] || null;
+        
+        // Map back to expected structure
+        const validations = emails.map(e => ({
+          email: e.email,
+          status: e.validation_status || 'unknown',
+          score: e.quality_score || 0,
+          confidence: e.quality_confidence || e.confidence || 'low',
+          reasons: e.quality_reasons || [],
+          risk_flags: e.quality_risk_flags || [],
+          reason: (e.quality_reasons || []).join('; ')
+        }));
 
-        // --- AI Email Validation Step ---
-        let validationResult = null;
-        if (emails.length > 0) {
-          const emailList = emails.map(e => e.email).join(', ');
-          
-          const doValidation = async () => base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `You are an advanced email deliverability expert AI. Validate the following email addresses for a healthcare provider named "${name}" (NPI: ${provider.npi}).
-
-Please perform a deep web search to verify the existence of these emails or their domains. Look for MX records if possible, and check if the email has been seen on the internet.
-
-EMAIL ADDRESSES TO VALIDATE:
-${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
-
-PROVIDER CONTEXT:
-- Type: ${provider.entity_type}
-- Organization: ${provider.organization_name || 'N/A'}
-- Credential: ${provider.credential || 'N/A'}
-- Location: ${locationInfo}
-
-VALIDATION CRITERIA & SCORING:
-1. Analyze FORMAT, DOMAIN validity, PATTERN matching, RELEVANCE to provider.
-2. Check for DISPOSABLE, ROLE-BASED, or CATCH-ALL characteristics.
-3. Assign a quality score from 0-100 based on likelihood of reaching the provider directly.
-4. Determine risk flags (e.g., 'role-based', 'generic-domain', 'pattern-mismatch').
-5. Provide detailed reasons for the score. Include details about web presence of the email domain.
-
-For each email, assign:
-- "valid" (score > 75)
-- "risky" (score 40-75)
-- "invalid" (score < 40)
-
-Return validation for ALL emails provided.`,
-            add_context_from_internet: true,
-            response_json_schema: {
-              type: "object",
-              properties: {
-                validations: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      email: { type: "string" },
-                      status: { type: "string", enum: ["valid", "risky", "invalid"] },
-                      score: { type: "number" },
-                      confidence: { type: "string", enum: ["high", "medium", "low"] },
-                      reasons: { type: "array", items: { type: "string" } },
-                      risk_flags: { type: "array", items: { type: "string" } }
-                    }
-                  }
-                }
-              }
-            }
-          });
-
-          try {
-            validationResult = await doValidation();
-          } catch (valErr) {
-            if (valErr.message?.includes('Rate limit') || valErr.response?.status === 429) {
-              console.warn(`[Retry] LLM Validation Rate limit hit for NPI ${provider.npi}. Waiting 5s...`);
-              await new Promise(r => setTimeout(r, 5000));
-              validationResult = await doValidation();
-            } else {
-              throw valErr;
-            }
-          }
-        }
-
-        const validations = validationResult?.validations || [];
         const getValidation = (email) => validations.find(v => v.email === email) || { status: 'unknown', reason: '' };
 
         // Update Provider with best email + validation, preserving existing emails
