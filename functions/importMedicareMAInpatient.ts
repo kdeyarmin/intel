@@ -491,7 +491,7 @@ Deno.serve(async (req) => {
         valid_rows: validRecords.length,
         invalid_rows: validation.invalid,
         column_mapping: { sheets: sheetSummaries, sheet_errors: Object.keys(sheetErrors).length ? sheetErrors : undefined },
-        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        error_samples: errorSamples.length > 0 ? errorSamples : [],
         dedup_summary: {
           validation_rule_summary: validation.rule_summary,
           validation_warnings: validation.warning_count,
@@ -596,7 +596,7 @@ Deno.serve(async (req) => {
         imported_rows: (batch.imported_rows || 0) + imported,
         skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
         completed_at: new Date().toISOString(),
-        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        error_samples: errorSamples.length > 0 ? errorSamples : [],
         ...(timedOut ? {
           paused_at: new Date().toISOString(),
           cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,

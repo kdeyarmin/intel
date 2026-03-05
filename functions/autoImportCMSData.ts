@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
                 imported_rows: initialImported + importedCount,
                 updated_rows: initialUpdated + updatedCount,
                 skipped_rows: initialSkipped + skippedCount,
-                error_samples: errorSamples,
+                error_samples: errorSamples.length > 0 ? errorSamples : [],
                 dedup_summary: { created: importedCount, updated: updatedCount, skipped: skippedCount },
                 ...(partial ? {
                     paused_at: new Date().toISOString(),
