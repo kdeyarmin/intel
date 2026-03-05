@@ -144,7 +144,7 @@ function validateRecord(record, rowIndex, sheetName) {
       });
   }
   
-  if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
+  // No need for no_metrics warning anymore since we skip them entirely
   
   for (const f of NUMERIC_FIELDS) { 
       if (record[f] != null && record[f] < 0) {
