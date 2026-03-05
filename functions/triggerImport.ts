@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }));
     const realActive = activeImports.filter(b => {
       const fn = b.file_name || '';
-      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
+      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal' && b.id !== body.batch_id;
     });
 
     if (realActive.length > 0) {
