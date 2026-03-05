@@ -332,7 +332,6 @@ Deno.serve(async (req) => {
                     total_rows: lines.length - 1,
                 });
 
-                const validDataChunk = [];
                 const seenIds = new Set();
                 
                 let startIdx = 1;
@@ -340,40 +339,48 @@ Deno.serve(async (req) => {
                     startIdx = resume_offset + 1; // +1 for header
                 }
 
-                for (let i = startIdx; i < lines.length; i++) {
+                for (let i = startIdx; i < lines.length; i += BULK_SIZE) {
                     if (isTimeUp(startTime)) break;
-                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                    const row = {};
-                    headers.forEach((h, idx) => { row[h] = values[idx]; });
-                    totalProcessed++;
+                    
+                    const chunkLines = lines.slice(i, i + BULK_SIZE);
+                    const validDataChunk = [];
+                    let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
-                    const mapped = mapRowToEntity(row, import_type, year);
-                    if (!mapped) { invalidRows++; continue; }
+                    for (const line of chunkLines) {
+                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const row = {};
+                        headers.forEach((h, idx) => { row[h] = values[idx]; });
 
-                    const dedupKey = getDedupKey(mapped, import_type);
-                    if (!dedupKey) { invalidRows++; continue; }
-                    if (seenIds.has(dedupKey)) { duplicateRows++; continue; }
-                    seenIds.add(dedupKey);
-                    validRows++;
-                    validDataChunk.push(mapped);
+                        const mapped = mapRowToEntity(row, import_type, year);
+                        if (!mapped) { chunkInvalid++; continue; }
 
-                    if (validDataChunk.length >= 200 && !dry_run) {
-                        const result = await importChunk(base44, import_type, validDataChunk.splice(0), startTime);
+                        const dedupKey = getDedupKey(mapped, import_type);
+                        if (!dedupKey) { chunkInvalid++; continue; }
+                        if (seenIds.has(dedupKey)) { chunkDuplicate++; continue; }
+                        seenIds.add(dedupKey);
+                        chunkValid++;
+                        validDataChunk.push(mapped);
+                    }
+
+                    let chunkAborted = false;
+                    if (!dry_run && validDataChunk.length > 0) {
+                        const result = await importChunk(base44, import_type, validDataChunk, startTime);
                         importedCount += result.imported;
                         updatedCount += result.updated;
                         skippedCount += result.skipped;
-                        if (result.aborted) break;
+                        if (result.aborted) chunkAborted = true;
                     }
+
+                    if (chunkAborted) break;
+
+                    totalProcessed += chunkLines.length;
+                    offset += chunkLines.length;
+                    validRows += chunkValid;
+                    invalidRows += chunkInvalid;
+                    duplicateRows += chunkDuplicate;
                 }
 
-                if (!dry_run && validDataChunk.length > 0 && !isTimeUp(startTime)) {
-                    const result = await importChunk(base44, import_type, validDataChunk, startTime);
-                    importedCount += result.imported;
-                    updatedCount += result.updated;
-                    skippedCount += result.skipped;
-                }
-
-                reachedEnd = totalProcessed >= lines.length - 1;
+                reachedEnd = offset >= lines.length - 1;
             }
 
             const partial = !reachedEnd;
