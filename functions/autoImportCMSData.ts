@@ -253,26 +253,26 @@ Deno.serve(async (req) => {
 
                         const rawChunk = pageData.slice(i, i + BULK_SIZE);
                         const validDataChunk = [];
+                        let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
                         for (const row of rawChunk) {
-                            totalProcessed++;
                             const mapped = mapRowToEntity(row, import_type, year);
                             if (!mapped) {
-                                invalidRows++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Failed to map row' });
+                                chunkInvalid++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Failed to map row' });
                                 continue;
                             }
 
                             const dedupKey = getDedupKey(mapped, import_type);
                             if (!dedupKey) {
-                                invalidRows++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Missing required identifier' });
+                                chunkInvalid++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Missing required identifier' });
                                 continue;
                             }
 
-                            if (seenInPage.has(dedupKey)) { duplicateRows++; continue; }
+                            if (seenInPage.has(dedupKey)) { chunkDuplicate++; continue; }
                             seenInPage.add(dedupKey);
-                            validRows++;
+                            chunkValid++;
                             validDataChunk.push(mapped);
                         }
 
@@ -290,7 +290,10 @@ Deno.serve(async (req) => {
                         
                         if (chunkAborted) break;
 
-                        // Increment offset by the number of raw rows we successfully processed/attempted
+                        totalProcessed += rawChunk.length;
+                        validRows += chunkValid;
+                        invalidRows += chunkInvalid;
+                        duplicateRows += chunkDuplicate;
                         pageProcessedRaw += rawChunk.length;
                     }
 
