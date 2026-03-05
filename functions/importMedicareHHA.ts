@@ -392,6 +392,20 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString(),
     });
 
+    if (timedOut) {
+        // Automatically trigger next pass
+        base44.asServiceRole.functions.invoke('importMedicareHHA', {
+            action: 'resume',
+            batch_id: batch.id,
+            year: requestedYear,
+            dry_run,
+            custom_url,
+            sheet_filter,
+            row_offset: effectiveOffset + imported,
+            row_limit
+        }).catch(e => console.error('Self-invoke failed:', e));
+    }
+
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus,
       sheets_parsed: sheetSummaries, total_records: allRecords.length + totalInvalid,

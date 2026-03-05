@@ -394,6 +394,22 @@ Deno.serve(async (req) => {
                 });
             } catch (e) { console.warn('Audit log failed:', e.message); }
 
+            if (partial && !dry_run) {
+                // Automatically self-invoke to continue the next pass
+                base44.asServiceRole.functions.invoke('autoImportCMSData', {
+                    import_type,
+                    file_url,
+                    year,
+                    dry_run,
+                    resume_offset: offset,
+                    batch_id: batch.id,
+                    retry_of,
+                    retry_count,
+                    retry_tags,
+                    category: retryCategory
+                }).catch(e => console.error('Self-invoke failed:', e));
+            }
+
             return Response.json({
                 success: true, partial, batch_id: batch.id,
                 total_processed: totalProcessed, valid_rows: validRows,

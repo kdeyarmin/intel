@@ -266,6 +266,20 @@ Deno.serve(async (req) => {
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_part_d_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}
     await base44.asServiceRole.entities.AuditEvent.create({ event_type: 'import', user_email: user?.email || 'system', details: { action: 'Medicare Part D Import', entity: 'MedicarePartDStats', year, imported_count: imported, status: finalStatus }, timestamp: new Date().toISOString() });
 
+    if (timedOut) {
+        // Automatically trigger next pass
+        base44.asServiceRole.functions.invoke('importMedicarePartD', {
+            action: 'resume',
+            batch_id: batch.id,
+            year: requestedYear,
+            dry_run,
+            custom_url,
+            sheet_filter,
+            row_offset: effectiveOffset + imported,
+            row_limit
+        }).catch(e => console.error('Self-invoke failed:', e));
+    }
+
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus, sheets_parsed: sheetSummaries,
       total_records: allRecords.length + totalInvalid, records_validated: allRecords.length, records_rejected: totalInvalid,
