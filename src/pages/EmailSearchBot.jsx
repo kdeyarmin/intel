@@ -13,6 +13,7 @@ import EmailBotResults from '../components/emailBot/EmailBotResults';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
+import ProblematicEmailsPanel from '../components/emailBot/ProblematicEmailsPanel';
 import EmailResultFilters from '../components/emailBot/EmailResultFilters';
 import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
 import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
@@ -275,7 +276,7 @@ export default function EmailSearchBot() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
           <TabsTrigger value="search" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Search className="w-3.5 h-3.5" /> Search
           </TabsTrigger>
@@ -285,6 +286,12 @@ export default function EmailSearchBot() {
           </TabsTrigger>
           <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
+            {stats.risky + stats.invalid > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="issues" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <AlertTriangle className="w-3.5 h-3.5" /> Issues
             {stats.risky + stats.invalid > 0 && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
             )}
@@ -500,6 +507,13 @@ export default function EmailSearchBot() {
 
         <TabsContent value="verify" className="space-y-5">
           <EmailVerificationPanel
+            providers={providers}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
+          />
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-5">
+          <ProblematicEmailsPanel
             providers={providers}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
           />
