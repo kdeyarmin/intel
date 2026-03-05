@@ -161,7 +161,6 @@ export default function EmailSearchBot() {
     }
   };
 
-  const isBackgroundRunning = activeTask?.status === 'processing';
   const derivedRunProgress = useMemo(() => {
     if (!activeTask) return allRunProgress;
     return {
