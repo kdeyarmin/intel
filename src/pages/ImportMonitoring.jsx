@@ -43,6 +43,7 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
+import ImportSpeedView from '../components/imports/ImportSpeedView';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -517,6 +518,15 @@ export default function ImportMonitoring() {
           <Bot className="w-3.5 h-3.5 inline mr-1" />
           AI Manager
         </button>
+        <button
+          onClick={() => setActiveTab('performance')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'performance' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
+          Performance
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -545,6 +555,10 @@ export default function ImportMonitoring() {
         <div className="h-[600px] border border-slate-700/50 rounded-xl overflow-hidden bg-[#141d30]">
           <ImportAgentChat />
         </div>
+      )}
+
+      {activeTab === 'performance' && (
+        <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
       )}
 
       {activeTab === 'monitoring' && <>
