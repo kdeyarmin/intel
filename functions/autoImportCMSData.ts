@@ -129,7 +129,13 @@ Deno.serve(async (req) => {
 
         try {
             // Probe the URL to detect format
-            const probeUrl = file_url + (file_url.includes('?') ? '&' : '?') + '$limit=1';
+            const isCmsDataApi = file_url.includes('data-api/v1/dataset');
+            const isDkanApi = file_url.includes('provider-data/api');
+            let probeLimit = '$limit=1';
+            if (isCmsDataApi) probeLimit = 'size=1';
+            else if (isDkanApi) probeLimit = 'limit=1';
+            
+            const probeUrl = file_url + (file_url.includes('?') ? '&' : '?') + probeLimit;
             console.log(`Probing URL: ${probeUrl}`);
             const probeResp = await fetchWithTimeout(probeUrl, startTime);
             if (!probeResp.ok) throw new Error(`Failed to fetch: ${probeResp.status} ${probeResp.statusText}`);
