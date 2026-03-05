@@ -248,7 +248,8 @@ function transformResults(allResults) {
 
 // In-memory cache for NPPES API responses
 const apiCache = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours - Aggressive caching
+const MAX_CACHE_SIZE = 5000;
 
 let globalRateLimitDelay = 0;
 let lastRateLimitHit = 0;
