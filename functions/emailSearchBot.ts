@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       }
       batch_size = currentTask.params.batch_size || 10;
       skip_already_searched = currentTask.params.skip_already_searched ?? true;
+      offset = currentTask.params.offset || 0;
     }
 
     let providersToSearch = [];
