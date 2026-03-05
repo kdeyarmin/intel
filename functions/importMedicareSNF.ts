@@ -262,24 +262,22 @@ Deno.serve(async (req) => {
       if (!tableName) continue;
       let rows;
       try { rows = parseSheet(workbook, sheetName); } catch (e) { addError('parse', `Sheet "${sheetName}": ${e.message}`, { sheet: sheetName }); continue; }
-      let sv = 0, si = 0;
+      let sv = 0, si = 0, ss = 0;
       for (const row of rows) {
+        // Pre-filter: skip completely empty rows
+        const cellValues = Object.keys(row).filter(k => k !== '_rowIndex').map(k => String(row[k] || '').trim()).filter(v => v !== '');
+        if (cellValues.length === 0) { ss++; continue; }
+
         const record = mapSNFRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
+        if (v.skip) { ss++; continue; }
+
         for (const e of v.errors) { 
-            ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; 
-            addError('validation', `[${e.rule}] ${e.message}`, { 
-                sheet: sheetName, 
-                row: e.row, 
-                field: e.field,
-                value: e.value,
-                rule: e.rule
-            }); 
-        }
+...
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped: ss });
     }
 
     let recordsToProcess = allRecords;
