@@ -114,13 +114,13 @@ export default Deno.serve(async (req) => {
                     if (Date.now() - execStartTime > MAX_EXEC_MS) {
                         // Time's up, invoke next chunk
                         reader.cancel(); // Stop fetching
-                        await base44.asServiceRole.functions.invoke('importNPPESFlatFile', {
+                        base44.asServiceRole.functions.invoke('importNPPESFlatFile', {
                             batch_id,
                             file_url,
                             byte_offset: currentByteOffset,
                             headers: currentHeaders,
                             total_rows: total_rows + recordsProcessed
-                        });
+                        }).catch(e => console.error(`[importNPPESFlatFile] Auto-resume invoke error:`, e));
                         
                         return Response.json({ success: true, message: 'Time limit reached, triggering next chunk', next_offset: currentByteOffset });
                     }

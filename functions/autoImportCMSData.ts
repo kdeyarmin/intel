@@ -395,9 +395,9 @@ Deno.serve(async (req) => {
             } catch (e) { console.warn('Audit log failed:', e.message); }
 
             if (partial && !dry_run) {
-                // Automatically self-invoke to continue the next pass
+                // Auto-resume for the next pass
                 base44.asServiceRole.functions.invoke('autoImportCMSData', {
-                    import_type,
+                    import_type: raw_import_type,
                     file_url,
                     year,
                     dry_run,
@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
                     retry_count,
                     retry_tags,
                     category: retryCategory
-                }).catch(e => console.error('Self-invoke failed:', e));
+                }).catch(e => console.error(`[autoImportCMSData] Auto-resume invoke error:`, e));
             }
 
             return Response.json({

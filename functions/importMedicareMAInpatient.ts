@@ -618,18 +618,16 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString(),
       });
 
-      if (timedOut) {
-          // Automatically trigger next pass
-          base44.asServiceRole.functions.invoke('importMedicareMAInpatient', {
-              action: 'resume',
-              batch_id: batch.id,
-              year,
-              dry_run,
-              custom_url,
-              sheet_filter,
-              row_offset: effectiveOffset + imported,
-              row_limit
-          }).catch(e => console.error('Self-invoke failed:', e));
+      if (timedOut && !dry_run) {
+        base44.asServiceRole.functions.invoke('importMedicareMAInpatient', {
+          action: 'resume',
+          batch_id: batch.id,
+          year,
+          custom_url: downloadUrl,
+          sheet_filter,
+          row_limit,
+          row_offset: effectiveOffset + imported
+        }).catch(e => console.error(`[importMedicareMAInpatient] Auto-resume invoke error:`, e));
       }
 
       return Response.json({
