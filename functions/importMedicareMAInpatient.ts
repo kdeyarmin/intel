@@ -602,8 +602,8 @@ Deno.serve(async (req) => {
           cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
           retry_params: { row_offset: effectiveOffset + imported }
         } : {
-          cancel_reason: null,
-          paused_at: null
+          cancel_reason: "",
+          paused_at: ""
         }),
       });
 
