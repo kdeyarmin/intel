@@ -91,10 +91,11 @@ Deno.serve(async (req) => {
 
             if (action === 'retry' || action === 'auto_correct_and_retry') {
                 try {
-                    // Mark as cancelled so we don't pick it up again
+                    // Mark as processing so we don't pick it up again
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, { 
-                        status: 'cancelled', 
-                        cancel_reason: 'Auto-restarting via Import Bot: ' + reason
+                        status: 'processing', 
+                        paused_at: null,
+                        cancel_reason: ""
                     });
 
                     // Trigger the import again
@@ -106,10 +107,10 @@ Deno.serve(async (req) => {
                             import_type: batch.import_type,
                             file_url: batch.file_url,
                             year: batch.data_year,
-                            retry_of: batch.id,
+                            batch_id: batch.id,
                             retry_count: (batch.retry_count || 0) + 1,
                             resume_offset: resumeOffset,
-                            retry_tags: ['auto-bot-retry']
+                            retry_tags: [...new Set([...(batch.tags || []), 'auto-bot-retry'])]
                         });
                     }
 
