@@ -20,9 +20,27 @@ Deno.serve(async (req) => {
 
         // Provider email stats
         let withEmail = 0, searched = 0, valid = 0, risky = 0, invalid = 0, needsEnrichment = 0;
+        
+        // Build a zero-filled array for the last 30 days for trend
+        const emailTrend = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            emailTrend.push({ date: d.toISOString().split('T')[0], count: 0 });
+        }
+
         for (const p of providers) {
             if (p.email) withEmail++;
-            if (p.email_searched_at) searched++;
+            if (p.email_searched_at) {
+                searched++;
+                if (p.email) {
+                    const searchDateStr = p.email_searched_at.split('T')[0];
+                    const trendEntry = emailTrend.find(t => t.date === searchDateStr);
+                    if (trendEntry) {
+                        trendEntry.count++;
+                    }
+                }
+            }
             if (p.email_validation_status === 'valid') valid++;
             if (p.email_validation_status === 'risky') risky++;
             if (p.email_validation_status === 'invalid') invalid++;
@@ -79,6 +97,7 @@ Deno.serve(async (req) => {
                 invalid,
                 needsEnrichment,
                 isEstimated: hasManyProviders,
+                trend: emailTrend,
             },
             topStates,
             lastRefresh,
