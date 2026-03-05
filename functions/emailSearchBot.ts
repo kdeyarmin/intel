@@ -350,7 +350,11 @@ INSTRUCTIONS:
         error_count: newError,
         current_batch_number: (currentTask.current_batch_number || 0) + 1,
         status: isDone ? 'completed' : 'processing',
-        completed_at: isDone ? new Date().toISOString() : undefined
+        completed_at: isDone ? new Date().toISOString() : undefined,
+        params: {
+          ...currentTask.params,
+          offset: offset + searchedCount
+        }
       });
 
       if (!isDone) {
