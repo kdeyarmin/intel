@@ -98,6 +98,10 @@ Deno.serve(async (req) => {
     };
 
     for (const provider of providersToSearch) {
+      if (Date.now() - execStartTime > MAX_EXEC_MS) {
+        console.log(`[EmailBot] Execution time limit reached. Yielding to next invocation.`);
+        break;
+      }
       try {
         const providerLocs = allLocations.filter(l => l.npi === provider.npi);
         const primaryLoc = providerLocs.find(l => l.is_primary) || providerLocs[0];
