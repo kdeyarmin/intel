@@ -127,7 +127,7 @@ function validateRecord(record, rowIndex, sheetName) {
   if (!record.category || record.category.trim() === '') {
     if (hasMetricData) {
       record.category = `Row ${rowIndex}`;
-      warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
+      warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
     } else {
       return { valid: false, skip: true, errors: [], warnings: [] };
     }
@@ -144,7 +144,9 @@ function validateRecord(record, rowIndex, sheetName) {
       });
   }
   
-  if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
+  if (!hasMetricData) {
+      return { valid: false, skip: true, errors: [], warnings: [] };
+  }
   
   for (const f of NUMERIC_FIELDS) { 
       if (record[f] != null && record[f] < 0) {

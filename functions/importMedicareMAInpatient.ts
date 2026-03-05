@@ -153,23 +153,13 @@ function validateRecord(record, rowIndex, sheetName) {
   const errors = [];
   const warnings = [];
   const table = record.table_name;
-  const hasMetricData = VALIDATION_RULES.numeric_fields.some(f => record[f] != null);
 
   // 1. Required fields
   const requiredFields = VALIDATION_RULES.required_fields[table] || ['category'];
   for (const field of requiredFields) {
     const val = record[field];
     if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
-      if (field === 'category') {
-        if (hasMetricData) {
-          record.category = `Row ${rowIndex}`;
-          warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
-        } else {
-          return { valid: false, skip: true, errors: [], warnings: [] };
-        }
-      } else {
-        errors.push({ rule: 'required_field', field, message: `Missing required field "${field}"`, row: rowIndex, sheet: sheetName });
-      }
+      errors.push({ rule: 'required_field', field, message: `Missing required field "${field}"`, row: rowIndex, sheet: sheetName });
     }
   }
 
@@ -191,7 +181,7 @@ function validateRecord(record, rowIndex, sheetName) {
   // 4. At least one numeric metric should be present
   const hasAnyMetric = VALIDATION_RULES.numeric_fields.some(f => record[f] != null);
   if (!hasAnyMetric) {
-    warnings.push({ rule: 'no_metrics', field: null, message: 'Row has no numeric metric values — may be a header/footer/note row', row: rowIndex, sheet: sheetName });
+    return { valid: false, skip: true, errors: [], warnings: [] };
   }
 
   // 5. Cross-field consistency
@@ -448,9 +438,9 @@ Deno.serve(async (req) => {
             addError('mapping', record._errorMsg, { sheet: sheetName, table: tableName, row_index: i });
             continue;
           }
-          allRecords.push(record); rowCount++;
+          if (record.category) { allRecords.push(record); rowCount++; }
         }
-        console.log(`[parse] ${sheetName} -> ${tableName}: ${rowCount} total rows processed, ${sheetRowErrors} errors`);
+        console.log(`[parse] ${sheetName} -> ${tableName}: ${rowCount} valid rows, ${sheetRowErrors} errors`);
         sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount, errors: sheetRowErrors });
         if (sheetRowErrors > 0) sheetErrors[sheetName] = `${sheetRowErrors} row mapping errors`;
       }
@@ -461,13 +451,10 @@ Deno.serve(async (req) => {
       console.log(`[validate] Running validation on ${allRecords.length} records...`);
       const validRecords = [];
       const validation = { total: allRecords.length, valid: 0, invalid: 0, error_count: 0, warning_count: 0, rule_summary: {}, errors: [], warnings: [] };
-      let skippedRecords = 0;
       
       for (let i = 0; i < allRecords.length; i++) {
         const result = validateRecord(allRecords[i], i, allRecords[i].table_name);
         if (result.skip) {
-          skippedRecords++;
-          validation.total--;
           continue;
         }
         if (result.valid) {
@@ -488,7 +475,6 @@ Deno.serve(async (req) => {
           if (validation.warnings.length < 50) validation.warnings.push(w);
         }
       }
-      console.log(`[validate] Skipped ${skippedRecords} empty spacer rows`);
       console.log(`[validate] ${validRecords.length} passed, ${validation.invalid} rejected, ${validation.warning_count} warnings`);
 
       // Apply row_offset/row_limit for range-based retries

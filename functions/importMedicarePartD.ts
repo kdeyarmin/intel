@@ -122,18 +122,19 @@ function mapPartDRow(row, tableName, dataYear) {
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
   const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
-  
+
   if (!record.category || record.category.trim() === '') {
     if (hasMetricData) {
       record.category = `Row ${rowIndex}`;
-      warnings.push({ rule: 'missing_category', field: 'category', value: record.category, message: 'Missing category', row: rowIndex, sheet: sheetName });
+      warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
     } else {
       return { valid: false, skip: true, errors: [], warnings: [] };
     }
   }
-  
+
   if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'out_of_range', field: 'data_year', value: record.data_year, message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
-  if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
+  if (!hasMetricData) return { valid: false, skip: true, errors: [], warnings: [] };
+  
   for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'out_of_range', field: f, value: record[f], message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
   if (record.generic_dispensing_rate != null && (record.generic_dispensing_rate < 0 || record.generic_dispensing_rate > 100)) warnings.push({ rule: 'out_of_range', field: 'generic_dispensing_rate', value: record.generic_dispensing_rate, message: `GDR ${record.generic_dispensing_rate} outside 0-100%`, row: rowIndex, sheet: sheetName });
   return { valid: errors.length === 0, errors, warnings };
@@ -202,16 +203,21 @@ Deno.serve(async (req) => {
       if (!tableName) continue;
       let rows;
       try { rows = parseSheet(workbook, sheetName); } catch (e) { addError('parse', e.message, { sheet: sheetName }); continue; }
-      let sv = 0, si = 0, sheetSkipped = 0;
+      let sv = 0, si = 0, ss = 0;
       for (const row of rows) {
+        // Pre-filter: skip completely empty rows
+        const cellValues = Object.keys(row).filter(k => k !== '_rowIndex').map(k => String(row[k] || '').trim()).filter(v => v !== '');
+        if (cellValues.length === 0) { ss++; continue; }
+
         const record = mapPartDRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
-        if (v.skip) { sheetSkipped++; continue; }
+        if (v.skip) { ss++; continue; }
+
         for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, file_name: batch.file_name, row: e.row, field: e.field, value: e.value, rule: e.rule }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped_spacers: sheetSkipped });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped: ss });
     }
 
     let recordsToProcess = allRecords;
