@@ -292,6 +292,7 @@ Deno.serve(async (req) => {
         if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
             while (true) {
+                if (isTimeUp()) break;
                 const batchRecs = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
                 if (batchRecs.length === 0) break;
                 for (let i = 0; i < batchRecs.length; i += 50) {
@@ -325,7 +326,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: null, paused_at: null }),
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_snf_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}

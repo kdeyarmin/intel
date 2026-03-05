@@ -332,6 +332,7 @@ Deno.serve(async (req) => {
         if (existing.length > 0) {
           console.log(`Clearing existing ${year} records...`);
           while (true) {
+              if (isTimeUp()) break;
               const batchRecs = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 500);
               if (batchRecs.length === 0) break;
               for (let i = 0; i < batchRecs.length; i += 50) {
@@ -375,7 +376,7 @@ Deno.serve(async (req) => {
       status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
       completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: null, paused_at: null }),
     });
 
     try {

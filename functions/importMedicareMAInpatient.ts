@@ -507,6 +507,7 @@ Deno.serve(async (req) => {
           if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
             while (true) {
+                if (isTimeUp()) break;
                 const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
                 if (batchRecs.length === 0) break;
                 
@@ -597,7 +598,10 @@ Deno.serve(async (req) => {
           paused_at: new Date().toISOString(),
           cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
           retry_params: { row_offset: effectiveOffset + imported }
-        } : {}),
+        } : {
+          cancel_reason: null,
+          paused_at: null
+        }),
       });
 
       // Update schedule config
