@@ -44,6 +44,8 @@ export default function EmailSearchBot() {
     refetchInterval: 3000
   });
 
+  const isBackgroundRunning = activeTask?.status === 'processing';
+
   const { data: dashStats } = useQuery({
     queryKey: ['emailBotDashStats'],
     queryFn: async () => {
@@ -51,6 +53,7 @@ export default function EmailSearchBot() {
       return res.data;
     },
     staleTime: 120000,
+    refetchInterval: isBackgroundRunning || isRunning ? 5000 : false,
     retry: 1,
   });
 
@@ -58,6 +61,7 @@ export default function EmailSearchBot() {
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
+    refetchInterval: isBackgroundRunning || isRunning ? 5000 : false,
   });
 
   const { data: allLocations = [] } = useQuery({
