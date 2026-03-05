@@ -266,11 +266,11 @@ INSTRUCTIONS:
           foundCount++;
         }
 
-        await base44.asServiceRole.entities.Provider.update(provider.id, providerUpdate);
+        await updateWithRetry('Provider', provider.id, providerUpdate);
 
         // Also update primary location
         if (newBest && primaryLoc && !primaryLoc.email) {
-          await base44.asServiceRole.entities.ProviderLocation.update(primaryLoc.id, {
+          await updateWithRetry('ProviderLocation', primaryLoc.id, {
             email: newBest.email,
             email_confidence: newBest.confidence,
             email_source: newBest.source || '',
@@ -294,7 +294,7 @@ INSTRUCTIONS:
       } catch (err) {
         console.error(`Email search failed for NPI ${provider.npi}:`, err.message);
         try {
-          await base44.asServiceRole.entities.Provider.update(provider.id, {
+          await updateWithRetry('Provider', provider.id, {
             email_searched_at: new Date().toISOString(),
           });
         } catch (updateErr) {
