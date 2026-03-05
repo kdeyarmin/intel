@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
                     // Process page in chunks to allow granular resume
                     let pageProcessedRaw = 0;
                     const seenInPage = new Set();
+                    let abortOuter = false;
                     
                     for (let i = 0; i < pageData.length; i += BULK_SIZE) {
                         if (isTimeUp(startTime)) break;
@@ -288,7 +289,10 @@ Deno.serve(async (req) => {
                             }
                         }
                         
-                        if (chunkAborted) break;
+                        if (chunkAborted) {
+                            abortOuter = true;
+                            break;
+                        }
 
                         totalProcessed += rawChunk.length;
                         validRows += chunkValid;
@@ -299,13 +303,12 @@ Deno.serve(async (req) => {
 
                     offset += pageProcessedRaw;
 
-                    if (pageData.length < PAGE_SIZE) {
+                    if (pageData.length < PAGE_SIZE && !abortOuter && !isTimeUp(startTime)) {
                         reachedEnd = true;
                     }
 
                     // Update progress (heartbeat)
-                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                        total_rows: offset,
+                    const updateData = {
                         valid_rows: initialValid + validRows,
                         invalid_rows: initialInvalid + invalidRows,
                         duplicate_rows: initialDupes + duplicateRows,
@@ -313,8 +316,11 @@ Deno.serve(async (req) => {
                         updated_rows: initialUpdated + updatedCount,
                         skipped_rows: initialSkipped + skippedCount,
                         updated_date: new Date().toISOString() // Force updated_date refresh
-                    });
+                    };
+                    if (reachedEnd) updateData.total_rows = offset;
+                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, updateData);
 
+                    if (abortOuter) break;
                     // Break outer loop if we timed out in the inner loop
                     if (isTimeUp(startTime)) break;
                 }
