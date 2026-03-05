@@ -73,15 +73,16 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (let j = 0; j < updateTasks.length; j += 10) {
-                    await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
-                    await sleep(40);
+                for (let j = 0; j < updateTasks.length; j += 25) {
+                    await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
+                    if (j + 25 < updateTasks.length) await sleep(20);
                 }
                 updated += updateTasks.length;
             }
-            await sleep(100); // Throttle DB writes
+            await sleep(50); // Reduced throttle delay
         } catch (e) {
-            for (const p of chunk) {
+            // Fallback: Parallelized individual ops
+            await Promise.all(chunk.map(async p => {
                 try {
                     const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
                     if (!ex) { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
@@ -95,7 +96,7 @@ async function upsertProviders(records, base44) {
                     }
                     else { skipped++; }
                 } catch (err) {}
-            }
+            }));
         }
     }
     return { imported, updated, skipped };
@@ -135,15 +136,19 @@ async function upsertLocations(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (let j = 0; j < updateTasks.length; j += 10) {
-                await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
-                await sleep(40);
+            for (let j = 0; j < updateTasks.length; j += 25) {
+                await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
+                if (j + 25 < updateTasks.length) await sleep(20);
             }
             updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { for (const loc of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} } }
+            catch (e) { 
+                await Promise.all(toCreate.map(async loc => { 
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} 
+                })); 
+            }
         }
     }
     return { imported, updated, skipped };
