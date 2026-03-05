@@ -82,6 +82,18 @@ Deno.serve(async (req) => {
     let foundCount = 0;
     const results = [];
 
+    const updateWithRetry = async (entityName, id, data, attempt = 1) => {
+      try {
+        return await base44.asServiceRole.entities[entityName].update(id, data);
+      } catch (err) {
+        if (err.message?.includes('Rate limit') && attempt <= 3) {
+          await new Promise(r => setTimeout(r, attempt * 3000));
+          return await updateWithRetry(entityName, id, data, attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     for (const provider of providersToSearch) {
       try {
         const providerLocs = allLocations.filter(l => l.npi === provider.npi);
