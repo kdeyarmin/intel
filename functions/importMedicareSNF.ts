@@ -122,7 +122,16 @@ function mapSNFRow(row, tableName, dataYear) {
 
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
-  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label', row: rowIndex, sheet: sheetName });
+  const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+
+  if (!record.category || record.category.trim() === '') {
+    if (hasMetricData) {
+      record.category = `Row ${rowIndex}`;
+      warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
+    } else {
+      return { valid: false, skip: true, errors: [], warnings: [] };
+    }
+  }
   
   if (record.data_year < 2000 || record.data_year > 2030) {
       errors.push({ 

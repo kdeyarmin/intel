@@ -121,7 +121,17 @@ function mapPartDRow(row, tableName, dataYear) {
 
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
-  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', value: record.category, message: 'Missing category', row: rowIndex, sheet: sheetName });
+  const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+  
+  if (!record.category || record.category.trim() === '') {
+    if (hasMetricData) {
+      record.category = `Row ${rowIndex}`;
+      warnings.push({ rule: 'missing_category', field: 'category', value: record.category, message: 'Missing category', row: rowIndex, sheet: sheetName });
+    } else {
+      return { valid: false, skip: true, errors: [], warnings: [] };
+    }
+  }
+  
   if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'out_of_range', field: 'data_year', value: record.data_year, message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
   if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
   for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'out_of_range', field: f, value: record[f], message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
@@ -192,15 +202,16 @@ Deno.serve(async (req) => {
       if (!tableName) continue;
       let rows;
       try { rows = parseSheet(workbook, sheetName); } catch (e) { addError('parse', e.message, { sheet: sheetName }); continue; }
-      let sv = 0, si = 0;
+      let sv = 0, si = 0, sheetSkipped = 0;
       for (const row of rows) {
         const record = mapPartDRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
+        if (v.skip) { sheetSkipped++; continue; }
         for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, file_name: batch.file_name, row: e.row, field: e.field, value: e.value, rule: e.rule }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped_spacers: sheetSkipped });
     }
 
     let recordsToProcess = allRecords;
