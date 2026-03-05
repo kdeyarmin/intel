@@ -134,12 +134,16 @@ export default Deno.serve(async (req) => {
             await base44.asServiceRole.entities.ImportBatch.update(batch_id, {
                 imported_rows: (batch.imported_rows || 0) + rowsAccumulator.length,
                 status: 'completed',
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                cancel_reason: "",
+                paused_at: ""
             });
         } else {
             await base44.asServiceRole.entities.ImportBatch.update(batch_id, {
                 status: 'completed',
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                cancel_reason: "",
+                paused_at: ""
             });
         }
         
