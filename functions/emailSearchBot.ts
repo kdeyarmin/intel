@@ -335,7 +335,9 @@ INSTRUCTIONS:
     // Check if there are more unsearched providers remaining
     let hasMore = false;
     if (mode !== 'single') {
-      hasMore = providersToSearch.length >= batch_size;
+      // If we yielded early due to time limit, we definitely have more work.
+      // Otherwise, we have more if we fetched a full batch.
+      hasMore = (searchedCount < providersToSearch.length) || (providersToSearch.length >= batch_size);
     }
 
     if (currentTask) {
