@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: null, paused_at: null }),
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_part_d_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}
