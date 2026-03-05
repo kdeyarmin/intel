@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const MAX_EXEC_MS = 45000;
+
 Deno.serve(async (req) => {
+  const execStartTime = Date.now();
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
