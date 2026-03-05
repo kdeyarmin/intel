@@ -755,11 +755,35 @@ Deno.serve(async (req) => {
                 
                 let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
                 
-                // First query to get count
+                // First query to get results
                 const firstPage = await fetchNPPESPage(params, stats);
                 if (firstPage.error) throw new Error(firstPage.error);
                 
-                if (firstPage.count > 1000 && task.zip_prefix.length < 9) {
+                let allResults = [...firstPage.results];
+                let currentCount = firstPage.count;
+                let skip = apiBatchSize;
+                let needSplit = false;
+                const maxSkip = config.max_skip || 1000;
+
+                if (currentCount === apiBatchSize) {
+                    while (currentCount === apiBatchSize && skip <= maxSkip) {
+                        if ((Date.now() - execStartTime) >= MAX_EXEC_MS - 2000) {
+                            throw new Error('Task pagination timed out, will retry');
+                        }
+                        params.set('skip', String(skip));
+                        const page = await fetchNPPESPage(params, stats);
+                        stats.api_calls++;
+                        if (page.error || page.results.length === 0) break;
+                        allResults.push(...page.results);
+                        currentCount = page.count;
+                        skip += apiBatchSize;
+                    }
+                    if (currentCount === apiBatchSize && skip > maxSkip && task.zip_prefix.length < 9) {
+                        needSplit = true;
+                    }
+                }
+                
+                if (needSplit) {
                     // Split task: Create 10 sub-tasks and complete current
                     const subTasks = [];
                     for(let i=0; i<=9; i++) {
@@ -767,19 +791,9 @@ Deno.serve(async (req) => {
                     }
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
-                } else if (firstPage.count > 0) {
-                    let allResults = [...firstPage.results];
-                    let skip = apiBatchSize;
-                    const maxSkip = config.max_skip || 1000;
-                    while (skip < firstPage.count && skip <= maxSkip && (Date.now() - execStartTime) < MAX_EXEC_MS) {
-                        params.set('skip', String(skip));
-                        const page = await fetchNPPESPage(params, stats);
-                        stats.api_calls++;
-                        if (page.error || page.results.length === 0) break;
-                        allResults.push(...page.results);
-                        skip += apiBatchSize;
-                    }
-                    
+                    stats.time_ms = Date.now() - taskStartTime;
+                    await updateBatchStats(base44, task.batch_id, stats);
+                } else if (allResults.length > 0) {
                     const transformed = transformResults(allResults);
                     stats.valid += transformed.validRows;
                     stats.invalid += transformed.invalidRows;
