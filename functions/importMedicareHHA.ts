@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       total_rows: allRecords.length + totalInvalid, valid_rows: allRecords.length, invalid_rows: totalInvalid,
       column_mapping: { sheets: sheetSummaries },
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
       completed_at: new Date().toISOString(),
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
       ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
     });
 
