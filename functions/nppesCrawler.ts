@@ -179,15 +179,19 @@ async function upsertTaxonomies(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (let j = 0; j < updateTasks.length; j += 10) {
-                await Promise.all(updateTasks.slice(j, j + 10).map(t => t().catch(()=>{})));
-                await sleep(40);
+            for (let j = 0; j < updateTasks.length; j += 25) {
+                await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
+                if (j + 25 < updateTasks.length) await sleep(20);
             }
             updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { for (const tax of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} } }
+            catch (e) { 
+                await Promise.all(toCreate.map(async tax => { 
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} 
+                })); 
+            }
         }
     }
     return { imported, updated, skipped };
@@ -312,14 +316,12 @@ async function fetchNPPESPage(params, stats) {
 
             // Only cache successful, non-error responses
             if (!resultData.error) {
-                apiCache.set(apiUrl, { timestamp: Date.now(), data: resultData });
-                // Clean up old cache entries randomly to prevent memory bloat
-                if (Math.random() < 0.05 && apiCache.size > 1000) {
-                    const now = Date.now();
-                    for (const [key, value] of apiCache.entries()) {
-                        if (now - value.timestamp > CACHE_TTL_MS) apiCache.delete(key);
-                    }
+                if (apiCache.size >= MAX_CACHE_SIZE) {
+                    // Evict oldest (first inserted in Map) to manage memory efficiently
+                    const firstKey = apiCache.keys().next().value;
+                    apiCache.delete(firstKey);
                 }
+                apiCache.set(apiUrl, { timestamp: Date.now(), data: resultData });
             }
             
             return resultData;
@@ -783,10 +785,13 @@ Deno.serve(async (req) => {
                     stats.invalid += transformed.invalidRows;
                     
                     if (!dry_run) {
-                        const provRes = await upsertProviders(transformed.providers, base44);
+                        // Parallel processing for independent data entities
+                        const [provRes, locRes, taxRes] = await Promise.all([
+                            upsertProviders(transformed.providers, base44),
+                            upsertLocations(transformed.locations, base44),
+                            upsertTaxonomies(transformed.taxonomies, base44)
+                        ]);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
-                        await upsertLocations(transformed.locations, base44);
-                        await upsertTaxonomies(transformed.taxonomies, base44);
                     }
                     
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
