@@ -124,13 +124,13 @@ function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
   const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
 
+  if (!hasMetricData) {
+    return { valid: false, skip: true, errors: [], warnings: [] };
+  }
+
   if (!record.category || record.category.trim() === '') {
-    if (hasMetricData) {
-      record.category = `Row ${rowIndex}`;
-      warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
-    } else {
-      return { valid: false, skip: true, errors: [], warnings: [] };
-    }
+    record.category = `Row ${rowIndex}`;
+    warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
   }
   
   if (record.data_year < 2000 || record.data_year > 2030) {
