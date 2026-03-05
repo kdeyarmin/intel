@@ -394,7 +394,7 @@ Deno.serve(async (req) => {
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: finalStatus,
-                total_rows: offset || totalProcessed,
+                ...(reachedEnd ? { total_rows: offset || totalProcessed } : {}),
                 valid_rows: initialValid + validRows,
                 invalid_rows: initialInvalid + invalidRows,
                 duplicate_rows: initialDupes + duplicateRows,
