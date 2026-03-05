@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
   if (action === 'resume' && payload.batch_id) {
   batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
   if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
-  await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+  await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing', cancel_reason: "", paused_at: "" });
   } else {
   // try to find existing batch if not resuming to avoid duplicate active ones
   const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
