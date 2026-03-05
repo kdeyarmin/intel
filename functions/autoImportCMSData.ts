@@ -377,8 +377,8 @@ Deno.serve(async (req) => {
                     retry_params: { resume_offset: offset },
                 } : {
                     completed_at: new Date().toISOString(),
-                    cancel_reason: null,
-                    paused_at: null,
+                    cancel_reason: "",
+                    paused_at: "",
                 }),
             });
 
