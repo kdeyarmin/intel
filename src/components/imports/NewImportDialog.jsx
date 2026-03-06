@@ -275,33 +275,15 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <Label className="text-xs text-slate-400">Data Source</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".csv,.xlsx,.xls,.json,.zip"
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    className="w-full h-20 flex-col gap-1.5 bg-transparent border-slate-700 border-dashed text-slate-400 hover:bg-slate-800 hover:text-cyan-400 hover:border-cyan-500/30"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : uploadedFile ? (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 truncate max-w-[150px]">{uploadedFile}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5" />
-                        <span className="text-[10px]">Upload File</span>
-                      </>
-                    )}
-                  </Button>
+                  {!uploadedFile ? (
+                    <FileParser onParsed={handleFileParsed} selectedType={{ requiredColumns: REQUIRED_COLUMNS[selectedType.id] || [] }} />
+                  ) : (
+                    <div className="w-full h-20 flex flex-col items-center justify-center gap-1.5 bg-slate-800/50 border border-emerald-500/30 rounded-lg p-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span className="text-[10px] text-emerald-400 truncate max-w-[150px] text-center" title={uploadedFile}>{uploadedFile}</span>
+                      <Button variant="ghost" size="sm" className="h-4 text-[9px] text-slate-500" onClick={() => { setUploadedFile(null); setCsvHeaders([]); }}>Change</Button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-slate-400">Or use a direct URL:</span>
