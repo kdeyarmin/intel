@@ -185,14 +185,15 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       if (rowOffset) invokeParams.row_offset = Number(rowOffset);
       if (rowLimit) invokeParams.row_limit = Number(rowLimit);
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+      if (Object.keys(mapping).length > 0) invokeParams.column_mapping = mapping;
 
       const response = await base44.functions.invoke('triggerImport', invokeParams);
       setResult({ success: true, data: response.data });
-      setStep(3);
+      setStep(4);
     } catch (e) {
       const msg = e.response?.data?.error || e.message || 'Import trigger failed';
       setError(msg);
-      setStep(3);
+      setStep(4);
     }
     setIsSubmitting(false);
     onImportStarted?.();
