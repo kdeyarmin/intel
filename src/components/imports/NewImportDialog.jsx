@@ -453,8 +453,30 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
           </div>
         )}
 
-        {/* Step 3: Result */}
+        {/* Step 3: Column Mapping */}
         {step === 3 && (
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 mb-4">
+              <h4 className="text-sm font-medium text-slate-200 mb-1">Column Mapping</h4>
+              <p className="text-xs text-slate-400">
+                Please verify the AI-suggested mappings. Ensure all required fields are mapped to correct columns from your file.
+              </p>
+            </div>
+            <ColumnMapper
+              csvColumns={csvHeaders}
+              requiredColumns={REQUIRED_COLUMNS[selectedType?.id] || []}
+              optionalColumns={optionalColumns}
+              mapping={mapping}
+              confidence={mappingConfidence}
+              scores={mappingScores}
+              onChange={setMapping}
+              aiLoading={aiLoading}
+            />
+          </div>
+        )}
+
+        {/* Step 4: Result */}
+        {step === 4 && (
           <div className="flex-1 flex flex-col items-center justify-center py-8 space-y-4">
             {result?.success ? (
               <>
