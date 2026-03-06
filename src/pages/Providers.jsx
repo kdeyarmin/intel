@@ -23,8 +23,9 @@ import TextMatchFilter, { applyTextFilters } from '../components/filters/TextMat
 import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filters/DateRangeFilterInline';
 import FilterPresets from '../components/filters/FilterPresets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Copy, Globe, List, PieChart as PieChartIcon } from 'lucide-react';
+import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
