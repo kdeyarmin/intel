@@ -73,9 +73,9 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (let j = 0; j < updateTasks.length; j += 25) {
-                    await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
-                    if (j + 25 < updateTasks.length) await sleep(20);
+                for (let j = 0; j < updateTasks.length; j += 5) {
+                    await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
+                    if (j + 5 < updateTasks.length) await sleep(100);
                 }
                 updated += updateTasks.length;
             }
@@ -136,9 +136,9 @@ async function upsertLocations(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (let j = 0; j < updateTasks.length; j += 25) {
-                await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
-                if (j + 25 < updateTasks.length) await sleep(20);
+            for (let j = 0; j < updateTasks.length; j += 5) {
+                await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
+                if (j + 5 < updateTasks.length) await sleep(100);
             }
             updated += updateTasks.length;
         }
@@ -179,9 +179,9 @@ async function upsertTaxonomies(records, base44) {
             }
         }
         if (updateTasks.length > 0) {
-            for (let j = 0; j < updateTasks.length; j += 25) {
-                await Promise.all(updateTasks.slice(j, j + 25).map(t => t().catch(()=>{})));
-                if (j + 25 < updateTasks.length) await sleep(20);
+            for (let j = 0; j < updateTasks.length; j += 5) {
+                await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
+                if (j + 5 < updateTasks.length) await sleep(100);
             }
             updated += updateTasks.length;
         }
