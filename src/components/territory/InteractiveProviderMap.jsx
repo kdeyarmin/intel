@@ -145,6 +145,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                 <Badge className="bg-green-100 text-green-700 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
+            {actions}
             <Button
               variant="ghost" size="icon" className="h-6 w-6"
               onClick={() => setMapLayer(mapLayer === 'street' ? 'satellite' : 'street')}
