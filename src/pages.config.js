@@ -86,6 +86,7 @@ import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
+import DataHealthDashboard from './pages/DataHealthDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -129,6 +130,7 @@ export const PAGES = {
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
+    "DataHealthDashboard": DataHealthDashboard,
 }
 
 export const pagesConfig = {
