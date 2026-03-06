@@ -483,12 +483,62 @@ export default function Providers() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="h-auto min-h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-4 gap-1">
+        <TabsList className="h-auto min-h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-5 gap-1">
           <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><List className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Directory</span><span className="sm:hidden">Dir</span></TabsTrigger>
+          <TabsTrigger value="map" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><MapIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Map</span><span className="sm:hidden">Map</span></TabsTrigger>
           <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI NPI Finder</span><span className="sm:hidden">NPI</span></TabsTrigger>
           <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Globe className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Augmenter</span><span className="sm:hidden">Augment</span></TabsTrigger>
           <TabsTrigger value="duplicates" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Copy className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Duplicates</span><span className="sm:hidden">Dupes</span></TabsTrigger>
         </TabsList>
+
+        <TabsContent value="map">
+          <InteractiveProviderMap
+            filteredProviders={mapProviders}
+            showHeatmap={true}
+            colorByScore={true}
+            actions={
+              <ExportDialog
+                data={mapProviders.map(m => ({
+                  npi: m.provider.npi,
+                  name: m.provider.entity_type === 'Individual' ? `${m.provider.last_name}, ${m.provider.first_name}` : m.provider.organization_name || '',
+                  credential: m.provider.credential || '',
+                  entity_type: m.provider.entity_type || '',
+                  specialty: m.taxonomy?.taxonomy_description || '',
+                  status: m.provider.status || '',
+                  email: m.provider.email || '',
+                  email_confidence: m.provider.email_confidence || '',
+                  email_source: m.provider.email_source || '',
+                  city: m.location?.city || '',
+                  state: m.location?.state || '',
+                  zip: m.location?.zip || '',
+                  phone: m.location?.phone || '',
+                  score: m.score?.toFixed(0) || '',
+                }))}
+                fields={[
+                  { key: 'npi', label: 'NPI' },
+                  { key: 'name', label: 'Name' },
+                  { key: 'credential', label: 'Credential' },
+                  { key: 'entity_type', label: 'Type' },
+                  { key: 'specialty', label: 'Specialty' },
+                  { key: 'email', label: 'Email' },
+                  { key: 'email_confidence', label: 'Email Confidence' },
+                  { key: 'city', label: 'City' },
+                  { key: 'state', label: 'State' },
+                  { key: 'zip', label: 'ZIP' },
+                  { key: 'phone', label: 'Phone' },
+                  { key: 'score', label: 'Score' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'email_source', label: 'Email Source' },
+                ]}
+                fileName="providers-map"
+                title="Map Providers"
+                dataset="providers"
+                activeFilters={currentFilters}
+                trigger={<Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-white shadow-sm text-slate-700 hover:bg-slate-50"><Download className="w-3 h-3" /> Export Visible</Button>}
+              />
+            }
+          />
+        </TabsContent>
 
         <TabsContent value="npi-finder">
           <AINPIFinder onProviderAdded={() => queryClient.invalidateQueries({ queryKey: ['providersPage'] })} />
