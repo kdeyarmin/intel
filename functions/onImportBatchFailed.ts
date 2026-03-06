@@ -34,19 +34,28 @@ Deno.serve(async (req) => {
 
         // Additional safeguard for payload_too_large where previousData is null
         const isJustFailed = currentData.status === 'failed';
+        
+        // Check for performance bottleneck / stalled
+        const statusChangedToPaused = currentData.status === 'paused' && (!previousData || previousData.status !== 'paused');
+        const isBottleneck = statusChangedToPaused && (currentData.cancel_reason?.toLowerCase().includes('stall') || currentData.cancel_reason?.toLowerCase().includes('timeout'));
 
-        if (statusChangedToFailed || isNewFailure || (payload_too_large && isJustFailed)) {
+        if (statusChangedToFailed || isNewFailure || (payload_too_large && isJustFailed) || isBottleneck) {
             // Get admin users to notify
             const admins = await base44.asServiceRole.entities.User.filter({ role: 'admin' });
             const adminEmails = admins.map(u => u.email).filter(Boolean);
             
             if (adminEmails.length > 0) {
-                const subject = `[Alert] Critical Import Failure: ${currentData.import_type}`;
-                const body = `An import batch has failed in the system.\n\n` +
+                const appUrl = 'https://' + req.headers.get('host');
+                const logsLink = `${appUrl}/import-monitoring?batch_id=${currentData.id}&tab=logs`;
+                
+                const eventType = isBottleneck ? 'Performance Bottleneck (Stalled)' : 'Critical Import Failure';
+                const subject = `[Alert] ${eventType}: ${currentData.import_type}`;
+                const body = `An import batch has ${isBottleneck ? 'hit a performance bottleneck and stalled' : 'failed'} in the system.\n\n` +
                              `Type: ${currentData.import_type}\n` +
                              `File: ${currentData.file_name || 'N/A'}\n` +
                              `Reason: ${currentData.cancel_reason || currentData.error_samples?.[0]?.detail || 'Unknown error'}\n\n` +
-                             `Please review the import logs in the Data Center for more details.`;
+                             `Direct link to logs: ${logsLink}\n\n` +
+                             `You can also set up a Slack email integration to forward these alerts to a Slack channel.`;
                 
                 for (const to of adminEmails) {
                     await base44.asServiceRole.integrations.Core.SendEmail({
