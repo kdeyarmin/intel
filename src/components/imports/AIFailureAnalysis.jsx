@@ -258,50 +258,104 @@ Be specific and actionable. Reference actual error details from the samples.`,
                 </div>
               )}
 
-              {/* Smart Retry Button */}
-              {analysis.can_auto_fix && analysis.suggested_retry?.mode !== 'none' && (
-                <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-cyan-300 flex items-center gap-1.5 mb-1">
-                        <Zap className="w-3.5 h-3.5" /> Smart Retry Available
-                      </p>
-                      <p className="text-[11px] text-cyan-400/70">{analysis.suggested_retry.explanation}</p>
-                      <div className="flex flex-wrap gap-2 mt-1.5">
-                        <Badge className="text-[9px] bg-slate-800/50 text-slate-400 border-slate-700">
-                          Mode: {analysis.suggested_retry.mode}
-                        </Badge>
-                        {analysis.suggested_retry.dry_run_first && (
-                          <Badge className="text-[9px] bg-blue-500/10 text-blue-400 border-blue-500/20">dry run first</Badge>
-                        )}
-                        {analysis.suggested_retry.sheet_filter && (
-                          <Badge className="text-[9px] bg-violet-500/10 text-violet-400 border-violet-500/20">
-                            sheet: {analysis.suggested_retry.sheet_filter}
-                          </Badge>
-                        )}
-                        {analysis.suggested_retry.row_offset > 0 && (
-                          <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20">
-                            offset: {analysis.suggested_retry.row_offset}
-                          </Badge>
+              {/* Resolution Path */}
+              {analysis.resolution_path && (
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/40">
+                  <p className="text-xs font-semibold text-slate-300 mb-2">Recommended Resolution</p>
+                  
+                  {analysis.resolution_path === 'retry_as_is' && (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-emerald-400 flex items-center gap-1.5"><RefreshCw className="w-4 h-4"/> Retry As-Is</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{analysis.resolution_explanation || 'This appears to be a transient error. A direct retry is recommended.'}</p>
+                        
+                        {analysis.suggested_retry?.mode && analysis.suggested_retry.mode !== 'none' && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge className="text-[9px] bg-slate-900/50 text-slate-400 border-slate-700">Mode: {analysis.suggested_retry.mode}</Badge>
+                            {analysis.suggested_retry.row_offset > 0 && <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20">offset: {analysis.suggested_retry.row_offset}</Badge>}
+                          </div>
                         )}
                       </div>
+                      <Button onClick={handleSmartRetry} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 h-8 text-xs">
+                        <Zap className="w-3.5 h-3.5 mr-1.5"/> Execute Retry
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={handleSmartRetry}
-                      className="bg-cyan-600 hover:bg-cyan-700 text-white h-8 text-xs gap-1.5 shrink-0"
-                    >
-                      <Zap className="w-3.5 h-3.5" /> Smart Retry
-                    </Button>
-                  </div>
+                  )}
+
+                  {analysis.resolution_path === 'schema_change' && (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-amber-400 flex items-center gap-1.5"><Settings className="w-4 h-4"/> Schema / Mapping Change</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{analysis.resolution_explanation || 'The data structure does not match expectations. Adjust validation rules or mapping.'}</p>
+                      </div>
+                      <Button onClick={() => window.location.href = '/import-monitoring?tab=rules'} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                        <Settings className="w-3.5 h-3.5 mr-1.5"/> Adjust Rules
+                      </Button>
+                    </div>
+                  )}
+
+                  {analysis.resolution_path === 'manual_file_cleanup' && (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-400 flex items-center gap-1.5"><FileEdit className="w-4 h-4"/> Manual File Cleanup</p>
+                        <p className="text-[11px] text-slate-400 mt-1">{analysis.resolution_explanation || 'Source file contains malformed data. Download, fix the errors, and re-upload.'}</p>
+                      </div>
+                      <Button onClick={() => window.open(batch.file_url, '_blank')} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                        <Download className="w-3.5 h-3.5 mr-1.5"/> Source File
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {!analysis.can_auto_fix && (
-                <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5 text-[11px] text-amber-400/80 flex items-start gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>This issue may require manual intervention (e.g., fixing the source file or updating the import configuration) before retrying.</span>
-                </div>
+              {!analysis.resolution_path && (
+                <>
+                  {/* Fallback Smart Retry Button */}
+                  {analysis.can_auto_fix && analysis.suggested_retry?.mode !== 'none' && (
+                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-cyan-300 flex items-center gap-1.5 mb-1">
+                            <Zap className="w-3.5 h-3.5" /> Smart Retry Available
+                          </p>
+                          <p className="text-[11px] text-cyan-400/70">{analysis.suggested_retry.explanation}</p>
+                          <div className="flex flex-wrap gap-2 mt-1.5">
+                            <Badge className="text-[9px] bg-slate-800/50 text-slate-400 border-slate-700">
+                              Mode: {analysis.suggested_retry.mode}
+                            </Badge>
+                            {analysis.suggested_retry.dry_run_first && (
+                              <Badge className="text-[9px] bg-blue-500/10 text-blue-400 border-blue-500/20">dry run first</Badge>
+                            )}
+                            {analysis.suggested_retry.sheet_filter && (
+                              <Badge className="text-[9px] bg-violet-500/10 text-violet-400 border-violet-500/20">
+                                sheet: {analysis.suggested_retry.sheet_filter}
+                              </Badge>
+                            )}
+                            {analysis.suggested_retry.row_offset > 0 && (
+                              <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20">
+                                offset: {analysis.suggested_retry.row_offset}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={handleSmartRetry}
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white h-8 text-xs gap-1.5 shrink-0"
+                        >
+                          <Zap className="w-3.5 h-3.5" /> Smart Retry
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!analysis.can_auto_fix && (
+                    <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5 text-[11px] text-amber-400/80 flex items-start gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>This issue may require manual intervention (e.g., fixing the source file or updating the import configuration) before retrying.</span>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
