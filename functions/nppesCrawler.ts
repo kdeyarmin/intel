@@ -745,6 +745,14 @@ Deno.serve(async (req) => {
             // Mark processing
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
             
+            // Check if batch exists
+            try {
+                await base44.asServiceRole.entities.ImportBatch.get(task.batch_id);
+            } catch (e) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Batch was deleted' }));
+                continue;
+            }
+
             const taskStartTime = Date.now();
             try {
                 const params = new URLSearchParams();
