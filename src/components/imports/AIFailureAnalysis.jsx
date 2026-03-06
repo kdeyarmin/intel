@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Loader2, AlertTriangle, CheckCircle2, RefreshCw, ChevronDown, ChevronUp, Wrench, Zap } from 'lucide-react';
+import { Sparkles, Loader2, AlertTriangle, CheckCircle2, RefreshCw, ChevronDown, ChevronUp, Wrench, Zap, FileEdit, Download, Settings } from 'lucide-react';
 
 function classifyErrorPhase(errorSamples) {
   if (!errorSamples?.length) return 'unknown';
