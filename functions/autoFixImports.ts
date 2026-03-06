@@ -52,7 +52,9 @@ Deno.serve(async (req) => {
                 errorStr.includes('network') || 
                 errorStr.includes('socket') ||
                 errorStr.includes('download') ||
+                errorStr.includes('stalled') ||
                 batch.status === 'paused' ||
+                batch.status === 'cancelled' ||
                 batch.status === 'processing' || 
                 batch.status === 'validating';
 
