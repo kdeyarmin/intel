@@ -517,9 +517,33 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <Button variant="outline" onClick={() => setStep(1)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">
                 Back
               </Button>
+              {csvHeaders && csvHeaders.length > 0 ? (
+                <Button
+                  onClick={() => setStep(3)}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  Next: Map Columns
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || (!fileUrl && !selectedType.hasUrl)}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  {isSubmitting ? 'Starting...' : dryRun ? 'Validate Only' : 'Start Import'}
+                </Button>
+              )}
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <Button variant="outline" onClick={() => setStep(2)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">
+                Back
+              </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || (!fileUrl && !selectedType.hasUrl)}
+                disabled={isSubmitting || aiLoading}
                 className="bg-cyan-600 hover:bg-cyan-700 text-white"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
@@ -527,7 +551,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               </Button>
             </>
           )}
-          {step === 3 && (
+          {step === 4 && (
             <Button onClick={() => handleClose(false)} className="bg-cyan-600 hover:bg-cyan-700 text-white">
               Done
             </Button>
