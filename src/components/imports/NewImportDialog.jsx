@@ -12,6 +12,19 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
+import FileParser from './FileParser';
+import ColumnMapper from './ColumnMapper';
+import { generateAIMapping } from './columnMappingAI';
+
+// Required columns for AI mapping
+const REQUIRED_COLUMNS = {
+  nppes_monthly: ['NPI'],
+  nppes_registry: ['NPI'],
+  cms_utilization: ['NPI'],
+  cms_part_d: ['NPI'],
+  cms_order_referring: ['NPI'],
+  provider_service_utilization: ['NPI'],
+};
 
 // Available data years per import type — only these years have actual CMS data
 const AVAILABLE_YEARS = {
