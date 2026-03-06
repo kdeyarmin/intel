@@ -207,7 +207,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             <Upload className="w-5 h-5 text-cyan-400" />
             {step === 1 && 'New Import — Select Type'}
             {step === 2 && `Configure — ${selectedType?.name}`}
-            {step === 3 && 'Import Status'}
+            {step === 3 && `Map Columns — ${selectedType?.name}`}
+            {step === 4 && 'Import Status'}
           </DialogTitle>
         </DialogHeader>
 
