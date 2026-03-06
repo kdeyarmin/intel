@@ -91,6 +91,14 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Mapping states
+  const [csvHeaders, setCsvHeaders] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const [mappingConfidence, setMappingConfidence] = useState({});
+  const [mappingScores, setMappingScores] = useState({});
+  const [aiLoading, setAiLoading] = useState(false);
+  const [optionalColumns, setOptionalColumns] = useState([]);
+
   const reset = () => {
     setStep(1);
     setSelectedType(null);
