@@ -87,7 +87,7 @@ function getScoreRadius(score) {
   return 4;
 }
 
-export default function InteractiveProviderMap({ filteredProviders, showHeatmap, colorByScore }) {
+export default function InteractiveProviderMap({ filteredProviders, showHeatmap, colorByScore, actions }) {
   const [mapLayer, setMapLayer] = useState('street'); // street | satellite
 
   // Build map points
