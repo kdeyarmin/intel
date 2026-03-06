@@ -365,6 +365,19 @@ export default function Providers() {
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [sortedProviders]);
 
+  const mapProviders = useMemo(() => {
+    return sortedProviders.map(p => {
+      const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+      const tax = (taxonomyByNpi[p.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[p.npi] || [])[0];
+      return {
+        provider: p,
+        location: loc,
+        taxonomy: tax,
+        score: getScore(p.npi) || 0,
+      };
+    });
+  }, [sortedProviders, locationByNpi, taxonomyByNpi, scores]);
+
   const COLORS = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#f43f5e'];
 
   const handleSaveList = async () => {
