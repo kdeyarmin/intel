@@ -82,6 +82,7 @@ Analyze the root cause and provide actionable recommendations. Consider:
 3. Are there common data formatting issues (e.g., incorrect date formats, invalid zip codes, phone number patterns)?
 4. Suggest specific data cleaning steps or source file corrections if applicable.
 5. Can this be fixed by retrying with different settings, or what retry mode would be most effective?
+6. Determine the best resolution path: 'retry_as_is' for transient errors, 'schema_change' for mapping/schema issues, or 'manual_file_cleanup' for bad data.
 
 Be specific and actionable. Reference actual error details from the samples.`,
         response_json_schema: {
@@ -89,6 +90,8 @@ Be specific and actionable. Reference actual error details from the samples.`,
           properties: {
             root_cause: { type: "string", description: "Brief root cause summary (1-2 sentences)" },
             error_category: { type: "string", enum: ["network_error", "rate_limit", "data_format", "schema_mismatch", "missing_fields", "data_quality", "timeout", "configuration", "unknown"] },
+            resolution_path: { type: "string", enum: ["retry_as_is", "schema_change", "manual_file_cleanup"] },
+            resolution_explanation: { type: "string" },
             severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
             affected_area: { type: "string", description: "Which part of the data/process is affected" },
             data_cleaning_suggestions: { type: "string", description: "Specific steps to clean source data, e.g. date formats or zip codes" },
