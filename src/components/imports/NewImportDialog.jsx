@@ -119,6 +119,11 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setYear(String(new Date().getFullYear()));
     setResult(null);
     setError(null);
+    setCsvHeaders([]);
+    setMapping({});
+    setMappingConfidence({});
+    setMappingScores({});
+    setOptionalColumns([]);
   };
 
   const handleClose = (openState) => {
@@ -133,14 +138,27 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     return t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
   });
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setFileUrl(file_url);
+  const handleFileParsed = async (parsedData) => {
+    const { headers, file, file_url } = parsedData;
+    setFileUrl(file_url || '');
     setUploadedFile(file.name);
-    setIsUploading(false);
+    setCsvHeaders(headers || []);
+
+    if (headers && headers.length > 0) {
+      setAiLoading(true);
+      const reqCols = REQUIRED_COLUMNS[selectedType?.id] || [];
+      try {
+        const aiResult = await generateAIMapping(headers, reqCols, selectedType?.id, selectedType?.name);
+        setMapping(aiResult.mapping);
+        setMappingConfidence(aiResult.confidence);
+        setMappingScores(aiResult.scores);
+        setOptionalColumns(aiResult.optionalColumns || []);
+      } catch (err) {
+        console.error('AI Mapping failed:', err);
+      } finally {
+        setAiLoading(false);
+      }
+    }
   };
 
   const addTag = () => {
