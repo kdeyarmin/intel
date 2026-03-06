@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
-    const withEmail1 = await base44.asServiceRole.entities.Provider.filter({ email: { $ne: null } }, undefined, 10);
-    const withEmail2 = await base44.asServiceRole.entities.Provider.filter({ email_validation_status: 'valid' }, undefined, 10);
+    const p1 = await base44.asServiceRole.entities.Provider.filter({}, undefined, 1);
+    const p100 = await base44.asServiceRole.entities.Provider.filter({}, undefined, 100);
     return Response.json({
-        hasNe: withEmail1.length,
-        hasValid: withEmail2.length,
-        items: withEmail1.map(p => p.email)
+        p1Length: p1.length,
+        p100Length: p100.length,
+        p1Keys: Object.keys(p1),
+        p1Count: p1.count || p1.total_count || null
     });
 });
