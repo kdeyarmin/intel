@@ -13,19 +13,20 @@ Deno.serve(async (req) => {
         const now = new Date();
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-        const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-        // 1. Find failed/paused imports 
-        const failed = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'failed' }, '-created_date', 20);
-        const paused = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'paused' }, '-created_date', 20);
+        // 1. Find failed/paused/cancelled imports 
+        const failed = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'failed' }, '-created_date', 100);
+        const paused = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'paused' }, '-created_date', 100);
+        const cancelled = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'cancelled' }, '-created_date', 100);
         
-        const failedBatches = [...failed, ...paused].filter(b => b.created_date >= seventyTwoHoursAgo);
+        const failedBatches = [...failed, ...paused, ...cancelled].filter(b => (b.updated_date >= sevenDaysAgo || b.created_date >= sevenDaysAgo));
 
         // 2. Find stalled processing imports
-        const processing = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' }, '-created_date', 20);
-        const validating = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'validating' }, '-created_date', 20);
+        const processing = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' }, '-created_date', 100);
+        const validating = await base44.asServiceRole.entities.ImportBatch.filter({ status: 'validating' }, '-created_date', 100);
         
-        const stalledBatches = [...processing, ...validating].filter(b => b.updated_date <= oneHourAgo && b.created_date >= seventyTwoHoursAgo);
+        const stalledBatches = [...processing, ...validating].filter(b => b.updated_date <= oneHourAgo && (b.updated_date >= sevenDaysAgo || b.created_date >= sevenDaysAgo));
 
         const allBatches = [...failedBatches, ...stalledBatches];
         const results = [];
