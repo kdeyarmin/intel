@@ -22,6 +22,7 @@ import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
 import TextMatchFilter, { applyTextFilters } from '../components/filters/TextMatchFilter';
 import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filters/DateRangeFilterInline';
 import FilterPresets from '../components/filters/FilterPresets';
+import ProviderComparison from '../components/providers/ProviderComparison';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -489,6 +490,7 @@ export default function Providers() {
           <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI NPI Finder</span><span className="sm:hidden">NPI</span></TabsTrigger>
           <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Globe className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Augmenter</span><span className="sm:hidden">Augment</span></TabsTrigger>
           <TabsTrigger value="duplicates" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Copy className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Duplicates</span><span className="sm:hidden">Dupes</span></TabsTrigger>
+          <TabsTrigger value="compare" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Users className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Compare</span><span className="sm:hidden">Vs</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="map">
@@ -555,6 +557,10 @@ export default function Providers() {
 
         <TabsContent value="duplicates">
           <AIDuplicateDetector providers={providers} locations={locations} taxonomies={taxonomies} />
+        </TabsContent>
+
+        <TabsContent value="compare">
+          <ProviderComparison providerIds={Array.from(selectedNpis)} />
         </TabsContent>
 
         <TabsContent value="directory">
