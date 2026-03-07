@@ -22,6 +22,7 @@ const DEFAULT_FILTERS = {
   stateFilter: 'PA',
   entityType: 'all',
   showHeatmap: false,
+  showVolumeDensity: false,
   colorByScore: true,
 };
 
@@ -212,6 +213,7 @@ export default function TerritoryIntelligence() {
               <InteractiveProviderMap
                 filteredProviders={filteredProviders}
                 showHeatmap={filters.showHeatmap}
+                showVolumeDensity={filters.showVolumeDensity}
                 colorByScore={filters.colorByScore}
               />
             </TabsContent>
