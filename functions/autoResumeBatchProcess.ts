@@ -80,19 +80,7 @@ Deno.serve(async (req) => {
                     completed_at: new Date().toISOString()
                 });
 
-                // Send completion notification
-                try {
-                    const user = await base44.auth.me();
-                    const summary = target_states.map(s => `${s}: ${stateStatus[s]}`).join(', ');
-                    
-                    await base44.asServiceRole.integrations.Core.SendEmail({
-                        to: user?.email || 'admin@caremetric.app',
-                        subject: '[CareMetric] NPPES Batch Process Completed',
-                        body: `The automated NPPES batch process has completed.\n\nStates processed: ${target_states.length}\n\nStatus:\n${summary}`
-                    });
-                } catch (e) {
-                    console.error('Failed to send completion email:', e);
-                }
+                // Email notifications disabled per admin request
 
                 return Response.json({ 
                     message: 'Batch process completed.', 

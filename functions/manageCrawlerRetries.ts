@@ -156,15 +156,7 @@ Deno.serve(async (req) => {
                         context: { state, retry_count: currentRetryCount }
                     });
 
-                    // Send email
-                    try {
-                        const adminEmail = (await base44.auth.me())?.email || 'system@caremetric.app';
-                        await base44.asServiceRole.integrations.Core.SendEmail({
-                            to: adminEmail,
-                            subject: `[CareMetric] Crawler Failed: ${state} (Max Retries)`,
-                            body: `The NPPES crawler for ${state} has failed ${currentRetryCount} times and will not be retried automatically.\n\nPlease review the logs and Error Reports.`
-                        });
-                    } catch(e) {}
+                    // Email notifications disabled per admin request
                     
                     actionsTaken.push(`Escalated state ${state} (max retries)`);
                 }
