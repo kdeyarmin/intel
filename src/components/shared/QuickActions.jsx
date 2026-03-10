@@ -4,7 +4,10 @@ import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { Upload, Mail, Target, Shield, Bot, BarChart3 } from 'lucide-react';
 
+import { Activity } from 'lucide-react';
+
 const ACTIONS = [
+  { label: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', color: 'text-cyan-400 bg-cyan-500/10', roles: ['admin'] },
   { label: 'Import Data', icon: Upload, page: 'DataCenter', color: 'text-blue-400 bg-blue-500/10', roles: ['admin'] },
   { label: 'Find Emails', icon: Mail, page: 'EmailSearchBot', color: 'text-emerald-400 bg-emerald-500/10', roles: ['admin'] },
   { label: 'Build Lead List', icon: Target, page: 'LeadListBuilder', color: 'text-violet-400 bg-violet-500/10', roles: ['admin', 'user'] },
