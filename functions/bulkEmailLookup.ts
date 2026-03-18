@@ -1,5 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ProviderFilter = {
+  entity_type?: string;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -11,7 +15,7 @@ Deno.serve(async (req) => {
     const { offset = 0, limit = 25, entity_type_filter = 'Individual', credential_filter = '' } = await req.json();
 
     // Build filter for providers
-    const filter = {};
+    const filter: ProviderFilter = {};
     if (entity_type_filter) filter.entity_type = entity_type_filter;
 
     // Get providers

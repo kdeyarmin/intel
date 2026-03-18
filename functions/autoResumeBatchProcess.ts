@@ -5,6 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // Handles skip-completed logic and batch completion
 
 const ALL_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
 
 Deno.serve(async (req) => {
     try {
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
         for (const state of target_states) {
             const stateBatches = recentBatches
                 .filter(b => b.file_name?.startsWith(`crawler_${state}_`))
-                .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+                .sort((a, b) => getTimestamp(b.created_date) - getTimestamp(a.created_date));
             
             if (stateBatches.length > 0) {
                 const latest = stateBatches[0];

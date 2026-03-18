@@ -55,6 +55,8 @@ const QUALITY_RULES = [
     entityType: 'Provider', aggregate: true },
 ];
 
+const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
@@ -227,7 +229,17 @@ Be conservative - only approve fixes that are clearly correct.`,
   if (action === 'analyze_patterns') {
     const alerts = await base44.asServiceRole.entities.DataQualityAlert.list('-created_date', 500);
 
-    const ruleGroups = {};
+    const ruleGroups: Record<string, {
+      rule_name: string;
+      category: string;
+      severity: string;
+      count: number;
+      open: number;
+      fixed: number;
+      dismissed: number;
+      entity_type: string | null;
+      field: string | null;
+    }> = {};
     for (const a of alerts) {
       if (!ruleGroups[a.rule_id]) ruleGroups[a.rule_id] = { rule_name: a.rule_name, category: a.category, severity: a.severity, count: 0, open: 0, fixed: 0, dismissed: 0, entity_type: a.entity_type, field: a.field_name };
       ruleGroups[a.rule_id].count++;
@@ -337,18 +349,18 @@ Provide:
     const context = `DATA QUALITY CONTEXT:
 - Total alerts: ${alerts.length} (Open: ${openAlerts.length})
 - Auto-fixable (low/medium + suggested value): ${autoFixable.length}
-- By category: ${Object.entries(catCounts).map(([k,v]) => \`\${k}:\${v}\`).join(', ') || 'none'}
-- By severity: ${Object.entries(sevCounts).map(([k,v]) => \`\${k}:\${v}\`).join(', ') || 'none'}
-- Latest scan: ${latestScan ? \`Overall \${latestScan.scores?.overall || 'N/A'}%, \${latestScan.alerts_generated || 0} alerts\` : 'No scans yet'}
+- By category: ${Object.entries(catCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'none'}
+- By severity: ${Object.entries(sevCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'none'}
+- Latest scan: ${latestScan ? `Overall ${latestScan.scores?.overall || 'N/A'}%, ${latestScan.alerts_generated || 0} alerts` : 'No scans yet'}
 - Database: ${providers.length} providers, ${locations.length} locations, ${taxonomies.length} taxonomies
 - Top open issues: ${openAlerts.slice(0, 5).map(a => a.summary).join('; ') || 'none'}`;
 
     const aiRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are CareMetric's AI Data Quality Assistant. You help healthcare data administrators understand and fix data quality issues.
 
-\${context}
+${context}
 
-USER QUESTION: \${question}
+USER QUESTION: ${question}
 
 Respond helpfully. Reference specific alert counts, categories, and scan scores. Be concise and actionable.`,
       response_json_schema: {
@@ -535,7 +547,7 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     const group = npiMap[npi];
     if (group.length <= 1) continue;
     // Sort: keep newest (by updated_date or created_date)
-    group.sort((a, b) => new Date(b.updated_date || b.created_date) - new Date(a.updated_date || a.created_date));
+    group.sort((a, b) => getTimestamp(b.updated_date || b.created_date) - getTimestamp(a.updated_date || a.created_date));
     const keep = group[0];
     for (let i = 1; i < group.length; i++) {
       try {
@@ -572,7 +584,7 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     const group = nameCredMap[key];
     if (group.length <= 1) continue;
     // Medium confidence — auto-merge: keep newest
-    group.sort((a, b) => new Date(b.updated_date || b.created_date) - new Date(a.updated_date || a.created_date));
+    group.sort((a, b) => getTimestamp(b.updated_date || b.created_date) - getTimestamp(a.updated_date || a.created_date));
     const keep = group[0];
     for (let i = 1; i < group.length; i++) {
       try {

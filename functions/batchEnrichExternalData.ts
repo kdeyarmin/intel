@@ -1,5 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type EnrichmentResults = {
+  medicare?: boolean;
+  medicare_error?: string;
+  npi?: boolean;
+  npi_error?: string;
+  dea?: boolean;
+  dea_error?: string;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -51,7 +60,7 @@ Deno.serve(async (req) => {
           }
         }
 
-        const enrichmentResults = {};
+        const enrichmentResults: EnrichmentResults = {};
 
         // Enrich Medicare data
         if (action === 'all' || action === 'medicare') {

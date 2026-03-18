@@ -1,5 +1,36 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type AutoEnrichmentResult = {
+    email?: string;
+    email_confidence?: string;
+    email_source?: string;
+    cell_phone?: string;
+    website?: string;
+    linkedin_url?: string;
+    twitter_url?: string;
+    firmographics?: Record<string, unknown>;
+    address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+        phone?: string;
+    };
+    confidence_score?: number;
+};
+
+type ProviderUpdate = {
+    email?: string;
+    email_confidence?: string;
+    email_source?: string;
+    email_searched_at?: string;
+    cell_phone?: string;
+    website?: string;
+    linkedin_url?: string;
+    twitter_url?: string;
+    firmographics?: Record<string, unknown>;
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -95,13 +126,13 @@ Deno.serve(async (req) => {
         });
 
         // Parse response (InvokeLLM returns a dict if schema is provided, but checking type just in case)
-        const result = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
+        const result: AutoEnrichmentResult = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
         
         if (!result) {
             return Response.json({ message: 'No info found' });
         }
 
-        const updates = {};
+        const updates: ProviderUpdate = {};
         let updated = false;
 
         // Only update if confidence is high (user requirement)
