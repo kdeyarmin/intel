@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileText, Database, TrendingUp, Activity, Users } from 'lucide-react';
+import { Database, TrendingUp, Activity, Users } from 'lucide-react';
 
 const importTypes = [
   {

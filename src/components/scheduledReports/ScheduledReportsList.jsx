@@ -1,11 +1,11 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
   Calendar, Clock, Mail, Play, Pencil, Trash2, Loader2,
-  CheckCircle2, XCircle, BarChart3
+  CheckCircle2, XCircle
 } from 'lucide-react';
 import moment from 'moment';
 

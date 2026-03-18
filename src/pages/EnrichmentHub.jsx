@@ -1,7 +1,7 @@
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Database, Shield } from 'lucide-react';
+import { Sparkles, Shield } from 'lucide-react';
 import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner';
 import ProactiveEnrichmentScanner from '../components/enrichment/ProactiveEnrichmentScanner';
 import EnrichmentReviewQueue from '../components/enrichment/EnrichmentReviewQueue';

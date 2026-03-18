@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Database, CheckCircle2, Clock } from 'lucide-react';
+import { Database, CheckCircle2 } from 'lucide-react';
 
 const DATASET_LABELS = {
   medicare_ma_inpatient: 'MA Inpatient Hospital',

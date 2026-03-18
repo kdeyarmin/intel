@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Loader2, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 
 const IMPORT_TYPE_OPTIONS = [
   { id: 'nppes_monthly', label: 'NPPES Monthly', category: 'nppes' },

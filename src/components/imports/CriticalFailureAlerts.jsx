@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, XCircle, Clock, ChevronRight, Siren } from 'lucide-react';
+import { AlertTriangle, XCircle, Clock, ChevronRight } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES } from './errorCategories';
 
 const IMPORT_TYPE_LABELS = {

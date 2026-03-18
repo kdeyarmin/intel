@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles, Clock, Mail, Eye, MessageSquare, Zap, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 

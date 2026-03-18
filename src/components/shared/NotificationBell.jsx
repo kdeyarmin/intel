@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, AlertTriangle, CheckCircle2, XCircle, Upload, X } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 

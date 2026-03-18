@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ReactMarkdown from 'react-markdown';
 import {
   Bot, Send, Loader2, Sparkles, Zap, TrendingUp,
-  AlertTriangle, CheckCircle2, RotateCcw, Wrench
+  AlertTriangle, CheckCircle2, Wrench
 } from 'lucide-react';
 
 const QUICK_ACTIONS = [

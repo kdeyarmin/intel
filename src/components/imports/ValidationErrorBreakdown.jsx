@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import {
   AlertTriangle, ChevronDown, ChevronRight, Lightbulb, Download,
   Search, FileText, ShieldAlert, FileWarning, Type, Copy, Clock, Wifi,
-  Wrench, HelpCircle, Database, Filter, Eye, Hash
+  Wrench, HelpCircle, Database, Eye, Hash
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { ERROR_CATEGORIES, categorizeError, groupErrors, downloadErrorCSV } from './errorCategories';
+import { ERROR_CATEGORIES, groupErrors, downloadErrorCSV } from './errorCategories';
 
 const ICON_MAP = {
   ShieldAlert, FileWarning, Type, Copy, Clock, Wifi, Wrench, HelpCircle, AlertTriangle,

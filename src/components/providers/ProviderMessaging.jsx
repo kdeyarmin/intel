@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquare, Send, Loader2, Sparkles, Calendar, Clock, Plus, X, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Send, Loader2, Sparkles, Calendar, Plus, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateTimeET, formatDateET } from '../utils/dateUtils';
 

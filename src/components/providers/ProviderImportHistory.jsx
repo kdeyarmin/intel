@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { FileText, CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 
 const IMPORT_TYPE_LABELS = {

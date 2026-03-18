@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import {
-  Sparkles, Loader2, CheckCircle2, AlertTriangle, Search,
+import { Loader2, CheckCircle2, AlertTriangle, Search,
   Phone, Wifi, DollarSign, ShieldCheck, Activity, XCircle
 } from 'lucide-react';
 

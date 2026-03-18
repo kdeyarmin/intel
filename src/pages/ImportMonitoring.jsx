@@ -4,11 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
-  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
+  FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
   Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,8 +17,6 @@ import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
-import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
-import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
@@ -32,7 +29,6 @@ import AlertNotificationSettings, { checkAndNotify } from '../components/imports
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
 import ResumeImportButton from '../components/imports/ResumeImportButton';
-import DetailedErrorRows from '../components/imports/DetailedErrorRows';
 import AIImportQualityAnalysis from '../components/imports/AIImportQualityAnalysis';
 import BatchFilterSort from '../components/imports/BatchFilterSort';
 import ImportOverviewKPIs from '../components/imports/ImportOverviewKPIs';

@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  RotateCcw, SkipForward, CheckCircle2, Loader2, Layers,
-  AlertTriangle, ChevronDown, ChevronRight, X
+  RotateCcw, SkipForward, CheckCircle2, Loader2, Layers, ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage, groupErrors } from './errorCategories';

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Users, Activity, Stethoscope, Star, CheckCircle, Clock, MapPin, Building2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Users, Activity, Stethoscope, Star, MapPin, Building2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Reusable stat card for the comparison
 const StatCard = ({ label, value, icon: Icon, colorClass, description }) => (

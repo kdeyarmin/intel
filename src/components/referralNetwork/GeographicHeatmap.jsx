@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, TrendingUp } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 function getHeatColor(intensity) {
   if (intensity >= 0.8) return { bg: 'bg-red-500/30', text: 'text-red-400', border: 'border-red-500/30' };

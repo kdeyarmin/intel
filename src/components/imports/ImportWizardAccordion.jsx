@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
-  ChevronDown, ChevronUp, CheckCircle2, Circle, Upload, Loader2,
-  FileText, AlertCircle, XCircle, RotateCcw, Sparkles
+  ChevronDown, ChevronUp, CheckCircle2, Circle, Upload, Loader2, AlertCircle, XCircle, RotateCcw, Sparkles
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';

@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  CheckCircle2, XCircle, Loader2, Clock, TrendingUp, TrendingDown,
-  AlertTriangle, Database
+  CheckCircle2, XCircle, Loader2, Clock, TrendingUp, TrendingDown, Database
 } from 'lucide-react';
 
 function KPICard({ label, value, icon: Icon, iconColor, trend, trendLabel, onClick, highlight }) {

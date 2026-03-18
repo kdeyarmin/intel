@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 
 function DatasetRow({ label, lastUpdated, count }) {
   const daysSince = lastUpdated ? differenceInDays(new Date(), new Date(lastUpdated)) : null;
