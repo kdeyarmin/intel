@@ -337,18 +337,18 @@ Provide:
     const context = `DATA QUALITY CONTEXT:
 - Total alerts: ${alerts.length} (Open: ${openAlerts.length})
 - Auto-fixable (low/medium + suggested value): ${autoFixable.length}
-- By category: ${Object.entries(catCounts).map(([k,v]) => \`\${k}:\${v}\`).join(', ') || 'none'}
-- By severity: ${Object.entries(sevCounts).map(([k,v]) => \`\${k}:\${v}\`).join(', ') || 'none'}
-- Latest scan: ${latestScan ? \`Overall \${latestScan.scores?.overall || 'N/A'}%, \${latestScan.alerts_generated || 0} alerts\` : 'No scans yet'}
+- By category: ${Object.entries(catCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'none'}
+- By severity: ${Object.entries(sevCounts).map(([k, v]) => `${k}:${v}`).join(', ') || 'none'}
+- Latest scan: ${latestScan ? `Overall ${latestScan.scores?.overall || 'N/A'}%, ${latestScan.alerts_generated || 0} alerts` : 'No scans yet'}
 - Database: ${providers.length} providers, ${locations.length} locations, ${taxonomies.length} taxonomies
 - Top open issues: ${openAlerts.slice(0, 5).map(a => a.summary).join('; ') || 'none'}`;
 
     const aiRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are CareMetric's AI Data Quality Assistant. You help healthcare data administrators understand and fix data quality issues.
 
-\${context}
+${context}
 
-USER QUESTION: \${question}
+USER QUESTION: ${question}
 
 Respond helpfully. Reference specific alert counts, categories, and scan scores. Be concise and actionable.`,
       response_json_schema: {
