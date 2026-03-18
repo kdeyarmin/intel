@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle2, AlertCircle, Shield } from 'lucide-react';
 
-export default function EmailQualityDetails({ analysis, email, compact = false }) {
+export default function EmailQualityDetails({ analysis, _email, compact = false }) {
   if (!analysis) return null;
 
   const riskFlags = analysis.riskFlags || analysis.risk_flags || [];

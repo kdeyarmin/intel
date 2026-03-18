@@ -28,7 +28,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
             paused_at: null,
             cancel_reason: "",
           });
-        } catch (_) { /* best-effort */ }
+        } catch (__) { /* best-effort */ }
       }
       
       // Call backend to resume

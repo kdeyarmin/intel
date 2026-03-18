@@ -69,7 +69,7 @@ export default function ReconciliationDashboard() {
       });
       toast.success(`Discrepancy ${action === 'accept' ? 'accepted and merged' : 'rejected'}`);
       queryClient.invalidateQueries();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update resolution');
     }
   };

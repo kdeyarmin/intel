@@ -7,15 +7,15 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AlertCircle, TrendingDown, CheckCircle, Clock } from 'lucide-react';
 
 export default function DataQualityReportDashboard() {
-  const [timeframe, setTimeframe] = useState('30'); // days
+  const [timeframe, _setTimeframe] = useState('30'); // days
 
-  const { data: scans = [], isLoading: loadingScans } = useQuery({
+  const { data: scans = [], isLoading: _loadingScans } = useQuery({
     queryKey: ['dataQualityScans', timeframe],
     queryFn: () => base44.entities.DataQualityScan.list('-created_date', 50),
     staleTime: 300000,
   });
 
-  const { data: alerts = [], isLoading: loadingAlerts } = useQuery({
+  const { data: alerts = [], isLoading: _loadingAlerts } = useQuery({
     queryKey: ['dataQualityAlerts'],
     queryFn: () => base44.entities.DataQualityAlert.filter({ status: 'new' }),
     staleTime: 300000,

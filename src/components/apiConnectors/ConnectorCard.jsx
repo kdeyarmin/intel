@@ -62,7 +62,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
       const updated = await base44.entities.CMSApiConnector.update(connector.id, { is_authorized: checked });
       onUpdate(updated);
       toast.success(checked ? 'Connection authorized' : 'Connection deauthorized');
-    } catch (error) {
+    } catch (_error) {
       setFormData({ ...formData, is_authorized: !checked });
       toast.error('Failed to update status');
     }

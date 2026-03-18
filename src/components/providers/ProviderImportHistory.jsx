@@ -29,7 +29,7 @@ function formatDate(ts) {
   }).format(new Date(ts));
 }
 
-export default function ProviderImportHistory({ npi }) {
+export default function ProviderImportHistory({ _npi }) {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importBatchesAll'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),

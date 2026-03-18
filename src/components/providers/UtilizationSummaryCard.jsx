@@ -9,7 +9,7 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
     const sorted = [...utilizations].sort((a, b) => (a.year || 0) - (b.year || 0));
     const latest = sorted[sorted.length - 1];
     const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
-    const earliest = sorted[0];
+    const _earliest = sorted[0];
     const yearSpan = sorted.length;
 
     const totalPayments = utilizations.reduce((s, u) => s + (u.total_medicare_payment || 0), 0);

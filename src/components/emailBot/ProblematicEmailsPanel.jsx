@@ -24,7 +24,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
       await base44.functions.invoke('verifyProviderEmail', { provider_id: providerId });
       toast.success('Email re-verified successfully');
       onRefresh?.();
-    } catch (e) {
+    } catch (_e) {
       toast.error('Failed to re-verify email');
     } finally {
       setVerifyingId(null);
@@ -34,13 +34,13 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const handleReverifyGroup = async (status) => {
     setIsVerifying(true);
     try {
-      const resp = await base44.functions.invoke('bulkVerifyEmails', {
+      const _resp = await base44.functions.invoke('bulkVerifyEmails', {
         mode: status, // 'risky' or 'invalid'
         batch_size: 20
       });
       toast.success(`Re-verification started for ${status} emails`);
       onRefresh?.();
-    } catch (e) {
+    } catch (_e) {
       toast.error(`Failed to re-verify ${status} emails`);
     } finally {
       setIsVerifying(false);

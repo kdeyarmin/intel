@@ -20,7 +20,7 @@ const IMPORT_TYPE_LABELS = {
 
 export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
   const [selectedBatches, setSelectedBatches] = useState(new Set());
-  const [selectedAction, setSelectedAction] = useState(null);
+  const [_selectedAction, _setSelectedAction] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [expanded, setExpanded] = useState(false);
 

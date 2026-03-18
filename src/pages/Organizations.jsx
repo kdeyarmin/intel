@@ -94,7 +94,7 @@ export default function Organizations() {
     });
   };
 
-  const resetFilters = () => {
+  const _resetFilters = () => {
     setSearchTerm('');
     setFilters({
       statusFilter: 'all', enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
@@ -119,7 +119,7 @@ export default function Organizations() {
     return map;
   }, [locations]);
 
-  const taxonomyByNpi = useMemo(() => {
+  const _taxonomyByNpi = useMemo(() => {
     const map = {};
     for (const t of taxonomies) {
       if (!map[t.npi]) map[t.npi] = [];

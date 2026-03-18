@@ -345,7 +345,7 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
   );
 }
 
-function NamingTab({ loading, results, onGenerate, onApplyName, onApplyDescription, copiedField, copy }) {
+function NamingTab({ loading, results, onGenerate, onApplyName, onApplyDescription, _copiedField, _copy }) {
   return (
     <div className="space-y-2">
       <Button size="sm" onClick={onGenerate} disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700 h-7 text-xs gap-1">

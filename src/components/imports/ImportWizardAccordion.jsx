@@ -18,7 +18,7 @@ import AIBatchCategorizer from './AIBatchCategorizer';
 import AICleaningSuggestions from './AICleaningSuggestions';
 import NPPESFlatFileHelper from './NPPESFlatFileHelper';
 
-function parseCSVLine(line) {
+function _parseCSVLine(line) {
   const result = [];
   let current = '';
   let inQuotes = false;
@@ -73,7 +73,7 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
   );
 }
 
-export default function ImportWizardAccordion({ selectedType, onReset, onComplete, compact = false }) {
+export default function ImportWizardAccordion({ selectedType, onReset, onComplete, _compact = false }) {
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -151,7 +151,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
     }
   }, [isMappingComplete, mapStep, aiMappingLoading]);
 
-  const getNPIFromRow = (row) => {
+  const _getNPIFromRow = (row) => {
     const npiCol = selectedType.requiredColumns.find(c => c.toUpperCase() === 'NPI' || c === 'Rndrng_NPI');
     if (npiCol && columnMapping[npiCol]) {
       const val = row[columnMapping[npiCol]];

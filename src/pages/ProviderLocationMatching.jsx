@@ -47,7 +47,7 @@ export default function ProviderLocationMatching() {
     });
   }, []);
 
-  const handleSelectAll = useCallback(() => {
+  const _handleSelectAll = useCallback(() => {
     setSelectedIds(new Set(filtered.map(m => m.id)));
   }, []);
 

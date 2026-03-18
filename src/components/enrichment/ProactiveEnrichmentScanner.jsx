@@ -17,7 +17,7 @@ const DATA_POINTS = [
   { key: 'pricing', label: 'Cash Pay / Pricing', icon: DollarSign, description: 'Self-pay pricing if available' },
 ];
 
-export default function ProactiveEnrichmentScanner({ providers = [], totalProviders = 0 }) {
+export default function ProactiveEnrichmentScanner({ providers = [], _totalProviders = 0 }) {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentName: '' });

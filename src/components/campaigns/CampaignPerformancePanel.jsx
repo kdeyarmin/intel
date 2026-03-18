@@ -40,9 +40,9 @@ export default function CampaignPerformancePanel({ campaign, onUpdate }) {
   const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(1) : '0';
   const responseRate = sent > 0 ? ((responded / sent) * 100).toFixed(1) : '0';
   const bounceRate = sent > 0 ? ((bounced / sent) * 100).toFixed(1) : '0';
-  const conversionRate = sent > 0 ? ((conversions / sent) * 100).toFixed(1) : '0';
+  const _conversionRate = sent > 0 ? ((conversions / sent) * 100).toFixed(1) : '0';
   const roi = budget > 0 ? (((revenue - budget) / budget) * 100).toFixed(1) : '0';
-  const costPerConversion = conversions > 0 ? (budget / conversions).toFixed(0) : '-';
+  const _costPerConversion = conversions > 0 ? (budget / conversions).toFixed(0) : '-';
 
   const funnelData = [
     { name: 'Sent', value: sent },

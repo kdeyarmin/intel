@@ -56,7 +56,7 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
   // Score breakdown insights
   if (score?.score_breakdown) {
     const topFactors = Object.entries(score.score_breakdown)
-      .filter(([key, val]) => val.contribution >= 15)
+      .filter(([_key, val]) => val.contribution >= 15)
       .map(([key]) => key.replace(/_/g, ' '));
     
     if (topFactors.length > 0) {

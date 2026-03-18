@@ -7,7 +7,7 @@ import {
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
-export default function ComparativeAnalysisPanel({ providers = [], utilization = [], referrals = [], taxonomies = [], locations = [] }) {
+export default function ComparativeAnalysisPanel({ providers = [], utilization = [], _referrals = [], taxonomies = [], locations = [] }) {
   const [compareBy, setCompareBy] = useState('entity_type');
   const [metric, setMetric] = useState('total_medicare_payment');
   const [viewMode, setViewMode] = useState('bar');

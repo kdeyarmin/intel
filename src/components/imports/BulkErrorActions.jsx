@@ -170,7 +170,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
   };
 
   // Handle action from AI triage
-  const handleTriageAction = (action, categoryLabel, catKey) => {
+  const _handleTriageAction = (action, categoryLabel, catKey) => {
     if (catKey) {
       setSelectedCategories(new Set([catKey]));
       setShowPanel(true);

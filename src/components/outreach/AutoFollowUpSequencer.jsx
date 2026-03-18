@@ -13,7 +13,7 @@ const SEQUENCE_STEPS = [
   { id: 3, trigger: 'still_no_reply', delay: '10 days', label: 'Final nudge after 10d', icon: MessageSquare, color: 'text-violet-400' },
 ];
 
-export default function AutoFollowUpSequencer({ campaign, messages = [], providers = [], onCreateFollowUp }) {
+export default function AutoFollowUpSequencer({ campaign, messages = [], _providers = [], onCreateFollowUp }) {
   const [generating, setGenerating] = useState(false);
   const [sequence, setSequence] = useState(null);
   const [enabledSteps, setEnabledSteps] = useState(new Set([1, 2, 3]));

@@ -32,12 +32,12 @@ export default function AdvancedAnalytics() {
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
     staleTime: 120000,
   });
-  const { data: locations = [], isLoading: ll } = useQuery({
+  const { data: locations = [], isLoading: _ll } = useQuery({
     queryKey: ['aaLoc'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
     staleTime: 120000,
   });
-  const { data: taxonomies = [], isLoading: lt } = useQuery({
+  const { data: taxonomies = [], isLoading: _lt } = useQuery({
     queryKey: ['aaTax'],
     queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
     staleTime: 120000,

@@ -8,7 +8,7 @@ import { Users, Target, Crown, Shield, Plus } from 'lucide-react';
 
 export default function TargetListBuilder({
   leadLists = [],
-  providers = [],
+  _providers = [],
   referrals = [],
   scores = [],
   locations = [],

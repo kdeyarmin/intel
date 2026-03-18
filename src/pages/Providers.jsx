@@ -123,7 +123,7 @@ export default function Providers() {
       return;
     }
     setActivePresetId(preset.id);
-    setFilters(prev => ({
+    setFilters(_prev => ({
       entityTypeFilter: 'all', statusFilter: 'all', credentialFilter: 'all',
       enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
       ...preset.filters,

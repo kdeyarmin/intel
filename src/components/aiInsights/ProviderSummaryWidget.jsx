@@ -45,7 +45,7 @@ export default function ProviderSummaryWidget({ providers = [], locations = [], 
 
   const stateChartData = breakdown.topStates.map(([state, count]) => ({ state, count }));
 
-  const typePieData = [
+  const _typePieData = [
     { name: 'Individual', value: breakdown.individuals },
     { name: 'Organization', value: breakdown.organizations },
   ].filter(d => d.value > 0);
