@@ -85,6 +85,7 @@ import ReconciliationDashboard from './pages/ReconciliationDashboard';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
+import SecurityAudit from './pages/SecurityAudit';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
 import Utilization from './pages/Utilization';
 import __Layout from './Layout.jsx';
@@ -129,6 +130,7 @@ export const PAGES = {
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
+    "SecurityAudit": SecurityAudit,
     "TerritoryIntelligence": TerritoryIntelligence,
     "Utilization": Utilization,
 }
