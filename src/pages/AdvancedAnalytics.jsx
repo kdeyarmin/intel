@@ -50,9 +50,11 @@ export default function AdvancedAnalytics() {
 
   // Auto-select default dashboard
   useEffect(() => {
-    if (!activeDashboardId && dashboards.length > 0) {
-      const def = dashboards.find(d => d.is_default) || dashboards[0];
-      setActiveDashboardId(def.id);
+    if (dashboards.length > 0) {
+      if (!activeDashboardId || !dashboards.find(d => d.id === activeDashboardId)) {
+        const def = dashboards.find(d => d.is_default) || dashboards[0];
+        setActiveDashboardId(def.id);
+      }
     }
   }, [dashboards, activeDashboardId]);
 

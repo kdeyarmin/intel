@@ -59,7 +59,15 @@ export default function AdminSettings() {
     inviteMutation.mutate({ email: inviteEmail, role: inviteRole });
   };
 
-  if (currentUser && currentUser.role !== 'admin') {
+  if (!currentUser) {
+    return (
+      <div className="p-8 text-center text-slate-400">
+        <Loader2 className="w-8 h-8 mx-auto animate-spin text-slate-500" />
+      </div>
+    );
+  }
+
+  if (currentUser.role !== 'admin') {
     return (
       <div className="p-8 text-center text-slate-400">
         <Shield className="w-12 h-12 mx-auto mb-4 text-slate-500 opacity-50" />
@@ -123,7 +131,7 @@ export default function AdminSettings() {
                             </Select>
                           </td>
                           <td className="px-4 py-3 text-slate-400 text-xs">
-                            {new Date(user.created_date).toLocaleDateString()}
+                            {user.created_date ? new Date(user.created_date).toLocaleDateString() : '-'}
                           </td>
                         </tr>
                       ))}

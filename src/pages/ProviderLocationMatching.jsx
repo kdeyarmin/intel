@@ -32,10 +32,14 @@ export default function ProviderLocationMatching() {
   });
 
   const handleUpdateStatus = async (id, status, notes) => {
-    const updateData = { status };
-    if (notes !== undefined) updateData.override_notes = notes;
-    await base44.entities.ProviderLocationMatch.update(id, updateData);
-    queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+    try {
+      const updateData = { status };
+      if (notes !== undefined) updateData.override_notes = notes;
+      await base44.entities.ProviderLocationMatch.update(id, updateData);
+      queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+    } catch (err) {
+      console.error('Failed to update match status:', err);
+    }
   };
 
   const handleToggleSelect = useCallback((id) => {
@@ -49,15 +53,19 @@ export default function ProviderLocationMatching() {
 
   const _handleSelectAll = useCallback(() => {
     setSelectedIds(new Set(filtered.map(m => m.id)));
-  }, []);
+  }, [filtered]);
 
   const handleBulkAction = async (status) => {
     const ids = [...selectedIds];
-    await Promise.all(ids.map(id =>
-      base44.entities.ProviderLocationMatch.update(id, { status })
-    ));
-    setSelectedIds(new Set());
-    queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+    try {
+      await Promise.all(ids.map(id =>
+        base44.entities.ProviderLocationMatch.update(id, { status })
+      ));
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+    } catch (err) {
+      console.error('Bulk action failed:', err);
+    }
   };
 
   const filtered = useMemo(() => {

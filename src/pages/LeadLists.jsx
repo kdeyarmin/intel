@@ -33,9 +33,13 @@ export default function LeadLists() {
 
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
-    const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-    await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
-    deleteMutation.mutate(listId);
+    try {
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+      await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
+      deleteMutation.mutate(listId);
+    } catch (error) {
+      alert('Failed to delete list: ' + error.message);
+    }
   };
 
   return (

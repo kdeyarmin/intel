@@ -46,7 +46,7 @@ export default function DataHealthDashboard() {
       <PageHeader 
         title="Data Health Dashboard" 
         subtitle={`Analyzing a sample of ${data?.totalSampled || 0} recent provider records and recent import batches`}
-        icon={<Database className="w-6 h-6 text-primary" />}
+        icon={Database}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

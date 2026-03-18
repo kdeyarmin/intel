@@ -106,8 +106,8 @@ export default function Organizations() {
   const currentFilters = { searchTerm, ...filters };
 
   const getScore = (npi) => {
-    const s = scores.find(s => s.npi === npi);
-    return s?.score || null;
+    const match = scores.find(s => s.npi === npi);
+    return match?.score ?? null;
   };
 
   const locationByNpi = useMemo(() => {

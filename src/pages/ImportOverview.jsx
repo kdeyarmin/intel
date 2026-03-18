@@ -23,7 +23,7 @@ export default function ImportOverviewPage() {
     const filteredBatches = useMemo(() => {
         return batches.filter(b => {
             const matchesSearch = !searchQuery || 
-                b.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                String(b.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (b.file_name && b.file_name.toLowerCase().includes(searchQuery.toLowerCase()));
             const matchesType = importTypeFilter === 'all' || b.import_type === importTypeFilter;
             const matchesYear = dataYearFilter === 'all' || String(b.data_year) === dataYearFilter;
@@ -201,7 +201,7 @@ export default function ImportOverviewPage() {
                                 ) : (
                                     filteredBatches.slice(0, 50).map(batch => (
                                         <TableRow key={batch.id}>
-                                            <TableCell className="font-mono text-xs text-gray-500">{batch.id.substring(0, 8)}...</TableCell>
+                                            <TableCell className="font-mono text-xs text-gray-500">{String(batch.id).substring(0, 8)}...</TableCell>
                                             <TableCell className="font-medium">{batch.file_name || 'N/A'}</TableCell>
                                             <TableCell><Badge variant="outline">{batch.import_type}</Badge></TableCell>
                                             <TableCell>{batch.data_year || '-'}</TableCell>

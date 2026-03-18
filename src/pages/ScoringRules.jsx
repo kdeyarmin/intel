@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Save, AlertCircle } from 'lucide-react';
+import { Calculator, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '../components/shared/PageHeader';
 
@@ -70,7 +70,7 @@ export default function ScoringRules() {
       const utilizations = await base44.entities.CMSUtilization.list();
       const locations = await base44.entities.ProviderLocation.list();
       const taxonomies = await base44.entities.ProviderTaxonomy.list();
-      const currentRules = rules.filter(r => r.enabled);
+      const currentRules = rules.filter(r => r.enabled !== false);
 
       // Validate total weight
       const totalWeight = currentRules.reduce((sum, r) => sum + r.weight, 0);
@@ -184,7 +184,15 @@ export default function ScoringRules() {
     }
   };
 
-  if (user?.role !== 'admin') {
+  if (!user) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
+      </div>
+    );
+  }
+
+  if (user.role !== 'admin') {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <Alert variant="destructive">

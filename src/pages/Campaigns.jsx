@@ -52,7 +52,7 @@ export default function Campaigns() {
 
   const filtered = useMemo(() => {
     return campaigns.filter(c => {
-      const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || (c.name || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'all' || c.status === statusFilter;
       return matchSearch && matchStatus;
     });

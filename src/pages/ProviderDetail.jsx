@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, LayoutDashboard, Stethoscope, Network, Mail, ShieldCheck, MapPin as MapPinIcon, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +44,7 @@ import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreac
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
   const npi = searchParams.get('npi');
   const _fromPage = searchParams.get('from');
 
@@ -327,7 +327,7 @@ export default function ProviderDetail() {
                   </CardHeader>
                   <CardContent>
                      <div className="space-y-4">
-                      {outreachMessages.sort((a,b) => new Date(b.created_date) - new Date(a.created_date)).map(msg => (
+                      {[...outreachMessages].sort((a,b) => new Date(b.created_date) - new Date(a.created_date)).map(msg => (
                         <div key={msg.id} className="border rounded-lg p-3">
                            <div className="flex justify-between items-start mb-2">
                               <div>

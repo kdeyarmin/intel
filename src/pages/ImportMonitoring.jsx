@@ -238,18 +238,23 @@ export default function ImportMonitoring() {
     (async () => {
       for (const batch of toFail) {
         autoFailProcessed.current.add(batch.id);
-        await base44.entities.ImportBatch.update(batch.id, {
-          status: 'failed',
-          error_samples: [
-            ...(batch.error_samples || []),
-            { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
-          ]
-        });
-        setAutoFailedIds(prev => new Set([...prev, batch.id]));
+        try {
+          await base44.entities.ImportBatch.update(batch.id, {
+            status: 'failed',
+            error_samples: [
+              ...(batch.error_samples || []),
+              { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
+            ]
+          });
+          setAutoFailedIds(prev => new Set([...prev, batch.id]));
+        } catch (err) {
+          console.error('Failed to auto-mark batch as failed:', batch.id, err);
+        }
       }
       refreshBatches();
     })();
-  }, [staleBatches]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staleBatches.length]);
 
   const displayBatches = useMemo(() => {
     let filtered = batches;
@@ -351,7 +356,7 @@ export default function ImportMonitoring() {
     });
 
     return filtered;
-  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter, sortBy, importTypeFilter]);
+  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter, sortBy, importTypeFilter, yearFilter]);
 
   const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
