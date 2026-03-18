@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
             const initialInvalid = batch.invalid_rows || 0;
             const initialDupes = batch.duplicate_rows || 0;
             const errorSamples = [];
-            let columnMapping = {};
+            let columnMapping: string[] = [];
             let offset = resume_offset;
             let reachedEnd = false;
 
@@ -230,14 +230,15 @@ Deno.serve(async (req) => {
                     if (pageData && pageData.results && Array.isArray(pageData.results)) {
                         pageData = pageData.results;
                     }
-                    if (!Array.isArray(pageData) || pageData.length === 0) {
+                    const currentPage = Array.isArray(pageData) ? pageData : [];
+                    if (currentPage.length === 0) {
                         reachedEnd = true;
                         break;
                     }
 
                     // Detect columns from first page
-                    if (offset === resume_offset && pageData.length > 0) {
-                        columnMapping = Object.keys(pageData[0]);
+                    if (offset === resume_offset) {
+                        columnMapping = Object.keys(currentPage[0]);
                         console.log(`Detected ${columnMapping.length} columns: ${columnMapping.slice(0, 5).join(', ')}...`);
                         await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                             column_mapping: { fields: columnMapping },
@@ -249,10 +250,10 @@ Deno.serve(async (req) => {
                     const seenInPage = new Set();
                     let abortOuter = false;
                     
-                    for (let i = 0; i < pageData.length; i += BULK_SIZE) {
+                    for (let i = 0; i < currentPage.length; i += BULK_SIZE) {
                         if (isTimeUp(startTime)) break;
 
-                        const rawChunk = pageData.slice(i, i + BULK_SIZE);
+                        const rawChunk = currentPage.slice(i, i + BULK_SIZE);
                         const validDataChunk = [];
                         let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
@@ -303,12 +304,21 @@ Deno.serve(async (req) => {
 
                     offset += pageProcessedRaw;
 
-                    if (pageData.length < PAGE_SIZE && !abortOuter && !isTimeUp(startTime)) {
+                    if (currentPage.length < PAGE_SIZE && !abortOuter && !isTimeUp(startTime)) {
                         reachedEnd = true;
                     }
 
                     // Update progress (heartbeat)
-                    const updateData = {
+                    const updateData: {
+                        valid_rows: number;
+                        invalid_rows: number;
+                        duplicate_rows: number;
+                        imported_rows: number;
+                        updated_rows: number;
+                        skipped_rows: number;
+                        updated_date: string;
+                        total_rows?: number;
+                    } = {
                         valid_rows: initialValid + validRows,
                         invalid_rows: initialInvalid + invalidRows,
                         duplicate_rows: initialDupes + duplicateRows,
