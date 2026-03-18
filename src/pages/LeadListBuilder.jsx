@@ -76,21 +76,14 @@ export default function LeadListBuilder() {
     mutationFn: (data) => base44.entities.LeadList.create(data),
     onSuccess: (newList) => {
       setCurrentListId(newList.id);
-      queryClient.invalidateQueries(['leadLists']);
+      queryClient.invalidateQueries({ queryKey: ['leadLists'] });
     },
   });
 
   const updateMemberMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.LeadListMember.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['listMembers']);
-    },
-  });
-
-  const createMemberMutation = useMutation({
-    mutationFn: (data) => base44.entities.LeadListMember.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['listMembers']);
+      queryClient.invalidateQueries({ queryKey: ['listMembers'] });
     },
   });
 
@@ -103,7 +96,6 @@ export default function LeadListBuilder() {
         const providerLocations = locations.filter(l => l.npi === provider.npi);
         const primaryLocation = providerLocations.find(l => l.is_primary) || providerLocations[0];
         const providerTaxonomies = taxonomies.filter(t => t.npi === provider.npi);
-        const primaryTaxonomy = providerTaxonomies.find(t => t.primary_flag) || providerTaxonomies[0];
         const score = scores.find(s => s.npi === provider.npi);
         const utilization = utilizations.find(u => u.npi === provider.npi);
         const listMember = listMembers.find(m => m.npi === provider.npi);
@@ -118,7 +110,7 @@ export default function LeadListBuilder() {
         };
       })
       .filter(result => {
-        const { provider, location, taxonomy, score, utilization } = result;
+        const { location, taxonomy, score, utilization } = result;
 
         // State filter
         if (filters.state !== 'all' && location?.state !== filters.state) return false;

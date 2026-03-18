@@ -71,17 +71,17 @@ export default function Campaigns() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this campaign?')) return;
     await base44.entities.Campaign.delete(id);
-    queryClient.invalidateQueries(['campaigns_page']);
+    queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
     if (selectedCampaign?.id === id) setSelectedCampaign(null);
   };
 
   const handleCreated = () => {
-    queryClient.invalidateQueries(['campaigns_page']);
+    queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
   };
 
   const handleUpdate = (updatedCampaign) => {
     setSelectedCampaign(updatedCampaign);
-    queryClient.invalidateQueries(['campaigns_page']);
+    queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
   };
 
   if (selectedCampaign) {

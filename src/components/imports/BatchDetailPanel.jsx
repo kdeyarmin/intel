@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
-  CheckCircle2, XCircle, Clock, Loader2, Pause, FileText,
+  FileText,
   Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
 } from 'lucide-react';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
@@ -145,22 +144,21 @@ function FilteredErrors({ errors, filters, batchName }) {
 
 export default function BatchDetailPanel({ batch }) {
   const [errorFilters, setErrorFilters] = useState({ severity: null, category: null });
-
-  if (!batch) return null;
+  const safeBatch = batch ?? {};
 
   const columnFields = useMemo(() => {
-    if (!batch.column_mapping) return null;
-    if (Array.isArray(batch.column_mapping)) return batch.column_mapping;
-    if (batch.column_mapping.fields) return batch.column_mapping.fields;
-    if (typeof batch.column_mapping === 'object') return Object.entries(batch.column_mapping);
+    if (!safeBatch.column_mapping) return null;
+    if (Array.isArray(safeBatch.column_mapping)) return safeBatch.column_mapping;
+    if (safeBatch.column_mapping.fields) return safeBatch.column_mapping.fields;
+    if (typeof safeBatch.column_mapping === 'object') return Object.entries(safeBatch.column_mapping);
     return null;
-  }, [batch.column_mapping]);
+  }, [safeBatch.column_mapping]);
 
   const duration = useMemo(() => {
-    if (!batch.created_date) return null;
-    const end = batch.completed_at || batch.paused_at || batch.cancelled_at || batch.updated_date;
+    if (!safeBatch.created_date) return null;
+    const end = safeBatch.completed_at || safeBatch.paused_at || safeBatch.cancelled_at || safeBatch.updated_date;
     if (!end) return null;
-    const ms = new Date(end) - new Date(batch.created_date);
+    const ms = new Date(end) - new Date(safeBatch.created_date);
     if (ms < 0) return null;
     const secs = Math.floor(ms / 1000);
     if (secs < 60) return `${secs}s`;
@@ -169,7 +167,9 @@ export default function BatchDetailPanel({ batch }) {
     if (mins < 60) return `${mins}m ${remSecs}s`;
     const hrs = Math.floor(mins / 60);
     return `${hrs}h ${mins % 60}m`;
-  }, [batch]);
+  }, [safeBatch]);
+
+  if (!batch) return null;
 
   return (
     <div className="space-y-5 mt-2">
