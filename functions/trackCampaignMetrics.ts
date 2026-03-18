@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type MessageUpdate = {
+  status?: 'opened' | 'responded' | 'bounced';
+  opened_at?: string;
+  responded_at?: string;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -27,7 +33,7 @@ Deno.serve(async (req) => {
       }
 
       const message = messages[0];
-      const updateData = {};
+      const updateData: MessageUpdate = {};
 
       if (action === 'opened') {
         updateData.status = 'opened';

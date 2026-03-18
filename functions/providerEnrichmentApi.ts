@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ProviderEnrichmentPayload = {
+    npi?: string;
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        let payload = {};
+        let payload: ProviderEnrichmentPayload = {};
         try {
             payload = await req.json();
         } catch (e) {
