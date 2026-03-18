@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import {
-  Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
-  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database, Wrench, HelpCircle, Server
+  Menu, X, LayoutDashboard, Upload, Users, ListCheck, Settings,
+  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, Wrench, HelpCircle, Server
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';

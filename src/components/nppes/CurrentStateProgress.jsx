@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Users, RefreshCw, FileCheck } from 'lucide-react';
+import { Loader2, Users, RefreshCw, FileCheck } from 'lucide-react';
 
 const STATE_ZIP_PREFIXES = {
   AL: ['35','36'], AK: ['99'], AZ: ['85','86'], AR: ['71','72','75'],

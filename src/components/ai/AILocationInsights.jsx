@@ -4,9 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { base44 } from '@/api/base44Client';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
-import { MapPin, Loader2, Sparkles, TrendingUp, Users, ShieldAlert, ExternalLink } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Users, ShieldAlert } from 'lucide-react';
 
 export default function AILocationInsights({ location, coProviders = [], associatedProvider, taxonomies = [], utilizations = [], referrals = [] }) {
   const [results, setResults] = useState(null);

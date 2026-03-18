@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, ShieldAlert, TrendingDown, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
+import { Loader2, Sparkles, ShieldAlert, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
 
 const SEVERITY_STYLES = {
   critical: 'bg-red-500/15 text-red-400 border-red-500/30',

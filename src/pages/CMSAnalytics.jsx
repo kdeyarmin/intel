@@ -2,10 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, Building2, Heart, Users, TrendingUp, Activity } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 
 import CMSKPIRow from '../components/cmsAnalytics/CMSKPIRow';
 import MAEnrollmentChart from '../components/cmsAnalytics/MAEnrollmentChart';

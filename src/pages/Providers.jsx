@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download, Sparkles, Users } from 'lucide-react';
+import { Save, Download, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import TypeAheadSearch from '../components/search/TypeAheadSearch';
 import ProviderAdvancedFilters from '../components/filters/ProviderAdvancedFilters';

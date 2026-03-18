@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, PieChart, DollarSign, Users, Target } from 'lucide-react';
+import { Loader2, PieChart, DollarSign } from 'lucide-react';
 
 export default function AISegmentationTab({ campaigns = [], providers = [], scores = [], referrals = [], locations = [], taxonomies = [] }) {
   const [loading, setLoading] = useState(false);

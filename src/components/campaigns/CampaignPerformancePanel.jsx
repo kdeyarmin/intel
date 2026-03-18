@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Eye, MessageSquare, AlertTriangle, UserCheck, TrendingUp, DollarSign } from 'lucide-react';
+import { Loader2, Mail, Eye, MessageSquare, AlertTriangle, UserCheck, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const FUNNEL_COLORS = ['#06b6d4', '#3b82f6', '#22c55e', '#eab308', '#ef4444'];

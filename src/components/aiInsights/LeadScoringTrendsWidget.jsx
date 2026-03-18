@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Target, ArrowUpRight, ArrowDownRight, Minus, ExternalLink } from 'lucide-react';
+import { Target, ExternalLink } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const TIER_COLORS = { hot: '#ef4444', warm: '#f59e0b', medium: '#3b82f6', low: '#94a3b8' };

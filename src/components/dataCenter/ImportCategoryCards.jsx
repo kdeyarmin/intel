@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Activity, Building2, FileText, BarChart3, Clock, CalendarClock } from 'lucide-react';
+import { Users, Activity, Building2, FileText, Clock, CalendarClock } from 'lucide-react';
 import { format, formatDistanceToNow, addMonths } from 'date-fns';
 
 const IMPORT_CATEGORIES = [

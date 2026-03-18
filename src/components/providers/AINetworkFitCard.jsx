@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, Network, TrendingUp, Users, MapPin, Target } from 'lucide-react';
+import { Loader2, Sparkles, Network, TrendingUp, Users, Target } from 'lucide-react';
 
 export default function AINetworkFitCard({ provider, taxonomy = [], utilization, referrals, score, locations = [] }) {
   const [loading, setLoading] = useState(false);

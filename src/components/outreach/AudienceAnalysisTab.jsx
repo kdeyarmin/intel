@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Users, MapPin, Stethoscope, Building2, TrendingUp } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 
 export default function AudienceAnalysisTab({
   loading: externalLoading,

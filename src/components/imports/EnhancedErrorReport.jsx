@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import {
   AlertTriangle, Download, Search, ChevronDown, ChevronRight,
-  Lightbulb, Copy, FileText, Filter, XCircle, CheckCircle2,
-  FileWarning, Clock, Database
+  Lightbulb, Copy, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, groupErrors } from './errorCategories';

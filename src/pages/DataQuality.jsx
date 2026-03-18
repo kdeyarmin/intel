@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShieldCheck, Play, Loader2, AlertTriangle, CheckCircle,
-  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot, MapPin, Copy
+  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot
 } from 'lucide-react';
 import QualityScoreCard from '../components/dataQuality/QualityScoreCard';
 import RuleResultsTable from '../components/dataQuality/RuleResultsTable';
