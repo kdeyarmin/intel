@@ -29,19 +29,39 @@ const DATASET_LABELS = {
   outreach_metrics: 'Outreach Metrics',
 };
 
-function buildFilterQuery(filters) {
-  const query = {};
+type ReportFilters = {
+  year?: string | number;
+  state?: string;
+  hospital_type?: string;
+  table_name?: string;
+};
+
+type FilterQuery = {
+  data_year?: number;
+  state?: string;
+  hospital_type?: string;
+  table_name?: string;
+};
+
+type AggregatedRow = {
+  _group: string;
+  _count: number;
+  [key: string]: string | number;
+};
+
+function buildFilterQuery(filters: ReportFilters | null | undefined) {
+  const query: FilterQuery = {};
   if (!filters) return query;
-  if (filters.year) query.data_year = parseInt(filters.year);
+  if (filters.year) query.data_year = parseInt(String(filters.year), 10);
   if (filters.state) query.state = filters.state;
   if (filters.hospital_type) query.hospital_type = filters.hospital_type;
   if (filters.table_name) query.table_name = filters.table_name;
   return query;
 }
 
-function aggregateData(rows, metrics, groupBy) {
+function aggregateData(rows, metrics, groupBy): AggregatedRow[] {
   if (!groupBy || !metrics.length) return [];
-  const groups = {};
+  const groups: Record<string, AggregatedRow> = {};
   for (const row of rows) {
     const key = String(row[groupBy] || 'Unknown');
     if (!groups[key]) {
@@ -51,7 +71,7 @@ function aggregateData(rows, metrics, groupBy) {
     groups[key]._count++;
     for (const m of metrics) {
       const val = parseFloat(row[m]);
-      if (!isNaN(val)) groups[key][m] += val;
+      if (!isNaN(val)) groups[key][m] = Number(groups[key][m] || 0) + val;
     }
   }
   return Object.values(groups).sort((a, b) => b._count - a._count);
@@ -205,7 +225,7 @@ Deno.serve(async (req) => {
 function checkIfDue(report, now) {
   if (!report.last_run_at) return true;
   const lastRun = new Date(report.last_run_at);
-  const hoursSince = (now - lastRun) / (1000 * 60 * 60);
+  const hoursSince = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60);
 
   if (report.frequency === 'daily') return hoursSince >= 20;
   if (report.frequency === 'weekly') return hoursSince >= 144;

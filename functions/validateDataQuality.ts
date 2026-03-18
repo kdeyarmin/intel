@@ -1,5 +1,37 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type DuplicateNpiIssue = {
+  npi: string;
+  ids: string[];
+  count: number;
+};
+
+type DataQualityIssues = {
+  providers: {
+    missingRequired: string[];
+    invalidNPI: string[];
+    invalidPhone: string[];
+    duplicateNPIs: DuplicateNpiIssue[];
+  };
+  locations: {
+    missingRequired: string[];
+    invalidPhone: string[];
+    missingCity: string[];
+    missingState: string[];
+  };
+  summary: {
+    totalProviders: number;
+    totalLocations: number;
+    totalIssues: number;
+    qualityScore: number;
+  };
+  ai_anomalies: Array<{
+    description?: string;
+    severity?: string;
+    affected_npis?: string[];
+  }>;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -13,7 +45,7 @@ Deno.serve(async (req) => {
     const providers = await base44.entities.Provider.list('', 5000);
     const locations = await base44.entities.ProviderLocation.list('', 5000);
 
-    const issues = {
+    const issues: DataQualityIssues = {
       providers: {
         missingRequired: [],
         invalidNPI: [],
@@ -31,12 +63,13 @@ Deno.serve(async (req) => {
         totalLocations: locations.length,
         totalIssues: 0,
         qualityScore: 100
-      }
+      },
+      ai_anomalies: []
     };
 
     // Validate Providers
     const npiSet = new Set();
-    const npiDuplicates = {};
+    const npiDuplicates: Record<string, string[]> = {};
 
     providers.forEach(p => {
       // Check for missing required fields

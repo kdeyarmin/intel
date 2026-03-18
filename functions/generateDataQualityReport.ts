@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
-    if (!user?.role === 'admin') {
+    if (user?.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -48,6 +48,8 @@ Deno.serve(async (req) => {
     // Deactivated provider check
     const deactivatedCount = providers.filter(p => p.status === 'Deactivated').length;
 
+    const providerCount = Math.max(1, providers.length);
+
     const reportData = {
       generated_at: new Date().toISOString(),
       period: 'weekly',
@@ -57,25 +59,25 @@ Deno.serve(async (req) => {
       referral_coverage: {
         total_providers: providers.length,
         with_referrals: referralCoverage,
-        coverage_percent: Math.round((referralCoverage / Math.max(1, providers.length)) * 100),
+        coverage_percent: Math.round((referralCoverage / providerCount) * 100),
       },
       utilization_coverage: {
         total_providers: providers.length,
         with_utilization: utilizationCoverage,
-        coverage_percent: Math.round((utilizationCoverage / Math.max(1, providers.length)) * 100),
+        coverage_percent: Math.round((utilizationCoverage / providerCount) * 100),
       },
       email_quality: {
         ...emailCompleteness,
-        completeness_percent: Math.round((emailCompleteness.with_email / Math.max(1, emailCompleteness.total)) * 100),
-        validation_percent: Math.round((emailCompleteness.with_validation / Math.max(1, emailCompleteness.total)) * 100),
-        valid_percent: Math.round((emailCompleteness.valid_emails / Math.max(1, emailCompleteness.total)) * 100),
+        completeness_percent: Math.round((emailCompleteness.with_email / providerCount) * 100),
+        validation_percent: Math.round((emailCompleteness.with_validation / providerCount) * 100),
+        valid_percent: Math.round((emailCompleteness.valid_emails / providerCount) * 100),
       },
       deactivated_providers: deactivatedCount,
       data_quality_score: calculateQualityScore(
         providerMetrics.field_completeness,
         locationMetrics.field_completeness,
-        emailCompleteness.with_email / providers.length,
-        referralCoverage / providers.length
+        emailCompleteness.with_email / providerCount,
+        referralCoverage / providerCount
       ),
     };
 
@@ -111,7 +113,7 @@ Deno.serve(async (req) => {
 function calculateCompleteness(records, requiredFields) {
   if (!records.length) return { total_records: 0, field_completeness: 0, fields: {} };
 
-  const fieldStats = {};
+  const fieldStats: Record<string, { present: number; percent: number }> = {};
   requiredFields.forEach(field => {
     const withField = records.filter(r => r[field] && String(r[field]).trim()).length;
     fieldStats[field] = {
@@ -120,7 +122,10 @@ function calculateCompleteness(records, requiredFields) {
     };
   });
 
-  const avgCompleteness = Object.values(fieldStats).reduce((sum, f) => sum + f.percent, 0) / requiredFields.length;
+  const avgCompleteness = Object.values(fieldStats).reduce(
+    (sum, field) => sum + field.percent,
+    0
+  ) / requiredFields.length;
 
   return {
     total_records: records.length,

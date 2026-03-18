@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,11 +24,11 @@ Deno.serve(async (req) => {
       });
 
       if (existingAnalysis.length > 0) {
-        const latest = existingAnalysis.sort((a, b) => 
-          new Date(b.analysis_date) - new Date(a.analysis_date)
+        const latest = existingAnalysis.sort((a, b) =>
+          getTimestamp(b.analysis_date) - getTimestamp(a.analysis_date)
         )[0];
 
-        const daysSince = (Date.now() - new Date(latest.analysis_date)) / (1000 * 60 * 60 * 24);
+        const daysSince = (Date.now() - getTimestamp(latest.analysis_date)) / (1000 * 60 * 60 * 24);
         if (daysSince < 30) {
           return Response.json({ 
             message: 'Using cached analysis',

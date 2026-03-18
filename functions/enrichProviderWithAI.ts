@@ -1,5 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type AIProviderUpdate = {
+  ai_enrichment_timestamp: string;
+  ai_enrichment_notes: any;
+  completeness_score: number;
+  ai_category: any;
+  ai_outreach_score: any;
+  ai_profile_summary: any;
+  website?: string;
+  website_validated?: boolean;
+  credential?: string;
+  ai_enrichment_status?: string;
+  ai_enrichment_fields?: string[];
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -95,7 +109,7 @@ Return ONLY valid JSON with no markdown formatting.`;
     });
 
     // Prepare update object
-    const updateData = {
+    const updateData: AIProviderUpdate = {
       ai_enrichment_timestamp: new Date().toISOString(),
       ai_enrichment_notes: enrichmentData.notes,
       completeness_score: calculateCompleteness(provider, enrichmentData),

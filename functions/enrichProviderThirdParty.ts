@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ThirdPartyProviderUpdates = {
+  linkedin_url?: string;
+  twitter_url?: string;
+  firmographics?: Record<string, unknown>;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -176,7 +182,7 @@ Only return information you can verify from public sources. Be specific with hos
           const existingProviders = await base44.asServiceRole.entities.Provider.filter({ npi });
           if (existingProviders.length > 0) {
             const prov = existingProviders[0];
-            const updates = {};
+            const updates: ThirdPartyProviderUpdates = {};
             if (enrichmentDetails.linkedin_url && !prov.linkedin_url) updates.linkedin_url = enrichmentDetails.linkedin_url;
             if (enrichmentDetails.twitter_url && !prov.twitter_url) updates.twitter_url = enrichmentDetails.twitter_url;
             if (enrichmentDetails.firmographics && (!prov.firmographics || Object.keys(prov.firmographics).length === 0)) {

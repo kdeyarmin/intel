@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
+type ErrorRateBucket = {
+    type: string;
+    totalRows: number;
+    invalidRows: number;
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -50,7 +56,7 @@ Deno.serve(async (req) => {
         // 2. Recent Error Rates by Import Type
         const recentBatches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 200);
         
-        const errorRatesByType = {};
+        const errorRatesByType: Record<string, ErrorRateBucket> = {};
         
         recentBatches.forEach(b => {
             if (!b.import_type) return;

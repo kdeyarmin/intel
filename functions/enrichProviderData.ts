@@ -1,5 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ProviderEnrichmentUpdate = {
+    entity_type: string;
+    status: string;
+    last_update_date: string;
+    needs_nppes_enrichment: boolean;
+    first_name?: string;
+    last_name?: string;
+    middle_name?: string;
+    credential?: string;
+    gender?: string;
+    organization_name?: string;
+    enumeration_date?: string;
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -62,7 +76,7 @@ Deno.serve(async (req) => {
                 const taxonomies = nppesData.taxonomies || [];
 
                 // Update Provider
-                const providerUpdate = {
+                const providerUpdate: ProviderEnrichmentUpdate = {
                     entity_type: nppesData.enumeration_type === 'NPI-1' ? 'Individual' : 'Organization',
                     status: basicInfo.status === 'A' ? 'Active' : 'Deactivated',
                     last_update_date: new Date().toISOString(),
