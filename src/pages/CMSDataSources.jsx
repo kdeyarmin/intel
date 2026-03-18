@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Database, Plus, Edit2, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
+import { Database, Plus, Edit2, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 
 const IMPORT_TYPES = [
   "cms_utilization",
@@ -50,7 +50,7 @@ export default function CMSDataSources() {
     onSuccess: () => {
       toast.success('Configuration saved successfully');
       setIsModalOpen(false);
-      queryClient.invalidateQueries(['importScheduleConfigs']);
+      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
     },
     onError: (error) => {
       toast.error(`Error saving config: ${error.message}`);
@@ -63,7 +63,7 @@ export default function CMSDataSources() {
     },
     onSuccess: () => {
       toast.success('Configuration deleted');
-      queryClient.invalidateQueries(['importScheduleConfigs']);
+      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
     },
     onError: (error) => {
       toast.error(`Error deleting config: ${error.message}`);
@@ -79,7 +79,7 @@ export default function CMSDataSources() {
       } else {
         toast.error(res.data.config?.last_run_summary || 'URL validation failed');
       }
-      queryClient.invalidateQueries(['importScheduleConfigs']);
+      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
     } catch (e) {
       toast.error(`Failed to test URL: ${e.message}`);
     } finally {
@@ -327,7 +327,7 @@ export default function CMSDataSources() {
                       } else {
                         toast.error(res.data.error || "Failed to predict format", { id: toastId });
                       }
-                    } catch (e) {
+                    } catch {
                       toast.error("Error connecting to AI", { id: toastId });
                     }
                   }}

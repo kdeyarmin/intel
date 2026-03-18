@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Play, Pause, XCircle, Globe, Bot, Map, LayoutGrid, Clock, AlertTriangle, Database, ArrowDownToLine, RefreshCw, SkipForward, Activity } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import StateMap from '../components/nppes/StateMap';
-import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 import CrawlerMonitoring from '../components/nppes/CrawlerMonitoring';
@@ -27,7 +26,7 @@ const US_STATES = [
 export default function NPPESCrawler() {
   const [dryRun, setDryRun] = useState(false);
   const [skipCompleted, setSkipCompleted] = useState(true);
-  const [taxonomyFilter, setTaxonomyFilter] = useState('');
+  const [taxonomyFilter] = useState('');
   const [entityType, setEntityType] = useState('');
   const [concurrency, setConcurrency] = useState('3');
   
@@ -73,7 +72,7 @@ export default function NPPESCrawler() {
     } finally {
       setIsProcessingAction(false);
       refetchStatus();
-      queryClient.invalidateQueries(['nppesImportBatchesDash']);
+      queryClient.invalidateQueries({ queryKey: ['nppesImportBatchesDash'] });
     }
   };
 

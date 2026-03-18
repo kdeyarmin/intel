@@ -1,14 +1,22 @@
 import React, { useMemo } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Clock, Zap, TrendingUp, Users } from 'lucide-react';
 
 export default function SearchAllProgressTracker({ allRunProgress, remainingForRun, isRunningAll }) {
-  if (!allRunProgress) return null;
-
-  const { totalSearched, totalFound, batchNumber, status, startTime, batchTimes } = allRunProgress;
+  const {
+    totalSearched = 0,
+    totalFound = 0,
+    batchNumber = 0,
+    status,
+    startTime,
+    batchTimes
+  } = allRunProgress ?? {};
 
   const metrics = useMemo(() => {
+    if (!allRunProgress) {
+      return { throughput: 0, eta: null, avgBatchTime: 0, findRate: 0 };
+    }
+
     if (!startTime || totalSearched === 0) {
       return { throughput: 0, eta: null, avgBatchTime: 0, findRate: 0 };
     }
@@ -43,6 +51,7 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
   const isComplete = status === 'complete';
   const isStopped = status === 'stopped';
 
+  if (!allRunProgress) return null;
   if (!isActive && !isComplete && !isStopped) return null;
 
   return (

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { X, Send, Eye, MessageSquare, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const statusColors = {
   pending: 'bg-slate-100 text-slate-600',
@@ -31,7 +31,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
           const res = await base44.functions.invoke('generateHyperPersonalizedMessages', { campaign_id: campaign.id });
           if (res.data.success) {
               alert(`Generated ${res.data.generated} personalized messages!`);
-              queryClient.invalidateQueries(['outreachMessages', campaign.id]);
+              queryClient.invalidateQueries({ queryKey: ['outreachMessages', campaign.id] });
           } else {
               alert(res.data.message || 'No messages needed generation.');
           }
@@ -49,7 +49,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.OutreachMessage.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries(['outreachMessages', campaign.id]),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['outreachMessages', campaign.id] }),
   });
 
   const statusCounts = messages.reduce((acc, m) => {

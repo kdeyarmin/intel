@@ -30,23 +30,13 @@ export default function ProjectManagement() {
     }
   });
 
-  const applyAssignmentMutation = useMutation({
-    mutationFn: async ({ taskId, assigneeEmail }) => {
-      await base44.entities.CampaignTask.update(taskId, { assigned_to: assigneeEmail });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['campaignTasks']);
-      toast.success('Task reassigned successfully');
-    }
-  });
-
   const handleApplyAll = async (assignments) => {
     for (const a of assignments) {
       if (a.taskId && a.assigneeEmail) {
         await base44.entities.CampaignTask.update(a.taskId, { assigned_to: a.assigneeEmail });
       }
     }
-    queryClient.invalidateQueries(['campaignTasks']);
+    queryClient.invalidateQueries({ queryKey: ['campaignTasks'] });
     toast.success('Applied all AI task assignments');
   };
 

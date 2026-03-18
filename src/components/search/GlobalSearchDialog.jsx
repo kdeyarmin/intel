@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { pagesConfig } from '@/pages.config';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
   Stethoscope, ListChecks, FileBarChart2, ArrowUp, ArrowDown
@@ -28,22 +29,14 @@ const QUICK_FILTERS = [
   { label: 'High-score leads', search: 'high', type: 'shortcut' },
 ];
 
-const PAGES = [
-  { name: 'Dashboard', page: 'Dashboard' },
-  { name: 'Providers', page: 'Providers' },
-  { name: 'Locations', page: 'Locations' },
-  { name: 'Utilization', page: 'Utilization' },
-  { name: 'Referrals', page: 'Referrals' },
-  { name: 'CMS Analytics', page: 'CMSAnalytics' },
-  { name: 'Custom Reports', page: 'CustomReports' },
-  { name: 'Lead Lists', page: 'LeadLists' },
-  { name: 'Data Quality', page: 'DataQuality' },
-  { name: 'Data Imports', page: 'DataImports' },
-  { name: 'Location Analytics', page: 'LocationAnalytics' },
-  { name: 'Scoring Rules', page: 'ScoringRules' },
-  { name: 'Audit Log', page: 'AuditLog' },
-  { name: 'Error Reports', page: 'ErrorReports' },
-];
+function formatPageLabel(page) {
+  return page
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\bAi\b/g, 'AI')
+    .replace(/\bCms\b/g, 'CMS')
+    .replace(/\bNppes\b/g, 'NPPES')
+    .trim();
+}
 
 export default function GlobalSearchDialog({ open, onOpenChange }) {
   const navigate = useNavigate();
@@ -106,13 +99,20 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     return () => document.removeEventListener('keydown', handler);
   }, [onOpenChange]);
 
+  const searchablePages = useMemo(() => (
+    Object.keys(pagesConfig.Pages).map((page) => ({
+      name: formatPageLabel(page),
+      page,
+    }))
+  ), []);
+
   const allResults = useMemo(() => {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
     const items = [];
 
     // Pages
-    PAGES.forEach(p => {
+    searchablePages.forEach(p => {
       if (p.name.toLowerCase().includes(q)) {
         items.push({ type: 'Page', label: p.name, sublabel: 'Navigate to page', url: createPageUrl(p.page) });
       }
@@ -202,7 +202,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     });
 
     return items;
-  }, [query, providers, locations, taxonomies, utilizations, referrals, leadLists]);
+  }, [query, searchablePages, providers, locations, taxonomies, utilizations, referrals, leadLists]);
 
   const categories = useMemo(() => {
     const counts = {};

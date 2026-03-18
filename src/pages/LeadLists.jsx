@@ -3,9 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -17,14 +14,11 @@ import LeadListTable from '../components/leadlists/LeadListTable';
 import AddProviderDialog from '../components/leadlists/AddProviderDialog';
 import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
 import LeadListStatusExport from '../components/leadlists/LeadListStatusExport';
-import { exportCSV, exportExcel, exportPDF } from '../components/exports/exportUtils';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function LeadLists() {
-  const [viewingListId, setViewingListId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: lists = [], isLoading } = useQuery({
@@ -34,7 +28,7 @@ export default function LeadLists() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeadList.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(['leadLists']),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leadLists'] }),
   });
 
   const handleDelete = async (listId) => {
@@ -132,7 +126,6 @@ function ViewListDialog({ listId, listName }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
-  const queryClient = useQueryClient();
 
   React.useEffect(() => {
     loadLeads();

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Save, RotateCcw, Zap, Clock, RefreshCw, Server, Users, Building2, MapPin } from 'lucide-react';
+import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '../components/shared/PageHeader';
 
@@ -24,23 +24,28 @@ const DEFAULTS = {
   request_timeout_ms: 15000,
   crawl_entity_types: ['NPI-1', 'NPI-2'],
   max_crawl_duration_sec: 160,
+  auto_retry_enabled: false,
+  retry_delay_minutes: 60,
+  retry_escalation_threshold: 3,
+  escalation_tags: ['manual_review_required'],
+  max_pages_per_query: 6,
+  max_skip: 1000,
+  concurrency: 4,
+  crawl_all_states: true,
+  selected_states: [],
 };
 
+const createDefaultForm = () => ({
+  ...DEFAULTS,
+  crawl_entity_types: [...DEFAULTS.crawl_entity_types],
+  escalation_tags: [...DEFAULTS.escalation_tags],
+  selected_states: [...DEFAULTS.selected_states],
+});
+
 export default function NPPESCrawlerSettings() {
-  const [form, setForm] = useState(DEFAULTS);
+  const [form, setForm] = useState(createDefaultForm);
   const [hasChanges, setHasChanges] = useState(false);
   const queryClient = useQueryClient();
-
-  // Add new defaults
-  const extendedDefaults = {
-    ...DEFAULTS,
-    auto_retry_enabled: false,
-    retry_delay_minutes: 60,
-    retry_escalation_threshold: 3,
-    escalation_tags: ['manual_review_required'],
-    max_pages_per_query: 6,
-    max_skip: 1000,
-  };
 
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['crawlerConfig'],
@@ -52,6 +57,7 @@ export default function NPPESCrawlerSettings() {
   useEffect(() => {
     if (existingConfig) {
       setForm({
+        ...createDefaultForm(),
         config_key: 'default',
         api_batch_size: existingConfig.api_batch_size ?? DEFAULTS.api_batch_size,
         import_chunk_size: existingConfig.import_chunk_size ?? DEFAULTS.import_chunk_size,
@@ -61,15 +67,15 @@ export default function NPPESCrawlerSettings() {
         request_timeout_ms: existingConfig.request_timeout_ms ?? DEFAULTS.request_timeout_ms,
         crawl_entity_types: existingConfig.crawl_entity_types ?? DEFAULTS.crawl_entity_types,
         max_crawl_duration_sec: existingConfig.max_crawl_duration_sec ?? DEFAULTS.max_crawl_duration_sec,
-        auto_retry_enabled: existingConfig.auto_retry_enabled ?? false,
-        retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
-        retry_escalation_threshold: existingConfig.retry_escalation_threshold ?? 3,
-        escalation_tags: existingConfig.escalation_tags ?? ['manual_review_required'],
+        auto_retry_enabled: existingConfig.auto_retry_enabled ?? DEFAULTS.auto_retry_enabled,
+        retry_delay_minutes: existingConfig.retry_delay_minutes ?? DEFAULTS.retry_delay_minutes,
+        retry_escalation_threshold: existingConfig.retry_escalation_threshold ?? DEFAULTS.retry_escalation_threshold,
+        escalation_tags: existingConfig.escalation_tags ?? DEFAULTS.escalation_tags,
         max_pages_per_query: existingConfig.max_pages_per_query ?? DEFAULTS.max_pages_per_query,
         max_skip: existingConfig.max_skip ?? DEFAULTS.max_skip,
-        concurrency: existingConfig.concurrency ?? 4,
-        crawl_all_states: existingConfig.crawl_all_states ?? true,
-        selected_states: existingConfig.selected_states ?? [],
+        concurrency: existingConfig.concurrency ?? DEFAULTS.concurrency,
+        crawl_all_states: existingConfig.crawl_all_states ?? DEFAULTS.crawl_all_states,
+        selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
   }, [existingConfig]);
@@ -83,7 +89,7 @@ export default function NPPESCrawlerSettings() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['crawlerConfig']);
+      queryClient.invalidateQueries({ queryKey: ['crawlerConfig'] });
       setHasChanges(false);
       toast.success('Crawler settings saved');
     },
@@ -104,7 +110,7 @@ export default function NPPESCrawlerSettings() {
   };
 
   const resetDefaults = () => {
-    setForm(DEFAULTS);
+    setForm(createDefaultForm());
     setHasChanges(true);
   };
 

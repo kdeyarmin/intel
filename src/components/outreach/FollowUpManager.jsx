@@ -8,18 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RefreshCw, Sparkles, Send, Clock, Eye, MessageSquare, Mail, ChevronRight, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Sparkles, Eye, Mail, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { formatDateET } from '../utils/dateUtils';
 import { toast } from 'sonner';
 import AIFollowUpGenerator from './AIFollowUpGenerator';
 import AutoFollowUpSequencer from './AutoFollowUpSequencer';
-
-const STATUS_COLORS = {
-  pending: 'bg-slate-100 text-slate-600',
-  queued: 'bg-blue-100 text-blue-700',
-  sent: 'bg-emerald-100 text-emerald-700',
-  skipped: 'bg-slate-100 text-slate-400',
-};
 
 export default function FollowUpManager({ campaigns = [], providers = [] }) {
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
@@ -96,8 +89,8 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
       return fuCampaign;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['outreachCampaigns']);
-      queryClient.invalidateQueries(['followUpCampaigns']);
+      queryClient.invalidateQueries({ queryKey: ['outreachCampaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['followUpCampaigns'] });
       setSendingFollowUp(false);
       setGeneratorOpen(false);
       toast.success('Follow-up campaign created');
