@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronRight, Home } from 'lucide-react';
 
+/**
+ * @param {{
+ *   title: string;
+ *   subtitle?: string;
+ *   icon?: React.ComponentType<{ className?: string }>;
+ *   breadcrumbs?: Array<{ label: string; page?: string; path?: string }>;
+ *   actions?: React.ReactNode;
+ * }} props
+ */
 export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, actions }) {
   return (
     <div className="mb-6">
