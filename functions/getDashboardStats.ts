@@ -12,6 +12,7 @@ Deno.serve(async (req) => {
         // Avoid loading millions of records into memory! Use targeted filters for counts where possible.
         // We will load a smaller sample for basic counts of other entities to avoid OOM
         const SMALL_LIMIT = 5000;
+        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', SMALL_LIMIT);
         const locations = await base44.asServiceRole.entities.ProviderLocation.filter({}, undefined, SMALL_LIMIT);
         const referrals = await base44.asServiceRole.entities.CMSReferral.filter({}, undefined, SMALL_LIMIT);
         const utilization = await base44.asServiceRole.entities.CMSUtilization.filter({}, undefined, SMALL_LIMIT);
@@ -53,15 +54,20 @@ Deno.serve(async (req) => {
             }
         }
 
-        const hasManyProviders = true;
-        const hasAnyTruncated = true;
-
-        // Note: For display, we hardcode to the known large size if we can't reliably count it. 
-        // 4,194,383 was previously the expected correct count from imports.
-        let totalProviders = 4194383; 
+        const hasManyProviders = (
+            providers.length === SMALL_LIMIT ||
+            providersWithEmail.length === LIMIT ||
+            providersSearched.length === LIMIT
+        );
+        const hasAnyTruncated = hasManyProviders || [locations, referrals, utilization, taxonomies].some(
+            records => records.length === SMALL_LIMIT
+        );
+        const totalProviders = hasManyProviders
+            ? Math.max(providers.length, providersWithEmail.length, providersSearched.length)
+            : providers.length;
 
         // Top states
-        const stateCounts = {};
+        const stateCounts: Record<string, number> = {};
         for (const loc of locations) {
             if (loc.state) {
                 const st = loc.state.trim().toUpperCase();
