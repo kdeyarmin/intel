@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, FileText, Settings,
-  Shield, ShieldCheck, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database, Wrench, HelpCircle
+  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Sparkles, Mail,
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, Building2, TrendingUp, Network, Megaphone, Target, Calendar, Database, Wrench, HelpCircle, Server
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
 import NotificationBell from '../shared/NotificationBell';
+import BillingStatusWidget from './BillingStatusWidget';
 
 const NAV_SECTIONS = [
   {
@@ -30,6 +31,7 @@ const NAV_SECTIONS = [
   {
     label: 'Sales & Outreach',
     items: [
+      { name: 'Project Management', icon: Bot, page: 'ProjectManagement', roles: ['admin', 'user'] },
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Email Bot', icon: Mail, page: 'EmailSearchBot', roles: ['admin'] },
       { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin'] },
@@ -48,11 +50,16 @@ const NAV_SECTIONS = [
   {
     label: 'Admin',
     items: [
+      { name: 'Data Health', icon: Activity, page: 'DataHealthDashboard', roles: ['admin'] },
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
+      { name: 'CMS Data Sources', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
+      { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
       { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
+      { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
       { name: 'Enrichment', icon: Database, page: 'EnrichmentHub', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
+      { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin'] },
       { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
@@ -220,6 +227,11 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
+        {/* Billing Status Widget */}
+        {user?.role === 'admin' && (
+          <BillingStatusWidget sidebarOpen={sidebarOpen} />
+        )}
+
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60">
           {sidebarOpen && (
@@ -260,7 +272,7 @@ export default function AppLayout({ children, currentPageName }) {
       </div>
 
       {/* Main content */}
-      <main ref={mainRef} className="flex-1 overflow-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0">
+      <main ref={mainRef} className="flex-1 overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0 w-full">
         <div className="flex-1">
           {children}
         </div>

@@ -43,6 +43,7 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
+import ImportSpeedView from '../components/imports/ImportSpeedView';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -75,6 +76,14 @@ const IMPORT_TYPE_LABELS = {
   'medicare_ma_inpatient': 'Medicare MA Inpatient',
   'medicare_part_d_stats': 'Medicare Part D Stats',
   'medicare_snf_stats': 'Medicare SNF Stats',
+  'medical_equipment_suppliers': 'Medical Equipment Suppliers',
+  'hospice_provider_measures': 'Hospice Provider Measures',
+  'hospice_state_measures': 'Hospice State Measures',
+  'hospice_national_measures': 'Hospice National Measures',
+  'snf_provider_measures': 'SNF Provider Measures',
+  'nursing_home_providers': 'Nursing Home Providers',
+  'nursing_home_deficiencies': 'Nursing Home Deficiencies',
+  'home_health_national_measures': 'Home Health National Measures',
 };
 
 export default function ImportMonitoring() {
@@ -509,6 +518,15 @@ export default function ImportMonitoring() {
           <Bot className="w-3.5 h-3.5 inline mr-1" />
           AI Manager
         </button>
+        <button
+          onClick={() => setActiveTab('performance')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'performance' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
+          Performance
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -537,6 +555,10 @@ export default function ImportMonitoring() {
         <div className="h-[600px] border border-slate-700/50 rounded-xl overflow-hidden bg-[#141d30]">
           <ImportAgentChat />
         </div>
+      )}
+
+      {activeTab === 'performance' && (
+        <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
       )}
 
       {activeTab === 'monitoring' && <>
@@ -1050,7 +1072,14 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
     'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
     'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
-    'medicare_snf_stats': 'Medicare SNF Stats',
+    'medicare_snf_stats': 'Medicare SNF Stats', 'medical_equipment_suppliers': 'Medical Equipment Suppliers',
+    'hospice_provider_measures': 'Hospice Provider Measures',
+    'hospice_state_measures': 'Hospice State Measures',
+    'hospice_national_measures': 'Hospice National Measures',
+    'snf_provider_measures': 'SNF Provider Measures',
+    'nursing_home_providers': 'Nursing Home Providers',
+    'nursing_home_deficiencies': 'Nursing Home Deficiencies',
+    'home_health_national_measures': 'Home Health National Measures',
   };
 
   const statusColors = {

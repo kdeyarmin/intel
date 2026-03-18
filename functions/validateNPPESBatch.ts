@@ -34,13 +34,12 @@ Deno.serve(async (req) => {
                 
                 if (pctChange > 15) { // 15% variance threshold
                     alertsToCreate.push({
-                        rule_id: 'nppes_consistency', rule_name: 'Significant Variance from Previous Run',
-                        category: 'consistency', severity: pctChange > 50 ? 'critical' : 'high', 
-                        entity_type: 'ImportBatch', entity_id: batch_id, field_name: 'valid_rows',
-                        current_value: String(currentCount),
-                        status: 'open', scan_batch_id: scanBatchId,
-                        summary: `${state} providers count changed by ${pctChange.toFixed(1)}% compared to previous run (${prevCount} -> ${currentCount})`,
-                        affected_count: 1
+                        alert_type: 'data_inconsistency',
+                        severity: pctChange > 50 ? 'critical' : 'high',
+                        title: 'Significant Variance from Previous Run',
+                        description: `${state} providers count changed by ${pctChange.toFixed(1)}% compared to previous run (${prevCount} -> ${currentCount}) in batch ${batch_id}`,
+                        status: 'new',
+                        action_required: pctChange > 50
                     });
                 }
             }
@@ -50,28 +49,88 @@ Deno.serve(async (req) => {
         // Check a sample of recently updated providers
         const recentProviders = await base44.asServiceRole.entities.Provider.list('-updated_date', 200);
         
+        let invalidNpiCount = 0;
+        let missingNameCount = 0;
         for (const p of recentProviders) {
             if (!p.npi || !/^\d{10}$/.test(p.npi)) {
-                alertsToCreate.push({
-                    rule_id: 'invalid_npi', rule_name: 'Invalid NPI Format', category: 'accuracy', severity: 'critical',
-                    entity_type: 'Provider', entity_id: p.id, npi: p.npi, field_name: 'npi',
-                    current_value: p.npi || '(empty)', status: 'open', scan_batch_id: scanBatchId,
-                    summary: `Invalid NPI format imported: ${p.npi}`, affected_count: 1
-                });
+                invalidNpiCount++;
+            }
+            if (p.entity_type === 'Individual' && !p.first_name && !p.last_name) {
+                missingNameCount++;
+            } else if (p.entity_type === 'Organization' && !p.organization_name) {
+                missingNameCount++;
             }
         }
+        
+        if (invalidNpiCount > 0) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'critical',
+                title: 'Invalid NPI Format Detected',
+                description: `${invalidNpiCount} recent providers have invalid NPI formats.`,
+                status: 'new',
+                action_required: true
+            });
+        }
+        if (missingNameCount > 10) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'high',
+                title: 'Missing Provider Names',
+                description: `${missingNameCount} recent providers are missing core name fields.`,
+                status: 'new',
+                action_required: true
+            });
+        }
 
-        // Check a sample of recent locations for address completeness
+        // Check a sample of recent locations for address completeness and formats
         const recentLocations = await base44.asServiceRole.entities.ProviderLocation.list('-updated_date', 200);
+        let incompleteAddressCount = 0;
+        let invalidZipCount = 0;
+        let invalidPhoneCount = 0;
+        
         for (const l of recentLocations) {
             if (!l.address_1 || !l.city || !l.state || !l.zip) {
-                alertsToCreate.push({
-                    rule_id: 'incomplete_address', rule_name: 'Incomplete Address', category: 'completeness', severity: 'medium',
-                    entity_type: 'ProviderLocation', entity_id: l.id, npi: l.npi, field_name: 'address',
-                    current_value: `${l.address_1}, ${l.city}, ${l.state} ${l.zip}`, status: 'open', scan_batch_id: scanBatchId,
-                    summary: `Incomplete address for NPI: ${l.npi}`, affected_count: 1
-                });
+                incompleteAddressCount++;
             }
+            if (l.zip && !/^\d{5}(-\d{4})?$/.test(l.zip)) {
+                invalidZipCount++;
+            }
+            if (l.phone && l.phone.length > 0) {
+                const digits = l.phone.replace(/\D/g, '');
+                if (digits.length < 10) invalidPhoneCount++;
+            }
+        }
+        
+        if (incompleteAddressCount > 20) {
+            alertsToCreate.push({
+                alert_type: 'low_location_completeness',
+                severity: 'high',
+                title: 'High Volume of Incomplete Addresses',
+                description: `${incompleteAddressCount} recent locations missing core address fields.`,
+                status: 'new',
+                action_required: true
+            });
+        }
+        if (invalidZipCount > 5) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'medium',
+                title: 'Invalid ZIP Formats',
+                description: `${invalidZipCount} recent locations have invalid ZIP formats.`,
+                status: 'new',
+                action_required: false
+            });
+        }
+        if (invalidPhoneCount > 20) {
+            alertsToCreate.push({
+                alert_type: 'data_inconsistency',
+                severity: 'medium',
+                title: 'Invalid Phone Formats',
+                description: `${invalidPhoneCount} recent locations have invalid phone formats.`,
+                status: 'new',
+                action_required: false
+            });
         }
 
         // 3. Flagging anomalies using LLM
@@ -115,10 +174,12 @@ Return a list of flagged anomalies that might require manual review. For example
             if (aiRes?.anomalies?.length > 0) {
                 for (const anomaly of aiRes.anomalies) {
                     alertsToCreate.push({
-                        rule_id: 'ai_anomaly', rule_name: 'AI Detected Import Anomaly', category: 'anomaly', severity: anomaly.severity || 'medium',
-                        entity_type: 'ImportBatch', entity_id: batch_id,
-                        status: 'open', scan_batch_id: scanBatchId,
-                        summary: anomaly.description, affected_count: 1
+                        alert_type: 'new_issue_detected',
+                        severity: anomaly.severity || 'medium',
+                        title: 'AI Detected Import Anomaly',
+                        description: anomaly.description + ` (Batch ID: ${batch_id})`,
+                        status: 'new',
+                        action_required: true
                     });
                 }
             }
@@ -130,6 +191,15 @@ Return a list of flagged anomalies that might require manual review. For example
         if (alertsToCreate.length > 0) {
             const toCreate = alertsToCreate.slice(0, 50); // Cap at 50 to avoid payload issues
             await base44.asServiceRole.entities.DataQualityAlert.bulkCreate(toCreate);
+
+            // Flag/quarantine batch for manual review if there are high/critical severity alerts
+            const hasSevere = alertsToCreate.some(a => a.severity === 'high' || a.severity === 'critical');
+            if (hasSevere) {
+                const tags = batch.tags || [];
+                if (!tags.includes('manual_review_required')) tags.push('manual_review_required');
+                if (!tags.includes('quarantined')) tags.push('quarantined');
+                await base44.asServiceRole.entities.ImportBatch.update(batch_id, { tags });
+            }
         }
 
         return Response.json({ success: true, alerts_created: Math.min(alertsToCreate.length, 50) });

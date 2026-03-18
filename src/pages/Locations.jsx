@@ -81,7 +81,7 @@ export default function Locations() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Locations"
         subtitle={`${locations.length} total locations`}

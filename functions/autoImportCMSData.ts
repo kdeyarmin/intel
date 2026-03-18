@@ -1,16 +1,21 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-// Strict time budget: 45s to leave buffer before platform kills us
-const MAX_EXEC_MS = 40_000; // Reduced to 40s to be safer
-const FETCH_TIMEOUT_MS = 15_000;
-const PAGE_SIZE = 500; // Reduced page size for more frequent updates
-const BULK_SIZE = 50;
+// Strict time budget: 25s to leave buffer before platform 30s timeout kills us
+const MAX_EXEC_MS = 25_000; 
+const FETCH_TIMEOUT_MS = 10_000;
+const PAGE_SIZE = 300; // Reduced page size for more frequent updates
+const BULK_SIZE = 30;
 
 function isTimeUp(startTime) {
     return Date.now() - startTime > MAX_EXEC_MS;
 }
 
-async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
+async function fetchWithTimeout(url, startTime, defaultTimeoutMs = FETCH_TIMEOUT_MS) {
+    const remaining = startTime ? MAX_EXEC_MS - (Date.now() - startTime) : defaultTimeoutMs;
+    const timeoutMs = Math.min(defaultTimeoutMs, Math.max(100, remaining));
+    
+    if (timeoutMs <= 100) throw new Error('Time limit reached before fetch');
+    
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -35,8 +40,8 @@ Deno.serve(async (req) => {
             // Service role calls may not have a user context — that's OK
         }
         
-        // If there's a user, they must be admin. If no user, assume service role call.
-        if (user && user.role !== 'admin') {
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
@@ -50,7 +55,11 @@ Deno.serve(async (req) => {
         const validTypes = [
             'cms_order_referring', 'opt_out_physicians',
             'hospice_enrollments', 'home_health_enrollments',
-            'provider_service_utilization',
+            'provider_service_utilization', 'medical_equipment_suppliers',
+            'hospice_provider_measures', 'hospice_state_measures',
+            'hospice_national_measures', 'snf_provider_measures',
+            'nursing_home_providers', 'nursing_home_deficiencies',
+            'home_health_national_measures'
         ];
         if (!validTypes.includes(import_type)) {
             return Response.json({ error: `Invalid import type. Must be one of: ${validTypes.join(', ')}` }, { status: 400 });
@@ -120,9 +129,15 @@ Deno.serve(async (req) => {
 
         try {
             // Probe the URL to detect format
-            const probeUrl = file_url + (file_url.includes('?') ? '&' : '?') + '$limit=1';
+            const isCmsDataApi = file_url.includes('data-api/v1/dataset');
+            const isDkanApi = file_url.includes('provider-data/api');
+            let probeLimit = '$limit=1';
+            if (isCmsDataApi) probeLimit = 'size=1';
+            else if (isDkanApi) probeLimit = 'limit=1';
+            
+            const probeUrl = file_url + (file_url.includes('?') ? '&' : '?') + probeLimit;
             console.log(`Probing URL: ${probeUrl}`);
-            const probeResp = await fetchWithTimeout(probeUrl);
+            const probeResp = await fetchWithTimeout(probeUrl, startTime);
             if (!probeResp.ok) throw new Error(`Failed to fetch: ${probeResp.status} ${probeResp.statusText}`);
             const probeText = await probeResp.text();
 
@@ -140,13 +155,20 @@ Deno.serve(async (req) => {
 
             const isJsonApi = trimmedProbe.startsWith('[') || trimmedProbe.startsWith('{');
 
-            let totalProcessed = 0;
+            let totalProcessed = resume_offset || 0;
             let validRows = 0;
             let invalidRows = 0;
             let duplicateRows = 0;
             let importedCount = 0;
             let updatedCount = 0;
             let skippedCount = 0;
+            
+            const initialImported = batch.imported_rows || 0;
+            const initialUpdated = batch.updated_rows || 0;
+            const initialSkipped = batch.skipped_rows || 0;
+            const initialValid = batch.valid_rows || 0;
+            const initialInvalid = batch.invalid_rows || 0;
+            const initialDupes = batch.duplicate_rows || 0;
             const errorSamples = [];
             let columnMapping = {};
             let offset = resume_offset;
@@ -156,19 +178,33 @@ Deno.serve(async (req) => {
                 // Streaming page-by-page approach
                 while (!isTimeUp(startTime) && !reachedEnd) {
                     const separator = file_url.includes('?') ? '&' : '?';
-                    const pageUrl = `${file_url}${separator}$offset=${offset}&$limit=${PAGE_SIZE}`;
+                    const isCmsDataApi = file_url.includes('data-api/v1/dataset');
+                    const isDkanApi = file_url.includes('provider-data/api');
+                    let offsetParam, limitParam;
+                    if (isCmsDataApi) {
+                        offsetParam = `offset=${offset}`;
+                        limitParam = `size=${PAGE_SIZE}`;
+                    } else if (isDkanApi) {
+                        offsetParam = `offset=${offset}`;
+                        limitParam = `limit=${PAGE_SIZE}`;
+                    } else {
+                        offsetParam = `$offset=${offset}`;
+                        limitParam = `$limit=${PAGE_SIZE}`;
+                    }
+                    const pageUrl = `${file_url}${separator}${offsetParam}&${limitParam}`;
                     console.log(`Fetching offset ${offset}...`);
 
                     let pageResponse;
                     let fetchSuccess = false;
                     for (let fetchAttempt = 0; fetchAttempt < 3; fetchAttempt++) {
+                        if (isTimeUp(startTime)) break;
                         try {
-                            pageResponse = await fetchWithTimeout(pageUrl);
+                            pageResponse = await fetchWithTimeout(pageUrl, startTime);
                             if (pageResponse.ok) { fetchSuccess = true; break; }
                             if (pageResponse.status === 429 || pageResponse.status >= 500) {
                                 const wait = jitteredBackoff(fetchAttempt);
                                 console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset}, backing off ${Math.round(wait)}ms (attempt ${fetchAttempt + 1}/3)`);
-                                await delay(wait);
+                                await delay(wait, startTime);
                             } else {
                                 console.warn(`[fetch] HTTP ${pageResponse.status} at offset ${offset} (non-retryable)`);
                                 break;
@@ -177,7 +213,7 @@ Deno.serve(async (req) => {
                             if (fetchAttempt < 2) {
                                 const wait = jitteredBackoff(fetchAttempt);
                                 console.warn(`[fetch] Error at offset ${offset}: ${e.message}, backing off ${Math.round(wait)}ms`);
-                                await delay(wait);
+                                await delay(wait, startTime);
                             } else {
                                 console.warn(`[fetch] Failed after 3 attempts at offset ${offset}: ${e.message}`);
                             }
@@ -190,6 +226,9 @@ Deno.serve(async (req) => {
                     try { pageData = JSON.parse(pageText); } catch (e) {
                         console.warn(`JSON parse failed at offset ${offset}`);
                         break;
+                    }
+                    if (pageData && pageData.results && Array.isArray(pageData.results)) {
+                        pageData = pageData.results;
                     }
                     if (!Array.isArray(pageData) || pageData.length === 0) {
                         reachedEnd = true;
@@ -208,71 +247,86 @@ Deno.serve(async (req) => {
                     // Process page in chunks to allow granular resume
                     let pageProcessedRaw = 0;
                     const seenInPage = new Set();
+                    let abortOuter = false;
                     
                     for (let i = 0; i < pageData.length; i += BULK_SIZE) {
                         if (isTimeUp(startTime)) break;
 
                         const rawChunk = pageData.slice(i, i + BULK_SIZE);
                         const validDataChunk = [];
+                        let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
                         for (const row of rawChunk) {
-                            totalProcessed++;
                             const mapped = mapRowToEntity(row, import_type, year);
                             if (!mapped) {
-                                invalidRows++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Failed to map row' });
+                                chunkInvalid++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Failed to map row' });
                                 continue;
                             }
 
                             const dedupKey = getDedupKey(mapped, import_type);
                             if (!dedupKey) {
-                                invalidRows++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: totalProcessed, message: 'Missing required identifier' });
+                                chunkInvalid++;
+                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Missing required identifier' });
                                 continue;
                             }
 
-                            if (seenInPage.has(dedupKey)) { duplicateRows++; continue; }
+                            if (seenInPage.has(dedupKey)) { chunkDuplicate++; continue; }
                             seenInPage.add(dedupKey);
-                            validRows++;
+                            chunkValid++;
                             validDataChunk.push(mapped);
                         }
 
                         // Import this chunk
+                        let chunkAborted = false;
                         if (!dry_run && validDataChunk.length > 0) {
                             const result = await importChunk(base44, import_type, validDataChunk, startTime);
                             importedCount += result.imported;
                             updatedCount += result.updated;
                             skippedCount += result.skipped;
+                            if (result.aborted) {
+                                chunkAborted = true;
+                            }
                         }
                         
-                        // Increment offset by the number of raw rows we successfully processed/attempted
+                        if (chunkAborted) {
+                            abortOuter = true;
+                            break;
+                        }
+
+                        totalProcessed += rawChunk.length;
+                        validRows += chunkValid;
+                        invalidRows += chunkInvalid;
+                        duplicateRows += chunkDuplicate;
                         pageProcessedRaw += rawChunk.length;
                     }
 
                     offset += pageProcessedRaw;
 
-                    if (pageData.length < PAGE_SIZE) {
+                    if (pageData.length < PAGE_SIZE && !abortOuter && !isTimeUp(startTime)) {
                         reachedEnd = true;
                     }
 
                     // Update progress (heartbeat)
-                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-                        total_rows: offset,
-                        valid_rows: validRows,
-                        invalid_rows: invalidRows,
-                        duplicate_rows: duplicateRows,
-                        imported_rows: importedCount,
-                        updated_rows: updatedCount,
-                        skipped_rows: skippedCount,
+                    const updateData = {
+                        valid_rows: initialValid + validRows,
+                        invalid_rows: initialInvalid + invalidRows,
+                        duplicate_rows: initialDupes + duplicateRows,
+                        imported_rows: initialImported + importedCount,
+                        updated_rows: initialUpdated + updatedCount,
+                        skipped_rows: initialSkipped + skippedCount,
                         updated_date: new Date().toISOString() // Force updated_date refresh
-                    });
+                    };
+                    if (reachedEnd) updateData.total_rows = offset;
+                    await base44.asServiceRole.entities.ImportBatch.update(batch.id, updateData);
 
+                    if (abortOuter) break;
                     // Break outer loop if we timed out in the inner loop
                     if (isTimeUp(startTime)) break;
                 }
             } else {
                 // CSV fallback
-                const fullResp = await fetchWithTimeout(file_url, 30000);
+                const fullResp = await fetchWithTimeout(file_url, startTime, 30000);
                 if (!fullResp.ok) throw new Error(`Failed to fetch: ${fullResp.statusText}`);
                 const text = await fullResp.text();
                 const lines = text.split('\n').filter(l => l.trim());
@@ -284,42 +338,55 @@ Deno.serve(async (req) => {
                     total_rows: lines.length - 1,
                 });
 
-                const validDataChunk = [];
                 const seenIds = new Set();
+                
+                let startIdx = 1;
+                if (resume_offset > 0) {
+                    startIdx = resume_offset + 1; // +1 for header
+                }
 
-                for (let i = 1; i < lines.length; i++) {
+                for (let i = startIdx; i < lines.length; i += BULK_SIZE) {
                     if (isTimeUp(startTime)) break;
-                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                    const row = {};
-                    headers.forEach((h, idx) => { row[h] = values[idx]; });
-                    totalProcessed++;
+                    
+                    const chunkLines = lines.slice(i, i + BULK_SIZE);
+                    const validDataChunk = [];
+                    let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
-                    const mapped = mapRowToEntity(row, import_type, year);
-                    if (!mapped) { invalidRows++; continue; }
+                    for (const line of chunkLines) {
+                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const row = {};
+                        headers.forEach((h, idx) => { row[h] = values[idx]; });
 
-                    const dedupKey = getDedupKey(mapped, import_type);
-                    if (!dedupKey) { invalidRows++; continue; }
-                    if (seenIds.has(dedupKey)) { duplicateRows++; continue; }
-                    seenIds.add(dedupKey);
-                    validRows++;
-                    validDataChunk.push(mapped);
+                        const mapped = mapRowToEntity(row, import_type, year);
+                        if (!mapped) { chunkInvalid++; continue; }
 
-                    if (validDataChunk.length >= 200 && !dry_run) {
-                        const result = await importChunk(base44, import_type, validDataChunk.splice(0), startTime);
+                        const dedupKey = getDedupKey(mapped, import_type);
+                        if (!dedupKey) { chunkInvalid++; continue; }
+                        if (seenIds.has(dedupKey)) { chunkDuplicate++; continue; }
+                        seenIds.add(dedupKey);
+                        chunkValid++;
+                        validDataChunk.push(mapped);
+                    }
+
+                    let chunkAborted = false;
+                    if (!dry_run && validDataChunk.length > 0) {
+                        const result = await importChunk(base44, import_type, validDataChunk, startTime);
                         importedCount += result.imported;
                         updatedCount += result.updated;
                         skippedCount += result.skipped;
+                        if (result.aborted) chunkAborted = true;
                     }
+
+                    if (chunkAborted) break;
+
+                    totalProcessed += chunkLines.length;
+                    offset += chunkLines.length;
+                    validRows += chunkValid;
+                    invalidRows += chunkInvalid;
+                    duplicateRows += chunkDuplicate;
                 }
 
-                if (!dry_run && validDataChunk.length > 0 && !isTimeUp(startTime)) {
-                    const result = await importChunk(base44, import_type, validDataChunk, startTime);
-                    importedCount += result.imported;
-                    updatedCount += result.updated;
-                    skippedCount += result.skipped;
-                }
-
-                reachedEnd = totalProcessed >= lines.length - 1;
+                reachedEnd = offset >= lines.length - 1;
             }
 
             const partial = !reachedEnd;
@@ -327,14 +394,14 @@ Deno.serve(async (req) => {
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: finalStatus,
-                total_rows: offset || totalProcessed,
-                valid_rows: validRows,
-                invalid_rows: invalidRows,
-                duplicate_rows: duplicateRows,
-                imported_rows: importedCount,
-                updated_rows: updatedCount,
-                skipped_rows: skippedCount,
-                error_samples: errorSamples,
+                ...(reachedEnd ? { total_rows: offset || totalProcessed } : {}),
+                valid_rows: initialValid + validRows,
+                invalid_rows: initialInvalid + invalidRows,
+                duplicate_rows: initialDupes + duplicateRows,
+                imported_rows: initialImported + importedCount,
+                updated_rows: initialUpdated + updatedCount,
+                skipped_rows: initialSkipped + skippedCount,
+                error_samples: errorSamples.length > 0 ? errorSamples : [],
                 dedup_summary: { created: importedCount, updated: updatedCount, skipped: skippedCount },
                 ...(partial ? {
                     paused_at: new Date().toISOString(),
@@ -342,6 +409,8 @@ Deno.serve(async (req) => {
                     retry_params: { resume_offset: offset },
                 } : {
                     completed_at: new Date().toISOString(),
+                    cancel_reason: "",
+                    paused_at: "",
                 }),
             });
 
@@ -358,6 +427,22 @@ Deno.serve(async (req) => {
                     timestamp: new Date().toISOString(),
                 });
             } catch (e) { console.warn('Audit log failed:', e.message); }
+
+            if (partial && !dry_run) {
+                // Auto-resume for the next pass
+                base44.asServiceRole.functions.invoke('autoImportCMSData', {
+                    import_type: raw_import_type,
+                    file_url,
+                    year,
+                    dry_run,
+                    resume_offset: offset,
+                    batch_id: batch.id,
+                    retry_of,
+                    retry_count,
+                    retry_tags,
+                    category: retryCategory
+                }).catch(e => console.error(`[autoImportCMSData] Auto-resume invoke error:`, e));
+            }
 
             return Response.json({
                 success: true, partial, batch_id: batch.id,
@@ -511,6 +596,161 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
+        if (importType === 'medical_equipment_suppliers') {
+            const providerId = row['provider_id'];
+            if (!providerId) return null;
+            return {
+                provider_id: String(providerId).trim(),
+                accepts_assignment: row['acceptsassignement'] || '',
+                participation_begin_date: parseDate(row['participationbegindate'] || ''),
+                business_name: row['businessname'] || '',
+                practice_name: row['practicename'] || '',
+                address_1: row['practiceaddress1'] || '',
+                address_2: row['practiceaddress2'] || '',
+                city: row['practicecity'] || '',
+                state: row['practicestate'] || '',
+                zip: row['practicezip9code'] || '',
+                phone: row['telephonenumber'] || '',
+                specialties: row['specialitieslist'] || '',
+                provider_type: row['providertypelist'] || '',
+                supplies: row['supplieslist'] || '',
+                latitude: row['latitude'] || '',
+                longitude: row['longitude'] || '',
+                is_contracted_for_cba: row['is_contracted_for_cba'] || ''
+            };
+        }
+
+        if (importType === 'hospice_provider_measures') {
+            const ccn = row['cms_certification_number_ccn'];
+            const measureCode = row['measure_code'];
+            if (!ccn || !measureCode) return null;
+            return {
+                ccn: String(ccn).trim(),
+                facility_name: row['facility_name'] || '',
+                address_1: row['address_line_1'] || '',
+                address_2: row['address_line_2'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                county: row['countyparish'] || '',
+                phone: row['telephone_number'] || '',
+                cms_region: row['cms_region'] || '',
+                measure_code: String(measureCode).trim(),
+                measure_name: row['measure_name'] || '',
+                score: row['score'] || '',
+                star_rating: row['star_rating'] || '',
+                footnote: row['footnote'] || '',
+                date_range: row['date'] || ''
+            };
+        }
+
+        if (importType === 'hospice_state_measures') {
+            const state = row['state'];
+            const measureCode = row['measure_code'];
+            if (!state || !measureCode) return null;
+            return {
+                state: String(state).trim(),
+                measure_code: String(measureCode).trim(),
+                measure_name: row['measure_name'] || '',
+                score: row['score'] || '',
+                footnote: row['footnote'] || '',
+                measure_date_range: row['measure_date_range'] || ''
+            };
+        }
+
+        if (importType === 'hospice_national_measures') {
+            const measureCode = row['measure_code'];
+            if (!measureCode) return null;
+            return {
+                measure_code: String(measureCode).trim(),
+                measure_name: row['measure_name'] || '',
+                score: row['score'] || '',
+                footnote: row['footnote'] || '',
+                date_range: row['date'] || ''
+            };
+        }
+
+        if (importType === 'snf_provider_measures') {
+            const ccn = row['cms_certification_number_ccn'];
+            const measureCode = row['measure_code'];
+            if (!ccn || !measureCode) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['provider_name'] || '',
+                address_1: row['address_line_1'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                county: row['countyparish'] || '',
+                phone: row['telephone_number'] || '',
+                cms_region: row['cms_region'] || '',
+                measure_code: String(measureCode).trim(),
+                score: row['score'] || '',
+                footnote: row['footnote'] || '',
+                start_date: row['start_date'] || '',
+                end_date: row['end_date'] || '',
+                measure_date_range: row['measure_date_range'] || '',
+                location_string: row['location1'] || ''
+            };
+        }
+
+        if (importType === 'nursing_home_providers') {
+            const ccn = row['cms_certification_number_ccn'];
+            if (!ccn) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['provider_name'] || '',
+                provider_address: row['provider_address'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                phone: row['telephone_number'] || '',
+                county: row['countyparish'] || '',
+                urban: row['urban'] || '',
+                ownership_type: row['ownership_type'] || '',
+                number_of_certified_beds: row['number_of_certified_beds'] || '',
+                overall_rating: row['overall_rating'] || '',
+                health_inspection_rating: row['health_inspection_rating'] || '',
+                qm_rating: row['qm_rating'] || '',
+                staffing_rating: row['staffing_rating'] || '',
+                location_string: row['location'] || ''
+            };
+        }
+
+        if (importType === 'nursing_home_deficiencies') {
+            const ccn = row['cms_certification_number_ccn'];
+            if (!ccn) return null;
+            return {
+                ccn: String(ccn).trim(),
+                provider_name: row['provider_name'] || '',
+                provider_address: row['provider_address'] || '',
+                city: row['citytown'] || '',
+                state: row['state'] || '',
+                zip: row['zip_code'] || '',
+                inspection_cycle: row['inspection_cycle'] || '',
+                health_survey_date: row['health_survey_date'] || '',
+                fire_safety_survey_date: row['fire_safety_survey_date'] || '',
+                total_number_of_health_deficiencies: row['total_number_of_health_deficiencies'] || '',
+                total_number_of_fire_safety_deficiencies: row['total_number_of_fire_safety_deficiencies'] || '',
+                location_string: row['location'] || ''
+            };
+        }
+
+        if (importType === 'home_health_national_measures') {
+            const country = row['country'];
+            if (!country) return null;
+            return {
+                country: String(country).trim(),
+                quality_of_patient_care_star_rating: row['quality_of_patient_care_star_rating'] || '',
+                discharge_function_score: row['discharge_function_score'] || '',
+                transfer_of_health_information_to_the_provider: row['transfer_of_health_information_to_the_provider'] || '',
+                transfer_of_health_information_to_the_patient: row['transfer_of_health_information_to_the_patient'] || '',
+                ppr_national_observed_rate: row['ppr_national_observed_rate'] || '',
+                dtc_national_observed_rate: row['dtc_national_observed_rate'] || '',
+                pph_national_observed_rate: row['pph_national_observed_rate'] || ''
+            };
+        }
+
         return null;
     } catch (e) {
         console.warn(`Map error: ${e.message}`);
@@ -524,6 +764,14 @@ function getDedupKey(mapped, importType) {
     if (importType === 'home_health_enrollments') return mapped.enrollment_id || null;
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
+    if (importType === 'medical_equipment_suppliers') return mapped.provider_id || null;
+    if (importType === 'hospice_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
+    if (importType === 'hospice_state_measures') return (mapped.state && mapped.measure_code) ? `${mapped.state}_${mapped.measure_code}` : null;
+    if (importType === 'hospice_national_measures') return mapped.measure_code || null;
+    if (importType === 'snf_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
+    if (importType === 'nursing_home_providers') return mapped.ccn || null;
+    if (importType === 'nursing_home_deficiencies') return mapped.ccn || null;
+    if (importType === 'home_health_national_measures') return mapped.country || null;
     return null;
 }
 
@@ -550,7 +798,14 @@ function parseDate(dateStr) {
     return '';
 }
 
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function delay(ms, startTime) {
+    if (startTime) {
+        const remaining = MAX_EXEC_MS - (Date.now() - startTime);
+        if (remaining <= 0) return Promise.resolve();
+        return new Promise(r => setTimeout(r, Math.min(ms, remaining)));
+    }
+    return new Promise(r => setTimeout(r, ms));
+}
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
 // Bulk importer with exponential backoff + jitter for rate limit handling
@@ -564,6 +819,14 @@ async function importChunk(base44, importType, records, startTime) {
         'hospice_enrollments': 'HospiceEnrollment',
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',
+        'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
+        'hospice_provider_measures': 'HospiceProviderMeasure',
+        'hospice_state_measures': 'HospiceStateMeasure',
+        'hospice_national_measures': 'HospiceNationalMeasure',
+        'snf_provider_measures': 'SNFProviderMeasure',
+        'nursing_home_providers': 'NursingHomeProvider',
+        'nursing_home_deficiencies': 'NursingHomeDeficiency',
+        'home_health_national_measures': 'HomeHealthNationalMeasure',
     };
 
     const entityName = entityMap[importType];
@@ -585,19 +848,26 @@ async function importChunk(base44, importType, records, startTime) {
                 const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('network') || e.message?.includes('503');
                 if (isRetryable && attempt < 3) {
                     const wait = jitteredBackoff(attempt);
+                    if (Date.now() - startTime + wait > MAX_EXEC_MS) {
+                        return { imported, updated, skipped, errors: chunkErrors, aborted: true };
+                    }
                     console.warn(`[importChunk] Attempt ${attempt + 1}/4 failed (${e.message}), backing off ${Math.round(wait)}ms`);
-                    await delay(wait);
+                    await delay(wait, startTime);
                 } else {
                     chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
                     console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
                     skipped += chunk.length;
+                    if (isRetryable) {
+                        // Rate limit exhausted retries, abort the whole chunk processing
+                        return { imported, updated, skipped, errors: chunkErrors, aborted: true, fatalError: true };
+                    }
                     break;
                 }
             }
         }
         // Adaptive delay: longer after retries, shorter on clean runs
         if (i + BULK_SIZE < records.length) {
-            await delay(success ? 150 : 500);
+            await delay(success ? 350 : 1500, startTime);
         }
     }
 

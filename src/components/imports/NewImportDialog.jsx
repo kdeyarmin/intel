@@ -12,6 +12,19 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ActiveRulesBadge from './ActiveRulesBadge';
+import FileParser from './FileParser';
+import ColumnMapper from './ColumnMapper';
+import { generateAIMapping } from './columnMappingAI';
+
+// Required columns for AI mapping
+const REQUIRED_COLUMNS = {
+  nppes_monthly: ['NPI'],
+  nppes_registry: ['NPI'],
+  cms_utilization: ['NPI'],
+  cms_part_d: ['NPI'],
+  cms_order_referring: ['NPI'],
+  provider_service_utilization: ['NPI'],
+};
 
 // Available data years per import type — only these years have actual CMS data
 const AVAILABLE_YEARS = {
@@ -43,6 +56,15 @@ const IMPORT_TYPES = [
   { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
   { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
   { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, hasUrl: true },
+  { id: 'opt_out_physicians', name: 'Opt-Out Physicians', desc: 'CMS Opt-Out', icon: Database, hasUrl: true },
+  { id: 'medical_equipment_suppliers', name: 'Med Equip Suppliers', desc: 'DMEPOS Suppliers', icon: Database, hasUrl: true },
+  { id: 'hospice_provider_measures', name: 'Hospice Provider Measures', desc: 'Hospice quality', icon: Activity, hasUrl: true },
+  { id: 'hospice_state_measures', name: 'Hospice State Measures', desc: 'Hospice state aggregate', icon: Activity, hasUrl: true },
+  { id: 'hospice_national_measures', name: 'Hospice National Measures', desc: 'Hospice national aggregate', icon: Activity, hasUrl: true },
+  { id: 'snf_provider_measures', name: 'SNF Provider Measures', desc: 'SNF quality', icon: Activity, hasUrl: true },
+  { id: 'nursing_home_providers', name: 'Nursing Home Providers', desc: 'Nursing home details', icon: Database, hasUrl: true },
+  { id: 'nursing_home_deficiencies', name: 'Nursing Home Deficiencies', desc: 'Nursing home inspections', icon: Activity, hasUrl: true },
+  { id: 'home_health_national_measures', name: 'HH National Measures', desc: 'Home health national aggregate', icon: Activity, hasUrl: true },
 ];
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
@@ -69,6 +91,14 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Mapping states
+  const [csvHeaders, setCsvHeaders] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const [mappingConfidence, setMappingConfidence] = useState({});
+  const [mappingScores, setMappingScores] = useState({});
+  const [aiLoading, setAiLoading] = useState(false);
+  const [optionalColumns, setOptionalColumns] = useState([]);
+
   const reset = () => {
     setStep(1);
     setSelectedType(null);
@@ -89,6 +119,11 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setYear(String(new Date().getFullYear()));
     setResult(null);
     setError(null);
+    setCsvHeaders([]);
+    setMapping({});
+    setMappingConfidence({});
+    setMappingScores({});
+    setOptionalColumns([]);
   };
 
   const handleClose = (openState) => {
@@ -103,14 +138,27 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     return t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
   });
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setFileUrl(file_url);
+  const handleFileParsed = async (parsedData) => {
+    const { headers, file, file_url } = parsedData;
+    setFileUrl(file_url || '');
     setUploadedFile(file.name);
-    setIsUploading(false);
+    setCsvHeaders(headers || []);
+
+    if (headers && headers.length > 0) {
+      setAiLoading(true);
+      const reqCols = REQUIRED_COLUMNS[selectedType?.id] || [];
+      try {
+        const aiResult = await generateAIMapping(headers, reqCols, selectedType?.id, selectedType?.name);
+        setMapping(aiResult.mapping);
+        setMappingConfidence(aiResult.confidence);
+        setMappingScores(aiResult.scores);
+        setOptionalColumns(aiResult.optionalColumns || []);
+      } catch (err) {
+        console.error('AI Mapping failed:', err);
+      } finally {
+        setAiLoading(false);
+      }
+    }
   };
 
   const addTag = () => {
@@ -137,14 +185,15 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       if (rowOffset) invokeParams.row_offset = Number(rowOffset);
       if (rowLimit) invokeParams.row_limit = Number(rowLimit);
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+      if (Object.keys(mapping).length > 0) invokeParams.column_mapping = mapping;
 
       const response = await base44.functions.invoke('triggerImport', invokeParams);
       setResult({ success: true, data: response.data });
-      setStep(3);
+      setStep(4);
     } catch (e) {
       const msg = e.response?.data?.error || e.message || 'Import trigger failed';
       setError(msg);
-      setStep(3);
+      setStep(4);
     }
     setIsSubmitting(false);
     onImportStarted?.();
@@ -158,7 +207,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             <Upload className="w-5 h-5 text-cyan-400" />
             {step === 1 && 'New Import — Select Type'}
             {step === 2 && `Configure — ${selectedType?.name}`}
-            {step === 3 && 'Import Status'}
+            {step === 3 && `Map Columns — ${selectedType?.name}`}
+            {step === 4 && 'Import Status'}
           </DialogTitle>
         </DialogHeader>
 
@@ -225,33 +275,15 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <Label className="text-xs text-slate-400">Data Source</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".csv,.xlsx,.xls,.json,.zip"
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    className="w-full h-20 flex-col gap-1.5 bg-transparent border-slate-700 border-dashed text-slate-400 hover:bg-slate-800 hover:text-cyan-400 hover:border-cyan-500/30"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : uploadedFile ? (
-                      <>
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 truncate max-w-[150px]">{uploadedFile}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-5 h-5" />
-                        <span className="text-[10px]">Upload File</span>
-                      </>
-                    )}
-                  </Button>
+                  {!uploadedFile ? (
+                    <FileParser onParsed={handleFileParsed} selectedType={{ requiredColumns: REQUIRED_COLUMNS[selectedType.id] || [] }} />
+                  ) : (
+                    <div className="w-full h-20 flex flex-col items-center justify-center gap-1.5 bg-slate-800/50 border border-emerald-500/30 rounded-lg p-3">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span className="text-[10px] text-emerald-400 truncate max-w-[150px] text-center" title={uploadedFile}>{uploadedFile}</span>
+                      <Button variant="ghost" size="sm" className="h-4 text-[9px] text-slate-500" onClick={() => { setUploadedFile(null); setCsvHeaders([]); }}>Change</Button>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-slate-400">Or use a direct URL:</span>
@@ -421,8 +453,30 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
           </div>
         )}
 
-        {/* Step 3: Result */}
+        {/* Step 3: Column Mapping */}
         {step === 3 && (
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 mb-4">
+              <h4 className="text-sm font-medium text-slate-200 mb-1">Column Mapping</h4>
+              <p className="text-xs text-slate-400">
+                Please verify the AI-suggested mappings. Ensure all required fields are mapped to correct columns from your file.
+              </p>
+            </div>
+            <ColumnMapper
+              csvColumns={csvHeaders}
+              requiredColumns={REQUIRED_COLUMNS[selectedType?.id] || []}
+              optionalColumns={optionalColumns}
+              mapping={mapping}
+              confidence={mappingConfidence}
+              scores={mappingScores}
+              onChange={setMapping}
+              aiLoading={aiLoading}
+            />
+          </div>
+        )}
+
+        {/* Step 4: Result */}
+        {step === 4 && (
           <div className="flex-1 flex flex-col items-center justify-center py-8 space-y-4">
             {result?.success ? (
               <>
@@ -463,9 +517,33 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <Button variant="outline" onClick={() => setStep(1)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">
                 Back
               </Button>
+              {csvHeaders && csvHeaders.length > 0 ? (
+                <Button
+                  onClick={() => setStep(3)}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  Next: Map Columns
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || (!fileUrl && !selectedType.hasUrl)}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  {isSubmitting ? 'Starting...' : dryRun ? 'Validate Only' : 'Start Import'}
+                </Button>
+              )}
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <Button variant="outline" onClick={() => setStep(2)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">
+                Back
+              </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || (!fileUrl && !selectedType.hasUrl)}
+                disabled={isSubmitting || aiLoading}
                 className="bg-cyan-600 hover:bg-cyan-700 text-white"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
@@ -473,7 +551,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               </Button>
             </>
           )}
-          {step === 3 && (
+          {step === 4 && (
             <Button onClick={() => handleClose(false)} className="bg-cyan-600 hover:bg-cyan-700 text-white">
               Done
             </Button>

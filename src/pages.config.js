@@ -48,19 +48,24 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AIAssistant from './pages/AIAssistant';
+import APIConnectors from './pages/APIConnectors';
+import AdminSettings from './pages/AdminSettings';
 import AdvancedAnalytics from './pages/AdvancedAnalytics';
 import AuditLog from './pages/AuditLog';
 import CMSAnalytics from './pages/CMSAnalytics';
+import CMSDataSources from './pages/CMSDataSources';
 import Campaigns from './pages/Campaigns';
 import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
 import DataCenter from './pages/DataCenter';
+import DataHealthDashboard from './pages/DataHealthDashboard';
 import DataQuality from './pages/DataQuality';
 import EmailSearchBot from './pages/EmailSearchBot';
 import EnrichmentHub from './pages/EnrichmentHub';
 import Help from './pages/Help';
 import ImportAnalytics from './pages/ImportAnalytics';
 import ImportMonitoring from './pages/ImportMonitoring';
+import ImportOverview from './pages/ImportOverview';
 import LeadListBuilder from './pages/LeadListBuilder';
 import LeadLists from './pages/LeadLists';
 import LocationDetail from './pages/LocationDetail';
@@ -71,34 +76,40 @@ import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
 import OrganizationDetail from './pages/OrganizationDetail';
 import Organizations from './pages/Organizations';
+import ProjectManagement from './pages/ProjectManagement';
 import ProviderDetail from './pages/ProviderDetail';
 import ProviderLocationMatching from './pages/ProviderLocationMatching';
 import ProviderOutreach from './pages/ProviderOutreach';
 import Providers from './pages/Providers';
+import ReconciliationDashboard from './pages/ReconciliationDashboard';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
 import ScoringRules from './pages/ScoringRules';
 import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import AdminSettings from './pages/AdminSettings';
-import SecurityAudit from './pages/SecurityAudit';
+import Utilization from './pages/Utilization';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AIAssistant": AIAssistant,
+    "APIConnectors": APIConnectors,
+    "AdminSettings": AdminSettings,
     "AdvancedAnalytics": AdvancedAnalytics,
     "AuditLog": AuditLog,
     "CMSAnalytics": CMSAnalytics,
+    "CMSDataSources": CMSDataSources,
     "Campaigns": Campaigns,
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
     "DataCenter": DataCenter,
+    "DataHealthDashboard": DataHealthDashboard,
     "DataQuality": DataQuality,
     "EmailSearchBot": EmailSearchBot,
     "EnrichmentHub": EnrichmentHub,
     "Help": Help,
     "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
+    "ImportOverview": ImportOverview,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationDetail": LocationDetail,
@@ -109,16 +120,17 @@ export const PAGES = {
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "OrganizationDetail": OrganizationDetail,
     "Organizations": Organizations,
+    "ProjectManagement": ProjectManagement,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
     "ProviderOutreach": ProviderOutreach,
     "Providers": Providers,
+    "ReconciliationDashboard": ReconciliationDashboard,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "TerritoryIntelligence": TerritoryIntelligence,
-    "AdminSettings": AdminSettings,
-    "SecurityAudit": SecurityAudit,
+    "Utilization": Utilization,
 }
 
 export const pagesConfig = {

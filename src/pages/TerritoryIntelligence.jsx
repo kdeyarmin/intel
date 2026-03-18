@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MapPin, TrendingUp, Heart, Users, Building2, Map, BarChart3 } from 'lucide-react';
+import { MapPin, TrendingUp, Heart, Users, Building2, Map, BarChart3, Network } from 'lucide-react';
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import TerritoryMapFilters from '../components/territory/TerritoryMapFilters';
 import MapStatsBar from '../components/territory/MapStatsBar';
 import CountyDensityMap from '../components/territory/CountyDensityMap';
 import ProviderClusterList from '../components/territory/ProviderClusterList';
+import NetworkGraph from '../components/referralNetwork/NetworkGraph';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
@@ -22,6 +23,7 @@ const DEFAULT_FILTERS = {
   stateFilter: 'PA',
   entityType: 'all',
   showHeatmap: false,
+  showVolumeDensity: false,
   colorByScore: true,
 };
 
@@ -158,19 +160,44 @@ export default function TerritoryIntelligence() {
     [filteredProviders]
   );
 
+  const networkData = useMemo(() => {
+    const nodes = filteredProviders.map(item => ({
+      npi: item.provider.npi,
+      label: item.provider.entity_type === 'Individual' 
+        ? `${item.provider.first_name || ''} ${item.provider.last_name || ''}`.trim() 
+        : item.provider.organization_name || item.provider.npi,
+      entityType: item.provider.entity_type || 'Unknown',
+      totalVolume: item.utilization?.total_medicare_beneficiaries || 0,
+      isHub: item.score >= 80,
+    }));
+
+    const edges = [];
+    const sorted = [...nodes].sort((a, b) => b.totalVolume - a.totalVolume);
+    for (let i = 0; i < Math.min(sorted.length, 30); i++) {
+      for (let j = i + 1; j < Math.min(sorted.length, 30); j++) {
+        const vol = Math.min(sorted[i].totalVolume, sorted[j].totalVolume);
+        if (vol > 0) {
+          const weight = (sorted[i].entityType !== sorted[j].entityType) ? 1.5 : 1;
+          edges.push({ source: sorted[i].npi, target: sorted[j].npi, volume: Math.round(vol * weight * 0.3) });
+        }
+      }
+    }
+    return { nodes: sorted.slice(0, 50), edges: edges.slice(0, 150) };
+  }, [filteredProviders]);
+
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
         <Skeleton className="h-10 w-80 mb-4" />
         <Skeleton className="h-14 w-full mb-4" />
-        <div className="grid grid-cols-5 gap-3 mb-4">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-20" />)}</div>
         <Skeleton className="h-[500px] w-full" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -199,12 +226,15 @@ export default function TerritoryIntelligence() {
         </div>
         <div className="lg:col-span-9">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-slate-100 mb-3">
+            <TabsList className="bg-slate-100 mb-3 h-auto flex flex-wrap">
               <TabsTrigger value="map" className="gap-1.5 text-xs">
                 <Map className="w-3.5 h-3.5" /> Interactive Map
               </TabsTrigger>
               <TabsTrigger value="density" className="gap-1.5 text-xs">
                 <BarChart3 className="w-3.5 h-3.5" /> City Density
+              </TabsTrigger>
+              <TabsTrigger value="network" className="gap-1.5 text-xs">
+                <Network className="w-3.5 h-3.5" /> Network Graph
               </TabsTrigger>
             </TabsList>
 
@@ -212,12 +242,17 @@ export default function TerritoryIntelligence() {
               <InteractiveProviderMap
                 filteredProviders={filteredProviders}
                 showHeatmap={filters.showHeatmap}
+                showVolumeDensity={filters.showVolumeDensity}
                 colorByScore={filters.colorByScore}
               />
             </TabsContent>
 
             <TabsContent value="density" className="mt-0">
               <CountyDensityMap countyStats={countyStats} />
+            </TabsContent>
+
+            <TabsContent value="network" className="mt-0">
+              <NetworkGraph nodes={networkData.nodes} edges={networkData.edges} />
             </TabsContent>
           </Tabs>
         </div>

@@ -13,6 +13,7 @@ import EmailBotResults from '../components/emailBot/EmailBotResults';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
 import EmailQualityDetails from '../components/emailBot/EmailQualityDetails';
 import EmailVerificationPanel from '../components/emailBot/EmailVerificationPanel';
+import ProblematicEmailsPanel from '../components/emailBot/ProblematicEmailsPanel';
 import EmailResultFilters from '../components/emailBot/EmailResultFilters';
 import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
 import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
@@ -34,6 +35,18 @@ export default function EmailSearchBot() {
   const queryClient = useQueryClient();
   const stopRef = React.useRef(false);
 
+  const { data: activeTask } = useQuery({
+    queryKey: ['emailSearchTask'],
+    queryFn: async () => {
+      const tasks = await base44.entities.BackgroundTask.list('-created_date', 1);
+      const active = tasks.find(t => t.task_type === 'email_search' && t.status === 'processing');
+      return active || tasks.find(t => t.task_type === 'email_search');
+    },
+    refetchInterval: 3000
+  });
+
+  const isBackgroundRunning = activeTask?.status === 'processing';
+
   const { data: dashStats } = useQuery({
     queryKey: ['emailBotDashStats'],
     queryFn: async () => {
@@ -41,6 +54,7 @@ export default function EmailSearchBot() {
       return res.data;
     },
     staleTime: 120000,
+    refetchInterval: isBackgroundRunning || isRunning ? 5000 : false,
     retry: 1,
   });
 
@@ -48,6 +62,7 @@ export default function EmailSearchBot() {
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
+    refetchInterval: isBackgroundRunning || isRunning ? 5000 : false,
   });
 
   const { data: allLocations = [] } = useQuery({
@@ -116,82 +131,48 @@ export default function EmailSearchBot() {
   const runSearchAll = async () => {
     setIsRunningAll(true);
     setIsRunning(true);
-    stopRef.current = false;
     setStopRequested(false);
-    setLastResults(null);
-
-    let totalSearched = 0;
-    let totalFound = 0;
-    let allResults = [];
-    let batchNumber = 0;
-    let hasMore = true;
-    let consecutiveErrors = 0;
-
-    const startTime = Date.now();
-    const batchTimesArr = [];
-    setAllRunProgress({ totalSearched: 0, totalFound: 0, batchNumber: 0, status: 'running', startTime, batchTimes: [] });
-
-    while (hasMore && !stopRef.current) {
-      batchNumber++;
-      setAllRunProgress(prev => ({ ...prev, batchNumber, status: 'running' }));
-
-      const batchStart = Date.now();
-      try {
-        const response = await base44.functions.invoke('emailSearchBot', {
-          mode: 'batch',
-          batch_size: batchSize,
-          skip_already_searched: skipSearched,
-        });
-        const data = response.data;
-        consecutiveErrors = 0; // Reset on success
-
-        const batchDuration = (Date.now() - batchStart) / 1000;
-        batchTimesArr.push(batchDuration);
-
-        totalSearched += data.searched || 0;
-        totalFound += data.found || 0;
-        allResults = [...allResults, ...(data.results || [])];
-        setAllRunProgress({ totalSearched, totalFound, batchNumber, status: 'running', startTime, batchTimes: [...batchTimesArr] });
-        setLastResults(allResults);
-
-        if (!data.has_more || data.searched === 0) {
-          hasMore = false;
-        }
-
-        queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-        queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
-
-        // Brief pause between batches to avoid hammering the API
-        if (hasMore && !stopRef.current) {
-          await new Promise(r => setTimeout(r, 2000));
-        }
-      } catch (err) {
-        consecutiveErrors++;
-        console.error(`Batch ${batchNumber} failed:`, err);
-        toast.error(`Batch ${batchNumber} failed: ${err.response?.data?.error || err.message}`);
-        
-        if (consecutiveErrors >= 3) {
-          toast.error('Stopped after 3 consecutive errors.');
-          hasMore = false;
-        } else {
-          // Wait longer after an error before retrying
-          await new Promise(r => setTimeout(r, 5000));
-        }
-      }
+    
+    try {
+      await base44.functions.invoke('emailSearchBot', {
+        mode: 'start_background',
+        batch_size: batchSize,
+        skip_already_searched: skipSearched,
+        total_items: stats.remaining
+      });
+      toast.success('Background search started. You can safely navigate away.');
+      queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
+    } catch (e) {
+      toast.error('Failed to start background search');
+      setIsRunning(false);
+      setIsRunningAll(false);
     }
-
-    setAllRunProgress(prev => ({ ...prev, status: stopRef.current ? 'stopped' : 'complete' }));
-    setIsRunning(false);
-    setIsRunningAll(false);
-    toast.success(`Done! Searched ${totalSearched} providers, found ${totalFound} emails.`);
-    queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-    queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
   };
 
-  const handleStopAll = () => {
-    stopRef.current = true;
+  const handleStopAll = async () => {
     setStopRequested(true);
+    if (activeTask?.id) {
+      await base44.functions.invoke('emailSearchBot', {
+        mode: 'stop_background',
+        task_id: activeTask.id
+      });
+      queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
+      setIsRunning(false);
+      setIsRunningAll(false);
+    }
   };
+
+  const derivedRunProgress = useMemo(() => {
+    if (!activeTask) return allRunProgress;
+    return {
+      totalSearched: activeTask.processed_items || 0,
+      totalFound: activeTask.success_count || 0,
+      batchNumber: activeTask.current_batch_number || 0,
+      status: activeTask.status === 'cancelled' ? 'stopped' : activeTask.status === 'processing' ? 'running' : 'complete',
+      startTime: activeTask.started_at ? new Date(activeTask.started_at).getTime() : Date.now(),
+      batchTimes: []
+    };
+  }, [activeTask, allRunProgress]);
 
   const downloadFullEmailCSV = () => {
     const withEmail = providers.filter(p => p.email);
@@ -295,7 +276,7 @@ export default function EmailSearchBot() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-10 bg-slate-800/50 p-1 mb-5">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
           <TabsTrigger value="search" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Search className="w-3.5 h-3.5" /> Search
           </TabsTrigger>
@@ -305,6 +286,12 @@ export default function EmailSearchBot() {
           </TabsTrigger>
           <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
+            {stats.risky + stats.invalid > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="issues" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <AlertTriangle className="w-3.5 h-3.5" /> Issues
             {stats.risky + stats.invalid > 0 && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
             )}
@@ -363,14 +350,14 @@ export default function EmailSearchBot() {
             setSkipSearched={setSkipSearched}
             singleNpi={singleNpi}
             setSingleNpi={setSingleNpi}
-            isRunning={isRunning}
-            isRunningAll={isRunningAll}
+            isRunning={isRunning || isBackgroundRunning}
+            isRunningAll={isRunningAll || isBackgroundRunning}
             onRunAll={runSearchAll}
             onStopAll={handleStopAll}
             stopRequested={stopRequested}
             onRunSingle={() => runSearch('single', singleNpi.trim())}
             stats={stats}
-            allRunProgress={allRunProgress}
+            allRunProgress={derivedRunProgress}
           />
 
           {/* Running indicator */}
@@ -520,6 +507,13 @@ export default function EmailSearchBot() {
 
         <TabsContent value="verify" className="space-y-5">
           <EmailVerificationPanel
+            providers={providers}
+            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
+          />
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-5">
+          <ProblematicEmailsPanel
             providers={providers}
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
           />

@@ -40,6 +40,7 @@ import ProviderMessaging from '../components/providers/ProviderMessaging';
 import ProviderImportHistory from '../components/providers/ProviderImportHistory';
 import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
 import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
+import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreachCard';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -344,6 +345,7 @@ export default function ProviderDetail() {
               )}
             </div>
             <div className="space-y-6">
+              <AIPredictiveOutreachCard provider={provider} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['provider', npi] })} />
               <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
               {provider.email && (
                 <Card>
@@ -370,7 +372,7 @@ export default function ProviderDetail() {
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              <div className="lg:col-span-2 space-y-6">
                <DataQualityInsightsCard npi={npi} provider={provider} />
-               <ExternalDataDisplay npi={npi} onEnrichmentComplete={() => {
+               <ExternalDataDisplay npi={npi} provider={provider} onEnrichmentComplete={() => {
                  queryClient.invalidateQueries({ queryKey: ['provider', npi] });
                }} />
                <ProviderAIQualityInsights

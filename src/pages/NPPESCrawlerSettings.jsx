@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Save, RotateCcw, Zap, Clock, RefreshCw, Server, Users, Building2 } from 'lucide-react';
+import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '../components/shared/PageHeader';
+
+const ALL_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
 const DEFAULTS = {
   config_key: 'default',
@@ -22,23 +24,28 @@ const DEFAULTS = {
   request_timeout_ms: 15000,
   crawl_entity_types: ['NPI-1', 'NPI-2'],
   max_crawl_duration_sec: 160,
+  auto_retry_enabled: false,
+  retry_delay_minutes: 60,
+  retry_escalation_threshold: 3,
+  escalation_tags: ['manual_review_required'],
+  max_pages_per_query: 6,
+  max_skip: 1000,
+  concurrency: 4,
+  crawl_all_states: true,
+  selected_states: [],
 };
 
+const createDefaultForm = () => ({
+  ...DEFAULTS,
+  crawl_entity_types: [...DEFAULTS.crawl_entity_types],
+  escalation_tags: [...DEFAULTS.escalation_tags],
+  selected_states: [...DEFAULTS.selected_states],
+});
+
 export default function NPPESCrawlerSettings() {
-  const [form, setForm] = useState(DEFAULTS);
+  const [form, setForm] = useState(createDefaultForm);
   const [hasChanges, setHasChanges] = useState(false);
   const queryClient = useQueryClient();
-
-  // Add new defaults
-  const extendedDefaults = {
-    ...DEFAULTS,
-    auto_retry_enabled: false,
-    retry_delay_minutes: 60,
-    retry_escalation_threshold: 3,
-    escalation_tags: ['manual_review_required'],
-    max_pages_per_query: 6,
-    max_skip: 1000,
-  };
 
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['crawlerConfig'],
@@ -50,6 +57,7 @@ export default function NPPESCrawlerSettings() {
   useEffect(() => {
     if (existingConfig) {
       setForm({
+        ...createDefaultForm(),
         config_key: 'default',
         api_batch_size: existingConfig.api_batch_size ?? DEFAULTS.api_batch_size,
         import_chunk_size: existingConfig.import_chunk_size ?? DEFAULTS.import_chunk_size,
@@ -59,13 +67,15 @@ export default function NPPESCrawlerSettings() {
         request_timeout_ms: existingConfig.request_timeout_ms ?? DEFAULTS.request_timeout_ms,
         crawl_entity_types: existingConfig.crawl_entity_types ?? DEFAULTS.crawl_entity_types,
         max_crawl_duration_sec: existingConfig.max_crawl_duration_sec ?? DEFAULTS.max_crawl_duration_sec,
-        auto_retry_enabled: existingConfig.auto_retry_enabled ?? false,
-        retry_delay_minutes: existingConfig.retry_delay_minutes ?? 60,
-        retry_escalation_threshold: existingConfig.retry_escalation_threshold ?? 3,
-        escalation_tags: existingConfig.escalation_tags ?? ['manual_review_required'],
+        auto_retry_enabled: existingConfig.auto_retry_enabled ?? DEFAULTS.auto_retry_enabled,
+        retry_delay_minutes: existingConfig.retry_delay_minutes ?? DEFAULTS.retry_delay_minutes,
+        retry_escalation_threshold: existingConfig.retry_escalation_threshold ?? DEFAULTS.retry_escalation_threshold,
+        escalation_tags: existingConfig.escalation_tags ?? DEFAULTS.escalation_tags,
         max_pages_per_query: existingConfig.max_pages_per_query ?? DEFAULTS.max_pages_per_query,
         max_skip: existingConfig.max_skip ?? DEFAULTS.max_skip,
-        concurrency: existingConfig.concurrency ?? 4,
+        concurrency: existingConfig.concurrency ?? DEFAULTS.concurrency,
+        crawl_all_states: existingConfig.crawl_all_states ?? DEFAULTS.crawl_all_states,
+        selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
   }, [existingConfig]);
@@ -79,7 +89,7 @@ export default function NPPESCrawlerSettings() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['crawlerConfig']);
+      queryClient.invalidateQueries({ queryKey: ['crawlerConfig'] });
       setHasChanges(false);
       toast.success('Crawler settings saved');
     },
@@ -100,7 +110,7 @@ export default function NPPESCrawlerSettings() {
   };
 
   const resetDefaults = () => {
-    setForm(DEFAULTS);
+    setForm(createDefaultForm());
     setHasChanges(true);
   };
 
@@ -288,6 +298,58 @@ export default function NPPESCrawlerSettings() {
                 </div>
                </div>
             )}
+        </CardContent>
+      </Card>
+
+      {/* State Targeting */}
+      <Card className="bg-[#141d30] border-slate-700/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-slate-200">
+            <MapPin className="w-4 h-4 text-emerald-500" />
+            Selective State Crawling
+          </CardTitle>
+          <CardDescription className="text-slate-400">Target specific states or crawl all states nationwide.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
+            <div className="space-y-0.5">
+              <Label className="text-base text-slate-200">Crawl All States</Label>
+              <p className="text-xs text-slate-500">Disable to manually select specific states to crawl</p>
+            </div>
+            <Switch
+              checked={form.crawl_all_states !== false}
+              onCheckedChange={(v) => {
+                updateField('crawl_all_states', v);
+                if (v) updateField('selected_states', []);
+              }}
+            />
+          </div>
+
+          {form.crawl_all_states === false && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-slate-200">Selected States</Label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_STATES.map(state => {
+                  const isSelected = form.selected_states?.includes(state);
+                  return (
+                    <Badge
+                      key={state}
+                      variant={isSelected ? "default" : "outline"}
+                      className={`cursor-pointer ${isSelected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-slate-200'}`}
+                      onClick={() => {
+                        const newStates = isSelected
+                          ? form.selected_states.filter(s => s !== state)
+                          : [...(form.selected_states || []), state];
+                        updateField('selected_states', newStates);
+                      }}
+                    >
+                      {state}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

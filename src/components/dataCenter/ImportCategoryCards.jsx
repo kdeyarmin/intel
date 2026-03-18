@@ -13,6 +13,8 @@ const IMPORT_CATEGORIES = [
     types: [
       { id: 'nppes_monthly', name: 'NPPES File Upload', description: 'Upload NPPES CSV file', requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
       { id: 'nppes_registry', name: 'NPPES Registry Search', description: 'Search & import from NPPES API', requiredColumns: [], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
+      { id: 'opt_out_physicians', name: 'Opt-Out Physicians', description: 'CMS Opt-Out API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'medical_equipment_suppliers', name: 'Medical Equipment Suppliers', description: 'DMEPOS Suppliers API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' }
     ]
   },
   {
@@ -25,7 +27,8 @@ const IMPORT_CATEGORIES = [
       { id: 'cms_utilization', name: 'Provider Utilization', description: 'Medicare Part B utilization', requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service' },
       { id: 'cms_part_d', name: 'Part D Prescriber', description: 'Prescription drug claims', requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug' },
       { id: 'cms_order_referring', name: 'Order & Referring', description: 'Ordering and referring data', requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring' },
-
+      { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', description: 'Detailed Part D statistics', requiredColumns: ['Year', 'NPI', 'Total_Claims'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers' },
+      { id: 'cms_service_utilization', name: 'CMS Service Utilization', description: 'Detailed service utilization', requiredColumns: ['NPI', 'Service_Code'], downloadUrl: 'https://data.cms.gov/' }
     ]
   },
   {
@@ -36,6 +39,8 @@ const IMPORT_CATEGORIES = [
     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
     types: [
       { id: 'provider_ownership', name: 'Provider Ownership', description: 'Ownership & control info', requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership' },
+      { id: 'hospice_enrollments', name: 'Hospice Enrollments', description: 'Hospice provider enrollment', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'home_health_enrollments', name: 'Home Health Enrollments', description: 'Home health enrollment', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' }
     ]
   },
   {
@@ -47,6 +52,16 @@ const IMPORT_CATEGORIES = [
     types: [
       { id: 'nursing_home_chains', name: 'Nursing Home Chains', description: 'Chain performance data', requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'], downloadUrl: 'https://data.cms.gov/provider-data/dataset/b2ux-wtdv' },
       { id: 'home_health_cost_reports', name: 'Cost Reports', description: 'HHA financial data', requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'], downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report' },
+      { id: 'medicare_hha_stats', name: 'HHA Use & Payments', description: 'Home Health Agency statistics', requiredColumns: ['Year', 'NPI', 'Total_Episodes'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-home-health-agency-providers' },
+      { id: 'medicare_snf_stats', name: 'SNF Statistics', description: 'Skilled Nursing Facility stats', requiredColumns: ['Year', 'NPI', 'Total_Stays'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-skilled-nursing-facility-providers' },
+      { id: 'medicare_ma_inpatient', name: 'MA Inpatient Hospital', description: 'Medicare Advantage Inpatient', requiredColumns: ['Year', 'NPI', 'Total_Discharges'], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'hospice_provider_measures', name: 'Hospice Provider Measures', description: 'Hospice quality API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'hospice_state_measures', name: 'Hospice State Measures', description: 'Hospice state aggregate API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'hospice_national_measures', name: 'Hospice National Measures', description: 'Hospice national aggregate API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'snf_provider_measures', name: 'SNF Provider Measures', description: 'SNF quality API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'nursing_home_providers', name: 'Nursing Home Providers', description: 'Nursing home details API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'nursing_home_deficiencies', name: 'Nursing Home Deficiencies', description: 'Nursing home inspections API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'home_health_national_measures', name: 'HH National Measures', description: 'Home health national aggregate API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' }
     ]
   },
 ];

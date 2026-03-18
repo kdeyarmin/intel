@@ -47,6 +47,8 @@ Find the following:
 5. Medical school / education
 6. Languages spoken
 7. Whether they are accepting new patients
+8. Social media profiles (LinkedIn, Twitter URLs)
+9. Firmographics of their primary group/practice (employee count, estimated revenue, founding year)
 
 Only return information you can verify from public sources. Be specific with hospital names and group names.`,
           add_context_from_internet: true,
@@ -62,6 +64,16 @@ Only return information you can verify from public sources. Be specific with hos
               education: { type: ["string", "null"], description: "Medical school" },
               languages: { type: "array", items: { type: "string" } },
               accepting_new_patients: { type: ["boolean", "null"] },
+              linkedin_url: { type: ["string", "null"] },
+              twitter_url: { type: ["string", "null"] },
+              firmographics: {
+                type: ["object", "null"],
+                properties: {
+                  employee_count: { type: ["string", "null"] },
+                  estimated_revenue: { type: ["string", "null"] },
+                  founding_year: { type: ["number", "null"] }
+                }
+              },
               confidence: { type: "string", enum: ["high", "medium", "low"] },
               data_found: { type: "boolean" }
             }
@@ -83,13 +95,19 @@ Only return information you can verify from public sources. Be specific with hos
           education: aiRes.education,
           languages: aiRes.languages || [],
           accepting_new_patients: aiRes.accepting_new_patients,
+          linkedin_url: aiRes.linkedin_url,
+          twitter_url: aiRes.twitter_url,
+          firmographics: aiRes.firmographics,
         };
 
         const hasData = (enrichmentDetails.hospital_affiliations.length > 0 ||
           enrichmentDetails.group_practices.length > 0 ||
           enrichmentDetails.review_score ||
           enrichmentDetails.board_certifications.length > 0 ||
-          enrichmentDetails.education);
+          enrichmentDetails.education ||
+          enrichmentDetails.linkedin_url ||
+          enrichmentDetails.twitter_url ||
+          enrichmentDetails.firmographics);
 
         if (!hasData) {
           results.push({ npi, status: 'no_data', name: providerName });
@@ -109,6 +127,10 @@ Only return information you can verify from public sources. Be specific with hos
           summaryParts.push(`Review: ${enrichmentDetails.review_score}/5 (${enrichmentDetails.review_count || 0} reviews)`);
         if (enrichmentDetails.board_certifications.length > 0)
           summaryParts.push(`Board Certs: ${enrichmentDetails.board_certifications.join(', ')}`);
+        if (enrichmentDetails.linkedin_url)
+          summaryParts.push(`LinkedIn Found`);
+        if (enrichmentDetails.firmographics)
+          summaryParts.push(`Firmographics Found`);
 
         await base44.asServiceRole.entities.EnrichmentRecord.create({
           npi,
@@ -146,6 +168,22 @@ Only return information you can verify from public sources. Be specific with hos
               if (auto_apply_high_confidence) {
                 await base44.asServiceRole.entities.Provider.update(prov.id, { credential: basic.credential });
               }
+            }
+          }
+        }
+
+        if (auto_apply_high_confidence && status === 'auto_applied') {
+          const existingProviders = await base44.asServiceRole.entities.Provider.filter({ npi });
+          if (existingProviders.length > 0) {
+            const prov = existingProviders[0];
+            const updates = {};
+            if (enrichmentDetails.linkedin_url && !prov.linkedin_url) updates.linkedin_url = enrichmentDetails.linkedin_url;
+            if (enrichmentDetails.twitter_url && !prov.twitter_url) updates.twitter_url = enrichmentDetails.twitter_url;
+            if (enrichmentDetails.firmographics && (!prov.firmographics || Object.keys(prov.firmographics).length === 0)) {
+              updates.firmographics = enrichmentDetails.firmographics;
+            }
+            if (Object.keys(updates).length > 0) {
+              await base44.asServiceRole.entities.Provider.update(prov.id, updates);
             }
           }
         }

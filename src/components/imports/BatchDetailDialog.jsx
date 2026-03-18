@@ -59,16 +59,15 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
             <h4 className="text-sm font-semibold mb-2 flex items-center gap-1 text-slate-300">
               <ArrowUpDown className="w-4 h-4 text-cyan-400" /> Row Statistics
             </h4>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              <StatBox label="Total" value={batch.total_rows} />
-              <StatBox label="Valid" value={batch.valid_rows} color="text-emerald-400" />
-              <StatBox label="Invalid" value={batch.invalid_rows} color="text-red-400" />
-              <StatBox label="Duplicates" value={batch.duplicate_rows} color="text-amber-400" />
-              <StatBox label="Imported" value={batch.imported_rows} color="text-blue-400" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+              <StatBox label="Total" value={batch.total_rows?.toLocaleString() || 0} />
+              <StatBox label="Valid" value={batch.valid_rows?.toLocaleString() || 0} color="text-emerald-400" />
+              <StatBox label="Invalid" value={batch.invalid_rows?.toLocaleString() || 0} color="text-red-400" />
+              <StatBox label="Duplicates" value={batch.duplicate_rows?.toLocaleString() || 0} color="text-amber-400" />
+              <StatBox label="Imported" value={batch.imported_rows?.toLocaleString() || 0} color="text-blue-400" />
+              <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />
+              <StatBox label="Skipped" value={batch.skipped_rows?.toLocaleString() || 0} color="text-slate-400" />
             </div>
-            {batch.updated_rows > 0 && (
-              <p className="text-xs text-slate-500 mt-2">Updated {batch.updated_rows} existing records</p>
-            )}
           </div>
 
           {/* Column Mapping */}
@@ -76,14 +75,22 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
             <div>
               <h4 className="text-sm font-semibold mb-2 text-slate-300">Column Mapping</h4>
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {Object.entries(batch.column_mapping).map(([key, val]) => (
-                    <div key={key} className="flex justify-between py-0.5 border-b border-slate-700/30">
-                      <span className="font-medium text-slate-300">{key}</span>
-                      <span className="text-slate-500">{val}</span>
-                    </div>
-                  ))}
-                </div>
+                {Array.isArray(batch.column_mapping) ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {batch.column_mapping.map((f, i) => (
+                      <Badge key={i} className="bg-slate-700/50 text-slate-300 text-[10px] font-mono">{f}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {Object.entries(batch.column_mapping).map(([key, val]) => (
+                      <div key={key} className="flex justify-between py-0.5 border-b border-slate-700/30">
+                        <span className="font-medium text-slate-300">{key}</span>
+                        <span className="text-slate-500">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

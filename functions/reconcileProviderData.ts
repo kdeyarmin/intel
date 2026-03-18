@@ -9,7 +9,33 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { sources = ['nppes'], provider_ids = [], job_type = 'manual' } = await req.json();
+    const { action, reconciliation_id, resolution, sources = ['nppes'], provider_ids = [], job_type = 'manual' } = await req.json();
+
+    if (action === 'resolve') {
+      const recon = await base44.asServiceRole.entities.ProviderReconciliation.get(reconciliation_id);
+      if (!recon) return Response.json({ error: 'Not found' }, { status: 404 });
+      
+      if (resolution === 'accept' && recon.discrepancies?.length > 0) {
+        // Find provider by NPI
+        const providers = await base44.asServiceRole.entities.Provider.filter({ npi: recon.npi });
+        if (providers.length > 0) {
+          const provider = providers[0];
+          const updates = {};
+          for (const disc of recon.discrepancies) {
+            updates[disc.field] = disc.external_value;
+          }
+          await base44.asServiceRole.entities.Provider.update(provider.id, updates);
+        }
+      }
+
+      const updated = await base44.asServiceRole.entities.ProviderReconciliation.update(reconciliation_id, {
+        resolution_status: resolution === 'accept' ? 'accepted' : 'rejected',
+        resolved_at: new Date().toISOString(),
+        resolved_by: user.email,
+      });
+
+      return Response.json({ success: true, reconciliation: updated });
+    }
 
     let config = null;
     try {
@@ -135,74 +161,120 @@ async function reconcileProvider(provider, source, base44, config) {
     const primaryTaxonomy = taxonomies.find(t => t.primary_flag) || taxonomies[0];
     const internalSpecialty = primaryTaxonomy ? primaryTaxonomy.taxonomy_description : '';
 
-    // Compare key fields
-    const fieldsToCheck = [
-      { internal: 'first_name', external: 'firstName', type: 'string', internalVal: provider.first_name },
-      { internal: 'last_name', external: 'lastName', type: 'string', internalVal: provider.last_name },
-      { internal: 'organization_name', external: 'organizationName', type: 'string', internalVal: provider.organization_name },
-      { internal: 'status', external: 'status', type: 'string', internalVal: provider.status },
-      { internal: 'specialty', external: 'specialty', type: 'string', internalVal: internalSpecialty },
-    ];
+    // Prepare internal data for AI
+    const internalData = {
+      first_name: provider.first_name,
+      last_name: provider.last_name,
+      organization_name: provider.organization_name,
+      status: provider.status,
+      specialty: internalSpecialty
+    };
 
-    for (const field of fieldsToCheck) {
-      const internalVal = String(field.internalVal || '').toLowerCase().trim();
-      const externalVal = String(externalData[field.external] || '').toLowerCase().trim();
+    // Use AI to compare and find discrepancies
+    const prompt = `You are an AI Data Reconciliation Assistant for healthcare providers.
+    Compare the following two provider records:
+    
+    Internal Record:
+    ${JSON.stringify(internalData, null, 2)}
+    
+    External Record from ${source}:
+    ${JSON.stringify(externalData, null, 2)}
+    
+    Tasks:
+    1. Identify any discrepancies between the two records. Map external fields (firstName, lastName, organizationName, etc.) to internal fields (first_name, last_name, organization_name, status, specialty).
+    2. Determine if these records likely represent the same provider (suggesting potential matches).
+    3. Flag if this is a complex case that requires manual review (e.g. conflicting names but same NPI, major specialty differences).
+    
+    Return a JSON object with:
+    - discrepancies: array of objects with "field" (internal field name), "internal_value", "external_value", "severity" (low, medium, high), and "suggestion" (what action to take)
+    - is_match: boolean
+    - requires_manual_review: boolean
+    - reasoning: string explanation
+    `;
 
-      if (externalVal && externalVal !== 'null' && externalVal !== 'undefined') {
-        if (!internalVal || internalVal === 'null' || internalVal === 'undefined') {
-          reconciliation.discrepancies.push({
-            field: field.internal,
-            internal_value: 'Missing',
-            external_value: externalData[field.external],
-            confidence: 0,
-            severity: 'high'
-          });
-          reconciliation.status = 'discrepancy';
-        } else {
-          const similarity = calculateSimilarity(internalVal, externalVal);
-          const threshold = field.internal === 'specialty' ? 0.6 : 0.8;
-          
-          if (similarity < threshold) {
-            reconciliation.discrepancies.push({
-              field: field.internal,
-              internal_value: field.internalVal,
-              external_value: externalData[field.external],
-              confidence: similarity,
-              severity: similarity < 0.5 ? 'high' : 'medium'
-            });
-            reconciliation.status = 'discrepancy';
-          }
+    const aiAnalysisRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+            type: "object",
+            properties: {
+                discrepancies: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            field: {type: "string"},
+                            internal_value: {type: "string"},
+                            external_value: {type: "string"},
+                            severity: {type: "string"},
+                            suggestion: {type: "string"}
+                        }
+                    }
+                },
+                is_match: {type: "boolean"},
+                requires_manual_review: {type: "boolean"},
+                reasoning: {type: "string"}
+            }
         }
-      }
+    });
+
+    let aiAnalysis = aiAnalysisRes;
+    if (typeof aiAnalysis === 'string') {
+        try { aiAnalysis = JSON.parse(aiAnalysis); } catch(e) { aiAnalysis = null; }
     }
 
-    // Evaluate Auto-Accept Rules
-    if (reconciliation.discrepancies.length > 0) {
-      const autoAcceptLowSeverity = config?.auto_accept_low_severity || false;
-      const autoAcceptThreshold = (config?.auto_accept_threshold || 90) / 100;
-      
-      const canAutoAccept = reconciliation.discrepancies.every(disc => {
-        return (autoAcceptLowSeverity && disc.severity === 'low') || (disc.confidence >= autoAcceptThreshold);
-      });
+    if (aiAnalysis && aiAnalysis.discrepancies) {
+        reconciliation.discrepancies = aiAnalysis.discrepancies.map(d => ({
+            field: d.field,
+            internal_value: d.internal_value || '',
+            external_value: d.external_value || '',
+            severity: d.severity || 'medium',
+            confidence: aiAnalysis.is_match ? 0.9 : 0.4
+        }));
 
-      if (canAutoAccept) {
-        reconciliation.resolution_status = 'accepted';
-        reconciliation.resolved_at = new Date().toISOString();
-        reconciliation.resolved_by = 'system_auto_accept';
-        reconciliation.notes = 'Auto-accepted based on workflow rules';
-        
-        // Apply the accepted values to the provider
-        const updates = {};
-        for (const disc of reconciliation.discrepancies) {
-          updates[disc.field] = disc.external_value;
+        if (!aiAnalysis.is_match || reconciliation.discrepancies.length > 0) {
+            reconciliation.status = 'discrepancy';
         }
-        await base44.asServiceRole.entities.Provider.update(provider.id, updates).catch(e => console.error("Auto-update failed", e));
-      } else {
-        // Generate AI suggestions if not auto-accepted and feature is enabled
-        if (config?.enable_ai_suggestions !== false) {
-          reconciliation.ai_suggestions = await generateAISuggestions(provider, reconciliation.discrepancies, base44);
+
+        if (reconciliation.discrepancies.length > 0) {
+            if (aiAnalysis.requires_manual_review) {
+                reconciliation.resolution_status = 'pending';
+                reconciliation.notes = `AI Flagged for Manual Review: ${aiAnalysis.reasoning}`;
+                reconciliation.ai_suggestions = aiAnalysis.discrepancies.map(d => ({
+                    field: d.field,
+                    suggestion: d.suggestion || 'Review manually',
+                    reasoning: aiAnalysis.reasoning,
+                    confidence: aiAnalysis.is_match ? 0.8 : 0.3
+                }));
+            } else {
+                const autoAcceptThreshold = (config?.auto_accept_threshold || 90) / 100;
+                if (aiAnalysis.is_match && autoAcceptThreshold <= 0.9) {
+                    reconciliation.resolution_status = 'accepted';
+                    reconciliation.resolved_at = new Date().toISOString();
+                    reconciliation.resolved_by = 'system_ai_auto_accept';
+                    reconciliation.notes = `AI Auto-accepted: ${aiAnalysis.reasoning}`;
+                    
+                    const updates = {};
+                    for (const disc of reconciliation.discrepancies) {
+                        if (disc.field !== 'specialty') {
+                            updates[disc.field] = disc.external_value;
+                        }
+                    }
+                    if (Object.keys(updates).length > 0) {
+                        await base44.asServiceRole.entities.Provider.update(provider.id, updates).catch(e => console.error("Auto-update failed", e));
+                    }
+                } else {
+                    reconciliation.ai_suggestions = aiAnalysis.discrepancies.map(d => ({
+                        field: d.field,
+                        suggestion: d.suggestion || 'Review manually',
+                        reasoning: aiAnalysis.reasoning,
+                        confidence: aiAnalysis.is_match ? 0.8 : 0.3
+                    }));
+                }
+            }
         }
-      }
+    } else {
+        reconciliation.status = 'discrepancy';
+        reconciliation.notes = 'AI Analysis failed or returned invalid format';
     }
 
   } catch (err) {
@@ -327,72 +399,4 @@ async function logApiInteraction(base44, source, endpoint, npi, status_code, is_
   }
 }
 
-function calculateSimilarity(str1, str2) {
-  const longer = str1.length > str2.length ? str1 : str2;
-  const shorter = str1.length > str2.length ? str2 : str1;
-
-  if (longer.length === 0) return 1.0;
-
-  const editDistance = getEditDistance(longer, shorter);
-  return (longer.length - editDistance) / longer.length;
-}
-
-function getEditDistance(s1, s2) {
-  const costs = [];
-  for (let i = 0; i <= s1.length; i++) {
-    let lastValue = i;
-    for (let j = 0; j <= s2.length; j++) {
-      if (i === 0) {
-        costs[j] = j;
-      } else if (j > 0) {
-        let newValue = costs[j - 1];
-        if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-          newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-        }
-        costs[j - 1] = lastValue;
-        lastValue = newValue;
-      }
-    }
-    if (i > 0) costs[s2.length] = lastValue;
-  }
-  return costs[s2.length];
-}
-
-async function generateAISuggestions(provider, discrepancies, base44) {
-  const suggestions = [];
-
-  for (const disc of discrepancies) {
-    try {
-      const prompt = `Provider ${provider.npi} has a discrepancy in field "${disc.field}":
-      - Our record: "${disc.internal_value}"
-      - External source: "${disc.external_value}"
-      - Similarity: ${(disc.confidence * 100).toFixed(0)}%
-      
-      This is for a ${provider.entity_type} provider. 
-      Should we update our record to match the external source? 
-      Provide a brief suggestion (1-2 sentences) with reasoning.`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt,
-        add_context_from_internet: false,
-      });
-
-      suggestions.push({
-        field: disc.field,
-        suggestion: response || 'Manual review recommended',
-        reasoning: `Based on ${(disc.confidence * 100).toFixed(0)}% match similarity`,
-        confidence: disc.confidence
-      });
-    } catch (err) {
-      console.error('AI suggestion failed:', err);
-      suggestions.push({
-        field: disc.field,
-        suggestion: 'Manual review recommended',
-        reasoning: 'Could not generate AI suggestion',
-        confidence: 0
-      });
-    }
-  }
-
-  return suggestions;
-}
+// AI handles similarity and suggestions entirely

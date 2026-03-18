@@ -121,12 +121,9 @@ Deno.serve(async (req) => {
                     // We invoke the crawler directly
                     // It will create a NEW batch with retry_count + 1
                     try {
-                        base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                            action: 'start',
-                            target_state: state,
-                            retry_count: currentRetryCount + 1,
-                            retry_of: latest.id,
-                            taxonomy_description: latest.file_name.split('_')[2] === 'all' ? '' : latest.file_name.split('_')[2] // loose attempt to recover param
+                        base44.asServiceRole.functions.invoke('nppesCrawler', {
+                            action: 'batch_start',
+                            states: [state]
                         });
                         actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1})`);
                     } catch(e) {
@@ -159,15 +156,7 @@ Deno.serve(async (req) => {
                         context: { state, retry_count: currentRetryCount }
                     });
 
-                    // Send email
-                    try {
-                        const adminEmail = (await base44.auth.me())?.email || 'system@caremetric.app';
-                        await base44.asServiceRole.integrations.Core.SendEmail({
-                            to: adminEmail,
-                            subject: `[CareMetric] Crawler Failed: ${state} (Max Retries)`,
-                            body: `The NPPES crawler for ${state} has failed ${currentRetryCount} times and will not be retried automatically.\n\nPlease review the logs and Error Reports.`
-                        });
-                    } catch(e) {}
+                    // Email notifications disabled per admin request
                     
                     actionsTaken.push(`Escalated state ${state} (max retries)`);
                 }

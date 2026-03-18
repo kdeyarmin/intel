@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
         2. Cell Phone Number (or direct mobile line)
         3. Practice Website URL
         4. Primary Practice Address (if different/better than what might be known)
+        5. Social media profiles (LinkedIn, Twitter)
+        6. Company Firmographics (employee count, estimated revenue, founding year)
 
         Only return information if you find it with high confidence (likely to be accurate).
         `;
@@ -66,6 +68,16 @@ Deno.serve(async (req) => {
                     email_source: { type: "string", description: "URL or source where email was found" },
                     cell_phone: { type: "string", description: "Cell/Mobile number if found with high confidence" },
                     website: { type: "string", description: "Website URL" },
+                    linkedin_url: { type: "string", description: "LinkedIn Profile URL" },
+                    twitter_url: { type: "string", description: "Twitter Profile URL" },
+                    firmographics: {
+                        type: "object",
+                        properties: {
+                            employee_count: { type: "string" },
+                            estimated_revenue: { type: "string" },
+                            founding_year: { type: "number" }
+                        }
+                    },
                     address: { 
                         type: "object", 
                         properties: {
@@ -112,6 +124,21 @@ Deno.serve(async (req) => {
 
             if (result.website && !provider.website) {
                 updates.website = result.website;
+                updated = true;
+            }
+
+            if (result.linkedin_url && !provider.linkedin_url) {
+                updates.linkedin_url = result.linkedin_url;
+                updated = true;
+            }
+
+            if (result.twitter_url && !provider.twitter_url) {
+                updates.twitter_url = result.twitter_url;
+                updated = true;
+            }
+
+            if (result.firmographics && (!provider.firmographics || Object.keys(provider.firmographics).length === 0)) {
+                updates.firmographics = result.firmographics;
                 updated = true;
             }
         }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,9 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Play, Pause, XCircle, Globe, Bot, Map, LayoutGrid, Clock, AlertTriangle, Database, ArrowDownToLine, RefreshCw, SkipForward, Activity } from 'lucide-react';
 import StateCrawlerGrid from '../components/nppes/StateCrawlerGrid';
 import StateMap from '../components/nppes/StateMap';
-import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
+import CrawlerMonitoring from '../components/nppes/CrawlerMonitoring';
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
 
@@ -26,7 +26,7 @@ const US_STATES = [
 export default function NPPESCrawler() {
   const [dryRun, setDryRun] = useState(false);
   const [skipCompleted, setSkipCompleted] = useState(true);
-  const [taxonomyFilter, setTaxonomyFilter] = useState('');
+  const [taxonomyFilter] = useState('');
   const [entityType, setEntityType] = useState('');
   const [concurrency, setConcurrency] = useState('3');
   
@@ -72,7 +72,7 @@ export default function NPPESCrawler() {
     } finally {
       setIsProcessingAction(false);
       refetchStatus();
-      queryClient.invalidateQueries(['nppesImportBatchesDash']);
+      queryClient.invalidateQueries({ queryKey: ['nppesImportBatchesDash'] });
     }
   };
 
@@ -113,9 +113,9 @@ export default function NPPESCrawler() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-white border-slate-200 shadow-sm">
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-slate-900 flex items-center justify-between">
+              <CardTitle className="text-white flex items-center justify-between">
                 Crawler Configuration & Controls
                 <Badge className={
                   isRunning ? "bg-green-100 text-green-700 hover:bg-green-100" : 
@@ -130,7 +130,7 @@ export default function NPPESCrawler() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-700">Concurrency (Workers)</Label>
+                  <Label className="text-slate-300">Concurrency (Workers)</Label>
                   <Select value={concurrency} onValueChange={setConcurrency} disabled={isRunning || isPaused}>
                     <SelectTrigger>
                       <SelectValue />
@@ -144,7 +144,7 @@ export default function NPPESCrawler() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-slate-700">Provider Type (Optional)</Label>
+                  <Label className="text-slate-300">Provider Type (Optional)</Label>
                   <Select value={entityType} onValueChange={setEntityType} disabled={isRunning || isPaused}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Types" />
@@ -161,11 +161,11 @@ export default function NPPESCrawler() {
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="flex items-center gap-3">
                   <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={isRunning || isPaused} />
-                  <span className="text-sm text-slate-700">{dryRun ? 'Dry Run (Testing)' : 'Live Import'}</span>
+                  <span className="text-sm text-slate-300">{dryRun ? 'Dry Run (Testing)' : 'Live Import'}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Switch checked={skipCompleted} onCheckedChange={setSkipCompleted} disabled={isRunning || isPaused} />
-                  <span className="text-sm text-slate-700">Skip completed states</span>
+                  <span className="text-sm text-slate-300">Skip completed states</span>
                 </div>
               </div>
 
@@ -206,20 +206,20 @@ export default function NPPESCrawler() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-slate-200 shadow-sm">
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-slate-900 text-lg">
+              <CardTitle className="flex items-center justify-between text-white text-lg">
                 <span className="flex items-center gap-2">
                   <Globe className="w-5 h-5 text-indigo-500" />
                   State Progress
                 </span>
                 <div className="flex items-center gap-3">
                   <div className="flex gap-2">
-                    <Badge className="bg-emerald-100 text-emerald-700">{completedCount} completed</Badge>
-                    {failedCount > 0 && <Badge className="bg-red-100 text-red-700">{failedCount} failed</Badge>}
-                    <Badge className="bg-slate-100 text-slate-600">{status?.pending || 0} pending</Badge>
+                    <Badge className="bg-emerald-500/20 text-emerald-400">{completedCount} completed</Badge>
+                    {failedCount > 0 && <Badge className="bg-red-500/20 text-red-400">{failedCount} failed</Badge>}
+                    <Badge className="bg-slate-700 text-slate-300">{status?.pending || 0} pending</Badge>
                   </div>
-                  <div className="flex border rounded-md overflow-hidden bg-white">
+                  <div className="flex border border-slate-700 rounded-md overflow-hidden bg-slate-800">
                     <Button
                       variant={viewMode === 'map' ? 'default' : 'ghost'}
                       size="sm"
@@ -242,15 +242,15 @@ export default function NPPESCrawler() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <div className="flex justify-between text-sm font-medium text-slate-600">
+                <div className="flex justify-between text-sm font-medium text-slate-400">
                   <span>{completedCount + failedCount} / {totalStates} states</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 bg-slate-100" />
+                <Progress value={progress} className="h-3 bg-slate-700" />
               </div>
 
               {viewMode === 'map' ? (
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-slate-700/50">
                   <StateMap 
                     status={status} 
                     currentState={status?.processing_states?.[0]} 
@@ -260,7 +260,7 @@ export default function NPPESCrawler() {
                   />
                 </div>
               ) : (
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t border-slate-700/50">
                   <StateCrawlerGrid 
                     status={status} 
                     currentState={status?.processing_states?.[0]} 
@@ -275,80 +275,80 @@ export default function NPPESCrawler() {
         </div>
 
         <div className="space-y-6">
-          <Card className="bg-white border-slate-200 shadow-sm">
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-slate-900 text-lg flex items-center gap-2">
+              <CardTitle className="text-white text-lg flex items-center gap-2">
                 <Database className="w-5 h-5 text-indigo-500" />
                 Data Collection Metrics
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <ArrowDownToLine className="w-4 h-4" />
                     <p className="text-xs font-medium">New Records</p>
                   </div>
-                  <p className="text-xl font-bold text-slate-900">{status?.totals?.imported?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{status?.totals?.imported?.toLocaleString() || 0}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <RefreshCw className="w-4 h-4" />
                     <p className="text-xs font-medium">Updated</p>
                   </div>
-                  <p className="text-xl font-bold text-slate-900">{status?.totals?.updated?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{status?.totals?.updated?.toLocaleString() || 0}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <SkipForward className="w-4 h-4" />
                     <p className="text-xs font-medium">Skipped</p>
                   </div>
-                  <p className="text-xl font-bold text-slate-900">{status?.totals?.skipped?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{status?.totals?.skipped?.toLocaleString() || 0}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                  <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <Activity className="w-4 h-4" />
                     <p className="text-xs font-medium">API Calls</p>
                   </div>
-                  <p className="text-xl font-bold text-slate-900">{status?.totals?.api_calls?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{status?.totals?.api_calls?.toLocaleString() || 0}</p>
                 </div>
               </div>
-              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100 mt-2">
-                 <p className="text-sm font-medium text-indigo-800">Total Processed</p>
-                 <p className="text-2xl font-bold text-indigo-900">{(status?.totals?.processed || 0).toLocaleString()}</p>
+              <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mt-2">
+                 <p className="text-sm font-medium text-indigo-400">Total Processed</p>
+                 <p className="text-2xl font-bold text-indigo-300">{(status?.totals?.processed || 0).toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-slate-200 shadow-sm">
+          <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-slate-900 text-lg">Current Status</CardTitle>
+              <CardTitle className="text-white text-lg">Current Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-lg border flex items-center justify-between">
+              <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 mb-1">States Processing</p>
-                  <p className="text-2xl font-bold text-slate-900">{processingCount}</p>
+                  <p className="text-sm font-medium text-slate-400 mb-1">States Processing</p>
+                  <p className="text-2xl font-bold text-white">{processingCount}</p>
                 </div>
-                <Bot className={`w-8 h-8 ${isRunning ? 'text-indigo-500 animate-pulse' : 'text-slate-300'}`} />
+                <Bot className={`w-8 h-8 ${isRunning ? 'text-indigo-400 animate-pulse' : 'text-slate-600'}`} />
               </div>
               
-              <div className="p-4 bg-slate-50 rounded-lg border flex items-center justify-between">
+              <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500 mb-1">Est. Completion</p>
-                  <p className="text-2xl font-bold text-slate-900">
+                  <p className="text-sm font-medium text-slate-400 mb-1">Est. Completion</p>
+                  <p className="text-2xl font-bold text-white">
                     {isRunning ? (estimatedMins > 60 ? `~${Math.round(estimatedMins/60)} hrs` : `~${estimatedMins} mins`) : '-'}
                   </p>
                 </div>
-                <Clock className="w-8 h-8 text-slate-400" />
+                <Clock className="w-8 h-8 text-slate-500" />
               </div>
 
               {failedCount > 0 && (
-                <div className="p-4 bg-red-50 rounded-lg border border-red-100 flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
+                <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20 flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-red-800">Errors Detected</p>
-                    <p className="text-xs text-red-600 mt-1">{failedCount} states failed. Check Error Reports in Data Quality.</p>
+                    <p className="text-sm font-medium text-red-300">Errors Detected</p>
+                    <p className="text-xs text-red-400/80 mt-1">{failedCount} states failed. Check Error Reports in Data Quality.</p>
                   </div>
                 </div>
               )}
@@ -356,6 +356,8 @@ export default function NPPESCrawler() {
           </Card>
         </div>
       </div>
+
+      <CrawlerMonitoring status={status} />
 
       <DataSourcesFooter />
       

@@ -17,7 +17,8 @@ Deno.serve(async (req) => {
         // Allow service role calls (from scheduled automations) or admin users
         let user = null;
         try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-        if (user && user.role !== 'admin') {
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 

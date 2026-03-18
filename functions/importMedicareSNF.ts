@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
-const MAX_EXEC_MS = 50_000;
-const CHUNK = 50;
+const MAX_EXEC_MS = 25_000;
+const CHUNK = 30;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
@@ -24,7 +24,12 @@ const NUMERIC_FIELDS = ['persons_served','total_stays','total_covered_days','pro
 
 async function downloadAndParseZip(url) {
   console.log(`Downloading from: ${url}`);
-  const resp = await fetch(url);
+  const resp = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'Accept': 'application/zip, application/octet-stream, */*'
+    }
+  });
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
   
   const arrayBuffer = await resp.arrayBuffer();
@@ -117,7 +122,16 @@ function mapSNFRow(row, tableName, dataYear) {
 
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
-  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label', row: rowIndex, sheet: sheetName });
+  const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+
+  if (!hasMetricData) {
+    return { valid: false, skip: true, errors: [], warnings: [] };
+  }
+
+  if (!record.category || record.category.trim() === '') {
+    record.category = `Row ${rowIndex}`;
+    warnings.push({ rule: 'missing_category', field: 'category', message: 'Missing category/row label — auto-assigned', row: rowIndex, sheet: sheetName });
+  }
   
   if (record.data_year < 2000 || record.data_year > 2030) {
       errors.push({ 
@@ -130,7 +144,7 @@ function validateRecord(record, rowIndex, sheetName) {
       });
   }
   
-  if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
+  // No need for no_metrics warning anymore since we skip them entirely
   
   for (const f of NUMERIC_FIELDS) { 
       if (record[f] != null && record[f] < 0) {
@@ -145,8 +159,8 @@ function validateRecord(record, rowIndex, sheetName) {
       }
   }
   
-  if (record.avg_length_of_stay != null && (record.avg_length_of_stay <= 0 || record.avg_length_of_stay > 365)) {
-      errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', value: record.avg_length_of_stay, message: 'ALOS outside 0-365', row: rowIndex, sheet: sheetName });
+  if (record.avg_length_of_stay != null && record.avg_length_of_stay < 0) {
+      errors.push({ rule: 'avg_los_range', field: 'avg_length_of_stay', value: record.avg_length_of_stay, message: 'ALOS cannot be negative', row: rowIndex, sheet: sheetName });
   }
   return { valid: errors.length === 0, errors, warnings };
 }
@@ -172,7 +186,8 @@ Deno.serve(async (req) => {
   } catch (e) {
     // Service role calls may not have a user context
   }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
@@ -199,11 +214,29 @@ Deno.serve(async (req) => {
 
   if (!downloadUrl) return Response.json({ error: `No URL for year ${year}. Available: ${Object.keys(CMS_SNF_URLS).join(', ')}` }, { status: 400 });
 
-  const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_snf_stats', file_name: `medicare_snf_${year}`, file_url: downloadUrl,
-    status: 'processing', dry_run, data_year: year,
-    retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
-  });
+  let batch;
+  if (action === 'resume' && payload.batch_id) {
+    batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
+    if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing', cancel_reason: "", paused_at: "" });
+  } else {
+    // try to find existing batch if not resuming to avoid duplicate active ones
+    const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
+        import_type: 'medicare_snf_stats',
+        status: { $in: ['processing', 'validating'] }
+    });
+    
+    if (existingActive.length > 0) {
+        batch = existingActive[0];
+        console.log(`Using existing active batch: ${batch.id}`);
+    } else {
+        batch = await base44.asServiceRole.entities.ImportBatch.create({
+          import_type: 'medicare_snf_stats', file_name: `medicare_snf_${year}`, file_url: downloadUrl,
+          status: 'processing', dry_run, data_year: year,
+          retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
+        });
+    }
+  }
   const errorSamples = [];
   const addError = (phase, detail, ctx) => { 
       const entry = { 
@@ -227,10 +260,11 @@ Deno.serve(async (req) => {
       if (!tableName) continue;
       let rows;
       try { rows = parseSheet(workbook, sheetName); } catch (e) { addError('parse', `Sheet "${sheetName}": ${e.message}`, { sheet: sheetName }); continue; }
-      let sv = 0, si = 0;
+      let sv = 0, si = 0, sheetSkipped = 0;
       for (const row of rows) {
         const record = mapSNFRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
+        if (v.skip) { sheetSkipped++; continue; }
         for (const e of v.errors) { 
             ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; 
             addError('validation', `[${e.rule}] ${e.message}`, { 
@@ -244,7 +278,7 @@ Deno.serve(async (req) => {
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped_spacers: sheetSkipped });
     }
 
     let recordsToProcess = allRecords;
@@ -257,7 +291,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       total_rows: allRecords.length + totalInvalid, valid_rows: allRecords.length, invalid_rows: totalInvalid,
       column_mapping: { sheets: sheetSummaries },
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
@@ -265,27 +299,60 @@ Deno.serve(async (req) => {
     if (!dry_run && recordsToProcess.length > 0) {
       if (effectiveOffset === 0) {
         const existing = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1);
-        if (existing.length > 0) { const all = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500); for (const r of all) await base44.asServiceRole.entities.MedicareSNFStats.delete(r.id); }
+        if (existing.length > 0) {
+            console.log(`Clearing existing ${year} records...`);
+            while (true) {
+                if (isTimeUp()) break;
+                const batchRecs = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
+                if (batchRecs.length === 0) break;
+                for (let i = 0; i < batchRecs.length; i += 50) {
+                    const chunk = batchRecs.slice(i, i + 50);
+                    await Promise.all(chunk.map(async (rec) => {
+                        try {
+                            await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
+                        } catch (e) {
+                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                                await delay(3000);
+                                try { await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id); } catch(e2) {}
+                            }
+                        }
+                    }));
+                    await delay(100);
+                }
+            }
+        }
       }
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) break;
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, chunk, `chunk-${i}`);
         if (result.ok) imported += chunk.length; else { chunkErrors++; addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(150);
+        if (i + CHUNK < recordsToProcess.length) await delay(350);
       }
     }
 
     const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
     const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : chunkErrors > 0 && imported === 0 ? 'failed' : 'completed';
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: finalStatus, imported_rows: imported, skipped_rows: chunkErrors * CHUNK, completed_at: new Date().toISOString(),
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_snf_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}
     await base44.asServiceRole.entities.AuditEvent.create({ event_type: 'import', user_email: user?.email || 'system', details: { action: 'Medicare SNF Import', entity: 'MedicareSNFStats', year, imported_count: imported, status: finalStatus }, timestamp: new Date().toISOString() });
+
+    if (timedOut && !dry_run) {
+      base44.asServiceRole.functions.invoke('importMedicareSNF', {
+        action: 'resume',
+        batch_id: batch.id,
+        year: requestedYear,
+        custom_url: downloadUrl,
+        sheet_filter,
+        row_limit,
+        row_offset: effectiveOffset + imported
+      }).catch(e => console.error(`[importMedicareSNF] Auto-resume invoke error:`, e));
+    }
 
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus, sheets_parsed: sheetSummaries,

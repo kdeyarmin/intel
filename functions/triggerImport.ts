@@ -17,7 +17,38 @@ const IMPORT_TYPE_URLS = {
   home_health_enrollments: 'https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data',
   // Hospice Enrollments
   hospice_enrollments: 'https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data',
+  // Medical Equipment Suppliers
+  medical_equipment_suppliers: 'https://data.cms.gov/provider-data/api/1/datastore/query/ct36-nrcq/0',
+  // Hospice Provider Measures
+  hospice_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/gxki-hrr8/0',
+  // Hospice State Measures
+  hospice_state_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/eda0-92f0/0',
+  // Hospice National Measures
+  hospice_national_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/7cv8-v37d/0',
+  // SNF Provider Measures
+  snf_provider_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0',
+  // Nursing Home Providers
+  nursing_home_providers: 'https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0',
+  // Nursing Home Deficiencies
+  nursing_home_deficiencies: 'https://data.cms.gov/provider-data/api/1/datastore/query/tbry-pc2d/0',
+  // Home Health National Measures
+  home_health_national_measures: 'https://data.cms.gov/provider-data/api/1/datastore/query/97z8-de96/0',
 };
+
+async function withRetry(fn, retries = 5, backoff = 1500) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i === retries - 1) throw e;
+      if (e.message?.includes('Rate limit') || e.status === 429) {
+        await new Promise(r => setTimeout(r, backoff * (i + 1)));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
 
 Deno.serve(async (req) => {
   try {
@@ -31,7 +62,8 @@ Deno.serve(async (req) => {
       // Service role calls may not have a user context — that's OK
     }
     
-    if (user && user.role !== 'admin') {
+    const isService = user && user.email && user.email.includes('service+');
+    if (user && user.role !== 'admin' && !isService) {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -52,13 +84,13 @@ Deno.serve(async (req) => {
 
     // Check for duplicate imports already in progress
     // Filter out signal/control batches that aren't real imports
-    const activeImports = await base44.asServiceRole.entities.ImportBatch.filter({
+    const activeImports = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({
       import_type,
       status: { $in: ['validating', 'processing'] }
-    });
+    }));
     const realActive = activeImports.filter(b => {
       const fn = b.file_name || '';
-      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
+      return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal' && b.id !== body.batch_id;
     });
 
     if (realActive.length > 0) {
@@ -67,11 +99,11 @@ Deno.serve(async (req) => {
       const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date).getTime();
       if (stuckMs > 2 * 60 * 60 * 1000) {
         console.warn(`Auto-cancelling stale batch ${existing.id} (stuck ${Math.round(stuckMs / 60000)}min)`);
-        await base44.asServiceRole.entities.ImportBatch.update(existing.id, {
+        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(existing.id, {
           status: 'failed',
           cancel_reason: `Auto-cancelled: stuck in "${existing.status}" for ${Math.round(stuckMs / 60000)} minutes`,
           cancelled_at: new Date().toISOString(),
-        });
+        }));
       } else {
         return Response.json({
           error: `Import for ${import_type} is already in progress`,
@@ -91,51 +123,29 @@ Deno.serve(async (req) => {
     };
 
     if (zipFunctionMap[import_type]) {
-      // Route to the specialized ZIP handler, passing through all params
-      try {
-        const res = await base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
-          action: 'import',
-          year: parseInt(year || 2023),
-          custom_url: file_url || undefined,
-          dry_run,
-          // Pass through retry/range params
-          sheet_filter: body.sheet_filter || undefined,
-          row_offset: body.row_offset || undefined,
-          row_limit: body.row_limit || undefined,
-          // Pass retry metadata so batch is tagged correctly
-          retry_of: retry_of || undefined,
-          retry_count: retry_count || undefined,
-          retry_tags: retry_tags || undefined,
-          category: category || undefined,
-        });
-        const result = res.data;
-        // If the sub-function returned an error, surface it with details
-        if (result?.error) {
-          return Response.json({
-            error: result.error,
-            error_phase: result.error_phase || 'unknown',
-            retryable: result.retryable || false,
-            batch_id: result.batch_id,
-            error_samples: result.error_samples,
-            hint: result.hint || 'Check the batch error log for details.',
-            import_type,
-          }, { status: 500 });
-        }
-        return Response.json({ success: true, import_type, result });
-      } catch (e) {
-        // Extract useful info from the sub-function error
-        let errorData;
-        try { errorData = e.response?.data || JSON.parse(e.message); } catch (_) { errorData = null; }
-        return Response.json({
-          error: errorData?.error || e.message || 'Import function failed',
-          error_phase: errorData?.error_phase || 'invocation',
-          retryable: errorData?.retryable || false,
-          batch_id: errorData?.batch_id,
-          error_samples: errorData?.error_samples,
-          hint: errorData?.hint || `The ${import_type} import function returned an error. Check backend logs for details.`,
-          import_type,
-        }, { status: 500 });
-      }
+      // Route to the specialized ZIP handler, passing through all params, but run in background
+      base44.asServiceRole.functions.invoke(zipFunctionMap[import_type], {
+        action: body.batch_id ? 'resume' : 'import',
+        batch_id: body.batch_id || undefined,
+        year: parseInt(year || 2023),
+        custom_url: file_url || undefined,
+        dry_run,
+        // Pass through retry/range params
+        sheet_filter: body.sheet_filter || undefined,
+        row_offset: body.row_offset || body.resume_offset || undefined,
+        row_limit: body.row_limit || undefined,
+        // Pass retry metadata so batch is tagged correctly
+        retry_of: retry_of || undefined,
+        retry_count: retry_count || undefined,
+        retry_tags: retry_tags || undefined,
+        category: category || undefined,
+      }).catch(e => console.error(`[triggerImport] Async invoke error for ${import_type}:`, e));
+      
+      return Response.json({ 
+        success: true, 
+        message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
+        import_type 
+      });
     }
 
     // CMS API-based imports
@@ -155,27 +165,29 @@ Deno.serve(async (req) => {
     // Individual import functions (HHA, SNF, Part D) handle their own fallbacks to LATEST_AVAILABLE_YEAR
     const resolvedYear = year || (new Date().getFullYear() - 2);
 
-    // Call autoImportCMSData via service role
-    const response = await base44.asServiceRole.functions.invoke('autoImportCMSData', {
+    // Call autoImportCMSData via service role, but don't wait for completion
+    // The autoImportCMSData function handles the full process and takes a long time
+    base44.asServiceRole.functions.invoke('autoImportCMSData', {
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
       dry_run,
       resume_offset: resume_offset || body.row_offset || 0,
+      batch_id: body.batch_id || undefined,
       // Pass retry metadata
       retry_of: retry_of || undefined,
       retry_count: retry_count || undefined,
       retry_tags: retry_tags || undefined,
       category: category || undefined,
-    });
+    }).catch(e => console.error(`[triggerImport] Async invoke error for ${import_type}:`, e));
 
     return Response.json({
       success: true,
+      message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
       import_type,
       file_url: resolvedUrl,
       year: resolvedYear,
-      dry_run,
-      result: response.data,
+      dry_run
     });
   } catch (error) {
     let errorData;

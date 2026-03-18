@@ -50,7 +50,7 @@ export default function ReferralPathwayAnalysis() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['referralAnalyses']);
+      queryClient.invalidateQueries({ queryKey: ['referralAnalyses'] });
     },
   });
 

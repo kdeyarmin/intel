@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Shield, Zap, RefreshCw, Clock } from 'lucide-react';
+import EnrichmentMergePanel from './EnrichmentMergePanel';
 
-export default function ExternalDataDisplay({ npi, onEnrichmentComplete }) {
+export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplete }) {
   const [enriching, setEnriching] = useState(false);
   const { data: medicareData, isLoading: loadingMedicare, refetch: refetchMedicare } = useQuery({
     queryKey: ['providerMedicareCompare', npi],
@@ -206,6 +207,16 @@ export default function ExternalDataDisplay({ npi, onEnrichmentComplete }) {
                     <p key={i} className="text-xs text-amber-300 mb-1">• {d}</p>
                   ))}
                 </div>
+              )}
+
+              {provider && npi_val.is_valid && (
+                 <div className="mt-4">
+                    <EnrichmentMergePanel 
+                       provider={provider} 
+                       npiValidation={npi_val} 
+                       onMergeComplete={onEnrichmentComplete}
+                    />
+                 </div>
               )}
             </TabsContent>
           )}

@@ -4,13 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Calculator, Save, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import PackageSelector from '../components/scoring/PackageSelector';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ScoringRules() {
@@ -27,7 +24,7 @@ export default function ScoringRules() {
     loadUser();
   }, []);
 
-  const { data: rules = [], isLoading } = useQuery({
+  const { data: rules = [] } = useQuery({
     queryKey: ['scoringRules'],
     queryFn: async () => {
       const existing = await base44.entities.ScoringRule.list();
@@ -55,34 +52,13 @@ export default function ScoringRules() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ScoringRule.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['scoringRules']);
+      queryClient.invalidateQueries({ queryKey: ['scoringRules'] });
       setEditingRule(null);
     },
   });
 
   const handleSave = (rule) => {
     updateMutation.mutate({ id: rule.id, data: editingRule });
-  };
-
-  const handleApplyPackage = (weights) => {
-    const categoryMap = {
-      specialty: 'specialty',
-      enrollment: 'enrollment',
-      volume: 'volume',
-      referrals: 'referrals',
-      group_size: 'group_size',
-      geography: 'geography',
-    };
-
-    rules.forEach(rule => {
-      const newWeight = weights[categoryMap[rule.category]];
-      if (newWeight !== undefined) {
-        updateMutation.mutate({ 
-          id: rule.id, 
-          data: { ...rule, weight: newWeight } 
-        });
-      }
-    });
   };
 
   const handleRecalculate = async () => {
@@ -92,7 +68,6 @@ export default function ScoringRules() {
     try {
       const providers = await base44.entities.Provider.list();
       const utilizations = await base44.entities.CMSUtilization.list();
-      const referrals = await base44.entities.CMSReferral.list();
       const locations = await base44.entities.ProviderLocation.list();
       const taxonomies = await base44.entities.ProviderTaxonomy.list();
       const currentRules = rules.filter(r => r.enabled);
@@ -105,7 +80,6 @@ export default function ScoringRules() {
 
       for (const provider of providers.slice(0, 100)) {
         const util = utilizations.find(u => u.npi === provider.npi);
-        const ref = referrals.find(r => r.npi === provider.npi);
         const providerLocs = locations.filter(l => l.npi === provider.npi);
         const providerTax = taxonomies.filter(t => t.npi === provider.npi);
         const primaryTax = providerTax.find(t => t.primary_flag) || providerTax[0];
@@ -212,7 +186,7 @@ export default function ScoringRules() {
 
   if (user?.role !== 'admin') {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -224,7 +198,7 @@ export default function ScoringRules() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Scoring Configuration"
         subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
@@ -267,8 +241,9 @@ export default function ScoringRules() {
           <CardTitle className="text-slate-200">Scoring Components</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Rule Name</TableHead>
                 <TableHead>Description</TableHead>
@@ -359,7 +334,8 @@ export default function ScoringRules() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

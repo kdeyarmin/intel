@@ -102,9 +102,9 @@ Deno.serve(async (req) => {
           if (isCrawlerBatch) {
             const stateCode = batch.file_name.split('_')[1];
             if (stateCode && stateCode.length === 2) {
-              await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                action: 'start',
-                target_state: stateCode,
+              await base44.asServiceRole.functions.invoke('nppesCrawler', {
+                action: 'batch_start',
+                states: [stateCode],
                 dry_run: batch.dry_run || false,
               });
             } else {
@@ -112,11 +112,13 @@ Deno.serve(async (req) => {
             }
           } else {
             // For CMS imports, use triggerImport which resolves URLs and routes correctly
+            const resumeOffset = batch.retry_params?.resume_offset || batch.retry_params?.row_offset || batch.imported_rows || 0;
             await base44.asServiceRole.functions.invoke('triggerImport', {
               import_type: batch.import_type,
               file_url: batch.file_url && batch.file_url !== '' ? batch.file_url : undefined,
               year: new Date().getFullYear() - 2,
               dry_run: batch.dry_run || false,
+              resume_offset: resumeOffset,
               retry_of: batch.id,
               retry_count: newRetryCount,
               retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'auto-retry'), 'auto-retry'])],

@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
-  CheckCircle2, XCircle, Clock, Loader2, Pause, FileText,
+  FileText,
   Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
 } from 'lucide-react';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
@@ -14,6 +13,7 @@ import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
 import AIFailureAnalysis from './AIFailureAnalysis';
+import AIDatasetAnalysis from './AIDatasetAnalysis';
 
 const IMPORT_TYPE_LABELS = {
   'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
@@ -144,21 +144,21 @@ function FilteredErrors({ errors, filters, batchName }) {
 
 export default function BatchDetailPanel({ batch }) {
   const [errorFilters, setErrorFilters] = useState({ severity: null, category: null });
-
-  if (!batch) return null;
+  const safeBatch = batch ?? {};
 
   const columnFields = useMemo(() => {
-    if (!batch.column_mapping) return null;
-    if (batch.column_mapping.fields) return batch.column_mapping.fields;
-    if (typeof batch.column_mapping === 'object') return Object.entries(batch.column_mapping);
+    if (!safeBatch.column_mapping) return null;
+    if (Array.isArray(safeBatch.column_mapping)) return safeBatch.column_mapping;
+    if (safeBatch.column_mapping.fields) return safeBatch.column_mapping.fields;
+    if (typeof safeBatch.column_mapping === 'object') return Object.entries(safeBatch.column_mapping);
     return null;
-  }, [batch.column_mapping]);
+  }, [safeBatch.column_mapping]);
 
   const duration = useMemo(() => {
-    if (!batch.created_date) return null;
-    const end = batch.completed_at || batch.paused_at || batch.cancelled_at || batch.updated_date;
+    if (!safeBatch.created_date) return null;
+    const end = safeBatch.completed_at || safeBatch.paused_at || safeBatch.cancelled_at || safeBatch.updated_date;
     if (!end) return null;
-    const ms = new Date(end) - new Date(batch.created_date);
+    const ms = new Date(end) - new Date(safeBatch.created_date);
     if (ms < 0) return null;
     const secs = Math.floor(ms / 1000);
     if (secs < 60) return `${secs}s`;
@@ -167,7 +167,9 @@ export default function BatchDetailPanel({ batch }) {
     if (mins < 60) return `${mins}m ${remSecs}s`;
     const hrs = Math.floor(mins / 60);
     return `${hrs}h ${mins % 60}m`;
-  }, [batch]);
+  }, [safeBatch]);
+
+  if (!batch) return null;
 
   return (
     <div className="space-y-5 mt-2">
@@ -216,17 +218,15 @@ export default function BatchDetailPanel({ batch }) {
         <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
           <ArrowUpDown className="w-4 h-4 text-cyan-400" /> Row Statistics
         </h4>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
           <StatBox label="Total" value={batch.total_rows?.toLocaleString() || 0} />
           <StatBox label="Valid" value={batch.valid_rows?.toLocaleString() || 0} color="text-emerald-400" />
           <StatBox label="Invalid" value={batch.invalid_rows?.toLocaleString() || 0} color="text-red-400" />
           <StatBox label="Duplicates" value={batch.duplicate_rows?.toLocaleString() || 0} color="text-amber-400" />
           <StatBox label="Imported" value={batch.imported_rows?.toLocaleString() || 0} color="text-blue-400" />
           <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />
+          <StatBox label="Skipped" value={batch.skipped_rows?.toLocaleString() || 0} color="text-slate-400" />
         </div>
-        {batch.skipped_rows > 0 && (
-          <p className="text-xs text-slate-500 mt-2">Skipped {batch.skipped_rows?.toLocaleString()} identical records</p>
-        )}
       </div>
 
       {/* Progress Breakdown */}
@@ -311,6 +311,11 @@ export default function BatchDetailPanel({ batch }) {
         </h4>
         <ValidationRuleResults batch={batch} />
       </div>
+
+      {/* AI Dataset Analysis (for completed batches) */}
+      {batch.status === 'completed' && (
+        <AIDatasetAnalysis batch={batch} />
+      )}
 
       {/* AI Failure Analysis */}
       {batch.status === 'failed' && (

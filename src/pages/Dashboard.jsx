@@ -8,7 +8,9 @@ import EmailHealthBar from '../components/dashboard/EmailHealthBar';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
 import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
+import DataHealthAlerts from '../components/dashboard/DataHealthAlerts';
 import QuickActions from '../components/shared/QuickActions';
+import EmailTrendChart from '../components/dashboard/EmailTrendChart';
 import { LayoutDashboard } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 
@@ -36,7 +38,7 @@ export default function Dashboard() {
   const locationsSample = stats?.samples?.locations || [];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
         subtitle="CareMetric Provider Intelligence — all your data at a glance"
@@ -59,14 +61,22 @@ export default function Dashboard() {
         <TopStatesCard topStates={stats?.topStates || []} loading={loadingStats} />
       </div>
 
-      {/* Proactive Insights + Recent Activity side by side */}
+      {/* Email Discovery Trend Chart */}
+      <EmailTrendChart data={stats?.emailStats?.trend} loading={loadingStats} />
+
+      {/* Data Health & Proactive Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DataHealthAlerts />
         <ProactiveAlerts
           providers={providersSample}
           utilizations={utilizationSample}
           referrals={referralsSample}
           locations={locationsSample}
         />
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 gap-6">
         <RecentActivityCard events={auditEvents} />
       </div>
 

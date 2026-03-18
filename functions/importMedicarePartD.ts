@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
-const MAX_EXEC_MS = 50_000;
-const CHUNK = 50;
+const MAX_EXEC_MS = 25_000;
+const CHUNK = 30;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
@@ -22,7 +22,13 @@ async function downloadAndParseZip(url) {
       'Accept': 'application/zip, application/octet-stream, */*'
     }
   });
-  if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+  if (!resp.ok) {
+    const bodyText = await resp.text().catch(()=>'');
+    const err = new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+    err.status = resp.status;
+    err.responseBody = bodyText.substring(0, 1000);
+    throw err;
+  }
   
   const arrayBuffer = await resp.arrayBuffer();
   if (arrayBuffer.byteLength < 1000) {
@@ -102,25 +108,46 @@ function mapPartDRow(row, tableName, dataYear) {
     if (hl.includes('phase') || hl.includes('coverage')) record.coverage_phase = String(row[h] || '').trim();
   }
   if (!record.category && headers.length > 0) record.category = String(row[headers[0]] || '').trim();
+  if (!record.category || record.category === '') record.category = 'Overall';
   if (['D6', 'D7', 'D11'].includes(tableName)) { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
+  
+  // Auto-correct out of range metrics
+  if (record.metric_value !== undefined && (record.metric_value < 0 || record.metric_value > 999999999)) {
+    record.metric_value = Math.max(0, Math.min(record.metric_value, 999999999));
+  }
   if (['D4', 'D5', 'D10'].includes(tableName)) record.demographic_group = record.category;
   return record;
 }
 
 function validateRecord(record, rowIndex, sheetName) {
   const errors = [], warnings = [];
-  if (!record.category || record.category.trim() === '') errors.push({ rule: 'missing_category', field: 'category', message: 'Missing category', row: rowIndex, sheet: sheetName });
-  if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'data_year_range', message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
-  if (!NUMERIC_FIELDS.some(f => record[f] != null)) warnings.push({ rule: 'no_metrics', message: 'No numeric values', row: rowIndex, sheet: sheetName });
-  for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'negative_value', field: f, message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
-  if (record.generic_dispensing_rate != null && (record.generic_dispensing_rate < 0 || record.generic_dispensing_rate > 100)) warnings.push({ rule: 'gdr_range', message: `GDR ${record.generic_dispensing_rate} outside 0-100%`, row: rowIndex, sheet: sheetName });
+  const hasMetricData = NUMERIC_FIELDS.some(f => record[f] != null);
+
+  if (!record.category || record.category.trim() === '') {
+    if (hasMetricData) {
+      record.category = `Row ${rowIndex}`;
+      warnings.push({ rule: 'missing_category', message: 'Missing category/row label — auto-assigned placeholder', row: rowIndex, sheet: sheetName });
+    } else {
+      return { valid: false, skip: true, errors: [], warnings: [] };
+    }
+  }
+
+  if (record.data_year < 2000 || record.data_year > 2030) errors.push({ rule: 'out_of_range', field: 'data_year', value: record.data_year, message: `data_year ${record.data_year} outside range`, row: rowIndex, sheet: sheetName });
+  if (!hasMetricData) return { valid: false, skip: true, errors: [], warnings: [] };
+  
+  for (const f of NUMERIC_FIELDS) { if (record[f] != null && record[f] < 0) errors.push({ rule: 'out_of_range', field: f, value: record[f], message: `${f} is negative`, row: rowIndex, sheet: sheetName }); }
+  if (record.generic_dispensing_rate != null && (record.generic_dispensing_rate < 0 || record.generic_dispensing_rate > 100)) warnings.push({ rule: 'out_of_range', field: 'generic_dispensing_rate', value: record.generic_dispensing_rate, message: `GDR ${record.generic_dispensing_rate} outside 0-100%`, row: rowIndex, sheet: sheetName });
   return { valid: errors.length === 0, errors, warnings };
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try { await entity.bulkCreate(chunk); return { ok: true }; } catch (e) {
-      if ((e.message?.includes('Rate limit') || e.message?.includes('timeout')) && attempt < 2) { await delay(jitteredBackoff(attempt)); } else { return { ok: false, error: e.message }; }
+      if ((e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('429')) && attempt < 4) { 
+        await delay(jitteredBackoff(attempt)); 
+      } else { 
+        return { ok: false, error: e.message }; 
+      }
     }
   }
   return { ok: false, error: 'Max retries' };
@@ -133,7 +160,8 @@ Deno.serve(async (req) => {
   // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
   let user = null;
   try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
@@ -155,11 +183,29 @@ Deno.serve(async (req) => {
   }
   if (!downloadUrl) return Response.json({ error: `No URL for Medicare Part D Stats` }, { status: 400 });
 
-  const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl,
-    status: 'processing', dry_run, data_year: year,
-    retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
-  });
+  let batch;
+  if (action === 'resume' && payload.batch_id) {
+    batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
+    if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing', cancel_reason: "", paused_at: "" });
+  } else {
+    // try to find existing batch if not resuming to avoid duplicate active ones
+    const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
+        import_type: 'medicare_part_d_stats',
+        status: { $in: ['processing', 'validating'] }
+    });
+    
+    if (existingActive.length > 0) {
+        batch = existingActive[0];
+        console.log(`Using existing active batch: ${batch.id}`);
+    } else {
+        batch = await base44.asServiceRole.entities.ImportBatch.create({
+          import_type: 'medicare_part_d_stats', file_name: `medicare_part_d_${year}`, file_url: downloadUrl,
+          status: 'processing', dry_run, data_year: year,
+          retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
+        });
+    }
+  }
   const errorSamples = [];
   const addError = (phase, detail, ctx) => { if (errorSamples.length < 50) errorSamples.push({ phase, detail: String(detail).substring(0, 500), timestamp: new Date().toISOString(), ...ctx }); };
 
@@ -175,15 +221,21 @@ Deno.serve(async (req) => {
       if (!tableName) continue;
       let rows;
       try { rows = parseSheet(workbook, sheetName); } catch (e) { addError('parse', e.message, { sheet: sheetName }); continue; }
-      let sv = 0, si = 0;
+      let sv = 0, si = 0, ss = 0;
       for (const row of rows) {
+        // Pre-filter: skip completely empty rows
+        const cellValues = Object.keys(row).filter(k => k !== '_rowIndex').map(k => String(row[k] || '').trim()).filter(v => v !== '');
+        if (cellValues.length === 0) { ss++; continue; }
+
         const record = mapPartDRow(row, tableName, year);
         const v = validateRecord(record, row._rowIndex, sheetName);
-        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, row: e.row, field: e.field }); }
+        if (v.skip) { ss++; continue; }
+
+        for (const e of v.errors) { ruleSummary[e.rule] = (ruleSummary[e.rule] || 0) + 1; addError('validation', `[${e.rule}] ${e.message}`, { sheet: sheetName, file_name: batch.file_name, row: e.row, field: e.field, value: e.value, rule: e.rule }); }
         for (const w of v.warnings) { ruleSummary[w.rule] = (ruleSummary[w.rule] || 0) + 1; totalWarnings++; }
         if (v.valid) { allRecords.push(record); sv++; } else { totalInvalid++; si++; }
       }
-      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si });
+      sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rows.length, valid: sv, invalid: si, skipped: ss });
     }
 
     let recordsToProcess = allRecords;
@@ -193,35 +245,74 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       total_rows: allRecords.length + totalInvalid, valid_rows: allRecords.length, invalid_rows: totalInvalid,
       column_mapping: { sheets: sheetSummaries },
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
+      dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings, detailed_errors: errorSamples },
     });
 
     let imported = 0, chunkErrors = 0;
     if (!dry_run && recordsToProcess.length > 0) {
       if (effectiveOffset === 0) {
         const existing = await base44.asServiceRole.entities.MedicarePartDStats.filter({ data_year: year }, '-created_date', 1);
-        if (existing.length > 0) { const all = await base44.asServiceRole.entities.MedicarePartDStats.filter({ data_year: year }, '-created_date', 500); for (const r of all) await base44.asServiceRole.entities.MedicarePartDStats.delete(r.id); }
+        if (existing.length > 0) {
+            console.log(`Clearing existing ${year} records...`);
+            while (true) {
+                if (isTimeUp()) break;
+                let existingBatch;
+                try {
+                    existingBatch = await base44.asServiceRole.entities.MedicarePartDStats.filter({ data_year: year }, '-created_date', 500);
+                } catch(e) {
+                    if (e.message?.includes('Rate limit') || e.message?.includes('429')) { await delay(3000); continue; }
+                    throw e;
+                }
+                if (existingBatch.length === 0) break;
+                for (let i = 0; i < existingBatch.length; i += 50) {
+                    const chunk = existingBatch.slice(i, i + 50);
+                    await Promise.all(chunk.map(async (rec) => {
+                        try {
+                            await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id);
+                        } catch (e) {
+                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                                await delay(3000);
+                                try { await base44.asServiceRole.entities.MedicarePartDStats.delete(rec.id); } catch(e2) {}
+                            }
+                        }
+                    }));
+                    await delay(100);
+                }
+            }
+        }
       }
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) break;
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicarePartDStats, chunk, `chunk-${i}`);
         if (result.ok) imported += chunk.length; else { chunkErrors++; addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(150);
+        if (i + CHUNK < recordsToProcess.length) await delay(350);
       }
     }
 
     const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
     const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : chunkErrors > 0 && imported === 0 ? 'failed' : 'completed';
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: finalStatus, imported_rows: imported, skipped_rows: chunkErrors * CHUNK, completed_at: new Date().toISOString(),
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_part_d_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}
     await base44.asServiceRole.entities.AuditEvent.create({ event_type: 'import', user_email: user?.email || 'system', details: { action: 'Medicare Part D Import', entity: 'MedicarePartDStats', year, imported_count: imported, status: finalStatus }, timestamp: new Date().toISOString() });
+
+    if (timedOut && !dry_run) {
+      base44.asServiceRole.functions.invoke('importMedicarePartD', {
+        action: 'resume',
+        batch_id: batch.id,
+        year: requestedYear,
+        custom_url: downloadUrl,
+        sheet_filter,
+        row_limit,
+        row_offset: effectiveOffset + imported
+      }).catch(e => console.error(`[importMedicarePartD] Auto-resume invoke error:`, e));
+    }
 
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus, sheets_parsed: sheetSummaries,
@@ -232,8 +323,12 @@ Deno.serve(async (req) => {
       ...(errorSamples.length > 0 ? { error_samples: errorSamples.slice(0, 10) } : {}),
     });
   } catch (error) {
-    const isRetryable = error.message?.includes('download') || error.message?.includes('timeout');
-    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, { phase: 'fatal', detail: error.message }] });
-    return Response.json({ error: error.message, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
+    const msg = error.message || '';
+    const isRetryable = msg.includes('download') || msg.includes('timeout') || msg.includes('Rate limit') || msg.includes('429');
+    const fatalError = { phase: 'fatal', detail: msg, timestamp: new Date().toISOString(), operation: 'API Request / Import', endpoint: downloadUrl, rule: isRetryable ? (msg.includes('timeout') ? 'timeout' : 'rate_limit') : 'fatal_error' };
+    if (error.status) fatalError.status_code = error.status;
+    if (error.responseBody) fatalError.response_body = error.responseBody;
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: isRetryable ? 'paused' : 'failed', error_samples: [...errorSamples, fatalError], dedup_summary: { detailed_errors: [...errorSamples, fatalError] } });
+    return Response.json({ error: msg, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }
 });

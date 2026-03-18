@@ -74,7 +74,7 @@ export const ERROR_CATEGORIES = {
     color: 'text-pink-400',
     bgColor: 'bg-pink-500/10 border-pink-500/20',
     badgeColor: 'bg-pink-500/15 text-pink-400',
-    keywords: ['out of range', 'exceeds', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'exceed', 'limit', 'range', 'below', 'above', 'boundary', 'invalid value'],
+    keywords: ['out of range', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'range', 'below', 'above', 'boundary', 'invalid value'],
     description: 'Values are outside the acceptable range for their field (e.g., negative counts, percentages over 100, dates in the future).',
     solutions: [
       'Review the expected ranges for each field (e.g., percentages 0-100, years 1900-2100)',
@@ -171,9 +171,23 @@ export const ERROR_CATEGORIES = {
 export function categorizeError(message) {
   if (!message) return 'other';
   const lower = message.toLowerCase();
-  for (const [key, config] of Object.entries(ERROR_CATEGORIES)) {
-    if (key === 'other') continue;
-    if (config.keywords.some(kw => lower.includes(kw))) return key;
+  
+  // Define priority order for evaluation to prevent generic categories catching specific errors
+  const priorityOrder = [
+    'network_api',
+    'timeout_stall',
+    'invalid_npi',
+    'missing_required',
+    'duplicate_record',
+    'formatting_error',
+    'empty_row',
+    'out_of_range',
+    'manual_action'
+  ];
+
+  for (const key of priorityOrder) {
+    const config = ERROR_CATEGORIES[key];
+    if (config && config.keywords.some(kw => lower.includes(kw.toLowerCase()))) return key;
   }
   return 'other';
 }

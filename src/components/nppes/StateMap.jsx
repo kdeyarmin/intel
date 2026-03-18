@@ -12,11 +12,11 @@ const STATE_POSITIONS = {
 };
 
 const STATUS_COLORS = {
-  active:     { bg: '#0d9488', text: '#fff', border: '#0f766e' },
-  completed:  { bg: '#22c55e', text: '#fff', border: '#16a34a' },
-  failed:     { bg: '#ef4444', text: '#fff', border: '#dc2626' },
-  processing: { bg: '#f59e0b', text: '#fff', border: '#d97706' },
-  pending:    { bg: '#1e293b', text: '#64748b', border: '#334155' },
+  active:     { bg: 'rgba(13, 148, 136, 0.2)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' },
+  completed:  { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+  failed:     { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+  processing: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
+  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#64748b', border: 'rgba(51, 65, 85, 0.5)' },
 };
 
 export default function StateMap({ status, currentState, running, autoMode, onStateClick }) {

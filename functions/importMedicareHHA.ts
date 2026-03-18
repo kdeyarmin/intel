@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
 
-const MAX_EXEC_MS = 50_000;
+const MAX_EXEC_MS = 25_000;
 const CHUNK = 25;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
@@ -21,7 +21,12 @@ const NUMERIC_FIELDS = ['persons_served','total_visits','total_episodes','total_
 
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
-  const resp = await fetch(url);
+  const resp = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+      'Accept': 'application/zip, application/octet-stream, */*'
+    }
+  });
   if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
   const contentType = resp.headers.get('content-type') || '';
   const arrayBuffer = await resp.arrayBuffer();
@@ -191,7 +196,8 @@ Deno.serve(async (req) => {
   // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
   let user = null;
   try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
   const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
@@ -218,11 +224,29 @@ Deno.serve(async (req) => {
 
   if (!downloadUrl) return Response.json({ error: `No URL for year ${year}`, hint: `Latest available: ${LATEST_AVAILABLE_YEAR}` }, { status: 400 });
 
-  const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_hha_stats', file_name: `medicare_hha_stats_${year}`, file_url: downloadUrl,
-    status: 'processing', dry_run, data_year: year,
-    retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
+  let batch;
+  if (action === 'resume' && payload.batch_id) {
+  batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
+  if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+  await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing', cancel_reason: "", paused_at: "" });
+  } else {
+  // try to find existing batch if not resuming to avoid duplicate active ones
+  const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
+      import_type: 'medicare_hha_stats',
+      status: { $in: ['processing', 'validating'] }
   });
+
+  if (existingActive.length > 0) {
+      batch = existingActive[0];
+      console.log(`Using existing active batch: ${batch.id}`);
+  } else {
+      batch = await base44.asServiceRole.entities.ImportBatch.create({
+        import_type: 'medicare_hha_stats', file_name: `medicare_hha_stats_${year}`, file_url: downloadUrl,
+        status: 'processing', dry_run, data_year: year,
+        retry_params: (sheet_filter || row_offset || row_limit) ? { sheet_filter, row_offset, row_limit } : undefined,
+      });
+  }
+  }
 
   const errorSamples = [];
   const addError = (phase, detail, ctx) => {
@@ -296,7 +320,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       total_rows: allRecords.length + totalInvalid, valid_rows: allRecords.length, invalid_rows: totalInvalid,
       column_mapping: { sheets: sheetSummaries },
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
@@ -307,8 +331,25 @@ Deno.serve(async (req) => {
         const existing = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1);
         if (existing.length > 0) {
           console.log(`Clearing existing ${year} records...`);
-          const all = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 500);
-          for (const rec of all) await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id);
+          while (true) {
+              if (isTimeUp()) break;
+              const batchRecs = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 500);
+              if (batchRecs.length === 0) break;
+              for (let i = 0; i < batchRecs.length; i += 50) {
+                  const chunk = batchRecs.slice(i, i + 50);
+                  await Promise.all(chunk.map(async (rec) => {
+                      try {
+                          await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id);
+                      } catch (e) {
+                          if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                              await delay(3000);
+                              try { await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id); } catch(e2) {}
+                          }
+                      }
+                  }));
+                  await delay(100);
+              }
+          }
         }
       }
 
@@ -323,7 +364,7 @@ Deno.serve(async (req) => {
           // If rate limited, pause longer before next chunk
           if (/rate limit|429/i.test(result.error)) await delay(5000);
         }
-        if (i + CHUNK < recordsToProcess.length) await delay(800);
+        if (i + CHUNK < recordsToProcess.length) await delay(350); // increased delay to prevent rate limit
       }
     }
 
@@ -332,10 +373,10 @@ Deno.serve(async (req) => {
     const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: finalStatus, imported_rows: imported, skipped_rows: chunkErrors * CHUNK,
+      status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
       completed_at: new Date().toISOString(),
-      error_samples: errorSamples.length > 0 ? errorSamples : undefined,
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : {}),
+      error_samples: errorSamples.length > 0 ? errorSamples : [],
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try {
@@ -351,6 +392,18 @@ Deno.serve(async (req) => {
       details: { action: 'Medicare HHA Stats Import', entity: 'MedicareHHAStats', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
       timestamp: new Date().toISOString(),
     });
+
+    if (timedOut && !dry_run) {
+      base44.asServiceRole.functions.invoke('importMedicareHHA', {
+        action: 'resume',
+        batch_id: batch.id,
+        year: requestedYear,
+        custom_url: downloadUrl,
+        sheet_filter,
+        row_limit,
+        row_offset: effectiveOffset + imported
+      }).catch(e => console.error(`[importMedicareHHA] Auto-resume invoke error:`, e));
+    }
 
     return Response.json({
       success: true, batch_id: batch.id, year, dry_run, status: finalStatus,
