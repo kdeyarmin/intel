@@ -25,7 +25,10 @@ export default function APIConnectors() {
       setIsCreating(false);
       toast.success('New API connector added');
     },
-    onError: (error) => toast.error('Failed to add connector: ' + error.message)
+    onError: (error) => {
+      toast.error('Failed to add connector: ' + error.message);
+      setIsCreating(false);
+    }
   });
 
   const handleUpdate = (updatedConnector) => {
@@ -47,6 +50,7 @@ export default function APIConnectors() {
   };
 
   const handleAddNew = () => {
+    setIsCreating(true);
     createMutation.mutate({
       name: 'New Custom API',
       source_type: 'custom',
@@ -56,7 +60,6 @@ export default function APIConnectors() {
       rate_limit_period: 60,
       test_status: 'untested'
     });
-    setIsCreating(true);
   };
 
   return (

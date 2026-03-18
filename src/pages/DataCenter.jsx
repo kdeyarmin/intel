@@ -12,7 +12,7 @@ export default function DataCenter() {
   const [activeCategory, setActiveCategory] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: batches = [], _isLoading } = useQuery({
+  const { data: batches = [], isLoading } = useQuery({
     queryKey: ['dataCenterBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 100),
     refetchInterval: 10000,

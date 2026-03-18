@@ -113,18 +113,23 @@ export default function EmailSearchBot() {
   const runSearch = async (mode, npi) => {
     setIsRunning(true);
     setLastResults(null);
-    const response = await base44.functions.invoke('emailSearchBot', {
-      mode,
-      npi: npi || null,
-      batch_size: batchSize,
-      skip_already_searched: skipSearched,
-    });
-    const data = response.data;
-    setLastResults(data.results || []);
-    toast.success(`Searched ${data.searched} providers, found emails for ${data.found}`);
-    queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-    queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
-    setIsRunning(false);
+    try {
+      const response = await base44.functions.invoke('emailSearchBot', {
+        mode,
+        npi: npi || null,
+        batch_size: batchSize,
+        skip_already_searched: skipSearched,
+      });
+      const data = response.data;
+      setLastResults(data.results || []);
+      toast.success(`Searched ${data.searched} providers, found emails for ${data.found}`);
+      queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
+      queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
+    } catch (e) {
+      toast.error('Email search failed: ' + e.message);
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const runSearchAll = async () => {
@@ -409,7 +414,7 @@ export default function EmailSearchBot() {
                     }[p.email_confidence] || 'bg-slate-500/15 text-slate-400 border border-slate-500/20';
 
                     return (
-                      <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                      <div key={p.id || idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
                           <div className="text-xs text-slate-500">{p.email}</div>

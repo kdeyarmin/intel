@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +17,8 @@ import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 
 export default function LocationDetail() {
   const navigate = useNavigate();
-  const params = new URLSearchParams(window.location.search);
-  const locationId = params.get('id');
+  const [searchParams] = useSearchParams();
+  const locationId = searchParams.get('id');
 
   const { data: allLocations = [], isLoading: loadingLoc } = useQuery({
     queryKey: ['locationDetail', locationId],
@@ -382,7 +382,7 @@ export default function LocationDetail() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {matches.sort((a, b) => (b.confidence_score || 0) - (a.confidence_score || 0)).map(m => (
+              {[...matches].sort((a, b) => (b.confidence_score || 0) - (a.confidence_score || 0)).map(m => (
                 <div key={m.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="text-sm font-medium">{m.provider_name || m.npi}</p>

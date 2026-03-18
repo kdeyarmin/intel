@@ -162,45 +162,53 @@ export default function LeadListBuilder() {
       return;
     }
 
-    const listData = {
-      name: listName,
-      description: listDescription,
-      filters: filters,
-      provider_count: filteredResults.length,
-    };
+    try {
+      const listData = {
+        name: listName,
+        description: listDescription,
+        filters: filters,
+        provider_count: filteredResults.length,
+      };
 
-    const newList = await createListMutation.mutateAsync(listData);
+      const newList = await createListMutation.mutateAsync(listData);
 
-    // Create list members in bulk
-    const memberBatch = filteredResults.slice(0, 1000).map(result => ({
-      lead_list_id: newList.id,
-      npi: result.provider.npi,
-      status: 'New',
-    }));
-    for (let i = 0; i < memberBatch.length; i += 25) {
-      await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
+      // Create list members in bulk
+      const memberBatch = filteredResults.slice(0, 1000).map(result => ({
+        lead_list_id: newList.id,
+        npi: result.provider.npi,
+        status: 'New',
+      }));
+      for (let i = 0; i < memberBatch.length; i += 25) {
+        await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
+      }
+
+      alert(`List "${listName}" saved with ${filteredResults.length} providers`);
+      setSaveDialogOpen(false);
+      setListName('');
+      setListDescription('');
+    } catch (error) {
+      alert(`Failed to save list: ${error.message}`);
     }
-
-    alert(`List "${listName}" saved with ${filteredResults.length} providers`);
-    setSaveDialogOpen(false);
-    setListName('');
-    setListDescription('');
   };
 
   const handleExportCSV = async () => {
     // Log export to audit trail
-    const user = await base44.auth.me();
-    await base44.entities.AuditEvent.create({
-      event_type: 'export',
-      user_email: user.email,
-      details: {
-        action: 'csv_export',
-        entity: 'lead_list',
-        row_count: filteredResults.length,
-        file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
-        filters: filters,
-      },
-    });
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.AuditEvent.create({
+        event_type: 'export',
+        user_email: user.email,
+        details: {
+          action: 'csv_export',
+          entity: 'lead_list',
+          row_count: filteredResults.length,
+          file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
+          filters: filters,
+        },
+      });
+    } catch (e) {
+      console.error('Audit logging failed:', e);
+    }
 
     const headers = ['NPI', 'Name', 'Specialty', 'City', 'State', 'ZIP', 'Phone', 'Score', 'Patient Fingerprint'];
     const rows = filteredResults.map(result => {
@@ -226,7 +234,7 @@ export default function LeadListBuilder() {
       ];
     });
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

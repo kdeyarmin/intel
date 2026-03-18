@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +16,8 @@ const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#06b
 
 export default function OrganizationDetail() {
   const navigate = useNavigate();
-  const params = new URLSearchParams(window.location.search);
-  const npi = params.get('npi');
+  const [searchParams] = useSearchParams();
+  const npi = searchParams.get('npi');
 
   const { data: providers = [], isLoading: loadingProv } = useQuery({
     queryKey: ['orgProvider', npi],
@@ -247,8 +247,8 @@ export default function OrganizationDetail() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {taxonomies.map((t, i) => (
-                <Badge key={i} variant="outline" className={t.primary_flag ? 'bg-teal-50 border-teal-300 text-teal-800' : ''}>
+              {taxonomies.map((t) => (
+                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-50 border-teal-300 text-teal-800' : ''}>
                   {t.taxonomy_description || t.taxonomy_code}
                   {t.primary_flag && ' (Primary)'}
                 </Badge>

@@ -60,7 +60,11 @@ export default function ReferralPathwayAnalysis() {
       return;
     }
     setSelectedNPI(searchNPI);
-    await analyzeMutation.mutateAsync(searchNPI);
+    try {
+      await analyzeMutation.mutateAsync(searchNPI);
+    } catch (err) {
+      console.error('Analysis failed:', err);
+    }
   };
 
   const selectedAnalysis = selectedNPI 

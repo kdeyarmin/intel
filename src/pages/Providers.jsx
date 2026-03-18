@@ -137,8 +137,8 @@ export default function Providers() {
   const currentFilters = { searchTerm, ...filters };
 
   const getScore = (npi) => {
-    const s = scores.find(s => s.npi === npi);
-    return s?.score || null;
+    const match = scores.find(s => s.npi === npi);
+    return match?.score ?? null;
   };
 
   // Build options from data
@@ -484,7 +484,7 @@ export default function Providers() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="h-auto min-h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-5 gap-1">
+        <TabsList className="h-auto min-h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-6 gap-1">
           <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><List className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Directory</span><span className="sm:hidden">Dir</span></TabsTrigger>
           <TabsTrigger value="map" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><MapIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Map</span><span className="sm:hidden">Map</span></TabsTrigger>
           <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI NPI Finder</span><span className="sm:hidden">NPI</span></TabsTrigger>

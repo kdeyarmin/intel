@@ -32,7 +32,7 @@ export default function CMSDataSources() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
   const [formData, setFormData] = useState({});
-  const [isTesting, setIsTesting] = useState(false);
+  const [testingId, setTestingId] = useState(null);
 
   const { data: configs, isLoading } = useQuery({
     queryKey: ['importScheduleConfigs'],
@@ -71,7 +71,7 @@ export default function CMSDataSources() {
   });
 
   const testConfig = async (id) => {
-    setIsTesting(true);
+    setTestingId(id);
     try {
       const res = await base44.functions.invoke('testCMSUrl', { id });
       if (res.data.success && res.data.isValid) {
@@ -83,7 +83,7 @@ export default function CMSDataSources() {
     } catch (e) {
       toast.error(`Failed to test URL: ${e.message}`);
     } finally {
-      setIsTesting(false);
+      setTestingId(null);
     }
   };
 
@@ -199,12 +199,12 @@ export default function CMSDataSources() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={isTesting}
+                        disabled={testingId !== null}
                         onClick={() => testConfig(config.id)}
                         className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
                         title="Test URL"
                       >
-                        <RefreshCw className={`w-4 h-4 ${isTesting ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${testingId === config.id ? 'animate-spin' : ''}`} />
                       </Button>
                       <Button
                         variant="ghost"
