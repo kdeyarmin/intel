@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { ERROR_CATEGORIES, groupErrors } from './errorCategories';
 
 const CHART_COLORS = {

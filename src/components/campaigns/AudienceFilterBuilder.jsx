@@ -4,8 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Users, MapPin, Stethoscope, Mail, Star } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 export default function AudienceFilterBuilder({ filters, onFiltersChange, onCountChange }) {
   const [entityType, setEntityType] = useState(filters.entityType || 'all');

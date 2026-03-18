@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
-  Sparkles, Plus, Check, Loader2, ChevronDown, ChevronRight, ShieldCheck, AlertTriangle, Lightbulb, Settings
+  Sparkles, Plus, Check, Loader2, ChevronDown, ChevronRight, ShieldCheck, Lightbulb, Settings
 } from 'lucide-react';
 
 const RULE_TYPE_LABELS = {

@@ -11,7 +11,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Plus, Save, Star, Trash2, LayoutDashboard, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Star, Trash2, LayoutDashboard, GripVertical } from 'lucide-react';
 
 const WIDGET_TYPES = [
   { type: 'trend', label: 'Trend Analysis', desc: 'Multi-year trends with YoY growth' },

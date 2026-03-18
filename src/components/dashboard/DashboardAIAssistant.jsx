@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 import {
-  Sparkles, Send, Loader2, RefreshCw, TrendingUp,
-  AlertTriangle, FileText, ChevronDown, ChevronUp, Search, Users
+  Sparkles, Send, Loader2, RefreshCw,
+  AlertTriangle, FileText, ChevronDown, ChevronUp, Users
 } from 'lucide-react';
 
 const QUICK_PROMPTS = [

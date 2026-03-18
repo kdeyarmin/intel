@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Loader2, CheckCircle2, XCircle, Pause, Clock, Zap, ArrowUpDown,
-  FileText, Activity, Play
+  Loader2, XCircle, Pause, Clock,
+  FileText, Activity
 } from 'lucide-react';
 import ResumeImportButton from './ResumeImportButton';
 

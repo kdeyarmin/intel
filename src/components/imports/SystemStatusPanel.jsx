@@ -1,9 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Activity, CheckCircle2, XCircle, Clock, Zap,
-  Database, ArrowUpDown, TrendingUp, TrendingDown, Server
+import { CheckCircle2, Clock, Zap, ArrowUpDown, Server
 } from 'lucide-react';
 
 function formatDuration(ms) {

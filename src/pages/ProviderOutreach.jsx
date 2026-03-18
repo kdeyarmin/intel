@@ -7,11 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Plus, TrendingUp, MessageSquare, Clock } from 'lucide-react';
+import { Mail, Plus, TrendingUp, MessageSquare } from 'lucide-react';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
-import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
