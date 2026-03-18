@@ -2,6 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const MAX_EXEC_MS = 45000;
 
+type ProviderEmailUpdate = {
+  email_searched_at: string;
+  email?: string;
+  email_confidence?: string;
+  email_source?: string;
+  email_validation_status?: string;
+  email_validation_reason?: string;
+  email_quality_score?: number;
+  email_quality_confidence?: string;
+  email_quality_reasons?: string[];
+  email_quality_risk_flags?: string[];
+  additional_emails?: unknown[];
+};
+
 Deno.serve(async (req) => {
   const execStartTime = Date.now();
   try {
@@ -200,7 +214,7 @@ INSTRUCTIONS:
         const getValidation = (email) => validations.find(v => v.email === email) || { status: 'unknown', reason: '' };
 
         // Update Provider with best email + validation, preserving existing emails
-        const providerUpdate = {
+        const providerUpdate: ProviderEmailUpdate = {
           email_searched_at: new Date().toISOString(),
         };
 

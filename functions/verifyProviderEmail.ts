@@ -375,7 +375,7 @@ Be concise and factual.`,
         },
         smtp: {
           reachable: smtpProbe.reachable,
-          ip: smtpProbe.ip || null,
+          ip: 'ip' in smtpProbe ? smtpProbe.ip || null : null,
         },
         catchAll: catchAllResult,
         ai: aiAssessment ? {

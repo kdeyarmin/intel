@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ReferralStat = {
+  sent: number;
+  received: number;
+  partners: Set<string>;
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -20,7 +26,7 @@ Deno.serve(async (req) => {
     // Build network graph
     const networkNodes = new Map();
     const networkEdges = [];
-    const referralStats = {};
+    const referralStats: Record<string, ReferralStat> = {};
 
     // Create nodes
     for (const provider of providers) {

@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ValidateBatchPayload = {
+    batch_id?: string;
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        let payload = {};
+        let payload: ValidateBatchPayload = {};
         try { payload = await req.json(); } catch(e) {}
         const { batch_id } = payload;
         if (!batch_id) return Response.json({ error: 'batch_id required' }, { status: 400 });

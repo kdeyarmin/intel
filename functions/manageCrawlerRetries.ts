@@ -7,6 +7,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // 3. Checks config for max retries and delay
 // 4. Triggers retry or escalates
 
+const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -83,7 +85,7 @@ Deno.serve(async (req) => {
             if (!state || !stateBatches[state]) continue;
 
             // Sort batches for this state: newest first
-            const batches = stateBatches[state].sort((a,b) => new Date(b.created_date) - new Date(a.created_date));
+            const batches = stateBatches[state].sort((a,b) => getTimestamp(b.created_date) - getTimestamp(a.created_date));
             const latest = batches[0];
 
             // If the latest batch is NOT this failed batch, it means we already ran (or are running) another attempt.
