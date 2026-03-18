@@ -8,6 +8,51 @@ const US_STATES = [
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
 const MAX_EXEC_MS = 20000;
 
+type CrawlerPayload = {
+    action?: string;
+    states?: string[];
+    region?: string;
+    concurrency?: number;
+    skip_completed?: boolean;
+    dry_run?: boolean;
+    item_ids?: string[];
+};
+
+type TransformedProvider = {
+    npi: string;
+    entity_type: string;
+    status: string;
+    needs_nppes_enrichment: boolean;
+    first_name?: string;
+    last_name?: string;
+    middle_name?: string;
+    credential?: string;
+    gender?: string;
+    organization_name?: string;
+    enumeration_date?: string;
+    last_update_date?: string;
+};
+
+type ErrorSummaryEntry = {
+    count: number;
+    original_message: string;
+    affected_states: Set<string>;
+    sample_prefixes: Set<string>;
+    item_ids: string[];
+};
+
+type WorkerStats = {
+    valid: number;
+    invalid: number;
+    duplicate: number;
+    prov: { imported: number; updated: number; skipped: number };
+    api_calls: number;
+    rate_limit_hits: number;
+    prefix: string;
+    time_ms?: number;
+    shouldSlowDown?: boolean;
+};
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function withRetry(fn, maxRetries = 5) {
@@ -200,7 +245,7 @@ async function upsertTaxonomies(records, base44) {
 function transformResults(allResults) {
     let validRows = 0, invalidRows = 0, duplicateRows = 0;
     const seenNPIs = new Set();
-    const providers = [], locations = [], taxonomies = [], errors = [];
+    const providers: TransformedProvider[] = [], locations = [], taxonomies = [], errors = [];
     for (const result of allResults) {
         const npi = String(result.number || '');
         if (!npi || npi.length !== 10) { invalidRows++; if (errors.length < 10) errors.push({ npi: npi || 'missing', message: 'Invalid NPI' }); continue; }
@@ -366,7 +411,7 @@ Deno.serve(async (req) => {
         let user = null;
         try { user = await base44.auth.me(); } catch(e) {}
         
-        let payload = {};
+        let payload: CrawlerPayload = {};
         try { payload = await req.json(); } catch(e) {}
         
         const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false } = payload;
@@ -450,7 +495,7 @@ Deno.serve(async (req) => {
 
         // Collect Error Summary
         const allFailedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'failed' }, undefined, 500);
-        const errorSummary = {};
+        const errorSummary: Record<string, ErrorSummaryEntry> = {};
         for (const item of allFailedItems) {
             const msg = item.error_message || 'Unknown Error';
             // Simplify error message for grouping (e.g. remove specific numbers if any)
@@ -761,7 +806,7 @@ Deno.serve(async (req) => {
                 params.set('state', task.state);
                 params.set('postal_code', `${task.zip_prefix}*`);
                 
-                let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
+                let stats: WorkerStats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
                 
                 // First query to get results
                 const firstPage = await fetchNPPESPage(params, stats);

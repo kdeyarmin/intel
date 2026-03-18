@@ -3,6 +3,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 const MAX_EXEC_MS = 45000; // Limit execution to 45 seconds to avoid timeouts
 const BULK_INSERT_SIZE = 500;
 
+type ImportFlatFilePayload = {
+    batch_id?: string;
+    file_url?: string;
+    byte_offset?: number;
+    headers?: string[] | null;
+    total_rows?: number;
+};
+
 function parseCSVLine(line) {
     const result = [];
     let current = '';
@@ -31,7 +39,7 @@ export default Deno.serve(async (req) => {
     const execStartTime = Date.now();
     const base44 = createClientFromRequest(req);
     
-    let payload = {};
+    let payload: ImportFlatFilePayload = {};
     try { payload = await req.json(); } catch(e) {}
     
     const { batch_id, file_url, byte_offset = 0, headers = null, total_rows = 0 } = payload;
