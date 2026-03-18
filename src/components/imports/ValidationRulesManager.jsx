@@ -107,7 +107,7 @@ export default function ValidationRulesManager() {
   }, [rules]);
 
   // Types that have rules
-  const typesWithRules = useMemo(() => {
+  const _typesWithRules = useMemo(() => {
     const types = new Set(Object.keys(rulesByType));
     types.add('_global');
     return types;
@@ -141,7 +141,7 @@ export default function ValidationRulesManager() {
   };
 
   const handleDuplicate = async (rule) => {
-    const { id, created_date, updated_date, created_by, ...data } = rule;
+    const { _id, _created_date, _updated_date, _created_by, ...data } = rule;
     await base44.entities.ImportValidationRule.create({
       ...data,
       rule_name: `${data.rule_name} (copy)`,

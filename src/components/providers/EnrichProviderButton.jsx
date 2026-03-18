@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, Sparkles, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function EnrichProviderButton({ providers = [], locations = [], taxonomies = [], onComplete, mode = 'bulk' }) {
+export default function EnrichProviderButton({ providers = [], locations = [], taxonomies = [], onComplete, _mode = 'bulk' }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);

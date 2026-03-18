@@ -73,7 +73,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [typeSearch, setTypeSearch] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [_isUploading, _setIsUploading] = useState(false);
 
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
@@ -89,7 +89,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
+  const _fileInputRef = useRef(null);
 
   // Mapping states
   const [csvHeaders, setCsvHeaders] = useState([]);

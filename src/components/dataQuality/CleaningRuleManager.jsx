@@ -32,7 +32,7 @@ export default function CleaningRuleManager() {
     try {
       const allRules = await base44.entities.DataCleaningRule.list();
       setRules(allRules || []);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load rules');
     }
   };
@@ -67,7 +67,7 @@ export default function CleaningRuleManager() {
         await base44.entities.DataCleaningRule.delete(ruleId);
         toast.success('Rule deleted');
         fetchRules();
-      } catch (error) {
+      } catch (_error) {
         toast.error('Failed to delete rule');
       }
     }

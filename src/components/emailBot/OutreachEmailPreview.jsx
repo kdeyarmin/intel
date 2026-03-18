@@ -6,7 +6,7 @@ import { X, Copy, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function OutreachEmailPreview({ outreach, provider, onClose, onSend }) {
-  const [copied, setCopied] = useState('');
+  const [_copied, setCopied] = useState('');
 
   const copyToClipboard = (text, section) => {
     navigator.clipboard.writeText(text);

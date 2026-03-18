@@ -100,7 +100,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-2">
-          {metrics.map((m, i) => (
+          {metrics.map((m, _i) => (
             <button
               key={m.key}
               onClick={() => toggleMetric(m.key)}

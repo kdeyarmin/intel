@@ -22,7 +22,7 @@ export default function DQAssistant() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [autoFixResult, setAutoFixResult] = useState(null);
+  const [_autoFixResult, setAutoFixResult] = useState(null);
   const [patternResult, setPatternResult] = useState(null);
   const scrollRef = useRef(null);
 

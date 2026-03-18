@@ -46,7 +46,7 @@ export default function ProviderDetail() {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(window.location.search);
   const npi = searchParams.get('npi');
-  const fromPage = searchParams.get('from');
+  const _fromPage = searchParams.get('from');
 
   const { data: providers = [], isLoading: loadingProvider } = useQuery({
     queryKey: ['provider', npi],
@@ -84,7 +84,7 @@ export default function ProviderDetail() {
     enabled: !!npi,
   });
 
-  const { data: serviceUtil = [] } = useQuery({
+  const { data: _serviceUtil = [] } = useQuery({
     queryKey: ['providerServiceUtil', npi],
     queryFn: () => base44.entities.ProviderServiceUtilization.filter({ npi }),
     enabled: !!npi,

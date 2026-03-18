@@ -183,7 +183,7 @@ export default function ImportMonitoring() {
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
   const staleBatches = batches.filter(b => isStale(b));
-  const completedBatches = batches.filter(b => b.status === 'completed');
+  const _completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
 
   const toggleSelectForRerun = (id) => {
@@ -200,8 +200,8 @@ export default function ImportMonitoring() {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
     const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
-    let successCount = 0;
-    let skipCount = 0;
+    let _successCount = 0;
+    let _skipCount = 0;
     for (const batch of toRetry) {
       try {
         await base44.functions.invoke('triggerImport', {
@@ -214,10 +214,10 @@ export default function ImportMonitoring() {
           retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
           category: batch.category || undefined,
         });
-        successCount++;
+        _successCount++;
       } catch (e) {
         console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        skipCount++;
+        _skipCount++;
       }
     }
     setSelectedForRerun(new Set());

@@ -43,7 +43,7 @@ export default function BillingStatusWidget({ sidebarOpen }) {
       
       setIsActive(newState);
       toast.success(newState ? 'Scheduled imports resumed' : 'Scheduled imports paused');
-    } catch (err) {
+    } catch (_err) {
       toast.error('Failed to toggle imports');
     } finally {
       setLoading(false);

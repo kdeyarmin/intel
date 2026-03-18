@@ -55,7 +55,7 @@ Be specific to healthcare/CMS data patterns. Use plain language.`,
         },
       });
       setSuggestions(result);
-    } catch (err) {
+    } catch (_err) {
       setSuggestions({ root_cause: 'Unable to analyze errors.', steps: [], fixable_locally: false, confidence: 'low' });
     } finally {
       setLoading(false);

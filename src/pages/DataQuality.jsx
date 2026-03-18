@@ -34,7 +34,7 @@ export default function DataQuality() {
     staleTime: 30000,
   });
 
-  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+  const { data: alerts = [], isLoading: _alertsLoading } = useQuery({
     queryKey: ['dqAlerts'],
     queryFn: () => base44.entities.DataQualityAlert.list('-created_date', 200),
     staleTime: 30000,

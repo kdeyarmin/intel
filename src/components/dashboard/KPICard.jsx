@@ -1,7 +1,7 @@
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function KPICard({ title, value, subtitle, icon: Icon, iconColor, iconBg, loading, trend }) {
+export default function KPICard({ title, value, subtitle, icon: Icon, iconColor, _iconBg, loading, trend }) {
   return (
     <div className="bg-[#141d30] rounded-xl border border-slate-700/50 shadow-lg shadow-black/10 hover:border-cyan-500/20 hover:shadow-cyan-500/5 transition-all duration-300 p-5">
       <div className="flex items-start justify-between">

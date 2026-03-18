@@ -234,7 +234,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
         ) : viewMode === 'ai' ? (
           <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
             <div className="p-3 space-y-3">
-              <AIErrorTriage errors={errors} batch={batch} onBulkAction={(action, categoryLabel, catKey) => {
+              <AIErrorTriage errors={errors} batch={batch} onBulkAction={(action, categoryLabel, _catKey) => {
                 toast.info(`${action} action queued for "${categoryLabel}" errors`);
               }} />
               <BulkErrorActions errors={errors} batch={batch} onActionComplete={() => onRefresh?.()} />

@@ -8,7 +8,7 @@ import { ArrowUpDown, Edit, Eye, UserMinus } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 
-const statusColors = {
+const _statusColors = {
   'New': 'bg-blue-100 text-blue-800',
   'Contacted': 'bg-yellow-100 text-yellow-800',
   'Qualified': 'bg-green-100 text-green-800',
@@ -18,7 +18,7 @@ const statusColors = {
 export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
   const [sortField, setSortField] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
-  const [editingNotes, setEditingNotes] = useState(null);
+  const [_editingNotes, setEditingNotes] = useState(null);
 
   const handleSort = (field) => {
     if (sortField === field) {

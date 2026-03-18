@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { RefreshCw, Loader2 } from 'lucide-react';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+const _COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 const STATUS_COLORS = {
   pending: '#6b7280',
   sent: '#3b82f6',
@@ -19,7 +19,7 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const { data: campaign = {} } = useQuery({
+  const { data: _campaign = {} } = useQuery({
     queryKey: ['campaign', campaign_id],
     queryFn: () => base44.entities.OutreachCampaign.filter({ id: campaign_id }, '-created_date', 1),
     enabled: !!campaign_id

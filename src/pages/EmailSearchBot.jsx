@@ -26,13 +26,13 @@ export default function EmailSearchBot() {
   const [isRunningAll, setIsRunningAll] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
-  const [allRunProgress, setAllRunProgress] = useState(null);
+  const [allRunProgress, _setAllRunProgress] = useState(null);
   const [activeTab, setActiveTab] = useState('search');
   const [filters, setFilters] = useState({ validation: 'all', confidence: 'all', source: 'all' });
   const [selectedNpis, setSelectedNpis] = useState(new Set());
   const [showCampaignLauncher, setShowCampaignLauncher] = useState(false);
   const queryClient = useQueryClient();
-  const stopRef = React.useRef(false);
+  const _stopRef = React.useRef(false);
 
   const { data: activeTask } = useQuery({
     queryKey: ['emailSearchTask'],
@@ -141,7 +141,7 @@ export default function EmailSearchBot() {
       });
       toast.success('Background search started. You can safely navigate away.');
       queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
-    } catch (e) {
+    } catch (_e) {
       toast.error('Failed to start background search');
       setIsRunning(false);
       setIsRunningAll(false);

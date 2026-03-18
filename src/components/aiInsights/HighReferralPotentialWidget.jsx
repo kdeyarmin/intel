@@ -30,7 +30,7 @@ export default function HighReferralPotentialWidget({ providers = [], referrals 
     return m;
   }, [utilizations]);
 
-  const provMap = useMemo(() => {
+  const _provMap = useMemo(() => {
     const m = {};
     providers.forEach(p => { m[p.npi] = p; });
     return m;

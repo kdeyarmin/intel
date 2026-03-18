@@ -50,7 +50,7 @@ export default function AIFailureAnalysis({ batch, onRetryWithSettings, compact 
         if (config.auto_retry_enabled) {
            retryPolicyInfo = `\nRETRY POLICY:\n- Auto Retry: Enabled\n- Delay: ${config.retry_delay_minutes} mins\n- Max Retries before escalation: ${config.retry_escalation_threshold || 3}`;
         }
-      } catch(e) {}
+      } catch(_e) {}
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a data import failure analyst. Analyze this failed import batch and provide a structured diagnosis.

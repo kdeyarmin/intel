@@ -37,7 +37,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       try {
         const res = await base44.functions.invoke('nppesCrawler', { action: 'batch_status' });
         if (res.data?.regions) setRegionStates(res.data.regions);
-      } catch (e) { /* ignore */ }
+      } catch (_e) { /* ignore */ }
     };
     loadRegions();
   }, []);

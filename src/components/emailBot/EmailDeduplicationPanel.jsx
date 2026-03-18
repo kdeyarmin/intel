@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Zap } from 'lucide-react';
 
-export default function EmailDeduplicationPanel({ emailGroups, providerId, onGenerateOutreach }) {
+export default function EmailDeduplicationPanel({ emailGroups, _providerId, onGenerateOutreach }) {
   const [expandedGroup, setExpandedGroup] = useState(null);
 
   if (!emailGroups || emailGroups.length === 0) {

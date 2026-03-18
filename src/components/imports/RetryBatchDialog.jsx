@@ -115,7 +115,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           },
           timestamp: new Date().toISOString(),
         });
-      } catch (e) { /* audit logging is best-effort */ }
+      } catch (_e) { /* audit logging is best-effort */ }
 
       toast.success('Retry started successfully');
       onRetryStarted?.();
