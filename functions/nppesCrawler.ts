@@ -6,6 +6,60 @@ const US_STATES = [
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
+
+const STATE_ZIP_PREFIXES: Record<string, string[]> = {
+    'AL': ['35','36'],
+    'AK': ['99'],
+    'AZ': ['85','86'],
+    'AR': ['71','72'],
+    'CA': ['90','91','92','93','94','95','96'],
+    'CO': ['80','81'],
+    'CT': ['06'],
+    'DE': ['19'],
+    'DC': ['20'],
+    'FL': ['32','33','34'],
+    'GA': ['30','31','39'],
+    'HI': ['96'],
+    'ID': ['83'],
+    'IL': ['60','61','62'],
+    'IN': ['46','47'],
+    'IA': ['50','51','52'],
+    'KS': ['66','67'],
+    'KY': ['40','41','42'],
+    'LA': ['70','71'],
+    'ME': ['03','04'],
+    'MD': ['20','21'],
+    'MA': ['01','02'],
+    'MI': ['48','49'],
+    'MN': ['55','56'],
+    'MS': ['38','39'],
+    'MO': ['63','64','65'],
+    'MT': ['59'],
+    'NE': ['68','69'],
+    'NV': ['88','89'],
+    'NH': ['03'],
+    'NJ': ['07','08'],
+    'NM': ['87','88'],
+    'NY': ['00','06','10','11','12','13','14'],
+    'NC': ['27','28'],
+    'ND': ['58'],
+    'OH': ['43','44','45'],
+    'OK': ['73','74'],
+    'OR': ['97'],
+    'PA': ['15','16','17','18','19'],
+    'RI': ['02'],
+    'SC': ['29'],
+    'SD': ['57'],
+    'TN': ['37','38'],
+    'TX': ['73','75','76','77','78','79','88'],
+    'UT': ['84'],
+    'VT': ['05'],
+    'VA': ['20','22','23','24'],
+    'WA': ['98','99'],
+    'WV': ['24','25','26'],
+    'WI': ['53','54'],
+    'WY': ['82','83']
+};
 const MAX_EXEC_MS = 20000;
 
 type CrawlerPayload = {
@@ -141,7 +195,18 @@ async function upsertProviders(records, base44) {
                     } else { skipped++; }
                 }
             }
-            if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
+            if (toCreate.length > 0) {
+                try {
+                    await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate));
+                    imported += toCreate.length;
+                } catch (bulkErr) {
+                    console.warn(`[upsertProviders] bulkCreate failed for ${toCreate.length} providers: ${bulkErr.message}, falling back to individual creates`);
+                    for (const p of toCreate) {
+                        try { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
+                        catch (indErr) { console.warn(`[upsertProviders] Individual create failed for NPI ${p.npi}: ${indErr.message}`); }
+                    }
+                }
+            }
             if (updateTasks.length > 0) {
                 for (let j = 0; j < updateTasks.length; j += 2) {
                     const results = await Promise.all(updateTasks.slice(j, j + 2).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertProviders] Update failed: ${e.message}`); return false; })));
@@ -660,9 +725,10 @@ Deno.serve(async (req) => {
             const batchStatus = isInitial ? 'processing' : 'paused';
             
             const normalizedPostalCode = normalizePostalCode(postal_code);
+            const knownPrefixes = STATE_ZIP_PREFIXES[st] || Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
             const queuePrefixes = normalizedPostalCode
                 ? [normalizedPostalCode]
-                : Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
+                : knownPrefixes;
 
             const retryParams: Record<string, any> = {
                 total_queue_items: queuePrefixes.length,
@@ -688,7 +754,7 @@ Deno.serve(async (req) => {
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
             queued++;
             if (isInitial) processingCount++;
-            await sleep(300);
+            await sleep(100);
         }
         
         // Dynamic worker pool initialization
@@ -1127,20 +1193,21 @@ Deno.serve(async (req) => {
                     const transformed = transformResults(allResults);
                     stats.valid += transformed.validRows;
                     stats.invalid += transformed.invalidRows;
+                    console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: ${allResults.length} API results → ${transformed.providers.length} providers, ${transformed.locations.length} locations, ${transformed.taxonomies.length} taxonomies (${transformed.invalidRows} invalid)`);
 
                     if (!effectiveDryRun) {
-                        // Sequential processing to reduce rate limiting on the Base44 DB
                         const provRes = await upsertProviders(transformed.providers, base44);
                         const locRes = await upsertLocations(transformed.locations, base44);
                         const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
+                        console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: Upserted ${provRes.imported} new, ${provRes.updated} updated, ${provRes.skipped} skipped providers | ${locRes.imported} locs | ${taxRes.imported} taxonomies`);
                     }
 
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else {
-                    // Zero results
+                    console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: 0 results from NPPES API`);
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
@@ -1195,39 +1262,36 @@ Deno.serve(async (req) => {
         if (remainingQueueSize > 0) {
             const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
 
-            // Re-invoke self with retry
-            console.log(`[Crawler Worker] Re-invoking self...`);
-            let selfInvoked = false;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
-                    selfInvoked = true;
-                    break;
-                } catch (e) {
-                    console.error(`[Crawler] Self-invoke attempt ${attempt} failed: ${e.message}`);
-                    if (attempt < 3) await sleep(attempt * 2000);
-                }
-            }
-            if (!selfInvoked) {
-                console.error('[Crawler] All self-invoke attempts failed. Queue may stall. Creating alert.');
-                try {
-                    await base44.asServiceRole.entities.DataQualityAlert.create({
-                        alert_type: 'new_issue_detected',
-                        severity: 'critical',
-                        title: 'Crawler Self-Invocation Failed',
-                        description: `Worker failed to re-invoke after 3 attempts. ${remainingQueueSize} items remain in queue.`,
-                        status: 'new',
-                        action_required: true
-                    });
-                } catch (_) {}
-            }
+            // Re-invoke self — MUST be fire-and-forget (no await) to avoid blocking chain.
+            // With await, each worker waits for the full response of the next worker, which waits
+            // for the next, etc. — creating an ever-deepening chain that exceeds function timeouts.
+            console.log(`[Crawler Worker] Re-invoking self (fire-and-forget)...`);
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
+                .then(() => console.log('[Crawler Worker] Self-re-invocation cycle completed'))
+                .catch(async (e) => {
+                    console.error(`[Crawler] Self-invoke attempt 1 failed: ${e.message}. Retrying...`);
+                    await sleep(2000);
+                    base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
+                        .then(() => console.log('[Crawler Worker] Self-re-invocation retry succeeded'))
+                        .catch(e2 => {
+                            console.error(`[Crawler] Self-invoke attempt 2 failed: ${e2.message}. Queue may stall.`);
+                            base44.asServiceRole.entities.DataQualityAlert.create({
+                                alert_type: 'new_issue_detected',
+                                severity: 'critical',
+                                title: 'Crawler Self-Invocation Failed',
+                                description: `Worker failed to re-invoke after 2 attempts. ${remainingQueueSize} items remain in queue. Error: ${e2.message}`,
+                                status: 'new',
+                                action_required: true
+                            }).catch(() => {});
+                        });
+                });
+            // Brief sleep to ensure HTTP request is dispatched before function returns
+            await sleep(500);
 
             // Dynamically scale up if queue is large, healthy, and under worker cap
             const maxAllowedWorkers = config.concurrency || 4;
-            // More conservative scaling: 1 worker per 10 items instead of 5
             let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 10), maxAllowedWorkers);
             
-            // Adjust based on errors to prevent rate limits
             if (consecutiveErrors > 0) {
                  targetWorkers = Math.max(1, Math.floor(targetWorkers / 2));
             }
@@ -1235,6 +1299,7 @@ Deno.serve(async (req) => {
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Scale-up invoke failed:', e.message));
+                 await sleep(500);
             } else if (consecutiveErrors > 1 && activeWorkersCount > 1) {
                  console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API. Active: ${activeWorkersCount}`);
             }

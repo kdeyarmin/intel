@@ -107,6 +107,10 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **ReferralSummaryCard NaN guard**: YoY calculation now uses `|| 0` fallback for undefined `total_referrals` — prevents NaN display
 - **deduplicateProviderEmails null guard**: `primaryData` from `.find()` now falls back to `{}` before spread — prevents crash when LLM returns slightly different email format
 - **Global mutation error handling**: QueryClient now has a default `onError` for all mutations — logs errors for unhandled mutation failures
+- **nppesCrawler self-re-invocation fix**: Changed from `await` (blocking chain) to fire-and-forget pattern. Previously each worker awaited the next worker's full response, creating an ever-deepening chain that exceeded function timeouts and killed the worker chain before data was imported
+- **nppesCrawler state zip prefix mapping**: Added STATE_ZIP_PREFIXES lookup so queue items are only created for zip prefixes known to exist in each state (e.g., PA gets 15-19 instead of 00-99). Reduces queue items from 100 to 2-7 per state, workers now immediately process prefixes with actual data
+- **nppesCrawler upsert error handling**: Provider bulkCreate now has explicit try/catch with individual-create fallback and detailed logging for visibility into silent failures
+- **nppesCrawler diagnostic logging**: Added console.log for NPPES API result counts, transformation stats, and upsert outcomes per queue item
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
