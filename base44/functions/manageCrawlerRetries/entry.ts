@@ -95,9 +95,8 @@ Deno.serve(async (req) => {
             // Current state status is FAILED.
             // Check retry eligibility.
             const currentRetryCount = latest.retry_count || 0;
-            const timeSinceFailure = Date.now() - new Date(latest.created_date).getTime(); // approx, created_date is start. 
-            // Better to use completed_at if available, else created_date.
-            // Failures usually happen fast or timeout.
+            const failureTime = latest.completed_at || latest.created_date;
+            const timeSinceFailure = Date.now() - new Date(failureTime).getTime();
             
             // Check if transient? 
             // We look for ErrorReports linked to this batch

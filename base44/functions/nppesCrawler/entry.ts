@@ -251,17 +251,18 @@ function transformResults(allResults) {
         if (!npi || npi.length !== 10) { invalidRows++; if (errors.length < 10) errors.push({ npi: npi || 'missing', message: 'Invalid NPI' }); continue; }
         if (seenNPIs.has(npi)) { duplicateRows++; continue; }
         seenNPIs.add(npi);
-        validRows++;
 
         const basic = result.basic || {};
         const isIndividual = result.enumeration_type === 'NPI-1';
         const status = basic.status === 'A' ? 'Active' : 'Deactivated';
-        
+
         if (status === 'Active' && !basic.enumeration_date && !basic.last_updated) {
             invalidRows++;
             if (errors.length < 10) errors.push({ npi, message: 'Active provider missing enumeration and update dates' });
-            continue; 
+            continue;
         }
+
+        validRows++;
 
         const provider = { npi, entity_type: isIndividual ? 'Individual' : 'Organization', status, needs_nppes_enrichment: false };
         if (isIndividual) {
@@ -801,7 +802,6 @@ Deno.serve(async (req) => {
             const taskStartTime = Date.now();
             try {
                 const params = new URLSearchParams();
-                params.set('version', '2.1');
                 params.set('limit', String(apiBatchSize));
                 params.set('state', task.state);
                 params.set('postal_code', `${task.zip_prefix}*`);
