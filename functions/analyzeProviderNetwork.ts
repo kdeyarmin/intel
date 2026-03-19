@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
 
     for (const [specialty, npis] of specialtyMap) {
       const specialists = npis.filter(npi => referralStats[npi]?.sent > 0);
-      const utilization = specialists.length / npis.length;
+      const utilization = npis.length > 0 ? specialists.length / npis.length : 0;
 
       if (utilization < 0.5 && npis.length > 5) {
         gaps.push({
@@ -203,7 +203,7 @@ ${networkData.gaps.slice(0, 5).map(gap =>
 Network Statistics:
 - Total providers: ${networkData.total_providers}
 - Active relationships: ${networkData.total_edges}
-- Network density: ${(networkData.total_edges / (networkData.total_providers * (networkData.total_providers - 1)) * 100).toFixed(2)}%
+- Network density: ${networkData.total_providers > 1 ? (networkData.total_edges / (networkData.total_providers * (networkData.total_providers - 1)) * 100).toFixed(2) : '0.00'}%
 
 Based on this analysis, provide 3-5 specific, actionable recommendations for:
 1. Network expansion opportunities

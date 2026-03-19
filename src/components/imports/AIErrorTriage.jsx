@@ -41,6 +41,7 @@ export default function AIErrorTriage({ errors, batch, onBulkAction }) {
   const runAnalysis = async () => {
     if (!errors?.length) return;
     setIsAnalyzing(true);
+    try {
     const summaryForAI = Object.entries(errorSummary).map(([cat, info]) => ({
       category: ERROR_CATEGORIES[cat]?.label || cat,
       count: info.count,
@@ -94,10 +95,13 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
       }
     });
     setAnalysis(result);
-    setIsAnalyzing(false);
-    // auto-expand the first critical/high group
     const firstImportant = result.groups?.findIndex(g => g.priority === 'critical' || g.priority === 'high');
     if (firstImportant >= 0) setExpandedGroups(new Set([firstImportant]));
+    } catch (err) {
+      console.error('AI error triage failed:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const toggleGroup = (idx) => {

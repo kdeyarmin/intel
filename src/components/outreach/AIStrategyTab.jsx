@@ -10,6 +10,7 @@ export default function AIStrategyTab({ campaigns = [], providers = [], scores =
 
   const generateStrategy = async () => {
     setLoading(true);
+    try {
 
     const historicalData = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name,
@@ -107,7 +108,11 @@ Also provide:
       }
     });
     setStrategy(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI strategy generation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const impactColors = { positive: 'text-green-600', negative: 'text-red-600', neutral: 'text-slate-500' };

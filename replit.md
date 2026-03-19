@@ -96,6 +96,12 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **AdvancedAnalytics theme fix**: TabsList changed from bg-slate-100 to bg-slate-800/50 to match app's dark theme
 - **LeadListTable variable rename**: `_editingNotes` renamed to `editingNotes` — removing misleading underscore prefix on used state variable
 
+- **AI component error handling**: AIStrategyTab, AISmartTargeting, AISegmentationTab, AIErrorTriage all wrapped in try/catch/finally — loading state now reliably clears on LLM failure
+- **analyzeProviderNetwork division-by-zero**: Guarded `specialists.length / npis.length` with length check; network density calculation guarded for `total_providers <= 1`
+- **Providers.jsx sort crash**: Name sort now handles undefined `last_name`/`first_name` with `|| ''` fallback and `.trim()`
+- **Providers.jsx location search**: Search filter now includes location city/state matching — selecting a Location suggestion from autocomplete now returns results
+- **LiveProgressCard NaN guard**: `getElapsedTime` validates parsed date before arithmetic — invalid date strings return '' instead of NaN
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

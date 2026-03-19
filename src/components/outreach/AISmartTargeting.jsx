@@ -15,6 +15,7 @@ export default function AISmartTargeting({
 
   const analyze = async () => {
     setLoading(true);
+    try {
 
     // Build data snapshot for AI
     const scoreMap = {};
@@ -118,7 +119,11 @@ For each group, explain WHY these providers should be prioritized, the suggested
     });
 
     setSuggestions({ ...res, groups: enriched });
-    setLoading(false);
+    } catch (err) {
+      console.error('AI targeting analysis failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const STRATEGY_ICONS = {

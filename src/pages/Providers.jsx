@@ -267,11 +267,17 @@ export default function Providers() {
     const basic = providers.filter(p => {
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
+        const locs = locationByNpi[p.npi] || [];
+        const locMatch = locs.some(l =>
+          (l.city || '').toLowerCase().includes(q) ||
+          (l.state || '').toLowerCase().includes(q)
+        );
         const match = (p.npi || '').includes(q) ||
           (p.last_name || '').toLowerCase().includes(q) ||
           (p.first_name || '').toLowerCase().includes(q) ||
           (p.organization_name || '').toLowerCase().includes(q) ||
-          (p.credential || '').toLowerCase().includes(q);
+          (p.credential || '').toLowerCase().includes(q) ||
+          locMatch;
         if (!match) return false;
       }
       if (filters.entityTypeFilter !== 'all' && p.entity_type !== filters.entityTypeFilter) return false;
@@ -315,8 +321,8 @@ export default function Providers() {
       let va, vb;
       switch (sortField) {
         case 'name':
-          va = a.entity_type === 'Individual' ? `${a.last_name} ${a.first_name}` : a.organization_name || '';
-          vb = b.entity_type === 'Individual' ? `${b.last_name} ${b.first_name}` : b.organization_name || '';
+          va = a.entity_type === 'Individual' ? `${a.last_name || ''} ${a.first_name || ''}`.trim() : a.organization_name || '';
+          vb = b.entity_type === 'Individual' ? `${b.last_name || ''} ${b.first_name || ''}`.trim() : b.organization_name || '';
           return dir * va.localeCompare(vb);
         case 'npi':
           return dir * (a.npi || '').localeCompare(b.npi || '');

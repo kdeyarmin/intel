@@ -10,6 +10,7 @@ export default function AISegmentationTab({ campaigns = [], providers = [], scor
 
   const generateSegmentation = async () => {
     setLoading(true);
+    try {
 
     const providerSample = providers.slice(0, 100).map(p => ({
       npi: p.npi,
@@ -101,7 +102,11 @@ Provide:
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI segmentation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const prioColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };

@@ -54,7 +54,9 @@ function getProgressValue(batch) {
 
 function getElapsedTime(startDate) {
   if (!startDate) return '';
-  const ms = Math.max(0, Date.now() - new Date(startDate).getTime());
+  const parsed = new Date(startDate).getTime();
+  if (isNaN(parsed)) return '';
+  const ms = Math.max(0, Date.now() - parsed);
   const secs = Math.floor(ms / 1000);
   if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);
