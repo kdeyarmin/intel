@@ -5,15 +5,11 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
-  'home_health_enrollments': 'HH Enrollments', 'provider_service_utilization': 'Provider Service Util',
-  'medicare_hha_stats': 'Medicare HHA Stats', 'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_part_d_stats': 'Medicare Part D Stats', 'medicare_snf_stats': 'Medicare SNF Stats',
-};
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  home_health_enrollments: 'HH Enrollments',
+});
 
 const statusConfig = {
   processing: { icon: Loader2, color: 'bg-blue-500/15 text-blue-400', spin: true },

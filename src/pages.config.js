@@ -10,7 +10,7 @@
  * Example file structure:
  * 
  *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
+ *   import Dashboard from './pages/Dashboard.jsx';
  *   import Settings from './pages/Settings';
  *   
  *   export const PAGES = {
@@ -47,46 +47,46 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import AIAssistant from './pages/AIAssistant';
-import APIConnectors from './pages/APIConnectors';
-import AdminSettings from './pages/AdminSettings';
-import AdvancedAnalytics from './pages/AdvancedAnalytics';
-import AuditLog from './pages/AuditLog';
-import CMSAnalytics from './pages/CMSAnalytics';
-import CMSDataSources from './pages/CMSDataSources';
-import Campaigns from './pages/Campaigns';
-import CustomReports from './pages/CustomReports';
-import Dashboard from './pages/Dashboard';
-import DataCenter from './pages/DataCenter';
-import DataQuality from './pages/DataQuality';
-import EmailSearchBot from './pages/EmailSearchBot';
-import EnrichmentHub from './pages/EnrichmentHub';
-import Help from './pages/Help';
-import ImportAnalytics from './pages/ImportAnalytics';
-import ImportMonitoring from './pages/ImportMonitoring';
-import ImportOverview from './pages/ImportOverview';
-import LeadListBuilder from './pages/LeadListBuilder';
-import LeadLists from './pages/LeadLists';
-import LocationDetail from './pages/LocationDetail';
-import Locations from './pages/Locations';
-import MAInpatientDashboard from './pages/MAInpatientDashboard';
-import NPPESCrawler from './pages/NPPESCrawler';
-import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard';
-import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings';
-import OrganizationDetail from './pages/OrganizationDetail';
-import Organizations from './pages/Organizations';
-import ProjectManagement from './pages/ProjectManagement';
-import ProviderDetail from './pages/ProviderDetail';
-import ProviderLocationMatching from './pages/ProviderLocationMatching';
-import ProviderOutreach from './pages/ProviderOutreach';
-import Providers from './pages/Providers';
-import ReconciliationDashboard from './pages/ReconciliationDashboard';
-import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence';
-import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis';
-import ScoringRules from './pages/ScoringRules';
-import SecurityAudit from './pages/SecurityAudit';
-import TerritoryIntelligence from './pages/TerritoryIntelligence';
-import Utilization from './pages/Utilization';
+import AIAssistant from './pages/AIAssistant.jsx';
+import APIConnectors from './pages/APIConnectors.jsx';
+import AdminSettings from './pages/AdminSettings.jsx';
+import AdvancedAnalytics from './pages/AdvancedAnalytics.jsx';
+import AuditLog from './pages/AuditLog.jsx';
+import CMSAnalytics from './pages/CMSAnalytics.jsx';
+import CMSDataSources from './pages/CMSDataSources.jsx';
+import Campaigns from './pages/Campaigns.jsx';
+import CustomReports from './pages/CustomReports.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import DataCenter from './pages/DataCenter.jsx';
+import DataQuality from './pages/DataQuality.jsx';
+import EmailSearchBot from './pages/EmailSearchBot.jsx';
+import EnrichmentHub from './pages/EnrichmentHub.jsx';
+import Help from './pages/Help.jsx';
+import ImportAnalytics from './pages/ImportAnalytics.jsx';
+import ImportMonitoring from './pages/ImportMonitoring.jsx';
+import ImportOverview from './pages/ImportOverview.jsx';
+import LeadListBuilder from './pages/LeadListBuilder.jsx';
+import LeadLists from './pages/LeadLists.jsx';
+import LocationDetail from './pages/LocationDetail.jsx';
+import Locations from './pages/Locations.jsx';
+import MAInpatientDashboard from './pages/MAInpatientDashboard.jsx';
+import NPPESCrawler from './pages/NPPESCrawler.jsx';
+import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard.jsx';
+import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
+import OrganizationDetail from './pages/OrganizationDetail.jsx';
+import Organizations from './pages/Organizations.jsx';
+import ProjectManagement from './pages/ProjectManagement.jsx';
+import ProviderDetail from './pages/ProviderDetail.jsx';
+import ProviderLocationMatching from './pages/ProviderLocationMatching.jsx';
+import ProviderOutreach from './pages/ProviderOutreach.jsx';
+import Providers from './pages/Providers.jsx';
+import ReconciliationDashboard from './pages/ReconciliationDashboard.jsx';
+import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence.jsx';
+import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis.jsx';
+import ScoringRules from './pages/ScoringRules.jsx';
+import SecurityAudit from './pages/SecurityAudit.jsx';
+import TerritoryIntelligence from './pages/TerritoryIntelligence.jsx';
+import Utilization from './pages/Utilization.jsx';
 import __Layout from './Layout.jsx';
 
 

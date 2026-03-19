@@ -4,18 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Download, FileJson, FileText, Loader2, Filter, CheckCircle2 } from 'lucide-react';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
-  'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
-  'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
-  'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
-  'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
-  'medicare_ma_inpatient': 'Medicare MA Inpatient', 'medicare_part_d_stats': 'Medicare Part D Stats',
-  'medicare_snf_stats': 'Medicare SNF Stats',
-};
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  home_health_enrollments: 'HH Enrollments',
+  home_health_cost_reports: 'HH Cost Reports',
+  home_health_pdgm: 'HH PDGM',
+});
 
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType });

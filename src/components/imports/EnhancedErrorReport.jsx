@@ -13,13 +13,9 @@ import { categorizeError, ERROR_CATEGORIES, groupErrors } from './errorCategorie
 import ValidationErrorBreakdown from './ValidationErrorBreakdown';
 import AIErrorTriage from './AIErrorTriage';
 import BulkErrorActions from './BulkErrorActions';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization', 'cms_part_d': 'CMS Part D',
-  'medicare_hha_stats': 'Medicare HHA Stats', 'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_part_d_stats': 'Medicare Part D Stats', 'medicare_snf_stats': 'Medicare SNF Stats',
-};
+const IMPORT_TYPE_LABELS = buildImportTypeLabels();
 
 function getSuggestedFix(error) {
   const msg = (error.message || error.detail || '').toLowerCase();
