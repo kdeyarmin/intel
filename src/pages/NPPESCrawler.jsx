@@ -14,6 +14,7 @@ import StateMap from '../components/nppes/StateMap';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 import CrawlerMonitoring from '../components/nppes/CrawlerMonitoring';
+import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
 
@@ -358,6 +359,8 @@ export default function NPPESCrawler() {
           </Card>
         </div>
       </div>
+
+      {isRunning && <CurrentStateProgress status={status} />}
 
       <CrawlerMonitoring status={status} />
 
