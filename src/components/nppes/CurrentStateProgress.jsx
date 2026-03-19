@@ -40,8 +40,11 @@ export default function CurrentStateProgress({ status }) {
 
   const totalPrefixes = TOTAL_ZIP_PREFIXES;
   const processedPrefixes = activeBatch?.retry_params?.processed_prefixes || [];
-  const completedPrefixes = processedPrefixes.length;
-  const pct = totalPrefixes > 0 ? Math.round((completedPrefixes / totalPrefixes) * 100) : 0;
+  // Use granular_metrics as a more reliable source for completion count
+  const metricsForState = status?.granular_metrics?.[stateCode];
+  const completedFromMetrics = metricsForState?.completed_items || 0;
+  const completedPrefixes = Math.max(processedPrefixes.length, completedFromMetrics);
+  const pct = totalPrefixes > 0 ? Math.min(Math.round((completedPrefixes / totalPrefixes) * 100), 100) : 0;
 
   const imported = activeBatch?.imported_rows || 0;
   const updated = activeBatch?.updated_rows || 0;

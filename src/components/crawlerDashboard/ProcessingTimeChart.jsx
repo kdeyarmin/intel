@@ -7,7 +7,7 @@ export default function ProcessingTimeChart({ nppesImports, loading }) {
 
   // Process data: Get last 20 completed batches
   const data = (nppesImports || [])
-    .filter(b => b.status === 'completed' && b.completed_at && b.created_date && b.file_name?.includes('crawler_'))
+    .filter(b => b.status === 'completed' && b.completed_at && b.created_date && b.file_name && b.file_name.includes('crawler_'))
     .slice(0, 20)
     .map(b => {
       const state = (b.file_name.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];

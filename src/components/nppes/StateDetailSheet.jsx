@@ -39,7 +39,9 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
     switch (status) {
       case 'completed': return 'text-green-400 bg-green-500/10 border-green-500/20';
       case 'failed': return 'text-red-400 bg-red-500/10 border-red-500/20';
-      case 'processing': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      case 'processing': case 'validating': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      case 'paused': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+      case 'cancelled': return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
       default: return 'text-slate-400 bg-slate-800/40 border-slate-700/50';
     }
   };
@@ -48,7 +50,9 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
     switch (status) {
       case 'completed': return <CheckCircle2 className="w-5 h-5" />;
       case 'failed': return <XCircle className="w-5 h-5" />;
-      case 'processing': return <Loader2 className="w-5 h-5 animate-spin" />;
+      case 'processing': case 'validating': return <Loader2 className="w-5 h-5 animate-spin" />;
+      case 'paused': return <Clock className="w-5 h-5" />;
+      case 'cancelled': return <XCircle className="w-5 h-5" />;
       default: return <Clock className="w-5 h-5" />;
     }
   };
@@ -123,7 +127,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                   ))}
                 </div>
 
-                {batch.api_requests_count > 0 && (
+                {(batch.api_requests_count || 0) > 0 && (
                   <div className="flex items-center justify-between text-xs text-slate-500 px-1">
                     <span>{batch.api_requests_count} API requests</span>
                     {batch.rate_limit_count > 0 && (
