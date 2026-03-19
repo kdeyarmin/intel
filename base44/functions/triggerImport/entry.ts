@@ -118,7 +118,6 @@ Deno.serve(async (req) => {
     const zipFunctionMap = {
       medicare_hha_stats: 'importMedicareHHA',
       medicare_ma_inpatient: 'importMedicareMAInpatient',
-      medicare_part_d_stats: 'importMedicarePartD',
       medicare_snf_stats: 'importMedicareSNF',
     };
 
