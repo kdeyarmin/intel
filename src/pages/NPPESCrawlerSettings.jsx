@@ -12,7 +12,7 @@ import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin } from
 import { toast } from 'sonner';
 import PageHeader from '../components/shared/PageHeader';
 
-const ALL_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
+const ALL_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
 const DEFAULTS = {
   config_key: 'default',
@@ -93,6 +93,9 @@ export default function NPPESCrawlerSettings() {
       queryClient.invalidateQueries({ queryKey: ['crawlerConfig'] });
       setHasChanges(false);
       toast.success('Crawler settings saved');
+    },
+    onError: (error) => {
+      toast.error(`Failed to save settings: ${error.message}`);
     },
   });
 
