@@ -1088,7 +1088,7 @@ Deno.serve(async (req) => {
         }
 
         // Intelligent Re-invocation based on performance and queue depth
-        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 100).then(r => r.length).catch(() => 0);
+        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 500).then(r => r.length).catch(() => 0);
 
         console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
 
@@ -1123,12 +1123,19 @@ Deno.serve(async (req) => {
             }
 
             // Dynamically scale up if queue is large, healthy, and under worker cap
-            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
+            const maxAllowedWorkers = config.concurrency || 4;
+            let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), maxAllowedWorkers);
+            
+            // Adjust based on errors to prevent rate limits
+            if (consecutiveErrors > 0) {
+                 targetWorkers = Math.max(1, Math.floor(targetWorkers / 2));
+            }
+
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Scale-up invoke failed:', e.message));
-            } else if (consecutiveErrors > 2 && activeWorkersCount > 2) {
-                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API.`);
+            } else if (consecutiveErrors > 1 && activeWorkersCount > 1) {
+                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API. Active: ${activeWorkersCount}`);
             }
         }
         
