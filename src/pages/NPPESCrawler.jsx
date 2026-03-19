@@ -193,8 +193,9 @@ export default function NPPESCrawler() {
                   </Button>
                 )}
 
-                <Button 
-                  onClick={stopCrawler} 
+                {(isRunning || isPaused) && (
+                <Button
+                  onClick={stopCrawler}
                   disabled={isProcessingAction}
                   variant="destructive"
                   className="gap-2 min-w-[140px]"
@@ -202,6 +203,7 @@ export default function NPPESCrawler() {
                   {isProcessingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                   Stop & Cancel
                 </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -289,28 +291,28 @@ export default function NPPESCrawler() {
                     <ArrowDownToLine className="w-4 h-4" />
                     <p className="text-xs font-medium">New Records</p>
                   </div>
-                  <p className="text-xl font-bold text-white">{status?.totals?.imported?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{(status?.totals?.imported ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                   <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <RefreshCw className="w-4 h-4" />
                     <p className="text-xs font-medium">Updated</p>
                   </div>
-                  <p className="text-xl font-bold text-white">{status?.totals?.updated?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{(status?.totals?.updated ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                   <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <SkipForward className="w-4 h-4" />
                     <p className="text-xs font-medium">Skipped</p>
                   </div>
-                  <p className="text-xl font-bold text-white">{status?.totals?.skipped?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{(status?.totals?.skipped ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                   <div className="flex items-center gap-2 text-slate-400 mb-1">
                     <Activity className="w-4 h-4" />
                     <p className="text-xs font-medium">API Calls</p>
                   </div>
-                  <p className="text-xl font-bold text-white">{status?.totals?.api_calls?.toLocaleString() || 0}</p>
+                  <p className="text-xl font-bold text-white">{(status?.totals?.api_calls ?? 0).toLocaleString()}</p>
                 </div>
               </div>
               <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mt-2">

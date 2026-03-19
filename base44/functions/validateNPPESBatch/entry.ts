@@ -199,7 +199,7 @@ Return a list of flagged anomalies that might require manual review. For example
             // Flag/quarantine batch for manual review if there are high/critical severity alerts
             const hasSevere = alertsToCreate.some(a => a.severity === 'high' || a.severity === 'critical');
             if (hasSevere) {
-                const tags = batch.tags || [];
+                const tags = [...(batch.tags || [])];
                 if (!tags.includes('manual_review_required')) tags.push('manual_review_required');
                 if (!tags.includes('quarantined')) tags.push('quarantined');
                 await base44.asServiceRole.entities.ImportBatch.update(batch_id, { tags });

@@ -31,7 +31,8 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
       totalImported,
       avgTimePerStateSec,
       successRate,
-      totalBatches
+      totalBatches,
+      completedCount: completedBatches.length
     };
   }, [nppesImports]);
 
@@ -45,22 +46,20 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <KPICard 
-        title="Total Providers Processed" 
-        value={metrics.totalProcessed.toLocaleString()} 
+      <KPICard
+        title="Total Providers Processed"
+        value={metrics.totalProcessed.toLocaleString()}
         icon={Database}
-        trend="+12% from last week" 
-        trendUp={true}
+        trend={`${metrics.totalBatches} batches processed`}
         color="text-blue-600"
         bgColor="bg-blue-50"
       />
-      <KPICard 
-        title="Avg Processing Time" 
-        value={`${metrics.avgTimePerStateSec}s`} 
+      <KPICard
+        title="Avg Processing Time"
+        value={`${metrics.avgTimePerStateSec}s`}
         subValue="per state"
         icon={Clock}
-        trend="-5% improvement"
-        trendUp={true}
+        trend={`${metrics.completedCount} completed batches`}
         color="text-amber-600"
         bgColor="bg-amber-50"
       />
@@ -100,7 +99,8 @@ function KPICard({ title, value, subValue, icon: Icon, trend, trendUp, color, bg
         </div>
         {trend && (
           <p className="text-xs text-muted-foreground mt-1 flex items-center">
-            {trendUp ? <ArrowUp className="w-3 h-3 text-emerald-500 mr-1" /> : <ArrowDown className="w-3 h-3 text-red-500 mr-1" />}
+            {trendUp === true && <ArrowUp className="w-3 h-3 text-emerald-500 mr-1" />}
+            {trendUp === false && <ArrowDown className="w-3 h-3 text-red-500 mr-1" />}
             {trend}
           </p>
         )}

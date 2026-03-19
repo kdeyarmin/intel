@@ -78,14 +78,16 @@ Deno.serve(async (req) => {
         }
 
         const actionsTaken = [];
+        const processedStates = new Set();
 
         // 4. Analyze each state with a recent failure
         for (const b of crawlerFailures) {
             const state = b.file_name.split('_')[1];
-            if (!state || !stateBatches[state]) continue;
+            if (!state || !stateBatches[state] || processedStates.has(state)) continue;
+            processedStates.add(state);
 
             // Sort batches for this state: newest first
-            const batches = stateBatches[state].sort((a,b) => getTimestamp(b.created_date) - getTimestamp(a.created_date));
+            const batches = [...stateBatches[state]].sort((x, y) => getTimestamp(y.created_date) - getTimestamp(x.created_date));
             const latest = batches[0];
 
             // If the latest batch is NOT this failed batch, it means we already ran (or are running) another attempt.
@@ -124,7 +126,8 @@ Deno.serve(async (req) => {
                     try {
                         await base44.asServiceRole.functions.invoke('nppesCrawler', {
                             action: 'batch_start',
-                            states: [state]
+                            states: [state],
+                            retry_count: currentRetryCount + 1
                         });
                         actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1})`);
                     } catch(e) {

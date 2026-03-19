@@ -10,17 +10,17 @@ export default function CrawlerMonitoring({ status }) {
   // Transform granular_metrics into an array for charts
   const metricsData = Object.entries(status.granular_metrics || {}).map(([state, data]) => ({
     state,
-    avgTime: data.avg_prefix_time_ms / 1000, // convert to seconds
-    rateLimits: data.rate_limit_hits,
-    pendingItems: data.pending_items,
-    completedItems: data.completed_items
+    avgTime: (data.avg_prefix_time_ms || 0) / 1000, // convert to seconds
+    rateLimits: data.rate_limit_hits || 0,
+    pendingItems: data.pending_items || 0,
+    completedItems: data.completed_items || 0
   })).sort((a, b) => b.avgTime - a.avgTime);
 
   // Transform errors into an array for charts
   const errorData = (status.errors || []).map(err => ({
-    message: err.original_message.length > 30 ? err.original_message.substring(0, 30) + '...' : err.original_message,
+    message: (err.original_message || 'Unknown error').length > 30 ? (err.original_message || 'Unknown error').substring(0, 30) + '...' : (err.original_message || 'Unknown error'),
     count: err.count,
-    statesCount: err.affected_states.length
+    statesCount: (err.affected_states || []).length
   })).slice(0, 5);
 
   const hasHighErrorRate = status.failed > (status.completed * 0.2) && status.failed > 5;

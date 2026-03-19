@@ -93,10 +93,11 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-xs">
         {[
+          { key: 'active', label: 'Active', count: (currentState && (running || autoMode)) ? 1 : 0 },
           { key: 'completed', label: 'Completed', count: completedSet.size },
           { key: 'processing', label: 'Processing', count: processingSet.size },
           { key: 'failed', label: 'Failed', count: failedSet.size },
-          { key: 'pending', label: 'Pending', count: Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size },
+          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size - ((currentState && (running || autoMode)) ? 1 : 0)) },
         ].map(item => (
           <div key={item.key} className="flex items-center gap-1.5">
             <div 

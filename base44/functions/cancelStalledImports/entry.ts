@@ -5,12 +5,13 @@ const MAX_AUTO_RETRIES = 2;
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    
+    const clonedReq = req.clone();
+    const base44 = createClientFromRequest(clonedReq);
+
     // Allow service role calls (from scheduled automations) or admin users
     let user = null;
     try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-    if (user && user.role !== 'admin') {
+    if (!user || user.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -106,6 +107,7 @@ Deno.serve(async (req) => {
                 action: 'batch_start',
                 states: [stateCode],
                 dry_run: batch.dry_run || false,
+                retry_count: newRetryCount,
               });
             } else {
               console.error(`Could not extract state from crawler batch file_name: ${batch.file_name}`);

@@ -45,7 +45,7 @@ export default function AlertsList({ alerts = [] }) {
 
   const toggleAll = (filtered) => {
     const openIds = filtered.filter(a => a.status === 'open').map(a => a.id);
-    if (openIds.every(id => selectedIds.includes(id))) {
+    if (openIds.length > 0 && openIds.every(id => selectedIds.includes(id))) {
       setSelectedIds([]);
     } else {
       setSelectedIds(openIds);
@@ -57,6 +57,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'apply_fix', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
+    onError: (err) => alert(`Failed to apply fix: ${err.message}`),
   });
 
   const dismissMutation = useMutation({
@@ -64,6 +65,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'dismiss', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
+    onError: (err) => alert(`Failed to dismiss alert: ${err.message}`),
   });
 
   const autoFixMutation = useMutation({
@@ -77,6 +79,7 @@ export default function AlertsList({ alerts = [] }) {
         alert(`Auto-fix complete: Fixed ${data.fixed} alerts, Skipped ${data.skipped}.`);
       }
     },
+    onError: (err) => alert(`Auto-fix failed: ${err.message}`),
   });
 
   const filtered = alerts.filter(a => {
@@ -150,7 +153,7 @@ export default function AlertsList({ alerts = [] }) {
         {filtered.length > 0 && filtered.some(a => a.status === 'open') && (
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
+              checked={filtered.filter(a => a.status === 'open').length > 0 && filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
             <span className="text-xs text-slate-500">Select all open alerts</span>

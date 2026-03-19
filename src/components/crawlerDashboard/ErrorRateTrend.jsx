@@ -8,7 +8,7 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
   // Group imports by date, calculate success/failure counts
   const trendData = useMemo(() => {
     const byDate = {};
-    nppesImports.forEach(b => {
+    (nppesImports || []).forEach(b => {
       if (!b.created_date) return;
       const day = b.created_date.substring(0, 10);
       if (!byDate[day]) byDate[day] = { date: day, success: 0, failed: 0, totalRows: 0, errors: 0 };
@@ -32,8 +32,8 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
   }, [nppesImports]);
 
   // Summary stats
-  const totalFailed = nppesImports.filter(b => b.status === 'failed').length;
-  const totalSuccess = nppesImports.filter(b => b.status === 'completed').length;
+  const totalFailed = (nppesImports || []).filter(b => b.status === 'failed').length;
+  const totalSuccess = (nppesImports || []).filter(b => b.status === 'completed').length;
   const overallErrorRate = (totalSuccess + totalFailed) > 0
     ? ((totalFailed / (totalSuccess + totalFailed)) * 100).toFixed(1)
     : '0';

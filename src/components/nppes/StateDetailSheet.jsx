@@ -23,7 +23,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
       ) || null;
     },
     enabled: !!stateCode && isOpen,
-    refetchInterval: (data) => (data && data.status === 'processing' ? 2000 : false),
+    refetchInterval: (query) => (query.state.data && query.state.data.status === 'processing' ? 2000 : false),
   });
 
   const { data: errors, isLoading: errorsLoading } = useQuery({
@@ -117,7 +117,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                     <div key={item.label} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 shadow-sm">
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{item.label}</div>
                       <div className={`text-2xl font-bold ${item.color}`}>
-                        {item.value?.toLocaleString() || '—'}
+                        {item.value != null ? item.value.toLocaleString() : '—'}
                       </div>
                     </div>
                   ))}
