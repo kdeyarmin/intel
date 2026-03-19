@@ -608,7 +608,7 @@ Deno.serve(async (req) => {
         // We start with a lower base concurrency and let the queue processor self-adjust
         const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
         
-        const targetWorkers = Math.min(maxConcurrent * 2, 6); // Max initial cluster
+        const targetWorkers = Math.min(maxConcurrent, 3); // Max initial cluster
         const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
         
         for(let i = 0; i < workersToStart; i++) {
