@@ -630,6 +630,9 @@ Deno.serve(async (req) => {
               await delay(5000);
             }
           }
+          if (Math.floor(i / CHUNK) % 5 === 4) {
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, { updated_date: new Date().toISOString(), imported_rows: (batch.imported_rows || 0) + imported }).catch(() => {});
+          }
           if (i + CHUNK < recordsToProcess.length) await delay(1200);
         }
       }

@@ -107,7 +107,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       try {
         await base44.entities.AuditEvent.create({
           event_type: 'import',
-          user_email: 'user',
+          user_email: 'system',
           details: {
             action: `Retry import: ${batch.import_type} (attempt ${currentRetryCount + 1}/${MAX_RETRIES})`,
             entity: batch.import_type,

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -155,7 +156,6 @@ export default function ImportMonitoring() {
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
   const staleBatches = batches.filter(b => isStale(b));
-  const _completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
 
   const toggleSelectForRerun = (id) => {
@@ -172,8 +172,8 @@ export default function ImportMonitoring() {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
     const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
-    let _successCount = 0;
-    let _skipCount = 0;
+    let successCount = 0;
+    let skipCount = 0;
     for (const batch of toRetry) {
       try {
         await base44.functions.invoke('triggerImport', {
@@ -186,12 +186,14 @@ export default function ImportMonitoring() {
           retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
           category: batch.category || undefined,
         });
-        _successCount++;
+        successCount++;
       } catch (e) {
         console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        _skipCount++;
+        skipCount++;
       }
     }
+    if (successCount > 0) toast.success(`Retried ${successCount} batch${successCount > 1 ? 'es' : ''} successfully`);
+    if (skipCount > 0) toast.error(`${skipCount} batch${skipCount > 1 ? 'es' : ''} failed to retry`);
     setSelectedForRerun(new Set());
     setBulkRetryMode(false);
     setIsBulkRetrying(false);

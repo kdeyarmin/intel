@@ -45,8 +45,13 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
-        const payload = await req.json();
-        const { import_type: raw_import_type, file_url, year = 2023, dry_run = false, resume_offset = 0, batch_id = null, retry_of = null, retry_count = 0, retry_tags = null, category: retryCategory = null } = payload;
+        let payload;
+        try {
+            payload = await req.json();
+        } catch (parseErr) {
+            return Response.json({ error: 'Invalid or empty request body' }, { status: 400 });
+        }
+        const { import_type: raw_import_type, file_url, year = new Date().getFullYear() - 2, dry_run = false, resume_offset = 0, batch_id = null, retry_of = null, retry_count = 0, retry_tags = null, category: retryCategory = null } = payload;
 
         // Resolve aliases before validation
         const ALIASES = { cms_utilization: 'provider_service_utilization' };

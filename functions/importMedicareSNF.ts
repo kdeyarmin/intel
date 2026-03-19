@@ -403,6 +403,7 @@ Deno.serve(async (req) => {
       }
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) break;
+        if (consecutiveRateLimitChunks >= 3) { console.warn('Circuit breaker: 3 consecutive rate-limited chunks. Pausing.'); break; }
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, chunk, `chunk-${i}`);
         if (result.ok) { imported += chunk.length; consecutiveRateLimitChunks = 0; }
@@ -411,7 +412,9 @@ Deno.serve(async (req) => {
           addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset });
           if (result.rateLimitBreaker || /rate limit|429/i.test(result.error)) { consecutiveRateLimitChunks++; await delay(5000); }
         }
-        if (consecutiveRateLimitChunks >= 3) { console.warn('Circuit breaker: 3 consecutive rate-limited chunks. Pausing.'); break; }
+        if (Math.floor(i / CHUNK) % 5 === 4) {
+          await base44.asServiceRole.entities.ImportBatch.update(batch.id, { updated_date: new Date().toISOString(), imported_rows: (batch.imported_rows || 0) + imported }).catch(() => {});
+        }
         if (i + CHUNK < recordsToProcess.length) await delay(1200);
       }
     }

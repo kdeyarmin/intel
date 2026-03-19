@@ -439,6 +439,9 @@ Deno.serve(async (req) => {
           addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length });
           if (/rate limit|429/i.test(result.error)) { consecutiveRateLimitChunks++; await delay(5000); }
         }
+        if (Math.floor(i / CHUNK) % 5 === 4) {
+          await base44.asServiceRole.entities.ImportBatch.update(batch.id, { updated_date: new Date().toISOString(), imported_rows: (batch.imported_rows || 0) + imported }).catch(() => {});
+        }
         if (i + CHUNK < recordsToProcess.length) await delay(1200);
       }
     }
