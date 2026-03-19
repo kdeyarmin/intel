@@ -17,7 +17,32 @@ const CMS_HHA_URLS = {
   2020: 'https://data.cms.gov/sites/default/files/2022-02/CPS%20MDCR%20HHA%202020.zip',
 };
 const LATEST_AVAILABLE_YEAR = Math.max(...Object.keys(CMS_HHA_URLS).map(Number));
-const NUMERIC_FIELDS = ['persons_served','total_visits','total_episodes','total_charges','program_payments','payment_per_person','visits_per_person','skilled_nursing_visits','pt_visits','ot_visits','speech_therapy_visits','home_health_aide_visits','medical_social_service_visits'];
+const FINANCIAL_FIELDS = ['total_charges','program_payments','payment_per_person'];
+const COUNT_FIELDS = ['persons_served','total_visits','total_episodes','visits_per_person','skilled_nursing_visits','pt_visits','ot_visits','speech_therapy_visits','home_health_aide_visits','medical_social_service_visits'];
+const NUMERIC_FIELDS = [...FINANCIAL_FIELDS, ...COUNT_FIELDS];
+const MAX_FLOAT = 999999999999.99;
+const MAX_INT = 2147483647;
+
+function clampNumericFields(record) {
+  for (const f of FINANCIAL_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_FLOAT) record[f] = MAX_FLOAT;
+      if (record[f] < -MAX_FLOAT) record[f] = -MAX_FLOAT;
+    }
+  }
+  for (const f of COUNT_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_INT) record[f] = MAX_INT;
+      if (record[f] < -MAX_INT) record[f] = -MAX_INT;
+    }
+  }
+  if (record.raw_data && typeof record.raw_data === 'object') {
+    for (const key of Object.keys(record.raw_data)) {
+      record.raw_data[key] = String(record.raw_data[key] ?? '');
+    }
+  }
+  return record;
+}
 
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
@@ -87,7 +112,7 @@ function safeNum(val) {
 function mapRowToRecord(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
-  headers.forEach(h => { record.raw_data[h] = row[h]; });
+  headers.forEach(h => { record.raw_data[h] = String(row[h] ?? ''); });
 
   // Try multiple strategies to find the category/label column
   const categoryKeywords = ['type of entitlement', 'category', 'demographic', 'state', 'area', 'type of agency', 'type of control', 'number of', 'age group', 'sex', 'race', 'diagnosis', 'region', 'characteristic'];
@@ -122,7 +147,7 @@ function mapRowToRecord(row, tableName, dataYear) {
   if (tableName === 'HHA3') { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
   if (tableName === 'HHA4') record.agency_type = record.category;
   if (tableName === 'HHA5') record.control_type = record.category;
-  return record;
+  return clampNumericFields(record);
 }
 
 function validateRecord(record, rowIndex, sheetName) {
@@ -170,6 +195,7 @@ function validateRecord(record, rowIndex, sheetName) {
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
+  let consecutiveRateLimits = 0;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       await entity.bulkCreate(chunk);
@@ -177,6 +203,9 @@ async function bulkCreateWithRetry(entity, chunk, label) {
     } catch (e) {
       const msg = e.message || '';
       const isRetryable = /rate limit|timeout|network|429|503|502|ECONNRESET/i.test(msg);
+      const isRateLimit = /rate limit|429/i.test(msg);
+      if (isRateLimit) consecutiveRateLimits++;
+      if (consecutiveRateLimits >= 3) return { ok: false, error: msg, rateLimitBreaker: true };
       if (isRetryable && attempt < 4) {
         const wait = jitteredBackoff(attempt);
         console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
@@ -325,6 +354,7 @@ Deno.serve(async (req) => {
     });
 
     let imported = 0, chunkErrors = 0;
+    let consecutiveRateLimitChunks = 0;
     if (!dry_run && recordsToProcess.length > 0) {
       // Only clear existing on fresh import (no offset)
       if (effectiveOffset === 0) {
@@ -355,20 +385,20 @@ Deno.serve(async (req) => {
 
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) { console.warn(`Time limit at ${imported}/${recordsToProcess.length}`); break; }
+        if (consecutiveRateLimitChunks >= 3) { console.warn('Circuit breaker: 3 consecutive rate-limited chunks. Pausing.'); break; }
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, chunk, `chunk-${i}`);
-        if (result.ok) { imported += chunk.length; }
+        if (result.ok) { imported += chunk.length; consecutiveRateLimitChunks = 0; }
         else {
           chunkErrors++;
           addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length });
-          // If rate limited, pause longer before next chunk
-          if (/rate limit|429/i.test(result.error)) await delay(5000);
+          if (/rate limit|429/i.test(result.error)) { consecutiveRateLimitChunks++; await delay(5000); }
         }
-        if (i + CHUNK < recordsToProcess.length) await delay(350); // increased delay to prevent rate limit
+        if (i + CHUNK < recordsToProcess.length) await delay(1200);
       }
     }
 
-    const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
+    const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || consecutiveRateLimitChunks >= 3);
     // Only mark as failed if zero rows imported AND chunk errors happened; partial success is still "completed"
     const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
 

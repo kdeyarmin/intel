@@ -42,11 +42,19 @@ Output goes to `dist/` directory.
 Codebase imported from `kdeyarmin/intel` GitHub repository.
 
 ## Backend Functions (functions/ directory)
-Base44 serverless functions (Deno-based) — 65 functions total, covering imports, enrichment, data quality, email search, campaigns, and more.
+Base44 serverless functions (Deno-based) — 66 functions total, covering imports, enrichment, data quality, email search, campaigns, and more.
+
+### CMS Import Reliability Features (applied to all importers)
+- **clampNumericFields**: Financial fields clamped to MAX_FLOAT (999999999999.99), count fields to MAX_INT (2147483647) — prevents "Out of Range" errors
+- **raw_data stored as strings**: All raw_data JSON values converted to strings before storage — prevents integer overflow in JSON serialization
+- **Rate-limit circuit breaker**: After 3 consecutive rate-limited chunks, import auto-pauses with resume offset saved
+- **bulkCreateWithRetry**: 5 attempts with jittered exponential backoff for all bulk operations
+- **Inter-chunk delay**: 1200ms minimum between chunks to prevent platform rate limiting
+- **Auto-resume**: Timed-out imports automatically invoke themselves with resume_offset to continue where they left off
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
-- **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicarePartD (if present), importMedicareSNF
+- **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicarePartD, importMedicareSNF
 - **NPPES**: nppesCrawler, importNPPESFlatFile, validateNPPESBatch, manageCrawlerRetries, retryFailedNPPESStates
 - **Enrichment**: enrichProviderData, enrichProviderWithAI, enrichProviderThirdParty, enrichProviderMedicareData, enrichProviderDEAData, providerEnrichmentApi, autoEnrichProvider
 - **Email**: emailSearchBot, bulkEmailLookup, verifyProviderEmail, deduplicateProviderEmails

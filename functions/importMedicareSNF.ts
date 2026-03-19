@@ -20,7 +20,32 @@ const CMS_SNF_URLS = {
   2019: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20SNF%202019.zip',
   2018: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20SNF%202018.zip',
 };
-const NUMERIC_FIELDS = ['persons_served','total_stays','total_covered_days','program_payments','beneficiary_payments','payment_per_stay','avg_length_of_stay','covered_days_per_1000','stays_per_1000'];
+const FINANCIAL_FIELDS = ['program_payments','beneficiary_payments','payment_per_stay'];
+const COUNT_FIELDS = ['persons_served','total_stays','total_covered_days','avg_length_of_stay','covered_days_per_1000','stays_per_1000'];
+const NUMERIC_FIELDS = [...FINANCIAL_FIELDS, ...COUNT_FIELDS];
+const MAX_FLOAT = 999999999999.99;
+const MAX_INT = 2147483647;
+
+function clampNumericFields(record) {
+  for (const f of FINANCIAL_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_FLOAT) record[f] = MAX_FLOAT;
+      if (record[f] < -MAX_FLOAT) record[f] = -MAX_FLOAT;
+    }
+  }
+  for (const f of COUNT_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_INT) record[f] = MAX_INT;
+      if (record[f] < -MAX_INT) record[f] = -MAX_INT;
+    }
+  }
+  if (record.raw_data && typeof record.raw_data === 'object') {
+    for (const key of Object.keys(record.raw_data)) {
+      record.raw_data[key] = String(record.raw_data[key] ?? '');
+    }
+  }
+  return record;
+}
 
 async function downloadAndParseZip(url) {
   console.log(`Downloading from: ${url}`);
@@ -97,7 +122,7 @@ function safeNum(val) {
 function mapSNFRow(row, tableName, dataYear) {
   const headers = Object.keys(row).filter(h => h !== '_rowIndex');
   const record = { table_name: tableName, data_year: dataYear, raw_data: {} };
-  headers.forEach(h => { record.raw_data[h] = row[h]; });
+  headers.forEach(h => { record.raw_data[h] = String(row[h] ?? ''); });
   for (const h of headers) {
     const hl = h.toLowerCase();
     if (!record.category && (hl.includes('entitlement') || hl.includes('demographic') || hl.includes('state') || hl.includes('area') || hl.includes('facility') || hl.includes('bedsize') || hl.includes('bed size') || hl.includes('sex') || hl.includes('race') || hl.includes('age') || hl === headers[0].toLowerCase())) record.category = String(row[h] || '').trim();
@@ -117,7 +142,7 @@ function mapSNFRow(row, tableName, dataYear) {
   if (tableName === 'SNF3') { const cat = record.category || ''; if (cat.length === 2 && cat === cat.toUpperCase()) record.state = cat; }
   if (tableName === 'SNF4') record.service_level = record.category;
   if (tableName === 'SNF5') { record.facility_type = record.category; const cat = record.category || ''; if (/\d/.test(cat) && (cat.toLowerCase().includes('bed') || cat.includes('-'))) record.bedsize_category = cat; }
-  return record;
+  return clampNumericFields(record);
 }
 
 function validateRecord(record, rowIndex, sheetName) {
@@ -166,10 +191,19 @@ function validateRecord(record, rowIndex, sheetName) {
 }
 
 async function bulkCreateWithRetry(entity, chunk, label) {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let consecutiveRateLimits = 0;
+  for (let attempt = 0; attempt < 5; attempt++) {
     try { await entity.bulkCreate(chunk); return { ok: true }; } catch (e) {
-      const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout');
-      if (isRetryable && attempt < 2) { await delay(jitteredBackoff(attempt)); } else { return { ok: false, error: e.message }; }
+      const msg = e.message || '';
+      const isRetryable = /rate limit|timeout|network|429|503|502|ECONNRESET/i.test(msg);
+      const isRateLimit = /rate limit|429/i.test(msg);
+      if (isRateLimit) consecutiveRateLimits++;
+      if (consecutiveRateLimits >= 3) return { ok: false, error: msg, rateLimitBreaker: true };
+      if (isRetryable && attempt < 4) {
+        const wait = jitteredBackoff(attempt);
+        console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
+        await delay(wait);
+      } else { return { ok: false, error: msg }; }
     }
   }
   return { ok: false, error: 'Max retries exceeded' };
@@ -296,6 +330,7 @@ Deno.serve(async (req) => {
     });
 
     let imported = 0, chunkErrors = 0;
+    let consecutiveRateLimitChunks = 0;
     if (!dry_run && recordsToProcess.length > 0) {
       if (effectiveOffset === 0) {
         const existing = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1);
@@ -326,12 +361,18 @@ Deno.serve(async (req) => {
         if (isTimeUp()) break;
         const chunk = recordsToProcess.slice(i, i + CHUNK);
         const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, chunk, `chunk-${i}`);
-        if (result.ok) imported += chunk.length; else { chunkErrors++; addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
-        if (i + CHUNK < recordsToProcess.length) await delay(350);
+        if (result.ok) { imported += chunk.length; consecutiveRateLimitChunks = 0; }
+        else {
+          chunkErrors++;
+          addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset });
+          if (result.rateLimitBreaker || /rate limit|429/i.test(result.error)) { consecutiveRateLimitChunks++; await delay(5000); }
+        }
+        if (consecutiveRateLimitChunks >= 3) { console.warn('Circuit breaker: 3 consecutive rate-limited chunks. Pausing.'); break; }
+        if (i + CHUNK < recordsToProcess.length) await delay(1200);
       }
     }
 
-    const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
+    const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || consecutiveRateLimitChunks >= 3);
     const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : chunkErrors > 0 && imported === 0 ? 'failed' : 'completed';
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
       status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),

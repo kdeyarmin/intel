@@ -258,12 +258,13 @@ Deno.serve(async (req) => {
                         let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
                         for (const row of rawChunk) {
-                            const mapped = mapRowToEntity(row, import_type, year);
+                            let mapped = mapRowToEntity(row, import_type, year);
                             if (!mapped) {
                                 chunkInvalid++;
                                 if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Failed to map row' });
                                 continue;
                             }
+                            mapped = clampNumericFields(mapped);
 
                             const dedupKey = getDedupKey(mapped, import_type);
                             if (!dedupKey) {
@@ -367,8 +368,9 @@ Deno.serve(async (req) => {
                         const row = {};
                         headers.forEach((h, idx) => { row[h] = values[idx]; });
 
-                        const mapped = mapRowToEntity(row, import_type, year);
+                        let mapped = mapRowToEntity(row, import_type, year);
                         if (!mapped) { chunkInvalid++; continue; }
+                        mapped = clampNumericFields(mapped);
 
                         const dedupKey = getDedupKey(mapped, import_type);
                         if (!dedupKey) { chunkInvalid++; continue; }
@@ -796,6 +798,27 @@ function safeNum(val) {
     return isNaN(n) ? 0 : n;
 }
 
+const MAX_SAFE_FLOAT = 999999999999.99;
+const MAX_SAFE_INT = 2147483647;
+const CMS_FINANCIAL_FIELDS = ['avg_submitted_charge', 'avg_medicare_allowed', 'avg_medicare_payment', 'total_spending', 'out_of_pocket_costs'];
+const CMS_COUNT_FIELDS = ['total_beneficiaries', 'total_services', 'total_referrals', 'home_health_referrals', 'hospice_referrals', 'dme_referrals', 'snf_referrals', 'imaging_referrals'];
+
+function clampNumericFields(record) {
+    for (const f of CMS_FINANCIAL_FIELDS) {
+        if (record[f] != null && typeof record[f] === 'number') {
+            if (record[f] > MAX_SAFE_FLOAT) record[f] = MAX_SAFE_FLOAT;
+            if (record[f] < -MAX_SAFE_FLOAT) record[f] = -MAX_SAFE_FLOAT;
+        }
+    }
+    for (const f of CMS_COUNT_FIELDS) {
+        if (record[f] != null && typeof record[f] === 'number') {
+            if (record[f] > MAX_SAFE_INT) record[f] = MAX_SAFE_INT;
+            if (record[f] < -MAX_SAFE_INT) record[f] = -MAX_SAFE_INT;
+        }
+    }
+    return record;
+}
+
 function parseDate(dateStr) {
     if (!dateStr) return '';
     // Handle MM/DD/YYYY
@@ -875,9 +898,8 @@ async function importChunk(base44, importType, records, startTime) {
                 }
             }
         }
-        // Adaptive delay: longer after retries, shorter on clean runs
         if (i + BULK_SIZE < records.length) {
-            await delay(success ? 350 : 1500, startTime);
+            await delay(success ? 1200 : 2000, startTime);
         }
     }
 

@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
       medicare_hha_stats: 'importMedicareHHA',
       medicare_ma_inpatient: 'importMedicareMAInpatient',
       medicare_snf_stats: 'importMedicareSNF',
+      medicare_part_d_stats: 'importMedicarePartD',
     };
 
     if (zipFunctionMap[import_type]) {

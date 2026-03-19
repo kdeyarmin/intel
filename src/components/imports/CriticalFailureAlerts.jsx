@@ -5,11 +5,7 @@ import { AlertTriangle, XCircle, Clock, ChevronRight } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES } from './errorCategories';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
-const IMPORT_TYPE_LABELS = buildImportTypeLabels({
-  home_health_enrollments: 'HH Enrollments',
-  home_health_cost_reports: 'HH Cost Reports',
-  home_health_pdgm: 'HH PDGM',
-});
+const IMPORT_TYPE_LABELS = buildImportTypeLabels();
 
 export default function CriticalFailureAlerts({ batches, onViewErrors }) {
   const criticalBatches = useMemo(() => {

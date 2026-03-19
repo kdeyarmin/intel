@@ -12,6 +12,31 @@ const MAX_NETWORK_RETRIES = 3;
 const RETRY_BACKOFF_MS = 2000;
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 10000); }
+
+async function bulkCreateWithRetry(entity, chunk, label) {
+  let consecutiveRateLimits = 0;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await entity.bulkCreate(chunk);
+      return { ok: true };
+    } catch (e) {
+      const msg = e.message || '';
+      const isRetryable = /rate limit|timeout|network|429|503|502|ECONNRESET/i.test(msg);
+      const isRateLimit = /rate limit|429/i.test(msg);
+      if (isRateLimit) consecutiveRateLimits++;
+      if (consecutiveRateLimits >= 3) return { ok: false, error: msg, rateLimitBreaker: true };
+      if (isRetryable && attempt < 4) {
+        const wait = jitteredBackoff(attempt);
+        console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
+        await delay(wait);
+      } else {
+        return { ok: false, error: msg };
+      }
+    }
+  }
+  return { ok: false, error: 'Max retries exceeded' };
+}
 
 // Fetch with automatic retry for transient network errors
 async function fetchWithRetry(url, options = {}, label = 'fetch') {
@@ -62,6 +87,32 @@ function safeNum(val) {
   if (val === '' || val === null || val === undefined || val === '*' || val === '—' || val === '-' || val === 'N/A') return null;
   const num = parseFloat(String(val).replace(/[,$%\s]/g, ''));
   return isNaN(num) ? null : num;
+}
+
+const MA_FINANCIAL_FIELDS = [];
+const MA_COUNT_FIELDS = ['total_discharges', 'total_covered_days', 'total_stays', 'persons_served', 'avg_length_of_stay', 'covered_days_per_1000', 'discharges_per_1000', 'total_enrollees'];
+const MAX_FLOAT = 999999999999.99;
+const MAX_INT = 2147483647;
+
+function clampNumericFields(record) {
+  for (const f of MA_FINANCIAL_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_FLOAT) record[f] = MAX_FLOAT;
+      if (record[f] < -MAX_FLOAT) record[f] = -MAX_FLOAT;
+    }
+  }
+  for (const f of MA_COUNT_FIELDS) {
+    if (record[f] != null) {
+      if (record[f] > MAX_INT) record[f] = MAX_INT;
+      if (record[f] < -MAX_INT) record[f] = -MAX_INT;
+    }
+  }
+  if (record.raw_data && typeof record.raw_data === 'object') {
+    for (const key of Object.keys(record.raw_data)) {
+      record.raw_data[key] = String(record.raw_data[key] ?? '');
+    }
+  }
+  return record;
 }
 
 // ============================================================
@@ -236,7 +287,9 @@ function validateAllRecords(records) {
 
 function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
   const headers = Object.keys(row);
-  const record = { table_name: tableName, data_year: dataYear, raw_data: row };
+  const rawDataStrings = {};
+  for (const k of Object.keys(row)) { rawDataStrings[k] = String(row[k] ?? ''); }
+  const record = { table_name: tableName, data_year: dataYear, raw_data: rawDataStrings };
   try {
     for (const h of headers) {
       const hl = h.toLowerCase();
@@ -264,7 +317,7 @@ function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
     console.error(`Row mapping error in sheet "${sheetName}" row ${rowIndex}: ${e.message}`, JSON.stringify(row).substring(0, 200));
     return { _error: true, _errorMsg: `Sheet "${sheetName}" row ${rowIndex}: ${e.message}`, _row: row };
   }
-  return record;
+  return clampNumericFields(record);
 }
 
 Deno.serve(async (req) => {
@@ -501,7 +554,7 @@ Deno.serve(async (req) => {
       // === Step 4: Import with retry per chunk ===
       let imported = 0;
       let chunkErrors = 0;
-      let fatalRateLimit = false;
+      let consecutiveRateLimitChunks = 0;
       const CHUNK = 30;
 
       if (!dry_run && recordsToProcess.length > 0) {
@@ -537,54 +590,31 @@ Deno.serve(async (req) => {
             console.warn(`[import] Time limit reached at ${imported}/${recordsToProcess.length} (${elapsed()}ms)`);
             break;
           }
-          const chunk = recordsToProcess.slice(i, i + CHUNK);
-          let chunkImported = false;
-
-          for (let attempt = 1; attempt <= 6; attempt++) {
-            try {
-              await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
-              imported += chunk.length;
-              chunkImported = true;
-              break;
-            } catch (e) {
-              const isRateLimit = e.message?.includes('Rate limit');
-              if (isRateLimit && attempt < 6) {
-                const waitMs = attempt * 10000 + Math.random() * 5000; // Exponentially longer wait
-                console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
-                await delay(waitMs);
-              } else if (attempt < 6 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
-                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/6): ${e.message}`);
-                await delay(attempt * 2000);
-              } else {
-                addError('import', `Chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
-                  chunk_start: i + effectiveOffset,
-                  chunk_size: chunk.length,
-                  attempts: attempt,
-                  first_record_category: chunk[0]?.category,
-                  first_record_table: chunk[0]?.table_name,
-                });
-                chunkErrors++;
-                if (isRateLimit || e.message?.includes('timeout') || e.message?.includes('network')) {
-                  fatalRateLimit = true;
-                }
-                break;
-              }
-            }
-          }
-
-          if (fatalRateLimit) {
-            console.error(`[import] Fatal error (rate limit/timeout) at chunk ${i}, stopping chunk loop.`);
+          if (consecutiveRateLimitChunks >= 3) {
+            console.warn('Circuit breaker: 3 consecutive rate-limited chunks. Pausing.');
             break;
           }
-
-          // Larger delay between successful chunks to avoid rate limits
-          if (chunkImported && i + CHUNK < recordsToProcess.length) {
-            await delay(2500);
+          const chunk = recordsToProcess.slice(i, i + CHUNK);
+          const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareMAInpatient, chunk, `chunk-${i}`);
+          if (result.ok) {
+            imported += chunk.length;
+            consecutiveRateLimitChunks = 0;
+          } else {
+            chunkErrors++;
+            addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, {
+              chunk_start: i + effectiveOffset,
+              chunk_size: chunk.length,
+            });
+            if (result.rateLimitBreaker || /rate limit|429/i.test(result.error)) {
+              consecutiveRateLimitChunks++;
+              await delay(5000);
+            }
           }
+          if (i + CHUNK < recordsToProcess.length) await delay(1200);
         }
       }
 
-      const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || fatalRateLimit);
+      const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || consecutiveRateLimitChunks >= 3);
       const finalStatus = dry_run ? 'completed'
         : timedOut ? 'paused'
         : chunkErrors > 0 && imported === 0 ? 'failed'
@@ -599,7 +629,7 @@ Deno.serve(async (req) => {
         error_samples: errorSamples.length > 0 ? errorSamples : [],
         ...(timedOut ? {
           paused_at: new Date().toISOString(),
-          cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
+          cancel_reason: `${consecutiveRateLimitChunks >= 3 ? 'Rate limit circuit breaker' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
           retry_params: { row_offset: effectiveOffset + imported }
         } : {
           cancel_reason: "",
