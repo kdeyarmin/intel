@@ -59,8 +59,8 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
       />
       <KPICard
         title="Avg Processing Time"
-        value={`${metrics.avgTimePerStateSec}s`}
-        subValue="per state"
+        value={metrics.completedCount > 0 ? `${metrics.avgTimePerStateSec}s` : '—'}
+        subValue={metrics.completedCount > 0 ? "per state" : "no data yet"}
         icon={Clock}
         trend={`${metrics.completedCount} completed batches`}
         color="text-amber-600"

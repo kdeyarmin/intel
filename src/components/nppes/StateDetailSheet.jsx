@@ -127,10 +127,10 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                   ))}
                 </div>
 
-                {(batch.api_requests_count || 0) > 0 && (
+                {((batch.api_requests_count || 0) > 0 || (batch.rate_limit_count || 0) > 0) && (
                   <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                    <span>{batch.api_requests_count} API requests</span>
-                    {batch.rate_limit_count > 0 && (
+                    {(batch.api_requests_count || 0) > 0 && <span>{batch.api_requests_count} API requests</span>}
+                    {(batch.rate_limit_count || 0) > 0 && (
                       <span className="text-amber-500">{batch.rate_limit_count} rate limits hit</span>
                     )}
                   </div>

@@ -865,7 +865,7 @@ Deno.serve(async (req) => {
                                 timestamp: new Date().toISOString()
                             }));
                             updates.error_samples = errorSamples;
-                            updates.cancel_reason = `Batch failed with ${failedItems.length} errors. Sample: ${errorSamples[0].detail}`;
+                            updates.cancel_reason = `Batch failed with ${failedItems.length} errors. Sample: ${errorSamples.length > 0 ? errorSamples[0].detail : 'Unknown error'}`;
                         }
 
                         await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, updates));
