@@ -19,6 +19,7 @@ type ProviderEmailUpdate = {
 Deno.serve(async (req) => {
   const execStartTime = Date.now();
   try {
+    return Response.json({ success: false, message: 'AI integrations paused to save credits', searched: 0, found: 0, results: [], has_more: false });
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user || user.role !== 'admin') {

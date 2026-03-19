@@ -30,6 +30,7 @@ const ENTITY_MAP = {
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, analysis: null, error: 'AI integrations paused to save credits' });
         const base44 = createClientFromRequest(req);
         
         let batch_id;

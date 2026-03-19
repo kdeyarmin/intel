@@ -16,6 +16,7 @@ type AIProviderUpdate = {
 
 Deno.serve(async (req) => {
   try {
+    return Response.json({ success: false, message: 'AI integrations paused to save credits' });
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 

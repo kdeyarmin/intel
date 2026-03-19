@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, error: 'AI integrations paused to save credits', prediction: { import_type: 'unknown', data_year: null, is_valid_format: false, explanation: 'AI Paused' } });
         const base44 = createClientFromRequest(req);
         
         let url;

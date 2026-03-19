@@ -6,6 +6,7 @@ type ProviderFilter = {
 
 Deno.serve(async (req) => {
   try {
+    return Response.json({ success: false, error: 'AI integrations paused to save credits', results: [], totalCount: 0, processed: 0 });
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (user?.role !== 'admin') {

@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, error: 'AI integrations paused to save credits' });
         const base44 = createClientFromRequest(req);
         
         // 1. Find providers with missing NPIs

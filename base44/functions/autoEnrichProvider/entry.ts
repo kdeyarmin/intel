@@ -33,6 +33,7 @@ type ProviderUpdate = {
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, message: 'AI integrations paused to save credits', updated: false, found: null });
         const base44 = createClientFromRequest(req);
         
         // This function is triggered by an entity automation

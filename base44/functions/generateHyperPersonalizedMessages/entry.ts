@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, message: 'AI integrations paused to save credits', generated: 0, total_pending: 0 });
         const base44 = createClientFromRequest(req);
         const user = await base44.auth.me();
 
