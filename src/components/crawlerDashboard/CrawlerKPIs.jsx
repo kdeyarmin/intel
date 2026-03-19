@@ -18,12 +18,11 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
     const avgTimePerStateMs = completedBatches.length > 0 ? totalTimeMs / completedBatches.length : 0;
     const avgTimePerStateSec = Math.round(avgTimePerStateMs / 1000);
 
-    // API Usage (proxy via batch count * estimated calls)
-    // Assuming each batch is ~1 state. 
-    // This is a rough estimate.
     const totalBatches = nppesImports.length;
-    const successRate = totalBatches > 0 
-      ? Math.round((completedBatches.length / totalBatches) * 100) 
+    const failedBatches = nppesImports.filter(b => b.status === 'failed').length;
+    const terminalBatches = completedBatches.length + failedBatches;
+    const successRate = terminalBatches > 0
+      ? Math.round((completedBatches.length / terminalBatches) * 100)
       : 0;
 
     return {

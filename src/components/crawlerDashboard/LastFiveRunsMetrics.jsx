@@ -46,9 +46,9 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
               runs.map(run => {
                 const state = run.file_name?.split('_')[1] || '??';
                 const start = run.created_date ? new Date(run.created_date) : new Date();
-                const end = run.completed_at ? new Date(run.completed_at) : new Date();
-                const durationMs = Math.max(0, end - start);
-                const durationSec = Math.max(1, Math.round(durationMs / 1000));
+                const end = run.completed_at ? new Date(run.completed_at) : (run.status === 'processing' || run.status === 'validating') ? new Date() : null;
+                const durationMs = end ? Math.max(0, end - start) : 0;
+                const durationSec = durationMs > 0 ? Math.max(1, Math.round(durationMs / 1000)) : 0;
                 const rows = run.total_rows || 0;
                 const speed = Math.round(rows / durationSec); // rows/sec
                 const errorCount = (run.error_samples || []).length + (run.invalid_rows || 0);
@@ -66,7 +66,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-slate-500 text-xs">
-                      {durationSec < 60 ? `${durationSec}s` : `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`}
+                      {durationSec === 0 ? '—' : durationSec < 60 ? `${durationSec}s` : `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs">
                       {rows.toLocaleString()}

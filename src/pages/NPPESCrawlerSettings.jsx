@@ -398,7 +398,7 @@ export default function NPPESCrawlerSettings() {
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-4">
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Last updated: {new Date(existingConfig.updated_date).toLocaleString()}</span>
+              <span>Last updated: {new Date(existingConfig.updated_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
               <Badge variant="outline">Config ID: {existingConfig.id}</Badge>
             </div>
           </CardContent>
