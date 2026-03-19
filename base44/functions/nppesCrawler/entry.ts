@@ -339,9 +339,13 @@ async function fetchNPPESPage(params, stats) {
         try {
             console.log(`[Crawler Worker] Fetching page: ${apiUrl.replace(NPPES_API_BASE, '')} (Attempt ${attempt})`);
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000 + (attempt * 2000)); // Increase timeout per attempt
-            const response = await fetch(apiUrl, { signal: controller.signal });
-            clearTimeout(timeout);
+            const fetchTimeout = setTimeout(() => controller.abort(), 10000 + (attempt * 2000)); // Increase timeout per attempt
+            let response;
+            try {
+                response = await fetch(apiUrl, { signal: controller.signal });
+            } finally {
+                clearTimeout(fetchTimeout);
+            }
             
             if (response.status === 429 && stats) {
                 stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
@@ -879,7 +883,7 @@ Deno.serve(async (req) => {
                             // Check how many batches are currently processing to maintain concurrency limit
                             const currentlyProcessing = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
                             const activeCrawlerBatches = currentlyProcessing.filter(pb => pb.file_name?.startsWith('crawler_'));
-                            const maxConcurrentBatches = 4;
+                            const maxConcurrentBatches = config.concurrency || 4;
 
                             if (activeCrawlerBatches.length < maxConcurrentBatches) {
                                 const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 5));

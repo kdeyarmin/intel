@@ -26,18 +26,17 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
 
   const getStateStatus = (st) => {
     if (st === currentState && (running || autoMode)) return 'active';
-    if (st === status?.currently_processing_state && autoMode) return 'active';
     if (processingSet.has(st)) return 'processing';
     if (completedSet.has(st)) return 'completed';
     if (failedSet.has(st)) return 'failed';
     return 'pending';
   };
 
-  // Get provider count from status data
+  // Get provider count from batch data
   const getProviderCount = (st) => {
-    if (!status?.state_details) return null;
-    const detail = status.state_details[st];
-    return detail?.imported_rows || detail?.valid_rows || null;
+    const batch = (status?.batches || []).find(b => b.file_name?.includes(`crawler_${st}_`));
+    if (!batch) return null;
+    return batch.imported_rows || batch.valid_rows || null;
   };
 
   const maxRow = 7;
@@ -77,7 +76,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               title={`${st}: ${stStatus}${count ? ` (${count.toLocaleString()} providers)` : ''}`}
             >
               <span className="text-[10px] sm:text-xs font-bold leading-none">{st}</span>
-              {count && (
+              {count != null && count > 0 && (
                 <span className="text-[7px] sm:text-[8px] opacity-75 leading-none mt-0.5">
                   {count >= 1000 ? `${Math.round(count / 1000)}k` : count}
                 </span>
@@ -97,7 +96,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
           { key: 'completed', label: 'Completed', count: completedSet.size },
           { key: 'processing', label: 'Processing', count: processingSet.size },
           { key: 'failed', label: 'Failed', count: failedSet.size },
-          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size - ((currentState && (running || autoMode) && !processingSet.has(currentState) && !completedSet.has(currentState) && !failedSet.has(currentState)) ? 1 : 0)) },
+          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size) },
         ].map(item => (
           <div key={item.key} className="flex items-center gap-1.5">
             <div 

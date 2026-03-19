@@ -50,7 +50,8 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
         <div className="space-y-2">
           {criticalBatches.map(batch => {
             const topError = batch.error_samples?.[0];
-            const errorCat = topError ? categorizeError(topError.message) : 'other';
+            const errorMsg = topError?.message || topError?.detail || '';
+            const errorCat = errorMsg ? categorizeError(errorMsg) : 'other';
             const errorConfig = ERROR_CATEGORIES[errorCat];
 
             return (
@@ -68,7 +69,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                     <Badge className={`${errorConfig.badgeColor} text-[9px]`}>{errorConfig.label}</Badge>
                   </div>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {topError?.message || 'Failed before processing'}
+                    {topError?.message || topError?.detail || 'Failed before processing'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">

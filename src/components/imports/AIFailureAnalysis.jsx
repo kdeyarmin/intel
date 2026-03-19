@@ -39,7 +39,7 @@ export default function AIFailureAnalysis({ batch, onRetryWithSettings, compact 
       ).join('\n');
 
       const dedupSummary = batch.dedup_summary ? JSON.stringify(batch.dedup_summary) : 'N/A';
-      const sheetInfo = batch.column_mapping?.sheets 
+      const sheetInfo = Array.isArray(batch.column_mapping?.sheets)
         ? batch.column_mapping.sheets.map(s => `${s.sheet}: ${s.valid} valid, ${s.invalid} invalid`).join('; ')
         : 'N/A';
         

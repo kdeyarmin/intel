@@ -23,7 +23,7 @@ export default function CrawlerMonitoring({ status }) {
     statesCount: (err.affected_states || []).length
   })).slice(0, 5);
 
-  const hasHighErrorRate = status.failed > (status.completed * 0.2) && status.failed > 5;
+  const hasHighErrorRate = status.completed > 0 && status.failed > (status.completed * 0.2) && status.failed > 5;
   const hasLongProcessing = metricsData.some(m => m.avgTime > 120);
 
   return (
