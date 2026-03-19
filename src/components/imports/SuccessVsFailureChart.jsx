@@ -24,7 +24,7 @@ export default function SuccessVsFailureChart({ batches }) {
     for (let i = 0; i < daysBack; i++) {
       const d = new Date(now - i * 24 * 60 * 60 * 1000);
       const key = toET(d);
-      byDay[key] = { day: key, Completed: 0, Failed: 0, Active: 0 };
+      byDay[key] = { day: key, Completed: 0, Failed: 0, Cancelled: 0, Active: 0 };
     }
 
     for (const b of filtered) {
@@ -33,6 +33,7 @@ export default function SuccessVsFailureChart({ batches }) {
       if (!byDay[key]) continue;
       if (b.status === 'completed') byDay[key].Completed++;
       else if (b.status === 'failed') byDay[key].Failed++;
+      else if (b.status === 'cancelled') byDay[key].Cancelled++;
       else byDay[key].Active++;
     }
 
@@ -41,11 +42,13 @@ export default function SuccessVsFailureChart({ batches }) {
     // Pie data
     const completed = filtered.filter(b => b.status === 'completed').length;
     const failed = filtered.filter(b => b.status === 'failed').length;
+    const cancelled = filtered.filter(b => b.status === 'cancelled').length;
     const active = filtered.filter(b => b.status === 'processing' || b.status === 'validating').length;
     const paused = filtered.filter(b => b.status === 'paused').length;
     const pieData = [
       { name: 'Completed', value: completed, color: '#10b981' },
       { name: 'Failed', value: failed, color: '#ef4444' },
+      { name: 'Cancelled', value: cancelled, color: '#f97316' },
       { name: 'Active', value: active, color: '#3b82f6' },
       { name: 'Paused', value: paused, color: '#f59e0b' },
     ].filter(d => d.value > 0);
@@ -89,6 +92,7 @@ export default function SuccessVsFailureChart({ batches }) {
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="Completed" fill="#10b981" radius={[2, 2, 0, 0]} stackId="a" />
                 <Bar dataKey="Failed" fill="#ef4444" radius={[2, 2, 0, 0]} stackId="a" />
+                <Bar dataKey="Cancelled" fill="#f97316" radius={[2, 2, 0, 0]} stackId="a" />
                 <Bar dataKey="Active" fill="#3b82f6" radius={[2, 2, 0, 0]} stackId="a" />
               </BarChart>
             </ResponsiveContainer>

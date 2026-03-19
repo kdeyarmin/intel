@@ -96,12 +96,38 @@ export default function NPPESCrawler() {
   const completedCount = status?.completed || 0;
   const failedCount = status?.failed || 0;
   const processingCount = status?.processing || 0;
+  const pendingCount = status?.pending || 0;
   const totalStates = US_STATES.length;
-  const progress = ((completedCount + failedCount) / totalStates) * 100;
-  
-  // Estimate time (rough estimate: 2 mins per state / concurrency)
+
+  // Calculate progress: completed/failed states count as 100%, processing states use granular_metrics
+  let progressSum = completedCount + failedCount; // fully done states
+  if (status?.granular_metrics && processingCount > 0) {
+    const metrics = status.granular_metrics;
+    for (const st of (status.processing_states || [])) {
+      const m = metrics[st];
+      if (m && m.completed_items > 0) {
+        // Each state has ~100 zip prefix items
+        const totalItems = m.completed_items + (m.pending_items || 0);
+        const stateProgress = totalItems > 0 ? m.completed_items / totalItems : 0;
+        progressSum += stateProgress;
+      }
+    }
+  }
+  const progress = totalStates > 0 ? (progressSum / totalStates) * 100 : 0;
+
+  // Estimate time using granular metrics if available
+  let estimatedMins = 0;
   const remainingStates = totalStates - (completedCount + failedCount);
-  const estimatedMins = remainingStates > 0 ? Math.ceil((remainingStates * 2) / Number(concurrency)) : 0;
+  if (remainingStates > 0 && status?.granular_metrics) {
+    const avgTimes = Object.values(status.granular_metrics).filter(m => m.avg_prefix_time_ms > 0).map(m => m.avg_prefix_time_ms);
+    if (avgTimes.length > 0) {
+      const avgPrefixMs = avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length;
+      const totalRemainingMs = Object.values(status.granular_metrics).reduce((sum, m) => sum + (m.estimated_remaining_ms || 0), 0);
+      estimatedMins = Math.ceil(totalRemainingMs / 60000 / Math.max(Number(concurrency), 1));
+    } else {
+      estimatedMins = Math.ceil((remainingStates * 2) / Number(concurrency));
+    }
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
@@ -217,10 +243,11 @@ export default function NPPESCrawler() {
                   State Progress
                 </span>
                 <div className="flex items-center gap-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Badge className="bg-emerald-500/20 text-emerald-400">{completedCount} completed</Badge>
+                    {processingCount > 0 && <Badge className="bg-blue-500/20 text-blue-400">{processingCount} processing</Badge>}
                     {failedCount > 0 && <Badge className="bg-red-500/20 text-red-400">{failedCount} failed</Badge>}
-                    <Badge className="bg-slate-700 text-slate-300">{status?.pending || 0} pending</Badge>
+                    {pendingCount > 0 && <Badge className="bg-slate-700 text-slate-300">{pendingCount} pending</Badge>}
                   </div>
                   <div className="flex border border-slate-700 rounded-md overflow-hidden bg-slate-800">
                     <Button

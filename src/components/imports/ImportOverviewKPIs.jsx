@@ -56,10 +56,11 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
     const last7dBatches = batches.filter(b => new Date(b.created_date) >= last7d);
     const prev7dBatches = batches.filter(b => new Date(b.created_date) >= prev7d && new Date(b.created_date) < last7d);
     
+    const terminalStatuses = ['completed', 'failed', 'cancelled'];
     const last7dCompleted = last7dBatches.filter(b => b.status === 'completed').length;
-    const last7dTotal = last7dBatches.filter(b => b.status === 'completed' || b.status === 'failed').length;
+    const last7dTotal = last7dBatches.filter(b => terminalStatuses.includes(b.status)).length;
     const prev7dCompleted = prev7dBatches.filter(b => b.status === 'completed').length;
-    const prev7dTotal = prev7dBatches.filter(b => b.status === 'completed' || b.status === 'failed').length;
+    const prev7dTotal = prev7dBatches.filter(b => terminalStatuses.includes(b.status)).length;
     
     const successRate7d = last7dTotal > 0 ? Math.round((last7dCompleted / last7dTotal) * 100) : 0;
     const prevSuccessRate = prev7dTotal > 0 ? Math.round((prev7dCompleted / prev7dTotal) * 100) : 0;

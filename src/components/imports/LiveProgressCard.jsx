@@ -29,9 +29,24 @@ function getPhaseLabel(status) {
 
 function getProgressValue(batch) {
   const total = batch.total_rows || 0;
+
+  // For crawler batches, use retry_params.completed_items for progress (each state has ~100 zip prefix items)
+  if (total === 0 && batch.file_name?.startsWith('crawler_')) {
+    const rp = batch.retry_params || {};
+    const completed = rp.completed_items || 0;
+    // Each state typically has 100 queue items (zip prefixes 00-99)
+    const estimated_total = 100;
+    if (completed > 0) {
+      return Math.min(Math.round((completed / estimated_total) * 100), 99);
+    }
+    // No items completed yet but processing — show small progress to indicate activity
+    if (batch.status === 'processing') return 5;
+    return 0;
+  }
+
   if (total === 0) {
     if (batch.status === 'validating') return 15;
-    if (batch.status === 'processing') return 50;
+    if (batch.status === 'processing') return 10;
     return 0;
   }
   const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
@@ -44,7 +59,7 @@ function getProgressValue(batch) {
 
 function getElapsedTime(startDate) {
   if (!startDate) return '';
-  const ms = Date.now() - new Date(startDate).getTime();
+  const ms = Math.max(0, Date.now() - new Date(startDate).getTime());
   const secs = Math.floor(ms / 1000);
   if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);

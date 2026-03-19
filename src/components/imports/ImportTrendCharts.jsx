@@ -22,12 +22,15 @@ export default function ImportTrendCharts({ batches = [] }) {
     }
 
     const days = Object.values(byDay).slice(-14);
-    const successRateData = days.map(d => ({
-      day: d.day,
-      'Success Rate': d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0,
-      completed: d.completed,
-      failed: d.failed,
-    }));
+    const successRateData = days.map(d => {
+      const terminal = d.completed + d.failed;
+      return {
+        day: d.day,
+        'Success Rate': terminal > 0 ? Math.round((d.completed / terminal) * 100) : 0,
+        completed: d.completed,
+        failed: d.failed,
+      };
+    });
 
     const processingTimeData = days
       .filter(d => d.durations.length > 0)
