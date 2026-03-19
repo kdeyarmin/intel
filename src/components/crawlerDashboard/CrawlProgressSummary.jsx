@@ -27,7 +27,7 @@ function KPI({ title, value, icon: Icon, color, bgColor, loading, badge }) {
 export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalStates, loading }) {
   const completed = crawlStatus?.completed || 0;
   const failed = crawlStatus?.failed || 0;
-  const pending = crawlStatus?.pending || (totalStates - completed - failed);
+  const pending = crawlStatus?.pending ?? Math.max(0, totalStates - completed - failed);
   const isActive = crawlStatus?.auto_chain_active;
 
   const totalProviders = nppesImports

@@ -227,7 +227,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
           <div className="text-xs text-slate-500 bg-slate-50 border rounded-lg p-3">
             <strong>Preview:</strong>{' '}
             {selectionMode === 'all'
-              ? `All 51 states`
+              ? `All ${US_STATES.length} states`
               : selectionMode === 'region' && selectedRegion
                 ? `${REGION_LABELS[selectedRegion]} — ${(regionStates[selectedRegion] || []).join(', ')}`
                 : selectionMode === 'custom' && selectedStates.length > 0
@@ -280,19 +280,19 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-lg font-bold text-slate-900">{batchResults.states_queued}</p>
+                <p className="text-lg font-bold text-slate-900">{batchResults.states_queued ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Queued</p>
               </div>
               <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-lg font-bold text-emerald-600">{batchResults.states_completed}</p>
+                <p className="text-lg font-bold text-emerald-600">{batchResults.states_completed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Completed</p>
               </div>
               <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-lg font-bold text-red-600">{batchResults.states_failed}</p>
+                <p className="text-lg font-bold text-red-600">{batchResults.states_failed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Failed</p>
               </div>
               <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-lg font-bold text-blue-600">{batchResults.total_imported?.toLocaleString()}</p>
+                <p className="text-lg font-bold text-blue-600">{(batchResults.total_imported ?? 0).toLocaleString()}</p>
                 <p className="text-[10px] text-slate-500">Imported</p>
               </div>
             </div>

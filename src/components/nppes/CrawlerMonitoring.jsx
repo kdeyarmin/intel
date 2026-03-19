@@ -18,9 +18,9 @@ export default function CrawlerMonitoring({ status }) {
 
   // Transform errors into an array for charts
   const errorData = (status.errors || []).map(err => ({
-    message: err.original_message.length > 30 ? err.original_message.substring(0, 30) + '...' : err.original_message,
+    message: (err.original_message || 'Unknown error').length > 30 ? (err.original_message || 'Unknown error').substring(0, 30) + '...' : (err.original_message || 'Unknown error'),
     count: err.count,
-    statesCount: err.affected_states.length
+    statesCount: (err.affected_states || []).length
   })).slice(0, 5);
 
   const hasHighErrorRate = status.failed > (status.completed * 0.2) && status.failed > 5;

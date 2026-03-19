@@ -376,6 +376,7 @@ async function fetchNPPESPage(params, stats) {
             await sleep(attempt * 1500);
         }
     }
+    throw new Error('All NPPES API retry attempts exhausted');
 }
 
 async function updateBatchStats(base44, batchId, stats) {
@@ -402,7 +403,9 @@ async function updateBatchStats(base44, batchId, stats) {
                 retry_params
             });
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error(`[Crawler] Failed to update batch stats for ${batchId}:`, e.message);
+    }
 }
 
 Deno.serve(async (req) => {
@@ -544,8 +547,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_start') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        
+        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+
         // Load configuration
         const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
         const config = configs[0] || {};
@@ -620,7 +623,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_stop') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
         const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
         for (let i = 0; i < pending.length; i += 50) {
            const chunk = pending.slice(i, i+50);
@@ -637,7 +640,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_pause') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
         const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
         for (let i = 0; i < pending.length; i += 50) {
            const chunk = pending.slice(i, i+50);
@@ -647,7 +650,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_resume') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
         const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1000));
         for (let i = 0; i < pausedItems.length; i += 50) {
            const chunk = pausedItems.slice(i, i+50);
@@ -659,7 +662,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'retry_errors') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
         const { item_ids } = payload;
         if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) return Response.json({ error: 'No item IDs provided' }, { status: 400 });
         
@@ -783,7 +786,7 @@ Deno.serve(async (req) => {
             }
 
             const task = pendingList[0];
-            if (task.retry_count > maxRetries) {
+            if (task.retry_count >= maxRetries) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' }));
                 continue;
             }
@@ -813,13 +816,13 @@ Deno.serve(async (req) => {
                 if (firstPage.error) throw new Error(firstPage.error);
                 
                 let allResults = [...firstPage.results];
-                let currentCount = firstPage.count;
+                let lastPageSize = firstPage.results.length;
                 let skip = apiBatchSize;
                 let needSplit = false;
                 const maxSkip = config.max_skip || 1000;
 
-                if (currentCount === apiBatchSize) {
-                    while (currentCount === apiBatchSize && skip <= maxSkip) {
+                if (lastPageSize === apiBatchSize) {
+                    while (lastPageSize === apiBatchSize && skip <= maxSkip) {
                         if ((Date.now() - execStartTime) >= MAX_EXEC_MS - 2000) {
                             throw new Error('Task pagination timed out, will retry');
                         }
@@ -828,10 +831,10 @@ Deno.serve(async (req) => {
                         stats.api_calls++;
                         if (page.error || page.results.length === 0) break;
                         allResults.push(...page.results);
-                        currentCount = page.count;
+                        lastPageSize = page.results.length;
                         skip += apiBatchSize;
                     }
-                    if (currentCount === apiBatchSize && skip > maxSkip && task.zip_prefix.length < 9) {
+                    if (lastPageSize === apiBatchSize && skip > maxSkip && task.zip_prefix.length < 5) {
                         needSplit = true;
                     }
                 }

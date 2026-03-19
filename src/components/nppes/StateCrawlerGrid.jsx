@@ -38,7 +38,7 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
   };
 
   return (
-    <div className="grid grid-cols-10 sm:grid-cols-13 md:grid-cols-17 gap-1.5">
+    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-[repeat(17,minmax(0,1fr))] gap-1.5">
       {US_STATES.map(st => {
         const stStatus = getStateStatus(st);
         return (

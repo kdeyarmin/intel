@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
                 action: 'batch_start',
                 states: [stateCode],
                 dry_run: batch.dry_run || false,
+                retry_count: newRetryCount,
               });
             } else {
               console.error(`Could not extract state from crawler batch file_name: ${batch.file_name}`);
