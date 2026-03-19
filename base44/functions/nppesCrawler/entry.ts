@@ -475,9 +475,11 @@ Deno.serve(async (req) => {
         const processingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100);
         const active_workers = processingItems.length;
 
-        const allItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({}, undefined, 100);
-        const hasPaused = allItems.some(i => i.status === 'paused');
-        const hasPending = allItems.some(i => i.status === 'pending' || i.status === 'processing');
+        // Check for paused/pending items separately to avoid the 100 item limit issue
+        const pendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1);
+        const pausedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1);
+        const hasPaused = pausedItems.length > 0;
+        const hasPending = pendingItems.length > 0 || active_workers > 0;
         const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
 
         const granular_metrics = {};
@@ -680,12 +682,22 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_pause') {
         if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
-        for (let i = 0; i < pending.length; i += 50) {
-           const chunk = pending.slice(i, i+50);
+        // Pause both pending AND processing items
+        const activeItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'processing'] } }, undefined, 5000));
+        let paused = 0;
+        for (let i = 0; i < activeItems.length; i += 50) {
+           const chunk = activeItems.slice(i, i+50);
            await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'paused' }))));
+           paused += chunk.length;
         }
-        return Response.json({ success: true, message: 'Crawler paused.' });
+        // Also pause the batch entities
+        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
+        for (const b of processingBatches) {
+            if (b.file_name?.startsWith('crawler_')) {
+                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'paused' }));
+            }
+        }
+        return Response.json({ success: true, message: `Crawler paused. ${paused} items paused.` });
     }
 
     if (action === 'batch_resume') {
@@ -721,11 +733,18 @@ Deno.serve(async (req) => {
             retried += chunk.length;
         }
 
-        // Make sure associated batches are set back to processing if they were failed
+        // Only set batch back to processing if it was previously failed or cancelled
         const items = await base44.asServiceRole.entities.NPPESQueueItem.filter({ id: { $in: item_ids } });
         const batchIds = [...new Set(items.map(i => i.batch_id))];
         for (const bid of batchIds) {
-            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(bid, { status: 'processing' }));
+            try {
+                const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(bid));
+                if (batch.status === 'failed' || batch.status === 'cancelled') {
+                    await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(bid, { status: 'processing' }));
+                }
+            } catch (e) {
+                console.warn(`[Crawler] Failed to update batch ${bid} status for retry: ${e.message}`);
+            }
         }
 
         base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Retry invoke failed:', e.message));
@@ -857,8 +876,15 @@ Deno.serve(async (req) => {
                 continue;
             }
 
-            // Mark processing
+            // Claim the task: mark as processing
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
+            // Re-read to verify we claimed it (guard against race with other workers or batch_stop/pause)
+            const claimedTask = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.get(task.id));
+            if (claimedTask.status !== 'processing') {
+                // Another worker or a stop/pause action changed the status — skip this task
+                console.log(`[Crawler Worker] Task ${task.id} was reclaimed (status: ${claimedTask.status}), skipping`);
+                continue;
+            }
             
             // Check if batch exists and read dry_run flag from it
             let taskBatch;
