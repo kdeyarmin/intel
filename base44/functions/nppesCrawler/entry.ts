@@ -305,7 +305,7 @@ function transformResults(allResults) {
 
 // In-memory cache for NPPES API responses
 const apiCache = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours - Aggressive caching
+const CACHE_TTL_MS = 1000 * 60 * 60 * 2; // 2 hours - Balance freshness with rate limit protection
 const MAX_CACHE_SIZE = 5000;
 
 let globalRateLimitDelay = 0;
@@ -668,8 +668,17 @@ Deno.serve(async (req) => {
            const chunk = pausedItems.slice(i, i+50);
            await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'pending' }))));
         }
+        // Also resume any paused batches
+        const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 100));
+        for (const pb of pausedBatches) {
+            if (pb.file_name?.startsWith('crawler_')) {
+                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(pb.id, { status: 'processing' }));
+            }
+        }
+        // Read dry_run from first paused batch if available
+        const resumeDryRun = dry_run || pausedBatches.some(pb => pb.dry_run);
         // Trigger worker pool
-        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run: resumeDryRun }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
         return Response.json({ success: true, message: 'Crawler resumed.' });
     }
 
@@ -692,7 +701,7 @@ Deno.serve(async (req) => {
             await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(bid, { status: 'processing' }));
         }
 
-        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(e => console.error('[Crawler] Retry invoke failed:', e.message));
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Retry invoke failed:', e.message));
         return Response.json({ success: true, message: `Queued ${retried} failed tasks for retry.` });
     }
 
@@ -740,14 +749,18 @@ Deno.serve(async (req) => {
                 let batchesClosed = 0;
                 for (const b of processingBatches) {
                     const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
-                    // If no items found, it's an empty batch or error, verify if we should close it
+                    // If no items found, mark as completed (empty batch)
                     if (items.length === 0) {
-                        // Empty batch?
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, {
+                            status: 'completed',
+                            completed_at: new Date().toISOString()
+                        }));
+                        batchesClosed++;
                         continue;
                     }
-                    
+
                     const remaining = items.filter(i => i.status === 'pending' || i.status === 'processing');
-                    const allDone = remaining.length === 0 && items.some(i => i.status === 'completed' || i.status === 'failed');
+                    const allDone = remaining.length === 0;
                     if (allDone) {
                         const failedItems = items.filter(i => i.status === 'failed');
                         const hasErrors = failedItems.length > 0;
@@ -777,13 +790,26 @@ Deno.serve(async (req) => {
                         
                         // Wake up next paused batch to maintain concurrency limit
                         try {
-                            const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 5));
-                            const nextPaused = pausedBatches.find(pb => pb.file_name?.startsWith('crawler_'));
-                            if (nextPaused) {
-                                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(nextPaused.id, { status: 'processing' }));
-                                const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 5000));
-                                await Promise.all(pausedItems.map(pi => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(pi.id, { status: 'pending' }))));
-                                console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name}`);
+                            // Check how many batches are currently processing to maintain concurrency limit
+                            const currentlyProcessing = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
+                            const activeCrawlerBatches = currentlyProcessing.filter(pb => pb.file_name?.startsWith('crawler_'));
+                            const maxConcurrentBatches = 4;
+
+                            if (activeCrawlerBatches.length < maxConcurrentBatches) {
+                                const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 5));
+                                const nextPaused = pausedBatches.find(pb => pb.file_name?.startsWith('crawler_'));
+                                if (nextPaused) {
+                                    await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(nextPaused.id, { status: 'processing' }));
+                                    const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 5000));
+                                    // Batch the updates in chunks of 50 to avoid overwhelming the API
+                                    for (let pi = 0; pi < pausedItems.length; pi += 50) {
+                                        const chunk = pausedItems.slice(pi, pi + 50);
+                                        await Promise.all(chunk.map(item => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending' }))));
+                                    }
+                                    // Read dry_run from the woken batch and pass it through
+                                    const wokenDryRun = nextPaused.dry_run || false;
+                                    console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name} (dry_run: ${wokenDryRun})`);
+                                }
                             }
                         } catch(e) { console.error("Failed to wake up next batch:", e); }
                     }
@@ -807,13 +833,16 @@ Deno.serve(async (req) => {
             // Mark processing
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
             
-            // Check if batch exists
+            // Check if batch exists and read dry_run flag from it
+            let taskBatch;
             try {
-                await base44.asServiceRole.entities.ImportBatch.get(task.batch_id);
+                taskBatch = await base44.asServiceRole.entities.ImportBatch.get(task.batch_id);
             } catch (e) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Batch was deleted' }));
                 continue;
             }
+            // Use batch-level dry_run if not explicitly passed in payload
+            const effectiveDryRun = dry_run || taskBatch.dry_run;
 
             const taskStartTime = Date.now();
             try {
@@ -835,9 +864,12 @@ Deno.serve(async (req) => {
                 const maxSkip = config.max_skip || 1000;
 
                 if (lastPageSize === apiBatchSize) {
+                    let paginationTimedOut = false;
                     while (lastPageSize === apiBatchSize && skip <= maxSkip) {
-                        if ((Date.now() - execStartTime) >= MAX_EXEC_MS - 2000) {
-                            throw new Error('Task pagination timed out, will retry');
+                        if ((Date.now() - execStartTime) >= MAX_EXEC_MS - 3000) {
+                            console.warn(`[Crawler Worker] Pagination timeout for ${task.state}/${task.zip_prefix} at skip=${skip}. Saving ${allResults.length} partial results.`);
+                            paginationTimedOut = true;
+                            break;
                         }
                         params.set('skip', String(skip));
                         const page = await fetchNPPESPage(params, stats);
@@ -847,7 +879,16 @@ Deno.serve(async (req) => {
                         lastPageSize = page.results.length;
                         skip += apiBatchSize;
                     }
-                    if (lastPageSize === apiBatchSize && skip > maxSkip && task.zip_prefix.length < 5) {
+                    if (lastPageSize === apiBatchSize && skip > maxSkip) {
+                        if (task.zip_prefix.length < 5) {
+                            needSplit = true;
+                        } else {
+                            // Can't split further (prefix is already 5+ digits). Log warning — some results beyond maxSkip are truncated.
+                            console.warn(`[Crawler Worker] Prefix ${task.state}/${task.zip_prefix} has more results than maxSkip (${maxSkip}) and cannot split further. ${allResults.length} results fetched, remainder truncated.`);
+                        }
+                    }
+                    // If pagination timed out and we have more data, split to continue later
+                    if (paginationTimedOut && !needSplit && task.zip_prefix.length < 5) {
                         needSplit = true;
                     }
                 }
@@ -858,7 +899,7 @@ Deno.serve(async (req) => {
                         const transformed = transformResults(allResults);
                         stats.valid += transformed.validRows;
                         stats.invalid += transformed.invalidRows;
-                        if (!dry_run) {
+                        if (!effectiveDryRun) {
                             const [provRes, locRes, taxRes] = await Promise.all([
                                 upsertProviders(transformed.providers, base44),
                                 upsertLocations(transformed.locations, base44),
@@ -873,30 +914,30 @@ Deno.serve(async (req) => {
                         subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
                     }
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else if (allResults.length > 0) {
                     const transformed = transformResults(allResults);
                     stats.valid += transformed.validRows;
                     stats.invalid += transformed.invalidRows;
-                    
-                    if (!dry_run) {
+
+                    if (!effectiveDryRun) {
                         // Sequential processing to reduce rate limiting on the Base44 DB
                         const provRes = await upsertProviders(transformed.providers, base44);
                         const locRes = await upsertLocations(transformed.locations, base44);
                         const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
                     }
-                    
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else {
                     // Zero results
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 }
                 tasksProcessed++;
                 consecutiveErrors = 0; // Reset error counter on success
@@ -939,15 +980,36 @@ Deno.serve(async (req) => {
         console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
 
         if (remainingQueueSize > 0) {
-            // Determine if we should spawn another worker to help, or just re-invoke self
-            // If the queue is large and we didn't have many errors, spawn an extra helper (up to a reasonable limit)
             const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
-            
-            // Re-invoke self
-            console.log(`[Crawler Worker] Re-invoking self...`);
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
 
-            // Dynamically scale up if queue is large, we are healthy, and under worker cap
+            // Re-invoke self with retry
+            console.log(`[Crawler Worker] Re-invoking self...`);
+            let selfInvoked = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
+                    selfInvoked = true;
+                    break;
+                } catch (e) {
+                    console.error(`[Crawler] Self-invoke attempt ${attempt} failed: ${e.message}`);
+                    if (attempt < 3) await sleep(attempt * 2000);
+                }
+            }
+            if (!selfInvoked) {
+                console.error('[Crawler] All self-invoke attempts failed. Queue may stall. Creating alert.');
+                try {
+                    await base44.asServiceRole.entities.DataQualityAlert.create({
+                        alert_type: 'new_issue_detected',
+                        severity: 'critical',
+                        title: 'Crawler Self-Invocation Failed',
+                        description: `Worker failed to re-invoke after 3 attempts. ${remainingQueueSize} items remain in queue.`,
+                        status: 'new',
+                        action_required: true
+                    });
+                } catch (_) {}
+            }
+
+            // Dynamically scale up if queue is large, healthy, and under worker cap
             const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
