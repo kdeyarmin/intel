@@ -60,13 +60,13 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
               <ArrowUpDown className="w-4 h-4 text-cyan-400" /> Row Statistics
             </h4>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
-              <StatBox label="Total" value={batch.total_rows?.toLocaleString() || 0} />
-              <StatBox label="Valid" value={batch.valid_rows?.toLocaleString() || 0} color="text-emerald-400" />
-              <StatBox label="Invalid" value={batch.invalid_rows?.toLocaleString() || 0} color="text-red-400" />
-              <StatBox label="Duplicates" value={batch.duplicate_rows?.toLocaleString() || 0} color="text-amber-400" />
-              <StatBox label="Imported" value={batch.imported_rows?.toLocaleString() || 0} color="text-blue-400" />
-              <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />
-              <StatBox label="Skipped" value={batch.skipped_rows?.toLocaleString() || 0} color="text-slate-400" />
+              <StatBox label="Total" value={batch.total_rows != null ? batch.total_rows.toLocaleString() : '—'} />
+              <StatBox label="Valid" value={batch.valid_rows != null ? batch.valid_rows.toLocaleString() : '—'} color="text-emerald-400" />
+              <StatBox label="Invalid" value={batch.invalid_rows != null ? batch.invalid_rows.toLocaleString() : '—'} color="text-red-400" />
+              <StatBox label="Duplicates" value={batch.duplicate_rows != null ? batch.duplicate_rows.toLocaleString() : '—'} color="text-amber-400" />
+              <StatBox label="Imported" value={batch.imported_rows != null ? batch.imported_rows.toLocaleString() : '—'} color="text-blue-400" />
+              <StatBox label="Updated" value={batch.updated_rows != null ? batch.updated_rows.toLocaleString() : '—'} color="text-violet-400" />
+              <StatBox label="Skipped" value={batch.skipped_rows != null ? batch.skipped_rows.toLocaleString() : '—'} color="text-slate-400" />
             </div>
           </div>
 

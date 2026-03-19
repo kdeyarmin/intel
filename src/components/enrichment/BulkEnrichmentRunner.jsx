@@ -48,36 +48,41 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
     setProgress({ current: 0, total: npis.length });
     setResults(null);
 
-    // Process in chunks to avoid timeouts on large "enrich all" runs
-    const CHUNK_SIZE = 25;
-    let aggregated = { enriched: 0, no_data: 0, errors: 0, total: 0 };
+    try {
+      // Process in chunks to avoid timeouts on large "enrich all" runs
+      const CHUNK_SIZE = 25;
+      let aggregated = { enriched: 0, no_data: 0, errors: 0, total: 0 };
 
-    for (let i = 0; i < npis.length; i += CHUNK_SIZE) {
-      const chunk = npis.slice(i, i + CHUNK_SIZE);
-      setProgress({ current: i, total: npis.length });
+      for (let i = 0; i < npis.length; i += CHUNK_SIZE) {
+        const chunk = npis.slice(i, i + CHUNK_SIZE);
+        setProgress({ current: i, total: npis.length });
 
-      const res = await base44.functions.invoke('enrichProviderThirdParty', {
-        npis: chunk,
-        batch_size: chunk.length,
-        auto_apply_high_confidence: autoApply,
+        const res = await base44.functions.invoke('enrichProviderThirdParty', {
+          npis: chunk,
+          batch_size: chunk.length,
+          auto_apply_high_confidence: autoApply,
+        });
+
+        const d = res.data || {};
+        aggregated.enriched += d.enriched || 0;
+        aggregated.no_data += d.no_data || 0;
+        aggregated.errors += d.errors || 0;
+        aggregated.total += d.total || 0;
+      }
+
+      // Update local set so the next run skips these too
+      setAlreadyEnrichedNPIs(prev => {
+        const next = new Set(prev);
+        npis.forEach(n => next.add(n));
+        return next;
       });
 
-      const d = res.data || {};
-      aggregated.enriched += d.enriched || 0;
-      aggregated.no_data += d.no_data || 0;
-      aggregated.errors += d.errors || 0;
-      aggregated.total += d.total || 0;
+      setResults(aggregated);
+    } catch (err) {
+      alert(`Enrichment failed: ${err.message}`);
+    } finally {
+      setRunning(false);
     }
-
-    // Update local set so the next run skips these too
-    setAlreadyEnrichedNPIs(prev => {
-      const next = new Set(prev);
-      npis.forEach(n => next.add(n));
-      return next;
-    });
-
-    setResults(aggregated);
-    setRunning(false);
   };
 
   const needEnrichment = unenrichedProviders.length;
