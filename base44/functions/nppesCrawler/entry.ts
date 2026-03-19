@@ -680,9 +680,15 @@ Deno.serve(async (req) => {
         } catch (e) { console.warn('[Crawler] Could not set stop flag:', e.message); }
 
         // Stop ALL active queue items in a loop until none remain (handles >5000 items)
+        // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
         let totalStopped = 0;
         let batchItems;
+        const stopStartTime = Date.now();
         do {
+            if (Date.now() - stopStartTime > 15000) {
+                console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+                break;
+            }
             batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 500));
             for (let i = 0; i < batchItems.length; i += 50) {
                const chunk = batchItems.slice(i, i+50);
