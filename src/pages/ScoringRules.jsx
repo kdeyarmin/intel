@@ -27,9 +27,8 @@ export default function ScoringRules() {
   const { data: rules = [] } = useQuery({
     queryKey: ['scoringRules'],
     queryFn: async () => {
-      const existing = await base44.entities.ScoringRule.list();
+      const existing = await base44.entities.ScoringRule.list('-created_date', 200);
       
-      // Initialize default rules if none exist
       if (existing.length === 0) {
         const defaultRules = [
           { rule_name: 'Specialty Match', category: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
@@ -42,7 +41,7 @@ export default function ScoringRules() {
         ];
         
         await Promise.all(defaultRules.map(rule => base44.entities.ScoringRule.create(rule)));
-        return await base44.entities.ScoringRule.list();
+        return await base44.entities.ScoringRule.list('-created_date', 200);
       }
       
       return existing;

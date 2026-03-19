@@ -15,7 +15,7 @@ export default function ProjectManagement() {
 
   const { data: tasks = [], isLoading: loadingTasks } = useQuery({
     queryKey: ['campaignTasks'],
-    queryFn: () => base44.entities.CampaignTask.list(),
+    queryFn: () => base44.entities.CampaignTask.list('-created_date', 500),
   });
 
   const analyzeMutation = useMutation({

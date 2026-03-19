@@ -38,6 +38,7 @@ export default function ProactiveDQAlerts() {
   const runPrediction = async () => {
     setLoading(true);
 
+    try {
     const scanHistory = scans.slice(0, 10).map(s => ({
       date: s.created_date,
       scores: s.scores,
@@ -117,7 +118,11 @@ Be specific and actionable. Reference actual numbers from the data.`,
     });
 
     setPredictions(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('DQ prediction failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const RISK_COLORS = { low: 'text-emerald-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-red-400' };

@@ -49,10 +49,11 @@ export default function AIBatchCategorizer({ fileName, fileHeaders, onSuggestion
     setSuggestion(null);
     setAccepted(false);
 
-    const headersSample = (fileHeaders || []).slice(0, 30).join(', ');
+    try {
+      const headersSample = (fileHeaders || []).slice(0, 30).join(', ');
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze this data import file and suggest the best import type and category.
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this data import file and suggest the best import type and category.
 
 File name: "${fileName}"
 Column headers (first 30): ${headersSample}
@@ -65,20 +66,24 @@ Based on the file name and column headers, determine:
 2. The category
 3. A confidence score (0-100)
 4. A brief reason for your suggestion`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          import_type: { type: 'string' },
-          category: { type: 'string' },
-          confidence: { type: 'number' },
-          reason: { type: 'string' },
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            import_type: { type: 'string' },
+            category: { type: 'string' },
+            confidence: { type: 'number' },
+            reason: { type: 'string' },
+          },
+          required: ['import_type', 'category', 'confidence', 'reason'],
         },
-        required: ['import_type', 'category', 'confidence', 'reason'],
-      },
-    });
+      });
 
-    setSuggestion(result);
-    setLoading(false);
+      setSuggestion(result);
+    } catch (err) {
+      console.error('AI categorization failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccept = () => {

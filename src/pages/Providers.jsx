@@ -65,7 +65,7 @@ export default function Providers() {
 
   const { data: scores = [] } = useQuery({
     queryKey: ['providersPageScores'],
-    queryFn: () => base44.entities.LeadScore.list(),
+    queryFn: () => base44.entities.LeadScore.list('-created_date', 5000),
   });
 
   const { data: locations = [] } = useQuery({

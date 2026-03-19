@@ -58,6 +58,7 @@ export default function AIDuplicateDetector({ providers = [], locations = [], ta
     setLoading(true);
     setDuplicates(null);
 
+    try {
     const sample = providers.slice(0, 100).map(p => {
       const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
       const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
@@ -121,7 +122,6 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
     });
 
     setDuplicates(res);
-    setLoading(false);
 
     if (res.duplicate_groups?.length > 0) {
       for (const group of res.duplicate_groups.slice(0, 5)) {
@@ -137,6 +137,12 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
       toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
     } else {
       toast.success('No duplicates detected — your data looks clean!');
+    }
+    } catch (err) {
+      console.error('Duplicate scan failed:', err);
+      toast.error('Duplicate scan failed');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -21,7 +21,7 @@ export default function EnrichmentActionability() {
   const analyze = async () => {
     setLoading(true);
 
-    // Aggregate enriched data
+    try {
     const byNPI = {};
     records.forEach(r => {
       if (!byNPI[r.npi]) byNPI[r.npi] = { npi: r.npi, name: r.provider_name, details: {} };
@@ -87,7 +87,11 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
       }
     });
     setSuggestions(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Enrichment actionability analysis failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const ICONS = {

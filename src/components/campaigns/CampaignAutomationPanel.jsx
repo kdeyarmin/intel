@@ -61,13 +61,23 @@ export default function CampaignAutomationPanel({ campaign }) {
 
   const handleDeleteStep = async (id) => {
     if(!confirm('Delete this step?')) return;
-    await base44.entities.CampaignSequenceStep.delete(id);
-    queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
+    try {
+      await base44.entities.CampaignSequenceStep.delete(id);
+      queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
+    } catch (err) {
+      console.error('Failed to delete step:', err);
+      toast.error('Failed to delete step');
+    }
   };
 
   const toggleStepActive = async (step) => {
-    await base44.entities.CampaignSequenceStep.update(step.id, { is_active: !step.is_active });
-    queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
+    try {
+      await base44.entities.CampaignSequenceStep.update(step.id, { is_active: !step.is_active });
+      queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
+    } catch (err) {
+      console.error('Failed to toggle step:', err);
+      toast.error('Failed to update step');
+    }
   };
 
   return (

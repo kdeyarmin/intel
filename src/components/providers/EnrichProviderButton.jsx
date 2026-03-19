@@ -138,26 +138,32 @@ Search the NPI registry and healthcare directories to find accurate data for the
     setProgress({ current: 0, total });
     const allResults = [];
 
-    for (let i = 0; i < providers.length; i++) {
-      try {
-        const result = await enrichProvider(providers[i]);
-        allResults.push(result);
-      } catch (err) {
-        allResults.push({
-          npi: providers[i].npi,
-          name: providers[i].first_name || providers[i].organization_name || providers[i].npi,
-          status: 'error',
-          message: err.message,
-        });
+    try {
+      for (let i = 0; i < providers.length; i++) {
+        try {
+          const result = await enrichProvider(providers[i]);
+          allResults.push(result);
+        } catch (err) {
+          allResults.push({
+            npi: providers[i].npi,
+            name: providers[i].first_name || providers[i].organization_name || providers[i].npi,
+            status: 'error',
+            message: err.message,
+          });
+        }
+        setProgress({ current: i + 1, total });
       }
-      setProgress({ current: i + 1, total });
-    }
 
-    setResults(allResults);
-    setLoading(false);
-    const enrichedCount = allResults.filter(r => r.status === 'enriched').length;
-    toast.success(`Enriched ${enrichedCount} of ${total} providers`);
-    if (onComplete) onComplete();
+      setResults(allResults);
+      const enrichedCount = allResults.filter(r => r.status === 'enriched').length;
+      toast.success(`Enriched ${enrichedCount} of ${total} providers`);
+      if (onComplete) onComplete();
+    } catch (err) {
+      console.error('Enrichment batch failed:', err);
+      toast.error('Enrichment process failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statusIcons = {

@@ -146,6 +146,11 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **Stuck spinner fixes (2 components)**: `EnrichmentReviewQueue.jsx` handleBatchAction — `setBatchLoading(false)` moved to finally block (was skipped on error); `BatchProviderUpdater.jsx` applyUpdates — `setApplying(false)` moved to finally block, added per-item try/catch so one failure doesn't abort the whole batch
 - **N+1 query fix**: `BatchProviderUpdater.jsx` — ProviderAffiliation.filter moved outside inner `for` loop (was querying once per affiliation, now once per provider)
 
+### Round 14 Fixes
+- **Stuck spinner fixes (8 components)**: `AIBatchCategorizer.jsx` runAICategorization — wrapped in try/catch/finally; `EnrichmentActionability.jsx` analyze — wrapped in try/catch/finally; `ProactiveDQAlerts.jsx` runPrediction — wrapped in try/catch/finally; `DQAssistant.jsx` handleAsk, handleAutoFix, handlePatternAnalysis — all 3 wrapped in try/catch/finally; `QuickCampaignLauncher.jsx` handleCreate — wrapped in try/catch/finally; `EnrichProviderButton.jsx` handleEnrich — wrapped in try/catch/finally
+- **Missing error handling (3 functions)**: `CampaignAutomationPanel.jsx` handleDeleteStep and toggleStepActive — both now wrapped in try/catch with toast.error; `AIDuplicateDetector.jsx` handleScan — entire scan+alert-creation flow wrapped in try/catch/finally
+- **Unbounded .list() calls capped (5 pages)**: `LeadLists.jsx` LeadList.list (500); `Organizations.jsx` LeadScore.list (5000); `ScoringRules.jsx` ScoringRule.list ×2 (200); `Providers.jsx` LeadScore.list (5000); `ProjectManagement.jsx` CampaignTask.list (500)
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

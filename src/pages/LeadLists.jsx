@@ -23,7 +23,7 @@ export default function LeadLists() {
 
   const { data: lists = [], isLoading } = useQuery({
     queryKey: ['leadLists'],
-    queryFn: () => base44.entities.LeadList.list('-created_date'),
+    queryFn: () => base44.entities.LeadList.list('-created_date', 500),
   });
 
   const deleteMutation = useMutation({
