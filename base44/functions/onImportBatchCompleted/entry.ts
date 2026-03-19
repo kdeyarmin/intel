@@ -1,30 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-export default async function fetch(req) {
+Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        // We only expect this to be called by the system (service role via automation)
         const payload = await req.json();
-        
         const { event, data, old_data, payload_too_large } = payload;
         
-        // Ensure it's an update event
         if (event?.type !== 'update' || event?.entity_name !== 'ImportBatch') {
             return Response.json({ success: false, message: 'Ignoring non-update/non-batch event' });
         }
 
-        // We need the batch data
         let batchData = data;
         let oldBatchData = old_data;
 
         if (payload_too_large) {
             batchData = await base44.asServiceRole.entities.ImportBatch.get(event.entity_id);
-            // We can't know old_data if payload was too large, so we might just assume it's a completion we need to process
-            // But usually ImportBatch doesn't exceed 200KB unless error_samples is huge.
         }
 
-        // Check if status transitioned to 'completed'
         const isNowCompleted = batchData?.status === 'completed';
         const wasCompleted = oldBatchData?.status === 'completed';
 
@@ -39,7 +32,6 @@ export default async function fetch(req) {
 
         console.log(`[DependencyManager] Batch completed: ${completedImportType} (${event.entity_id}). Checking for dependent schedules...`);
 
-        // Find schedules that depend on this import type
         const dependentSchedules = await base44.asServiceRole.entities.ImportScheduleConfig.filter({
             is_active: true,
             schedule_frequency: 'on_completion',
@@ -55,7 +47,6 @@ export default async function fetch(req) {
         const now = new Date();
         const results = [];
 
-        // Trigger each dependent schedule
         for (const schedule of dependentSchedules) {
             console.log(`[DependencyManager] Triggering dependent schedule: ${schedule.label} (${schedule.import_type})`);
 
@@ -113,7 +104,6 @@ export default async function fetch(req) {
                 runSummary = `Error: ${err.message}`;
             }
 
-            // Update schedule history
             await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, {
                 last_run_at: now.toISOString(),
                 last_run_status: runStatus,
@@ -129,4 +119,4 @@ export default async function fetch(req) {
         console.error('[DependencyManager] Error:', error.message);
         return Response.json({ error: error.message }, { status: 500 });
     }
-}
+});
