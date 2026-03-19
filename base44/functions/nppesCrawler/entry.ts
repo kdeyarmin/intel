@@ -605,9 +605,29 @@ Deno.serve(async (req) => {
         for (const st of targetStates) {
             if (skip_completed) {
                 const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
-                if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'processing' || stBatch.status === 'validating')) { 
-                    skipped++; 
-                    continue; 
+                // Only skip truly completed/validating states — NOT stale 'processing' ones from dead workers
+                if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'validating')) {
+                    skipped++;
+                    continue;
+                }
+                // Cancel stale 'processing' batches so they don't block new ones
+                if (stBatch && stBatch.status === 'processing') {
+                    try {
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(stBatch.id, {
+                            status: 'cancelled',
+                            cancel_reason: 'Replaced by new crawler run'
+                        }));
+                        // Also mark any remaining queue items as failed
+                        const staleItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: stBatch.id, status: 'processing' }, undefined, 500));
+                        const stalePending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: stBatch.id, status: 'pending' }, undefined, 500));
+                        const allStale = [...staleItems, ...stalePending];
+                        for (let si = 0; si < allStale.length; si += 50) {
+                            const chunk = allStale.slice(si, si + 50);
+                            await Promise.all(chunk.map(item =>
+                                withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'failed', error_message: 'Cancelled by new run' })).catch(() => {})
+                            ));
+                        }
+                    } catch (e) { console.warn(`[Crawler] Failed to cancel stale batch for ${st}: ${e.message}`); }
                 }
             }
             
@@ -646,26 +666,18 @@ Deno.serve(async (req) => {
         const targetWorkers = Math.min(maxConcurrent, 3); // Max initial cluster
         const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
         
+        // Fire-and-forget worker spawning — do NOT await, as each worker runs for up to 20 seconds
+        // and awaiting would cause batch_start to timeout before spawning additional workers
         let workersSpawned = 0;
-        for(let i = 0; i < workersToStart; i++) {
-            try {
-                await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
-                workersSpawned++;
-            } catch (e) {
-                console.error(`[Crawler] Worker spawn ${i+1} failed: ${e.message}`);
-                // Retry once after short delay
-                await sleep(1000);
-                try {
-                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
-                    workersSpawned++;
-                } catch (e2) {
-                    console.error(`[Crawler] Worker spawn ${i+1} retry also failed: ${e2.message}`);
-                }
-            }
+        for (let i = 0; i < workersToStart; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
+                .then(() => console.log(`[Crawler] Worker ${i+1} completed its cycle`))
+                .catch(e => console.error(`[Crawler] Worker ${i+1} failed: ${e.message}`));
+            workersSpawned++;
+            // Small stagger to avoid all workers grabbing the same task
+            await sleep(500);
         }
-        if (workersSpawned === 0 && workersToStart > 0) {
-            console.error('[Crawler] Failed to spawn any workers! Crawl may not start.');
-        }
+        console.log(`[Crawler] Spawned ${workersSpawned} workers (fire-and-forget)`);
 
         return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
     }
@@ -1094,40 +1106,30 @@ Deno.serve(async (req) => {
         if (remainingQueueSize > 0) {
             const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
 
-            // Re-invoke self with retry
-            console.log(`[Crawler Worker] Re-invoking self...`);
-            let selfInvoked = false;
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
-                    selfInvoked = true;
-                    break;
-                } catch (e) {
-                    console.error(`[Crawler] Self-invoke attempt ${attempt} failed: ${e.message}`);
-                    if (attempt < 3) await sleep(attempt * 2000);
-                }
-            }
-            if (!selfInvoked) {
-                console.error('[Crawler] All self-invoke attempts failed. Queue may stall. Creating alert.');
-                try {
-                    await base44.asServiceRole.entities.DataQualityAlert.create({
-                        alert_type: 'new_issue_detected',
-                        severity: 'critical',
-                        title: 'Crawler Self-Invocation Failed',
-                        description: `Worker failed to re-invoke after 3 attempts. ${remainingQueueSize} items remain in queue.`,
-                        status: 'new',
-                        action_required: true
-                    });
-                } catch (_) {}
-            }
-
-            // Dynamically scale up if queue is large, healthy, and under worker cap
+            // Fire-and-forget re-invocation — do NOT await, as that would block this worker
+            // for 20+ seconds waiting for the new worker to finish its entire cycle
             const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
-            if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
-                 console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
-                 base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Scale-up invoke failed:', e.message));
-            } else if (consecutiveErrors > 2 && activeWorkersCount > 2) {
-                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API.`);
+            const workersNeeded = Math.max(1, targetWorkers - activeWorkersCount);
+
+            console.log(`[Crawler Worker] Re-invoking ${workersNeeded} worker(s) (Active: ${activeWorkersCount}, Target: ${targetWorkers}, Queue: ${remainingQueueSize})`);
+
+            for (let w = 0; w < workersNeeded; w++) {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
+                    .then(() => console.log(`[Crawler] Re-invoked worker ${w+1} completed`))
+                    .catch(e => {
+                        console.error(`[Crawler] Re-invoked worker ${w+1} failed: ${e.message}`);
+                        // Create alert only for the first failure
+                        if (w === 0) {
+                            base44.asServiceRole.entities.DataQualityAlert.create({
+                                alert_type: 'new_issue_detected',
+                                severity: 'critical',
+                                title: 'Crawler Self-Invocation Failed',
+                                description: `Worker failed to re-invoke. ${remainingQueueSize} items remain in queue. Error: ${e.message}`,
+                                status: 'new',
+                                action_required: true
+                            }).catch(() => {});
+                        }
+                    });
             }
         }
         
