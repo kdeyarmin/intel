@@ -3,24 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, RefreshCw, FileCheck } from 'lucide-react';
 
-const STATE_ZIP_PREFIXES = {
-  AL: ['35','36'], AK: ['99'], AZ: ['85','86'], AR: ['71','72','75'],
-  CA: ['90','91','92','93','94','95','96'], CO: ['80','81'], CT: ['06'],
-  DE: ['19'], DC: ['20'], FL: ['32','33','34'], GA: ['30','31','39'],
-  HI: ['96'], ID: ['83'], IL: ['60','61','62'], IN: ['46','47'],
-  IA: ['50','51','52','68'], KS: ['66','67'], KY: ['40','41','42'],
-  LA: ['70','71'], ME: ['03','04'], MD: ['20','21'],
-  MA: ['01','02','05'], MI: ['48','49'], MN: ['55','56'],
-  MS: ['38','39','71'], MO: ['63','64','65'], MT: ['59'],
-  NE: ['68','69'], NV: ['88','89'], NH: ['03'],
-  NJ: ['07','08'], NM: ['87','88'], NY: ['06','10','11','12','13','14'],
-  NC: ['27','28'], ND: ['58'], OH: ['43','44','45'],
-  OK: ['73','74'], OR: ['97'], PA: ['15','16','17','18','19'],
-  RI: ['02'], SC: ['29'], SD: ['57'], TN: ['37','38'],
-  TX: ['73','75','76','77','78','79','88'], UT: ['84'],
-  VT: ['05'], VA: ['20','22','23','24'], WA: ['98','99'],
-  WV: ['24','25','26'], WI: ['53','54'], WY: ['82','83']
-};
+// The crawler creates 100 queue items per state (zip prefixes 00-99)
+const TOTAL_ZIP_PREFIXES = 100;
 
 const STATE_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
@@ -54,7 +38,7 @@ export default function CurrentStateProgress({ status }) {
 
   if (!stateCode) return null;
 
-  const totalPrefixes = (STATE_ZIP_PREFIXES[stateCode] || []).length;
+  const totalPrefixes = TOTAL_ZIP_PREFIXES;
   const processedPrefixes = activeBatch?.retry_params?.processed_prefixes || [];
   const completedPrefixes = processedPrefixes.length;
   const pct = totalPrefixes > 0 ? Math.round((completedPrefixes / totalPrefixes) * 100) : 0;
@@ -95,10 +79,10 @@ export default function CurrentStateProgress({ status }) {
           </div>
         </div>
 
-        {/* Zip prefix pills */}
-        {totalPrefixes > 0 && (
+        {/* Zip prefix pills - show all 100 prefixes (00-99) */}
+        {processedPrefixes.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {(STATE_ZIP_PREFIXES[stateCode] || []).map(prefix => {
+            {Array.from({ length: TOTAL_ZIP_PREFIXES }, (_, i) => String(i).padStart(2, '0')).map(prefix => {
               const done = processedPrefixes.includes(prefix);
               return (
                 <span
@@ -109,7 +93,7 @@ export default function CurrentStateProgress({ status }) {
                       : 'bg-slate-800/50 text-slate-500 border-slate-700/50'
                   }`}
                 >
-                  {prefix}*
+                  {prefix}
                 </span>
               );
             })}

@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
                     // We invoke the crawler directly
                     // It will create a NEW batch with retry_count + 1
                     try {
-                        base44.asServiceRole.functions.invoke('nppesCrawler', {
+                        await base44.asServiceRole.functions.invoke('nppesCrawler', {
                             action: 'batch_start',
                             states: [state]
                         });

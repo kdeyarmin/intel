@@ -26,7 +26,7 @@ function getStateFromFileName(fileName) {
   return match ? match[1].toUpperCase() : fileName.slice(0, 20);
 }
 
-export default function RecentCrawlActivity({ nppesImports, _auditEvents, loading }) {
+export default function RecentCrawlActivity({ nppesImports, auditEvents, loading }) {
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
   const recentBatches = nppesImports.slice(0, 15);
