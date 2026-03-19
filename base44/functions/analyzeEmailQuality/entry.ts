@@ -72,6 +72,16 @@ function analyzeEmail(email) {
   }
 
   const emailLower = email.toLowerCase().trim();
+  if (!emailLower.includes('@')) {
+    return {
+      isValid: false,
+      confidence: 'low',
+      score: 0,
+      reasons: ['Missing @ symbol'],
+      riskFlags: ['Invalid email'],
+      analysis: {}
+    };
+  }
   const [localPart, domain] = emailLower.split('@');
 
   const analysis = {

@@ -147,13 +147,13 @@ export default function LocationDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div>
-                <p className="text-2xl font-bold text-slate-900">{location.address_1 || 'No address'}</p>
-                {location.address_2 && <p className="text-slate-600">{location.address_2}</p>}
-                <p className="text-slate-600">{location.city}, {location.state} {location.zip}</p>
+                <p className="text-2xl font-bold text-white">{location.address_1 || 'No address'}</p>
+                {location.address_2 && <p className="text-slate-400">{location.address_2}</p>}
+                <p className="text-slate-400">{location.city}, {location.state} {location.zip}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{location.location_type || 'Unknown Type'}</Badge>
-                {location.is_primary && <Badge className="bg-blue-100 text-blue-700">Primary Location</Badge>}
+                {location.is_primary && <Badge className="bg-blue-500/20 text-blue-400">Primary Location</Badge>}
                 <Badge variant="outline" className="font-mono">NPI: {location.npi}</Badge>
               </div>
             </div>
@@ -195,23 +195,23 @@ export default function LocationDetail() {
               <CardContent>
                 {latestUtil ? (
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <p className="text-[10px] text-blue-600 font-medium">Beneficiaries</p>
-                      <p className="text-xl font-bold text-blue-900">{(latestUtil.total_medicare_beneficiaries || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-blue-500">{latestUtil.year}</p>
+                    <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <p className="text-[10px] text-blue-400 font-medium">Beneficiaries</p>
+                      <p className="text-xl font-bold text-white">{(latestUtil.total_medicare_beneficiaries || 0).toLocaleString()}</p>
+                      <p className="text-[10px] text-blue-400/70">{latestUtil.year}</p>
                     </div>
-                    <div className="p-3 bg-teal-50 rounded-lg">
-                      <p className="text-[10px] text-teal-600 font-medium">Total Services</p>
-                      <p className="text-xl font-bold text-teal-900">{(latestUtil.total_services || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-teal-500">{latestUtil.year}</p>
+                    <div className="p-3 bg-teal-500/10 rounded-lg border border-teal-500/20">
+                      <p className="text-[10px] text-teal-400 font-medium">Total Services</p>
+                      <p className="text-xl font-bold text-white">{(latestUtil.total_services || 0).toLocaleString()}</p>
+                      <p className="text-[10px] text-teal-400/70">{latestUtil.year}</p>
                     </div>
-                    <div className="p-3 bg-emerald-50 rounded-lg">
-                      <p className="text-[10px] text-emerald-600 font-medium">Medicare Payment</p>
-                      <p className="text-xl font-bold text-emerald-900">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
+                    <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                      <p className="text-[10px] text-emerald-400 font-medium">Medicare Payment</p>
+                      <p className="text-xl font-bold text-white">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
                     </div>
-                    <div className="p-3 bg-violet-50 rounded-lg">
-                      <p className="text-[10px] text-violet-600 font-medium">Drug Services</p>
-                      <p className="text-xl font-bold text-violet-900">{(latestUtil.drug_services || 0).toLocaleString()}</p>
+                    <div className="p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                      <p className="text-[10px] text-violet-400 font-medium">Drug Services</p>
+                      <p className="text-xl font-bold text-white">{(latestUtil.drug_services || 0).toLocaleString()}</p>
                     </div>
                   </div>
                 ) : (
@@ -230,19 +230,19 @@ export default function LocationDetail() {
               <CardContent>
                 {latestRef ? (
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
-                      <span className="text-sm text-slate-600">Total Referrals</span>
-                      <span className="text-lg font-bold">{(latestRef.total_referrals || 0).toLocaleString()}</span>
+                    <div className="flex justify-between items-center p-2.5 bg-slate-800/40 rounded-lg">
+                      <span className="text-sm text-slate-400">Total Referrals</span>
+                      <span className="text-lg font-bold text-white">{(latestRef.total_referrals || 0).toLocaleString()}</span>
                     </div>
                     {[
-                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-100 text-blue-800' },
-                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-100 text-purple-800' },
-                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-100 text-amber-800' },
-                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-100 text-green-800' },
-                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-100 text-pink-800' },
+                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-500/20 text-blue-400' },
+                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-500/20 text-purple-400' },
+                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-500/20 text-amber-400' },
+                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-500/20 text-green-400' },
+                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-500/20 text-pink-400' },
                     ].filter(r => r.value > 0).map(r => (
                       <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
-                        <span className="text-sm text-slate-600">{r.label}</span>
+                        <span className="text-sm text-slate-400">{r.label}</span>
                         <Badge className={r.color}>{r.value}</Badge>
                       </div>
                     ))}
@@ -263,7 +263,7 @@ export default function LocationDetail() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {locTaxonomies.map(t => (
-                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-50 border-blue-200 text-blue-700' : ''}`}>
+                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-500/15 border-blue-500/30 text-blue-400' : ''}`}>
                       {t.taxonomy_description || t.taxonomy_code}
                       {t.primary_flag && <span className="ml-1 text-[9px]">★</span>}
                     </Badge>
@@ -309,14 +309,14 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Shield className="w-4 h-4 text-amber-500" />
                   Data Quality
-                  <Badge className="bg-amber-100 text-amber-700 text-[10px] ml-auto">{openDQAlerts.length} open</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-400 text-[10px] ml-auto">{openDQAlerts.length} open</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {openDQAlerts.slice(0, 4).map(a => (
-                  <div key={a.id} className="text-xs bg-slate-50 rounded px-2.5 py-1.5 flex items-center gap-2">
-                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${a.severity === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{a.severity}</Badge>
-                    <span className="truncate text-slate-600">{a.summary}</span>
+                  <div key={a.id} className="text-xs bg-slate-800/40 rounded px-2.5 py-1.5 flex items-center gap-2">
+                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${a.severity === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>{a.severity}</Badge>
+                    <span className="truncate text-slate-400">{a.summary}</span>
                   </div>
                 ))}
               </CardContent>

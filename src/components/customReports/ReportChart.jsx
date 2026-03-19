@@ -91,7 +91,7 @@ export default function ReportChart({ rawData, config, loading }) {
         <ResponsiveContainer width="100%" height={340}>
           {chartType === 'bar' ? (
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="group" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt} />
               <Tooltip formatter={(v, name) => [fmt(v), metricLabels[name] || name]} />
@@ -102,7 +102,7 @@ export default function ReportChart({ rawData, config, loading }) {
             </BarChart>
           ) : chartType === 'line' ? (
             <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="group" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt} />
               <Tooltip formatter={(v, name) => [fmt(v), metricLabels[name] || name]} />

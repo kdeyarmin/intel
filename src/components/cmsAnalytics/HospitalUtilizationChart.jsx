@@ -39,7 +39,7 @@ export default function HospitalUtilizationChart({ data, loading }) {
         ) : (
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="name" fontSize={11} tick={{ fill: '#64748b' }} />
               <YAxis fontSize={11} tick={{ fill: '#64748b' }} tickFormatter={v => v >= 1e6 ? `${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
               <Tooltip formatter={(v, name) => [name === 'avgPayment' ? `$${v.toLocaleString()}` : v.toLocaleString(), name === 'avgPayment' ? 'Avg Medicare Payment' : 'Total Discharges']} />

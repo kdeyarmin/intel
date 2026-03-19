@@ -60,7 +60,7 @@ export default function CrawlerMonitoring({ status }) {
               {metricsData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={metricsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                     <XAxis dataKey="state" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <Tooltip 
@@ -95,7 +95,7 @@ export default function CrawlerMonitoring({ status }) {
                         <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                     <XAxis dataKey="state" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <Tooltip 
@@ -123,7 +123,7 @@ export default function CrawlerMonitoring({ status }) {
               {errorData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={errorData} layout="vertical" margin={{ top: 10, right: 30, left: 30, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" />
                     <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
                     <YAxis dataKey="message" type="category" tick={{ fontSize: 11, fill: '#64748b' }} width={180} axisLine={false} tickLine={false} />
                     <Tooltip 

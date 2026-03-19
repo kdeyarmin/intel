@@ -19,7 +19,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+    <div className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 hover:border-slate-700/50 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs font-semibold text-slate-700">{suggestion.field_label}</span>

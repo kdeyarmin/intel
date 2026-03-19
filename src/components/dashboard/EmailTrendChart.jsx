@@ -16,7 +16,7 @@ export default function EmailTrendChart({ data = [], loading }) {
         </CardHeader>
         <CardContent className="h-[250px] flex items-center justify-center">
           <div className="animate-pulse flex space-x-4">
-            <div className="h-4 w-48 bg-slate-200 rounded"></div>
+            <div className="h-4 w-48 bg-slate-700 rounded"></div>
           </div>
         </CardContent>
       </Card>
@@ -45,7 +45,7 @@ export default function EmailTrendChart({ data = [], loading }) {
             <CardDescription>Emails successfully found by the Search Bot over the last 30 days</CardDescription>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-slate-900">{totalFound}</div>
+            <div className="text-2xl font-bold text-white">{totalFound}</div>
             <div className="text-sm text-slate-500">Total in 30 days</div>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function EmailTrendChart({ data = [], loading }) {
         <div className="h-[250px] mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
               <XAxis 
                 dataKey="displayDate" 
                 axisLine={false} 
@@ -70,9 +70,9 @@ export default function EmailTrendChart({ data = [], loading }) {
                 allowDecimals={false}
               />
               <Tooltip
-                cursor={{ fill: '#f1f5f9' }}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                labelStyle={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}
+                cursor={{ fill: '#1e293b' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', background: '#1e293b', color: '#e2e8f0' }}
+                labelStyle={{ fontWeight: 'bold', color: '#f8fafc', marginBottom: '4px' }}
               />
               <Bar 
                 dataKey="count" 

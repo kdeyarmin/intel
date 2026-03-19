@@ -122,7 +122,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
         ) : viewMode === 'bar' ? (
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={comparisonData} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis type="number" tickFormatter={formatVal} tick={{ fontSize: 11 }} />
               <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
               <Tooltip formatter={formatVal} />
@@ -132,7 +132,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
         ) : (
           <ResponsiveContainer width="100%" height={350}>
             <RadarChart data={radarData} outerRadius="70%">
-              <PolarGrid stroke="#e2e8f0" />
+              <PolarGrid stroke="#334155" />
               <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10 }} />
               <PolarRadiusAxis tick={{ fontSize: 9 }} />
               {comparisonData.slice(0, 5).map((g, i) => (

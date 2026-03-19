@@ -83,8 +83,8 @@ export default function ReferralPathwayAnalysis() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">AI Referral Pathway Analysis</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-white">AI Referral Pathway Analysis</h1>
+        <p className="text-slate-400 mt-1">
           AI-powered analysis of referral patterns, predictions, and network leakage detection
         </p>
       </div>
@@ -127,7 +127,7 @@ export default function ReferralPathwayAnalysis() {
               )}
             </Button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-slate-400 mt-2">
             AI will analyze referral history, predict next destinations, and detect network leakage
           </p>
         </CardContent>
@@ -149,11 +149,11 @@ export default function ReferralPathwayAnalysis() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>{providerName || `Provider ${selectedNPI}`}</CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-slate-400 mt-1">
                     NPI: {selectedNPI} • Analysis: {new Date(selectedAnalysis.analysis_date).toLocaleDateString()}
                   </p>
                 </div>
-                <Badge className={selectedAnalysis.leakage_detected ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                <Badge className={selectedAnalysis.leakage_detected ? 'bg-red-500/100/20 text-red-400' : 'bg-green-500/20 text-green-400'}>
                   {selectedAnalysis.leakage_detected ? 'Leakage Detected' : 'Network Aligned'}
                 </Badge>
               </div>
@@ -162,9 +162,9 @@ export default function ReferralPathwayAnalysis() {
 
           {/* Leakage Alert */}
           {selectedAnalysis.leakage_detected && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-900">
+            <Alert className="border-red-500/30 bg-red-500/100/10">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <AlertDescription className="text-red-300">
                 <strong>Network Leakage Detected:</strong>{' '}
                 {selectedAnalysis.leakage_details?.out_of_network_percentage?.toFixed(1)}% 
                 ({selectedAnalysis.leakage_details?.out_of_network_count} referrals) going outside preferred network
@@ -184,21 +184,21 @@ export default function ReferralPathwayAnalysis() {
               <CardContent>
                 <div className="space-y-3">
                   {selectedAnalysis.top_destinations?.slice(0, 5).map((dest, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                          dest.in_network ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          dest.in_network ? 'bg-green-500/20 text-green-400' : 'bg-red-500/100/20 text-red-400'
                         }`}>
                           {idx + 1}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{dest.agency_name}</p>
-                          <p className="text-xs text-gray-500">{dest.agency_type}</p>
+                          <p className="font-medium text-white">{dest.agency_name}</p>
+                          <p className="text-xs text-slate-400">{dest.agency_type}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">{dest.percentage?.toFixed(1)}%</p>
-                        <p className="text-xs text-gray-500">{dest.referral_count} referrals</p>
+                        <p className="font-semibold text-white">{dest.percentage?.toFixed(1)}%</p>
+                        <p className="text-xs text-slate-400">{dest.referral_count} referrals</p>
                       </div>
                     </div>
                   ))}
@@ -215,21 +215,21 @@ export default function ReferralPathwayAnalysis() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="p-4 bg-gradient-to-br from-teal-50 to-blue-50 rounded-lg border border-teal-200">
+                <div className="p-4 bg-gradient-to-br from-teal-500/15 to-blue-500/15 rounded-lg border border-teal-500/30">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="font-semibold text-white">
                       {selectedAnalysis.predicted_next_referral?.agency_name}
                     </h3>
                     <Badge className="bg-teal-600">
                       {selectedAnalysis.predicted_next_referral?.probability?.toFixed(0)}% likely
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">
+                  <p className="text-sm text-slate-400 mb-3">
                     {selectedAnalysis.predicted_next_referral?.agency_type}
                   </p>
-                  <div className="p-3 bg-white/70 rounded border border-teal-100">
-                    <p className="text-xs font-medium text-gray-700 mb-1">AI Reasoning:</p>
-                    <p className="text-xs text-gray-600">
+                  <div className="p-3 bg-slate-800/50 rounded border border-teal-500/20">
+                    <p className="text-xs font-medium text-slate-300 mb-1">AI Reasoning:</p>
+                    <p className="text-xs text-slate-400">
                       {selectedAnalysis.predicted_next_referral?.reasoning}
                     </p>
                   </div>
@@ -248,21 +248,21 @@ export default function ReferralPathwayAnalysis() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-blue-600 font-medium">Pattern Type</p>
-                  <p className="text-lg font-bold text-blue-900 mt-1">
+                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <p className="text-xs text-blue-400 font-medium">Pattern Type</p>
+                  <p className="text-lg font-bold text-white mt-1">
                     {selectedAnalysis.referral_pattern}
                   </p>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-purple-600 font-medium">Total Analyzed</p>
-                  <p className="text-lg font-bold text-purple-900 mt-1">
+                <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                  <p className="text-xs text-purple-400 font-medium">Total Analyzed</p>
+                  <p className="text-lg font-bold text-white mt-1">
                     {selectedAnalysis.total_referrals_analyzed} referrals
                   </p>
                 </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <p className="text-xs text-green-600 font-medium">In-Network Rate</p>
-                  <p className="text-lg font-bold text-green-900 mt-1">
+                <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                  <p className="text-xs text-green-400 font-medium">In-Network Rate</p>
+                  <p className="text-lg font-bold text-white mt-1">
                     {selectedAnalysis.leakage_details?.out_of_network_percentage 
                       ? (100 - selectedAnalysis.leakage_details.out_of_network_percentage).toFixed(1)
                       : '100'}%
@@ -270,9 +270,9 @@ export default function ReferralPathwayAnalysis() {
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm font-medium text-gray-700 mb-2">AI Insights:</p>
-                <p className="text-sm text-gray-600">{selectedAnalysis.ai_insights}</p>
+              <div className="p-4 bg-slate-800/40 rounded-lg">
+                <p className="text-sm font-medium text-slate-300 mb-2">AI Insights:</p>
+                <p className="text-sm text-slate-400">{selectedAnalysis.ai_insights}</p>
               </div>
             </CardContent>
           </Card>
@@ -288,9 +288,9 @@ export default function ReferralPathwayAnalysis() {
             <CardContent>
               <div className="space-y-2">
                 {selectedAnalysis.recommendations?.map((rec, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg">
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-gradient-to-r from-teal-500/15 to-blue-500/15 rounded-lg">
                     <ArrowRight className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-gray-700">{rec}</p>
+                    <p className="text-sm text-slate-300">{rec}</p>
                   </div>
                 ))}
               </div>
@@ -301,7 +301,7 @@ export default function ReferralPathwayAnalysis() {
           {selectedAnalysis.leakage_detected && selectedAnalysis.leakage_details?.top_leakage_destinations?.length > 0 && (
             <Card className="border-red-200">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-900">
+                <CardTitle className="flex items-center gap-2 text-red-400">
                   <AlertTriangle className="h-5 w-5" />
                   Top Leakage Destinations
                 </CardTitle>
@@ -309,9 +309,9 @@ export default function ReferralPathwayAnalysis() {
               <CardContent>
                 <div className="space-y-2">
                   {selectedAnalysis.leakage_details.top_leakage_destinations.map((dest, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                      <p className="font-medium text-gray-900">{dest.agency_name}</p>
-                      <Badge variant="outline" className="border-red-300 text-red-700">
+                    <div key={idx} className="flex items-center justify-between p-3 bg-red-500/10 rounded-lg">
+                      <p className="font-medium text-white">{dest.agency_name}</p>
+                      <Badge variant="outline" className="border-red-300 text-red-400">
                         {dest.referral_count} referrals
                       </Badge>
                     </div>
@@ -335,7 +335,7 @@ export default function ReferralPathwayAnalysis() {
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
               </div>
             ) : analyses.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
+              <p className="text-slate-400 text-center py-8">
                 No analyses yet. Enter a provider NPI above to start.
               </p>
             ) : (
@@ -349,16 +349,16 @@ export default function ReferralPathwayAnalysis() {
                   return (
                     <div 
                       key={analysis.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer"
+                      className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 cursor-pointer"
                       onClick={() => setSelectedNPI(analysis.provider_npi)}
                     >
                       <div>
-                        <p className="font-medium text-gray-900">{name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-medium text-white">{name}</p>
+                        <p className="text-xs text-slate-400">
                           NPI: {analysis.provider_npi} • {new Date(analysis.analysis_date).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge className={analysis.leakage_detected ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                      <Badge className={analysis.leakage_detected ? 'bg-red-500/100/20 text-red-400' : 'bg-green-500/20 text-green-400'}>
                         {analysis.leakage_detected ? 'Leakage' : 'Aligned'}
                       </Badge>
                     </div>
@@ -379,10 +379,10 @@ export default function ReferralPathwayAnalysis() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {preferredAgencies.slice(0, 6).map((agency) => (
-                <div key={agency.id} className="p-3 bg-gradient-to-br from-green-50 to-teal-50 rounded-lg border border-green-200">
-                  <p className="font-medium text-gray-900">{agency.agency_name}</p>
+                <div key={agency.id} className="p-3 bg-gradient-to-br from-green-500/15 to-teal-500/15 rounded-lg border border-green-500/30">
+                  <p className="font-medium text-white">{agency.agency_name}</p>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-600">{agency.agency_type}</p>
+                    <p className="text-xs text-slate-400">{agency.agency_type}</p>
                     <Badge variant="outline" className="text-xs">
                       {agency.network_tier}
                     </Badge>

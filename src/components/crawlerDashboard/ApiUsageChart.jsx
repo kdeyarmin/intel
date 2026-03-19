@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ApiUsageChart({ nppesImports, loading }) {
-  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-100" />;
+  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-800/50" />;
 
   const data = (nppesImports || [])
     .filter(b => b.import_type === 'nppes_registry' && b.created_date && b.file_name?.includes('crawler_'))
@@ -53,8 +53,8 @@ export default function ApiUsageChart({ nppesImports, loading }) {
               <YAxis yAxisId="left" orientation="left" stroke="#64748b" tick={{ fontSize: 12 }} />
               <YAxis yAxisId="right" orientation="right" stroke="#ef4444" tick={{ fontSize: 12 }} />
               <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                cursor={{ fill: '#f1f5f9' }}
+                contentStyle={{ borderRadius: '8px', border: '1px solid #334155', background: '#1e293b', color: '#e2e8f0' }}
+                cursor={{ fill: '#1e293b' }}
               />
               <Legend />
               <Bar yAxisId="left" dataKey="requests" name="API Requests" fill="#0f766e" radius={[4, 4, 0, 0]} barSize={20} />

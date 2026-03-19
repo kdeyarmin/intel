@@ -27,7 +27,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
   const confidenceColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
 
   return (
-    <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
+    <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-500/15 border-blue-500/30' : 'bg-slate-800/40'}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">

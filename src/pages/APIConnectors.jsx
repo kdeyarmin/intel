@@ -103,9 +103,9 @@ export default function APIConnectors() {
       )}
 
       {!isLoading && connectors.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg border border-dashed border-slate-300">
-          <Server className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-1">No API Connectors</h3>
+        <div className="text-center py-12 bg-slate-800/40 rounded-lg border border-dashed border-slate-600">
+          <Server className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-1">No API Connectors</h3>
           <p className="text-slate-500 mb-4">You haven't configured any API connections yet.</p>
           <Button onClick={handleAddNew}>Add Your First Connector</Button>
         </div>

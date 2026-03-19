@@ -89,7 +89,7 @@ export default function ImportOverviewPage() {
                 </div>
             </div>
 
-            <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border">
+            <div className="flex flex-wrap gap-4 items-center bg-slate-800/40 p-4 rounded-lg shadow-sm border border-slate-700/50">
                 <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                     <Input 

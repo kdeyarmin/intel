@@ -747,18 +747,18 @@ function mapRowToEntity(row, importType, year) {
         }
 
         if (importType === 'home_health_national_measures') {
-            const country = row['country'];
-            if (!country) return null;
-            return {
-                country: String(country).trim(),
-                quality_of_patient_care_star_rating: row['quality_of_patient_care_star_rating'] || '',
-                discharge_function_score: row['discharge_function_score'] || '',
-                transfer_of_health_information_to_the_provider: row['transfer_of_health_information_to_the_provider'] || '',
-                transfer_of_health_information_to_the_patient: row['transfer_of_health_information_to_the_patient'] || '',
-                ppr_national_observed_rate: row['ppr_national_observed_rate'] || '',
-                dtc_national_observed_rate: row['dtc_national_observed_rate'] || '',
-                pph_national_observed_rate: row['pph_national_observed_rate'] || ''
-            };
+            // The CMS dataset has one row per quality measure with fields like
+            // measure_name, measure_id, country, score/percentage, footnote, etc.
+            // Capture all available fields dynamically to avoid missing data.
+            const mapped: Record<string, string> = {};
+            for (const [key, value] of Object.entries(row)) {
+                if (value != null && value !== '') {
+                    mapped[key] = String(value).trim();
+                }
+            }
+            // Must have at least a measure identifier or country
+            if (!mapped.measure_name && !mapped.measure_id && !mapped.country) return null;
+            return mapped;
         }
 
         return null;
@@ -780,8 +780,8 @@ function getDedupKey(mapped, importType) {
     if (importType === 'hospice_national_measures') return mapped.measure_code || null;
     if (importType === 'snf_provider_measures') return (mapped.ccn && mapped.measure_code) ? `${mapped.ccn}_${mapped.measure_code}` : null;
     if (importType === 'nursing_home_providers') return mapped.ccn || null;
-    if (importType === 'nursing_home_deficiencies') return mapped.ccn || null;
-    if (importType === 'home_health_national_measures') return mapped.country || null;
+    if (importType === 'nursing_home_deficiencies') return mapped.ccn ? `${mapped.ccn}_${mapped.inspection_cycle || ''}_${mapped.health_survey_date || ''}` : null;
+    if (importType === 'home_health_national_measures') return mapped.measure_name || mapped.measure_id || mapped.country || null;
     return null;
 }
 
