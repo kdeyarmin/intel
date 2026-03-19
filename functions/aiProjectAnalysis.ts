@@ -11,8 +11,8 @@ Deno.serve(async (req) => {
         const { action } = reqBody; // 'assign', 'analyze', 'resource'
 
         // Fetch tasks and users as service role so we have full context
-        const tasks = await base44.asServiceRole.entities.CampaignTask.list();
-        const users = await base44.asServiceRole.entities.User.list();
+        const tasks = await base44.asServiceRole.entities.CampaignTask.list('-created_date', 500);
+        const users = await base44.asServiceRole.entities.User.list('-created_date', 500);
 
         const simplifiedTasks = tasks.map(t => ({
             id: t.id,

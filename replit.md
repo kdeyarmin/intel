@@ -129,6 +129,11 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **aiProjectAnalysis SDK version**: Updated from @base44/sdk@0.8.20 to @0.8.21 (last remaining stale version)
 - **All 66 functions now on SDK 0.8.21**: Complete version consistency across entire functions/ directory
 
+### Round 11 Fixes
+- **Unbounded .list() calls fixed**: `sendErrorNotification.ts` User.list() now limited to 500; `reconcileProviderData.ts` Provider.list() limited to 5000; `aiProjectAnalysis.ts` CampaignTask.list() and User.list() limited to 500
+- **Unbounded .filter({}) calls fixed**: `matchProvidersToLocations.ts` — all 6 entity fetches (Provider, ProviderLocation, ProviderTaxonomy, CMSReferral, CMSUtilization, ProviderLocationMatch) now capped at FETCH_LIMIT=5000
+- **Division-by-zero guard**: `generateDataQualityReport.ts` calculateCompleteness() — `requiredFields.length` divisor now guarded with ternary fallback to 0
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

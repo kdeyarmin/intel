@@ -122,10 +122,9 @@ function calculateCompleteness(records, requiredFields) {
     };
   });
 
-  const avgCompleteness = Object.values(fieldStats).reduce(
-    (sum, field) => sum + field.percent,
-    0
-  ) / requiredFields.length;
+  const avgCompleteness = requiredFields.length > 0
+    ? Object.values(fieldStats).reduce((sum, field) => sum + field.percent, 0) / requiredFields.length
+    : 0;
 
   return {
     total_records: records.length,

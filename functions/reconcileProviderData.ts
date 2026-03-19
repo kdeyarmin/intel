@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       }
     } else {
       // All providers - for scheduled runs, limit batch size to prevent timeouts with AI
-      const allProviders = await base44.entities.Provider.list();
+      const allProviders = await base44.entities.Provider.list('-created_date', 5000);
       providers = job_type === 'scheduled' ? allProviders.slice(0, 5) : allProviders.slice(0, 10);
     }
 

@@ -14,12 +14,14 @@ Deno.serve(async (req) => {
         // Check if we already have a snapshot for today
         const existing = await base44.asServiceRole.entities.ImportMetrics.filter({ snapshot_date: today });
         
-        // Gather current counts
-        const providers = await base44.asServiceRole.entities.Provider.list();
-        const locations = await base44.asServiceRole.entities.ProviderLocation.list();
-        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list();
-        const utilization = await base44.asServiceRole.entities.CMSUtilization.list();
-        const referrals = await base44.asServiceRole.entities.CMSReferral.list();
+        const SAMPLE_LIMIT = 5000;
+        const [providers, locations, taxonomies, utilization, referrals] = await Promise.all([
+            base44.asServiceRole.entities.Provider.list('-created_date', SAMPLE_LIMIT),
+            base44.asServiceRole.entities.ProviderLocation.list('-created_date', SAMPLE_LIMIT),
+            base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', SAMPLE_LIMIT),
+            base44.asServiceRole.entities.CMSUtilization.list('-created_date', SAMPLE_LIMIT),
+            base44.asServiceRole.entities.CMSReferral.list('-created_date', SAMPLE_LIMIT),
+        ]);
 
         const locNPIs = new Set(locations.map(l => l.npi));
         const taxNPIs = new Set(taxonomies.map(t => t.npi));

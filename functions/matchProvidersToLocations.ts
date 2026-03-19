@@ -87,14 +87,14 @@ Deno.serve(async (req) => {
   const body = await req.json();
   const { npi_list } = body;
 
-  // Fetch all required data + historical feedback
+  const FETCH_LIMIT = 5000;
   const [providers, locations, taxonomies, referrals, utilizations, pastMatches] = await Promise.all([
-    base44.entities.Provider.filter({}),
-    base44.entities.ProviderLocation.filter({}),
-    base44.entities.ProviderTaxonomy.filter({}),
-    base44.entities.CMSReferral.filter({}),
-    base44.entities.CMSUtilization.filter({}),
-    base44.entities.ProviderLocationMatch.filter({}),
+    base44.entities.Provider.filter({}, undefined, FETCH_LIMIT),
+    base44.entities.ProviderLocation.filter({}, undefined, FETCH_LIMIT),
+    base44.entities.ProviderTaxonomy.filter({}, undefined, FETCH_LIMIT),
+    base44.entities.CMSReferral.filter({}, undefined, FETCH_LIMIT),
+    base44.entities.CMSUtilization.filter({}, undefined, FETCH_LIMIT),
+    base44.entities.ProviderLocationMatch.filter({}, undefined, FETCH_LIMIT),
   ]);
 
   // ---- Build feedback summary from past decisions ----

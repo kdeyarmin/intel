@@ -101,9 +101,9 @@ Deno.serve(async (req) => {
         console.log(`[AutoBatch] Triggering state: ${nextState}`);
         
         try {
-            const result = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                action: 'start',
-                target_state: nextState
+            const result = await base44.asServiceRole.functions.invoke('nppesCrawler', {
+                action: 'batch_start',
+                states: [nextState]
             });
             
             console.log(`[AutoBatch] ${nextState} completed:`, result.data);

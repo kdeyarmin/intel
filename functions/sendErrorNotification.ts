@@ -47,7 +47,7 @@ Import Details:
         }
 
         // Get all admin users
-        const allUsers = await base44.asServiceRole.entities.User.list();
+        const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 500);
         const adminUsers = allUsers.filter(u => u.role === 'admin');
 
         // Email notifications disabled per admin request

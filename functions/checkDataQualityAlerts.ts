@@ -86,12 +86,14 @@ Deno.serve(async (req) => {
       }
 
       // ALERT 5: High deactivation rate
-      if (details.deactivated_providers > details.provider_metrics.total_records * 0.1) {
+      const deactivatedCount = details.deactivated_providers || 0;
+      const totalRecords = details.provider_metrics?.total_records || 0;
+      if (totalRecords > 0 && deactivatedCount > totalRecords * 0.1) {
         alerts.push({
           severity: 'low',
           type: 'high_deactivation',
           title: 'High Provider Deactivation Rate',
-          message: `${details.deactivated_providers} providers are deactivated (${Math.round((details.deactivated_providers / details.provider_metrics.total_records) * 100)}%)`,
+          message: `${deactivatedCount} providers are deactivated (${Math.round((deactivatedCount / totalRecords) * 100)}%)`,
           metric: 'deactivation_rate',
           action_required: false,
         });

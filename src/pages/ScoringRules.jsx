@@ -66,10 +66,10 @@ export default function ScoringRules() {
     
     setCalculating(true);
     try {
-      const providers = await base44.entities.Provider.list();
-      const utilizations = await base44.entities.CMSUtilization.list();
-      const locations = await base44.entities.ProviderLocation.list();
-      const taxonomies = await base44.entities.ProviderTaxonomy.list();
+      const providers = await base44.entities.Provider.list('-created_date', 5000);
+      const utilizations = await base44.entities.CMSUtilization.list('-created_date', 5000);
+      const locations = await base44.entities.ProviderLocation.list('-created_date', 5000);
+      const taxonomies = await base44.entities.ProviderTaxonomy.list('-created_date', 5000);
       const currentRules = rules.filter(r => r.enabled !== false);
 
       // Validate total weight
