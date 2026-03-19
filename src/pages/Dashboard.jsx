@@ -10,7 +10,6 @@ import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import DataHealthAlerts from '../components/dashboard/DataHealthAlerts';
 import QuickActions from '../components/shared/QuickActions';
-import EmailTrendChart from '../components/dashboard/EmailTrendChart';
 import { LayoutDashboard } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 
@@ -60,9 +59,6 @@ export default function Dashboard() {
         <EmailHealthBar emailStats={stats?.emailStats} totalProviders={stats?.totalProviders || 0} />
         <TopStatesCard topStates={stats?.topStates || []} loading={loadingStats} />
       </div>
-
-      {/* Email Discovery Trend Chart */}
-      <EmailTrendChart data={stats?.emailStats?.trend} loading={loadingStats} />
 
       {/* Data Health & Proactive Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

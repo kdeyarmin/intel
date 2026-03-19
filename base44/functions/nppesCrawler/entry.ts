@@ -118,9 +118,9 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (let j = 0; j < updateTasks.length; j += 5) {
-                    await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
-                    if (j + 5 < updateTasks.length) await sleep(100);
+                for (let j = 0; j < updateTasks.length; j += 2) {
+                    await Promise.all(updateTasks.slice(j, j + 2).map(t => t().catch(()=>{})));
+                    if (j + 2 < updateTasks.length) await sleep(200);
                 }
                 updated += updateTasks.length;
             }
@@ -612,7 +612,7 @@ Deno.serve(async (req) => {
         // We start with a lower base concurrency and let the queue processor self-adjust
         const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
         
-        const targetWorkers = Math.min(maxConcurrent * 2, 6); // Max initial cluster
+        const targetWorkers = Math.min(maxConcurrent, 3); // Max initial cluster
         const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
         
         for(let i = 0; i < workersToStart; i++) {
@@ -870,17 +870,11 @@ Deno.serve(async (req) => {
                     stats.invalid += transformed.invalidRows;
                     
                     if (!dry_run) {
-                        // Parallel processing for independent data entities
-                        const [provRes, locRes, taxRes] = await Promise.all([
-                            upsertProviders(transformed.providers, base44),
-                            upsertLocations(transformed.locations, base44),
-                            upsertTaxonomies(transformed.taxonomies, base44)
-                        ]);
-                        stats.prov = {
-                            imported: provRes.imported + locRes.imported + taxRes.imported,
-                            updated: provRes.updated + locRes.updated + taxRes.updated,
-                            skipped: provRes.skipped + locRes.skipped + taxRes.skipped
-                        };
+                        // Sequential processing to reduce rate limiting on the Base44 DB
+                        const provRes = await upsertProviders(transformed.providers, base44);
+                        const locRes = await upsertLocations(transformed.locations, base44);
+                        const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
+                        stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
                     }
                     
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
@@ -942,7 +936,7 @@ Deno.serve(async (req) => {
             base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
 
             // Dynamically scale up if queue is large, we are healthy, and under worker cap
-            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 6);
+            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
