@@ -118,9 +118,9 @@ async function upsertProviders(records, base44) {
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
-                for (let j = 0; j < updateTasks.length; j += 5) {
-                    await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
-                    if (j + 5 < updateTasks.length) await sleep(100);
+                for (let j = 0; j < updateTasks.length; j += 2) {
+                    await Promise.all(updateTasks.slice(j, j + 2).map(t => t().catch(()=>{})));
+                    if (j + 2 < updateTasks.length) await sleep(200);
                 }
                 updated += updateTasks.length;
             }
