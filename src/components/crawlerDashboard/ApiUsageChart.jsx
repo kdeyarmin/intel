@@ -10,9 +10,9 @@ export default function ApiUsageChart({ nppesImports, loading }) {
     .slice(0, 20)
     .reverse()
     .map(b => {
-      // Estimate requests: total_rows / 200 (batch size)
-      // This is an approximation as we don't strictly track request counts yet
-      const successfulRequests = Math.ceil((b.total_rows || 0) / 200);
+      // Use actual api_requests_count if available, otherwise estimate from total_rows
+      const totalRows = b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0));
+      const successfulRequests = b.api_requests_count || Math.ceil(totalRows / 200);
       
       // Estimate rate limits from error samples or retry count
       // If we had explicit rate_limit_count, use it. Otherwise guess from errors.

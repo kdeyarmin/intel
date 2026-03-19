@@ -394,12 +394,18 @@ async function updateBatchStats(base44, batchId, stats) {
                     retry_params.processed_prefixes.push(stats.prefix);
                 }
             }
+            const newValid = (batch.valid_rows || 0) + (stats.valid || 0);
+            const newInvalid = (batch.invalid_rows || 0) + (stats.invalid || 0);
+            const newImported = (batch.imported_rows || 0) + (stats.prov?.imported || 0);
+            const newUpdated = (batch.updated_rows || 0) + (stats.prov?.updated || 0);
+            const newSkipped = (batch.skipped_rows || 0) + (stats.prov?.skipped || 0);
             await base44.asServiceRole.entities.ImportBatch.update(batchId, {
-                valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
-                invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
-                imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
-                updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
-                skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
+                valid_rows: newValid,
+                invalid_rows: newInvalid,
+                imported_rows: newImported,
+                updated_rows: newUpdated,
+                skipped_rows: newSkipped,
+                total_rows: newImported + newUpdated + newSkipped + newInvalid,
                 api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
                 rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
                 retry_params
@@ -528,9 +534,12 @@ Deno.serve(async (req) => {
             sample_prefixes: Array.from(e.sample_prefixes)
         })).sort((a,b) => b.count - a.count);
 
+        const auto_chain_active = crawler_status === 'running' || active_workers > 0 || processingStates.length > 0;
+
         return Response.json({
             crawler_status,
             active_workers,
+            auto_chain_active,
             granular_metrics,
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,

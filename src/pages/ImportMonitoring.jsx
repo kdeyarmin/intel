@@ -1126,8 +1126,11 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   const stats = useMemo(() => {
     const total = batches.length;
     const completed = batches.filter(b => b.status === 'completed').length;
-    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0), 0);
-    const totalRecords = batches.reduce((sum, b) => sum + (b.total_rows || 0), 0);
+    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+    const totalRecords = batches.reduce((sum, b) => {
+      const rows = b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0));
+      return sum + rows;
+    }, 0);
     return { total, completed, totalImported, totalRecords };
   }, [batches]);
 

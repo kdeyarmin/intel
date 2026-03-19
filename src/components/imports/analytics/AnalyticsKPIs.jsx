@@ -7,8 +7,9 @@ export default function AnalyticsKPIs({ batches = [] }) {
     const total = batches.length;
     const completed = batches.filter(b => b.status === 'completed').length;
     const failed = batches.filter(b => b.status === 'failed').length;
-    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-    const totalRows = batches.reduce((s, b) => s + (b.imported_rows || 0), 0);
+    const terminal = completed + failed;
+    const successRate = terminal > 0 ? Math.round((completed / terminal) * 100) : 0;
+    const totalRows = batches.reduce((s, b) => s + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
     const totalErrors = batches.reduce((s, b) => s + (b.error_samples?.length || 0), 0);
 
     const durations = batches

@@ -7,8 +7,12 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
   const metrics = useMemo(() => {
     if (!nppesImports || nppesImports.length === 0) return null;
 
-    const totalProcessed = nppesImports.reduce((acc, curr) => acc + (curr.total_rows || 0), 0);
-    const totalImported = nppesImports.reduce((acc, curr) => acc + (curr.imported_rows || 0), 0);
+    const totalProcessed = nppesImports.reduce((acc, curr) => {
+      // total_rows is now set by backend; fall back to sum of components for older batches
+      const rows = curr.total_rows || ((curr.imported_rows || 0) + (curr.updated_rows || 0) + (curr.skipped_rows || 0) + (curr.invalid_rows || 0));
+      return acc + rows;
+    }, 0);
+    const totalImported = nppesImports.reduce((acc, curr) => acc + (curr.imported_rows || 0) + (curr.updated_rows || 0), 0);
     
     // Calculate average time per state (only for completed batches)
     const completedBatches = nppesImports.filter(b => b.status === 'completed' && b.completed_at && b.created_date);
