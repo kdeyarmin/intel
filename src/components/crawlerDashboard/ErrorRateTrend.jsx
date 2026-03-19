@@ -49,7 +49,7 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
             <CardDescription>Crawl success vs failure over time</CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-slate-900">{overallErrorRate}%</p>
+            <p className="text-2xl font-bold text-white">{overallErrorRate}%</p>
             <p className="text-[10px] text-slate-500">Overall error rate</p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
           <div className="space-y-4">
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={trendData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="label" fontSize={10} tick={{ fill: '#94a3b8' }} />
                 <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} />
                 <Tooltip />
@@ -73,7 +73,7 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
 
             <ResponsiveContainer width="100%" height={100}>
               <AreaChart data={trendData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis dataKey="label" fontSize={10} tick={{ fill: '#94a3b8' }} />
                 <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} unit="%" />
                 <Tooltip formatter={v => `${v}%`} />

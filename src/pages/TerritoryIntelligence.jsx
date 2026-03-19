@@ -201,12 +201,12 @@ export default function TerritoryIntelligence() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-teal-100 to-blue-100">
-            <MapPin className="w-5 h-5 text-teal-600" />
+          <div className="p-2 rounded-xl bg-gradient-to-br from-teal-500/20 to-blue-500/20">
+            <MapPin className="w-5 h-5 text-teal-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Territory Intelligence</h1>
-            <p className="text-sm text-slate-500">Interactive provider mapping, density analysis & market clusters</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Territory Intelligence</h1>
+            <p className="text-sm text-slate-400">Interactive provider mapping, density analysis & market clusters</p>
           </div>
         </div>
       </div>
@@ -226,7 +226,7 @@ export default function TerritoryIntelligence() {
         </div>
         <div className="lg:col-span-9">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-slate-100 mb-3 h-auto flex flex-wrap">
+            <TabsList className="bg-slate-800/50 mb-3 h-auto flex flex-wrap">
               <TabsTrigger value="map" className="gap-1.5 text-xs">
                 <Map className="w-3.5 h-3.5" /> Interactive Map
               </TabsTrigger>

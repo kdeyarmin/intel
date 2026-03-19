@@ -143,43 +143,43 @@ export default function OrganizationDetail() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2.5 rounded-lg bg-indigo-50">
-                  <Building2 className="w-6 h-6 text-indigo-600" />
+                <div className="p-2.5 rounded-lg bg-indigo-500/15">
+                  <Building2 className="w-6 h-6 text-indigo-400" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">{provider.organization_name || 'Unknown Organization'}</h1>
-                  <p className="text-sm text-slate-500 font-mono">NPI: {provider.npi}</p>
+                  <h1 className="text-2xl font-bold text-white">{provider.organization_name || 'Unknown Organization'}</h1>
+                  <p className="text-sm text-slate-400 font-mono">NPI: {provider.npi}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Badge variant="outline">Organization</Badge>
-                <Badge className={provider.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                <Badge className={provider.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
                   {provider.status}
                 </Badge>
-                {score && <Badge className="bg-amber-100 text-amber-800">Score: {score.score}/100</Badge>}
-                {provider.needs_nppes_enrichment && <Badge className="bg-orange-100 text-orange-800">Needs Enrichment</Badge>}
+                {score && <Badge className="bg-amber-500/20 text-amber-400">Score: {score.score}/100</Badge>}
+                {provider.needs_nppes_enrichment && <Badge className="bg-orange-500/20 text-orange-400">Needs Enrichment</Badge>}
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                <p className="text-lg font-bold text-blue-900">{(latestUtil?.total_medicare_beneficiaries || 0).toLocaleString()}</p>
-                <p className="text-[10px] text-blue-600">Beneficiaries</p>
+              <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <Users className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-white">{(latestUtil?.total_medicare_beneficiaries || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-blue-400">Beneficiaries</p>
               </div>
-              <div className="p-3 bg-emerald-50 rounded-lg">
-                <DollarSign className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
-                <p className="text-lg font-bold text-emerald-900">${((latestUtil?.total_medicare_payment || 0) / 1000).toFixed(0)}K</p>
-                <p className="text-[10px] text-emerald-600">Medicare Pay</p>
+              <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                <DollarSign className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-white">${((latestUtil?.total_medicare_payment || 0) / 1000).toFixed(0)}K</p>
+                <p className="text-[10px] text-emerald-400">Medicare Pay</p>
               </div>
-              <div className="p-3 bg-violet-50 rounded-lg">
-                <GitBranch className="w-4 h-4 text-violet-600 mx-auto mb-1" />
-                <p className="text-lg font-bold text-violet-900">{(latestRef?.total_referrals || 0).toLocaleString()}</p>
-                <p className="text-[10px] text-violet-600">Referrals</p>
+              <div className="p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                <GitBranch className="w-4 h-4 text-violet-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-white">{(latestRef?.total_referrals || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-violet-400">Referrals</p>
               </div>
-              <div className="p-3 bg-sky-50 rounded-lg">
-                <MapPin className="w-4 h-4 text-sky-600 mx-auto mb-1" />
-                <p className="text-lg font-bold text-sky-900">{locations.length}</p>
-                <p className="text-[10px] text-sky-600">Locations</p>
+              <div className="p-3 bg-sky-500/10 rounded-lg border border-sky-500/20">
+                <MapPin className="w-4 h-4 text-sky-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-white">{locations.length}</p>
+                <p className="text-[10px] text-sky-400">Locations</p>
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function OrganizationDetail() {
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={utilChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
@@ -248,7 +248,7 @@ export default function OrganizationDetail() {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {taxonomies.map((t) => (
-                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-50 border-teal-300 text-teal-800' : ''}>
+                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-500/15 border-teal-500/30 text-teal-400' : ''}>
                   {t.taxonomy_description || t.taxonomy_code}
                   {t.primary_flag && ' (Primary)'}
                 </Badge>
@@ -287,7 +287,7 @@ export default function OrganizationDetail() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {l.address_1 || '-'}
-                          {l.is_primary && <Badge className="bg-blue-100 text-blue-700 text-[10px]">Primary</Badge>}
+                          {l.is_primary && <Badge className="bg-blue-500/20 text-blue-400 text-[10px]">Primary</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>{l.city || '-'}</TableCell>
@@ -347,7 +347,7 @@ export default function OrganizationDetail() {
                       <TableCell className="font-mono text-xs">{p.npi}</TableCell>
                       <TableCell className="font-medium">{p.last_name}, {p.first_name}</TableCell>
                       <TableCell>{p.credential || '-'}</TableCell>
-                      <TableCell><Badge className={p.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} >{p.status}</Badge></TableCell>
+                      <TableCell><Badge className={p.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'} >{p.status}</Badge></TableCell>
                       <TableCell>
                         <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>
                           <Button variant="outline" size="sm" className="text-xs h-7">View</Button>

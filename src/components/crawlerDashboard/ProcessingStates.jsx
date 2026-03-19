@@ -78,11 +78,11 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
               const eta = estimateCompletion(batch, avgDurationMs);
 
               return (
-                <div key={batch.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div key={batch.id} className="flex items-center justify-between p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
                   <div className="flex items-center gap-3">
                     <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
                     <div>
-                      <p className="text-sm font-semibold text-slate-700">{state}</p>
+                      <p className="text-sm font-semibold text-slate-200">{state}</p>
                       <p className="text-xs text-slate-500">
                         {batch.total_rows != null ? `${batch.total_rows.toLocaleString()} rows found` : 'Fetching data...'}
                         {batch.valid_rows != null ? ` • ${batch.valid_rows.toLocaleString()} valid` : ''}
@@ -101,7 +101,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
             })}
 
             {processingStatesCodes.filter(st => !activeItems.some(b => getStateFromFileName(b.file_name) === st)).map(st => (
-              <div key={st} className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-lg border border-blue-50">
+              <div key={st} className="flex items-center gap-3 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                 <span className="text-sm font-medium text-slate-600">{st}</span>
                 <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 ml-auto">queued</Badge>

@@ -99,18 +99,18 @@ export default function ProviderLocationMatching() {
   }), [matches]);
 
   const statCards = [
-    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-400', bg: 'bg-blue-500/15' },
+    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/15' },
+    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/15' },
   ];
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Provider-Location Matching</h1>
-          <p className="text-gray-600 mt-1">AI-powered matching with feedback learning &amp; bulk controls</p>
+          <h1 className="text-3xl font-bold text-white">Provider-Location Matching</h1>
+          <p className="text-slate-400 mt-1">AI-powered matching with feedback learning &amp; bulk controls</p>
         </div>
         <Button
           onClick={() => runMatchingMutation.mutate()}
@@ -131,14 +131,14 @@ export default function ProviderLocationMatching() {
         {statCards.map(s => {
           const Icon = s.icon;
           return (
-            <Card key={s.label} className="bg-gray-100">
+            <Card key={s.label} className="bg-slate-800/40">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${s.bg}`}>
                   <Icon className={`w-5 h-5 ${s.color}`} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-                  <p className="text-xs text-gray-500">{s.label}</p>
+                  <p className="text-2xl font-bold text-white">{s.value}</p>
+                  <p className="text-xs text-slate-400">{s.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -151,27 +151,27 @@ export default function ProviderLocationMatching() {
 
       {/* Avg Confidence */}
       {matches.length > 0 && (
-        <Card className="mb-6 bg-gray-100">
+        <Card className="mb-6 bg-slate-800/40">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">Average Confidence Score</span>
+              <span className="text-sm text-slate-400">Average Confidence Score</span>
               <span className={`text-2xl font-bold ${stats.avgConfidence >= 75 ? 'text-green-600' : stats.avgConfidence >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                 {stats.avgConfidence}%
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-blue-100 text-blue-700">{stats.override} overrides</Badge>
+              <Badge className="bg-blue-500/20 text-blue-400">{stats.override} overrides</Badge>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Filters */}
-      <Card className="mb-6 bg-gray-100">
+      <Card className="mb-6 bg-slate-800/40">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <Input
                 placeholder="Search providers or locations..."
                 value={search}
@@ -232,11 +232,11 @@ export default function ProviderLocationMatching() {
           {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-gray-100">
+        <Card className="bg-slate-800/40">
           <CardContent className="py-16 text-center">
-            <Sparkles className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">No matches found</p>
-            <p className="text-sm text-gray-400 mt-1">Click "Run AI Matching" to generate provider-location suggestions</p>
+            <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+            <p className="text-slate-400 font-medium">No matches found</p>
+            <p className="text-sm text-slate-500 mt-1">Click "Run AI Matching" to generate provider-location suggestions</p>
           </CardContent>
         </Card>
       ) : (
@@ -251,7 +251,7 @@ export default function ProviderLocationMatching() {
             />
           ))}
           {filtered.length < matches.length && (
-            <p className="text-xs text-gray-400 text-center pt-2">
+            <p className="text-xs text-slate-500 text-center pt-2">
               Showing {filtered.length} of {matches.length} matches
             </p>
           )}

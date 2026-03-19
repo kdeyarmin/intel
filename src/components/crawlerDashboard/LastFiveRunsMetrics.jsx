@@ -59,9 +59,9 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                     <TableCell className="font-medium">{state}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`
-                        ${run.status === 'completed' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 
-                          run.status === 'failed' ? 'border-red-200 text-red-700 bg-red-50' : 
-                          'border-blue-200 text-blue-700 bg-blue-50'}
+                        ${run.status === 'completed' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/15' :
+                          run.status === 'failed' ? 'border-red-500/30 text-red-400 bg-red-500/15' :
+                          'border-blue-500/30 text-blue-400 bg-blue-500/15'}
                       `}>
                         {run.status}
                       </Badge>
@@ -80,7 +80,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                     </TableCell>
                     <TableCell className="text-right">
                        {errorCount > 0 ? (
-                         <Badge variant="secondary" className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100">
+                         <Badge variant="secondary" className="bg-red-500/15 text-red-400 hover:bg-red-500/25 border-red-500/30">
                            {errorCount}
                          </Badge>
                        ) : (
