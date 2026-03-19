@@ -13,7 +13,7 @@ function getBarColor(value) {
   return BAR_COLORS.low;
 }
 
-export default function CompletenessPanel({ providers, locations, taxonomies }) {
+export default function CompletenessPanel({ providers = [], locations = [], taxonomies = [] }) {
   const total = providers.length || 1;
 
   const hasNPI = providers.filter(p => p.npi && p.npi.trim() !== '').length;

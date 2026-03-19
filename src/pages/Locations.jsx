@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -27,10 +27,15 @@ export default function Locations() {
     staleTime: 30000,
   });
 
+  const defaultApplied = useRef(false);
   useEffect(() => {
+    if (defaultApplied.current) return;
     const def = savedFilters.find(f => f.is_default);
-    if (def?.filters) applyFilter(def.filters);
-  }, [savedFilters.length]);
+    if (def?.filters) {
+      applyFilter(def.filters);
+      defaultApplied.current = true;
+    }
+  }, [savedFilters]);
 
   const applyFilter = (filters) => {
     setSearch(filters.search || '');

@@ -41,8 +41,9 @@ export default function AIMarketInsights({ provider, location, taxonomies, utili
       ? `Referrals changed from ${sortedRef[sortedRef.length - 2]?.total_referrals || 0} to ${sortedRef[sortedRef.length - 1]?.total_referrals || 0}`
       : 'Insufficient trend data';
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Provide strategic market intelligence for this healthcare provider. Think like a healthcare market analyst.
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Provide strategic market intelligence for this healthcare provider. Think like a healthcare market analyst.
 
 PROVIDER:
 - Name: ${name}
@@ -73,33 +74,37 @@ Analyze and provide:
 
 For each insight, categorize as growth/threat/opportunity/action and rate priority (high/medium/low).
 Also provide an overall market position assessment.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          market_position: { type: "string" },
-          market_score: { type: "number" },
-          insights: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                type: { type: "string", enum: ["growth", "threat", "opportunity", "action"] },
-                title: { type: "string" },
-                description: { type: "string" },
-                priority: { type: "string", enum: ["high", "medium", "low"] },
-                data_point: { type: "string" },
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            market_position: { type: "string" },
+            market_score: { type: "number" },
+            insights: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string", enum: ["growth", "threat", "opportunity", "action"] },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  priority: { type: "string", enum: ["high", "medium", "low"] },
+                  data_point: { type: "string" },
+                }
               }
-            }
-          },
-          competitive_landscape: { type: "string" },
-          recommended_strategy: { type: "string" }
+            },
+            competitive_landscape: { type: "string" },
+            recommended_strategy: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    setResults(res);
-    setLoading(false);
+      setResults(res);
+    } catch (err) {
+      console.error('Market analysis failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

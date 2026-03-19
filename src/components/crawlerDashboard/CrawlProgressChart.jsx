@@ -11,7 +11,7 @@ export default function CrawlProgressChart({ crawlStatus, totalStates, loading }
   const failed = crawlStatus?.failed || 0;
   const processing = crawlStatus?.processing || 0;
   const pending = Math.max(0, totalStates - completed - failed - processing);
-  const progressPct = Math.round(((completed + failed) / totalStates) * 100);
+  const progressPct = totalStates > 0 ? Math.round(((completed + failed) / totalStates) * 100) : 0;
 
   const pieData = useMemo(() => [
     { name: 'Completed', value: completed, fill: COLORS.completed },

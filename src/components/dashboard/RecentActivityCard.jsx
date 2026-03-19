@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock } from 'lucide-react';
 import { formatShortDateTimeET } from '../utils/dateUtils';
 
-export default function RecentActivityCard({ events }) {
+export default function RecentActivityCard({ events = [] }) {
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">
       <CardHeader className="pb-3">

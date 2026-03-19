@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Mail, Bot, Download } from 'lucide-react';
 
-export default function EmailCoverageWidget({ providers }) {
+export default function EmailCoverageWidget({ providers = [] }) {
   const total = providers.length;
   const withEmail = providers.filter(p => p.email).length;
   const searched = providers.filter(p => p.email_searched_at).length;

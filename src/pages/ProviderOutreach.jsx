@@ -30,7 +30,7 @@ export default function ProviderOutreach() {
   });
 
   const filteredCampaigns = campaigns.filter(c =>
-    c.name.toLowerCase().includes(searchCampaign.toLowerCase())
+    (c.name || '').toLowerCase().includes(searchCampaign.toLowerCase())
   );
 
   const getStatusColor = (status) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,11 +23,16 @@ export default function CampaignPerformancePanel({ campaign, onUpdate }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const numMetrics = {};
-    Object.entries(metrics).forEach(([k, v]) => { numMetrics[k] = Number(v) || 0; });
-    await base44.entities.Campaign.update(campaign.id, numMetrics);
-    onUpdate?.({ ...campaign, ...numMetrics });
-    setSaving(false);
+    try {
+      const numMetrics = {};
+      Object.entries(metrics).forEach(([k, v]) => { numMetrics[k] = Number(v) || 0; });
+      await base44.entities.Campaign.update(campaign.id, numMetrics);
+      onUpdate?.({ ...campaign, ...numMetrics });
+    } catch (error) {
+      toast.error('Failed to save metrics: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sent = Number(metrics.emails_sent) || 0;

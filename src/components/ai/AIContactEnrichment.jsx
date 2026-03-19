@@ -23,10 +23,11 @@ export default function AIContactEnrichment({ provider, location, taxonomies }) 
 
   const enrich = async () => {
     setLoading(true);
-    const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
+    try {
+      const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Find contact information for this healthcare provider. Search the web thoroughly.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Find contact information for this healthcare provider. Search the web thoroughly.
 
 PROVIDER:
 - Name: ${name}
@@ -41,23 +42,27 @@ PROVIDER:
 Find: email addresses, phone numbers, fax, and website URL.
 For each piece of info, indicate confidence ("high" = publicly listed, "medium" = inferred from pattern, "low" = uncertain).
 Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          emails: { type: "array", items: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } } },
-          phones: { type: "array", items: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } } },
-          fax: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } },
-          website: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" } } },
-          social_profiles: { type: "array", items: { type: "object", properties: { platform: { type: "string" }, url: { type: "string" } } } },
-          organization_domain: { type: "string" },
-          summary: { type: "string" }
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            emails: { type: "array", items: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } } },
+            phones: { type: "array", items: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } } },
+            fax: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" }, source: { type: "string" } } },
+            website: { type: "object", properties: { value: { type: "string" }, confidence: { type: "string" } } },
+            social_profiles: { type: "array", items: { type: "object", properties: { platform: { type: "string" }, url: { type: "string" } } } },
+            organization_domain: { type: "string" },
+            summary: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    setResults(res);
-    setLoading(false);
+      setResults(res);
+    } catch (err) {
+      toast.error('Enrichment failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyValue = (val, field) => {
