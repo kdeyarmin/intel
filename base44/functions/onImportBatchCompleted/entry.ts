@@ -56,28 +56,27 @@ Deno.serve(async (req) => {
             try {
                 if (schedule.import_type === 'nppes_registry') {
                     const config = schedule.nppes_config || {};
-                    
-                    if (config.crawl_all_states) {
-                        const res = await base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', {
-                            taxonomy_description: config.taxonomy_description || '',
-                            entity_type: config.entity_type || '',
-                        });
-                        const data = res.data || res;
-                        runSummary = data.message || 'Crawler chain triggered (Dependency)';
-                        runStatus = data.error ? 'failed' : 'success';
-                    } else {
-                        const res = await base44.asServiceRole.functions.invoke('importNPPESRegistry', {
-                            state: config.state || '',
-                            taxonomy_description: config.taxonomy_description || '',
-                            entity_type: config.entity_type || '',
-                            city: config.city || '',
-                            postal_code: config.postal_code || '',
-                            dry_run: false,
-                        });
-                        const data = res.data || res;
-                        runSummary = `${data.valid_rows || 0} valid, ${data.imported_providers || 0} imported (Dependency)`;
-                        runStatus = 'success';
+                    const crawlerPayload: any = {
+                        action: 'batch_start',
+                        dry_run: false,
+                        skip_completed: false,
+                        taxonomy_description: config.taxonomy_description || '',
+                        entity_type: config.entity_type || '',
+                    };
+
+                    if (!config.crawl_all_states) {
+                        if (!config.state) {
+                            throw new Error('Dependent NPPES crawler runs require a state when crawl_all_states is disabled');
+                        }
+                        crawlerPayload.states = [config.state];
                     }
+                    if (config.city) crawlerPayload.city = config.city;
+                    if (config.postal_code) crawlerPayload.postal_code = config.postal_code;
+
+                    const res = await base44.asServiceRole.functions.invoke('nppesCrawler', crawlerPayload);
+                    const data = res.data || res;
+                    runSummary = data.message || `Queued ${data.states_queued || 0} state(s) for crawling (Dependency)`;
+                    runStatus = data.error ? 'failed' : 'success';
                 } else {
                     const ALIASES = { cms_utilization: 'provider_service_utilization' };
                     const resolvedType = ALIASES[schedule.import_type] || schedule.import_type;
