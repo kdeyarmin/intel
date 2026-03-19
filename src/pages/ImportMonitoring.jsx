@@ -39,7 +39,6 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
-import ImportSpeedView from '../components/imports/ImportSpeedView';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',

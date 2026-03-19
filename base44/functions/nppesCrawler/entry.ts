@@ -698,20 +698,21 @@ Deno.serve(async (req) => {
         // Stop ALL active queue items in a loop until none remain (handles >5000 items)
         // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
         let totalStopped = 0;
-        let batchItems;
         const stopStartTime = Date.now();
-        do {
-            if (Date.now() - stopStartTime > 15000) {
-                console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
-                break;
-            }
-            batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 500));
+        try {
+            const batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
             for (let i = 0; i < batchItems.length; i += 50) {
-               const chunk = batchItems.slice(i, i+50);
-               await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
-               totalStopped += chunk.length;
+                if (Date.now() - stopStartTime > 15000) {
+                    console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+                    break;
+                }
+                const chunk = batchItems.slice(i, i+50);
+                await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+                totalStopped += chunk.length;
             }
-        } while (batchItems.length > 0);
+        } catch (e) {
+            console.error('[Crawler] Error bulk stopping items:', e.message);
+        }
 
         // Also cancel any active batches
         const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
@@ -1099,37 +1100,54 @@ Deno.serve(async (req) => {
         }
 
         // Intelligent Re-invocation based on performance and queue depth
-        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 100).then(r => r.length).catch(() => 0);
+        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 500).then(r => r.length).catch(() => 0);
 
         console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
 
         if (remainingQueueSize > 0) {
             const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
 
-            // Fire-and-forget re-invocation — do NOT await, as that would block this worker
-            // for 20+ seconds waiting for the new worker to finish its entire cycle
-            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
-            const workersNeeded = Math.max(1, targetWorkers - activeWorkersCount);
-
-            console.log(`[Crawler Worker] Re-invoking ${workersNeeded} worker(s) (Active: ${activeWorkersCount}, Target: ${targetWorkers}, Queue: ${remainingQueueSize})`);
-
-            for (let w = 0; w < workersNeeded; w++) {
-                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
-                    .then(() => console.log(`[Crawler] Re-invoked worker ${w+1} completed`))
-                    .catch(e => {
-                        console.error(`[Crawler] Re-invoked worker ${w+1} failed: ${e.message}`);
-                        // Create alert only for the first failure
-                        if (w === 0) {
-                            base44.asServiceRole.entities.DataQualityAlert.create({
-                                alert_type: 'new_issue_detected',
-                                severity: 'critical',
-                                title: 'Crawler Self-Invocation Failed',
-                                description: `Worker failed to re-invoke. ${remainingQueueSize} items remain in queue. Error: ${e.message}`,
-                                status: 'new',
-                                action_required: true
-                            }).catch(() => {});
-                        }
+            // Re-invoke self with retry
+            console.log(`[Crawler Worker] Re-invoking self...`);
+            let selfInvoked = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
+                    selfInvoked = true;
+                    break;
+                } catch (e) {
+                    console.error(`[Crawler] Self-invoke attempt ${attempt} failed: ${e.message}`);
+                    if (attempt < 3) await sleep(attempt * 2000);
+                }
+            }
+            if (!selfInvoked) {
+                console.error('[Crawler] All self-invoke attempts failed. Queue may stall. Creating alert.');
+                try {
+                    await base44.asServiceRole.entities.DataQualityAlert.create({
+                        alert_type: 'new_issue_detected',
+                        severity: 'critical',
+                        title: 'Crawler Self-Invocation Failed',
+                        description: `Worker failed to re-invoke after 3 attempts. ${remainingQueueSize} items remain in queue.`,
+                        status: 'new',
+                        action_required: true
                     });
+                } catch (_) {}
+            }
+
+            // Dynamically scale up if queue is large, healthy, and under worker cap
+            const maxAllowedWorkers = config.concurrency || 4;
+            let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), maxAllowedWorkers);
+            
+            // Adjust based on errors to prevent rate limits
+            if (consecutiveErrors > 0) {
+                 targetWorkers = Math.max(1, Math.floor(targetWorkers / 2));
+            }
+
+            if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
+                 console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
+                 base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Scale-up invoke failed:', e.message));
+            } else if (consecutiveErrors > 1 && activeWorkersCount > 1) {
+                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API. Active: ${activeWorkersCount}`);
             }
         }
         

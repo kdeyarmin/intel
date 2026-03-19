@@ -96,7 +96,8 @@ export default function CMSDataSources() {
         data_year: config.data_year || '',
         api_url: config.api_url,
         schedule_frequency: config.schedule_frequency,
-        schedule_time: config.schedule_time,
+        depends_on_import_type: config.depends_on_import_type || '',
+        schedule_time: config.schedule_time || '02:00',
         is_active: config.is_active
       });
     } else {
@@ -106,6 +107,7 @@ export default function CMSDataSources() {
         data_year: new Date().getFullYear(),
         api_url: '',
         schedule_frequency: 'weekly',
+        depends_on_import_type: '',
         schedule_time: '02:00',
         is_active: true
       });
@@ -168,7 +170,11 @@ export default function CMSDataSources() {
                     {config.data_year || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm text-slate-300 capitalize">{config.schedule_frequency} at {config.schedule_time}</div>
+                    <div className="text-sm text-slate-300 capitalize">
+                      {config.schedule_frequency === 'on_completion' 
+                        ? `After ${config.depends_on_import_type}` 
+                        : `${config.schedule_frequency} at ${config.schedule_time}`}
+                    </div>
                     <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-500/20 text-cyan-400 mt-1' : 'mt-1'}>
                       {config.is_active ? 'Active' : 'Inactive'}
                     </Badge>
@@ -353,19 +359,40 @@ export default function CMSDataSources() {
                     <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
                     <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="on_completion">On Completion</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Time (HH:MM)</Label>
-                <Input
-                  required
-                  type="time"
-                  value={formData.schedule_time || ''}
-                  onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                  className="bg-slate-950 border-slate-800"
-                />
-              </div>
+              
+              {formData.schedule_frequency === 'on_completion' ? (
+                <div className="space-y-2">
+                  <Label>Depends On (Wait for)</Label>
+                  <Select
+                    value={formData.depends_on_import_type}
+                    onValueChange={(v) => setFormData({ ...formData, depends_on_import_type: v })}
+                  >
+                    <SelectTrigger className="bg-slate-950 border-slate-800">
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                      {IMPORT_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Time (HH:MM)</Label>
+                  <Input
+                    required
+                    type="time"
+                    value={formData.schedule_time || ''}
+                    onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
+                    className="bg-slate-950 border-slate-800"
+                  />
+                </div>
+              )}
             </div>
 
             <DialogFooter className="pt-4">
