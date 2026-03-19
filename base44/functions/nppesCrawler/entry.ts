@@ -852,12 +852,10 @@ Deno.serve(async (req) => {
                     stats.invalid += transformed.invalidRows;
                     
                     if (!dry_run) {
-                        // Parallel processing for independent data entities
-                        const [provRes, locRes, taxRes] = await Promise.all([
-                            upsertProviders(transformed.providers, base44),
-                            upsertLocations(transformed.locations, base44),
-                            upsertTaxonomies(transformed.taxonomies, base44)
-                        ]);
+                        // Sequential processing to reduce rate limiting on the Base44 DB
+                        const provRes = await upsertProviders(transformed.providers, base44);
+                        const locRes = await upsertLocations(transformed.locations, base44);
+                        const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
                     }
                     
