@@ -28,14 +28,6 @@ const importTypes = [
     downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service'
   },
   {
-    id: 'cms_part_d',
-    name: 'CMS Part D Prescriber',
-    description: 'Medicare prescription drug claims data',
-    icon: Activity,
-    requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'],
-    downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug'
-  },
-  {
     id: 'cms_order_referring',
     name: 'Order & Referring',
     description: 'Ordering and referring data',

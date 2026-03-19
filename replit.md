@@ -54,7 +54,7 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
-- **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicarePartD, importMedicareSNF
+- **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF
 - **NPPES**: nppesCrawler, importNPPESFlatFile, validateNPPESBatch, manageCrawlerRetries, retryFailedNPPESStates
 - **Enrichment**: enrichProviderData, enrichProviderWithAI, enrichProviderThirdParty, enrichProviderMedicareData, enrichProviderDEAData, providerEnrichmentApi, autoEnrichProvider
 - **Email**: emailSearchBot, bulkEmailLookup, verifyProviderEmail, deduplicateProviderEmails

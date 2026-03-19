@@ -98,7 +98,6 @@ export default function DataQualityWidget() {
       { key: 'provider_service_utilization', label: 'Service Util.' },
       { key: 'hospice_enrollments', label: 'Hospice' },
       { key: 'home_health_enrollments', label: 'Home Health' },
-      { key: 'opt_out_physicians', label: 'Opt-Out' },
     ];
     return types.map(t => {
       const typeBatches = batches.filter(b => b.import_type === t.key && b.status === 'completed' && b.completed_at);

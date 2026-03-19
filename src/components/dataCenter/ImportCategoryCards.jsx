@@ -13,7 +13,6 @@ const IMPORT_CATEGORIES = [
     types: [
       { id: 'nppes_monthly', name: 'NPPES File Upload', description: 'Upload NPPES CSV file', requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
       { id: 'nppes_registry', name: 'NPPES Registry Search', description: 'Search & import from NPPES API', requiredColumns: [], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
-      { id: 'opt_out_physicians', name: 'Opt-Out Physicians', description: 'CMS Opt-Out API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'medical_equipment_suppliers', name: 'Medical Equipment Suppliers', description: 'DMEPOS Suppliers API', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' }
     ]
   },
@@ -25,9 +24,7 @@ const IMPORT_CATEGORIES = [
     color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     types: [
       { id: 'cms_utilization', name: 'Provider Utilization', description: 'Medicare Part B utilization', requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service' },
-      { id: 'cms_part_d', name: 'Part D Prescriber', description: 'Prescription drug claims', requiredColumns: ['NPI', 'Year', 'Total Claims', 'Total Drug Cost'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider-and-drug' },
       { id: 'cms_order_referring', name: 'Order & Referring', description: 'Ordering and referring data', requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring' },
-      { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', description: 'Detailed Part D statistics', requiredColumns: ['Year', 'NPI', 'Total_Claims'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers' },
       { id: 'provider_service_utilization', name: 'Provider Service Utilization', description: 'Detailed service utilization', requiredColumns: ['NPI', 'Service_Code'], downloadUrl: 'https://data.cms.gov/' }
     ]
   },

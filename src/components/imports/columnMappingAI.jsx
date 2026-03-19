@@ -79,7 +79,6 @@ const OPTIONAL_COLUMNS = {
     'Healthcare Provider Taxonomy Code_1',
   ],
   cms_utilization: ['Total Submitted Charges', 'Total Medicare Allowed Amount', 'Drug Services', 'Provider Type', 'Provider State'],
-  cms_part_d: ['Provider Last Name', 'Provider First Name', 'Provider State', 'Specialty Description', 'Total 30-Day Fill Count', 'Total Day Supply', 'Brand Drug Cost', 'Generic Drug Cost'],
   cms_order_referring: ['LAST_NAME', 'FIRST_NAME', 'Year', 'SNF', 'PMD', 'Total Referrals'],
   pa_home_health: ['Address', 'Zip', 'Phone', 'County'],
   hospice_providers: ['Address', 'Zip', 'Phone', 'County'],

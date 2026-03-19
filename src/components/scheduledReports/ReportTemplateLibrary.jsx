@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2, Pill } from 'lucide-react';
+import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2 } from 'lucide-react';
 
 const TEMPLATES = [
   {
@@ -73,20 +73,6 @@ const TEMPLATES = [
     schedule_day: 'Wednesday',
     filters: {},
     category: 'Inpatient',
-  },
-  {
-    id: 'monthly_part_d',
-    name: 'Monthly Part D Overview',
-    description: 'Part D drug cost and utilization by plan type',
-    icon: Pill,
-    dataset: 'part_d_stats',
-    metrics: ['total_enrollees', 'avg_annual_gross_cost', 'generic_dispensing_rate'],
-    group_by: 'plan_type',
-    chart_type: 'bar',
-    frequency: 'monthly',
-    schedule_day: '1',
-    filters: {},
-    category: 'Pharmacy',
   },
 ];
 

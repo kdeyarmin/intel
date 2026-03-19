@@ -35,7 +35,7 @@ export default function ScoringRules() {
           { rule_name: 'Specialty Match', category: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
           { rule_name: 'Medicare Participation', category: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
           { rule_name: 'Patient Volume', category: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
-          { rule_name: 'Part D Prescribing Signals', category: 'part_d_signals', weight: 15, description: 'Geriatric/complex care medication indicators' },
+          { rule_name: 'Service Intensity', category: 'service_intensity', weight: 15, description: 'Service-per-patient intensity indicators' },
           { rule_name: 'Geographic Priority', category: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
           { rule_name: 'Practice Type', category: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
           { rule_name: 'Behavioral Health Potential', category: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' }
@@ -104,9 +104,9 @@ export default function ScoringRules() {
         scores.patient_volume = volume >= 500 ? 100 : volume >= 200 ? 75 : volume >= 50 ? 50 : volume > 0 ? 25 : 0;
         if (volume > 0) reasons.push(`${volume} Medicare beneficiaries`);
 
-        // 4. Part D Signals
+        // 4. Service Intensity
         const intensity = volume > 0 ? (util?.total_services || 0) / volume : 0;
-        scores.part_d_signals = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
+        scores.service_intensity = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
         if (intensity >= 8) reasons.push('High service intensity');
 
         // 5. Geographic Priority

@@ -11,8 +11,6 @@ const IMPORT_TYPE_URLS = {
   provider_service_utilization: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data',
   // Order and Referring (NPI, LAST_NAME, FIRST_NAME, PARTB, DME, HHA, PMD, HOSPICE)
   cms_order_referring: 'https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data',
-  // Opt-Out Physicians
-  opt_out_physicians: 'https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data',
   // Home Health Enrollments
   home_health_enrollments: 'https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data',
   // Hospice Enrollments
@@ -119,7 +117,6 @@ Deno.serve(async (req) => {
       medicare_hha_stats: 'importMedicareHHA',
       medicare_ma_inpatient: 'importMedicareMAInpatient',
       medicare_snf_stats: 'importMedicareSNF',
-      medicare_part_d_stats: 'importMedicarePartD',
     };
 
     if (zipFunctionMap[import_type]) {

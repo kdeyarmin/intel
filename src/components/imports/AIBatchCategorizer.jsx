@@ -9,7 +9,6 @@ const IMPORT_TYPE_OPTIONS = [
   { id: 'nppes_monthly', label: 'NPPES Monthly', category: 'nppes' },
   { id: 'nppes_registry', label: 'NPPES Registry', category: 'nppes' },
   { id: 'cms_utilization', label: 'CMS Utilization', category: 'cms_claims' },
-  { id: 'cms_part_d', label: 'CMS Part D', category: 'cms_claims' },
   { id: 'cms_order_referring', label: 'Order & Referring', category: 'cms_claims' },
   { id: 'hospice_enrollments', label: 'Hospice Enrollments', category: 'cms_enrollment' },
   { id: 'home_health_enrollments', label: 'Home Health Enrollments', category: 'cms_enrollment' },
@@ -21,7 +20,6 @@ const IMPORT_TYPE_OPTIONS = [
   { id: 'provider_ownership', label: 'Provider Ownership', category: 'provider_data' },
   { id: 'medicare_hha_stats', label: 'Medicare HHA Stats', category: 'cms_statistics' },
   { id: 'medicare_ma_inpatient', label: 'Medicare MA Inpatient', category: 'cms_statistics' },
-  { id: 'medicare_part_d_stats', label: 'Medicare Part D Stats', category: 'cms_statistics' },
   { id: 'medicare_snf_stats', label: 'Medicare SNF Stats', category: 'cms_statistics' },
 ];
 

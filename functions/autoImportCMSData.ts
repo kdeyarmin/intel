@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
         const import_type = ALIASES[raw_import_type] || raw_import_type;
         
         const validTypes = [
-            'cms_order_referring', 'opt_out_physicians',
+            'cms_order_referring',
             'hospice_enrollments', 'home_health_enrollments',
             'provider_service_utilization', 'medical_equipment_suppliers',
             'hospice_provider_measures', 'hospice_state_measures',
@@ -528,19 +528,6 @@ function mapRowToEntity(row, importType, year) {
             };
         }
 
-        if (importType === 'opt_out_physicians') {
-            // API fields: NPI, First Name, Last Name, Specialty, Optout Effective Date, etc.
-            const npi = row['NPI'] || row['npi'];
-            if (!npi || !validateNPI(npi)) return null;
-            return {
-                npi: String(npi).trim(),
-                first_name: row['First Name'] || row['FIRST_NAME'] || '',
-                last_name: row['Last Name'] || row['LAST_NAME'] || '',
-                opt_out_effective_date: parseDate(row['Optout Effective Date'] || ''),
-                opt_out_end_date: parseDate(row['Optout End Date'] || ''),
-            };
-        }
-
         if (importType === 'home_health_enrollments') {
             // API fields: ENROLLMENT ID, NPI, CCN, ORGANIZATION NAME, DOING BUSINESS AS NAME, etc.
             const enrollmentId = row['ENROLLMENT ID'] || row['enrollment_id'];
@@ -772,7 +759,6 @@ function mapRowToEntity(row, importType, year) {
 
 function getDedupKey(mapped, importType) {
     if (importType === 'cms_order_referring') return mapped.npi ? `${mapped.npi}_${mapped.year}` : null;
-    if (importType === 'opt_out_physicians') return mapped.npi || null;
     if (importType === 'home_health_enrollments') return mapped.enrollment_id || null;
     if (importType === 'hospice_enrollments') return mapped.enrollment_id || null;
     if (importType === 'provider_service_utilization') return mapped.npi ? `${mapped.npi}_${mapped.hcpcs_code}` : null;
@@ -848,7 +834,6 @@ async function importChunk(base44, importType, records, startTime) {
 
     const entityMap = {
         'cms_order_referring': 'CMSReferral',
-        'opt_out_physicians': 'OptOutPhysician',
         'hospice_enrollments': 'HospiceEnrollment',
         'home_health_enrollments': 'HomeHealthEnrollment',
         'provider_service_utilization': 'ProviderServiceUtilization',

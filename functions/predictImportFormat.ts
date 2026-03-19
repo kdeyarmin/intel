@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
         ${sampleText.substring(0, 1000)}
         
         Please predict:
-        1. The most appropriate 'import_type' from this list: "cms_utilization", "cms_order_referring", "opt_out_physicians", "provider_service_utilization", "home_health_enrollments", "hospice_enrollments", "nppes_registry", "medicare_hha_stats", "medicare_ma_inpatient", "medicare_part_d_stats", "medicare_snf_stats", "nursing_home_providers", "nursing_home_deficiencies".
+        1. The most appropriate 'import_type' from this list: "cms_utilization", "cms_order_referring", "provider_service_utilization", "home_health_enrollments", "hospice_enrollments", "nppes_registry", "medicare_hha_stats", "medicare_ma_inpatient", "medicare_snf_stats", "nursing_home_providers", "nursing_home_deficiencies".
         2. The 'data_year' if it can be inferred from the URL or data. Otherwise, guess the most recent year or null.
         3. 'is_valid_format': boolean, whether this looks like a valid CSV or JSON dataset.
         4. 'explanation': a short 1-sentence explanation of why you chose this import type.

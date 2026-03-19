@@ -3,7 +3,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
     const files = [
         'functions/importMedicareHHA.js',
-        'functions/importMedicarePartD.js',
         'functions/autoResumePausedImports.js',
         'functions/onImportBatchFailed.js',
         'functions/importMedicareMAInpatient.js',
@@ -28,7 +27,6 @@ Deno.serve(async (req) => {
         'functions/analyzeReferralPathways.js',
         'functions/batchEnrichExternalData.js',
         'functions/captureMetricsSnapshot.js',
-        'functions/checkPartDUrl.js',
         'functions/checkSNFUrls.js',
         'functions/enrichProviderDEAData.js',
         'functions/enrichProviderData.js',

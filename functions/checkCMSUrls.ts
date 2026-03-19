@@ -19,12 +19,6 @@ const TARGETS = [
         page: 'https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-service-type-reports/cms-program-statistics-medicare-advantage-inpatient-hospital',
         year: 2021
     },
-    {
-        type: 'medicare_part_d_stats',
-        label: 'Medicare Part D Stats',
-        page: 'https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-service-type-reports/cms-program-statistics-medicare-part-d',
-        year: 2023
-    }
 ];
 
 Deno.serve(async (req) => {
@@ -54,8 +48,6 @@ Deno.serve(async (req) => {
                 if (target.type === 'medicare_hha_stats') searchTitle = 'Medicare Home Health Agency';
                 if (target.type === 'medicare_snf_stats') searchTitle = 'Medicare Skilled Nursing Facility';
                 if (target.type === 'medicare_ma_inpatient') searchTitle = 'Medicare Advantage-Inpatient Hospital';
-                if (target.type === 'medicare_part_d_stats') searchTitle = 'Medicare Part D';
-
                 const dataset = data.dataset.find(d => d.title.includes(searchTitle));
                 
                 if (dataset && dataset.distribution) {

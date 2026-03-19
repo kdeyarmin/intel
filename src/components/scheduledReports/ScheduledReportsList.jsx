@@ -15,7 +15,6 @@ const DATASET_LABELS = {
   ma_inpatient: 'MA Inpatient',
   hha_stats: 'HHA Stats',
   inpatient_drg: 'Inpatient DRG',
-  part_d_stats: 'Part D',
   snf_stats: 'SNF Stats',
   providers: 'Providers',
   locations: 'Locations',

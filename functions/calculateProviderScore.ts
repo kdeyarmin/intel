@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     } else if (servicesPerPatient >= 4) {
       partDScore = 40;
     }
-    scores.part_d_signals = partDScore;
+    scores.service_intensity = partDScore;
 
     // 5. Geographic Priority (10%)
     const isPennsylvania = primaryLocation?.state === 'PA';
