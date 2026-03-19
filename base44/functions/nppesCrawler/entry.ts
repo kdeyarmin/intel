@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
         let payload: CrawlerPayload = {};
         try { payload = await req.json(); } catch(e) { console.log('[Crawler] No JSON payload, using defaults'); }
         
-        const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code } = payload;
+        const { action = 'process_queue', states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code } = payload;
         const isService = !!(user?.email && user.email.includes('service+'));
 
     // --- UI COMPATIBILITY ACTIONS ---
@@ -486,7 +486,7 @@ Deno.serve(async (req) => {
         for (const [st, b] of Object.entries(stateLatest)) {
             if (b.status === 'completed') completedStates.push(st);
             else if (b.status === 'failed') failedStates.push(st);
-            else processingStates.push(st);
+            else if (b.status === 'processing' || b.status === 'validating') processingStates.push(st);
         }
         const doneSet = new Set([...completedStates, ...failedStates]);
         const pendingStates = US_STATES.filter(s => !doneSet.has(s) && !processingStates.includes(s));
@@ -620,7 +620,7 @@ Deno.serve(async (req) => {
 
         let queued = 0, skipped = 0;
         let processingCount = 0;
-        const maxConcurrent = concurrency || config.concurrency || 4;
+        const maxConcurrent = Math.max(1, Number(concurrency || config.concurrency || 4));
 
         let existingBatches = [];
         if (skip_completed) {
@@ -777,30 +777,64 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_resume') {
         if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1000));
-        for (let i = 0; i < pausedItems.length; i += 50) {
-           const chunk = pausedItems.slice(i, i+50);
-           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'pending' }))));
-        }
-        // Also resume any paused batches
-        const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 100));
-        for (const pb of pausedBatches) {
-            if (pb.file_name?.startsWith('crawler_')) {
-                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(pb.id, { status: 'processing' }));
+
+        const configs = await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' }));
+        const config = configs[0] || {};
+        const maxConcurrentBatches = Math.max(1, Number(config.concurrency || 4));
+        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }, 'created_date', 200));
+        const activeCrawlerBatches = [];
+        for (const batch of processingBatches) {
+            if (!batch.file_name?.startsWith('crawler_')) continue;
+            const runnableItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: batch.id, status: { $in: ['pending', 'processing'] } }, undefined, 1));
+            if (runnableItems.length > 0) {
+                activeCrawlerBatches.push(batch);
+                continue;
+            }
+            const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: batch.id, status: 'paused' }, undefined, 1));
+            if (pausedItems.length > 0) {
+                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'paused' }));
             }
         }
+        const availableSlots = Math.max(0, maxConcurrentBatches - activeCrawlerBatches.length);
+
+        const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 200));
+        const pausedCrawlerBatches = pausedBatches.filter(pb => pb.file_name?.startsWith('crawler_'));
+        const batchesToResume = availableSlots > 0 ? pausedCrawlerBatches.slice(0, availableSlots) : [];
+        const activeWorkersCount = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100)).then(res => res.length).catch(() => 0);
+
+        if (batchesToResume.length === 0) {
+            if (activeCrawlerBatches.length > 0 && activeWorkersCount === 0) {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
+                return Response.json({ success: true, message: 'Crawler workers restarted for active state batches.' });
+            }
+            return Response.json({ success: true, message: availableSlots === 0 ? 'Crawler already running at configured concurrency.' : 'No paused crawler batches found.' });
+        }
+
+        for (const pb of batchesToResume) {
+            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(pb.id, { status: 'processing' }));
+            const batchPausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: pb.id, status: 'paused' }, undefined, 5000));
+            for (let i = 0; i < batchPausedItems.length; i += 50) {
+                const chunk = batchPausedItems.slice(i, i + 50);
+                await Promise.all(chunk.map(item => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending' }))));
+            }
+        }
+
         // Clear stop flag
         try {
-            const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
             if (configs[0]?.crawler_stopped) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: false }));
             }
         } catch (e) { console.warn('[Crawler] Could not clear stop flag:', e.message); }
-        // Read dry_run from first paused batch if available
-        const resumeDryRun = dry_run || pausedBatches.some(pb => pb.dry_run);
-        // Trigger worker pool
-        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run: resumeDryRun }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
-        return Response.json({ success: true, message: 'Crawler resumed.' });
+
+        const resumeDryRun = dry_run || batchesToResume.some(pb => pb.dry_run);
+        const targetWorkers = Math.min(maxConcurrentBatches, activeCrawlerBatches.length + batchesToResume.length);
+        const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
+        for (let i = 0; i < workersToStart; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run: resumeDryRun }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
+            if (i + 1 < workersToStart) await sleep(500);
+        }
+
+        return Response.json({ success: true, message: `Crawler resumed ${batchesToResume.length} state batch${batchesToResume.length === 1 ? '' : 'es'}.` });
     }
 
     if (action === 'retry_errors') {
@@ -882,6 +916,7 @@ Deno.serve(async (req) => {
                 // Check if any batches are fully done
                 const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
                 let batchesClosed = 0;
+                let wokePausedBatch = false;
                 for (const b of processingBatches) {
                     const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
                     // If no items found, mark as completed (empty batch)
@@ -894,7 +929,14 @@ Deno.serve(async (req) => {
                         continue;
                     }
 
-                    const remaining = items.filter(i => i.status === 'pending' || i.status === 'processing' || i.status === 'paused');
+                    const runnableItems = items.filter(i => i.status === 'pending' || i.status === 'processing');
+                    const pausedItems = items.filter(i => i.status === 'paused');
+                    if (runnableItems.length === 0 && pausedItems.length > 0) {
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'paused' }));
+                        continue;
+                    }
+
+                    const remaining = [...runnableItems, ...pausedItems];
                     const allDone = remaining.length === 0;
                     if (allDone) {
                         const failedItems = items.filter(i => i.status === 'failed');
@@ -943,15 +985,21 @@ Deno.serve(async (req) => {
                                     }
                                     // Read dry_run from the woken batch and pass it through
                                     const wokenDryRun = nextPaused.dry_run || false;
+                                    wokePausedBatch = true;
                                     console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name} (dry_run: ${wokenDryRun})`);
                                 }
                             }
                         } catch(e) { console.error("Failed to wake up next batch:", e); }
                     }
                 }
+
+                if (wokePausedBatch) {
+                    console.log('[Crawler Worker] Queue was empty, but a paused batch was resumed. Continuing to process the newly queued items.');
+                    continue;
+                }
                 
                 if (batchesClosed > 0) {
-                    // If we closed batches, maybe return success but indicate we are done
+                    // If we closed batches and did not wake another one, we are done for this cycle
                     return Response.json({ success: true, message: `Queue empty. Closed ${batchesClosed} batches.`, processed: tasksProcessed });
                 }
                 
