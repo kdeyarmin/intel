@@ -84,8 +84,8 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
                     <div>
                       <p className="text-sm font-semibold text-slate-700">{state}</p>
                       <p className="text-xs text-slate-500">
-                        {batch.total_rows ? `${batch.total_rows.toLocaleString()} rows found` : 'Fetching data...'}
-                        {batch.valid_rows ? ` • ${batch.valid_rows.toLocaleString()} valid` : ''}
+                        {batch.total_rows != null ? `${batch.total_rows.toLocaleString()} rows found` : 'Fetching data...'}
+                        {batch.valid_rows != null ? ` • ${batch.valid_rows.toLocaleString()} valid` : ''}
                       </p>
                     </div>
                   </div>

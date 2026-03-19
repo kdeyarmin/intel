@@ -10,7 +10,7 @@ export default function ProcessingTimeChart({ nppesImports, loading }) {
     .filter(b => b.status === 'completed' && b.completed_at && b.created_date && b.file_name && b.file_name.includes('crawler_'))
     .slice(0, 20)
     .map(b => {
-      const state = (b.file_name.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];
+      const state = (b.file_name?.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];
       const durationMs = new Date(b.completed_at) - new Date(b.created_date);
       const durationSec = Math.round(durationMs / 1000);
       return {

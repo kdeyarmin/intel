@@ -565,9 +565,12 @@ Deno.serve(async (req) => {
     if (action === 'batch_start') {
         if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-        // Load configuration
+        // Load configuration and clear stop flag
         const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
         const config = configs[0] || {};
+        if (configs[0]?.crawler_stopped) {
+            await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: false }));
+        }
 
         let targetStates = states;
         if (region) {
@@ -665,19 +668,42 @@ Deno.serve(async (req) => {
 
     if (action === 'batch_stop') {
         if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
-        for (let i = 0; i < pending.length; i += 50) {
-           const chunk = pending.slice(i, i+50);
-           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
-        }
-        
+
+        // Set a stop flag in config so self-reinvoking workers know to stop
+        try {
+            const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+            if (configs[0]) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: true }));
+            } else {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.create({ config_key: 'default', crawler_stopped: true }));
+            }
+        } catch (e) { console.warn('[Crawler] Could not set stop flag:', e.message); }
+
+        // Stop ALL active queue items in a loop until none remain (handles >5000 items)
+        // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
+        let totalStopped = 0;
+        let batchItems;
+        const stopStartTime = Date.now();
+        do {
+            if (Date.now() - stopStartTime > 15000) {
+                console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+                break;
+            }
+            batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 500));
+            for (let i = 0; i < batchItems.length; i += 50) {
+               const chunk = batchItems.slice(i, i+50);
+               await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+               totalStopped += chunk.length;
+            }
+        } while (batchItems.length > 0);
+
         // Also cancel any active batches
-        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused'] } }));
-        for (const b of processingBatches) {
+        const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
+        for (const b of activeBatches) {
             await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'cancelled', cancel_reason: 'Stopped by user', cancelled_at: new Date().toISOString() }));
         }
 
-        return Response.json({ success: true, message: 'All tasks and batches stopped.' });
+        return Response.json({ success: true, message: `All tasks and batches stopped. ${totalStopped} items cancelled.` });
     }
 
     if (action === 'batch_pause') {
@@ -714,6 +740,13 @@ Deno.serve(async (req) => {
                 await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(pb.id, { status: 'processing' }));
             }
         }
+        // Clear stop flag
+        try {
+            const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+            if (configs[0]?.crawler_stopped) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: false }));
+            }
+        } catch (e) { console.warn('[Crawler] Could not clear stop flag:', e.message); }
         // Read dry_run from first paused batch if available
         const resumeDryRun = dry_run || pausedBatches.some(pb => pb.dry_run);
         // Trigger worker pool
@@ -755,10 +788,17 @@ Deno.serve(async (req) => {
     if (action === 'process_queue') {
         const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
         const config = configs[0] || {};
+
+        // Check stop flag — if the crawler was stopped by user, exit immediately
+        if (config.crawler_stopped) {
+            console.log('[Crawler Worker] Stop flag detected, exiting immediately.');
+            return Response.json({ success: true, message: 'Worker stopped by stop flag', processed: 0 });
+        }
+
         const apiBatchSize = config.api_batch_size || 200;
         const maxRetries = config.max_retries || 3;
         const apiDelayMs = config.api_delay_ms !== undefined ? config.api_delay_ms : 200;
-        
+
         // Recover stuck items (older than 10 mins)
         const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 200));
         let recoveredCount = 0;
@@ -1035,9 +1075,16 @@ Deno.serve(async (req) => {
             }
         }
         
+        // Check stop flag before re-invoking
+        const latestConfig = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' }).catch(() => []);
+        if (latestConfig[0]?.crawler_stopped) {
+            console.log('[Crawler Worker] Stop flag detected after cycle, not re-invoking.');
+            return Response.json({ success: true, processed: tasksProcessed, message: 'Worker stopped by stop flag' });
+        }
+
         // Intelligent Re-invocation based on performance and queue depth
         const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 100).then(r => r.length).catch(() => 0);
-        
+
         console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
 
         if (remainingQueueSize > 0) {
