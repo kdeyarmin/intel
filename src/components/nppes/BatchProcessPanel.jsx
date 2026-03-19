@@ -18,7 +18,7 @@ const REGION_LABELS = {
   southeast: 'Southeast (12 states)',
   midwest: 'Midwest (12 states)',
   west: 'West (13 states)',
-  south_central: 'South Central (4 states)',
+  south_central: 'South Central (2 states)',
 };
 
 export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, onLog, onRefresh }) {

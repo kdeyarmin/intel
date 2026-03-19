@@ -119,10 +119,10 @@ async function upsertProviders(records, base44) {
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
             if (updateTasks.length > 0) {
                 for (let j = 0; j < updateTasks.length; j += 2) {
-                    await Promise.all(updateTasks.slice(j, j + 2).map(t => t().catch(()=>{})));
+                    const results = await Promise.all(updateTasks.slice(j, j + 2).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertProviders] Update failed: ${e.message}`); return false; })));
+                    updated += results.filter(Boolean).length;
                     if (j + 2 < updateTasks.length) await sleep(200);
                 }
-                updated += updateTasks.length;
             }
             await sleep(50); // Reduced throttle delay
         } catch (e) {
@@ -140,7 +140,7 @@ async function upsertProviders(records, base44) {
                         updated++;
                     }
                     else { skipped++; }
-                } catch (err) {}
+                } catch (err) { console.warn(`[upsertProviders] Fallback op failed for NPI ${p.npi}: ${err.message}`); }
             }));
         }
     }
@@ -182,17 +182,18 @@ async function upsertLocations(records, base44) {
         }
         if (updateTasks.length > 0) {
             for (let j = 0; j < updateTasks.length; j += 5) {
-                await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
+                const results = await Promise.all(updateTasks.slice(j, j + 5).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertLocations] Update failed: ${e.message}`); return false; })));
+                updated += results.filter(Boolean).length;
                 if (j + 5 < updateTasks.length) await sleep(100);
             }
-            updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { 
-                await Promise.all(toCreate.map(async loc => { 
-                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} 
-                })); 
+            catch (e) {
+                console.warn(`[upsertLocations] bulkCreate failed: ${e.message}, falling back to individual creates`);
+                await Promise.all(toCreate.map(async loc => {
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) { console.warn(`[upsertLocations] Individual create failed for NPI ${loc.npi}: ${err.message}`); }
+                }));
             }
         }
     }
@@ -225,17 +226,18 @@ async function upsertTaxonomies(records, base44) {
         }
         if (updateTasks.length > 0) {
             for (let j = 0; j < updateTasks.length; j += 5) {
-                await Promise.all(updateTasks.slice(j, j + 5).map(t => t().catch(()=>{})));
+                const results = await Promise.all(updateTasks.slice(j, j + 5).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertTaxonomies] Update failed: ${e.message}`); return false; })));
+                updated += results.filter(Boolean).length;
                 if (j + 5 < updateTasks.length) await sleep(100);
             }
-            updated += updateTasks.length;
         }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { 
-                await Promise.all(toCreate.map(async tax => { 
-                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} 
-                })); 
+            catch (e) {
+                console.warn(`[upsertTaxonomies] bulkCreate failed: ${e.message}, falling back to individual creates`);
+                await Promise.all(toCreate.map(async tax => {
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) { console.warn(`[upsertTaxonomies] Individual create failed for NPI ${tax.npi}: ${err.message}`); }
+                }));
             }
         }
     }
@@ -436,8 +438,9 @@ Deno.serve(async (req) => {
 
         const stateLatest = {};
         for (const b of crawlerBatches) {
-            const st = b.file_name.split('_')[1];
-            if (!st || st.length > 2) continue;
+            const stMatch = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch) continue;
+            const st = stMatch[1].toUpperCase();
             if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
                 stateLatest[st] = b;
             }
@@ -457,7 +460,7 @@ Deno.serve(async (req) => {
             southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
             midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
             west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
-            south_central: ['TX','OK','NM','AR']
+            south_central: ['TX','OK']
         };
 
         // Determine if crawler is paused (has paused tasks) or running (has processing/pending tasks)
@@ -560,7 +563,7 @@ Deno.serve(async (req) => {
                 southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
                 midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
                 west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
-                south_central: ['TX','OK','NM','AR']
+                south_central: ['TX','OK']
             };
             targetStates = REGION_STATES[region] || US_STATES;
         }
@@ -847,7 +850,7 @@ Deno.serve(async (req) => {
                         stats.valid += transformed.validRows;
                         stats.invalid += transformed.invalidRows;
                         if (!dry_run) {
-                            const [provRes] = await Promise.all([
+                            const [provRes, locRes, taxRes] = await Promise.all([
                                 upsertProviders(transformed.providers, base44),
                                 upsertLocations(transformed.locations, base44),
                                 upsertTaxonomies(transformed.taxonomies, base44)
