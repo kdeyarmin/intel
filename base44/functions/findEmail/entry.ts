@@ -65,13 +65,14 @@ Deno.serve(async (req) => {
     for (const f of files) {
         try {
             const content = await Deno.readTextFile(`./${f}`);
-            if (content.includes('SendEmail')) {
-                results.push(f);
+            const match = content.match(/npm:@base44\/sdk@[0-9\.]+/);
+            if (match) {
+                results.push({ file: f, version: match[0] });
             }
         } catch (e) {
             // ignore
         }
     }
     
-    return Response.json({ filesWithEmail: results });
+    return Response.json({ filesWithSDK: results });
 });
