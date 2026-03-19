@@ -26,6 +26,7 @@ export default function AutoFollowUpSequencer({ campaign, messages = [], _provid
 
   const generateSequence = async () => {
     setGenerating(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Create a 3-step automated follow-up email sequence for this healthcare outreach campaign.
 
@@ -71,7 +72,11 @@ Keep each under 100 words.`,
       }
     });
     setSequence(res);
-    setGenerating(false);
+    } catch (err) {
+      toast.error('Failed to generate sequence: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const activateStep = (step) => {

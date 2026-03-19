@@ -14,14 +14,15 @@ export default function AIEmailFinder({ provider, locations, taxonomies }) {
 
   const findEmails = async () => {
     setLoading(true);
-    const name = provider.entity_type === 'Individual'
-      ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
-      : provider.organization_name || '';
+    try {
+      const name = provider.entity_type === 'Individual'
+        ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
+        : provider.organization_name || '';
 
-    const primaryLoc = locations?.find(l => l.is_primary) || locations?.[0];
-    const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
+      const primaryLoc = locations?.find(l => l.is_primary) || locations?.[0];
+      const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
 
-    const prompt = `Find likely professional email addresses for this healthcare provider. Search the web for any publicly available contact information.
+      const prompt = `Find likely professional email addresses for this healthcare provider. Search the web for any publicly available contact information.
 
 PROVIDER:
 - Name: ${name}
@@ -42,39 +43,39 @@ Instructions:
 
 IMPORTANT: Be honest about confidence levels. Mark as "low" if you're guessing.`;
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          emails: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                email: { type: "string" },
-                confidence: { type: "string", enum: ["high", "medium", "low"] },
-                source: { type: "string" },
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            emails: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  email: { type: "string" },
+                  confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  source: { type: "string" },
+                }
               }
-            }
-          },
-          organization_domain: { type: "string" },
-          notes: { type: "string" }
+            },
+            organization_domain: { type: "string" },
+            notes: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
+      const emails = (res.emails || []).filter(e => e.email && e.email.includes('@'));
 
-    // Validate emails
-    let validations = [];
-    if (emails.length > 0) {
-      const name = provider.entity_type === 'Individual'
-        ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
-        : provider.organization_name || '';
-      const valRes = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an email deliverability expert. Validate these emails for healthcare provider "${name}" (NPI: ${provider.npi}).
+      // Validate emails
+      let validations = [];
+      if (emails.length > 0) {
+        const provName = provider.entity_type === 'Individual'
+          ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
+          : provider.organization_name || '';
+        const valRes = await base44.integrations.Core.InvokeLLM({
+          prompt: `You are an email deliverability expert. Validate these emails for healthcare provider "${provName}" (NPI: ${provider.npi}).
 
 EMAILS:
 ${emails.map((e, i) => `${i+1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join('\n')}
@@ -85,53 +86,62 @@ For each email assign:
 - "valid" = high likelihood of being deliverable and correct
 - "risky" = might work but has concerns (role-based, catch-all, pattern mismatch)
 - "invalid" = likely undeliverable (bad format, fake domain, wrong person)`,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            validations: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  email: { type: "string" },
-                  status: { type: "string", enum: ["valid", "risky", "invalid"] },
-                  reason: { type: "string" }
+          response_json_schema: {
+            type: "object",
+            properties: {
+              validations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    email: { type: "string" },
+                    status: { type: "string", enum: ["valid", "risky", "invalid"] },
+                    reason: { type: "string" }
+                  }
                 }
               }
             }
           }
+        });
+        validations = valRes.validations || [];
+      }
+
+      // Merge validations into results
+      const enrichedEmails = (res.emails || []).map(e => {
+        const v = validations.find(val => val.email === e.email);
+        return { ...e, validation_status: v?.status || 'unknown', validation_reason: v?.reason || '' };
+      });
+      res.emails = enrichedEmails;
+
+      setResults(res);
+
+      // Auto-save the best email to the provider record
+      if (emails.length > 0 && provider?.id) {
+        const best = enrichedEmails[0];
+        try {
+          await base44.entities.Provider.update(provider.id, {
+            email: best.email,
+            email_confidence: best.confidence,
+            email_source: best.source || '',
+            email_validation_status: best.validation_status || 'unknown',
+            email_validation_reason: best.validation_reason || '',
+            additional_emails: enrichedEmails.slice(1).map(e => ({
+              email: e.email,
+              confidence: e.confidence,
+              source: e.source,
+              validation_status: e.validation_status,
+            })),
+            email_searched_at: new Date().toISOString(),
+          });
+        } catch (updateErr) {
+          console.error('Failed to auto-save email:', updateErr);
         }
-      });
-      validations = valRes.validations || [];
-    }
-
-    // Merge validations into results
-    const enrichedEmails = (res.emails || []).map(e => {
-      const v = validations.find(v => v.email === e.email);
-      return { ...e, validation_status: v?.status || 'unknown', validation_reason: v?.reason || '' };
-    });
-    res.emails = enrichedEmails;
-
-    setResults(res);
-    setLoading(false);
-
-    // Auto-save the best email to the provider record
-    if (emails.length > 0 && provider?.id) {
-      const best = enrichedEmails[0];
-      await base44.entities.Provider.update(provider.id, {
-        email: best.email,
-        email_confidence: best.confidence,
-        email_source: best.source || '',
-        email_validation_status: best.validation_status || 'unknown',
-        email_validation_reason: best.validation_reason || '',
-        additional_emails: enrichedEmails.slice(1).map(e => ({
-          email: e.email,
-          confidence: e.confidence,
-          source: e.source,
-          validation_status: e.validation_status,
-        })),
-        email_searched_at: new Date().toISOString(),
-      });
+      }
+    } catch (err) {
+      toast.error('Email search failed: ' + (err.message || 'Unknown error'));
+      setResults(null);
+    } finally {
+      setLoading(false);
     }
   };
 
