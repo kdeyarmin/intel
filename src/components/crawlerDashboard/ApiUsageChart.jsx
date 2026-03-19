@@ -19,7 +19,7 @@ export default function ApiUsageChart({ nppesImports, loading }) {
       const rateLimits = (b.rate_limit_count || 0) + (b.error_samples || []).filter(e => JSON.stringify(e).includes('429') || JSON.stringify(e).includes('rate limit')).length;
       
       return {
-        name: b.file_name?.split('_')[1] || 'Batch',
+        name: (b.file_name?.match(/crawler_([A-Z]{2})/) || [null, 'Batch'])[1],
         date: new Date(b.created_date).toLocaleDateString(),
         requests: successfulRequests || 0,
         rateLimits: rateLimits || 0,

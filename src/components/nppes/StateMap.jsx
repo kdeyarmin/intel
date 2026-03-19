@@ -97,7 +97,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
           { key: 'completed', label: 'Completed', count: completedSet.size },
           { key: 'processing', label: 'Processing', count: processingSet.size },
           { key: 'failed', label: 'Failed', count: failedSet.size },
-          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size - ((currentState && (running || autoMode)) ? 1 : 0)) },
+          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size - ((currentState && (running || autoMode) && !processingSet.has(currentState) && !completedSet.has(currentState) && !failedSet.has(currentState)) ? 1 : 0)) },
         ].map(item => (
           <div key={item.key} className="flex items-center gap-1.5">
             <div 
