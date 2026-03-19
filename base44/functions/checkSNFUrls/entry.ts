@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
   const codes = ['01SNF', '02SNF', '03SNF', '04SNF', '05SNF', '06SNF', '07SNF', '08SNF', '09SNF', '10SNF', 'SNF', '01MDCR', '02MDCR'];

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // Automated NPPES Batch Orchestrator
 // Monitors active batch processes and automatically triggers next states

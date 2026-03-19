@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // CMS Data API URLs - verified working endpoints
 // Aliases: cms_utilization maps to provider_service_utilization

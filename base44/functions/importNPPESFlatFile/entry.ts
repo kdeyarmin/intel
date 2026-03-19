@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 const MAX_EXEC_MS = 45000; // Limit execution to 45 seconds to avoid timeouts
 const BULK_INSERT_SIZE = 500;

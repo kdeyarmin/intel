@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // Strict time budget: 25s to leave buffer before platform 30s timeout kills us
 const MAX_EXEC_MS = 25_000; 
