@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         // Find pending messages that don't have a body yet
         // We use 'pending' status. We might want to add a 'generated' status or just check if body_html is empty.
         // Let's filter for status 'pending' and empty body_html (if possible in filter, otherwise in code)
-        const messages = await base44.entities.OutreachMessage.filter({ campaign_id: campaign_id, status: 'pending' });
+        const messages = await base44.entities.OutreachMessage.filter({ campaign_id: campaign_id, status: 'pending' }, undefined, 1000);
         
         // Filter those needing generation
         const toGenerate = messages.filter(m => !m.body_html).slice(0, limit);

@@ -327,6 +327,7 @@ function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
 }
 
 Deno.serve(async (req) => {
+ try {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
   
@@ -783,4 +784,8 @@ Deno.serve(async (req) => {
         : `The import failed during the ${errorPhase} phase. Check the error details and batch error log for specifics.`,
     }, { status: 500 });
   }
+ } catch (outerErr) {
+  console.error('[importMedicareMAInpatient] Unhandled outer error:', outerErr);
+  return Response.json({ error: outerErr.message || 'Unexpected error', phase: 'initialization' }, { status: 500 });
+ }
 });

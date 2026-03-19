@@ -243,6 +243,7 @@ async function bulkCreateWithRetry(entity, chunk, label) {
 }
 
 Deno.serve(async (req) => {
+ try {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
   
@@ -481,4 +482,8 @@ Deno.serve(async (req) => {
 
     return Response.json({ error: errorMsg, retryable: isRetryable, batch_id: batch.id }, { status: 500 });
   }
+ } catch (outerErr) {
+  console.error('[importMedicareSNF] Unhandled outer error:', outerErr);
+  return Response.json({ error: outerErr.message || 'Unexpected error', phase: 'initialization' }, { status: 500 });
+ }
 });

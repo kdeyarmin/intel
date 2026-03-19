@@ -35,11 +35,10 @@ Deno.serve(async (req) => {
                 providersToEnrich = provider;
             }
         } else {
-            // Batch enrichment of providers that need it
             const needsEnrichment = await base44.entities.Provider.filter({ 
                 needs_nppes_enrichment: true 
-            });
-            providersToEnrich = needsEnrichment.slice(0, batch_size);
+            }, undefined, batch_size);
+            providersToEnrich = needsEnrichment;
         }
 
         if (providersToEnrich.length === 0) {

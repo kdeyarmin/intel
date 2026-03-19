@@ -48,9 +48,9 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.OutreachMessage.update(message_id, updateData);
     }
 
-    // Get all campaign messages
+    // Get all campaign messages (capped to prevent timeout on large campaigns)
     const messages = await base44.asServiceRole.entities.OutreachMessage.filter(
-      { campaign_id }
+      { campaign_id }, undefined, 5000
     );
 
     // Calculate metrics
@@ -60,9 +60,11 @@ Deno.serve(async (req) => {
     const respondedMessages = messages.filter(m => m.responded_at).length;
     const bouncedMessages = messages.filter(m => m.status === 'bounced').length;
 
+    const METRICS_LIMIT = 5000;
     const metrics = {
       campaign_id,
       total_recipients: totalMessages,
+      truncated: totalMessages === METRICS_LIMIT,
       sent_count: sentMessages,
       pending_count: messages.filter(m => m.status === 'pending').length,
       open_rate: sentMessages > 0 ? (openedMessages / sentMessages * 100).toFixed(1) : 0,

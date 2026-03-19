@@ -58,6 +58,7 @@ const QUALITY_RULES = [
 const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
 
 Deno.serve(async (req) => {
+ try {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
 
@@ -768,4 +769,8 @@ Key issues: ${ruleResults.filter(r => r.pct < 80).map(r => `${r.rule_name} (${r.
     summary: aiSummary,
     rule_results: ruleResults,
   });
+ } catch (error) {
+  console.error('[runDataQualityScan] Error:', error);
+  return Response.json({ error: error.message || 'Unexpected error' }, { status: 500 });
+ }
 });

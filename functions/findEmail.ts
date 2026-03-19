@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
+  try {
     const files = [
         'functions/importMedicareHHA.js',
         'functions/autoResumePausedImports.js',
@@ -73,4 +74,7 @@ Deno.serve(async (req) => {
     }
     
     return Response.json({ filesWithSDK: results });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 });

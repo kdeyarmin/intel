@@ -77,6 +77,7 @@ function addressSimilarity(addr1, addr2, city1, city2, state1, state2, zip1, zip
 }
 
 Deno.serve(async (req) => {
+ try {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
 
@@ -370,4 +371,8 @@ INSTRUCTIONS:
     matches_created: created.length,
     feedback_stats: feedbackStats,
   });
+ } catch (error) {
+  console.error('[matchProvidersToLocations] Error:', error);
+  return Response.json({ error: error.message || 'Unexpected error' }, { status: 500 });
+ }
 });

@@ -253,6 +253,7 @@ async function bulkCreateWithRetry(entity, chunk, label) {
 }
 
 Deno.serve(async (req) => {
+ try {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
   
@@ -541,4 +542,8 @@ Deno.serve(async (req) => {
       error_samples: errorSamples.slice(0, 5) 
     }, { status: 500 });
   }
+ } catch (outerErr) {
+  console.error('[importMedicareHHA] Unhandled outer error:', outerErr);
+  return Response.json({ error: outerErr.message || 'Unexpected error', phase: 'initialization' }, { status: 500 });
+ }
 });

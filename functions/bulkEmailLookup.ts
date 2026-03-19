@@ -42,23 +42,16 @@ Deno.serve(async (req) => {
       return Response.json({ results: [], totalCount, processed: 0 });
     }
 
-    // Get NPIs for this batch
     const npis = page.map(p => p.npi);
 
-    // Fetch locations and taxonomies for all providers in batch
-    const allLocations = [];
-    const allTaxonomies = [];
-    for (const npi of npis) {
-      const locs = await base44.asServiceRole.entities.ProviderLocation.filter({ npi });
-      const taxs = await base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi });
-      allLocations.push(...locs.map(l => ({ ...l, _npi: npi })));
-      allTaxonomies.push(...taxs.map(t => ({ ...t, _npi: npi })));
-    }
+    const [allLocations, allTaxonomies] = await Promise.all([
+      base44.asServiceRole.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 500),
+      base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 500),
+    ]);
 
-    // Build provider summaries for the LLM
     const providerSummaries = page.map(p => {
-      const locs = allLocations.filter(l => l.npi === p.npi || l._npi === p.npi);
-      const taxs = allTaxonomies.filter(t => t.npi === p.npi || t._npi === p.npi);
+      const locs = allLocations.filter(l => l.npi === p.npi);
+      const taxs = allTaxonomies.filter(t => t.npi === p.npi);
       const primaryLoc = locs.find(l => l.is_primary) || locs[0];
       const name = p.entity_type === 'Individual'
         ? `${p.first_name || ''} ${p.last_name || ''}`.trim()

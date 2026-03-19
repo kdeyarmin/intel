@@ -621,11 +621,15 @@ export default function ImportMonitoring() {
                     size="sm" variant="outline"
                     className="text-red-400 border-red-500/30 hover:bg-red-500/10"
                     onClick={async () => {
-                      await base44.entities.ImportBatch.update(batch.id, {
-                        status: 'failed',
-                        error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
-                      });
-                      refreshBatches();
+                      try {
+                        await base44.entities.ImportBatch.update(batch.id, {
+                          status: 'failed',
+                          error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
+                        });
+                        refreshBatches();
+                      } catch (err) {
+                        console.error('Failed to mark batch as failed:', err);
+                      }
                     }}
                   >
                     <XCircle className="w-3 h-3 mr-1" /> Mark Failed
@@ -993,10 +997,15 @@ export default function ImportMonitoring() {
               onClick={async () => {
                 const id = confirmDeleteBatch.id;
                 setDeletingBatchId(id);
-                await base44.entities.ImportBatch.delete(id);
-                setConfirmDeleteBatch(null);
-                setDeletingBatchId(null);
-                refreshBatches();
+                try {
+                  await base44.entities.ImportBatch.delete(id);
+                  setConfirmDeleteBatch(null);
+                  refreshBatches();
+                } catch (err) {
+                  console.error('Failed to delete batch:', err);
+                } finally {
+                  setDeletingBatchId(null);
+                }
               }}
             >
               {deletingBatchId === confirmDeleteBatch?.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}

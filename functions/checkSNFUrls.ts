@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
+ try {
   const codes = ['01SNF', '02SNF', '03SNF', '04SNF', '05SNF', '06SNF', '07SNF', '08SNF', '09SNF', '10SNF', 'SNF', '01MDCR', '02MDCR'];
   const years = [2023];
   const patterns = [
@@ -49,4 +50,7 @@ Deno.serve(async (req) => {
   }
 
   return Response.json({ found: [] });
+ } catch (error) {
+  return Response.json({ error: error.message }, { status: 500 });
+ }
 });

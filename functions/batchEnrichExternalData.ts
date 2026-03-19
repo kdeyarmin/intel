@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (npi_list.length > 0) {
       providers = await base44.asServiceRole.entities.Provider.filter({
         npi: { $in: npi_list }
-      });
+      }, undefined, 500);
     } else {
       providers = await base44.asServiceRole.entities.Provider.list('-created_date', limit);
     }

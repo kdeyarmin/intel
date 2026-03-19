@@ -134,6 +134,12 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **Unbounded .filter({}) calls fixed**: `matchProvidersToLocations.ts` — all 6 entity fetches (Provider, ProviderLocation, ProviderTaxonomy, CMSReferral, CMSUtilization, ProviderLocationMatch) now capped at FETCH_LIMIT=5000
 - **Division-by-zero guard**: `generateDataQualityReport.ts` calculateCompleteness() — `requiredFields.length` divisor now guarded with ternary fallback to 0
 
+### Round 12 Fixes
+- **Missing outer try/catch (6 functions)**: `importMedicareMAInpatient.ts`, `importMedicareSNF.ts`, `importMedicareHHA.ts` — setup code (auth, JSON parse, batch lookup) was outside try/catch, so early failures crashed without error response; `runDataQualityScan.ts`, `matchProvidersToLocations.ts`, `checkSNFUrls.ts`, `findEmail.ts` — all now wrapped with outer try/catch returning proper 500 JSON
+- **Unbounded filter calls capped**: `trackCampaignMetrics.ts` OutreachMessage.filter now capped at 5000; `generateHyperPersonalizedMessages.ts` pending messages capped at 1000; `enrichProviderData.ts` filter uses batch_size as limit instead of fetching all then slicing; `batchEnrichExternalData.ts` npi_list filter capped at 500
+- **N+1 query eliminated**: `bulkEmailLookup.ts` — sequential per-NPI location/taxonomy fetches replaced with single `$in` batch query (2 queries instead of 2×N)
+- **ImportMonitoring.jsx inline async handlers**: "Mark Failed" button and "Delete batch" button both wrapped in try/catch/finally — previously unhandled rejections could crash UI or leave delete spinner stuck
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF
