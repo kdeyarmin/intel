@@ -12,19 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Database, Plus, Edit2, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
-
-const IMPORT_TYPES = [
-  "cms_utilization",
-  "cms_order_referring",
-  "opt_out_physicians",
-  "provider_service_utilization",
-  "home_health_enrollments",
-  "hospice_enrollments",
-  "nppes_registry",
-  "medicare_hha_stats",
-  "medicare_ma_inpatient",
-  "medicare_snf_stats"
-];
+import {
+  SCHEDULABLE_CMS_IMPORT_TYPES,
+  normalizeCmsImportType,
+  getCmsImportTypeLabel,
+  getCmsImportTypeYears,
+} from '@/lib/cmsImportTypes';
 
 export default function CMSDataSources() {
   const queryClient = useQueryClient();
@@ -32,6 +25,24 @@ export default function CMSDataSources() {
   const [editingConfig, setEditingConfig] = useState(null);
   const [formData, setFormData] = useState({});
   const [testingId, setTestingId] = useState(null);
+
+  const updateImportType = (importType) => {
+    const normalizedImportType = normalizeCmsImportType(importType);
+    const availableYears = getCmsImportTypeYears(normalizedImportType);
+
+    setFormData(prev => {
+      const currentYear = prev.data_year ? parseInt(prev.data_year, 10) : undefined;
+      const nextYear = availableYears?.length
+        ? (availableYears.includes(currentYear) ? currentYear : availableYears[0])
+        : prev.data_year;
+
+      return {
+        ...prev,
+        import_type: normalizedImportType,
+        data_year: nextYear ?? '',
+      };
+    });
+  };
 
   const { data: configs, isLoading } = useQuery({
     queryKey: ['importScheduleConfigs'],
@@ -89,13 +100,14 @@ export default function CMSDataSources() {
   const handleOpenModal = (config = null) => {
     setEditingConfig(config);
     if (config) {
+      const normalizedImportType = normalizeCmsImportType(config.import_type);
       setFormData({
-        import_type: config.import_type,
+        import_type: normalizedImportType,
         label: config.label,
         data_year: config.data_year || '',
         api_url: config.api_url,
         schedule_frequency: config.schedule_frequency,
-        depends_on_import_type: config.depends_on_import_type || '',
+        depends_on_import_type: normalizeCmsImportType(config.depends_on_import_type) || '',
         schedule_time: config.schedule_time || '02:00',
         is_active: config.is_active
       });
@@ -116,9 +128,14 @@ export default function CMSDataSources() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const normalizedImportType = normalizeCmsImportType(formData.import_type);
+    const parsedYear = formData.data_year ? parseInt(formData.data_year, 10) : undefined;
+
     saveConfig.mutate({
       ...formData,
-      data_year: formData.data_year ? parseInt(formData.data_year, 10) : undefined
+      import_type: normalizedImportType,
+      depends_on_import_type: normalizeCmsImportType(formData.depends_on_import_type) || '',
+      data_year: parsedYear
     });
   };
 
@@ -163,7 +180,7 @@ export default function CMSDataSources() {
                 <TableRow key={config.id} className="border-slate-800/50 hover:bg-slate-800/20">
                   <TableCell>
                     <div className="font-medium text-slate-200">{config.label}</div>
-                    <div className="text-xs text-slate-500">{config.import_type}</div>
+                    <div className="text-xs text-slate-500">{getCmsImportTypeLabel(config.import_type)}</div>
                   </TableCell>
                   <TableCell className="text-slate-300">
                     {config.data_year || '-'}
@@ -171,7 +188,7 @@ export default function CMSDataSources() {
                   <TableCell>
                     <div className="text-sm text-slate-300 capitalize">
                       {config.schedule_frequency === 'on_completion' 
-                        ? `After ${config.depends_on_import_type}` 
+                        ? `After ${getCmsImportTypeLabel(config.depends_on_import_type)}` 
                         : `${config.schedule_frequency} at ${config.schedule_time}`}
                     </div>
                     <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-500/20 text-cyan-400 mt-1' : 'mt-1'}>
@@ -261,14 +278,14 @@ export default function CMSDataSources() {
                 <Label>Import Type</Label>
                 <Select
                   value={formData.import_type}
-                  onValueChange={(v) => setFormData({ ...formData, import_type: v })}
+                  onValueChange={updateImportType}
                 >
                   <SelectTrigger className="bg-slate-950 border-slate-800">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    {IMPORT_TYPES.map(t => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    {SCHEDULABLE_CMS_IMPORT_TYPES.map(type => (
+                      <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -278,13 +295,29 @@ export default function CMSDataSources() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data Year (Optional)</Label>
-                <Input
-                  type="number"
-                  placeholder="2023"
-                  value={formData.data_year || ''}
-                  onChange={(e) => setFormData({ ...formData, data_year: e.target.value })}
-                  className="bg-slate-950 border-slate-800"
-                />
+                {getCmsImportTypeYears(formData.import_type)?.length ? (
+                  <Select
+                    value={formData.data_year ? String(formData.data_year) : ''}
+                    onValueChange={(value) => setFormData({ ...formData, data_year: value })}
+                  >
+                    <SelectTrigger className="bg-slate-950 border-slate-800">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                      {getCmsImportTypeYears(formData.import_type).map(year => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type="number"
+                    placeholder="2023"
+                    value={formData.data_year || ''}
+                    onChange={(e) => setFormData({ ...formData, data_year: e.target.value })}
+                    className="bg-slate-950 border-slate-800"
+                  />
+                )}
               </div>
               <div className="space-y-2 flex flex-col justify-end">
                 <label className="flex items-center gap-2 cursor-pointer mb-2">
@@ -324,7 +357,7 @@ export default function CMSDataSources() {
                         const { import_type, data_year, explanation } = res.data.prediction;
                         setFormData(prev => ({
                           ...prev,
-                          import_type: import_type || prev.import_type,
+                          import_type: normalizeCmsImportType(import_type) || prev.import_type,
                           data_year: data_year || prev.data_year
                         }));
                         toast.success("Format detected successfully", { id: toastId });
@@ -374,9 +407,11 @@ export default function CMSDataSources() {
                       <SelectValue placeholder="Select type..." />
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                      {IMPORT_TYPES.map(t => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
+                      {SCHEDULABLE_CMS_IMPORT_TYPES
+                        .filter(type => type.id !== formData.import_type)
+                        .map(type => (
+                          <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>

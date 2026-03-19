@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-  Upload, FileText, Database, TrendingUp, Activity,
+  Upload, FileText, Database, Activity,
   Loader2, CheckCircle2, AlertCircle, Search, X, Tag, Plus, Settings
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -15,6 +15,11 @@ import ActiveRulesBadge from './ActiveRulesBadge';
 import FileParser from './FileParser';
 import ColumnMapper from './ColumnMapper';
 import { generateAIMapping } from './columnMappingAI';
+import {
+  SCHEDULABLE_CMS_IMPORT_TYPES,
+  normalizeCmsImportType,
+  getCmsImportTypeYears,
+} from '@/lib/cmsImportTypes';
 
 // Required columns for AI mapping
 const REQUIRED_COLUMNS = {
@@ -26,46 +31,55 @@ const REQUIRED_COLUMNS = {
   provider_service_utilization: ['NPI'],
 };
 
-// Available data years per import type — only these years have actual CMS data
-const AVAILABLE_YEARS = {
-  cms_order_referring: [2023, 2022, 2021, 2020, 2019],
-  provider_service_utilization: [2022, 2021, 2020, 2019],
-  hospice_enrollments: [2024, 2023, 2022],
-  home_health_enrollments: [2024, 2023, 2022],
-  medicare_hha_stats: [2023, 2022, 2021, 2020],
-  medicare_ma_inpatient: [2023, 2022, 2021, 2020],
-  medicare_part_d_stats: [2023, 2022, 2021, 2020],
-  medicare_snf_stats: [2023, 2022, 2021, 2020],
+const IMPORT_TYPE_ICON_MAP = {
+  nppes_registry: FileText,
+  cms_order_referring: Database,
+  provider_service_utilization: Activity,
+  hospice_enrollments: Database,
+  home_health_enrollments: Database,
+  medicare_hha_stats: Activity,
+  medicare_ma_inpatient: Activity,
+  medicare_part_d_stats: Activity,
+  medicare_snf_stats: Activity,
+  opt_out_physicians: Database,
+  medical_equipment_suppliers: Database,
+  hospice_provider_measures: Activity,
+  hospice_state_measures: Activity,
+  hospice_national_measures: Activity,
+  snf_provider_measures: Activity,
+  nursing_home_providers: Database,
+  nursing_home_deficiencies: Activity,
+  home_health_national_measures: Activity,
 };
 
-const IMPORT_TYPES = [
-  { id: 'nppes_monthly', name: 'NPPES Monthly', desc: 'Provider registry data', icon: FileText, hasUrl: false },
-  { id: 'nppes_registry', name: 'NPPES Registry', desc: 'Full NPI registry', icon: FileText, hasUrl: false },
-  { id: 'cms_utilization', name: 'CMS Utilization', desc: 'Part B utilization & payment', icon: TrendingUp, hasUrl: false },
-  { id: 'cms_part_d', name: 'CMS Part D', desc: 'Prescription drug claims', icon: Activity, hasUrl: false },
-  { id: 'cms_order_referring', name: 'Order & Referring', desc: 'Order/referring providers', icon: Database, hasUrl: true },
-  { id: 'provider_service_utilization', name: 'Provider Service Util', desc: 'Provider-level HCPCS', icon: Activity, hasUrl: true },
-  { id: 'hospice_enrollments', name: 'Hospice Enrollments', desc: 'CMS hospice enrollment', icon: Database, hasUrl: true },
-  { id: 'home_health_enrollments', name: 'HH Enrollments', desc: 'CMS home health enrollment', icon: Database, hasUrl: true },
-  { id: 'home_health_cost_reports', name: 'HH Cost Reports', desc: 'Financial & utilization', icon: TrendingUp, hasUrl: false },
-  { id: 'nursing_home_chains', name: 'Nursing Home Chains', desc: 'Chain performance', icon: TrendingUp, hasUrl: false },
-  { id: 'home_health_pdgm', name: 'HH PDGM', desc: 'PDGM utilization', icon: TrendingUp, hasUrl: false },
-  { id: 'inpatient_drg', name: 'Inpatient DRG', desc: 'Hospital DRG data', icon: TrendingUp, hasUrl: false },
-  { id: 'provider_ownership', name: 'Provider Ownership', desc: 'Ownership/control info', icon: Database, hasUrl: false },
-  { id: 'medicare_hha_stats', name: 'Medicare HHA Stats', desc: 'Home health aggregate', icon: Activity, hasUrl: true },
-  { id: 'medicare_ma_inpatient', name: 'Medicare MA Inpatient', desc: 'MA inpatient stats', icon: Activity, hasUrl: true },
-  { id: 'medicare_part_d_stats', name: 'Medicare Part D Stats', desc: 'Part D aggregate', icon: Activity, hasUrl: true },
-  { id: 'medicare_snf_stats', name: 'Medicare SNF Stats', desc: 'SNF aggregate', icon: Activity, hasUrl: true },
-  { id: 'opt_out_physicians', name: 'Opt-Out Physicians', desc: 'CMS Opt-Out', icon: Database, hasUrl: true },
-  { id: 'medical_equipment_suppliers', name: 'Med Equip Suppliers', desc: 'DMEPOS Suppliers', icon: Database, hasUrl: true },
-  { id: 'hospice_provider_measures', name: 'Hospice Provider Measures', desc: 'Hospice quality', icon: Activity, hasUrl: true },
-  { id: 'hospice_state_measures', name: 'Hospice State Measures', desc: 'Hospice state aggregate', icon: Activity, hasUrl: true },
-  { id: 'hospice_national_measures', name: 'Hospice National Measures', desc: 'Hospice national aggregate', icon: Activity, hasUrl: true },
-  { id: 'snf_provider_measures', name: 'SNF Provider Measures', desc: 'SNF quality', icon: Activity, hasUrl: true },
-  { id: 'nursing_home_providers', name: 'Nursing Home Providers', desc: 'Nursing home details', icon: Database, hasUrl: true },
-  { id: 'nursing_home_deficiencies', name: 'Nursing Home Deficiencies', desc: 'Nursing home inspections', icon: Activity, hasUrl: true },
-  { id: 'home_health_national_measures', name: 'HH National Measures', desc: 'Home health national aggregate', icon: Activity, hasUrl: true },
-];
+const IMPORT_TYPE_DESCRIPTION_MAP = {
+  nppes_registry: 'Full NPI registry',
+  cms_order_referring: 'Order/referring providers',
+  provider_service_utilization: 'Provider-level HCPCS',
+  hospice_enrollments: 'CMS hospice enrollment',
+  home_health_enrollments: 'CMS home health enrollment',
+  medicare_hha_stats: 'Home health aggregate',
+  medicare_ma_inpatient: 'MA inpatient stats',
+  medicare_part_d_stats: 'Part D aggregate',
+  medicare_snf_stats: 'SNF aggregate',
+  opt_out_physicians: 'CMS Opt-Out',
+  medical_equipment_suppliers: 'DMEPOS suppliers',
+  hospice_provider_measures: 'Hospice quality',
+  hospice_state_measures: 'Hospice state aggregate',
+  hospice_national_measures: 'Hospice national aggregate',
+  snf_provider_measures: 'SNF quality',
+  nursing_home_providers: 'Nursing home details',
+  nursing_home_deficiencies: 'Nursing home inspections',
+  home_health_national_measures: 'Home health national aggregate',
+};
+
+const IMPORT_TYPES = SCHEDULABLE_CMS_IMPORT_TYPES.map(type => ({
+  id: type.id,
+  name: type.label,
+  desc: IMPORT_TYPE_DESCRIPTION_MAP[type.id] || type.label,
+  icon: IMPORT_TYPE_ICON_MAP[type.id] || Database,
+  hasUrl: true,
+}));
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
   const [step, setStep] = useState(1);
@@ -177,7 +191,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     // Creating one here caused orphan "validating" batches that never got updated.
     try {
       const invokeParams = {
-        import_type: selectedType.id,
+        import_type: normalizeCmsImportType(selectedType.id),
         file_url: fileUrl || undefined,
         dry_run: dryRun,
         year: parseInt(year) || new Date().getFullYear(),
@@ -232,7 +246,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     key={t.id}
                     onClick={() => { 
                       setSelectedType(t); 
-                      const years = AVAILABLE_YEARS[t.id];
+                      const years = getCmsImportTypeYears(t.id);
                       setYear(years ? String(years[0]) : String(new Date().getFullYear() - 2));
                       setStep(2); 
                     }}
@@ -304,13 +318,13 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             {/* Year */}
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-400">Data Year</Label>
-              {AVAILABLE_YEARS[selectedType.id] ? (
+              {getCmsImportTypeYears(selectedType.id) ? (
                 <Select value={year} onValueChange={setYear}>
                   <SelectTrigger className="h-8 w-36 text-sm bg-slate-800/50 border-slate-700 text-slate-300">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_YEARS[selectedType.id].map(y => (
+                    {getCmsImportTypeYears(selectedType.id).map(y => (
                       <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                     ))}
                   </SelectContent>

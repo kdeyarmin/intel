@@ -39,6 +39,7 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -49,35 +50,9 @@ const CATEGORY_LABELS = {
   other: 'Other',
 };
 
-const IMPORT_TYPE_LABELS = {
-  'nppes_monthly': 'NPPES Monthly',
-  'nppes_registry': 'NPPES Registry',
-  'cms_utilization': 'CMS Utilization',
-  'cms_order_referring': 'Order & Referring',
-  'pa_home_health': 'PA Home Health',
-  'hospice_providers': 'Hospice Providers',
-  'nursing_home_chains': 'Nursing Home Chains',
-  'hospice_enrollments': 'Hospice Enrollments',
-  'home_health_enrollments': 'Home Health Enrollments',
-  'home_health_cost_reports': 'Home Health Cost Reports',
-  'cms_service_utilization': 'Service Utilization',
-  'provider_service_utilization': 'Provider Service Utilization',
-  'home_health_pdgm': 'Home Health PDGM',
-  'inpatient_drg': 'Inpatient DRG',
-  'provider_ownership': 'Provider Ownership',
-  'opt_out_physicians': 'Opt-Out Physicians',
-  'medicare_hha_stats': 'Medicare HHA Stats',
-  'medicare_ma_inpatient': 'Medicare MA Inpatient',
-  'medicare_snf_stats': 'Medicare SNF Stats',
-  'medical_equipment_suppliers': 'Medical Equipment Suppliers',
-  'hospice_provider_measures': 'Hospice Provider Measures',
-  'hospice_state_measures': 'Hospice State Measures',
-  'hospice_national_measures': 'Hospice National Measures',
-  'snf_provider_measures': 'SNF Provider Measures',
-  'nursing_home_providers': 'Nursing Home Providers',
-  'nursing_home_deficiencies': 'Nursing Home Deficiencies',
-  'home_health_national_measures': 'Home Health National Measures',
-};
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  provider_service_utilization: 'Provider Service Utilization',
+});
 
 export default function ImportMonitoring() {
   const [showOnlyLatest, setShowOnlyLatest] = useState(true);
@@ -250,7 +225,6 @@ export default function ImportMonitoring() {
       }
       refreshBatches();
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staleBatches.length]);
 
   const displayBatches = useMemo(() => {
@@ -1061,24 +1035,12 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   const [historySearch, setHistorySearch] = useState('');
   const [historyType, setHistoryType] = useState('all');
 
-  const IMPORT_TYPE_LABELS = {
-    'nppes_monthly': 'NPPES Monthly', 'nppes_registry': 'NPPES Registry',
-    'cms_utilization': 'CMS Utilization',
-    'cms_order_referring': 'Order & Referring', 'hospice_enrollments': 'Hospice Enrollments',
-    'home_health_enrollments': 'HH Enrollments', 'home_health_cost_reports': 'HH Cost Reports',
-    'nursing_home_chains': 'Nursing Home Chains', 'provider_service_utilization': 'Provider Service Util',
-    'home_health_pdgm': 'HH PDGM', 'inpatient_drg': 'Inpatient DRG',
-    'provider_ownership': 'Provider Ownership', 'medicare_hha_stats': 'Medicare HHA Stats',
-    'medicare_ma_inpatient': 'Medicare MA Inpatient',
-    'medicare_snf_stats': 'Medicare SNF Stats', 'medical_equipment_suppliers': 'Medical Equipment Suppliers',
-    'hospice_provider_measures': 'Hospice Provider Measures',
-    'hospice_state_measures': 'Hospice State Measures',
-    'hospice_national_measures': 'Hospice National Measures',
-    'snf_provider_measures': 'SNF Provider Measures',
-    'nursing_home_providers': 'Nursing Home Providers',
-    'nursing_home_deficiencies': 'Nursing Home Deficiencies',
-    'home_health_national_measures': 'Home Health National Measures',
-  };
+  const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+    home_health_enrollments: 'HH Enrollments',
+    home_health_cost_reports: 'HH Cost Reports',
+    provider_service_utilization: 'Provider Service Util',
+    home_health_pdgm: 'HH PDGM',
+  });
 
   const statusColors = {
     processing: 'bg-blue-500/15 text-blue-400',

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { pagesConfig } from '@/pages.config';
+import { pagesConfig } from '@/pages.config.js';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
   Stethoscope, ListChecks, FileBarChart2, ArrowUp, ArrowDown
