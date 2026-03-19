@@ -34,6 +34,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       setDashDesc('');
       onSelect(d.id);
     },
+    onError: (err) => alert(`Failed to create dashboard: ${err.message}`),
   });
 
   const deleteMutation = useMutation({
@@ -42,11 +43,13 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] });
       onSelect(null);
     },
+    onError: (err) => alert(`Failed to delete dashboard: ${err.message}`),
   });
 
   const favMutation = useMutation({
     mutationFn: (db) => base44.entities.AnalyticsDashboard.update(db.id, { is_favorite: !db.is_favorite }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] }),
+    onError: (err) => alert(`Failed to update favorite: ${err.message}`),
   });
 
   const defaultMutation = useMutation({
@@ -57,6 +60,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       await base44.entities.AnalyticsDashboard.update(db.id, { is_default: !db.is_default });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] }),
+    onError: (err) => alert(`Failed to update default dashboard: ${err.message}`),
   });
 
   const activeDashboard = dashboards.find(d => d.id === activeId);

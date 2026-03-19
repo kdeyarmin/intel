@@ -52,6 +52,7 @@ export default function ReferralPathwayAnalysis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referralAnalyses'] });
     },
+    onError: (err) => alert(`Analysis failed: ${err.message}`),
   });
 
   const handleAnalyze = async () => {

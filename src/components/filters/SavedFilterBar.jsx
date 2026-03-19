@@ -30,11 +30,13 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
       setSaveOpen(false);
       setNewName('');
     },
+    onError: (err) => alert(`Failed to save filter: ${err.message}`),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.SavedFilter.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['savedFilters', page] }),
+    onError: (err) => alert(`Failed to delete filter: ${err.message}`),
   });
 
   const toggleDefaultMutation = useMutation({
@@ -46,6 +48,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
       await base44.entities.SavedFilter.update(filter.id, { is_default: !filter.is_default });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['savedFilters', page] }),
+    onError: (err) => alert(`Failed to update default filter: ${err.message}`),
   });
 
   const handleSave = () => {
