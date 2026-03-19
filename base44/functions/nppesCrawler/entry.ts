@@ -686,20 +686,21 @@ Deno.serve(async (req) => {
         // Stop ALL active queue items in a loop until none remain (handles >5000 items)
         // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
         let totalStopped = 0;
-        let batchItems;
         const stopStartTime = Date.now();
-        do {
-            if (Date.now() - stopStartTime > 15000) {
-                console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
-                break;
-            }
-            batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 500));
+        try {
+            const batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
             for (let i = 0; i < batchItems.length; i += 50) {
-               const chunk = batchItems.slice(i, i+50);
-               await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
-               totalStopped += chunk.length;
+                if (Date.now() - stopStartTime > 15000) {
+                    console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+                    break;
+                }
+                const chunk = batchItems.slice(i, i+50);
+                await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+                totalStopped += chunk.length;
             }
-        } while (batchItems.length > 0);
+        } catch (e) {
+            console.error('[Crawler] Error bulk stopping items:', e.message);
+        }
 
         // Also cancel any active batches
         const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
