@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+type ScoreBreakdown = Record<string, {
+  value: number;
+  weight: number;
+  contribution: number;
+}>;
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -33,12 +39,12 @@ Deno.serve(async (req) => {
     const primaryLocation = locations.find(l => l.is_primary) || locations[0];
 
     // Get weights from scoring rules
-    const weights = {};
+    const weights: Record<string, number> = {};
     scoringRules.forEach(rule => {
       weights[rule.category] = rule.weight / 100;
     });
 
-    const scores = {};
+    const scores: Record<string, number> = {};
     const reasons = [];
 
     // 1. Specialty Match (20%)
@@ -121,7 +127,7 @@ Deno.serve(async (req) => {
 
     // Calculate weighted final score
     let finalScore = 0;
-    const breakdown = {};
+    const breakdown: ScoreBreakdown = {};
 
     Object.keys(scores).forEach(category => {
       const weight = weights[category] || 0;

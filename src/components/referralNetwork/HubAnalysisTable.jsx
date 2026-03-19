@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Crown, ExternalLink, ArrowUpDown } from 'lucide-react';
 
-export default function HubAnalysisTable({ hubs = [], sortKey, sortDir, onSort }) {
+export default function HubAnalysisTable({ hubs = [], sortKey, _sortDir, onSort }) {
   const fv = (v) => {
     if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
     if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;

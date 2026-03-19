@@ -48,7 +48,7 @@ export default function RelatedLocations({ npi }) {
               const status = STATUS_CONFIG[match.status] || STATUS_CONFIG.suggested;
               const confColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
               return (
-                <div key={match.id} className="bg-white rounded-lg border border-gray-200 p-3">
+                <div key={match.id} className="bg-slate-800/40 rounded-lg border border-slate-700/50 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">

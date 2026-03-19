@@ -1,12 +1,11 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, MapPin, GitBranch, Activity, FileText, Mail, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
-function StatCard({ title, value, subtitle, icon: Icon, iconColor, link, loading, badge }) {
+function StatCard({ title, value, subtitle, link, loading, badge }) {
   const content = (
     <Card className="bg-[#141d30] border-slate-700/50 hover:border-cyan-500/30 transition-all cursor-pointer group">
       <CardContent className="p-4">
@@ -22,12 +21,11 @@ function StatCard({ title, value, subtitle, icon: Icon, iconColor, link, loading
               </>
             )}
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <div className="p-2 rounded-lg bg-slate-800/80 border border-slate-700/50">
-              <Icon className={`w-4 h-4 ${iconColor}`} />
+          {badge && !loading && (
+            <div className="flex flex-col items-end gap-1.5">
+              <Badge className={`text-[9px] ${badge.className}`}>{badge.label}</Badge>
             </div>
-            {badge && !loading && <Badge className={`text-[9px] ${badge.className}`}>{badge.label}</Badge>}
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -62,48 +60,36 @@ export default function DatabaseOverview({ stats, loading }) {
           title="Providers"
           value={formatCount(stats?.totalProviders, est)}
           subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} need enrichment` : null}
-          icon={Users}
-          iconColor="text-cyan-400"
           link="Providers"
           loading={loading}
         />
         <StatCard
           title="Locations"
           value={formatCount(stats?.totalLocations, est)}
-          icon={MapPin}
-          iconColor="text-sky-400"
           link="Locations"
           loading={loading}
         />
         <StatCard
           title="Referrals"
           value={formatCount(stats?.totalReferrals, est)}
-          icon={GitBranch}
-          iconColor="text-violet-400"
           link="Referrals"
           loading={loading}
         />
         <StatCard
           title="Utilization"
           value={formatCount(stats?.totalUtilization, est)}
-          icon={Activity}
-          iconColor="text-emerald-400"
           link="Utilization"
           loading={loading}
         />
         <StatCard
           title="Taxonomies"
           value={formatCount(stats?.totalTaxonomies, est)}
-          icon={FileText}
-          iconColor="text-amber-400"
           loading={loading}
         />
         <StatCard
           title="Emails Found"
           value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
           subtitle={`${emailPct}%${stats?.emailStats?.isEstimated ? '~' : ''} coverage`}
-          icon={Mail}
-          iconColor="text-pink-400"
           link="EmailSearchBot"
           loading={loading}
         />

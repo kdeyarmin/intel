@@ -1,9 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Activity, CheckCircle2, XCircle, Clock, Zap,
-  Database, ArrowUpDown, TrendingUp, TrendingDown, Server
+import { CheckCircle2, Clock, Zap, ArrowUpDown, Server
 } from 'lucide-react';
 
 function formatDuration(ms) {
@@ -31,11 +29,12 @@ export default function SystemStatusPanel({ batches }) {
       .filter(d => d > 0);
     const avgDuration = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
 
-    const totalRowsProcessed = completed24h.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+    // Total rows processed in 24h
+    const totalRowsProcessed = last24h.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
     
     // Success rate
     const finishedCount = completed24h.length + failed24h.length;
-    const successRate = finishedCount > 0 ? Math.round((completed24h.length / finishedCount) * 100) : null;
+    const successRate = finishedCount > 0 ? Math.round((completed24h.length / finishedCount) * 100) : 100;
 
     // Throughput (rows per minute)
     const throughput = avgDuration > 0 && totalRowsProcessed > 0
@@ -84,8 +83,8 @@ export default function SystemStatusPanel({ batches }) {
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
             <p className="text-[10px] text-slate-400">Success Rate (24h)</p>
-            <p className={`text-lg font-bold ${stats.successRate === null ? 'text-slate-400' : stats.successRate >= 80 ? 'text-emerald-400' : stats.successRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
-              {stats.successRate === null ? '—' : `${stats.successRate}%`}
+            <p className={`text-lg font-bold ${stats.successRate >= 80 ? 'text-emerald-400' : stats.successRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+              {stats.successRate}%
             </p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">

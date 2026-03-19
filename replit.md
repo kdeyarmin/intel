@@ -11,16 +11,18 @@ A React/Vite frontend application built on the Base44 SDK for provider intellige
 - **UI Components**: shadcn/ui component library with Radix UI primitives
 
 ## Key Sections
-- Dashboard with provider database stats
+- Dashboard with provider database stats and proactive alerts
 - Provider management (All Providers, Locations, Territory Map)
-- Sales & Outreach (Lead Lists, Email Bot, Campaigns, Outreach)
-- Analytics (CMS Data, Network, Advanced)
+- Sales & Outreach (Project Management, Lead Lists, Email Bot, Campaigns, Outreach)
+- Analytics (CMS Data, Network, Advanced, Custom Reports)
 - AI Assistant and AI enrichment tools
 - Data imports from Medicare/CMS datasets
+- API Connectors, CMS Data Sources, Reconciliation Dashboard
+- Security Audit, Import Overview, Utilization pages
 
 ## Configuration
 - Vite dev server: `0.0.0.0:5000`, `allowedHosts: true` (required for Replit proxy)
-- Base44 App ID configured via `VITE_BASE44_APP_ID` environment variable (set as env var, not just a secret)
+- Base44 App ID configured via `VITE_BASE44_APP_ID` environment variable
 - Base44 API proxy: `VITE_BASE44_APP_BASE_URL` must be set to `https://base44.app` for the Vite dev proxy to route `/api` calls to the Base44 backend (handled by `@base44/vite-plugin`)
 - Deployment: Static site (build: `npm run build`, publicDir: `dist`)
 
@@ -36,80 +38,21 @@ npm run build
 ```
 Output goes to `dist/` directory.
 
-## Import Functions (functions/ directory)
-These are Base44 serverless functions (Deno-based) that handle data imports:
+## Source: GitHub
+Codebase imported from `kdeyarmin/intel` GitHub repository.
 
-### Medicare ZIP-Based Imports (download ZIP/XLSX from CMS)
-- `importMedicareHHA.ts` - Home Health Agency stats (entity: MedicareHHAStats)
-- `importMedicareMAInpatient.ts` - Medicare Advantage Inpatient (entity: MedicareMAInpatient)
-- `importMedicarePartD.ts` - Part D aggregate stats (entity: MedicarePartDStats)
-- `importMedicareSNF.ts` - Skilled Nursing Facility stats (entity: MedicareSNFStats)
+## Backend Functions (functions/ directory)
+Base44 serverless functions (Deno-based) — 65 functions total, covering imports, enrichment, data quality, email search, campaigns, and more.
 
-### CMS API-Based Imports (JSON API pagination)
-- `autoImportCMSData.ts` - Handles: cms_order_referring, opt_out_physicians, hospice_enrollments, home_health_enrollments, provider_service_utilization, cms_part_d, hospital_general_info, nursing_home_compare, home_health_compare, provider_ownership, dmepos_suppliers, medicare_inpatient_charges, medicare_outpatient_charges
-
-### NPPES/Special Imports
-- `triggerImport.ts` routes `nppes_monthly` → `importNPPESFlatFile`, `nppes_registry` → `nppesCrawler`
-
-### Orchestration
-- `triggerImport.ts` - Central dispatcher routing to ZIP handlers, special handlers (NPPES), or autoImportCMSData
-- `runScheduledImports.ts` - Runs scheduled imports from ImportScheduleConfig
-- `cancelStalledImports.ts` - Auto-retries or fails stalled imports
-- `importNPPESFlatFile.ts` - Streaming CSV processor for NPPES flat files
-
-### NPPES Crawler (nppesCrawler.ts)
-- **Wave-based state batching**: `STATE_WAVE_SIZE = 5` — only 5 states are queued at a time; when all 5 complete, the next wave of 5 is automatically queued
-- A master batch (`crawler_master_*`) tracks all target states, queued states, current wave states, and wave progress in `retry_params`
-- Wave progression is gated: next wave only starts when ALL current wave state batches are completed/failed (prevents premature queue flooding)
-- Only considers batches created after the master batch timestamp to avoid mixing with historical runs
-- `MAX_EXEC_MS = 45000` (45s) per worker invocation; workers self-re-invoke with `await` (not setTimeout) for reliable chaining
-- `batch_start` caps concurrency at 3, staggers worker launches by 2s to prevent rate-limit storms
-- Queue items with transient errors (429/timeout/network) auto-retry up to 5 times by being set back to `pending`
-- 500ms delay between NPPES API page fetches to reduce rate limiting
-- Frontend `BatchProcessPanel` polls every 15s for live batch status, shows wave progress (Wave X/Y with state names)
-- Per-state results show Processing/Success/Failed badges with live updates
-
-### Import Resilience
-- All import functions save records incrementally in chunks (25-50 records)
-- On failure, the current offset and imported row count are saved in `retry_params` and `cancel_reason`
-- Failed/paused batches can be resumed from where they left off via the Resume button (uses `resume_offset`/`row_offset`)
-- Records committed before a failure remain in the database; resume skips already-processed rows
-
-### Stall Detection
-- `ImportMonitoring.jsx` auto-fails batches stuck in processing/validating: 15 min for normal imports, 2 hours for NPPES crawler batches
-- `cancelStalledImports.ts` backend stall checker also uses 2-hour threshold for crawler batches (vs 1 hour default)
-- `CriticalFailureAlerts.jsx` reads both `message` and `detail` fields from error_samples, plus `cancel_reason` as fallback
-
-### Numeric Field Clamping (Out of Range Protection)
-- All 4 Medicare ZIP importers and `autoImportCMSData` have `clampNumericFields()` applied before database writes
-- **Financial fields** (charges, payments, costs, spending) use float range (max ~999 billion) to accommodate national-level Medicare financial data
-- **Count/integer fields** (visits, stays, persons) use Int32 range (max ~2.14 billion)
-- String values are truncated to 500 chars max
-- `raw_data` JSON stores all values as strings to prevent numeric overflow in JSON serialization
-- HHA importer also has field-aware `safeNum(val, isFinancial)` that clamps at parse time
-- Rate-limit resilience: imports pause (status='paused') after 3 consecutive rate limit failures instead of continuing to error; inter-chunk delay 1200ms; resumable from saved offset
-
-### Dashboard Stats
-- `getDashboardStats.ts` paginates through all entity records for exact counts (no more 500-record caps)
-- `DatabaseOverview.jsx` displays exact numbers without the "+" estimated indicator
-
-### Email Search Bot
-- `emailSearchBot.ts` - AI-powered email discovery: paginates through ALL providers (no page cap), searches using LLM with internet context, validates results; 25s scan timeout prevents Deno timeouts on large datasets
-- `bulkVerifyEmails.ts` - Bulk email verification: paginates through ALL providers (no page cap), runs DNS/AI validation in batches; same 25s scan timeout
-- Both frontend search and verification auto-loop through all batches without user intervention (with Stop button and progress tracking)
-- `has_more` logic: based on actual `totalEligibleRemaining` count + `reachedEndOfProviders` flag — no false-negative stops
-
-### URL Monitoring
-- `checkCMSUrls.ts` - Consolidated CMS URL monitor: primary lookup via data.json catalog, with brute-force URL pattern probing as fallback for Part D and SNF datasets
-
-### Provider Enrichment (consolidated)
-- `enrichProviderData.ts` - NPPES Registry API lookup (demographics, locations, taxonomies)
-- `enrichProviderWithAI.ts` - Unified AI enrichment: supports single provider (by ID), NPI-based lookup (DB + NPPES + AI), and batch mode with EnrichmentRecord creation
-- `autoEnrichProvider.ts` - Event-triggered wrapper (on provider create), calls enrichProviderWithAI
-- `autoEnrichmentAgent.ts` - Background agent for providers with missing NPIs or pending enrichment
-- `batchEnrichExternalData.ts` - Batch orchestrator for Medicare + DEA enrichment
-- `enrichProviderMedicareData.ts` - Medicare Provider Compare API
-- `enrichProviderDEAData.ts` - DEA Registry lookup
-
-### Shared Constants
-- `src/constants/importTypes.js` - Single source of truth for IMPORT_TYPE_LABELS (27 types), IMPORT_TYPE_SHORT_LABELS, and IMPORT_TYPES list (with icons/descriptions for NewImportDialog)
+### Key Function Categories
+- **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
+- **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicarePartD (if present), importMedicareSNF
+- **NPPES**: nppesCrawler, importNPPESFlatFile, validateNPPESBatch, manageCrawlerRetries, retryFailedNPPESStates
+- **Enrichment**: enrichProviderData, enrichProviderWithAI, enrichProviderThirdParty, enrichProviderMedicareData, enrichProviderDEAData, providerEnrichmentApi, autoEnrichProvider
+- **Email**: emailSearchBot, bulkEmailLookup, verifyProviderEmail, deduplicateProviderEmails
+- **Data quality**: runDataQualityScan, validateDataQuality, cleanProviderData, reconcileProviderData, checkDataQualityAlerts
+- **URL monitoring**: checkCMSUrls, checkSNFUrls, testCMSAPI, testCMSUrl, testCMSOffset, testCMSApiConnector
+- **Campaigns**: sendCampaignMessages, trackCampaignMetrics, generatePersonalizedOutreach, generateHyperPersonalizedMessages
+- **Analytics**: calculateProviderScore, calculateOutreachScore, analyzeProviderNetwork, getDashboardStats, getDataHealthMetrics, captureMetricsSnapshot
+- **Event-driven**: onImportBatchCompleted, onImportBatchFailed, onRuleCreated
+- **Other**: predictImportFormat, findEmail, matchProvidersToLocations, sendErrorNotification, generateScheduledReport, generateDataQualityReport

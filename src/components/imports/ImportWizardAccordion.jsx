@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
-  ChevronDown, ChevronUp, CheckCircle2, Circle, Upload, Loader2,
-  FileText, AlertCircle, XCircle, RotateCcw, Sparkles
+  ChevronDown, ChevronUp, CheckCircle2, Circle, Upload, Loader2, AlertCircle, XCircle, RotateCcw, Sparkles
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,10 +16,9 @@ import ColumnMapper from './ColumnMapper';
 import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from './columnMappingAI';
 import AIBatchCategorizer from './AIBatchCategorizer';
 import AICleaningSuggestions from './AICleaningSuggestions';
-import { invokeWithRetry } from '@/utils';
 import NPPESFlatFileHelper from './NPPESFlatFileHelper';
 
-function parseCSVLine(line) {
+function _parseCSVLine(line) {
   const result = [];
   let current = '';
   let inQuotes = false;
@@ -75,7 +73,7 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
   );
 }
 
-export default function ImportWizardAccordion({ selectedType, onReset, onComplete, compact = false }) {
+export default function ImportWizardAccordion({ selectedType, onReset, onComplete, _compact = false }) {
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -153,7 +151,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
     }
   }, [isMappingComplete, mapStep, aiMappingLoading]);
 
-  const getNPIFromRow = (row) => {
+  const _getNPIFromRow = (row) => {
     const npiCol = selectedType.requiredColumns.find(c => c.toUpperCase() === 'NPI' || c === 'Rndrng_NPI');
     if (npiCol && columnMapping[npiCol]) {
       const val = row[columnMapping[npiCol]];
@@ -228,7 +226,8 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
       setLiveBatchId(batch.id);
       setProcessingStatus('Validating file in background...');
 
-      invokeWithRetry(base44, 'triggerImport', {
+      // Fire validation + import in background — don't await
+      base44.functions.invoke('triggerImport', {
         import_type: selectedType.id,
         file_url: fileUrl,
         dry_run: dryRun,

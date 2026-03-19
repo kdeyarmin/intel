@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Download, Calendar } from 'lucide-react';
-import { exportCSV, exportExcel, exportPDF, exportJSON, filterByDateRange, pickFields } from './exportUtils';
+import { exportCSV, exportExcel, exportPDF, exportJSON, pickFields } from './exportUtils';
 import ExportFormatSelector from './ExportFormatSelector';
 import ColumnSelector from './ColumnSelector';
 import ScheduleExportForm from './ScheduleExportForm';

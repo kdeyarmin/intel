@@ -1,4 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+
+type MessageUpdate = {
+  status?: 'opened' | 'responded' | 'bounced';
+  opened_at?: string;
+  responded_at?: string;
+};
 
 Deno.serve(async (req) => {
   try {
@@ -27,7 +33,7 @@ Deno.serve(async (req) => {
       }
 
       const message = messages[0];
-      const updateData = {};
+      const updateData: MessageUpdate = {};
 
       if (action === 'opened') {
         updateData.status = 'opened';
@@ -59,7 +65,7 @@ Deno.serve(async (req) => {
       total_recipients: totalMessages,
       sent_count: sentMessages,
       pending_count: messages.filter(m => m.status === 'pending').length,
-      open_rate: totalMessages > 0 ? (openedMessages / sentMessages * 100).toFixed(1) : 0,
+      open_rate: sentMessages > 0 ? (openedMessages / sentMessages * 100).toFixed(1) : 0,
       response_rate: sentMessages > 0 ? (respondedMessages / sentMessages * 100).toFixed(1) : 0,
       bounce_rate: sentMessages > 0 ? (bouncedMessages / sentMessages * 100).toFixed(1) : 0,
       conversion_count: respondedMessages,

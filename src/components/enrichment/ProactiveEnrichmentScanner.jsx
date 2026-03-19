@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import {
-  Sparkles, Loader2, CheckCircle2, AlertTriangle, Search,
+import { Loader2, CheckCircle2, AlertTriangle, Search,
   Phone, Wifi, DollarSign, ShieldCheck, Activity, XCircle
 } from 'lucide-react';
 
@@ -19,7 +17,7 @@ const DATA_POINTS = [
   { key: 'pricing', label: 'Cash Pay / Pricing', icon: DollarSign, description: 'Self-pay pricing if available' },
 ];
 
-export default function ProactiveEnrichmentScanner({ providers = [], totalProviders = 0 }) {
+export default function ProactiveEnrichmentScanner({ providers = [], _totalProviders = 0 }) {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentName: '' });

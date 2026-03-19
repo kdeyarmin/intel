@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Crown, AlertTriangle, MapPin, Stethoscope, TrendingUp, Network } from 'lucide-react';
+import { Loader2, Sparkles, Crown, AlertTriangle, TrendingUp, Network } from 'lucide-react';
 import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
 import StrategicPartnerFinder from './StrategicPartnerFinder';
 

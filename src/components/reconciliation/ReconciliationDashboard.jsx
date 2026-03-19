@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { CheckCircle2, AlertTriangle, Clock, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReconciliationSettingsPanel from './ReconciliationSettingsPanel';
@@ -63,14 +62,14 @@ export default function ReconciliationDashboard() {
 
   const handleResolveDiscrepancy = async (reconciliationId, action) => {
     try {
-      await base44.entities.ProviderReconciliation.update(reconciliationId, {
-        resolution_status: action === 'accept' ? 'accepted' : 'rejected',
-        resolved_at: new Date().toISOString(),
-        resolved_by: (await base44.auth.me()).email,
+      await base44.functions.invoke('reconcileProviderData', {
+        action: 'resolve',
+        reconciliation_id: reconciliationId,
+        resolution: action
       });
-      toast.success(`Discrepancy ${action === 'accept' ? 'accepted' : 'rejected'}`);
+      toast.success(`Discrepancy ${action === 'accept' ? 'accepted and merged' : 'rejected'}`);
       queryClient.invalidateQueries();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update resolution');
     }
   };

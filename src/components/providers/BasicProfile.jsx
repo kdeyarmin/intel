@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, MapPin, Phone, Printer, Stethoscope, Mail, Edit, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Provider.update(provider.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['provider', provider.npi]);
+      queryClient.invalidateQueries({ queryKey: ['provider', provider.npi] });
       toast.success('Provider updated successfully');
       setIsEditing(false);
     },

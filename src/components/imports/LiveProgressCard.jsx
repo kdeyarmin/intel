@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  Loader2, CheckCircle2, XCircle, Pause, Clock, Zap, ArrowUpDown,
-  FileText, Activity, Play
+  Loader2, XCircle, Pause, Clock,
+  FileText, Activity
 } from 'lucide-react';
 import ResumeImportButton from './ResumeImportButton';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  home_health_enrollments: 'HH Enrollments',
+  home_health_cost_reports: 'HH Cost Reports',
+  home_health_pdgm: 'HH PDGM',
+});
 
 function getPhaseLabel(status) {
   if (status === 'validating') return 'Validating rows...';
@@ -19,9 +24,24 @@ function getPhaseLabel(status) {
 
 function getProgressValue(batch) {
   const total = batch.total_rows || 0;
+
+  // For crawler batches, use retry_params.completed_items for progress (each state has ~100 zip prefix items)
+  if (total === 0 && batch.file_name?.startsWith('crawler_')) {
+    const rp = batch.retry_params || {};
+    const completed = rp.completed_items || 0;
+    // Each state typically has 100 queue items (zip prefixes 00-99)
+    const estimated_total = rp.total_queue_items || 100;
+    if (completed > 0) {
+      return Math.min(Math.round((completed / estimated_total) * 100), 99);
+    }
+    // No items completed yet but processing — show small progress to indicate activity
+    if (batch.status === 'processing') return 5;
+    return 0;
+  }
+
   if (total === 0) {
     if (batch.status === 'validating') return 15;
-    if (batch.status === 'processing') return 50;
+    if (batch.status === 'processing') return 10;
     return 0;
   }
   const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
@@ -34,7 +54,7 @@ function getProgressValue(batch) {
 
 function getElapsedTime(startDate) {
   if (!startDate) return '';
-  const ms = Date.now() - new Date(startDate).getTime();
+  const ms = Math.max(0, Date.now() - new Date(startDate).getTime());
   const secs = Math.floor(ms / 1000);
   if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);
@@ -59,7 +79,7 @@ function RowProgressBar({ label, current, total, color }) {
 }
 
 export default function LiveProgressCard({ activeBatches }) {
-  const [elapsedTick, setElapsedTick] = useState(0);
+  const [_elapsedTick, setElapsedTick] = useState(0);
 
   // Tick every second for elapsed time
   useEffect(() => {
@@ -84,7 +104,7 @@ export default function LiveProgressCard({ activeBatches }) {
             const progress = getProgressValue(batch);
             const total = batch.total_rows || 0;
             const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
-            const imported = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0);
+            const _imported = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0);
             const elapsed = getElapsedTime(batch.created_date);
             const isPaused = batch.status === 'paused';
 

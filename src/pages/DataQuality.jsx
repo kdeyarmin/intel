@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ShieldCheck, Play, Loader2, AlertTriangle, CheckCircle,
-  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot, MapPin, Copy
+  BarChart3, Clock, Sparkles, ListChecks, ShieldAlert, Bot
 } from 'lucide-react';
 import QualityScoreCard from '../components/dataQuality/QualityScoreCard';
 import RuleResultsTable from '../components/dataQuality/RuleResultsTable';
@@ -34,7 +34,7 @@ export default function DataQuality() {
     staleTime: 30000,
   });
 
-  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+  const { data: alerts = [], isLoading: _alertsLoading } = useQuery({
     queryKey: ['dqAlerts'],
     queryFn: () => base44.entities.DataQualityAlert.list('-created_date', 200),
     staleTime: 30000,
@@ -67,6 +67,7 @@ export default function DataQuality() {
       queryClient.invalidateQueries({ queryKey: ['dqScans'] });
       queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
     },
+    onError: (err) => alert(`Scan failed: ${err.message}`),
   });
 
   const latestScan = scans[0];

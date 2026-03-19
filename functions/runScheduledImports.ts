@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 const MAX_EXEC_MS = 45_000;
 
@@ -17,7 +17,8 @@ Deno.serve(async (req) => {
         // Allow service role calls (from scheduled automations) or admin users
         let user = null;
         try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-        if (user && user.role !== 'admin') {
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
@@ -44,29 +45,27 @@ Deno.serve(async (req) => {
             try {
                 if (schedule.import_type === 'nppes_registry') {
                     const config = schedule.nppes_config || {};
-                    
-                    if (config.crawl_all_states) {
-                        // Just trigger the auto-chain crawler — it handles state-by-state itself
-                        const res = await base44.asServiceRole.functions.invoke('nppesAutoChainCrawler', {
-                            taxonomy_description: config.taxonomy_description || '',
-                            entity_type: config.entity_type || '',
-                        });
-                        const data = res.data || res;
-                        runSummary = data.message || 'Crawler chain triggered';
-                        runStatus = data.error ? 'failed' : 'success';
-                    } else {
-                        const res = await base44.asServiceRole.functions.invoke('importNPPESRegistry', {
-                            state: config.state || '',
-                            taxonomy_description: config.taxonomy_description || '',
-                            entity_type: config.entity_type || '',
-                            city: config.city || '',
-                            postal_code: config.postal_code || '',
-                            dry_run: false,
-                        });
-                        const data = res.data || res;
-                        runSummary = `${data.valid_rows || 0} valid, ${data.imported_providers || 0} imported`;
-                        runStatus = 'success';
+                    const crawlerPayload: any = {
+                        action: 'batch_start',
+                        dry_run: false,
+                        skip_completed: false,
+                        taxonomy_description: config.taxonomy_description || '',
+                        entity_type: config.entity_type || '',
+                    };
+
+                    if (!config.crawl_all_states) {
+                        if (!config.state) {
+                            throw new Error('Scheduled NPPES crawler runs require a state when crawl_all_states is disabled');
+                        }
+                        crawlerPayload.states = [config.state];
                     }
+                    if (config.city) crawlerPayload.city = config.city;
+                    if (config.postal_code) crawlerPayload.postal_code = config.postal_code;
+
+                    const res = await base44.asServiceRole.functions.invoke('nppesCrawler', crawlerPayload);
+                    const data = res.data || res;
+                    runSummary = data.message || `Queued ${data.states_queued || 0} state(s) for crawling`;
+                    runStatus = data.error ? 'failed' : 'success';
                 } else {
                     // CMS data import — use triggerImport which has built-in URLs
                     // Resolve aliases: cms_utilization -> provider_service_utilization

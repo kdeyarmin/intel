@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Users, Building2, Navigation } from 'lucide-react';
+import { Users, Building2, Navigation } from 'lucide-react';
 
 export default function LocationGeoInsights({ location, coProviders = [], allLocations = [] }) {
   const insights = useMemo(() => {

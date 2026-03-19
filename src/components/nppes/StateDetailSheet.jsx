@@ -23,7 +23,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
       ) || null;
     },
     enabled: !!stateCode && isOpen,
-    refetchInterval: (data) => (data && data.status === 'processing' ? 2000 : false),
+    refetchInterval: (query) => (query.state.data && query.state.data.status === 'processing' ? 2000 : false),
   });
 
   const { data: errors, isLoading: errorsLoading } = useQuery({
@@ -37,10 +37,12 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'text-green-700 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950/40 dark:border-green-800';
-      case 'failed': return 'text-red-700 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/40 dark:border-red-800';
-      case 'processing': return 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800';
-      default: return 'text-slate-700 bg-slate-100 border-slate-200 dark:text-slate-400 dark:bg-slate-800/40 dark:border-slate-700';
+      case 'completed': return 'text-green-400 bg-green-500/10 border-green-500/20';
+      case 'failed': return 'text-red-400 bg-red-500/10 border-red-500/20';
+      case 'processing': case 'validating': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+      case 'paused': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+      case 'cancelled': return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+      default: return 'text-slate-400 bg-slate-800/40 border-slate-700/50';
     }
   };
 
@@ -48,7 +50,9 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
     switch (status) {
       case 'completed': return <CheckCircle2 className="w-5 h-5" />;
       case 'failed': return <XCircle className="w-5 h-5" />;
-      case 'processing': return <Loader2 className="w-5 h-5 animate-spin" />;
+      case 'processing': case 'validating': return <Loader2 className="w-5 h-5 animate-spin" />;
+      case 'paused': return <Clock className="w-5 h-5" />;
+      case 'cancelled': return <XCircle className="w-5 h-5" />;
       default: return <Clock className="w-5 h-5" />;
     }
   };
@@ -81,7 +85,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                 <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
               </div>
             ) : !batch ? (
-              <div className="text-center py-12 text-slate-500 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
+              <div className="text-center py-12 text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700/50">
                 <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No crawl data found for {stateCode}</p>
                 <p className="text-xs mt-1">Has this state been crawled yet?</p>
@@ -109,24 +113,24 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Total Fetched', value: batch.total_rows, color: 'text-slate-900 dark:text-slate-100' },
-                    { label: 'Imported', value: batch.imported_rows, color: 'text-green-600 dark:text-green-400' },
-                    { label: 'Updated', value: batch.updated_rows, color: 'text-blue-600 dark:text-blue-400' },
-                    { label: 'Skipped', value: batch.skipped_rows, color: 'text-slate-600 dark:text-slate-400' },
+                    { label: 'Total Fetched', value: batch.total_rows, color: 'text-slate-100' },
+                    { label: 'Imported', value: batch.imported_rows, color: 'text-green-400' },
+                    { label: 'Updated', value: batch.updated_rows, color: 'text-blue-400' },
+                    { label: 'Skipped', value: batch.skipped_rows, color: 'text-slate-400' },
                   ].map(item => (
-                    <div key={item.label} className="p-3 bg-white dark:bg-slate-800/30 rounded-lg border border-slate-200 dark:border-slate-700/50 shadow-sm">
+                    <div key={item.label} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 shadow-sm">
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{item.label}</div>
                       <div className={`text-2xl font-bold ${item.color}`}>
-                        {item.value?.toLocaleString() || '—'}
+                        {item.value != null ? item.value.toLocaleString() : '—'}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {batch.api_requests_count > 0 && (
+                {((batch.api_requests_count || 0) > 0 || (batch.rate_limit_count || 0) > 0) && (
                   <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                    <span>{batch.api_requests_count} API requests</span>
-                    {batch.rate_limit_count > 0 && (
+                    {(batch.api_requests_count || 0) > 0 && <span>{batch.api_requests_count} API requests</span>}
+                    {(batch.rate_limit_count || 0) > 0 && (
                       <span className="text-amber-500">{batch.rate_limit_count} rate limits hit</span>
                     )}
                   </div>

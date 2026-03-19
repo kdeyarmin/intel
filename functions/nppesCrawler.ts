@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 const US_STATES = [
     'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -6,16 +6,90 @@ const US_STATES = [
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 const NPPES_API_BASE = 'https://npiregistry.cms.hhs.gov/api/?version=2.1';
-const MAX_EXEC_MS = 45000;
-const STATE_WAVE_SIZE = 5;
+const MAX_EXEC_MS = 20000;
+
+type CrawlerPayload = {
+    action?: string;
+    states?: string[];
+    region?: string;
+    concurrency?: number;
+    skip_completed?: boolean;
+    dry_run?: boolean;
+    item_ids?: string[];
+    entity_type?: string;
+    taxonomy_description?: string;
+    city?: string;
+    postal_code?: string;
+};
+
+type TransformedProvider = {
+    npi: string;
+    entity_type: string;
+    status: string;
+    needs_nppes_enrichment: boolean;
+    first_name?: string;
+    last_name?: string;
+    middle_name?: string;
+    credential?: string;
+    gender?: string;
+    organization_name?: string;
+    enumeration_date?: string;
+    last_update_date?: string;
+};
+
+type ErrorSummaryEntry = {
+    count: number;
+    original_message: string;
+    affected_states: Set<string>;
+    sample_prefixes: Set<string>;
+    item_ids: string[];
+};
+
+type WorkerStats = {
+    valid: number;
+    invalid: number;
+    duplicate: number;
+    prov: { imported: number; updated: number; skipped: number };
+    api_calls: number;
+    rate_limit_hits: number;
+    prefix: string;
+    time_ms?: number;
+    shouldSlowDown?: boolean;
+};
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function normalizePostalCode(value) {
+    return String(value || '').replace(/[^0-9]/g, '').slice(0, 5);
+}
+
+
+async function incrementBatchQueueSize(base44, batchId, additionalItems) {
+    if (!additionalItems || additionalItems <= 0) return;
+    try {
+        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId));
+        const retry_params = batch.retry_params || {};
+        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, {
+            retry_params: {
+                ...retry_params,
+                total_queue_items: (retry_params.total_queue_items || 0) + additionalItems,
+            }
+        }));
+    } catch (e) {
+        console.warn(`[Crawler] Failed to increment queue size for ${batchId}: ${e.message}`);
+    }
+}
 
 async function withRetry(fn, maxRetries = 5) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try { return await fn(); } catch (e) {
-            if (/429|rate limit|too many requests/i.test(e.message) && attempt < maxRetries) {
-                await sleep((Math.pow(2, attempt) * 1000) + (Math.random() * 1000)); continue;
+            const isRateLimit = /429|rate limit|too many requests/i.test(e.message);
+            const isNetwork = /network|connection|reset|timeout/i.test(e.message);
+            if ((isRateLimit || isNetwork) && attempt < maxRetries) {
+                const backoff = Math.min((Math.pow(2, attempt) * 500) + (Math.random() * 1000), 5000);
+                console.warn(`[Retry] Attempt ${attempt} failed (${e.message}). Retrying in ${backoff}ms...`);
+                await sleep(backoff); 
+                continue;
             }
             throw e;
         }
@@ -42,7 +116,7 @@ async function batchLookupByNPI(entity, npis, base44) {
 }
 
 async function upsertProviders(records, base44) {
-    const FIELDS = ['first_name','last_name','organization_name','status','entity_type','last_update_date'];
+    const FIELDS = ['first_name','last_name','middle_name','credential','gender','organization_name','status','entity_type','last_update_date'];
     let imported = 0, updated = 0, skipped = 0;
     const BULK_SIZE = 50;
     for (let i = 0; i < records.length; i += BULK_SIZE) {
@@ -51,27 +125,48 @@ async function upsertProviders(records, base44) {
         try {
             const existing = await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000));
             const existingMap = new Map(existing.map(e => [e.npi, e]));
-            const toCreate = [], updatePromises = [];
+            const toCreate = [], updateTasks = [];
             for (const p of chunk) {
                 const ex = existingMap.get(p.npi);
                 if (!ex) { toCreate.push(p); }
                 else {
                     if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
-                        updatePromises.push(base44.asServiceRole.entities.Provider.update(ex.id, p).catch(() => {}));
+                        const merged = { ...ex, ...p };
+                        for (const k of Object.keys(merged)) {
+                            if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
+                        }
+                        updateTasks.push(async () => {
+                            await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                        });
                     } else { skipped++; }
                 }
             }
             if (toCreate.length > 0) { await withRetry(() => base44.asServiceRole.entities.Provider.bulkCreate(toCreate)); imported += toCreate.length; }
-            if (updatePromises.length > 0) { await Promise.all(updatePromises); updated += updatePromises.length; }
+            if (updateTasks.length > 0) {
+                for (let j = 0; j < updateTasks.length; j += 2) {
+                    const results = await Promise.all(updateTasks.slice(j, j + 2).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertProviders] Update failed: ${e.message}`); return false; })));
+                    updated += results.filter(Boolean).length;
+                    if (j + 2 < updateTasks.length) await sleep(200);
+                }
+            }
+            await sleep(50); // Reduced throttle delay
         } catch (e) {
-            for (const p of chunk) {
+            // Fallback: Parallelized individual ops
+            await Promise.all(chunk.map(async p => {
                 try {
                     const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
                     if (!ex) { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
-                    else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) { await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, p)); updated++; }
+                    else if (ex.last_update_date !== p.last_update_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
+                        const merged = { ...ex, ...p };
+                        for (const k of Object.keys(merged)) {
+                            if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
+                        }
+                        await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                        updated++;
+                    }
                     else { skipped++; }
-                } catch (err) {}
-            }
+                } catch (err) { console.warn(`[upsertProviders] Fallback op failed for NPI ${p.npi}: ${err.message}`); }
+            }));
         }
     }
     return { imported, updated, skipped };
@@ -89,18 +184,42 @@ async function upsertLocations(records, base44) {
         for (const loc of chunk) {
             const exLocs = existingMap[loc.npi] || [];
             const match = exLocs.find(ex => ex.location_type === loc.location_type && (ex.address_1 || '').trim().toLowerCase() === (loc.address_1 || '').trim().toLowerCase() && (ex.zip || '').substring(0, 5) === (loc.zip || '').substring(0, 5));
-            if (!match) { toCreate.push(loc); }
+            if (!match) { 
+                // Inherit email from any existing location of this provider if the new one doesn't have it
+                const oldLocWithEmail = exLocs.find(ex => ex.email);
+                if (oldLocWithEmail) {
+                    loc.email = oldLocWithEmail.email;
+                    loc.email_confidence = oldLocWithEmail.email_confidence;
+                    loc.email_source = oldLocWithEmail.email_source;
+                }
+                toCreate.push(loc); 
+            }
             else if (isIdentical(loc, match, FIELDS)) { skipped++; }
             else {
-                const merged = { ...loc };
-                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
-                updateTasks.push(base44.asServiceRole.entities.ProviderLocation.update(match.id, merged).catch(()=>{}));
+                const merged = { ...match, ...loc };
+                for (const k of Object.keys(merged)) {
+                    if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
+                }
+                updateTasks.push(async () => {
+                    await withRetry(() => base44.asServiceRole.entities.ProviderLocation.update(match.id, merged));
+                });
             }
         }
-        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (updateTasks.length > 0) {
+            for (let j = 0; j < updateTasks.length; j += 5) {
+                const results = await Promise.all(updateTasks.slice(j, j + 5).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertLocations] Update failed: ${e.message}`); return false; })));
+                updated += results.filter(Boolean).length;
+                if (j + 5 < updateTasks.length) await sleep(100);
+            }
+        }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { for (const loc of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) {} } }
+            catch (e) {
+                console.warn(`[upsertLocations] bulkCreate failed: ${e.message}, falling back to individual creates`);
+                await Promise.all(toCreate.map(async loc => {
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) { console.warn(`[upsertLocations] Individual create failed for NPI ${loc.npi}: ${err.message}`); }
+                }));
+            }
         }
     }
     return { imported, updated, skipped };
@@ -121,15 +240,30 @@ async function upsertTaxonomies(records, base44) {
             if (!match) { toCreate.push(tax); }
             else if (isIdentical(tax, match, FIELDS)) { skipped++; }
             else {
-                const merged = { ...tax };
-                for (const f of FIELDS) { if (!merged[f] && match[f]) merged[f] = match[f]; }
-                updateTasks.push(base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged).catch(()=>{}));
+                const merged = { ...match, ...tax };
+                for (const k of Object.keys(merged)) {
+                    if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
+                }
+                updateTasks.push(async () => {
+                    await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged));
+                });
             }
         }
-        if (updateTasks.length > 0) { await Promise.all(updateTasks); updated += updateTasks.length; }
+        if (updateTasks.length > 0) {
+            for (let j = 0; j < updateTasks.length; j += 5) {
+                const results = await Promise.all(updateTasks.slice(j, j + 5).map(t => t().then(() => true).catch((e) => { console.warn(`[upsertTaxonomies] Update failed: ${e.message}`); return false; })));
+                updated += results.filter(Boolean).length;
+                if (j + 5 < updateTasks.length) await sleep(100);
+            }
+        }
         if (toCreate.length > 0) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
-            catch (e) { for (const tax of toCreate) { try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) {} } }
+            catch (e) {
+                console.warn(`[upsertTaxonomies] bulkCreate failed: ${e.message}, falling back to individual creates`);
+                await Promise.all(toCreate.map(async tax => {
+                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) { console.warn(`[upsertTaxonomies] Individual create failed for NPI ${tax.npi}: ${err.message}`); }
+                }));
+            }
         }
     }
     return { imported, updated, skipped };
@@ -138,23 +272,24 @@ async function upsertTaxonomies(records, base44) {
 function transformResults(allResults) {
     let validRows = 0, invalidRows = 0, duplicateRows = 0;
     const seenNPIs = new Set();
-    const providers = [], locations = [], taxonomies = [], errors = [];
+    const providers: TransformedProvider[] = [], locations = [], taxonomies = [], errors = [];
     for (const result of allResults) {
         const npi = String(result.number || '');
         if (!npi || npi.length !== 10) { invalidRows++; if (errors.length < 10) errors.push({ npi: npi || 'missing', message: 'Invalid NPI' }); continue; }
         if (seenNPIs.has(npi)) { duplicateRows++; continue; }
         seenNPIs.add(npi);
-        validRows++;
 
         const basic = result.basic || {};
         const isIndividual = result.enumeration_type === 'NPI-1';
         const status = basic.status === 'A' ? 'Active' : 'Deactivated';
-        
+
         if (status === 'Active' && !basic.enumeration_date && !basic.last_updated) {
             invalidRows++;
             if (errors.length < 10) errors.push({ npi, message: 'Active provider missing enumeration and update dates' });
-            continue; 
+            continue;
         }
+
+        validRows++;
 
         const provider = { npi, entity_type: isIndividual ? 'Individual' : 'Organization', status, needs_nppes_enrichment: false };
         if (isIndividual) {
@@ -193,37 +328,91 @@ function transformResults(allResults) {
     return { providers, locations, taxonomies, validRows, invalidRows, duplicateRows, errors };
 }
 
+// In-memory cache for NPPES API responses
+const apiCache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 60 * 2; // 2 hours - Balance freshness with rate limit protection
+const MAX_CACHE_SIZE = 5000;
+
+let globalRateLimitDelay = 0;
+let lastRateLimitHit = 0;
+
 async function fetchNPPESPage(params, stats) {
     const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    
+    // Check Cache
+    if (apiCache.has(apiUrl)) {
+        const cached = apiCache.get(apiUrl);
+        if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            return cached.data;
+        } else {
+            apiCache.delete(apiUrl);
+        }
+    }
+
+    if (globalRateLimitDelay > 0) {
+        if (Date.now() - lastRateLimitHit > 60000) {
+            globalRateLimitDelay = 0;
+        } else {
+            console.log(`[Crawler Worker] Applying dynamic rate limit delay: ${globalRateLimitDelay}ms`);
+            await sleep(globalRateLimitDelay);
+        }
+    }
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
         try {
+            console.log(`[Crawler Worker] Fetching page: ${apiUrl.replace(NPPES_API_BASE, '')} (Attempt ${attempt})`);
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(apiUrl, { signal: controller.signal });
-            clearTimeout(timeout);
+            const fetchTimeout = setTimeout(() => controller.abort(), 10000 + (attempt * 2000)); // Increase timeout per attempt
+            let response;
+            try {
+                response = await fetch(apiUrl, { signal: controller.signal });
+            } finally {
+                clearTimeout(fetchTimeout);
+            }
             
             if (response.status === 429 && stats) {
                 stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
+                stats.shouldSlowDown = true; 
+                globalRateLimitDelay = Math.min((globalRateLimitDelay || 2000) * 1.5, 15000);
+                lastRateLimitHit = Date.now();
+                console.warn(`[Crawler Worker] Rate limit 429 encountered. Backing off for ${globalRateLimitDelay}ms`);
             }
             if (response.status === 429 || response.status >= 500) {
-                await sleep(attempt * 2000);
+                const backoff = Math.min(attempt * 3000 + (Math.random() * 1000), 15000); // Exponential-ish backoff with max 15s
+                await sleep(backoff);
                 continue;
             }
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
-            if (data.Errors && data.Errors.length > 0) return { error: data.Errors.map(e => e.description).join('; '), results: [], count: 0 };
-            return { results: data.results || [], count: data.result_count || 0 };
+            const resultData = { 
+                results: data.results || [], 
+                count: data.result_count || 0,
+                error: data.Errors && data.Errors.length > 0 ? data.Errors.map(e => e.description).join('; ') : null
+            };
+
+            // Only cache successful, non-error responses
+            if (!resultData.error) {
+                if (apiCache.size >= MAX_CACHE_SIZE) {
+                    // Evict oldest (first inserted in Map) to manage memory efficiently
+                    const firstKey = apiCache.keys().next().value;
+                    apiCache.delete(firstKey);
+                }
+                apiCache.set(apiUrl, { timestamp: Date.now(), data: resultData });
+            }
+            
+            return resultData;
         } catch (e) {
-            if (attempt === 3) throw e;
-            await sleep(attempt * 1000);
+            if (attempt === 5) throw e;
+            await sleep(attempt * 1500);
         }
     }
+    throw new Error('All NPPES API retry attempts exhausted');
 }
 
 async function updateBatchStats(base44, batchId, stats) {
     try {
-        const batch = await base44.asServiceRole.entities.ImportBatch.get(batchId);
+        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId));
         if (batch) {
             const retry_params = batch.retry_params || {};
             if (stats.time_ms) {
@@ -234,34 +423,45 @@ async function updateBatchStats(base44, batchId, stats) {
                     retry_params.processed_prefixes.push(stats.prefix);
                 }
             }
-            await base44.asServiceRole.entities.ImportBatch.update(batchId, {
-                valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
-                invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
-                imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
-                updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
-                skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
+            const newValid = (batch.valid_rows || 0) + (stats.valid || 0);
+            const newInvalid = (batch.invalid_rows || 0) + (stats.invalid || 0);
+            const newImported = (batch.imported_rows || 0) + (stats.prov?.imported || 0);
+            const newUpdated = (batch.updated_rows || 0) + (stats.prov?.updated || 0);
+            const newSkipped = (batch.skipped_rows || 0) + (stats.prov?.skipped || 0);
+            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, {
+                valid_rows: newValid,
+                invalid_rows: newInvalid,
+                imported_rows: newImported,
+                updated_rows: newUpdated,
+                skipped_rows: newSkipped,
+                total_rows: newImported + newUpdated + newSkipped + newInvalid,
                 api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
                 rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
                 retry_params
-            });
+            }));
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error(`[Crawler] Failed to update batch stats for ${batchId}:`, e.message);
+    }
 }
 
 Deno.serve(async (req) => {
-    let execStartTime = Date.now();
-    const base44 = createClientFromRequest(req);
-    let user = null;
-    try { user = await base44.auth.me(); } catch(e) {}
-    
-    let payload = {};
-    try { payload = await req.json(); } catch(e) {}
-    
-    const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false } = payload;
+    try {
+        let execStartTime = Date.now();
+        const base44 = createClientFromRequest(req);
+        let user = null;
+        try { user = await base44.auth.me(); } catch(e) { console.log('[Crawler] No authenticated user (service invocation)'); }
+
+        let payload: CrawlerPayload = {};
+        try { payload = await req.json(); } catch(e) { console.log('[Crawler] No JSON payload, using defaults'); }
+        
+        const { action = 'process_queue', states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code } = payload;
+        const isService = !!(user?.email && user.email.includes('service+'));
 
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
-        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 1000);
+        // Fetch more batches to ensure we don't drop counts as the history grows
+        const crawlBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 5000);
         const crawlerBatches = crawlBatches.filter(b => b.file_name?.startsWith('crawler_'));
         
         let total_imported = 0, total_updated = 0, total_skipped = 0, total_api_calls = 0;
@@ -274,8 +474,9 @@ Deno.serve(async (req) => {
 
         const stateLatest = {};
         for (const b of crawlerBatches) {
-            const st = b.file_name.split('_')[1];
-            if (!st || st.length > 2) continue;
+            const stMatch = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch) continue;
+            const st = stMatch[1].toUpperCase();
             if (!stateLatest[st] || new Date(b.created_date) > new Date(stateLatest[st].created_date)) {
                 stateLatest[st] = b;
             }
@@ -285,7 +486,7 @@ Deno.serve(async (req) => {
         for (const [st, b] of Object.entries(stateLatest)) {
             if (b.status === 'completed') completedStates.push(st);
             else if (b.status === 'failed') failedStates.push(st);
-            else processingStates.push(st);
+            else if (b.status === 'processing' || b.status === 'validating') processingStates.push(st);
         }
         const doneSet = new Set([...completedStates, ...failedStates]);
         const pendingStates = US_STATES.filter(s => !doneSet.has(s) && !processingStates.includes(s));
@@ -295,26 +496,36 @@ Deno.serve(async (req) => {
             southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
             midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
             west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
-            south_central: ['TX','OK','NM','AR']
+            south_central: ['TX','OK']
         };
 
         // Determine if crawler is paused (has paused tasks) or running (has processing/pending tasks)
         const processingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100);
         const active_workers = processingItems.length;
 
-        const allItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({}, undefined, 100);
-        const hasPaused = allItems.some(i => i.status === 'paused');
-        const hasPending = allItems.some(i => i.status === 'pending' || i.status === 'processing');
+        // Check for paused/pending items separately to avoid the 100 item limit issue
+        const pendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1);
+        const pausedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1);
+        const hasPaused = pausedItems.length > 0;
+        const hasPending = pendingItems.length > 0 || active_workers > 0;
         const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
 
         const granular_metrics = {};
+        
+        // Optimize: Fetch all pending items for the current batches in one go to avoid rate limits
+        const processingBatchIds = processingStates.map(st => stateLatest[st]?.id).filter(Boolean);
+        let allPendingItems = [];
+        if (processingBatchIds.length > 0) {
+            // we can only do $in for a reasonable amount, let's just fetch up to 10000 pending items globally
+            allPendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 5000);
+        }
+        
         for (const st of processingStates) {
             const b = stateLatest[st];
             if (b) {
                 const rp = b.retry_params || {};
                 const avg_time_ms = rp.completed_items > 0 ? Math.round(rp.total_time_ms / rp.completed_items) : 0;
-                const pendingCountItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id, status: 'pending' }, undefined, 1000);
-                const pending_items = pendingCountItems.length;
+                const pending_items = allPendingItems.filter(i => i.batch_id === b.id).length;
                 const estimated_remaining_ms = pending_items * avg_time_ms;
 
                 granular_metrics[st] = {
@@ -322,38 +533,54 @@ Deno.serve(async (req) => {
                     rate_limit_hits: b.rate_limit_count || 0,
                     estimated_remaining_ms,
                     pending_items,
-                    completed_items: rp.completed_items || 0
+                    completed_items: rp.completed_items || 0,
+                    total_queue_items: rp.total_queue_items || (pending_items + (rp.completed_items || 0)) || 100
                 };
             }
         }
 
-        const masterBatch = crawlerBatches.find(b => b.file_name?.startsWith('crawler_master_') && b.status === 'processing');
-        let wave_info = null;
-        if (masterBatch) {
-            const rp = masterBatch.retry_params || {};
-            const queuedStates = rp.queued_states || [];
-            wave_info = {
-                current_wave: rp.current_wave || 1,
-                total_waves: rp.total_waves || 1,
-                wave_size: rp.state_wave_size || STATE_WAVE_SIZE,
-                states_in_current_wave: rp.current_wave_states || queuedStates.slice(0, rp.state_wave_size || STATE_WAVE_SIZE),
-                total_target_states: (rp.all_states || []).length,
-                queued_so_far: queuedStates.length,
-                master_batch_id: masterBatch.id,
-            };
+        // Collect Error Summary
+        const allFailedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'failed' }, undefined, 500);
+        const errorSummary: Record<string, ErrorSummaryEntry> = {};
+        for (const item of allFailedItems) {
+            const msg = item.error_message || 'Unknown Error';
+            // Simplify error message for grouping (e.g. remove specific numbers if any)
+            const simpleMsg = msg.replace(/\d+/g, '#').substring(0, 100); 
+            if (!errorSummary[simpleMsg]) {
+                errorSummary[simpleMsg] = {
+                    count: 0,
+                    original_message: msg,
+                    affected_states: new Set(),
+                    sample_prefixes: new Set(),
+                    item_ids: []
+                };
+            }
+            errorSummary[simpleMsg].count++;
+            errorSummary[simpleMsg].affected_states.add(item.state);
+            if (errorSummary[simpleMsg].sample_prefixes.size < 5) errorSummary[simpleMsg].sample_prefixes.add(item.zip_prefix);
+            if (errorSummary[simpleMsg].item_ids.length < 50) errorSummary[simpleMsg].item_ids.push(item.id);
         }
+
+        const formattedErrors = Object.values(errorSummary).map(e => ({
+            ...e,
+            affected_states: Array.from(e.affected_states),
+            sample_prefixes: Array.from(e.sample_prefixes)
+        })).sort((a,b) => b.count - a.count);
+
+        const auto_chain_active = crawler_status === 'running' || active_workers > 0 || processingStates.length > 0;
 
         return Response.json({
             crawler_status,
             active_workers,
+            auto_chain_active,
             granular_metrics,
-            wave_info,
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,
             completed_states: completedStates, failed_states: failedStates,
             processing_states: processingStates, pending_states: pendingStates,
             batches: crawlerBatches.slice(0, 60),
             regions: REGION_STATES,
+            errors: formattedErrors,
             totals: {
                 imported: total_imported,
                 updated: total_updated,
@@ -365,8 +592,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_start') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+        // Load configuration and clear stop flag
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+        if (configs[0]?.crawler_stopped) {
+            await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: false }));
+        }
+
         let targetStates = states;
         if (region) {
             const REGION_STATES = {
@@ -374,128 +608,280 @@ Deno.serve(async (req) => {
                 southeast: ['FL','GA','NC','SC','VA','WV','AL','KY','MS','TN','AR','LA'],
                 midwest: ['IL','IN','MI','OH','WI','IA','KS','MN','MO','NE','ND','SD'],
                 west: ['AK','CA','HI','OR','WA','AZ','CO','ID','MT','NV','NM','UT','WY'],
-                south_central: ['TX','OK','NM','AR']
+                south_central: ['TX','OK']
             };
             targetStates = REGION_STATES[region] || US_STATES;
         }
-        if (!targetStates || targetStates.length === 0) targetStates = US_STATES;
+        
+        if (!targetStates || targetStates.length === 0) {
+            targetStates = config.crawl_all_states !== false ? US_STATES : (config.selected_states || US_STATES);
+            if (targetStates.length === 0) targetStates = US_STATES;
+        }
 
-        let statesToProcess = [...targetStates];
-        let skipped = 0;
+        let queued = 0, skipped = 0;
+        let processingCount = 0;
+        const maxConcurrent = Math.max(1, Number(concurrency || config.concurrency || 4));
+
+        let existingBatches = [];
         if (skip_completed) {
-            const existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
-            const completedSet = new Set();
-            for (const b of existingBatches) {
-                if (b.status === 'completed' && b.file_name?.startsWith('crawler_')) {
-                    const st = b.file_name.split('_')[1];
-                    if (st && st.length <= 2) completedSet.add(st);
+            existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
+        }
+
+        for (const st of targetStates) {
+            if (skip_completed) {
+                const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
+                // Only skip truly completed/validating states — NOT stale 'processing' ones from dead workers
+                if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'validating')) {
+                    skipped++;
+                    continue;
+                }
+                // Cancel stale 'processing' batches so they don't block new ones
+                if (stBatch && stBatch.status === 'processing') {
+                    try {
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(stBatch.id, {
+                            status: 'cancelled',
+                            cancel_reason: 'Replaced by new crawler run'
+                        }));
+                        // Also mark any remaining queue items as failed
+                        const staleItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: stBatch.id, status: 'processing' }, undefined, 500));
+                        const stalePending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: stBatch.id, status: 'pending' }, undefined, 500));
+                        const allStale = [...staleItems, ...stalePending];
+                        for (let si = 0; si < allStale.length; si += 50) {
+                            const chunk = allStale.slice(si, si + 50);
+                            await Promise.all(chunk.map(item =>
+                                withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'failed', error_message: 'Cancelled by new run' })).catch(() => {})
+                            ));
+                        }
+                    } catch (e) { console.warn(`[Crawler] Failed to cancel stale batch for ${st}: ${e.message}`); }
                 }
             }
-            const before = statesToProcess.length;
-            statesToProcess = statesToProcess.filter(st => !completedSet.has(st));
-            skipped = before - statesToProcess.length;
-        }
+            
+            const isInitial = processingCount < maxConcurrent;
+            const batchStatus = isInitial ? 'processing' : 'paused';
+            
+            const normalizedPostalCode = normalizePostalCode(postal_code);
+            const queuePrefixes = normalizedPostalCode
+                ? [normalizedPostalCode]
+                : Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
 
-        if (statesToProcess.length === 0) {
-            return Response.json({ success: true, states_queued: 0, total_states: 0, skipped, message: 'All states already completed.' });
-        }
+            const retryParams: Record<string, any> = {
+                total_queue_items: queuePrefixes.length,
+            };
+            if (entity_type) retryParams.entity_type = entity_type;
+            if (taxonomy_description) retryParams.taxonomy_description = taxonomy_description;
+            if (city) retryParams.city = city;
+            if (normalizedPostalCode) retryParams.postal_code = normalizedPostalCode;
 
-        const totalWaves = Math.ceil(statesToProcess.length / STATE_WAVE_SIZE);
-        const firstWave = statesToProcess.slice(0, STATE_WAVE_SIZE);
-
-        const masterBatch = await base44.asServiceRole.entities.ImportBatch.create({
-            import_type: 'nppes_registry',
-            file_name: `crawler_master_${Date.now()}`,
-            status: 'processing',
-            retry_params: {
-                all_states: statesToProcess,
-                queued_states: [...firstWave],
-                current_wave_states: [...firstWave],
-                state_wave_size: STATE_WAVE_SIZE,
-                current_wave: 1,
-                total_waves: totalWaves,
-            },
-            dry_run: !!dry_run,
-        });
-
-        let queued = 0;
-        for (const st of firstWave) {
-            const batch = await base44.asServiceRole.entities.ImportBatch.create({
+            const batchCreateData: any = {
                 import_type: 'nppes_registry',
                 file_name: `crawler_${st}_all_${Date.now()}`,
-                status: 'processing',
+                status: batchStatus,
                 dry_run: !!dry_run,
-            });
+                retry_params: retryParams,
+            };
+            const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.create(batchCreateData));
             const items = [];
-            for (let i = 0; i <= 99; i++) {
-                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: 'pending' });
+            const itemStatus = isInitial ? 'pending' : 'paused';
+            for (const prefix of queuePrefixes) {
+                items.push({ batch_id: batch.id, state: st, zip_prefix: prefix, status: itemStatus });
             }
-            await base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items);
+            await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
             queued++;
+            if (isInitial) processingCount++;
+            await sleep(300);
         }
         
-        const workers = Math.min(concurrency, 3);
-        for (let i = 0; i < workers; i++) {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(() => {});
-            await sleep(2000);
-        }
+        // Dynamic worker pool initialization
+        // We start with a lower base concurrency and let the queue processor self-adjust
+        const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
         
-        return Response.json({
-            success: true,
-            states_queued: queued,
-            total_states: statesToProcess.length,
-            states_completed: 0,
-            states_failed: 0,
-            total_imported: 0,
-            skipped,
-            current_wave: 1,
-            total_waves: totalWaves,
-            wave_states: firstWave,
-            master_batch_id: masterBatch.id,
-        });
+        const targetWorkers = Math.min(maxConcurrent, 2); // Reduced max initial cluster to 2
+        const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
+        
+        // Fire-and-forget worker spawning — do NOT await, as each worker runs for up to 20 seconds
+        // and awaiting would cause batch_start to timeout before spawning additional workers
+        let workersSpawned = 0;
+        for (let i = 0; i < workersToStart; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run })
+                .then(() => console.log(`[Crawler] Worker ${i+1} completed its cycle`))
+                .catch(e => console.error(`[Crawler] Worker ${i+1} failed: ${e.message}`));
+            workersSpawned++;
+            // Increased stagger to avoid all workers grabbing the same task and hitting rate limits
+            await sleep(1500);
+        }
+        console.log(`[Crawler] Spawned ${workersSpawned} workers (fire-and-forget)`);
+
+        return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
     }
 
     if (action === 'batch_stop') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
-        for (let i = 0; i < pending.length; i += 50) {
-           const chunk = pending.slice(i, i+50);
-           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+        // Set a stop flag in config so self-reinvoking workers know to stop
+        try {
+            const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+            if (configs[0]) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: true }));
+            } else {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.create({ config_key: 'default', crawler_stopped: true }));
+            }
+        } catch (e) { console.warn('[Crawler] Could not set stop flag:', e.message); }
+
+        // Stop ALL active queue items in a loop until none remain (handles >5000 items)
+        // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
+        let totalStopped = 0;
+        const stopStartTime = Date.now();
+        try {
+            const batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
+            for (let i = 0; i < batchItems.length; i += 50) {
+                if (Date.now() - stopStartTime > 15000) {
+                    console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+                    break;
+                }
+                const chunk = batchItems.slice(i, i+50);
+                await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+                totalStopped += chunk.length;
+            }
+        } catch (e) {
+            console.error('[Crawler] Error bulk stopping items:', e.message);
         }
-        
+
         // Also cancel any active batches
-        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused'] } }));
-        for (const b of processingBatches) {
+        const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
+        for (const b of activeBatches) {
             await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'cancelled', cancel_reason: 'Stopped by user', cancelled_at: new Date().toISOString() }));
         }
 
-        return Response.json({ success: true, message: 'All tasks and batches stopped.' });
+        return Response.json({ success: true, message: `All tasks and batches stopped. ${totalStopped} items cancelled.` });
     }
 
     if (action === 'batch_pause') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pending = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1000));
-        for (let i = 0; i < pending.length; i += 50) {
-           const chunk = pending.slice(i, i+50);
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
+        // Pause both pending AND processing items
+        const activeItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'processing'] } }, undefined, 5000));
+        let paused = 0;
+        for (let i = 0; i < activeItems.length; i += 50) {
+           const chunk = activeItems.slice(i, i+50);
            await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'paused' }))));
+           paused += chunk.length;
         }
-        return Response.json({ success: true, message: 'Crawler paused.' });
+        // Also pause the batch entities
+        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
+        for (const b of processingBatches) {
+            if (b.file_name?.startsWith('crawler_')) {
+                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'paused' }));
+            }
+        }
+        return Response.json({ success: true, message: `Crawler paused. ${paused} items paused.` });
     }
 
     if (action === 'batch_resume') {
-        if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-        const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1000));
-        for (let i = 0; i < pausedItems.length; i += 50) {
-           const chunk = pausedItems.slice(i, i+50);
-           await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'pending' }))));
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+        const configs = await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' }));
+        const config = configs[0] || {};
+        const maxConcurrentBatches = Math.max(1, Number(config.concurrency || 4));
+        const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }, 'created_date', 200));
+        const activeCrawlerBatches = [];
+        for (const batch of processingBatches) {
+            if (!batch.file_name?.startsWith('crawler_')) continue;
+            const runnableItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: batch.id, status: { $in: ['pending', 'processing'] } }, undefined, 1));
+            if (runnableItems.length > 0) {
+                activeCrawlerBatches.push(batch);
+                continue;
+            }
+            const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: batch.id, status: 'paused' }, undefined, 1));
+            if (pausedItems.length > 0) {
+                await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'paused' }));
+            }
         }
-        // Trigger worker pool
-        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(()=>{});
-        return Response.json({ success: true, message: 'Crawler resumed.' });
+        const availableSlots = Math.max(0, maxConcurrentBatches - activeCrawlerBatches.length);
+
+        const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 200));
+        const pausedCrawlerBatches = pausedBatches.filter(pb => pb.file_name?.startsWith('crawler_'));
+        const batchesToResume = availableSlots > 0 ? pausedCrawlerBatches.slice(0, availableSlots) : [];
+        const activeWorkersCount = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100)).then(res => res.length).catch(() => 0);
+
+        if (batchesToResume.length === 0) {
+            if (activeCrawlerBatches.length > 0 && activeWorkersCount === 0) {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
+                return Response.json({ success: true, message: 'Crawler workers restarted for active state batches.' });
+            }
+            return Response.json({ success: true, message: availableSlots === 0 ? 'Crawler already running at configured concurrency.' : 'No paused crawler batches found.' });
+        }
+
+        for (const pb of batchesToResume) {
+            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(pb.id, { status: 'processing' }));
+            const batchPausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: pb.id, status: 'paused' }, undefined, 5000));
+            for (let i = 0; i < batchPausedItems.length; i += 50) {
+                const chunk = batchPausedItems.slice(i, i + 50);
+                await Promise.all(chunk.map(item => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending' }))));
+            }
+        }
+
+        // Clear stop flag
+        try {
+            if (configs[0]?.crawler_stopped) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESCrawlerConfig.update(configs[0].id, { crawler_stopped: false }));
+            }
+        } catch (e) { console.warn('[Crawler] Could not clear stop flag:', e.message); }
+
+        const resumeDryRun = dry_run || batchesToResume.some(pb => pb.dry_run);
+        const targetWorkers = Math.min(maxConcurrentBatches, activeCrawlerBatches.length + batchesToResume.length);
+        const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
+        for (let i = 0; i < workersToStart; i++) {
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run: resumeDryRun }).catch(e => console.error('[Crawler] Resume invoke failed:', e.message));
+            if (i + 1 < workersToStart) await sleep(500);
+        }
+
+        return Response.json({ success: true, message: `Crawler resumed ${batchesToResume.length} state batch${batchesToResume.length === 1 ? '' : 'es'}.` });
+    }
+
+    if (action === 'retry_errors') {
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const { item_ids } = payload;
+        if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) return Response.json({ error: 'No item IDs provided' }, { status: 400 });
+        
+        let retried = 0;
+        for (let i = 0; i < item_ids.length; i += 50) {
+            const chunk = item_ids.slice(i, i+50);
+            await Promise.all(chunk.map(id => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(id, { status: 'pending', retry_count: 0, error_message: '' }))));
+            retried += chunk.length;
+        }
+
+        // Only set batch back to processing if it was previously failed or cancelled
+        const items = await base44.asServiceRole.entities.NPPESQueueItem.filter({ id: { $in: item_ids } });
+        const batchIds = [...new Set(items.map(i => i.batch_id))];
+        for (const bid of batchIds) {
+            try {
+                const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(bid));
+                if (batch.status === 'failed' || batch.status === 'cancelled') {
+                    await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(bid, { status: 'processing' }));
+                }
+            } catch (e) {
+                console.warn(`[Crawler] Failed to update batch ${bid} status for retry: ${e.message}`);
+            }
+        }
+
+        base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Retry invoke failed:', e.message));
+        return Response.json({ success: true, message: `Queued ${retried} failed tasks for retry.` });
     }
 
     // --- WORKER LOGIC ---
     if (action === 'process_queue') {
+        const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+        const config = configs[0] || {};
+
+        // Check stop flag — if the crawler was stopped by user, exit immediately
+        if (config.crawler_stopped) {
+            console.log('[Crawler Worker] Stop flag detected, exiting immediately.');
+            return Response.json({ success: true, message: 'Worker stopped by stop flag', processed: 0 });
+        }
+
+        const apiBatchSize = config.api_batch_size || 200;
+        const maxRetries = config.max_retries || 3;
+        const apiDelayMs = config.api_delay_ms !== undefined ? config.api_delay_ms : 200;
+
         // Recover stuck items (older than 10 mins)
         const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 200));
         let recoveredCount = 0;
@@ -508,6 +894,7 @@ Deno.serve(async (req) => {
         }
 
         let tasksProcessed = 0;
+        let consecutiveErrors = 0;
         
         // Process loop until time limit
         while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
@@ -526,200 +913,339 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
+                // Check if any batches are fully done
                 const processingBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
                 let batchesClosed = 0;
+                let wokePausedBatch = false;
                 for (const b of processingBatches) {
-                    if (b.file_name?.startsWith('crawler_master_')) continue;
                     const items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: b.id }, undefined, 10000));
-                    if (items.length === 0) continue;
-                    
-                    const allDone = items.every(i => i.status === 'completed' || i.status === 'failed');
-                    if (allDone) {
-                        const hasErrors = items.some(i => i.status === 'failed');
-                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: hasErrors ? 'failed' : 'completed', completed_at: new Date().toISOString() }));
+                    // If no items found, mark as completed (empty batch)
+                    if (items.length === 0) {
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, {
+                            status: 'completed',
+                            completed_at: new Date().toISOString()
+                        }));
                         batchesClosed++;
-                        base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
-                    }
-                }
-                
-                const masterBatches = processingBatches.filter(b => b.file_name?.startsWith('crawler_master_'));
-                let queuedNextWave = false;
-                for (const master of masterBatches) {
-                    const rp = master.retry_params || {};
-                    const allStates = rp.all_states || [];
-                    const queuedStates = rp.queued_states || [];
-                    const currentWaveStates = rp.current_wave_states || queuedStates.slice(0, rp.state_wave_size || STATE_WAVE_SIZE);
-                    const waveSize = rp.state_wave_size || STATE_WAVE_SIZE;
-                    const masterCreatedAt = new Date(master.created_date).getTime();
-
-                    const allStateBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500));
-                    const relevantBatches = allStateBatches.filter(b => 
-                        b.file_name?.startsWith('crawler_') && 
-                        !b.file_name?.startsWith('crawler_master_') &&
-                        new Date(b.created_date).getTime() >= masterCreatedAt
-                    );
-
-                    const currentWaveDone = currentWaveStates.every(st => {
-                        const sb = relevantBatches.find(b => {
-                            const batchState = b.file_name.split('_')[1];
-                            return batchState === st;
-                        });
-                        return sb && (sb.status === 'completed' || sb.status === 'failed');
-                    });
-
-                    if (!currentWaveDone) {
                         continue;
                     }
 
-                    const unqueued = allStates.filter(s => !queuedStates.includes(s));
-                    
-                    if (unqueued.length > 0) {
-                        const nextWave = unqueued.slice(0, waveSize);
-                        const newCurrentWave = (rp.current_wave || 1) + 1;
+                    const runnableItems = items.filter(i => i.status === 'pending' || i.status === 'processing');
+                    const pausedItems = items.filter(i => i.status === 'paused');
+                    if (runnableItems.length === 0 && pausedItems.length > 0) {
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'paused' }));
+                        continue;
+                    }
+
+                    const remaining = [...runnableItems, ...pausedItems];
+                    const allDone = remaining.length === 0;
+                    if (allDone) {
+                        const failedItems = items.filter(i => i.status === 'failed');
+                        const hasErrors = failedItems.length > 0;
+                        const updates = { 
+                            status: hasErrors ? 'failed' : 'completed', 
+                            completed_at: new Date().toISOString() 
+                        };
                         
-                        for (const st of nextWave) {
-                            const batch = await base44.asServiceRole.entities.ImportBatch.create({
-                                import_type: 'nppes_registry',
-                                file_name: `crawler_${st}_all_${Date.now()}`,
-                                status: 'processing',
-                                dry_run: !!master.dry_run,
-                            });
-                            const items = [];
-                            for (let i = 0; i <= 99; i++) {
-                                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: 'pending' });
-                            }
-                            await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
-                        }
-                        
-                        const newQueued = [...queuedStates, ...nextWave];
-                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(master.id, {
-                            retry_params: { ...rp, queued_states: newQueued, current_wave: newCurrentWave, current_wave_states: nextWave },
-                        }));
-                        queuedNextWave = true;
-                        console.log(`[Wave ${newCurrentWave}/${rp.total_waves}] Queued states: ${nextWave.join(', ')}`);
-                    } else {
-                        const allStateDone = allStates.every(st => {
-                            const sb = relevantBatches.find(b => {
-                                const batchState = b.file_name.split('_')[1];
-                                return batchState === st;
-                            });
-                            return sb && (sb.status === 'completed' || sb.status === 'failed');
-                        });
-                        if (allStateDone) {
-                            const failedCount = allStates.filter(st => {
-                                const sb = relevantBatches.find(b => {
-                                    const batchState = b.file_name.split('_')[1];
-                                    return batchState === st;
-                                });
-                                return sb && sb.status === 'failed';
-                            }).length;
-                            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(master.id, {
-                                status: failedCount > 0 ? 'failed' : 'completed',
-                                completed_at: new Date().toISOString(),
-                                retry_params: { ...rp, completed: true, failed_count: failedCount },
+                        if (hasErrors) {
+                            // Collect error samples from failed items
+                            const errorSamples = failedItems.slice(0, 5).map(i => ({
+                                phase: 'crawler',
+                                detail: i.error_message || 'Unknown error',
+                                item_id: i.id,
+                                zip_prefix: i.zip_prefix,
+                                timestamp: new Date().toISOString()
                             }));
-                            console.log(`[Master] All ${allStates.length} states done. ${failedCount} failed.`);
+                            updates.error_samples = errorSamples;
+                            updates.cancel_reason = `Batch failed with ${failedItems.length} errors. Sample: ${errorSamples.length > 0 ? errorSamples[0].detail : 'Unknown error'}`;
                         }
+
+                        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, updates));
+                        batchesClosed++;
+                        
+                        // Trigger automated data validation checks
+                        base44.asServiceRole.functions.invoke('validateNPPESBatch', { batch_id: b.id }).catch(e => console.error("Validation invoke error:", e));
+                        
+                        // Wake up next paused batch to maintain concurrency limit
+                        try {
+                            // Check how many batches are currently processing to maintain concurrency limit
+                            const currentlyProcessing = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'processing' }));
+                            const activeCrawlerBatches = currentlyProcessing.filter(pb => pb.file_name?.startsWith('crawler_'));
+                            const maxConcurrentBatches = config.concurrency || 4;
+
+                            if (activeCrawlerBatches.length < maxConcurrentBatches) {
+                                const pausedBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: 'paused' }, 'created_date', 5));
+                                const nextPaused = pausedBatches.find(pb => pb.file_name?.startsWith('crawler_'));
+                                if (nextPaused) {
+                                    await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(nextPaused.id, { status: 'processing' }));
+                                    const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 5000));
+                                    // Batch the updates in chunks of 50 to avoid overwhelming the API
+                                    for (let pi = 0; pi < pausedItems.length; pi += 50) {
+                                        const chunk = pausedItems.slice(pi, pi + 50);
+                                        await Promise.all(chunk.map(item => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending' }))));
+                                    }
+                                    // Read dry_run from the woken batch and pass it through
+                                    const wokenDryRun = nextPaused.dry_run || false;
+                                    wokePausedBatch = true;
+                                    console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name} (dry_run: ${wokenDryRun})`);
+                                }
+                            }
+                        } catch(e) { console.error("Failed to wake up next batch:", e); }
                     }
                 }
-                
-                if (queuedNextWave) {
+
+                if (wokePausedBatch) {
+                    console.log('[Crawler Worker] Queue was empty, but a paused batch was resumed. Continuing to process the newly queued items.');
                     continue;
                 }
                 
                 if (batchesClosed > 0) {
+                    // If we closed batches and did not wake another one, we are done for this cycle
                     return Response.json({ success: true, message: `Queue empty. Closed ${batchesClosed} batches.`, processed: tasksProcessed });
                 }
                 
+                // If we are here, queue is empty and no batches to close, and no stuck items recovered.
                 return Response.json({ success: true, message: "Queue empty", processed: tasksProcessed });
             }
 
             const task = pendingList[0];
-            if (task.retry_count > 5) {
+            if (task.retry_count >= maxRetries) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Max retries exceeded' }));
                 continue;
             }
 
-            // Mark processing
+            // Claim the task: mark as processing
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
+            // Re-read to verify we claimed it (guard against race with other workers or batch_stop/pause)
+            const claimedTask = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.get(task.id));
+            if (claimedTask.status !== 'processing') {
+                // Another worker or a stop/pause action changed the status — skip this task
+                console.log(`[Crawler Worker] Task ${task.id} was reclaimed (status: ${claimedTask.status}), skipping`);
+                continue;
+            }
             
+            // Check if batch exists and read dry_run flag from it
+            let taskBatch;
+            try {
+                taskBatch = await base44.asServiceRole.entities.ImportBatch.get(task.batch_id);
+            } catch (e) {
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Batch was deleted' }));
+                continue;
+            }
+            // Use batch-level dry_run if not explicitly passed in payload
+            const effectiveDryRun = dry_run || taskBatch.dry_run;
+
             const taskStartTime = Date.now();
             try {
                 const params = new URLSearchParams();
-                params.set('version', '2.1');
-                params.set('limit', '200'); // Batch limit
+                params.set('limit', String(apiBatchSize));
                 params.set('state', task.state);
-                params.set('postal_code', `${task.zip_prefix}*`);
+                // Apply batch-level filters from batch config
+                const batchRetryParams = taskBatch.retry_params || {};
+                if (batchRetryParams.city) {
+                    params.set('city', batchRetryParams.city);
+                }
+                if (batchRetryParams.entity_type) {
+                    params.set('enumeration_type', batchRetryParams.entity_type);
+                }
+                if (batchRetryParams.taxonomy_description) {
+                    params.set('taxonomy_description', batchRetryParams.taxonomy_description);
+                }
+                if (batchRetryParams.postal_code) {
+                    params.set('postal_code', task.zip_prefix.length >= 5 ? task.zip_prefix : `${task.zip_prefix}*`);
+                } else {
+                    params.set('postal_code', `${task.zip_prefix}*`);
+                }
                 
-                let stats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
+                let stats: WorkerStats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
                 
-                // First query to get count
+                // First query to get results
                 const firstPage = await fetchNPPESPage(params, stats);
                 if (firstPage.error) throw new Error(firstPage.error);
                 
-                if (firstPage.count > 1000 && task.zip_prefix.length < 5) {
-                    // Split task: Create 10 sub-tasks and complete current
-                    const subTasks = [];
-                    for(let i=0; i<=9; i++) {
-                        subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
-                    }
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
-                } else if (firstPage.count > 0) {
-                    let allResults = [...firstPage.results];
-                    let skip = 200;
-                    while (skip < firstPage.count && skip <= 1200 && (Date.now() - execStartTime) < MAX_EXEC_MS) {
-                        await sleep(500);
+                let allResults = [...firstPage.results];
+                let lastPageSize = firstPage.results.length;
+                let skip = apiBatchSize;
+                let needSplit = false;
+                const maxSkip = config.max_skip || 1000;
+
+                if (lastPageSize === apiBatchSize) {
+                    let paginationTimedOut = false;
+                    while (lastPageSize === apiBatchSize && skip <= maxSkip) {
+                        if ((Date.now() - execStartTime) >= MAX_EXEC_MS - 3000) {
+                            console.warn(`[Crawler Worker] Pagination timeout for ${task.state}/${task.zip_prefix} at skip=${skip}. Saving ${allResults.length} partial results.`);
+                            paginationTimedOut = true;
+                            break;
+                        }
                         params.set('skip', String(skip));
                         const page = await fetchNPPESPage(params, stats);
                         stats.api_calls++;
                         if (page.error || page.results.length === 0) break;
                         allResults.push(...page.results);
-                        skip += 200;
+                        lastPageSize = page.results.length;
+                        skip += apiBatchSize;
                     }
-                    
+                    if (lastPageSize === apiBatchSize && skip > maxSkip) {
+                        if (task.zip_prefix.length < 5) {
+                            needSplit = true;
+                        } else {
+                            // Can't split further (prefix is already 5+ digits). Log warning — some results beyond maxSkip are truncated.
+                            console.warn(`[Crawler Worker] Prefix ${task.state}/${task.zip_prefix} has more results than maxSkip (${maxSkip}) and cannot split further. ${allResults.length} results fetched, remainder truncated.`);
+                        }
+                    }
+                    // If pagination timed out and we have more data, split to continue later
+                    if (paginationTimedOut && !needSplit && task.zip_prefix.length < 5) {
+                        needSplit = true;
+                    }
+                }
+                
+                if (needSplit) {
+                    // Process already-fetched results before splitting
+                    if (allResults.length > 0) {
+                        const transformed = transformResults(allResults);
+                        stats.valid += transformed.validRows;
+                        stats.invalid += transformed.invalidRows;
+                        if (!effectiveDryRun) {
+                            const [provRes, locRes, taxRes] = await Promise.all([
+                                upsertProviders(transformed.providers, base44),
+                                upsertLocations(transformed.locations, base44),
+                                upsertTaxonomies(transformed.taxonomies, base44)
+                            ]);
+                            stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
+                        }
+                    }
+                    // Split task: Create 10 sub-tasks for finer-grained coverage
+                    const subTasks = [];
+                    for(let i=0; i<=9; i++) {
+                        subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
+                    }
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
+                    await incrementBatchQueueSize(base44, task.batch_id, subTasks.length);
+                    stats.time_ms = Date.now() - taskStartTime;
+                    await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                } else if (allResults.length > 0) {
                     const transformed = transformResults(allResults);
                     stats.valid += transformed.validRows;
                     stats.invalid += transformed.invalidRows;
-                    
-                    if (!dry_run) {
+
+                    if (!effectiveDryRun) {
+                        // Sequential processing to reduce rate limiting on the Base44 DB
                         const provRes = await upsertProviders(transformed.providers, base44);
+                        const locRes = await upsertLocations(transformed.locations, base44);
+                        const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
-                        await upsertLocations(transformed.locations, base44);
-                        await upsertTaxonomies(transformed.taxonomies, base44);
                     }
-                    
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 } else {
                     // Zero results
-                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
+                    await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
                 }
                 tasksProcessed++;
-            } catch (e) {
-                const newRetryCount = (task.retry_count || 0) + 1;
-                const isRetryable = /429|rate limit|timeout|abort|network|ECONNRESET|503|502/i.test(e.message);
-                const newStatus = (isRetryable && newRetryCount <= 5) ? 'pending' : 'failed';
-                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: newStatus, error_message: e.message, retry_count: newRetryCount }));
-                if (newStatus === 'pending') {
-                    await sleep(3000);
+                consecutiveErrors = 0; // Reset error counter on success
+                
+                // Dynamic Delay: if we hit rate limits, slow down this worker significantly
+                if (stats.shouldSlowDown) {
+                     await sleep(config.retry_backoff_ms || 5000);
+                } else {
+                     await sleep(apiDelayMs);
                 }
+                
+            } catch (e) {
+                consecutiveErrors++;
+                const newRetryCount = (task.retry_count || 0) + 1;
+                const newStatus = newRetryCount >= maxRetries ? 'failed' : 'pending';
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: newStatus, error_message: e.message, retry_count: newRetryCount }));
+                // If we're failing repeatedly, break the loop early to let the worker die/backoff
+                if (consecutiveErrors >= 3) {
+                     console.warn(`Worker hit 3 consecutive errors, backing off. Last error: ${e.message}`);
+                     
+                     // Create an alert for sustained high error rates
+                     await withRetry(() => base44.asServiceRole.entities.DataQualityAlert.create({
+                        alert_type: 'new_issue_detected',
+                        severity: 'high',
+                        title: 'Sustained Crawler Error Rate',
+                        description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
+                        status: 'new',
+                        action_required: true
+                     }));
+
+                     break; 
+                }
+                await sleep(consecutiveErrors * 2000); // Backoff before picking up next task
             }
         }
         
-        // Re-invoke to continue processing if queue not empty
-        try {
-            await sleep(1500);
-            await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
-        } catch (e) {
-            console.error("Self-invoke error:", e);
+        // Check stop flag before re-invoking
+        const latestConfig = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' }).catch(() => []);
+        if (latestConfig[0]?.crawler_stopped) {
+            console.log('[Crawler Worker] Stop flag detected after cycle, not re-invoking.');
+            return Response.json({ success: true, processed: tasksProcessed, message: 'Worker stopped by stop flag' });
+        }
+
+        // Intelligent Re-invocation based on performance and queue depth
+        const remainingQueueSize = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 500).then(r => r.length).catch(() => 0);
+
+        console.log(`[Crawler Worker] Cycle complete. Processed: ${tasksProcessed}, Consecutive Errors: ${consecutiveErrors}, Queue Depth: ${remainingQueueSize}`);
+
+        if (remainingQueueSize > 0) {
+            const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100).then(res => res.length).catch(() => 0);
+
+            // Re-invoke self with retry
+            console.log(`[Crawler Worker] Re-invoking self...`);
+            let selfInvoked = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run });
+                    selfInvoked = true;
+                    break;
+                } catch (e) {
+                    console.error(`[Crawler] Self-invoke attempt ${attempt} failed: ${e.message}`);
+                    if (attempt < 3) await sleep(attempt * 2000);
+                }
+            }
+            if (!selfInvoked) {
+                console.error('[Crawler] All self-invoke attempts failed. Queue may stall. Creating alert.');
+                try {
+                    await base44.asServiceRole.entities.DataQualityAlert.create({
+                        alert_type: 'new_issue_detected',
+                        severity: 'critical',
+                        title: 'Crawler Self-Invocation Failed',
+                        description: `Worker failed to re-invoke after 3 attempts. ${remainingQueueSize} items remain in queue.`,
+                        status: 'new',
+                        action_required: true
+                    });
+                } catch (_) {}
+            }
+
+            // Dynamically scale up if queue is large, healthy, and under worker cap
+            const maxAllowedWorkers = config.concurrency || 4;
+            // More conservative scaling: 1 worker per 10 items instead of 5
+            let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 10), maxAllowedWorkers);
+            
+            // Adjust based on errors to prevent rate limits
+            if (consecutiveErrors > 0) {
+                 targetWorkers = Math.max(1, Math.floor(targetWorkers / 2));
+            }
+
+            if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
+                 console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
+                 base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error('[Crawler] Scale-up invoke failed:', e.message));
+            } else if (consecutiveErrors > 1 && activeWorkersCount > 1) {
+                 console.warn(`[Crawler Worker] High error rate. Will rely on fewer workers to avoid overwhelming the API. Active: ${activeWorkersCount}`);
+            }
         }
         
         return Response.json({ success: true, processed: tasksProcessed, message: 'Time limit reached, re-invoked' });
     }
     
     return Response.json({ error: 'Unknown action' }, { status: 400 });
+    } catch (err) {
+        console.error("Crawler crash:", err);
+        return Response.json({ error: err.message }, { status: 500 });
+    }
 });

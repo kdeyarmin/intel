@@ -4,7 +4,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { format } from 'date-fns';
 
 export default function ImportActivityChart({ metrics }) {
-  const chartData = metrics
+  const chartData = [...metrics]
     .sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date))
     .map(m => ({
       date: format(new Date(m.snapshot_date), 'MMM d'),

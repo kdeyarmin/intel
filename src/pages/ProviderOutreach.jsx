@@ -7,11 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Plus, TrendingUp, MessageSquare, Clock } from 'lucide-react';
+import { Mail, Plus, TrendingUp, MessageSquare } from 'lucide-react';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
-import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
@@ -32,7 +30,7 @@ export default function ProviderOutreach() {
   });
 
   const filteredCampaigns = campaigns.filter(c =>
-    c.name.toLowerCase().includes(searchCampaign.toLowerCase())
+    (c.name || '').toLowerCase().includes(searchCampaign.toLowerCase())
   );
 
   const getStatusColor = (status) => {
@@ -56,7 +54,7 @@ export default function ProviderOutreach() {
       />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="bg-slate-800/60 border border-slate-700/50">
+        <TabsList className="bg-slate-800/60 border border-slate-700/50 h-auto flex flex-wrap gap-1">
           <TabsTrigger value="campaigns" className="gap-2 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400">
             <Mail className="w-4 h-4" /> Campaigns
           </TabsTrigger>

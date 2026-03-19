@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ function ResultCard({ match, importing, imported, onImport }) {
   const confColor = { high: 'bg-green-100 text-green-700 border-green-200', medium: 'bg-amber-100 text-amber-700 border-amber-200', low: 'bg-red-100 text-red-700 border-red-200' };
 
   return (
-    <div className="flex items-start justify-between p-3.5 bg-white rounded-xl border border-slate-200 hover:border-blue-200 hover:shadow-sm transition-all">
+    <div className="flex items-start justify-between p-3.5 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:border-blue-200 hover:shadow-sm transition-all">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-semibold text-slate-900">{match.name}</span>
@@ -66,8 +66,9 @@ export default function AINPIFinder({ onProviderAdded }) {
     setLoading(true);
     setResults(null);
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare NPI lookup specialist. Find the NPI numbers for the following provider/organization.
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare NPI lookup specialist. Find the NPI numbers for the following provider/organization.
 
 Search criteria:
 - Name: ${name}
@@ -86,77 +87,86 @@ Search the NPPES NPI Registry and return all matching results. For each match pr
 - A brief reason why this is a match
 
 Return up to 10 results, ordered by relevance.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          matches: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                npi: { type: "string" },
-                name: { type: "string" },
-                entity_type: { type: "string" },
-                credential: { type: "string" },
-                specialty: { type: "string" },
-                city: { type: "string" },
-                state: { type: "string" },
-                confidence: { type: "string" },
-                reason: { type: "string" }
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            matches: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  npi: { type: "string" },
+                  name: { type: "string" },
+                  entity_type: { type: "string" },
+                  credential: { type: "string" },
+                  specialty: { type: "string" },
+                  city: { type: "string" },
+                  state: { type: "string" },
+                  confidence: { type: "string" },
+                  reason: { type: "string" }
+                }
               }
-            }
-          },
-          search_summary: { type: "string" }
+            },
+            search_summary: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    setResults(res);
-    setLoading(false);
-    if (res.matches?.length > 0) {
-      toast.success(`Found ${res.matches.length} matching providers`);
+      setResults(res);
+      if (res.matches?.length > 0) {
+        toast.success(`Found ${res.matches.length} matching providers`);
+      }
+    } catch (err) {
+      toast.error('Search failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleImport = async (match) => {
     setImporting(prev => new Set([...prev, match.npi]));
-    const isOrg = match.entity_type === 'Organization';
-    const nameParts = match.name.split(',').map(s => s.trim());
+    try {
+      const isOrg = match.entity_type === 'Organization';
+      const nameParts = match.name.split(',').map(s => s.trim());
 
-    await base44.entities.Provider.create({
-      npi: match.npi,
-      entity_type: isOrg ? 'Organization' : 'Individual',
-      last_name: isOrg ? '' : (nameParts[0] || match.name),
-      first_name: isOrg ? '' : (nameParts[1] || ''),
-      organization_name: isOrg ? match.name : '',
-      credential: match.credential || '',
-      status: 'Active',
-      needs_nppes_enrichment: true,
-    });
-
-    if (match.city || match.state) {
-      await base44.entities.ProviderLocation.create({
+      await base44.entities.Provider.create({
         npi: match.npi,
-        location_type: 'Practice',
-        is_primary: true,
-        city: match.city || '',
-        state: match.state || '',
+        entity_type: isOrg ? 'Organization' : 'Individual',
+        last_name: isOrg ? '' : (nameParts[0] || match.name),
+        first_name: isOrg ? '' : (nameParts[1] || ''),
+        organization_name: isOrg ? match.name : '',
+        credential: match.credential || '',
+        status: 'Active',
+        needs_nppes_enrichment: true,
       });
-    }
 
-    if (match.specialty) {
-      await base44.entities.ProviderTaxonomy.create({
-        npi: match.npi,
-        taxonomy_description: match.specialty,
-        primary_flag: true,
-      });
-    }
+      if (match.city || match.state) {
+        await base44.entities.ProviderLocation.create({
+          npi: match.npi,
+          location_type: 'Practice',
+          is_primary: true,
+          city: match.city || '',
+          state: match.state || '',
+        });
+      }
 
-    setImporting(prev => { const n = new Set(prev); n.delete(match.npi); return n; });
-    setImported(prev => new Set([...prev, match.npi]));
-    toast.success(`Imported ${match.name} (NPI: ${match.npi})`);
-    if (onProviderAdded) onProviderAdded();
+      if (match.specialty) {
+        await base44.entities.ProviderTaxonomy.create({
+          npi: match.npi,
+          taxonomy_description: match.specialty,
+          primary_flag: true,
+        });
+      }
+
+      setImported(prev => new Set([...prev, match.npi]));
+      toast.success(`Imported ${match.name} (NPI: ${match.npi})`);
+      if (onProviderAdded) onProviderAdded();
+    } catch (err) {
+      toast.error(`Import failed for ${match.name}: ${err.message || 'Unknown error'}`);
+    } finally {
+      setImporting(prev => { const n = new Set(prev); n.delete(match.npi); return n; });
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -180,7 +190,7 @@ Return up to 10 results, ordered by relevance.`,
       </div>
 
       {/* Search Form */}
-      <Card className="bg-white">
+      <Card className="bg-slate-800/40">
         <CardContent className="pt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

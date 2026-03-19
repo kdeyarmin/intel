@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Loader2, Users, Filter, ListChecks } from 'lucide-react';
+import { Plus, Loader2, Filter, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import AudienceFilterBuilder from './AudienceFilterBuilder';
 
@@ -52,13 +51,18 @@ export default function CampaignCreateDialog({ onCreated }) {
       data.audience_filters = audienceFilters;
       data.audience_size = audienceCount;
     }
-    const campaign = await base44.entities.Campaign.create(data);
-    setSaving(false);
-    setOpen(false);
-    setForm({ name: '', description: '', goal: '', budget: '', target_conversion_rate: '', start_date: '', end_date: '', lead_list_ids: [] });
-    setAudienceFilters({});
-    setAudienceCount(0);
-    onCreated?.(campaign);
+    try {
+      const campaign = await base44.entities.Campaign.create(data);
+      setOpen(false);
+      setForm({ name: '', description: '', goal: '', budget: '', target_conversion_rate: '', start_date: '', end_date: '', lead_list_ids: [] });
+      setAudienceFilters({});
+      setAudienceCount(0);
+      onCreated?.(campaign);
+    } catch (err) {
+      alert(`Failed to create campaign: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

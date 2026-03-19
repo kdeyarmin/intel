@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileText, Database, TrendingUp, Activity, Users } from 'lucide-react';
+import { Database, TrendingUp, Activity, Users } from 'lucide-react';
 
 const importTypes = [
   {
@@ -67,54 +66,6 @@ const importTypes = [
     icon: Database,
     requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'],
     downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership'
-  },
-  {
-    id: 'hospital_general_info',
-    name: 'Hospital General Information',
-    description: 'Hospital locations, types, ownership, and quality ratings from Care Compare',
-    icon: Database,
-    requiredColumns: ['Facility ID', 'Facility Name', 'Hospital Type', 'Hospital overall rating'],
-    downloadUrl: 'https://data.cms.gov/provider-data/dataset/xubh-q36u'
-  },
-  {
-    id: 'nursing_home_compare',
-    name: 'Nursing Home Compare',
-    description: 'Nursing facility quality ratings, staffing, penalties from Care Compare',
-    icon: TrendingUp,
-    requiredColumns: ['Federal Provider Number', 'Provider Name', 'Overall Rating', 'Staffing Rating'],
-    downloadUrl: 'https://data.cms.gov/provider-data/dataset/4pq5-n9py'
-  },
-  {
-    id: 'home_health_compare',
-    name: 'Home Health Compare',
-    description: 'Home health quality of patient care ratings from Care Compare',
-    icon: TrendingUp,
-    requiredColumns: ['CMS Certification Number (CCN)', 'Provider Name', 'Quality of Patient Care Star Rating'],
-    downloadUrl: 'https://data.cms.gov/provider-data/dataset/6jpm-sxkc'
-  },
-  {
-    id: 'dmepos_suppliers',
-    name: 'DMEPOS Suppliers',
-    description: 'Durable Medical Equipment supplier enrollment and participation data',
-    icon: Database,
-    requiredColumns: ['NPI', 'SUPPLIER NAME', 'STATE', 'SUPPLIER TYPE'],
-    downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/dmepos-suppliers'
-  },
-  {
-    id: 'medicare_inpatient_charges',
-    name: 'Medicare Inpatient Charges',
-    description: 'Hospital DRG-level inpatient charges and Medicare payments',
-    icon: TrendingUp,
-    requiredColumns: ['Provider Id', 'DRG Definition', 'Total Discharges', 'Average Covered Charges'],
-    downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-inpatient-hospitals/medicare-inpatient-hospitals-by-provider-and-service'
-  },
-  {
-    id: 'medicare_outpatient_charges',
-    name: 'Medicare Outpatient Charges',
-    description: 'Hospital APC-level outpatient charges and Medicare payments',
-    icon: TrendingUp,
-    requiredColumns: ['Provider Id', 'APC', 'Outpatient Services', 'Average Total Payments'],
-    downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-outpatient-hospitals/medicare-outpatient-hospitals-by-provider-and-service'
   },
 ];
 

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
-  Bell, BellOff, CheckCircle2, XCircle, AlertTriangle, Clock, Mail, Save, Settings
+  Bell, BellOff, CheckCircle2, XCircle, Clock, Save, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 

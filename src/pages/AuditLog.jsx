@@ -33,7 +33,7 @@ export default function AuditLog() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Audit Log"
         subtitle="System activity and data operations"
@@ -82,7 +82,7 @@ export default function AuditLog() {
                         <TableCell>
                           <Badge variant="outline" className={`${getEventColor(event.event_type)} flex items-center gap-1 w-fit`}>
                             <Icon className="w-3 h-3" />
-                            {event.event_type?.replace('_', ' ')}
+                            {event.event_type?.replaceAll('_', ' ')}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-slate-300">{event.user_email}</TableCell>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Lightbulb, TrendingUp, TrendingDown, Target, Clock, AlertTriangle } from 'lucide-react';
 
-export default function AIStrategyTab({ campaigns = [], providers = [], scores = [], referrals = [], locations = [], taxonomies = [] }) {
+export default function AIStrategyTab({ campaigns = [], providers = [], scores = [], _referrals = [], locations = [], taxonomies = [] }) {
   const [loading, setLoading] = useState(false);
   const [strategy, setStrategy] = useState(null);
 

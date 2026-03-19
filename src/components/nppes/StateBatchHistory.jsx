@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, Clock, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusConfig = {
@@ -94,19 +94,19 @@ export default function StateBatchHistory({ stateCode }) {
 
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
-                  <div className="text-lg font-bold text-slate-300">{batch.valid_rows?.toLocaleString() || '—'}</div>
+                  <div className="text-lg font-bold text-slate-300">{batch.valid_rows != null ? batch.valid_rows.toLocaleString() : '—'}</div>
                   <div className="text-[10px] text-slate-500">Fetched</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-green-400">{batch.imported_rows?.toLocaleString() || '—'}</div>
+                  <div className="text-lg font-bold text-green-400">{batch.imported_rows != null ? batch.imported_rows.toLocaleString() : '—'}</div>
                   <div className="text-[10px] text-slate-500">Imported</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-blue-400">{batch.updated_rows?.toLocaleString() || '—'}</div>
+                  <div className="text-lg font-bold text-blue-400">{batch.updated_rows != null ? batch.updated_rows.toLocaleString() : '—'}</div>
                   <div className="text-[10px] text-slate-500">Updated</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-slate-400">{batch.skipped_rows?.toLocaleString() || '—'}</div>
+                  <div className="text-lg font-bold text-slate-400">{batch.skipped_rows != null ? batch.skipped_rows.toLocaleString() : '—'}</div>
                   <div className="text-[10px] text-slate-500">Skipped</div>
                 </div>
               </div>

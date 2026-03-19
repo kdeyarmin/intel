@@ -16,15 +16,20 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
 
   const handleEnrich = async () => {
     setEnriching(true);
-    const res = await base44.functions.invoke('enrichProviderWithAI', { provider_id: provider.id });
-    const data = res.data;
-    if (data.success) {
-      toast.success(`Enriched ${data.enriched_fields.length} fields for ${name}`);
-      onEnriched?.();
-    } else {
-      toast.error(data.error || 'Enrichment failed');
+    try {
+      const res = await base44.functions.invoke('enrichProviderWithAI', { provider_id: provider.id });
+      const data = res.data;
+      if (data.success) {
+        toast.success(`Enriched ${data.enriched_fields.length} fields for ${name}`);
+        onEnriched?.();
+      } else {
+        toast.error(data.error || 'Enrichment failed');
+      }
+    } catch (error) {
+      toast.error('Enrichment failed: ' + error.message);
+    } finally {
+      setEnriching(false);
     }
-    setEnriching(false);
   };
 
   const enrichmentStatus = provider.ai_enrichment_status;

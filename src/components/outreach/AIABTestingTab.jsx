@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FlaskConical, Copy, Check, ArrowRight } from 'lucide-react';
+import { Loader2, FlaskConical, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AIABTestingTab({ onApplySubject, onApplyBody, campaigns = [], tone, goal }) {

@@ -3,20 +3,19 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { AlertCircle, TrendingDown, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { AlertCircle, TrendingDown, CheckCircle, Clock } from 'lucide-react';
 
 export default function DataQualityReportDashboard() {
-  const [timeframe, setTimeframe] = useState('30'); // days
+  const [timeframe, _setTimeframe] = useState('30'); // days
 
-  const { data: scans = [], isLoading: loadingScans } = useQuery({
+  const { data: scans = [], isLoading: _loadingScans } = useQuery({
     queryKey: ['dataQualityScans', timeframe],
     queryFn: () => base44.entities.DataQualityScan.list('-created_date', 50),
     staleTime: 300000,
   });
 
-  const { data: alerts = [], isLoading: loadingAlerts } = useQuery({
+  const { data: alerts = [], isLoading: _loadingAlerts } = useQuery({
     queryKey: ['dataQualityAlerts'],
     queryFn: () => base44.entities.DataQualityAlert.filter({ status: 'new' }),
     staleTime: 300000,

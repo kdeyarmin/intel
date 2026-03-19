@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, FileSpreadsheet, File } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-function getFileIcon(ext) {
+function _getFileIcon(ext) {
   if (ext === 'csv' || ext === 'txt' || ext === 'tsv') return FileText;
   if (ext === 'xlsx' || ext === 'xls') return FileSpreadsheet;
   return File;

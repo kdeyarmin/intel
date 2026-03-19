@@ -1,7 +1,39 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+
+type AutoEnrichmentResult = {
+    email?: string;
+    email_confidence?: string;
+    email_source?: string;
+    cell_phone?: string;
+    website?: string;
+    linkedin_url?: string;
+    twitter_url?: string;
+    firmographics?: Record<string, unknown>;
+    address?: {
+        street?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+        phone?: string;
+    };
+    confidence_score?: number;
+};
+
+type ProviderUpdate = {
+    email?: string;
+    email_confidence?: string;
+    email_source?: string;
+    email_searched_at?: string;
+    cell_phone?: string;
+    website?: string;
+    linkedin_url?: string;
+    twitter_url?: string;
+    firmographics?: Record<string, unknown>;
+};
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, message: 'AI integrations paused to save credits', updated: false, found: null });
         const base44 = createClientFromRequest(req);
         
         // This function is triggered by an entity automation
@@ -51,6 +83,8 @@ Deno.serve(async (req) => {
         2. Cell Phone Number (or direct mobile line)
         3. Practice Website URL
         4. Primary Practice Address (if different/better than what might be known)
+        5. Social media profiles (LinkedIn, Twitter)
+        6. Company Firmographics (employee count, estimated revenue, founding year)
 
         Only return information if you find it with high confidence (likely to be accurate).
         `;
@@ -66,6 +100,16 @@ Deno.serve(async (req) => {
                     email_source: { type: "string", description: "URL or source where email was found" },
                     cell_phone: { type: "string", description: "Cell/Mobile number if found with high confidence" },
                     website: { type: "string", description: "Website URL" },
+                    linkedin_url: { type: "string", description: "LinkedIn Profile URL" },
+                    twitter_url: { type: "string", description: "Twitter Profile URL" },
+                    firmographics: {
+                        type: "object",
+                        properties: {
+                            employee_count: { type: "string" },
+                            estimated_revenue: { type: "string" },
+                            founding_year: { type: "number" }
+                        }
+                    },
                     address: { 
                         type: "object", 
                         properties: {
@@ -83,13 +127,13 @@ Deno.serve(async (req) => {
         });
 
         // Parse response (InvokeLLM returns a dict if schema is provided, but checking type just in case)
-        const result = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
+        const result: AutoEnrichmentResult = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
         
         if (!result) {
             return Response.json({ message: 'No info found' });
         }
 
-        const updates = {};
+        const updates: ProviderUpdate = {};
         let updated = false;
 
         // Only update if confidence is high (user requirement)
@@ -112,6 +156,21 @@ Deno.serve(async (req) => {
 
             if (result.website && !provider.website) {
                 updates.website = result.website;
+                updated = true;
+            }
+
+            if (result.linkedin_url && !provider.linkedin_url) {
+                updates.linkedin_url = result.linkedin_url;
+                updated = true;
+            }
+
+            if (result.twitter_url && !provider.twitter_url) {
+                updates.twitter_url = result.twitter_url;
+                updated = true;
+            }
+
+            if (result.firmographics && (!provider.firmographics || Object.keys(provider.firmographics).length === 0)) {
+                updates.firmographics = result.firmographics;
                 updated = true;
             }
         }

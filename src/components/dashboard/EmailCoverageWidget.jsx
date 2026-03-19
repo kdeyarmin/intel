@@ -2,12 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Mail, Bot, Download } from 'lucide-react';
 
-export default function EmailCoverageWidget({ providers }) {
+export default function EmailCoverageWidget({ providers = [] }) {
   const total = providers.length;
   const withEmail = providers.filter(p => p.email).length;
   const searched = providers.filter(p => p.email_searched_at).length;

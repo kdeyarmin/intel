@@ -8,6 +8,53 @@ import { getProviderCoords } from './zipCoords';
 import ProviderMapPopup from './ProviderMapPopup';
 import 'react-leaflet';
 
+// Volume-based Heatmap overlay
+function VolumeDensityLayer({ points }) {
+  const clusters = useMemo(() => {
+    const grid = {};
+    const cellSize = 0.15; // ~10 mile grid cells
+    points.forEach(p => {
+      const key = `${Math.round(p.lat / cellSize)}_${Math.round(p.lng / cellSize)}`;
+      if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, totalVolume: 0 };
+      grid[key].lat += p.lat;
+      grid[key].lng += p.lng;
+      grid[key].count++;
+      grid[key].totalVolume += p.volume || 0;
+    });
+    return Object.values(grid).map(c => ({
+      lat: c.lat / c.count,
+      lng: c.lng / c.count,
+      count: c.count,
+      totalVolume: c.totalVolume,
+    }));
+  }, [points]);
+
+  const maxVolume = Math.max(...clusters.map(c => c.totalVolume), 1);
+
+  return clusters.map((cluster, i) => {
+    const intensity = cluster.totalVolume / maxVolume;
+    const radius = 12 + intensity * 60;
+    const opacity = 0.2 + intensity * 0.4;
+    return (
+      <CircleMarker
+        key={`vol-${i}`}
+        center={[cluster.lat, cluster.lng]}
+        radius={radius}
+        fillColor="#6366f1"
+        fillOpacity={opacity}
+        stroke={false}
+      >
+        <Popup>
+          <div className="text-xs">
+            <div className="font-semibold">{cluster.totalVolume.toLocaleString()} Patients</div>
+            <div className="text-slate-500">Across {cluster.count} providers</div>
+          </div>
+        </Popup>
+      </CircleMarker>
+    );
+  });
+}
+
 // Heatmap overlay as density circles
 function HeatmapLayer({ points }) {
   // Cluster points into grid cells for density
@@ -87,7 +134,7 @@ function getScoreRadius(score) {
   return 4;
 }
 
-export default function InteractiveProviderMap({ filteredProviders, showHeatmap, colorByScore }) {
+export default function InteractiveProviderMap({ filteredProviders, showHeatmap, showVolumeDensity, colorByScore, actions }) {
   const [mapLayer, setMapLayer] = useState('street'); // street | satellite
 
   // Build map points
@@ -100,6 +147,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
           lat: coords[0],
           lng: coords[1],
           score: item.score || 0,
+          volume: item.utilization?.total_medicare_beneficiaries || 0,
           item,
         });
       }
@@ -145,6 +193,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                 <Badge className="bg-green-100 text-green-700 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
+            {actions}
             <Button
               variant="ghost" size="icon" className="h-6 w-6"
               onClick={() => setMapLayer(mapLayer === 'street' ? 'satellite' : 'street')}
@@ -172,6 +221,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               <ResetViewButton center={center} zoom={defaultZoom} />
 
               {showHeatmap && <HeatmapLayer points={mapPoints} />}
+              {showVolumeDensity && <VolumeDensityLayer points={mapPoints} />}
 
               {mapPoints.map((point, idx) => (
                 <CircleMarker

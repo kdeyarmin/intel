@@ -30,7 +30,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
           </div>
         )}
         {Object.entries(breakdown).map(([key, data]) => {
-          const percentage = (data.contribution / data.weight) * 100;
+          const percentage = data.weight > 0 ? (data.contribution / data.weight) * 100 : 0;
           
           return (
             <div key={key} className="space-y-2">

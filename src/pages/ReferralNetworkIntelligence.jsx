@@ -163,7 +163,7 @@ export default function ReferralNetworkIntelligence() {
 
       {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 bg-slate-700/50" />)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 bg-slate-700/50" />)}</div>
           <Skeleton className="h-12 bg-slate-700/50" />
           <Skeleton className="h-[500px] bg-slate-700/50" />
         </div>
@@ -187,7 +187,7 @@ export default function ReferralNetworkIntelligence() {
           />
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="bg-slate-800/50">
+            <TabsList className="bg-slate-800/50 h-auto flex flex-wrap justify-start gap-1 p-1">
               <TabsTrigger value="graph" className="gap-1.5 text-xs">
                 <Network className="w-3.5 h-3.5" /> Network Graph
               </TabsTrigger>

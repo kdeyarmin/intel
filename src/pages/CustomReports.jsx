@@ -101,10 +101,16 @@ export default function CustomReports() {
     if (!dsConfig) return;
     setRunLoading(true);
     setHasRun(true);
-    const entity = base44.entities[dsConfig.entity];
-    const data = await entity.list('-created_date', 500);
-    setRawData(data);
-    setRunLoading(false);
+    try {
+      const entity = base44.entities[dsConfig.entity];
+      const data = await entity.list('-created_date', 500);
+      setRawData(data);
+    } catch (err) {
+      console.error('Failed to run report:', err);
+      toast.error('Failed to run report: ' + err.message);
+    } finally {
+      setRunLoading(false);
+    }
   }, [config.dataset]);
 
   const handleSaveCustom = useCallback(() => {

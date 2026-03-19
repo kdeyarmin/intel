@@ -54,16 +54,19 @@ export default function ProviderAffiliations({ npi, provider, location, taxonomi
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.ProviderAffiliation.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['providerAffiliations', npi] }); setShowAdd(false); resetForm(); },
+    onError: (err) => alert(`Failed to create affiliation: ${err.message}`),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ProviderAffiliation.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['providerAffiliations', npi] }); setEditAff(null); },
+    onError: (err) => alert(`Failed to update affiliation: ${err.message}`),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.ProviderAffiliation.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providerAffiliations', npi] }),
+    onError: (err) => alert(`Failed to delete affiliation: ${err.message}`),
   });
 
   const resetForm = () => setForm({ affiliation_name: '', affiliation_type: 'hospital', role: '', is_primary: false, notes: '' });

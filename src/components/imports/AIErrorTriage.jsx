@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sparkles, Loader2, AlertTriangle, CheckCircle2, Lightbulb,
-  ChevronDown, ChevronRight, RotateCcw, SkipForward, Zap,
-  ArrowUpDown, Shield, Clock
+  ChevronDown, ChevronRight, RotateCcw, SkipForward, Zap, Shield, Clock
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage } from './errorCategories';
 
 const PRIORITY_CONFIG = {

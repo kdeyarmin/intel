@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Play, Trash2, Star, BarChart3, TrendingUp, PieChart } from 'lucide-react';
 import { DATASET_CONFIG } from './reportConfig';

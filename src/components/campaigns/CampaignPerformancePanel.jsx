@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Eye, MessageSquare, AlertTriangle, UserCheck, TrendingUp, DollarSign } from 'lucide-react';
+import { Loader2, Mail, Eye, MessageSquare, AlertTriangle, UserCheck, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const FUNNEL_COLORS = ['#06b6d4', '#3b82f6', '#22c55e', '#eab308', '#ef4444'];
@@ -23,11 +23,16 @@ export default function CampaignPerformancePanel({ campaign, onUpdate }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const numMetrics = {};
-    Object.entries(metrics).forEach(([k, v]) => { numMetrics[k] = Number(v) || 0; });
-    await base44.entities.Campaign.update(campaign.id, numMetrics);
-    onUpdate?.({ ...campaign, ...numMetrics });
-    setSaving(false);
+    try {
+      const numMetrics = {};
+      Object.entries(metrics).forEach(([k, v]) => { numMetrics[k] = Number(v) || 0; });
+      await base44.entities.Campaign.update(campaign.id, numMetrics);
+      onUpdate?.({ ...campaign, ...numMetrics });
+    } catch (error) {
+      toast.error('Failed to save metrics: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const sent = Number(metrics.emails_sent) || 0;
@@ -41,9 +46,9 @@ export default function CampaignPerformancePanel({ campaign, onUpdate }) {
   const openRate = sent > 0 ? ((opened / sent) * 100).toFixed(1) : '0';
   const responseRate = sent > 0 ? ((responded / sent) * 100).toFixed(1) : '0';
   const bounceRate = sent > 0 ? ((bounced / sent) * 100).toFixed(1) : '0';
-  const conversionRate = sent > 0 ? ((conversions / sent) * 100).toFixed(1) : '0';
+  const _conversionRate = sent > 0 ? ((conversions / sent) * 100).toFixed(1) : '0';
   const roi = budget > 0 ? (((revenue - budget) / budget) * 100).toFixed(1) : '0';
-  const costPerConversion = conversions > 0 ? (budget / conversions).toFixed(0) : '-';
+  const _costPerConversion = conversions > 0 ? (budget / conversions).toFixed(0) : '-';
 
   const funnelData = [
     { name: 'Sent', value: sent },

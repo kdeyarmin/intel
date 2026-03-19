@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 
 function DatasetRow({ label, lastUpdated, count }) {
   const daysSince = lastUpdated ? differenceInDays(new Date(), new Date(lastUpdated)) : null;
@@ -28,7 +28,7 @@ function DatasetRow({ label, lastUpdated, count }) {
   );
 }
 
-export default function TimelinessPanel({ datasets }) {
+export default function TimelinessPanel({ datasets = [] }) {
   return (
     <div>
       <h4 className="text-xs font-semibold text-slate-300 mb-1">Data Timeliness</h4>

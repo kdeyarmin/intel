@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Building2, CheckCircle } from 'lucide-react';
 
-export default function ReferralLikelihoodSignals({ utilization, referrals, taxonomy }) {
+export default function ReferralLikelihoodSignals({ utilization, _referrals, taxonomy }) {
   const signals = [];
 
   const patientVolume = utilization?.total_medicare_beneficiaries || 0;

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function TopStatesCard({ topStates, loading }) {
+export default function TopStatesCard({ topStates = [], loading }) {
   const maxCount = topStates[0]?.[1] || 1;
 
   return (

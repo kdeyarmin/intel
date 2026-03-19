@@ -1,8 +1,13 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  home_health_enrollments: 'HH Enrollments',
+  home_health_cost_reports: 'HH Cost Reports',
+  home_health_pdgm: 'HH PDGM',
+});
 
 export default function AnalyticsFilters({ filters, onChange, importTypes = [] }) {
   const updateFilter = (key, value) => onChange({ ...filters, [key]: value });

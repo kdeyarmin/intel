@@ -12,7 +12,7 @@ import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
 import CampaignAutomationPanel from './CampaignAutomationPanel';
 
-const STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
+const _STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
   draft: 'bg-slate-500/15 text-slate-400',
   active: 'bg-emerald-500/15 text-emerald-400',

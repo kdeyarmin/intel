@@ -1,17 +1,12 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
-const MAX_EXEC_MS = 50000;
+const MAX_EXEC_MS = 25000;
 let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
 
-const CMS_MA_URLS = {
-  2023: 'https://data.cms.gov/sites/default/files/2026-01/CPS%20MDCR%20INPT%20MA%202023.zip',
-  2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20INPT%20MA%202022.zip',
-  2021: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip',
-  2020: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20INPT%20MA%202020.zip',
-};
-const LATEST_AVAILABLE_YEAR = Math.max(...Object.keys(CMS_MA_URLS).map(Number));
+// URLs are now managed via ImportScheduleConfig entity
+const FALLBACK_MA_URL = 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip';
 
 const MAX_NETWORK_RETRIES = 3;
 const RETRY_BACKOFF_MS = 2000;
@@ -67,23 +62,6 @@ function safeNum(val) {
   if (val === '' || val === null || val === undefined || val === '*' || val === '—' || val === '-' || val === 'N/A') return null;
   const num = parseFloat(String(val).replace(/[,$%\s]/g, ''));
   return isNaN(num) ? null : num;
-}
-
-const FINANCIAL_FIELDS = new Set(['total_charges', 'program_payments', 'payment_per_discharge', 'beneficiary_payments', 'covered_charges', 'total_covered_charges']);
-function clampNumericFields(record) {
-  const MAX_INT = 2147483647;
-  const MAX_FLOAT = 999999999999.99;
-  for (const key of Object.keys(record)) {
-    if (typeof record[key] === 'number') {
-      const limit = FINANCIAL_FIELDS.has(key) ? MAX_FLOAT : MAX_INT;
-      if (record[key] > limit) record[key] = limit;
-      if (record[key] < -limit) record[key] = -limit;
-    }
-    if (typeof record[key] === 'string' && record[key].length > 500) {
-      record[key] = record[key].substring(0, 500);
-    }
-  }
-  return record;
 }
 
 // ============================================================
@@ -203,7 +181,7 @@ function validateRecord(record, rowIndex, sheetName) {
   // 4. At least one numeric metric should be present
   const hasAnyMetric = VALIDATION_RULES.numeric_fields.some(f => record[f] != null);
   if (!hasAnyMetric) {
-    warnings.push({ rule: 'no_metrics', field: null, message: 'Row has no numeric metric values — may be a header/footer/note row', row: rowIndex, sheet: sheetName });
+    return { valid: false, skip: true, errors: [], warnings: [] };
   }
 
   // 5. Cross-field consistency
@@ -258,9 +236,7 @@ function validateAllRecords(records) {
 
 function mapRowToRecord(row, tableName, dataYear, rowIndex, sheetName) {
   const headers = Object.keys(row);
-  const safeRawData = {};
-  for (const h of headers) { safeRawData[h] = String(row[h] ?? ''); }
-  const record = { table_name: tableName, data_year: dataYear, raw_data: safeRawData };
+  const record = { table_name: tableName, data_year: dataYear, raw_data: row };
   try {
     for (const h of headers) {
       const hl = h.toLowerCase();
@@ -298,16 +274,15 @@ Deno.serve(async (req) => {
   // Allow service role calls (from triggerImport, cancelStalledImports) or admin users
   let user = null;
   try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
-  if (user && user.role !== 'admin') return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+  const isService = user && user.email && user.email.includes('service+');
+  if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
-  const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
-  const requestedYear = parseInt(payload.year || LATEST_AVAILABLE_YEAR);
-  const year = CMS_MA_URLS[requestedYear] ? requestedYear : LATEST_AVAILABLE_YEAR;
+  const { action = 'import', year = 2021, dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
 
   if (action === 'list_years') {
     return Response.json({
-      available_years: Object.keys(CMS_MA_URLS).map(Number).sort((a, b) => b - a),
+      available_years: [2021, 2020, 2019, 2018, 2017, 2016],
       source: 'CMS Program Statistics - Medicare Advantage Inpatient Hospital',
     });
   }
@@ -315,10 +290,10 @@ Deno.serve(async (req) => {
   let downloadUrl = custom_url;
   if (!downloadUrl) {
     const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
-    if (configs.length > 0 && configs[0].api_url) {
+    if (configs.length > 0) {
       downloadUrl = configs[0].api_url;
     } else {
-      downloadUrl = CMS_MA_URLS[year];
+      downloadUrl = FALLBACK_MA_URL;
     }
   }
 
@@ -326,15 +301,32 @@ Deno.serve(async (req) => {
     return Response.json({ error: `No download URL configured for Medicare MA Inpatient`, hint: 'Check ImportScheduleConfig' }, { status: 400 });
   }
 
-  const batch = await base44.asServiceRole.entities.ImportBatch.create({
-    import_type: 'medicare_ma_inpatient',
-    file_name: `medicare_ma_inpatient_${year}`,
-    file_url: downloadUrl,
-    status: 'processing',
-    dry_run,
-    data_year: year,
-    retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
-  });
+  let batch;
+  if (action === 'resume' && payload.batch_id) {
+    batch = await base44.asServiceRole.entities.ImportBatch.get(payload.batch_id);
+    if (!batch) return Response.json({ error: 'Batch not found' }, { status: 404 });
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, { status: 'processing' });
+  } else {
+    // try to find existing batch if not resuming to avoid duplicate active ones
+    const existingActive = await base44.asServiceRole.entities.ImportBatch.filter({
+        import_type: 'medicare_ma_inpatient',
+        status: { $in: ['processing', 'validating'] }
+    });
+    
+    if (existingActive.length > 0) {
+        batch = existingActive[0];
+        console.log(`Using existing active batch: ${batch.id}`);
+    } else {
+        batch = await base44.asServiceRole.entities.ImportBatch.create({
+          import_type: 'medicare_ma_inpatient',
+          file_name: `medicare_ma_inpatient_${year}`,
+          file_url: downloadUrl,
+          status: 'processing',
+          dry_run,
+          retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
+        });
+    }
+  }
 
   const errorSamples = [];
   const addError = (phase, detail, context) => {
@@ -346,7 +338,13 @@ Deno.serve(async (req) => {
   try {
     // === Step 1: Download ZIP with retry ===
     console.log(`[download] Fetching: ${downloadUrl}`);
-    const resp = await fetchWithRetry(downloadUrl, { timeoutMs: 30000 }, 'ZIP download');
+    const resp = await fetchWithRetry(downloadUrl, { 
+      timeoutMs: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'application/zip, application/octet-stream, */*'
+      }
+    }, 'ZIP download');
     const arrayBuffer = await resp.arrayBuffer();
     const sizeMB = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1);
     console.log(`[download] Complete: ${sizeMB}MB in ${elapsed()}ms`);
@@ -440,7 +438,7 @@ Deno.serve(async (req) => {
             addError('mapping', record._errorMsg, { sheet: sheetName, table: tableName, row_index: i });
             continue;
           }
-          if (record.category) { clampNumericFields(record); allRecords.push(record); rowCount++; }
+          if (record.category) { allRecords.push(record); rowCount++; }
         }
         console.log(`[parse] ${sheetName} -> ${tableName}: ${rowCount} valid rows, ${sheetRowErrors} errors`);
         sheetSummaries.push({ sheet: sheetName, table: tableName, rows: rowCount, errors: sheetRowErrors });
@@ -456,6 +454,9 @@ Deno.serve(async (req) => {
       
       for (let i = 0; i < allRecords.length; i++) {
         const result = validateRecord(allRecords[i], i, allRecords[i].table_name);
+        if (result.skip) {
+          continue;
+        }
         if (result.valid) {
           validation.valid++;
           validRecords.push(allRecords[i]);
@@ -490,7 +491,7 @@ Deno.serve(async (req) => {
         valid_rows: validRecords.length,
         invalid_rows: validation.invalid,
         column_mapping: { sheets: sheetSummaries, sheet_errors: Object.keys(sheetErrors).length ? sheetErrors : undefined },
-        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        error_samples: errorSamples.length > 0 ? errorSamples : [],
         dedup_summary: {
           validation_rule_summary: validation.rule_summary,
           validation_warnings: validation.warning_count,
@@ -500,9 +501,37 @@ Deno.serve(async (req) => {
       // === Step 4: Import with retry per chunk ===
       let imported = 0;
       let chunkErrors = 0;
-      const CHUNK = 50;
+      let fatalRateLimit = false;
+      const CHUNK = 30;
 
       if (!dry_run && recordsToProcess.length > 0) {
+        if (effectiveOffset === 0) {
+          const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
+          if (existing.length > 0) {
+            console.log(`Clearing existing ${year} records...`);
+            while (true) {
+                if (isTimeUp()) break;
+                const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
+                if (batchRecs.length === 0) break;
+                
+                for (let i = 0; i < batchRecs.length; i += 50) {
+                    const chunk = batchRecs.slice(i, i + 50);
+                    await Promise.all(chunk.map(async (rec) => {
+                        try {
+                            await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
+                        } catch (e) {
+                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                                await delay(3000);
+                                try { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); } catch(e2) {}
+                            }
+                        }
+                    }));
+                    await delay(100);
+                }
+            }
+          }
+        }
+
         for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
           if (isTimeUp()) {
             console.warn(`[import] Time limit reached at ${imported}/${recordsToProcess.length} (${elapsed()}ms)`);
@@ -511,7 +540,7 @@ Deno.serve(async (req) => {
           const chunk = recordsToProcess.slice(i, i + CHUNK);
           let chunkImported = false;
 
-          for (let attempt = 1; attempt <= 3; attempt++) {
+          for (let attempt = 1; attempt <= 6; attempt++) {
             try {
               await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
               imported += chunk.length;
@@ -519,12 +548,13 @@ Deno.serve(async (req) => {
               break;
             } catch (e) {
               const isRateLimit = e.message?.includes('Rate limit');
-              if (isRateLimit && attempt < 3) {
-                console.warn(`[import] Rate limited at chunk ${i}, waiting ${attempt * 2}s...`);
+              if (isRateLimit && attempt < 6) {
+                const waitMs = attempt * 10000 + Math.random() * 5000; // Exponentially longer wait
+                console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
+                await delay(waitMs);
+              } else if (attempt < 6 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
+                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/6): ${e.message}`);
                 await delay(attempt * 2000);
-              } else if (attempt < 3 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
-                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/3): ${e.message}`);
-                await delay(attempt * 1000);
               } else {
                 addError('import', `Chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
                   chunk_start: i + effectiveOffset,
@@ -534,19 +564,27 @@ Deno.serve(async (req) => {
                   first_record_table: chunk[0]?.table_name,
                 });
                 chunkErrors++;
+                if (isRateLimit || e.message?.includes('timeout') || e.message?.includes('network')) {
+                  fatalRateLimit = true;
+                }
                 break;
               }
             }
           }
 
-          // Small delay between successful chunks to avoid rate limits
+          if (fatalRateLimit) {
+            console.error(`[import] Fatal error (rate limit/timeout) at chunk ${i}, stopping chunk loop.`);
+            break;
+          }
+
+          // Larger delay between successful chunks to avoid rate limits
           if (chunkImported && i + CHUNK < recordsToProcess.length) {
-            await delay(150);
+            await delay(2500);
           }
         }
       }
 
-      const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
+      const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || fatalRateLimit);
       const finalStatus = dry_run ? 'completed'
         : timedOut ? 'paused'
         : chunkErrors > 0 && imported === 0 ? 'failed'
@@ -555,14 +593,18 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         status: finalStatus,
-        imported_rows: imported,
-        skipped_rows: chunkErrors * CHUNK,
+        imported_rows: (batch.imported_rows || 0) + imported,
+        skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
         completed_at: new Date().toISOString(),
-        error_samples: errorSamples.length > 0 ? errorSamples : undefined,
+        error_samples: errorSamples.length > 0 ? errorSamples : [],
         ...(timedOut ? {
           paused_at: new Date().toISOString(),
-          cancel_reason: `Time limit reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
-        } : {}),
+          cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
+          retry_params: { row_offset: effectiveOffset + imported }
+        } : {
+          cancel_reason: "",
+          paused_at: ""
+        }),
       });
 
       // Update schedule config
@@ -582,6 +624,18 @@ Deno.serve(async (req) => {
         details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
         timestamp: new Date().toISOString(),
       });
+
+      if (timedOut && !dry_run) {
+        base44.asServiceRole.functions.invoke('importMedicareMAInpatient', {
+          action: 'resume',
+          batch_id: batch.id,
+          year,
+          custom_url: downloadUrl,
+          sheet_filter,
+          row_limit,
+          row_offset: effectiveOffset + imported
+        }).catch(e => console.error(`[importMedicareMAInpatient] Auto-resume invoke error:`, e));
+      }
 
       return Response.json({
         success: true,
@@ -633,13 +687,8 @@ Deno.serve(async (req) => {
     try {
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         status: batchStatus,
-        imported_rows: imported || 0,
         error_samples: [...errorSamples, { phase: errorPhase, detail: errorMessage, timestamp: new Date().toISOString(), retryable: isRetryable }],
-        retry_params: { row_offset: (effectiveOffset || 0) + (imported || 0) },
-        cancel_reason: isRetryable
-          ? `${errorPhase} error (retryable): ${errorMessage}`
-          : `Failed at ${errorPhase}. ${imported || 0} rows already saved. Resume with row_offset=${(effectiveOffset || 0) + (imported || 0)}`,
-        ...(isRetryable ? { paused_at: new Date().toISOString() } : {}),
+        ...(isRetryable ? { paused_at: new Date().toISOString(), cancel_reason: `${errorPhase} error (retryable): ${errorMessage}` } : {}),
       });
     } catch (e) { console.error('[fatal] Batch status update failed:', e.message); }
 

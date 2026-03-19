@@ -130,6 +130,11 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
         </div>
 
         <div className="flex items-center justify-between">
+          <Label className="text-xs">Patient Volume Heatmap</Label>
+          <Switch checked={filters.showVolumeDensity} onCheckedChange={(v) => update('showVolumeDensity', v)} />
+        </div>
+
+        <div className="flex items-center justify-between">
           <Label className="text-xs">Color by Score</Label>
           <Switch checked={filters.colorByScore} onCheckedChange={(v) => update('colorByScore', v)} />
         </div>

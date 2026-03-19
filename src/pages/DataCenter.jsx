@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Loader2, AlertCircle, Upload, Database } from 'lucide-react';
 import ImportCategoryCards from '../components/dataCenter/ImportCategoryCards';
 import QuickImportFlow from '../components/dataCenter/QuickImportFlow';

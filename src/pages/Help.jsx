@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-  HelpCircle, Download, Search, LayoutDashboard, Users, ListCheck, Mail,
-  BarChart3, Upload, Shield, Bot, Target, MapPin, Building2, Network,
-  Megaphone, FileBarChart2, Database, Activity, Wrench, ChevronDown, ChevronRight,
-  BookOpen, Zap, TrendingUp, Sparkles
+  HelpCircle, Download, Search, LayoutDashboard, Users, Upload, Bot,
+  Megaphone, Zap, TrendingUp, Sparkles
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import HelpSection from '../components/help/HelpSection';
-import { base44 } from '@/api/base44Client';
 
 const GUIDE_SECTIONS = [
   {

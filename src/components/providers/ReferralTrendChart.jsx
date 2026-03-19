@@ -47,7 +47,7 @@ export default function ReferralTrendChart({ referrals = [] }) {
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="year" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 11 }} />
             <Tooltip />

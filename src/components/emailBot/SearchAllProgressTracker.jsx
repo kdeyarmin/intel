@@ -1,18 +1,22 @@
 import React, { useMemo } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Clock, Zap, TrendingUp, Users } from 'lucide-react';
 
 export default function SearchAllProgressTracker({ allRunProgress, remainingForRun, isRunningAll }) {
-  if (!allRunProgress) return null;
-
-  const { totalSearched, totalFound, batchNumber, status, startTime, batchTimes, remainingEstimate } = allRunProgress;
-
-  const effectiveRemaining = (remainingEstimate != null && remainingEstimate > 0)
-    ? totalSearched + remainingEstimate
-    : remainingForRun;
+  const {
+    totalSearched = 0,
+    totalFound = 0,
+    batchNumber = 0,
+    status,
+    startTime,
+    batchTimes
+  } = allRunProgress ?? {};
 
   const metrics = useMemo(() => {
+    if (!allRunProgress) {
+      return { throughput: 0, eta: null, avgBatchTime: 0, findRate: 0 };
+    }
+
     if (!startTime || totalSearched === 0) {
       return { throughput: 0, eta: null, avgBatchTime: 0, findRate: 0 };
     }
@@ -21,12 +25,13 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
     const throughput = elapsedSec > 0 ? (totalSearched / elapsedSec) : 0;
     const findRate = totalSearched > 0 ? (totalFound / totalSearched) * 100 : 0;
 
+    // Use recent batch times for more accurate ETA
     const recentBatchTimes = (batchTimes || []).slice(-5);
     const avgBatchTime = recentBatchTimes.length > 0
       ? recentBatchTimes.reduce((a, b) => a + b, 0) / recentBatchTimes.length
       : 0;
 
-    const remaining = Math.max(0, effectiveRemaining - totalSearched);
+    const remaining = Math.max(0, remainingForRun - totalSearched);
     let eta = null;
     if (throughput > 0 && remaining > 0) {
       const etaSec = remaining / throughput;
@@ -36,16 +41,17 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
     }
 
     return { throughput, eta, avgBatchTime, findRate };
-  }, [totalSearched, totalFound, startTime, batchTimes, effectiveRemaining]);
+  }, [totalSearched, totalFound, startTime, batchTimes, remainingForRun]);
 
-  const progressPct = effectiveRemaining > 0
-    ? Math.min(100, Math.round((totalSearched / effectiveRemaining) * 100))
+  const progressPct = remainingForRun > 0
+    ? Math.min(100, Math.round((totalSearched / remainingForRun) * 100))
     : 0;
 
   const isActive = status === 'running' && isRunningAll;
   const isComplete = status === 'complete';
   const isStopped = status === 'stopped';
 
+  if (!allRunProgress) return null;
   if (!isActive && !isComplete && !isStopped) return null;
 
   return (
@@ -88,7 +94,7 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
           <div className="bg-slate-800/50 border border-slate-700/40 rounded-lg p-2 text-center">
             <Users className="w-3 h-3 text-amber-400 mx-auto mb-0.5" />
             <p className="text-sm font-bold text-slate-200">
-              {Math.max(0, effectiveRemaining - totalSearched).toLocaleString()}
+              {Math.max(0, remainingForRun - totalSearched).toLocaleString()}
             </p>
             <p className="text-[9px] text-slate-500">Still Remaining</p>
           </div>

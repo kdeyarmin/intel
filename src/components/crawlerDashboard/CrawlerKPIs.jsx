@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Database, Clock, Activity, Server, ArrowUp, ArrowDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -7,8 +7,12 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
   const metrics = useMemo(() => {
     if (!nppesImports || nppesImports.length === 0) return null;
 
-    const totalProcessed = nppesImports.reduce((acc, curr) => acc + (curr.total_rows || 0), 0);
-    const totalImported = nppesImports.reduce((acc, curr) => acc + (curr.imported_rows || 0), 0);
+    const totalProcessed = nppesImports.reduce((acc, curr) => {
+      // total_rows is now set by backend; fall back to sum of components for older batches
+      const rows = curr.total_rows || ((curr.imported_rows || 0) + (curr.updated_rows || 0) + (curr.skipped_rows || 0) + (curr.invalid_rows || 0));
+      return acc + rows;
+    }, 0);
+    const totalImported = nppesImports.reduce((acc, curr) => acc + (curr.imported_rows || 0) + (curr.updated_rows || 0), 0);
     
     // Calculate average time per state (only for completed batches)
     const completedBatches = nppesImports.filter(b => b.status === 'completed' && b.completed_at && b.created_date);
@@ -18,12 +22,11 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
     const avgTimePerStateMs = completedBatches.length > 0 ? totalTimeMs / completedBatches.length : 0;
     const avgTimePerStateSec = Math.round(avgTimePerStateMs / 1000);
 
-    // API Usage (proxy via batch count * estimated calls)
-    // Assuming each batch is ~1 state. 
-    // This is a rough estimate.
     const totalBatches = nppesImports.length;
-    const successRate = totalBatches > 0 
-      ? Math.round((completedBatches.length / totalBatches) * 100) 
+    const failedBatches = nppesImports.filter(b => b.status === 'failed').length;
+    const terminalBatches = completedBatches.length + failedBatches;
+    const successRate = terminalBatches > 0
+      ? Math.round((completedBatches.length / terminalBatches) * 100)
       : 0;
 
     return {
@@ -31,7 +34,8 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
       totalImported,
       avgTimePerStateSec,
       successRate,
-      totalBatches
+      totalBatches,
+      completedCount: completedBatches.length
     };
   }, [nppesImports]);
 
@@ -45,24 +49,22 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <KPICard 
-        title="Total Providers Processed" 
-        value={metrics.totalProcessed.toLocaleString()} 
+      <KPICard
+        title="Total Providers Processed"
+        value={metrics.totalProcessed.toLocaleString()}
         icon={Database}
-        trend="+12% from last week" 
-        trendUp={true}
+        trend={`${metrics.totalBatches} batches processed`}
         color="text-blue-600"
-        bgColor="bg-blue-50"
+        bgColor="bg-blue-500/15"
       />
-      <KPICard 
-        title="Avg Processing Time" 
-        value={`${metrics.avgTimePerStateSec}s`} 
-        subValue="per state"
+      <KPICard
+        title="Avg Processing Time"
+        value={metrics.completedCount > 0 ? `${metrics.avgTimePerStateSec}s` : '—'}
+        subValue={metrics.completedCount > 0 ? "per state" : "no data yet"}
         icon={Clock}
-        trend="-5% improvement"
-        trendUp={true}
+        trend={`${metrics.completedCount} completed batches`}
         color="text-amber-600"
-        bgColor="bg-amber-50"
+        bgColor="bg-amber-500/15"
       />
       <KPICard 
         title="Success Rate" 
@@ -70,7 +72,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Activity}
         trend={`${metrics.totalBatches} total batches`}
         color="text-emerald-600"
-        bgColor="bg-emerald-50"
+        bgColor="bg-emerald-500/15"
       />
       <KPICard 
         title="Newly Imported" 
@@ -78,7 +80,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Server}
         trend="New records added"
         color="text-purple-600"
-        bgColor="bg-purple-50"
+        bgColor="bg-purple-500/15"
       />
     </div>
   );
@@ -100,7 +102,8 @@ function KPICard({ title, value, subValue, icon: Icon, trend, trendUp, color, bg
         </div>
         {trend && (
           <p className="text-xs text-muted-foreground mt-1 flex items-center">
-            {trendUp ? <ArrowUp className="w-3 h-3 text-emerald-500 mr-1" /> : <ArrowDown className="w-3 h-3 text-red-500 mr-1" />}
+            {trendUp === true && <ArrowUp className="w-3 h-3 text-emerald-500 mr-1" />}
+            {trendUp === false && <ArrowDown className="w-3 h-3 text-red-500 mr-1" />}
             {trend}
           </p>
         )}

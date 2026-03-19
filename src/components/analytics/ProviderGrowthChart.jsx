@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ProviderGrowthChart({ metrics }) {
-  const chartData = metrics
+  const chartData = [...metrics]
     .sort((a, b) => new Date(a.snapshot_date) - new Date(b.snapshot_date))
     .map(m => ({
       date: format(new Date(m.snapshot_date), 'MMM d'),

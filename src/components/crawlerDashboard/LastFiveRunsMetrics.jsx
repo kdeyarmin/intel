@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, CheckCircle2, XCircle, Clock, Database, Zap } from 'lucide-react';
+import { Database } from 'lucide-react';
 
 export default function LastFiveRunsMetrics({ nppesImports, loading }) {
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>;
@@ -44,13 +44,14 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
               </TableRow>
             ) : (
               runs.map(run => {
-                const state = run.file_name?.split('_')[1] || '??';
-                const start = new Date(run.created_date);
-                const end = run.completed_at ? new Date(run.completed_at) : new Date();
-                const durationMs = end - start;
-                const durationSec = Math.max(1, Math.round(durationMs / 1000));
-                const rows = run.total_rows || 0;
-                const speed = Math.round(rows / durationSec); // rows/sec
+                const state = (run.file_name?.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];
+                const start = run.created_date ? new Date(run.created_date) : new Date();
+                const end = run.completed_at ? new Date(run.completed_at) : (run.status === 'processing' || run.status === 'validating') ? new Date() : null;
+                const durationMs = end ? Math.max(0, end - start) : 0;
+                const durationSec = durationMs > 0 ? Math.max(1, Math.round(durationMs / 1000)) : 0;
+                const rows = run.total_rows || ((run.imported_rows || 0) + (run.updated_rows || 0) + (run.skipped_rows || 0) + (run.invalid_rows || 0));
+                const isTerminal = run.status === 'completed' || run.status === 'failed';
+                const speed = isTerminal && durationSec > 0 ? Math.round(rows / durationSec) : 0;
                 const errorCount = (run.error_samples || []).length + (run.invalid_rows || 0);
 
                 return (
@@ -58,15 +59,15 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                     <TableCell className="font-medium">{state}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`
-                        ${run.status === 'completed' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 
-                          run.status === 'failed' ? 'border-red-200 text-red-700 bg-red-50' : 
-                          'border-blue-200 text-blue-700 bg-blue-50'}
+                        ${run.status === 'completed' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/15' :
+                          run.status === 'failed' ? 'border-red-500/30 text-red-400 bg-red-500/15' :
+                          'border-blue-500/30 text-blue-400 bg-blue-500/15'}
                       `}>
                         {run.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-slate-500 text-xs">
-                      {durationSec < 60 ? `${durationSec}s` : `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`}
+                      {durationSec === 0 ? '—' : durationSec < 60 ? `${durationSec}s` : `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs">
                       {rows.toLocaleString()}
@@ -79,7 +80,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                     </TableCell>
                     <TableCell className="text-right">
                        {errorCount > 0 ? (
-                         <Badge variant="secondary" className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100">
+                         <Badge variant="secondary" className="bg-red-500/15 text-red-400 hover:bg-red-500/25 border-red-500/30">
                            {errorCount}
                          </Badge>
                        ) : (

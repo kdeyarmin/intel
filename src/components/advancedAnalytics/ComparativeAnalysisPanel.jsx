@@ -1,14 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
-export default function ComparativeAnalysisPanel({ providers = [], utilization = [], referrals = [], taxonomies = [], locations = [] }) {
+export default function ComparativeAnalysisPanel({ providers = [], utilization = [], _referrals = [], taxonomies = [], locations = [] }) {
   const [compareBy, setCompareBy] = useState('entity_type');
   const [metric, setMetric] = useState('total_medicare_payment');
   const [viewMode, setViewMode] = useState('bar');
@@ -123,7 +122,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
         ) : viewMode === 'bar' ? (
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={comparisonData} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis type="number" tickFormatter={formatVal} tick={{ fontSize: 11 }} />
               <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
               <Tooltip formatter={formatVal} />
@@ -133,7 +132,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
         ) : (
           <ResponsiveContainer width="100%" height={350}>
             <RadarChart data={radarData} outerRadius="70%">
-              <PolarGrid stroke="#e2e8f0" />
+              <PolarGrid stroke="#334155" />
               <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10 }} />
               <PolarRadiusAxis tick={{ fontSize: 9 }} />
               {comparisonData.slice(0, 5).map((g, i) => (

@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { invokeWithRetry } from '@/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  RotateCcw, SkipForward, CheckCircle2, Loader2, Layers,
-  AlertTriangle, ChevronDown, ChevronRight, X
+  RotateCcw, SkipForward, CheckCircle2, Loader2, Layers, ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage, groupErrors } from './errorCategories';
@@ -75,7 +73,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
     const maxRow = rows.length > 0 ? Math.max(...rows) : undefined;
 
     try {
-      await invokeWithRetry(base44, 'triggerImport', {
+      await base44.functions.invoke('triggerImport', {
         import_type: batch.import_type,
         file_url: batch.file_url || undefined,
         dry_run: false,
@@ -172,7 +170,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
   };
 
   // Handle action from AI triage
-  const handleTriageAction = (action, categoryLabel, catKey) => {
+  const _handleTriageAction = (action, categoryLabel, catKey) => {
     if (catKey) {
       setSelectedCategories(new Set([catKey]));
       setShowPanel(true);

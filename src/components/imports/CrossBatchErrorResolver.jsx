@@ -6,17 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Layers, RotateCcw, SkipForward, CheckCircle2, Loader2,
-  AlertTriangle, ChevronDown, ChevronRight, Sparkles, X
+  Layers, RotateCcw, CheckCircle2, Loader2, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { invokeWithRetry } from '@/utils';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage, groupErrors } from './errorCategories';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels();
 
 export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
   const [selectedBatches, setSelectedBatches] = useState(new Set());
-  const [selectedAction, setSelectedAction] = useState(null);
+  const [_selectedAction, _setSelectedAction] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -74,7 +74,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
       const batch = failedBatches.find(b => b.id === batchId);
       if (!batch) continue;
       try {
-        await invokeWithRetry(base44, 'triggerImport', {
+        await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
           file_url: batch.file_url || undefined,
           dry_run: false,

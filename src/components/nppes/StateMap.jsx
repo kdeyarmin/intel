@@ -12,11 +12,11 @@ const STATE_POSITIONS = {
 };
 
 const STATUS_COLORS = {
-  active:     { bg: '#0d9488', text: '#fff', border: '#0f766e' },
-  completed:  { bg: '#22c55e', text: '#fff', border: '#16a34a' },
-  failed:     { bg: '#ef4444', text: '#fff', border: '#dc2626' },
-  processing: { bg: '#f59e0b', text: '#fff', border: '#d97706' },
-  pending:    { bg: '#1e293b', text: '#64748b', border: '#334155' },
+  active:     { bg: 'rgba(13, 148, 136, 0.2)', text: '#2dd4bf', border: 'rgba(20, 184, 166, 0.3)' },
+  completed:  { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
+  failed:     { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
+  processing: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
+  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#64748b', border: 'rgba(51, 65, 85, 0.5)' },
 };
 
 export default function StateMap({ status, currentState, running, autoMode, onStateClick }) {
@@ -26,18 +26,17 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
 
   const getStateStatus = (st) => {
     if (st === currentState && (running || autoMode)) return 'active';
-    if (st === status?.currently_processing_state && autoMode) return 'active';
     if (processingSet.has(st)) return 'processing';
     if (completedSet.has(st)) return 'completed';
     if (failedSet.has(st)) return 'failed';
     return 'pending';
   };
 
-  // Get provider count from status data
+  // Get provider count from batch data
   const getProviderCount = (st) => {
-    if (!status?.state_details) return null;
-    const detail = status.state_details[st];
-    return detail?.imported_rows || detail?.valid_rows || null;
+    const batch = (status?.batches || []).find(b => b.file_name?.includes(`crawler_${st}_`));
+    if (!batch) return null;
+    return batch.imported_rows || batch.valid_rows || null;
   };
 
   const maxRow = 7;
@@ -77,7 +76,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               title={`${st}: ${stStatus}${count ? ` (${count.toLocaleString()} providers)` : ''}`}
             >
               <span className="text-[10px] sm:text-xs font-bold leading-none">{st}</span>
-              {count && (
+              {count != null && count > 0 && (
                 <span className="text-[7px] sm:text-[8px] opacity-75 leading-none mt-0.5">
                   {count >= 1000 ? `${Math.round(count / 1000)}k` : count}
                 </span>
@@ -93,10 +92,11 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-xs">
         {[
+          { key: 'active', label: 'Active', count: (currentState && (running || autoMode)) ? 1 : 0 },
           { key: 'completed', label: 'Completed', count: completedSet.size },
           { key: 'processing', label: 'Processing', count: processingSet.size },
           { key: 'failed', label: 'Failed', count: failedSet.size },
-          { key: 'pending', label: 'Pending', count: 51 - completedSet.size - failedSet.size - processingSet.size },
+          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size) },
         ].map(item => (
           <div key={item.key} className="flex items-center gap-1.5">
             <div 

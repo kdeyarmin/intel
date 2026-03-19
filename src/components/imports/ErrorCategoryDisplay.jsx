@@ -4,7 +4,7 @@ import {
   AlertTriangle, Clock, ShieldAlert, FileWarning, Type, Copy, Wifi, Wrench, HelpCircle,
   ChevronDown, ChevronRight, Lightbulb, ExternalLink
 } from 'lucide-react';
-import { ERROR_CATEGORIES, categorizeError, groupErrors } from './errorCategories';
+import { ERROR_CATEGORIES, groupErrors } from './errorCategories';
 
 const ICON_MAP = {
   ShieldAlert, FileWarning, Type, Copy, Clock, Wifi, Wrench, HelpCircle, AlertTriangle,

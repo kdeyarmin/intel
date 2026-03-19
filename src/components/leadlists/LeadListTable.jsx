@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -10,7 +8,7 @@ import { ArrowUpDown, Edit, Eye, UserMinus } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 
-const statusColors = {
+const _statusColors = {
   'New': 'bg-blue-100 text-blue-800',
   'Contacted': 'bg-yellow-100 text-yellow-800',
   'Qualified': 'bg-green-100 text-green-800',
@@ -20,7 +18,7 @@ const statusColors = {
 export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
   const [sortField, setSortField] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
-  const [editingNotes, setEditingNotes] = useState(null);
+  const [_editingNotes, setEditingNotes] = useState(null);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -57,14 +55,15 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
   });
 
   const SortButton = ({ field, children }) => (
-    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-teal-600">
+    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-teal-400">
       {children}
       <ArrowUpDown className="w-3 h-3" />
     </button>
   );
 
   return (
-    <Table>
+    <div className="overflow-x-auto">
+      <Table>
       <TableHeader>
         <TableRow>
           <TableHead><SortButton field="score">Score</SortButton></TableHead>
@@ -82,7 +81,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
         {sortedLeads.map(lead => (
           <TableRow key={lead.member.id}>
             <TableCell>
-              <div className="text-lg font-bold text-teal-600">
+              <div className="text-lg font-bold text-teal-400">
                 {lead.score?.score || 'N/A'}
               </div>
             </TableCell>
@@ -91,7 +90,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                 ? `${lead.provider.last_name}, ${lead.provider.first_name}`
                 : lead.provider?.organization_name}
             </TableCell>
-            <TableCell className="text-sm text-gray-600">
+            <TableCell className="text-sm text-slate-400">
               {lead.taxonomy?.taxonomy_description || '-'}
             </TableCell>
             <TableCell className="text-sm">
@@ -165,6 +164,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
           </TableRow>
         ))}
       </TableBody>
-    </Table>
+      </Table>
+    </div>
   );
 }

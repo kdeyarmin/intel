@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, MapPin, Stethoscope, TrendingDown } from 'lucide-react';
+import { AlertTriangle, Stethoscope, TrendingDown } from 'lucide-react';
 
 const KEY_SPECIALTIES = [
   'Internal Medicine', 'Family Medicine', 'Cardiology', 'Orthopedic Surgery',

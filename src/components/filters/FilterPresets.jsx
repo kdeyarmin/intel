@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Sparkles, Stethoscope, MapPin, Mail, TrendingUp, ShieldCheck, Building } from 'lucide-react';
+import { Sparkles, Stethoscope, Mail, TrendingUp, ShieldCheck, Building } from 'lucide-react';
 
 const PRESETS = [
   {

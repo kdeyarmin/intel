@@ -52,7 +52,7 @@ export default function SNFStatsChart({ data = [], loading }) {
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey={isGeo ? "state" : "category"} tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip formatter={(val, name) => name === 'Payments ($M)' ? `$${val}M` : val.toLocaleString()} />

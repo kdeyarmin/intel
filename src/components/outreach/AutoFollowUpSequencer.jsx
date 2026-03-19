@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Loader2, Sparkles, Clock, Mail, Eye, MessageSquare, Zap, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,7 +13,7 @@ const SEQUENCE_STEPS = [
   { id: 3, trigger: 'still_no_reply', delay: '10 days', label: 'Final nudge after 10d', icon: MessageSquare, color: 'text-violet-400' },
 ];
 
-export default function AutoFollowUpSequencer({ campaign, messages = [], providers = [], onCreateFollowUp }) {
+export default function AutoFollowUpSequencer({ campaign, messages = [], _providers = [], onCreateFollowUp }) {
   const [generating, setGenerating] = useState(false);
   const [sequence, setSequence] = useState(null);
   const [enabledSteps, setEnabledSteps] = useState(new Set([1, 2, 3]));
@@ -27,6 +26,7 @@ export default function AutoFollowUpSequencer({ campaign, messages = [], provide
 
   const generateSequence = async () => {
     setGenerating(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Create a 3-step automated follow-up email sequence for this healthcare outreach campaign.
 
@@ -72,7 +72,11 @@ Keep each under 100 words.`,
       }
     });
     setSequence(res);
-    setGenerating(false);
+    } catch (err) {
+      toast.error('Failed to generate sequence: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const activateStep = (step) => {

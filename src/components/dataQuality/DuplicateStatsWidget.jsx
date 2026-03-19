@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Copy, CheckCircle2, GitMerge, TrendingDown } from 'lucide-react';
 
 export default function DuplicateStatsWidget({ batches = [] }) {

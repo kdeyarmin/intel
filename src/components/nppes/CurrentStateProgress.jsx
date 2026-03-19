@@ -1,26 +1,9 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, MapPin, Users, RefreshCw, FileCheck } from 'lucide-react';
+import { Loader2, Users, RefreshCw, FileCheck } from 'lucide-react';
 
-const STATE_ZIP_PREFIXES = {
-  AL: ['35','36'], AK: ['99'], AZ: ['85','86'], AR: ['71','72','75'],
-  CA: ['90','91','92','93','94','95','96'], CO: ['80','81'], CT: ['06'],
-  DE: ['19'], DC: ['20'], FL: ['32','33','34'], GA: ['30','31','39'],
-  HI: ['96'], ID: ['83'], IL: ['60','61','62'], IN: ['46','47'],
-  IA: ['50','51','52','68'], KS: ['66','67'], KY: ['40','41','42'],
-  LA: ['70','71'], ME: ['03','04'], MD: ['20','21'],
-  MA: ['01','02','05'], MI: ['48','49'], MN: ['55','56'],
-  MS: ['38','39','71'], MO: ['63','64','65'], MT: ['59'],
-  NE: ['68','69'], NV: ['88','89'], NH: ['03'],
-  NJ: ['07','08'], NM: ['87','88'], NY: ['06','10','11','12','13','14'],
-  NC: ['27','28'], ND: ['58'], OH: ['43','44','45'],
-  OK: ['73','74'], OR: ['97'], PA: ['15','16','17','18','19'],
-  RI: ['02'], SC: ['29'], SD: ['57'], TN: ['37','38'],
-  TX: ['73','75','76','77','78','79','88'], UT: ['84'],
-  VT: ['05'], VA: ['20','22','23','24'], WA: ['98','99'],
-  WV: ['24','25','26'], WI: ['53','54'], WY: ['82','83']
-};
+const DEFAULT_QUEUE_ITEMS = 100;
 
 const STATE_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
@@ -44,20 +27,24 @@ export default function CurrentStateProgress({ status }) {
 
   const stateCode = useMemo(() => {
     if (!activeBatch) {
-      // Fallback: check currently_processing_state or processing_states from status
-      if (status?.currently_processing_state) return status.currently_processing_state;
+      // Fallback: check processing_states from status
       if (status?.processing_states?.length > 0) return status.processing_states[0];
       return null;
     }
-    return activeBatch.file_name?.split('_')[1] || null;
+    return (activeBatch.file_name?.match(/crawler_([A-Z]{2})/) || [null, null])[1];
   }, [activeBatch, status]);
 
   if (!stateCode) return null;
 
-  const totalPrefixes = (STATE_ZIP_PREFIXES[stateCode] || []).length;
   const processedPrefixes = activeBatch?.retry_params?.processed_prefixes || [];
-  const completedPrefixes = processedPrefixes.length;
-  const pct = totalPrefixes > 0 ? Math.round((completedPrefixes / totalPrefixes) * 100) : 0;
+  const metricsForState = status?.granular_metrics?.[stateCode];
+  const totalPrefixes = metricsForState?.total_queue_items || activeBatch?.retry_params?.total_queue_items || DEFAULT_QUEUE_ITEMS;
+  const completedFromMetrics = metricsForState?.completed_items || 0;
+  const completedPrefixes = Math.max(processedPrefixes.length, completedFromMetrics);
+  const pct = totalPrefixes > 0 ? Math.min(Math.round((completedPrefixes / totalPrefixes) * 100), 100) : 0;
+  const filterCity = activeBatch?.retry_params?.city;
+  const filterPostalCode = activeBatch?.retry_params?.postal_code;
+  const usesDefaultPrefixGrid = totalPrefixes === DEFAULT_QUEUE_ITEMS;
 
   const imported = activeBatch?.imported_rows || 0;
   const updated = activeBatch?.updated_rows || 0;
@@ -75,7 +62,7 @@ export default function CurrentStateProgress({ status }) {
             </span>
           </div>
           <Badge className="bg-teal-500/15 text-teal-400 border border-teal-500/20 text-xs">
-            {completedPrefixes} / {totalPrefixes} zip prefixes
+            {completedPrefixes} / {totalPrefixes} {usesDefaultPrefixGrid ? 'zip prefixes' : 'queue items'}
           </Badge>
         </div>
 
@@ -90,15 +77,14 @@ export default function CurrentStateProgress({ status }) {
           <div className="flex justify-between text-[10px] text-slate-400">
             <span>{pct}% complete</span>
             {totalPrefixes - completedPrefixes > 0 && (
-              <span>{totalPrefixes - completedPrefixes} prefix{totalPrefixes - completedPrefixes !== 1 ? 'es' : ''} remaining</span>
+              <span>{totalPrefixes - completedPrefixes} {usesDefaultPrefixGrid ? `prefix${totalPrefixes - completedPrefixes !== 1 ? 'es' : ''}` : `item${totalPrefixes - completedPrefixes !== 1 ? 's' : ''}`} remaining</span>
             )}
           </div>
         </div>
 
-        {/* Zip prefix pills */}
-        {totalPrefixes > 0 && (
+        {usesDefaultPrefixGrid && processedPrefixes.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {(STATE_ZIP_PREFIXES[stateCode] || []).map(prefix => {
+            {Array.from({ length: DEFAULT_QUEUE_ITEMS }, (_, i) => String(i).padStart(2, '0')).map(prefix => {
               const done = processedPrefixes.includes(prefix);
               return (
                 <span
@@ -109,10 +95,17 @@ export default function CurrentStateProgress({ status }) {
                       : 'bg-slate-800/50 text-slate-500 border-slate-700/50'
                   }`}
                 >
-                  {prefix}*
+                  {prefix}
                 </span>
               );
             })}
+          </div>
+        )}
+
+        {!usesDefaultPrefixGrid && (filterCity || filterPostalCode) && (
+          <div className="flex flex-wrap gap-2 text-[10px] text-slate-300">
+            {filterCity && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">City: {filterCity}</span>}
+            {filterPostalCode && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">Postal: {filterPostalCode}</span>}
           </div>
         )}
 

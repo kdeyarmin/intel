@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Sparkles, TrendingUp, AlertTriangle, ArrowUpRight } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine
@@ -157,7 +156,7 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={formatVal} tick={{ fontSize: 11 }} />
               <Tooltip formatter={formatVal} />

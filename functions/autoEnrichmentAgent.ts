@@ -1,7 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 Deno.serve(async (req) => {
     try {
+        return Response.json({ success: false, error: 'AI integrations paused to save credits' });
         const base44 = createClientFromRequest(req);
         
         // 1. Find providers with missing NPIs
@@ -57,7 +58,11 @@ Deno.serve(async (req) => {
             try {
                 if (!p.npi) continue; // Skip if still no NPI
 
-                const enrichmentRes = await base44.functions.invoke('enrichProviderWithAI', { npi: p.npi });
+                // Invoke the existing enrichment API logic (we can't call the endpoint easily from here without full URL, 
+                // so we'll reimplement the core logic or assume we can invoke it if it was a function. 
+                // Since providerEnrichmentApi is a function, let's use base44.functions.invoke)
+                
+                const enrichmentRes = await base44.functions.invoke('providerEnrichmentApi', { npi: p.npi });
                 
                 if (enrichmentRes.data && enrichmentRes.data.ai_enrichment_suggestions) {
                     const suggestions = enrichmentRes.data.ai_enrichment_suggestions;

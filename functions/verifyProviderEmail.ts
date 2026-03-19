@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // ---- Static analysis helpers ----
 const ROLE_BASED_PATTERNS = [
@@ -375,7 +375,7 @@ Be concise and factual.`,
         },
         smtp: {
           reachable: smtpProbe.reachable,
-          ip: smtpProbe.ip || null,
+          ip: 'ip' in smtpProbe ? smtpProbe.ip || null : null,
         },
         catchAll: catchAllResult,
         ai: aiAssessment ? {

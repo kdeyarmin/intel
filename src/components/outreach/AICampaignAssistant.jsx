@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Loader2, Wand2, BarChart3, Mail, Copy, Check, RefreshCw, Users, ListOrdered, Lightbulb, FlaskConical, PieChart } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, BarChart3, Mail, Users, ListOrdered, Lightbulb, FlaskConical, PieChart } from 'lucide-react';
 import { toast } from 'sonner';
 import AudienceAnalysisTab from './AudienceAnalysisTab';
 import FollowUpSequenceTab from './FollowUpSequenceTab';
@@ -345,7 +345,7 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
   );
 }
 
-function NamingTab({ loading, results, onGenerate, onApplyName, onApplyDescription, copiedField, copy }) {
+function NamingTab({ loading, results, onGenerate, onApplyName, onApplyDescription, _copiedField, _copy }) {
   return (
     <div className="space-y-2">
       <Button size="sm" onClick={onGenerate} disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700 h-7 text-xs gap-1">

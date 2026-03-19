@@ -37,8 +37,9 @@ export default function AIRelatedProviders({ provider, location, taxonomies, ref
     if (referrals?.snf_referrals > 0) refTypes.push(`SNF: ${referrals.snf_referrals}`);
     if (referrals?.dme_referrals > 0) refTypes.push(`DME: ${referrals.dme_referrals}`);
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze this provider's network and suggest related providers or organizations they should connect with.
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this provider's network and suggest related providers or organizations they should connect with.
 
 TARGET PROVIDER:
 - Name: ${name}
@@ -58,30 +59,34 @@ Based on:
 4. Practice type synergy (e.g., primary care + specialist, hospital + post-acute care)
 
 Suggest 5 types of providers/organizations this provider should connect with, and match them to specific nearby providers if possible. For each, explain the relationship rationale.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          suggestions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                category: { type: "string" },
-                description: { type: "string" },
-                rationale: { type: "string" },
-                matched_npi: { type: "string" },
-                matched_name: { type: "string" },
-                relationship_strength: { type: "string", enum: ["strong", "moderate", "exploratory"] },
+        response_json_schema: {
+          type: "object",
+          properties: {
+            suggestions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  category: { type: "string" },
+                  description: { type: "string" },
+                  rationale: { type: "string" },
+                  matched_npi: { type: "string" },
+                  matched_name: { type: "string" },
+                  relationship_strength: { type: "string", enum: ["strong", "moderate", "exploratory"] },
+                }
               }
-            }
-          },
-          network_summary: { type: "string" }
+            },
+            network_summary: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    setResults(res);
-    setLoading(false);
+      setResults(res);
+    } catch (err) {
+      console.error('Analysis failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strengthColors = { strong: 'bg-green-100 text-green-700', moderate: 'bg-blue-100 text-blue-700', exploratory: 'bg-slate-100 text-slate-600' };

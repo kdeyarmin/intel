@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, AlertCircle, TrendingUp, Shield, Zap } from 'lucide-react';
+import { Loader2, CheckCircle, TrendingUp, Shield, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
@@ -23,7 +23,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
       setEnrichments(prev => ({ ...prev, medicare: response.data }));
       setStatus(prev => ({ ...prev, medicare: 'success' }));
       toast.success('Medicare quality metrics loaded');
-    } catch (error) {
+    } catch (_error) {
       setStatus(prev => ({ ...prev, medicare: 'error' }));
       toast.error('Failed to load Medicare data');
     } finally {
@@ -42,7 +42,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
       setEnrichments(prev => ({ ...prev, npi_validation: response.data }));
       setStatus(prev => ({ ...prev, npi_validation: response.data.is_valid ? 'success' : 'error' }));
       toast.success(response.data.is_valid ? 'NPI validated successfully' : 'NPI validation issues found');
-    } catch (error) {
+    } catch (_error) {
       setStatus(prev => ({ ...prev, npi_validation: 'error' }));
       toast.error('Failed to validate NPI');
     } finally {
@@ -58,7 +58,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
       setEnrichments(prev => ({ ...prev, dea: response.data }));
       setStatus(prev => ({ ...prev, dea: response.data.is_dea_registered ? 'success' : 'warning' }));
       toast.success(`DEA registration: ${response.data.is_dea_registered ? 'Found' : 'Not registered'}`);
-    } catch (error) {
+    } catch (_error) {
       setStatus(prev => ({ ...prev, dea: 'error' }));
       toast.error('Failed to load DEA data');
     } finally {

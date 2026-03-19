@@ -1,7 +1,7 @@
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Database, Shield } from 'lucide-react';
+import { Sparkles, Shield } from 'lucide-react';
 import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner';
 import ProactiveEnrichmentScanner from '../components/enrichment/ProactiveEnrichmentScanner';
 import EnrichmentReviewQueue from '../components/enrichment/EnrichmentReviewQueue';
@@ -30,7 +30,7 @@ export default function EnrichmentHub() {
   });
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       <PageHeader
         title="Data Enrichment Hub"
         subtitle="Enrich provider records with third-party data, review additions, and track enrichment quality"

@@ -13,9 +13,9 @@ function KPI({ title, value, icon: Icon, color, bgColor, loading, badge }) {
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-slate-500 font-medium">{title}</p>
+          <p className="text-xs text-slate-400 font-medium">{title}</p>
           <div className="flex items-center gap-2">
-            <p className="text-lg font-bold text-slate-900">{value}</p>
+            <p className="text-lg font-bold text-white">{value}</p>
             {badge}
           </div>
         </div>
@@ -27,19 +27,19 @@ function KPI({ title, value, icon: Icon, color, bgColor, loading, badge }) {
 export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalStates, loading }) {
   const completed = crawlStatus?.completed || 0;
   const failed = crawlStatus?.failed || 0;
-  const pending = crawlStatus?.pending || (totalStates - completed - failed);
+  const pending = crawlStatus?.pending ?? Math.max(0, totalStates - completed - failed);
   const isActive = crawlStatus?.auto_chain_active;
 
-  const totalProviders = nppesImports
+  const totalProviders = (nppesImports || [])
     .filter(b => b.status === 'completed')
-    .reduce((sum, b) => sum + (b.imported_rows || 0), 0);
+    .reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
 
   const successRate = (completed + failed) > 0
     ? Math.round((completed / (completed + failed)) * 100)
     : 0;
 
   const avgDuration = (() => {
-    const withDuration = nppesImports.filter(b => b.completed_at && b.created_date);
+    const withDuration = (nppesImports || []).filter(b => b.completed_at && b.created_date);
     if (withDuration.length === 0) return '—';
     const totalMs = withDuration.reduce((sum, b) => {
       return sum + (new Date(b.completed_at) - new Date(b.created_date));
@@ -55,50 +55,50 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         title="States Completed"
         value={completed}
         icon={CheckCircle2}
-        color="text-emerald-600"
-        bgColor="bg-emerald-50"
+        color="text-emerald-400"
+        bgColor="bg-emerald-500/15"
         loading={loading}
       />
       <KPI
         title="States Pending"
         value={pending}
         icon={Clock}
-        color="text-amber-600"
-        bgColor="bg-amber-50"
+        color="text-amber-400"
+        bgColor="bg-amber-500/15"
         loading={loading}
       />
       <KPI
         title="States Failed"
         value={failed}
         icon={XCircle}
-        color="text-red-600"
-        bgColor="bg-red-50"
+        color="text-red-400"
+        bgColor="bg-red-500/15"
         loading={loading}
       />
       <KPI
         title="Providers Imported"
         value={totalProviders.toLocaleString()}
         icon={Users}
-        color="text-blue-600"
-        bgColor="bg-blue-50"
+        color="text-blue-400"
+        bgColor="bg-blue-500/15"
         loading={loading}
       />
       <KPI
         title="Success Rate"
         value={`${successRate}%`}
         icon={BarChart3}
-        color="text-violet-600"
-        bgColor="bg-violet-50"
+        color="text-violet-400"
+        bgColor="bg-violet-500/15"
         loading={loading}
       />
       <KPI
         title="Avg Duration"
         value={avgDuration}
         icon={Zap}
-        color="text-sky-600"
-        bgColor="bg-sky-50"
+        color="text-sky-400"
+        bgColor="bg-sky-500/15"
         loading={loading}
-        badge={isActive ? <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Live</Badge> : null}
+        badge={isActive ? <Badge className="bg-emerald-500/20 text-emerald-400 text-[10px]">Live</Badge> : null}
       />
     </div>
   );

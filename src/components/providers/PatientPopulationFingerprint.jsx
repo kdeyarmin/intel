@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, Brain, HeartPulse } from 'lucide-react';
 
-export default function PatientPopulationFingerprint({ provider, taxonomy, utilization, referrals }) {
+export default function PatientPopulationFingerprint({ _provider, taxonomy, utilization, referrals }) {
   // Derive indicators from available data
   const indicators = [];
 

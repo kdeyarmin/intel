@@ -41,17 +41,22 @@ export default function CampaignAutomationPanel({ campaign }) {
   const handleAddStep = async () => {
     if (!newStep.name || !newStep.subject_template || !newStep.body_template) return;
     setSaving(true);
-    await base44.entities.CampaignSequenceStep.create({
-      ...newStep,
-      campaign_id: campaign.id,
-      step_number: steps.length + 1,
-      delay_days: Number(newStep.delay_days)
-    });
-    setSaving(false);
-    setShowAdd(false);
-    setNewStep({ name: '', trigger_type: 'time_delay', delay_days: 1, trigger_status: 'New', subject_template: '', body_template: '', use_ai_personalization: true });
-    queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
-    toast.success('Sequence step added');
+    try {
+      await base44.entities.CampaignSequenceStep.create({
+        ...newStep,
+        campaign_id: campaign.id,
+        step_number: steps.length + 1,
+        delay_days: Number(newStep.delay_days)
+      });
+      setShowAdd(false);
+      setNewStep({ name: '', trigger_type: 'time_delay', delay_days: 1, trigger_status: 'New', subject_template: '', body_template: '', use_ai_personalization: true });
+      queryClient.invalidateQueries({ queryKey: ['campaignSequence', campaign.id] });
+      toast.success('Sequence step added');
+    } catch (error) {
+      toast.error('Failed to add step: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteStep = async (id) => {

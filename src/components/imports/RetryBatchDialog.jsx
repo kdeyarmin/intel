@@ -3,13 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RefreshCw, AlertCircle, Filter, Rows3, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { invokeWithRetry } from '@/utils';
 
 export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted, presets }) {
   const [retryMode, setRetryMode] = useState('full');
@@ -103,9 +101,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
       if (skipValidation) invokeParams.skip_validation = true;
 
-      await invokeWithRetry(base44, 'triggerImport', invokeParams, {
-        onRetry: (msg) => toast.info(msg),
-      });
+      await base44.functions.invoke('triggerImport', invokeParams);
 
       // Log the retry as an audit event
       try {
@@ -119,7 +115,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           },
           timestamp: new Date().toISOString(),
         });
-      } catch (e) { /* audit logging is best-effort */ }
+      } catch (_e) { /* audit logging is best-effort */ }
 
       toast.success('Retry started successfully');
       onRetryStarted?.();

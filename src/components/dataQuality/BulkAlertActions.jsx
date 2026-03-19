@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, XCircle, Sparkles, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { XCircle, Sparkles, Loader2 } from 'lucide-react';
 
 export default function BulkAlertActions({ selectedIds = [], alerts = [], onClear }) {
   const queryClient = useQueryClient();

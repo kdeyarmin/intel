@@ -4,22 +4,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
-  FileText, TrendingUp, Loader2, Search, Tag, Pause, RefreshCw, Trash2,
+  FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
   Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { createPageUrl, invokeWithRetry } from '@/utils';
+import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
-import ErrorCategoryDisplay from '../components/imports/ErrorCategoryDisplay';
-import ErrorSummaryPanel from '../components/imports/ErrorSummaryPanel';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
@@ -32,7 +29,6 @@ import AlertNotificationSettings, { checkAndNotify } from '../components/imports
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
 import ResumeImportButton from '../components/imports/ResumeImportButton';
-import DetailedErrorRows from '../components/imports/DetailedErrorRows';
 import AIImportQualityAnalysis from '../components/imports/AIImportQualityAnalysis';
 import BatchFilterSort from '../components/imports/BatchFilterSort';
 import ImportOverviewKPIs from '../components/imports/ImportOverviewKPIs';
@@ -43,7 +39,7 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -53,6 +49,10 @@ const CATEGORY_LABELS = {
   provider_data: 'Provider Data',
   other: 'Other',
 };
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  provider_service_utilization: 'Provider Service Utilization',
+});
 
 export default function ImportMonitoring() {
   const [showOnlyLatest, setShowOnlyLatest] = useState(true);
@@ -79,10 +79,6 @@ export default function ImportMonitoring() {
   const [sortBy, setSortBy] = useState('created_date_desc');
   const [importTypeFilter, setImportTypeFilter] = useState('');
   const [errorReportBatch, setErrorReportBatch] = useState(null);
-  const [isPurging, setIsPurging] = useState(false);
-  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
-  const [isCancellingAll, setIsCancellingAll] = useState(false);
-  const [showCancelAllConfirm, setShowCancelAllConfirm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: batches = [], isLoading } = useQuery({
@@ -151,18 +147,15 @@ export default function ImportMonitoring() {
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
-  const CRAWLER_STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
   const isStale = (batch) => {
     if (batch.status !== 'processing' && batch.status !== 'validating') return false;
-    const isCrawlerBatch = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
-    const threshold = isCrawlerBatch ? CRAWLER_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
     const updated = new Date(batch.updated_date || batch.created_date);
-    return (Date.now() - updated.getTime()) > threshold;
+    return (Date.now() - updated.getTime()) > STALE_THRESHOLD_MS;
   };
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
   const staleBatches = batches.filter(b => isStale(b));
-  const completedBatches = batches.filter(b => b.status === 'completed');
+  const _completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
 
   const toggleSelectForRerun = (id) => {
@@ -179,11 +172,11 @@ export default function ImportMonitoring() {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
     const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
-    let successCount = 0;
-    let skipCount = 0;
+    let _successCount = 0;
+    let _skipCount = 0;
     for (const batch of toRetry) {
       try {
-        await invokeWithRetry(base44, 'triggerImport', {
+        await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
           file_url: batch.file_url || undefined,
           dry_run: false,
@@ -193,10 +186,10 @@ export default function ImportMonitoring() {
           retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
           category: batch.category || undefined,
         });
-        successCount++;
+        _successCount++;
       } catch (e) {
         console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        skipCount++;
+        _skipCount++;
       }
     }
     setSelectedForRerun(new Set());
@@ -217,20 +210,22 @@ export default function ImportMonitoring() {
     (async () => {
       for (const batch of toFail) {
         autoFailProcessed.current.add(batch.id);
-        const isCrawler = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
-        const threshold = isCrawler ? '2 hours' : '15 minutes';
-        await base44.entities.ImportBatch.update(batch.id, {
-          status: 'failed',
-          error_samples: [
-            ...(batch.error_samples || []),
-            { row: 0, message: `Job stalled due to inactivity — automatically marked as failed after ${threshold} with no progress` }
-          ]
-        });
-        setAutoFailedIds(prev => new Set([...prev, batch.id]));
+        try {
+          await base44.entities.ImportBatch.update(batch.id, {
+            status: 'failed',
+            error_samples: [
+              ...(batch.error_samples || []),
+              { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
+            ]
+          });
+          setAutoFailedIds(prev => new Set([...prev, batch.id]));
+        } catch (err) {
+          console.error('Failed to auto-mark batch as failed:', batch.id, err);
+        }
       }
       refreshBatches();
     })();
-  }, [staleBatches]);
+  }, [staleBatches.length]);
 
   const displayBatches = useMemo(() => {
     let filtered = batches;
@@ -332,7 +327,7 @@ export default function ImportMonitoring() {
     });
 
     return filtered;
-  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter, sortBy, importTypeFilter]);
+  }, [batches, statusFilter, categoryFilter, tagFilter, searchQuery, showOnlyLatest, dateStart, dateEnd, lastNFilter, sortBy, importTypeFilter, yearFilter]);
 
   const displayedFailedBatches = displayBatches?.filter(b => b.status === 'failed') || [];
 
@@ -382,42 +377,6 @@ export default function ImportMonitoring() {
     return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
 
-  const handlePurgeAll = async () => {
-    setIsPurging(true);
-    try {
-      const toDelete = batches.filter(b => b.status === 'failed' || b.status === 'completed' || b.status === 'cancelled');
-      for (const batch of toDelete) {
-        await base44.entities.ImportBatch.delete(batch.id);
-      }
-      await refreshBatches();
-    } catch (e) {
-      console.error('Purge failed:', e);
-    } finally {
-      setIsPurging(false);
-      setShowPurgeConfirm(false);
-    }
-  };
-
-  const handleCancelAllActive = async () => {
-    setIsCancellingAll(true);
-    try {
-      const activeBatches = batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused');
-      for (const batch of activeBatches) {
-        await base44.entities.ImportBatch.update(batch.id, {
-          status: 'cancelled',
-          cancel_reason: 'Bulk cancelled by admin to restart fresh',
-          cancelled_at: new Date().toISOString(),
-        });
-      }
-      await refreshBatches();
-    } catch (e) {
-      console.error('Cancel all failed:', e);
-    } finally {
-      setIsCancellingAll(false);
-      setShowCancelAllConfirm(false);
-    }
-  };
-
   const formatTimestamp = (ts) => {
     if (!ts) return 'N/A';
     const formatter = new Intl.DateTimeFormat('en-US', {
@@ -439,23 +398,6 @@ export default function ImportMonitoring() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div />
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            onClick={() => setShowCancelAllConfirm(true)}
-            variant="outline"
-            disabled={isCancellingAll || batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused').length === 0}
-            className="bg-transparent border-orange-800 text-orange-400 hover:bg-orange-900/30 hover:text-orange-300"
-          >
-            {isCancellingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
-            Cancel All Active
-          </Button>
-          <Button
-            onClick={() => setShowPurgeConfirm(true)}
-            variant="outline"
-            className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30 hover:text-red-300"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Purge Done/Errors
-          </Button>
           <Button
             onClick={() => setShowExport(true)}
             variant="outline"
@@ -548,6 +490,15 @@ export default function ImportMonitoring() {
           <Bot className="w-3.5 h-3.5 inline mr-1" />
           AI Manager
         </button>
+        <button
+          onClick={() => setActiveTab('performance')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'performance' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
+          Performance
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -578,12 +529,16 @@ export default function ImportMonitoring() {
         </div>
       )}
 
+      {activeTab === 'performance' && (
+        <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
+      )}
+
       {activeTab === 'monitoring' && <>
       {/* Overview KPIs */}
       <ImportOverviewKPIs batches={batches} onFilterChange={setStatusFilter} />
 
       {/* Critical Failure Alerts */}
-      <CriticalFailureAlerts batches={batches} onViewErrors={(b) => setErrorReportBatch(b)} onRefresh={refreshBatches} />
+      <CriticalFailureAlerts batches={batches} onViewErrors={(b) => setErrorReportBatch(b)} />
 
       {/* System Status */}
       <SystemStatusPanel batches={batches} />
@@ -644,7 +599,7 @@ export default function ImportMonitoring() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated recently and are likely stalled.
+              These jobs haven't updated in over 15 minutes and are likely stalled.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (
@@ -1072,63 +1027,6 @@ export default function ImportMonitoring() {
         open={showExport}
         onOpenChange={setShowExport}
       />
-
-      {/* Cancel All Active Confirmation Dialog */}
-      <Dialog open={showCancelAllConfirm} onOpenChange={setShowCancelAllConfirm}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-orange-400">Cancel All Active Imports</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              This will cancel all imports currently in "processing", "validating", or "paused" status.
-              You can restart them fresh afterwards.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-sm text-slate-300">
-              Found <span className="font-bold text-orange-400">
-                {batches.filter(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused').length}
-              </span> active imports to cancel.
-            </p>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowCancelAllConfirm(false)} className="bg-transparent border-slate-600 text-slate-300">
-              Keep Running
-            </Button>
-            <Button onClick={handleCancelAllActive} disabled={isCancellingAll} className="bg-orange-600 hover:bg-orange-700 text-white">
-              {isCancellingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
-              {isCancellingAll ? 'Cancelling...' : 'Cancel All'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Purge Confirmation Dialog */}
-      <Dialog open={showPurgeConfirm} onOpenChange={setShowPurgeConfirm}>
-        <DialogContent className="bg-slate-900 border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-red-400">Purge Completed & Error Batches</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              This will permanently delete all import batches with status "failed", "cancelled", or "completed".
-              Running and pending batches will not be affected.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <p className="text-sm text-slate-300">
-              Found <span className="font-bold text-red-400">{batches.filter(b => b.status === 'failed' || b.status === 'cancelled').length}</span> failed/cancelled
-              {' '}and <span className="font-bold text-green-400">{batches.filter(b => b.status === 'completed').length}</span> completed batches to delete.
-            </p>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowPurgeConfirm(false)} className="bg-transparent border-slate-600 text-slate-300">
-              Cancel
-            </Button>
-            <Button onClick={handlePurgeAll} disabled={isPurging} className="bg-red-600 hover:bg-red-700 text-white">
-              {isPurging ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
-              {isPurging ? 'Deleting...' : 'Delete All'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -1136,6 +1034,13 @@ export default function ImportMonitoring() {
 function ImportHistoryView({ batches, formatTimestamp }) {
   const [historySearch, setHistorySearch] = useState('');
   const [historyType, setHistoryType] = useState('all');
+
+  const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+    home_health_enrollments: 'HH Enrollments',
+    home_health_cost_reports: 'HH Cost Reports',
+    provider_service_utilization: 'Provider Service Util',
+    home_health_pdgm: 'HH PDGM',
+  });
 
   const statusColors = {
     processing: 'bg-blue-500/15 text-blue-400',
@@ -1180,8 +1085,11 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   const stats = useMemo(() => {
     const total = batches.length;
     const completed = batches.filter(b => b.status === 'completed').length;
-    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0), 0);
-    const totalRecords = batches.reduce((sum, b) => sum + (b.total_rows || 0), 0);
+    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+    const totalRecords = batches.reduce((sum, b) => {
+      const rows = b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0));
+      return sum + rows;
+    }, 0);
     return { total, completed, totalImported, totalRecords };
   }, [batches]);
 

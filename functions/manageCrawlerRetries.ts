@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 // Scheduled function to monitor failed crawler batches and retry them automatically.
 // Checks for:
@@ -6,6 +6,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // 2. Checks if they have been retried already (is there a newer batch for same state?)
 // 3. Checks config for max retries and delay
 // 4. Triggers retry or escalates
+
+const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
 
 Deno.serve(async (req) => {
     try {
@@ -67,23 +69,27 @@ Deno.serve(async (req) => {
         
         for (const b of allRecentBatches) {
             if (!b.file_name?.startsWith('crawler_')) continue;
-            const parts = b.file_name.split('_');
-            const state = parts[1];
-            if (!state) continue;
+            const stMatch = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch) continue;
+            const state = stMatch[1].toUpperCase();
             
             if (!stateBatches[state]) stateBatches[state] = [];
             stateBatches[state].push(b);
         }
 
         const actionsTaken = [];
+        const processedStates = new Set();
 
         // 4. Analyze each state with a recent failure
         for (const b of crawlerFailures) {
-            const state = b.file_name.split('_')[1];
-            if (!state || !stateBatches[state]) continue;
+            const stMatch2 = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch2) continue;
+            const state = stMatch2[1].toUpperCase();
+            if (!stateBatches[state] || processedStates.has(state)) continue;
+            processedStates.add(state);
 
             // Sort batches for this state: newest first
-            const batches = stateBatches[state].sort((a,b) => new Date(b.created_date) - new Date(a.created_date));
+            const batches = [...stateBatches[state]].sort((x, y) => getTimestamp(y.created_date) - getTimestamp(x.created_date));
             const latest = batches[0];
 
             // If the latest batch is NOT this failed batch, it means we already ran (or are running) another attempt.
@@ -93,9 +99,8 @@ Deno.serve(async (req) => {
             // Current state status is FAILED.
             // Check retry eligibility.
             const currentRetryCount = latest.retry_count || 0;
-            const timeSinceFailure = Date.now() - new Date(latest.created_date).getTime(); // approx, created_date is start. 
-            // Better to use completed_at if available, else created_date.
-            // Failures usually happen fast or timeout.
+            const failureTime = latest.completed_at || latest.created_date;
+            const timeSinceFailure = Date.now() - new Date(failureTime).getTime();
             
             // Check if transient? 
             // We look for ErrorReports linked to this batch
@@ -118,19 +123,42 @@ Deno.serve(async (req) => {
                     // Trigger Retry
                     console.log(`[RetryMonitor] Retrying state ${state}. Failure was ${Math.round(timeSinceFailure/60000)}m ago. Retry #${currentRetryCount + 1}`);
                     
-                    // We invoke the crawler directly
-                    // It will create a NEW batch with retry_count + 1
+                    // Reset the failed items in this batch to pending, then invoke the worker directly
+                    // (batch_start requires admin auth, which service invocations don't have)
                     try {
-                        base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                            action: 'start',
-                            target_state: state,
+                        const failedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({
+                            batch_id: latest.id,
+                            status: 'failed'
+                        }, undefined, 5000);
+
+                        // Reset items in chunks
+                        for (let ci = 0; ci < failedItems.length; ci += 50) {
+                            const chunk = failedItems.slice(ci, ci + 50);
+                            await Promise.all(chunk.map(item =>
+                                base44.asServiceRole.entities.NPPESQueueItem.update(item.id, {
+                                    status: 'pending',
+                                    retry_count: 0,
+                                    error_message: null
+                                })
+                            ));
+                        }
+
+                        // Update batch status and increment retry count
+                        await base44.asServiceRole.entities.ImportBatch.update(latest.id, {
+                            status: 'processing',
                             retry_count: currentRetryCount + 1,
-                            retry_of: latest.id,
-                            taxonomy_description: latest.file_name.split('_')[2] === 'all' ? '' : latest.file_name.split('_')[2] // loose attempt to recover param
+                            cancel_reason: null
                         });
-                        actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1})`);
+
+                        // Check stop flag before invoking worker
+                        const latestConfigs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+                        if (!latestConfigs[0]?.crawler_stopped) {
+                            await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' });
+                        }
+
+                        actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1}, ${failedItems.length} items reset)`);
                     } catch(e) {
-                        console.error(`[RetryMonitor] Failed to invoke crawler for ${state}:`, e);
+                        console.error(`[RetryMonitor] Failed to retry state ${state}:`, e);
                     }
                 } else {
                     // Waiting for delay
@@ -159,15 +187,7 @@ Deno.serve(async (req) => {
                         context: { state, retry_count: currentRetryCount }
                     });
 
-                    // Send email
-                    try {
-                        const adminEmail = (await base44.auth.me())?.email || 'system@caremetric.app';
-                        await base44.asServiceRole.integrations.Core.SendEmail({
-                            to: adminEmail,
-                            subject: `[CareMetric] Crawler Failed: ${state} (Max Retries)`,
-                            body: `The NPPES crawler for ${state} has failed ${currentRetryCount} times and will not be retried automatically.\n\nPlease review the logs and Error Reports.`
-                        });
-                    } catch(e) {}
+                    // Email notifications disabled per admin request
                     
                     actionsTaken.push(`Escalated state ${state} (max retries)`);
                 }

@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Users, UserCheck, UserX, Phone, TrendingUp } from 'lucide-react';
+import { Users, UserCheck, Phone, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const STATUS_COLORS = {

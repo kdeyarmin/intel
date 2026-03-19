@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid,
@@ -101,7 +100,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-2">
-          {metrics.map((m, i) => (
+          {metrics.map((m, _i) => (
             <button
               key={m.key}
               onClick={() => toggleMetric(m.key)}
@@ -138,7 +137,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <ChartComponent data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={formatVal} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => formatVal(v)} />

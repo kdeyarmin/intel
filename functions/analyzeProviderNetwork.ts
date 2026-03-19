@@ -1,7 +1,14 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+
+type ReferralStat = {
+  sent: number;
+  received: number;
+  partners: Set<string>;
+};
 
 Deno.serve(async (req) => {
   try {
+    return Response.json({ success: false, error: 'AI integrations paused to save credits' });
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
@@ -20,7 +27,7 @@ Deno.serve(async (req) => {
     // Build network graph
     const networkNodes = new Map();
     const networkEdges = [];
-    const referralStats = {};
+    const referralStats: Record<string, ReferralStat> = {};
 
     // Create nodes
     for (const provider of providers) {
@@ -165,7 +172,7 @@ Deno.serve(async (req) => {
           total_providers: networkNodes.size,
           total_relationships: networkEdges.length,
           reciprocal_relationships: networkEdges.filter(e => e.reciprocal).length,
-          density: networkEdges.length / (networkNodes.size * (networkNodes.size - 1))
+          density: networkNodes.size > 1 ? networkEdges.length / (networkNodes.size * (networkNodes.size - 1)) : 0
         },
         influencers,
         network_gaps: gaps,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download, Sparkles, Building2 } from 'lucide-react';
+import { Download, Building2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import TypeAheadSearch from '../components/search/TypeAheadSearch';
 import SortControl from '../components/filters/SortControl';
@@ -78,10 +78,15 @@ export default function Organizations() {
     staleTime: 30000,
   });
 
+  const defaultApplied = useRef(false);
   useEffect(() => {
+    if (defaultApplied.current) return;
     const def = savedFilters.find(f => f.is_default);
-    if (def?.filters) applyFilter(def.filters);
-  }, [savedFilters.length]);
+    if (def?.filters) {
+      applyFilter(def.filters);
+      defaultApplied.current = true;
+    }
+  }, [savedFilters]);
 
   const applyFilter = (f) => {
     setSearchTerm(f.searchTerm || '');
@@ -94,7 +99,7 @@ export default function Organizations() {
     });
   };
 
-  const resetFilters = () => {
+  const _resetFilters = () => {
     setSearchTerm('');
     setFilters({
       statusFilter: 'all', enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
@@ -106,8 +111,8 @@ export default function Organizations() {
   const currentFilters = { searchTerm, ...filters };
 
   const getScore = (npi) => {
-    const s = scores.find(s => s.npi === npi);
-    return s?.score || null;
+    const match = scores.find(s => s.npi === npi);
+    return match?.score ?? null;
   };
 
   const locationByNpi = useMemo(() => {
@@ -119,7 +124,7 @@ export default function Organizations() {
     return map;
   }, [locations]);
 
-  const taxonomyByNpi = useMemo(() => {
+  const _taxonomyByNpi = useMemo(() => {
     const map = {};
     for (const t of taxonomies) {
       if (!map[t.npi]) map[t.npi] = [];
@@ -258,7 +263,7 @@ export default function Organizations() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-4">
+        <TabsList className="h-auto min-h-10 mb-4 p-1 bg-slate-800/60 border border-slate-700/50 w-full grid grid-cols-2 sm:grid-cols-4 gap-1">
           <TabsTrigger value="directory" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><List className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Directory</span></TabsTrigger>
           <TabsTrigger value="npi-finder" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Search className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI NPI Finder</span></TabsTrigger>
           <TabsTrigger value="augment" className="text-xs gap-1.5 data-[state=active]:bg-[#141d30] data-[state=active]:text-cyan-400 text-slate-400"><Globe className="w-3.5 h-3.5" /> <span className="hidden sm:inline">AI Augmenter</span></TabsTrigger>

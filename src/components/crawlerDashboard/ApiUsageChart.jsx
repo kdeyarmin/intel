@@ -3,23 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ApiUsageChart({ nppesImports, loading }) {
-  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-100" />;
+  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-800/50" />;
 
   const data = (nppesImports || [])
-    .filter(b => b.import_type === 'nppes_registry' && b.created_date)
+    .filter(b => b.import_type === 'nppes_registry' && b.created_date && b.file_name?.includes('crawler_'))
     .slice(0, 20)
     .reverse()
     .map(b => {
-      // Estimate requests: total_rows / 200 (batch size)
-      // This is an approximation as we don't strictly track request counts yet
-      const successfulRequests = Math.ceil((b.total_rows || 0) / 200);
+      // Use actual api_requests_count if available, otherwise estimate from total_rows
+      const totalRows = b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0));
+      const successfulRequests = b.api_requests_count || Math.ceil(totalRows / 200);
       
       // Estimate rate limits from error samples or retry count
       // If we had explicit rate_limit_count, use it. Otherwise guess from errors.
       const rateLimits = (b.rate_limit_count || 0) + (b.error_samples || []).filter(e => JSON.stringify(e).includes('429') || JSON.stringify(e).includes('rate limit')).length;
       
       return {
-        name: b.file_name?.split('_')[1] || 'Batch',
+        name: (b.file_name?.match(/crawler_([A-Z]{2})/) || [null, 'Batch'])[1],
         date: new Date(b.created_date).toLocaleDateString(),
         requests: successfulRequests || 0,
         rateLimits: rateLimits || 0,
@@ -53,8 +53,8 @@ export default function ApiUsageChart({ nppesImports, loading }) {
               <YAxis yAxisId="left" orientation="left" stroke="#64748b" tick={{ fontSize: 12 }} />
               <YAxis yAxisId="right" orientation="right" stroke="#ef4444" tick={{ fontSize: 12 }} />
               <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                cursor={{ fill: '#f1f5f9' }}
+                contentStyle={{ borderRadius: '8px', border: '1px solid #334155', background: '#1e293b', color: '#e2e8f0' }}
+                cursor={{ fill: '#1e293b' }}
               />
               <Legend />
               <Bar yAxisId="left" dataKey="requests" name="API Requests" fill="#0f766e" radius={[4, 4, 0, 0]} barSize={20} />

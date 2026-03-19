@@ -4,9 +4,12 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { FileText, CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels({
+  home_health_enrollments: 'HH Enrollments',
+});
 
 const statusConfig = {
   processing: { icon: Loader2, color: 'bg-blue-500/15 text-blue-400', spin: true },
@@ -22,7 +25,7 @@ function formatDate(ts) {
   }).format(new Date(ts));
 }
 
-export default function ProviderImportHistory({ npi }) {
+export default function ProviderImportHistory({ _npi }) {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importBatchesAll'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),

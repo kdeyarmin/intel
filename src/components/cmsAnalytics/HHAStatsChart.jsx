@@ -71,7 +71,7 @@ export default function HHAStatsChart({ data, loading }) {
                 <p className="text-xs font-medium text-slate-500 mb-2 text-center">Top States by Payments</p>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={stateData} layout="vertical" margin={{ left: 30, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis type="number" fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={v => v >= 1e9 ? `$${(v/1e9).toFixed(1)}B` : v >= 1e6 ? `$${(v/1e6).toFixed(0)}M` : `$${v}`} />
                     <YAxis type="category" dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} width={30} />
                     <Tooltip formatter={v => `$${v.toLocaleString()}`} />

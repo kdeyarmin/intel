@@ -16,7 +16,7 @@ function formatDuration(start, end) {
 function formatTime(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function getStateFromFileName(fileName) {
@@ -29,7 +29,7 @@ function getStateFromFileName(fileName) {
 export default function RecentCrawlActivity({ nppesImports, auditEvents, loading }) {
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
-  const recentBatches = nppesImports.slice(0, 15);
+  const recentBatches = (nppesImports || []).slice(0, 15);
 
   return (
     <Card>
@@ -48,7 +48,7 @@ export default function RecentCrawlActivity({ nppesImports, auditEvents, loading
               const isProcessing = batch.status === 'processing' || batch.status === 'validating';
 
               return (
-                <div key={batch.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                <div key={batch.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/40 hover:bg-slate-800/60 transition-colors">
                   {batch.status === 'completed' ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                   ) : batch.status === 'failed' ? (
@@ -58,7 +58,7 @@ export default function RecentCrawlActivity({ nppesImports, auditEvents, loading
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-700">{state}</span>
+                      <span className="text-sm font-semibold text-slate-200">{state}</span>
                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
                         batch.status === 'completed' ? 'border-emerald-200 text-emerald-700' :
                         batch.status === 'failed' ? 'border-red-200 text-red-700' :
@@ -68,9 +68,9 @@ export default function RecentCrawlActivity({ nppesImports, auditEvents, loading
                       </Badge>
                     </div>
                     <p className="text-xs text-slate-500 truncate">
-                      {batch.imported_rows ? `${batch.imported_rows.toLocaleString()} rows` : ''}
-                      {batch.imported_rows && batch.valid_rows ? ' • ' : ''}
-                      {batch.valid_rows ? `${batch.valid_rows.toLocaleString()} valid` : ''}
+                      {batch.imported_rows != null ? `${batch.imported_rows.toLocaleString()} rows` : ''}
+                      {batch.imported_rows != null && batch.valid_rows != null ? ' • ' : ''}
+                      {batch.valid_rows != null ? `${batch.valid_rows.toLocaleString()} valid` : ''}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">

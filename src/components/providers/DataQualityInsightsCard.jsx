@@ -15,7 +15,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
 
   const openAlerts = alerts.filter(a => a.status === 'open');
   const fixedAlerts = alerts.filter(a => a.status === 'accepted' || a.status === 'auto_fixed');
-  const hasSuggestions = openAlerts.some(a => a.suggested_value);
+  const _hasSuggestions = openAlerts.some(a => a.suggested_value);
 
   // Check completeness
   const completeness = [];

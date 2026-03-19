@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  CheckCircle2, XCircle, Loader2, Clock, TrendingUp, TrendingDown,
-  AlertTriangle, Database
+  CheckCircle2, XCircle, Loader2, Clock, TrendingUp, TrendingDown, Database
 } from 'lucide-react';
 
 function KPICard({ label, value, icon: Icon, iconColor, trend, trendLabel, onClick, highlight }) {
@@ -46,38 +45,60 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
     const prev7d = new Date(now - 14 * 24 * 60 * 60 * 1000);
 
     const active = batches.filter(b => b.status === 'processing' || b.status === 'validating');
+    const completed = batches.filter(b => b.status === 'completed');
+    const failed = batches.filter(b => b.status === 'failed');
 
     const recent24h = batches.filter(b => new Date(b.created_date) >= last24h);
     const recentCompleted24h = recent24h.filter(b => b.status === 'completed');
     const recentFailed24h = recent24h.filter(b => b.status === 'failed');
 
+    // 7-day success rate vs previous 7 days
     const last7dBatches = batches.filter(b => new Date(b.created_date) >= last7d);
     const prev7dBatches = batches.filter(b => new Date(b.created_date) >= prev7d && new Date(b.created_date) < last7d);
-
+    
+    const terminalStatuses = ['completed', 'failed', 'cancelled'];
     const last7dCompleted = last7dBatches.filter(b => b.status === 'completed').length;
-    const last7dFailed = last7dBatches.filter(b => b.status === 'failed').length;
-    const last7dTotal = last7dCompleted + last7dFailed;
+    const last7dTotal = last7dBatches.filter(b => terminalStatuses.includes(b.status)).length;
     const prev7dCompleted = prev7dBatches.filter(b => b.status === 'completed').length;
-    const prev7dFailed = prev7dBatches.filter(b => b.status === 'failed').length;
-    const prev7dTotal = prev7dCompleted + prev7dFailed;
-
+    const prev7dTotal = prev7dBatches.filter(b => terminalStatuses.includes(b.status)).length;
+    
     const successRate7d = last7dTotal > 0 ? Math.round((last7dCompleted / last7dTotal) * 100) : 0;
     const prevSuccessRate = prev7dTotal > 0 ? Math.round((prev7dCompleted / prev7dTotal) * 100) : 0;
     const successTrend = prev7dTotal > 0 ? successRate7d - prevSuccessRate : undefined;
 
-    const completedBatches = batches.filter(b => b.status === 'completed');
-    const totalImported = completedBatches.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+    // Total records imported
+    const totalImported = batches.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+
+    // Average processing time for completed batches
+    const completedWithTime = completed.filter(b => b.completed_at && b.created_date);
+    let avgTime = 0;
+    if (completedWithTime.length > 0) {
+      const totalMs = completedWithTime.reduce((sum, b) => 
+        sum + (new Date(b.completed_at) - new Date(b.created_date)), 0);
+      avgTime = Math.round(totalMs / completedWithTime.length / 1000);
+    }
 
     return {
       active: active.length,
+      completed: completed.length,
+      failed: failed.length,
+      total: batches.length,
       recent24h: recent24h.length,
       recentCompleted24h: recentCompleted24h.length,
       recentFailed24h: recentFailed24h.length,
       successRate7d,
       successTrend,
       totalImported,
+      avgTime,
+      criticalFailures: recentFailed24h.length,
     };
   }, [batches]);
+
+  const _formatTime = (seconds) => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  };
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -96,18 +117,18 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
         onClick={() => onFilterChange?.('all')}
       />
       <KPICard
-        label="Successful (24h)"
-        value={stats.recentCompleted24h}
+        label="Successful"
+        value={stats.completed}
         icon={CheckCircle2}
         iconColor="bg-emerald-500/20 text-emerald-400"
         onClick={() => onFilterChange?.('completed')}
       />
       <KPICard
-        label="Failed (24h)"
-        value={stats.recentFailed24h}
+        label="Failed"
+        value={stats.failed}
         icon={XCircle}
         iconColor="bg-red-500/20 text-red-400"
-        highlight={stats.recentFailed24h > 0}
+        highlight={stats.criticalFailures > 0}
         onClick={() => onFilterChange?.('failed')}
       />
       <KPICard

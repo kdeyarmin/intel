@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, LayoutDashboard, Stethoscope, Network, Mail, ShieldCheck, MapPin as MapPinIcon, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -40,12 +40,13 @@ import ProviderMessaging from '../components/providers/ProviderMessaging';
 import ProviderImportHistory from '../components/providers/ProviderImportHistory';
 import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
 import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
+import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreachCard';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
   const npi = searchParams.get('npi');
-  const fromPage = searchParams.get('from');
+  const _fromPage = searchParams.get('from');
 
   const { data: providers = [], isLoading: loadingProvider } = useQuery({
     queryKey: ['provider', npi],
@@ -83,7 +84,7 @@ export default function ProviderDetail() {
     enabled: !!npi,
   });
 
-  const { data: serviceUtil = [] } = useQuery({
+  const { data: _serviceUtil = [] } = useQuery({
     queryKey: ['providerServiceUtil', npi],
     queryFn: () => base44.entities.ProviderServiceUtilization.filter({ npi }),
     enabled: !!npi,
@@ -180,23 +181,23 @@ export default function ProviderDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full h-auto bg-slate-100 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
-          <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
+          <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="clinical" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="clinical" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Stethoscope className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Clinical</span><span className="sm:hidden">Clinical</span>
           </TabsTrigger>
-          <TabsTrigger value="locations" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="locations" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <MapPinIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Locations</span><span className="sm:hidden">Locations</span>
           </TabsTrigger>
-          <TabsTrigger value="network" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="network" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Network className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Network</span><span className="sm:hidden">Network</span>
           </TabsTrigger>
-          <TabsTrigger value="outreach" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="outreach" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Mail className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Outreach</span><span className="sm:hidden">Outreach</span>
           </TabsTrigger>
-          <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Quality</span><span className="sm:hidden">Quality</span>
           </TabsTrigger>
         </TabsList>
@@ -326,7 +327,7 @@ export default function ProviderDetail() {
                   </CardHeader>
                   <CardContent>
                      <div className="space-y-4">
-                      {outreachMessages.sort((a,b) => new Date(b.created_date) - new Date(a.created_date)).map(msg => (
+                      {[...outreachMessages].sort((a,b) => new Date(b.created_date) - new Date(a.created_date)).map(msg => (
                         <div key={msg.id} className="border rounded-lg p-3">
                            <div className="flex justify-between items-start mb-2">
                               <div>
@@ -344,6 +345,7 @@ export default function ProviderDetail() {
               )}
             </div>
             <div className="space-y-6">
+              <AIPredictiveOutreachCard provider={provider} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['provider', npi] })} />
               <AIEmailFinder provider={provider} locations={locations} taxonomies={taxonomies} />
               {provider.email && (
                 <Card>
@@ -370,7 +372,7 @@ export default function ProviderDetail() {
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              <div className="lg:col-span-2 space-y-6">
                <DataQualityInsightsCard npi={npi} provider={provider} />
-               <ExternalDataDisplay npi={npi} onEnrichmentComplete={() => {
+               <ExternalDataDisplay npi={npi} provider={provider} onEnrichmentComplete={() => {
                  queryClient.invalidateQueries({ queryKey: ['provider', npi] });
                }} />
                <ProviderAIQualityInsights

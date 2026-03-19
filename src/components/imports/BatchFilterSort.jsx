@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowUpDown, X } from 'lucide-react';
+import { ArrowUpDown } from 'lucide-react';
 
 const SORT_OPTIONS = [
   { value: 'created_date_desc', label: 'Created Date (Newest)' },

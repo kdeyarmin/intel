@@ -1,5 +1,4 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Users, TrendingUp, Building2 } from 'lucide-react';
 
 function StatBox({ icon: Icon, iconColor, label, value }) {

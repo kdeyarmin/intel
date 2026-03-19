@@ -1,21 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import {
   AlertTriangle, Download, Search, ChevronDown, ChevronRight,
-  Lightbulb, Copy, FileText, Filter, XCircle, CheckCircle2,
-  FileWarning, Clock, Database
+  Lightbulb, Copy, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { categorizeError, ERROR_CATEGORIES, groupErrors } from './errorCategories';
 import ValidationErrorBreakdown from './ValidationErrorBreakdown';
 import AIErrorTriage from './AIErrorTriage';
 import BulkErrorActions from './BulkErrorActions';
-import { IMPORT_TYPE_LABELS } from '@/constants/importTypes';
+import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+
+const IMPORT_TYPE_LABELS = buildImportTypeLabels();
 
 function getSuggestedFix(error) {
   const msg = (error.message || error.detail || '').toLowerCase();
@@ -230,7 +230,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
         ) : viewMode === 'ai' ? (
           <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
             <div className="p-3 space-y-3">
-              <AIErrorTriage errors={errors} batch={batch} onBulkAction={(action, categoryLabel, catKey) => {
+              <AIErrorTriage errors={errors} batch={batch} onBulkAction={(action, categoryLabel, _catKey) => {
                 toast.info(`${action} action queued for "${categoryLabel}" errors`);
               }} />
               <BulkErrorActions errors={errors} batch={batch} onActionComplete={() => onRefresh?.()} />

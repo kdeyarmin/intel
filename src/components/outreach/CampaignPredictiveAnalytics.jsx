@@ -3,13 +3,13 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, TrendingUp, Clock, BarChart3, Target } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Clock, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOURS = ['6am', '7am', '8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm'];
+const _DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const _HOURS = ['6am', '7am', '8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm'];
 
-export default function CampaignPredictiveAnalytics({ campaigns = [], providers = [], scores = [], referrals = [] }) {
+export default function CampaignPredictiveAnalytics({ campaigns = [], providers = [], scores = [], _referrals = [] }) {
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState(null);
 
@@ -142,7 +142,7 @@ Provide:
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historicalStats.trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                   <YAxis tick={{ fontSize: 9 }} />
                   <Tooltip contentStyle={tooltipStyle} />

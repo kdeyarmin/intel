@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Zap } from 'lucide-react';
 
-export default function EmailDeduplicationPanel({ emailGroups, providerId, onGenerateOutreach }) {
+export default function EmailDeduplicationPanel({ emailGroups, _providerId, onGenerateOutreach }) {
   const [expandedGroup, setExpandedGroup] = useState(null);
 
   if (!emailGroups || emailGroups.length === 0) {

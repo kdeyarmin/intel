@@ -28,6 +28,7 @@ export default function ProactiveAIScanner() {
     setResults(null);
     setCreatedCount(0);
 
+    try {
     const allFindings = [];
 
     for (let ei = 0; ei < ENTITY_CONFIGS.length; ei++) {
@@ -149,7 +150,12 @@ Return up to 10 most important issues, prioritized by severity and affected coun
     setCreatedCount(created);
     setResults(allFindings);
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
-    setScanning(false);
+    } catch (err) {
+      setProgress({ step: `Error: ${err.message}`, pct: 0 });
+      alert(`Scan failed: ${err.message}`);
+    } finally {
+      setScanning(false);
+    }
   };
 
   const healthColors = {

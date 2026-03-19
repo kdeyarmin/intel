@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import {
   AlertTriangle, ChevronDown, ChevronRight, Lightbulb, Download,
   Search, FileText, ShieldAlert, FileWarning, Type, Copy, Clock, Wifi,
-  Wrench, HelpCircle, Database, Filter, Eye, Hash
+  Wrench, HelpCircle, Database, Eye, Hash
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { ERROR_CATEGORIES, categorizeError, groupErrors, downloadErrorCSV } from './errorCategories';
+import { ERROR_CATEGORIES, groupErrors, downloadErrorCSV } from './errorCategories';
 
 const ICON_MAP = {
   ShieldAlert, FileWarning, Type, Copy, Clock, Wifi, Wrench, HelpCircle, AlertTriangle,
@@ -267,7 +267,7 @@ export default function ValidationErrorBreakdown({ errors, batchName, compact = 
   }));
 
   if (compact) {
-    const top3 = distribution.slice(0, 3);
+    const _top3 = distribution.slice(0, 3);
     return (
       <Card className="bg-[#141d30] border-red-500/15">
         <CardContent className="py-3 px-4 space-y-2.5">
@@ -315,7 +315,7 @@ export default function ValidationErrorBreakdown({ errors, batchName, compact = 
           {/* Legend */}
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {distribution.map(d => {
-              const Icon = ICON_MAP[d.config.icon] || AlertTriangle;
+              const _Icon = ICON_MAP[d.config.icon] || AlertTriangle;
               return (
                 <div key={d.key} className="flex items-center gap-1">
                   <div className={`w-2 h-2 rounded-full ${d.config.color.replace('text-', 'bg-')} opacity-70`} />

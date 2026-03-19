@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -14,7 +14,6 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
 
   const getStateStatus = (st) => {
     if (st === currentState && (running || autoMode)) return 'active';
-    if (st === status?.currently_processing_state && autoMode) return 'active';
     if (processingSet.has(st)) return 'processing';
     if (completedSet.has(st)) return 'completed';
     if (failedSet.has(st)) return 'failed';
@@ -22,11 +21,11 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
   };
 
   const statusStyles = {
-    active: 'bg-teal-100 border-teal-400 text-teal-800',
-    completed: 'bg-green-100 border-green-300 text-green-800',
-    failed: 'bg-red-100 border-red-300 text-red-800',
-    processing: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-    pending: 'bg-gray-50 border-gray-200 text-gray-500',
+    active: 'bg-teal-500/20 border-teal-500/40 text-teal-400',
+    completed: 'bg-green-500/15 border-green-500/30 text-green-400',
+    failed: 'bg-red-500/15 border-red-500/30 text-red-400',
+    processing: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+    pending: 'bg-slate-800/50 border-slate-700/50 text-slate-500',
   };
 
   const statusIcons = {
@@ -38,7 +37,7 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
   };
 
   return (
-    <div className="grid grid-cols-10 sm:grid-cols-13 md:grid-cols-17 gap-1.5">
+    <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-[repeat(17,minmax(0,1fr))] gap-1.5">
       {US_STATES.map(st => {
         const stStatus = getStateStatus(st);
         return (

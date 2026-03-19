@@ -18,10 +18,10 @@ const severityColors = {
 };
 
 const categoryColors = {
-  completeness: 'bg-blue-50 text-blue-600',
-  accuracy: 'bg-purple-50 text-purple-600',
-  timeliness: 'bg-amber-50 text-amber-600',
-  consistency: 'bg-teal-50 text-teal-600',
+  completeness: 'bg-blue-500/15 text-blue-400',
+  accuracy: 'bg-purple-500/15 text-purple-400',
+  timeliness: 'bg-amber-500/15 text-amber-400',
+  consistency: 'bg-teal-500/15 text-teal-400',
 };
 
 const statusIcons = {
@@ -45,7 +45,7 @@ export default function AlertsList({ alerts = [] }) {
 
   const toggleAll = (filtered) => {
     const openIds = filtered.filter(a => a.status === 'open').map(a => a.id);
-    if (openIds.every(id => selectedIds.includes(id))) {
+    if (openIds.length > 0 && openIds.every(id => selectedIds.includes(id))) {
       setSelectedIds([]);
     } else {
       setSelectedIds(openIds);
@@ -57,6 +57,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'apply_fix', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
+    onError: (err) => alert(`Failed to apply fix: ${err.message}`),
   });
 
   const dismissMutation = useMutation({
@@ -64,6 +65,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'dismiss', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
+    onError: (err) => alert(`Failed to dismiss alert: ${err.message}`),
   });
 
   const autoFixMutation = useMutation({
@@ -77,6 +79,7 @@ export default function AlertsList({ alerts = [] }) {
         alert(`Auto-fix complete: Fixed ${data.fixed} alerts, Skipped ${data.skipped}.`);
       }
     },
+    onError: (err) => alert(`Auto-fix failed: ${err.message}`),
   });
 
   const filtered = alerts.filter(a => {
@@ -150,7 +153,7 @@ export default function AlertsList({ alerts = [] }) {
         {filtered.length > 0 && filtered.some(a => a.status === 'open') && (
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
+              checked={filtered.filter(a => a.status === 'open').length > 0 && filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
             <span className="text-xs text-slate-500">Select all open alerts</span>
@@ -199,7 +202,7 @@ export default function AlertsList({ alerts = [] }) {
 
 function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, selected, onSelect }) {
   return (
-    <div className={`border rounded-lg transition-colors ${selected ? 'ring-2 ring-blue-300' : ''} ${alert.status === 'open' ? 'bg-white' : 'bg-slate-50 opacity-70'}`}>
+    <div className={`border rounded-lg transition-colors ${selected ? 'ring-2 ring-blue-300' : ''} ${alert.status === 'open' ? 'bg-slate-800/40' : 'bg-slate-800/40 opacity-70'}`}>
       <div className="flex items-center gap-1 px-2 py-3">
         {alert.status === 'open' && (
           <Checkbox
@@ -229,7 +232,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t bg-slate-50/50 space-y-3">
+        <div className="px-4 pb-4 border-t bg-slate-800/30 space-y-3">
           <div className="grid grid-cols-2 gap-3 text-xs pt-3">
             {alert.entity_type && <div><span className="text-slate-400">Entity:</span> <span className="font-medium">{alert.entity_type}</span></div>}
             {alert.npi && <div><span className="text-slate-400">NPI:</span> <span className="font-mono">{alert.npi}</span></div>}

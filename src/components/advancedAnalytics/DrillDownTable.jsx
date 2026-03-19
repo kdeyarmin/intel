@@ -2,8 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Search, ArrowUpDown, ExternalLink } from 'lucide-react';
@@ -59,10 +57,10 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
   }, [providers, utilization, referrals, npiState]);
 
   const filtered = useMemo(() => {
-    let r = rows;
+    let r = [...rows];
     if (search) {
       const q = search.toLowerCase();
-      r = r.filter(x => x.name.toLowerCase().includes(q) || x.npi.includes(q));
+      r = r.filter(x => (x.name || '').toLowerCase().includes(q) || (x.npi || '').includes(q));
     }
     if (stateFilter !== 'all') r = r.filter(x => x.state === stateFilter);
     r.sort((a, b) => sortDir === 'desc' ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]);
