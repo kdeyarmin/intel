@@ -38,7 +38,7 @@ export default function EnrolleeTrendChart({ data }) {
                 <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="year" tick={{ fontSize: 12, fill: '#64748b' }} />
             <YAxis tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} tick={{ fontSize: 12, fill: '#64748b' }} />
             <Tooltip

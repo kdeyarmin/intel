@@ -181,23 +181,23 @@ export default function ProviderDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full h-auto bg-slate-100 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
-          <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
+          <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="clinical" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="clinical" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Stethoscope className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Clinical</span><span className="sm:hidden">Clinical</span>
           </TabsTrigger>
-          <TabsTrigger value="locations" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="locations" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <MapPinIcon className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Locations</span><span className="sm:hidden">Locations</span>
           </TabsTrigger>
-          <TabsTrigger value="network" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="network" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Network className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Network</span><span className="sm:hidden">Network</span>
           </TabsTrigger>
-          <TabsTrigger value="outreach" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="outreach" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <Mail className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Outreach</span><span className="sm:hidden">Outreach</span>
           </TabsTrigger>
-          <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Quality</span><span className="sm:hidden">Quality</span>
           </TabsTrigger>
         </TabsList>

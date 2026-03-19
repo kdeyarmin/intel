@@ -192,7 +192,7 @@ For each email assign:
             {results.emails?.length > 0 ? (
               <div className="space-y-2">
                 {results.emails.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                  <div key={idx} className="flex items-center justify-between bg-slate-800/40 border border-slate-700/50 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-gray-900 truncate">{item.email}</span>

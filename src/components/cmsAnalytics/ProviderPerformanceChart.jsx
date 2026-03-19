@@ -63,7 +63,7 @@ export default function ProviderPerformanceChart({ utilization, referrals, loadi
                 <p className="text-xs font-medium text-slate-500 mb-2">Top 10 Providers by Medicare Payment</p>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={topProviders} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="name" fontSize={10} tick={{ fill: '#64748b' }} />
                     <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v}`} />
                     <Tooltip formatter={v => `$${v.toLocaleString()}`} />
@@ -77,7 +77,7 @@ export default function ProviderPerformanceChart({ utilization, referrals, loadi
                 <p className="text-xs font-medium text-slate-500 mb-2">Referral Breakdown by Type</p>
                 <ResponsiveContainer width="100%" height={140}>
                   <BarChart data={referralBreakdown} layout="vertical" margin={{ left: 80, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis type="number" fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={v => v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : v} />
                     <YAxis type="category" dataKey="name" fontSize={11} tick={{ fill: '#64748b' }} width={75} />
                     <Tooltip formatter={v => v.toLocaleString()} />

@@ -22,7 +22,7 @@ export default function ScanHistoryPanel({ scans = [] }) {
       <CardContent>
         <div className="space-y-3 max-h-80 overflow-auto">
           {scans.map(scan => (
-            <div key={scan.id} className="flex items-start gap-3 p-3 border rounded-lg bg-slate-50/50">
+            <div key={scan.id} className="flex items-start gap-3 p-3 border rounded-lg bg-slate-800/30">
               {scan.status === 'completed' ? (
                 <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
               ) : scan.status === 'running' ? (

@@ -21,7 +21,7 @@ function ResultCard({ match, importing, imported, onImport }) {
   const confColor = { high: 'bg-green-100 text-green-700 border-green-200', medium: 'bg-amber-100 text-amber-700 border-amber-200', low: 'bg-red-100 text-red-700 border-red-200' };
 
   return (
-    <div className="flex items-start justify-between p-3.5 bg-white rounded-xl border border-slate-200 hover:border-blue-200 hover:shadow-sm transition-all">
+    <div className="flex items-start justify-between p-3.5 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:border-blue-200 hover:shadow-sm transition-all">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-semibold text-slate-900">{match.name}</span>
@@ -190,7 +190,7 @@ Return up to 10 results, ordered by relevance.`,
       </div>
 
       {/* Search Form */}
-      <Card className="bg-white">
+      <Card className="bg-slate-800/40">
         <CardContent className="pt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>

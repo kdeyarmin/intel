@@ -132,7 +132,7 @@ export default function DQAssistant() {
                 size="sm"
                 disabled={loading}
                 onClick={() => handleQuickAction(qa)}
-                className="text-[10px] h-7 gap-1 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50"
+                className="text-[10px] h-7 gap-1 border-slate-700/50 hover:border-indigo-300 hover:bg-indigo-50"
               >
                 <Icon className="w-3 h-3" />
                 {qa.label}
@@ -220,7 +220,7 @@ function MessageBubble({ message }) {
         {message.data?.actions?.length > 0 && (
           <div className="mt-2 space-y-1">
             {message.data.actions.map((a, i) => (
-              <div key={i} className="flex items-start gap-1.5 bg-blue-50 rounded-lg px-2.5 py-1.5 border border-blue-100">
+              <div key={i} className="flex items-start gap-1.5 bg-blue-500/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
                 {a.auto_executable ? (
                   <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 ) : (
@@ -275,15 +275,15 @@ function AutoFixSummary({ data }) {
         <span className="text-[11px] font-semibold text-emerald-800">Auto-Fix Results</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-white rounded p-1.5">
+        <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-emerald-700">{data.fixed || 0}</p>
           <p className="text-[9px] text-emerald-600">Fixed</p>
         </div>
-        <div className="bg-white rounded p-1.5">
+        <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-slate-500">{data.skipped || 0}</p>
           <p className="text-[9px] text-slate-500">Skipped</p>
         </div>
-        <div className="bg-white rounded p-1.5">
+        <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-blue-600">{data.total_eligible || 0}</p>
           <p className="text-[9px] text-blue-500">Eligible</p>
         </div>
@@ -306,7 +306,7 @@ function PatternResultsPanel({ result, onClose }) {
   if (!result) return null;
 
   return (
-    <div className="border-t max-h-56 overflow-y-auto px-3 py-2 bg-slate-50/50 flex-shrink-0">
+    <div className="border-t max-h-56 overflow-y-auto px-3 py-2 bg-slate-800/30 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1">
           <TrendingUp className="w-3 h-3" /> Pattern Analysis
@@ -316,7 +316,7 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Trend */}
       {result.trend_analysis && (
-        <div className="bg-blue-50 border border-blue-100 rounded p-2 mb-2">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 mb-2">
           <p className="text-[10px] text-blue-800">{result.trend_analysis}</p>
         </div>
       )}
@@ -325,7 +325,7 @@ function PatternResultsPanel({ result, onClose }) {
       {result.recurring_patterns?.length > 0 && (
         <div className="space-y-1.5 mb-2">
           {result.recurring_patterns.slice(0, 3).map((p, i) => (
-            <div key={i} className="bg-white border rounded p-2">
+            <div key={i} className="bg-slate-800/40 border rounded p-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-semibold text-slate-700">{p.rule_name}</span>
                 <Badge variant="outline" className="text-[8px]">{p.occurrence_count}x</Badge>
@@ -355,7 +355,7 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Predictions */}
       {result.predictions?.length > 0 && (
-        <div className="mt-2 bg-amber-50 border border-amber-100 rounded p-2">
+        <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded p-2">
           <p className="text-[9px] font-semibold text-amber-700 mb-0.5">⚠ Predictions</p>
           {result.predictions.slice(0, 2).map((p, i) => (
             <p key={i} className="text-[9px] text-amber-600">• {p}</p>

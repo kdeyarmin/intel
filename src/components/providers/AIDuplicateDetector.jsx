@@ -12,7 +12,7 @@ function DuplicateGroupCard({ group }) {
   const confStyle = {
     high: { bg: 'bg-red-50 border-red-200', badge: 'bg-red-100 text-red-700 border-red-200', icon: 'text-red-500' },
     medium: { bg: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'text-amber-500' },
-    low: { bg: 'bg-slate-50 border-slate-200', badge: 'bg-slate-100 text-slate-600 border-slate-200', icon: 'text-slate-400' },
+    low: { bg: 'bg-slate-50 border-slate-700/50', badge: 'bg-slate-100 text-slate-600 border-slate-700/50', icon: 'text-slate-400' },
   };
   const style = confStyle[group.confidence] || confStyle.low;
 
@@ -27,7 +27,7 @@ function DuplicateGroupCard({ group }) {
       <p className="text-xs text-slate-600 mb-3 leading-relaxed">{group.reason}</p>
       <div className="space-y-1.5">
         {group.records?.map((rec, j) => (
-          <div key={j} className="flex items-center justify-between bg-white/80 rounded-lg px-3 py-2 border border-slate-100">
+          <div key={j} className="flex items-center justify-between bg-slate-800/40/80 rounded-lg px-3 py-2 border border-slate-700/50">
             <div className="flex items-center gap-2 min-w-0">
               <div className={`w-2 h-2 rounded-full shrink-0 ${j === 0 ? 'bg-blue-500' : 'bg-slate-300'}`} />
               <span className="text-xs font-medium text-slate-800 truncate">{rec.name}</span>
@@ -161,7 +161,7 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
       </div>
 
       {/* Action */}
-      <Card className="bg-white">
+      <Card className="bg-slate-800/40">
         <CardContent className="pt-5 space-y-3">
           <div className="text-xs text-slate-500">
             {scanCount} provider{scanCount !== 1 ? 's' : ''} will be analyzed for duplicates
@@ -197,7 +197,7 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-xs text-amber-700 font-medium">{medCount} Medium</span>
               </div>
-              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-700/50">
                 <div className="w-2 h-2 rounded-full bg-slate-400" />
                 <span className="text-xs text-slate-600 font-medium">{lowCount} Low</span>
               </div>

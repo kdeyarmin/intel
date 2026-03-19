@@ -541,7 +541,7 @@ export default function Providers() {
                 title="Map Providers"
                 dataset="providers"
                 activeFilters={currentFilters}
-                trigger={<Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-white shadow-sm text-slate-700 hover:bg-slate-50"><Download className="w-3 h-3" /> Export Visible</Button>}
+                trigger={<Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-slate-800/40 shadow-sm text-slate-300 hover:bg-slate-800/60"><Download className="w-3 h-3" /> Export Visible</Button>}
               />
             }
           />

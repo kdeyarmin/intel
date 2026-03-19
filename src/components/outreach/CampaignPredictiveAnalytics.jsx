@@ -142,7 +142,7 @@ Provide:
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historicalStats.trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                   <XAxis dataKey="name" tick={{ fontSize: 9 }} />
                   <YAxis tick={{ fontSize: 9 }} />
                   <Tooltip contentStyle={tooltipStyle} />

@@ -44,7 +44,7 @@ export default function ALOSTrendChart({ data }) {
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="year" tick={{ fontSize: 12, fill: '#64748b' }} />
             <YAxis yAxisId="left" tick={{ fontSize: 12, fill: '#64748b' }} label={{ value: 'Days', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#94a3b8' } }} />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: '#64748b' }} label={{ value: 'Per 1,000', angle: 90, position: 'insideRight', style: { fontSize: 11, fill: '#94a3b8' } }} />
