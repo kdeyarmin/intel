@@ -296,7 +296,7 @@ export default function NPPESCrawlerSettings() {
                     type="text"
                     value={form.escalation_tags?.join(', ') || ''}
                     onChange={(e) => updateField('escalation_tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                    className="max-w-48"
+                    className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
                   />
                   <p className="text-xs text-slate-500">Comma-separated tags to add on escalation</p>
                 </div>
@@ -418,7 +418,7 @@ function SettingField({ label, description, value, onChange, min, max }) {
         onChange={(e) => onChange(parseInt(e.target.value) || min)}
         min={min}
         max={max}
-        className="max-w-48"
+        className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
       />
       <p className="text-xs text-slate-500">{description}</p>
     </div>
