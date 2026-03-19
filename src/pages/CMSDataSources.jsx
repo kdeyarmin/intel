@@ -96,7 +96,8 @@ export default function CMSDataSources() {
         data_year: config.data_year || '',
         api_url: config.api_url,
         schedule_frequency: config.schedule_frequency,
-        schedule_time: config.schedule_time,
+        depends_on_import_type: config.depends_on_import_type || '',
+        schedule_time: config.schedule_time || '02:00',
         is_active: config.is_active
       });
     } else {
@@ -106,6 +107,7 @@ export default function CMSDataSources() {
         data_year: new Date().getFullYear(),
         api_url: '',
         schedule_frequency: 'weekly',
+        depends_on_import_type: '',
         schedule_time: '02:00',
         is_active: true
       });
