@@ -3,8 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, RefreshCw, FileCheck } from 'lucide-react';
 
-// The crawler creates 100 queue items per state (zip prefixes 00-99)
-const TOTAL_ZIP_PREFIXES = 100;
+const DEFAULT_QUEUE_ITEMS = 100;
 
 const STATE_NAMES = {
   AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',
@@ -37,13 +36,15 @@ export default function CurrentStateProgress({ status }) {
 
   if (!stateCode) return null;
 
-  const totalPrefixes = TOTAL_ZIP_PREFIXES;
   const processedPrefixes = activeBatch?.retry_params?.processed_prefixes || [];
-  // Use granular_metrics as a more reliable source for completion count
   const metricsForState = status?.granular_metrics?.[stateCode];
+  const totalPrefixes = metricsForState?.total_queue_items || activeBatch?.retry_params?.total_queue_items || DEFAULT_QUEUE_ITEMS;
   const completedFromMetrics = metricsForState?.completed_items || 0;
   const completedPrefixes = Math.max(processedPrefixes.length, completedFromMetrics);
   const pct = totalPrefixes > 0 ? Math.min(Math.round((completedPrefixes / totalPrefixes) * 100), 100) : 0;
+  const filterCity = activeBatch?.retry_params?.city;
+  const filterPostalCode = activeBatch?.retry_params?.postal_code;
+  const usesDefaultPrefixGrid = totalPrefixes === DEFAULT_QUEUE_ITEMS;
 
   const imported = activeBatch?.imported_rows || 0;
   const updated = activeBatch?.updated_rows || 0;
@@ -61,7 +62,7 @@ export default function CurrentStateProgress({ status }) {
             </span>
           </div>
           <Badge className="bg-teal-500/15 text-teal-400 border border-teal-500/20 text-xs">
-            {completedPrefixes} / {totalPrefixes} zip prefixes
+            {completedPrefixes} / {totalPrefixes} {usesDefaultPrefixGrid ? 'zip prefixes' : 'queue items'}
           </Badge>
         </div>
 
@@ -76,15 +77,14 @@ export default function CurrentStateProgress({ status }) {
           <div className="flex justify-between text-[10px] text-slate-400">
             <span>{pct}% complete</span>
             {totalPrefixes - completedPrefixes > 0 && (
-              <span>{totalPrefixes - completedPrefixes} prefix{totalPrefixes - completedPrefixes !== 1 ? 'es' : ''} remaining</span>
+              <span>{totalPrefixes - completedPrefixes} {usesDefaultPrefixGrid ? `prefix${totalPrefixes - completedPrefixes !== 1 ? 'es' : ''}` : `item${totalPrefixes - completedPrefixes !== 1 ? 's' : ''}`} remaining</span>
             )}
           </div>
         </div>
 
-        {/* Zip prefix pills - show all 100 prefixes (00-99) */}
-        {processedPrefixes.length > 0 && (
+        {usesDefaultPrefixGrid && processedPrefixes.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {Array.from({ length: TOTAL_ZIP_PREFIXES }, (_, i) => String(i).padStart(2, '0')).map(prefix => {
+            {Array.from({ length: DEFAULT_QUEUE_ITEMS }, (_, i) => String(i).padStart(2, '0')).map(prefix => {
               const done = processedPrefixes.includes(prefix);
               return (
                 <span
@@ -99,6 +99,13 @@ export default function CurrentStateProgress({ status }) {
                 </span>
               );
             })}
+          </div>
+        )}
+
+        {!usesDefaultPrefixGrid && (filterCity || filterPostalCode) && (
+          <div className="flex flex-wrap gap-2 text-[10px] text-slate-300">
+            {filterCity && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">City: {filterCity}</span>}
+            {filterPostalCode && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">Postal: {filterPostalCode}</span>}
           </div>
         )}
 

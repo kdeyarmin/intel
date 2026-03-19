@@ -63,6 +63,23 @@ function normalizePostalCode(value) {
     return String(value || '').replace(/[^0-9]/g, '').slice(0, 5);
 }
 
+
+async function incrementBatchQueueSize(base44, batchId, additionalItems) {
+    if (!additionalItems || additionalItems <= 0) return;
+    try {
+        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId));
+        const retry_params = batch.retry_params || {};
+        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, {
+            retry_params: {
+                ...retry_params,
+                total_queue_items: (retry_params.total_queue_items || 0) + additionalItems,
+            }
+        }));
+    } catch (e) {
+        console.warn(`[Crawler] Failed to increment queue size for ${batchId}: ${e.message}`);
+    }
+}
+
 async function withRetry(fn, maxRetries = 5) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try { return await fn(); } catch (e) {
@@ -516,7 +533,8 @@ Deno.serve(async (req) => {
                     rate_limit_hits: b.rate_limit_count || 0,
                     estimated_remaining_ms,
                     pending_items,
-                    completed_items: rp.completed_items || 0
+                    completed_items: rp.completed_items || 0,
+                    total_queue_items: rp.total_queue_items || (pending_items + (rp.completed_items || 0)) || 100
                 };
             }
         }
@@ -1053,6 +1071,7 @@ Deno.serve(async (req) => {
                         subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
                     }
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
+                    await incrementBatchQueueSize(base44, task.batch_id, subTasks.length);
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));

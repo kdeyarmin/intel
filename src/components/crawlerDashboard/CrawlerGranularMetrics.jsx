@@ -71,7 +71,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
               const rateLimits = metrics.rate_limit_hits || 0;
               const pending = metrics.pending_items || 0;
               const completed = metrics.completed_items || 0;
-              const total = pending + completed;
+              const total = metrics.total_queue_items || (pending + completed);
               const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
               return (

@@ -35,7 +35,7 @@ function getProgressValue(batch) {
     const rp = batch.retry_params || {};
     const completed = rp.completed_items || 0;
     // Each state typically has 100 queue items (zip prefixes 00-99)
-    const estimated_total = 100;
+    const estimated_total = rp.total_queue_items || 100;
     if (completed > 0) {
       return Math.min(Math.round((completed / estimated_total) * 100), 99);
     }
