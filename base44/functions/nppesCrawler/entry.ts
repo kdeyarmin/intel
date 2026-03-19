@@ -918,7 +918,7 @@ Deno.serve(async (req) => {
             base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(e => console.error("Self-invoke error:", e));
 
             // Dynamically scale up if queue is large, we are healthy, and under worker cap
-            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 6);
+            const targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), 3);
             if (consecutiveErrors === 0 && activeWorkersCount < targetWorkers) {
                  console.log(`[Crawler Worker] Queue depth triggers scale up. Spawning new worker (Active: ${activeWorkersCount}, Target: ${targetWorkers})`);
                  base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue', dry_run }).catch(()=>{});
