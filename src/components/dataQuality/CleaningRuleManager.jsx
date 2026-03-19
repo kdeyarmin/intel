@@ -30,7 +30,7 @@ export default function CleaningRuleManager() {
 
   const fetchRules = async () => {
     try {
-      const allRules = await base44.entities.DataCleaningRule.list();
+      const allRules = await base44.entities.DataCleaningRule.list('-created_date', 200);
       setRules(allRules || []);
     } catch (_error) {
       toast.error('Failed to load rules');

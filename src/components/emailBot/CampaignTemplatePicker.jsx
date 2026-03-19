@@ -27,34 +27,46 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
       return;
     }
     setSaving(true);
-    await base44.entities.CampaignTemplate.create({
-      name: saveName.trim(),
-      subject_template: currentSubject,
-      body_template: currentBody,
-      category: saveCategory,
-      ai_generated: false,
-      use_count: 0,
-    });
-    toast.success('Template saved');
-    setSaving(false);
-    setSaveName('');
-    setShowSave(false);
-    queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    try {
+      await base44.entities.CampaignTemplate.create({
+        name: saveName.trim(),
+        subject_template: currentSubject,
+        body_template: currentBody,
+        category: saveCategory,
+        ai_generated: false,
+        use_count: 0,
+      });
+      toast.success('Template saved');
+      setSaveName('');
+      setShowSave(false);
+      queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    } catch (e) {
+      toast.error('Failed to save template');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.CampaignTemplate.delete(id);
-    toast.success('Template deleted');
-    queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    try {
+      await base44.entities.CampaignTemplate.delete(id);
+      toast.success('Template deleted');
+      queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    } catch (e) {
+      toast.error('Failed to delete template');
+    }
   };
 
   const handleUse = async (template) => {
     onSelect({ subject: template.subject_template, body: template.body_template });
-    // Increment use count
-    await base44.entities.CampaignTemplate.update(template.id, {
-      use_count: (template.use_count || 0) + 1,
-    });
-    queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    try {
+      await base44.entities.CampaignTemplate.update(template.id, {
+        use_count: (template.use_count || 0) + 1,
+      });
+      queryClient.invalidateQueries({ queryKey: ['campaignTemplates'] });
+    } catch (e) {
+      console.error('Failed to update use count:', e);
+    }
   };
 
   const categoryColors = {

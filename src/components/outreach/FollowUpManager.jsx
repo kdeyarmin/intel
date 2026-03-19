@@ -32,7 +32,7 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
   const { data: followUpCampaigns = [] } = useQuery({
     queryKey: ['followUpCampaigns'],
     queryFn: async () => {
-      const all = await base44.entities.OutreachCampaign.list('-created_date');
+      const all = await base44.entities.OutreachCampaign.list('-created_date', 200);
       return all.filter(c => c.description?.includes('[Follow-Up]'));
     },
   });

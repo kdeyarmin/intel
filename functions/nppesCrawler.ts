@@ -60,7 +60,7 @@ const STATE_ZIP_PREFIXES: Record<string, string[]> = {
     'WI': ['53','54'],
     'WY': ['82','83']
 };
-const MAX_EXEC_MS = 20000;
+const MAX_EXEC_MS = 15000;
 
 type CrawlerPayload = {
     action?: string;
@@ -494,36 +494,37 @@ async function fetchNPPESPage(params, stats) {
 
 async function updateBatchStats(base44, batchId, stats) {
     try {
-        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId));
-        if (batch) {
-            const retry_params = batch.retry_params || {};
-            if (stats.time_ms) {
-                retry_params.total_time_ms = (retry_params.total_time_ms || 0) + stats.time_ms;
-                retry_params.completed_items = (retry_params.completed_items || 0) + 1;
-                retry_params.processed_prefixes = retry_params.processed_prefixes || [];
-                if (stats.prefix && !retry_params.processed_prefixes.includes(stats.prefix)) {
-                    retry_params.processed_prefixes.push(stats.prefix);
-                }
-            }
-            const newValid = (batch.valid_rows || 0) + (stats.valid || 0);
-            const newInvalid = (batch.invalid_rows || 0) + (stats.invalid || 0);
-            const newImported = (batch.imported_rows || 0) + (stats.prov?.imported || 0);
-            const newUpdated = (batch.updated_rows || 0) + (stats.prov?.updated || 0);
-            const newSkipped = (batch.skipped_rows || 0) + (stats.prov?.skipped || 0);
-            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, {
-                valid_rows: newValid,
-                invalid_rows: newInvalid,
-                imported_rows: newImported,
-                updated_rows: newUpdated,
-                skipped_rows: newSkipped,
-                total_rows: newImported + newUpdated + newSkipped + newInvalid,
-                api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
-                rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
-                retry_params
-            }));
+        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId), 3);
+        if (!batch) {
+            console.error(`[Crawler] Batch ${batchId} not found for stats update`);
+            return;
         }
+        const retry_params = { ...(batch.retry_params || {}) };
+        if (stats.time_ms) {
+            retry_params.total_time_ms = (retry_params.total_time_ms || 0) + stats.time_ms;
+            retry_params.completed_items = (retry_params.completed_items || 0) + 1;
+            const existing = retry_params.processed_prefixes || [];
+            if (stats.prefix && !existing.includes(stats.prefix)) {
+                retry_params.processed_prefixes = [...existing, stats.prefix];
+            }
+        }
+        const updatePayload = {
+            valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
+            invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
+            imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
+            updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
+            skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
+            total_rows: 0,
+            api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
+            rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
+            retry_params
+        };
+        updatePayload.total_rows = updatePayload.imported_rows + updatePayload.updated_rows + updatePayload.skipped_rows + updatePayload.invalid_rows;
+        
+        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, updatePayload), 3);
+        console.log(`[Crawler] Batch ${batchId} stats updated: valid=${updatePayload.valid_rows}, imported=${updatePayload.imported_rows}, updated=${updatePayload.updated_rows}, skipped=${updatePayload.skipped_rows}`);
     } catch(e) {
-        console.error(`[Crawler] Failed to update batch stats for ${batchId}:`, e.message);
+        console.error(`[Crawler] FAILED to update batch stats for ${batchId}: ${e.message} | ${e.stack?.slice(0, 200)}`);
     }
 }
 
@@ -539,6 +540,34 @@ Deno.serve(async (req) => {
         
         const { action = 'process_queue', states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code } = payload;
         const isService = !!(user?.email && user.email.includes('service+'));
+
+    // --- CLEANUP ORPHANED ITEMS ---
+    if (action === 'cleanup_orphans') {
+        let cleaned = 0;
+        const cleanupStart = Date.now();
+        
+        // Get all cancelled/failed batch IDs
+        const allBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 5000);
+        const deadBatchIds = new Set(allBatches.filter(b => b.status === 'cancelled' || b.status === 'failed').map(b => b.id));
+        
+        // Fetch all pending/processing/paused items and mark ones from dead batches as failed
+        for (const status of ['pending', 'paused', 'processing']) {
+            let items = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status }, undefined, 5000));
+            const orphans = items.filter(i => deadBatchIds.has(i.batch_id));
+            for (let i = 0; i < orphans.length; i += 100) {
+                if (Date.now() - cleanupStart > 18000) {
+                    console.warn(`[Cleanup] Time limit reached after cleaning ${cleaned} items`);
+                    return Response.json({ success: true, cleaned, message: `Partial cleanup — time limit reached. Run again for more.` });
+                }
+                const chunk = orphans.slice(i, i + 100);
+                await Promise.all(chunk.map(item =>
+                    base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'failed', error_message: 'Orphan cleanup' }).catch(() => {})
+                ));
+                cleaned += chunk.length;
+            }
+        }
+        return Response.json({ success: true, cleaned, message: `Cleaned ${cleaned} orphaned items from ${deadBatchIds.size} dead batches.` });
+    }
 
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
@@ -583,14 +612,18 @@ Deno.serve(async (req) => {
         };
 
         // Determine if crawler is paused (has paused tasks) or running (has processing/pending tasks)
+        const activeBatchIds = new Set(crawlerBatches.filter(b => b.status === 'processing' || b.status === 'paused').map(b => b.id));
+        
         const processingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 100);
-        const active_workers = processingItems.length;
+        const active_workers = processingItems.filter(i => activeBatchIds.has(i.batch_id)).length;
 
-        // Check for paused/pending items separately to avoid the 100 item limit issue
-        const pendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 1);
-        const pausedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1);
-        const hasPaused = pausedItems.length > 0;
-        const hasPending = pendingItems.length > 0 || active_workers > 0;
+        const pendingItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, undefined, 200);
+        const pausedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 200);
+        
+        const activePendingItems = pendingItems.filter(i => activeBatchIds.has(i.batch_id));
+        const activePausedItems = pausedItems.filter(i => activeBatchIds.has(i.batch_id));
+        const hasPaused = activePausedItems.length > 0;
+        const hasPending = activePendingItems.length > 0 || active_workers > 0;
         const crawler_status = hasPaused && !hasPending ? 'paused' : (hasPending ? 'running' : 'idle');
 
         const granular_metrics = {};
@@ -821,32 +854,40 @@ Deno.serve(async (req) => {
             }
         } catch (e) { console.warn('[Crawler] Could not set stop flag:', e.message); }
 
-        // Stop ALL active queue items in a loop until none remain (handles >5000 items)
-        // Time-guarded: stop flag is the primary mechanism, this is best-effort cleanup
+        // Cancel active batches FIRST (fast operation, most important)
+        let batchesCancelled = 0;
+        try {
+            const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
+            await Promise.all(activeBatches.map(b =>
+                withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'cancelled', cancel_reason: 'Stopped by user', cancelled_at: new Date().toISOString() })).catch(() => {})
+            ));
+            batchesCancelled = activeBatches.length;
+        } catch (e) {
+            console.error('[Crawler] Error cancelling batches:', e.message);
+        }
+
+        // Best-effort cleanup of queue items — stop flag is the primary mechanism
+        // Workers will also clean orphaned items on next start via orphan cleanup
         let totalStopped = 0;
         const stopStartTime = Date.now();
         try {
-            const batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 5000));
-            for (let i = 0; i < batchItems.length; i += 50) {
-                if (Date.now() - stopStartTime > 15000) {
-                    console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Stop flag will handle remaining workers.`);
+            const batchItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'paused', 'processing'] } }, undefined, 2000));
+            for (let i = 0; i < batchItems.length; i += 100) {
+                if (Date.now() - stopStartTime > 10000) {
+                    console.warn(`[Crawler] batch_stop time limit reached after stopping ${totalStopped} items. Orphan cleanup will handle the rest.`);
                     break;
                 }
-                const chunk = batchItems.slice(i, i+50);
-                await Promise.all(chunk.map(p => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }))));
+                const chunk = batchItems.slice(i, i + 100);
+                await Promise.all(chunk.map(p =>
+                    base44.asServiceRole.entities.NPPESQueueItem.update(p.id, { status: 'failed', error_message: 'Stopped by user' }).catch(() => {})
+                ));
                 totalStopped += chunk.length;
             }
         } catch (e) {
             console.error('[Crawler] Error bulk stopping items:', e.message);
         }
 
-        // Also cancel any active batches
-        const activeBatches = await withRetry(() => base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry', status: { $in: ['processing', 'paused', 'validating'] } }));
-        for (const b of activeBatches) {
-            await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(b.id, { status: 'cancelled', cancel_reason: 'Stopped by user', cancelled_at: new Date().toISOString() }));
-        }
-
-        return Response.json({ success: true, message: `All tasks and batches stopped. ${totalStopped} items cancelled.` });
+        return Response.json({ success: true, message: `${batchesCancelled} batches cancelled, ${totalStopped} items stopped. Stop flag set.` });
     }
 
     if (action === 'batch_pause') {
@@ -980,10 +1021,36 @@ Deno.serve(async (req) => {
         const stuck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, 'updated_date', 200));
         let recoveredCount = 0;
         for (const item of stuck) {
-            // Check if stuck for more than 10 minutes
             if (Date.now() - new Date(item.updated_date).getTime() > 600000) {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'pending', retry_count: (item.retry_count || 0) + 1 }));
                 recoveredCount++;
+            }
+        }
+
+        // Orphan cleanup: mark pending items from cancelled/failed batches as failed
+        // This prevents workers from wasting cycles on items that will never be processed
+        const orphanSample = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 500));
+        if (orphanSample.length > 0) {
+            const batchIds = [...new Set(orphanSample.map(i => i.batch_id))];
+            const orphanBatchStatuses = {};
+            for (const bid of batchIds) {
+                try {
+                    const b = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(bid));
+                    orphanBatchStatuses[bid] = b.status;
+                } catch { orphanBatchStatuses[bid] = 'deleted'; }
+            }
+            const orphanItems = orphanSample.filter(i => {
+                const bStatus = orphanBatchStatuses[i.batch_id];
+                return bStatus === 'cancelled' || bStatus === 'failed' || bStatus === 'deleted';
+            });
+            if (orphanItems.length > 0) {
+                console.log(`[Crawler Worker] Cleaning up ${orphanItems.length} orphaned queue items from cancelled/failed batches`);
+                for (let oi = 0; oi < orphanItems.length; oi += 50) {
+                    const chunk = orphanItems.slice(oi, oi + 50);
+                    await Promise.all(chunk.map(item =>
+                        withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(item.id, { status: 'failed', error_message: 'Batch cancelled/failed' })).catch(() => {})
+                    ));
+                }
             }
         }
 
@@ -1230,8 +1297,8 @@ Deno.serve(async (req) => {
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
                     await incrementBatchQueueSize(base44, task.batch_id, subTasks.length);
                     stats.time_ms = Date.now() - taskStartTime;
-                    await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                    await updateBatchStats(base44, task.batch_id, stats);
                 } else if (allResults.length > 0) {
                     const transformed = transformResults(allResults);
                     stats.valid += transformed.validRows;
@@ -1239,21 +1306,23 @@ Deno.serve(async (req) => {
                     console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: ${allResults.length} API results → ${transformed.providers.length} providers, ${transformed.locations.length} locations, ${transformed.taxonomies.length} taxonomies (${transformed.invalidRows} invalid)`);
 
                     if (!effectiveDryRun) {
-                        const provRes = await upsertProviders(transformed.providers, base44);
-                        const locRes = await upsertLocations(transformed.locations, base44);
-                        const taxRes = await upsertTaxonomies(transformed.taxonomies, base44);
+                        const [provRes, locRes, taxRes] = await Promise.all([
+                            upsertProviders(transformed.providers, base44),
+                            upsertLocations(transformed.locations, base44),
+                            upsertTaxonomies(transformed.taxonomies, base44)
+                        ]);
                         stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
                         console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: Upserted ${provRes.imported} new, ${provRes.updated} updated, ${provRes.skipped} skipped providers | ${locRes.imported} locs | ${taxRes.imported} taxonomies`);
                     }
 
                     stats.time_ms = Date.now() - taskStartTime;
-                    await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                    await updateBatchStats(base44, task.batch_id, stats);
                 } else {
                     console.log(`[Crawler Worker] ${task.state}/${task.zip_prefix}: 0 results from NPPES API`);
                     stats.time_ms = Date.now() - taskStartTime;
-                    await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
+                    await updateBatchStats(base44, task.batch_id, stats);
                 }
                 tasksProcessed++;
                 consecutiveErrors = 0; // Reset error counter on success

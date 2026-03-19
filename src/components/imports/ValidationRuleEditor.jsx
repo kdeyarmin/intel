@@ -81,18 +81,23 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
   const handleSave = async () => {
     setIsSaving(true);
-    const data = {
-      ...form,
-      import_type: importType,
-    };
-    if (isEdit) {
-      await base44.entities.ImportValidationRule.update(rule.id, data);
-    } else {
-      await base44.entities.ImportValidationRule.create(data);
+    try {
+      const data = {
+        ...form,
+        import_type: importType,
+      };
+      if (isEdit) {
+        await base44.entities.ImportValidationRule.update(rule.id, data);
+      } else {
+        await base44.entities.ImportValidationRule.create(data);
+      }
+      onSaved?.();
+      onOpenChange(false);
+    } catch (e) {
+      console.error('Failed to save validation rule:', e);
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
-    onSaved?.();
-    onOpenChange(false);
   };
 
   const addEnumValue = () => {

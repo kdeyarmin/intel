@@ -151,6 +151,17 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **Missing error handling (3 functions)**: `CampaignAutomationPanel.jsx` handleDeleteStep and toggleStepActive — both now wrapped in try/catch with toast.error; `AIDuplicateDetector.jsx` handleScan — entire scan+alert-creation flow wrapped in try/catch/finally
 - **Unbounded .list() calls capped (5 pages)**: `LeadLists.jsx` LeadList.list (500); `Organizations.jsx` LeadScore.list (5000); `ScoringRules.jsx` ScoringRule.list ×2 (200); `Providers.jsx` LeadScore.list (5000); `ProjectManagement.jsx` CampaignTask.list (500)
 
+### Round 15 Fixes
+- **Missing try/catch (7 components)**: `BatchTagManager.jsx` addTag/removeTag — both wrapped in try/catch; `ValidationRulesManager.jsx` handleToggle/handleDelete/handleDuplicate — all 3 wrapped in try/catch with toast.error, handleDelete setDeletingId moved to finally; `ValidationRuleEditor.jsx` handleSave — wrapped in try/catch/finally; `CampaignTemplatePicker.jsx` handleSave/handleDelete/handleUse — all 3 wrapped in try/catch; `BulkAlertActions.jsx` bulkAction — outer try/catch/finally + inner per-item try/catch so one failure doesn't abort entire batch; `FollowUpSequenceTab.jsx` generate — wrapped in try/catch/finally (was also stuck spinner)
+- **Stuck spinner fix**: `FollowUpSequenceTab.jsx` setLoading(false) moved to finally block (was only at end of function, never reached on LLM error)
+- **Unbounded .list() calls capped (2 more)**: `FollowUpManager.jsx` OutreachCampaign.list (200); `CleaningRuleManager.jsx` DataCleaningRule.list (200)
+- **nppesCrawler batch stats fix**: `updateBatchStats` — now clones retry_params to avoid mutation, adds explicit success/failure logging with stack traces, uses maxRetries=3 for both get and update
+- **nppesCrawler item completion order**: Worker now marks item as 'completed' BEFORE calling updateBatchStats — prevents items stuck in 'processing' forever if function times out during stats update
+- **nppesCrawler parallel upserts**: Non-split case now uses Promise.all for provider/location/taxonomy upserts (was sequential, taking ~3x longer)
+- **nppesCrawler MAX_EXEC_MS reduced**: From 20s to 15s — gives more headroom for cleanup operations (updateBatchStats, item status update) before platform function timeout
+- **nppesCrawler orphan cleanup expanded**: Worker startup orphan scan increased from 100 to 500 items — handles larger backlogs from cancelled batches
+- **nppesCrawler status endpoint fix**: `active_workers` now only counts processing items from active batches (was counting orphans from cancelled batches too, falsely reporting workers running)
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

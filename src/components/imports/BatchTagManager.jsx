@@ -14,17 +14,25 @@ export default function BatchTagManager({ batch, onUpdate }) {
   const addTag = async () => {
     const tag = newTag.trim().toLowerCase();
     if (!tag || tags.includes(tag)) return;
-    const updated = [...tags, tag];
-    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
-    onUpdate?.();
-    setNewTag('');
-    setIsAdding(false);
+    try {
+      const updated = [...tags, tag];
+      await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+      onUpdate?.();
+      setNewTag('');
+      setIsAdding(false);
+    } catch (e) {
+      console.error('Failed to add tag:', e);
+    }
   };
 
   const removeTag = async (tagToRemove) => {
-    const updated = tags.filter(t => t !== tagToRemove);
-    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
-    onUpdate?.();
+    try {
+      const updated = tags.filter(t => t !== tagToRemove);
+      await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+      onUpdate?.();
+    } catch (e) {
+      console.error('Failed to remove tag:', e);
+    }
   };
 
   const handleKeyDown = (e) => {

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import ValidationRuleEditor from './ValidationRuleEditor';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+import { toast } from 'sonner';
 
 const IMPORT_TYPE_LABELS = {
   _global: 'All Import Types (Global)',
@@ -116,26 +117,39 @@ export default function ValidationRulesManager() {
   }, [rulesByType, selectedType, searchQuery]);
 
   const handleToggle = async (rule) => {
-    await base44.entities.ImportValidationRule.update(rule.id, { enabled: !rule.enabled });
-    refresh();
+    try {
+      await base44.entities.ImportValidationRule.update(rule.id, { enabled: !rule.enabled });
+      refresh();
+    } catch (e) {
+      toast.error('Failed to toggle rule');
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteRule) return;
     setDeletingId(deleteRule.id);
-    await base44.entities.ImportValidationRule.delete(deleteRule.id);
-    setDeleteRule(null);
-    setDeletingId(null);
-    refresh();
+    try {
+      await base44.entities.ImportValidationRule.delete(deleteRule.id);
+      setDeleteRule(null);
+      refresh();
+    } catch (e) {
+      toast.error('Failed to delete rule');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleDuplicate = async (rule) => {
-    const { _id, _created_date, _updated_date, _created_by, ...data } = rule;
-    await base44.entities.ImportValidationRule.create({
-      ...data,
-      rule_name: `${data.rule_name} (copy)`,
-    });
-    refresh();
+    try {
+      const { _id, _created_date, _updated_date, _created_by, ...data } = rule;
+      await base44.entities.ImportValidationRule.create({
+        ...data,
+        rule_name: `${data.rule_name} (copy)`,
+      });
+      refresh();
+    } catch (e) {
+      toast.error('Failed to duplicate rule');
+    }
   };
 
   // All import types for sidebar
