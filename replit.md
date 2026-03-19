@@ -44,13 +44,19 @@ Codebase imported from `kdeyarmin/intel` GitHub repository.
 ## Backend Functions (functions/ directory)
 Base44 serverless functions (Deno-based) — 66 functions total, covering imports, enrichment, data quality, email search, campaigns, and more.
 
-### CMS Import Reliability Features (applied to all importers)
+### CMS Import Reliability Features (applied consistently to ALL importers)
 - **clampNumericFields**: Financial fields clamped to MAX_FLOAT (999999999999.99), count fields to MAX_INT (2147483647) — prevents "Out of Range" errors
 - **raw_data stored as strings**: All raw_data JSON values converted to strings before storage — prevents integer overflow in JSON serialization
-- **Rate-limit circuit breaker**: After 3 consecutive rate-limited chunks, import auto-pauses with resume offset saved
-- **bulkCreateWithRetry**: 5 attempts with jittered exponential backoff for all bulk operations
-- **Inter-chunk delay**: 1200ms minimum between chunks to prevent platform rate limiting
+- **Rate-limit circuit breaker**: After 3 consecutive rate-limited chunks, import auto-pauses with resume offset saved (both ZIP importers and autoImportCMSData)
+- **bulkCreateWithRetry**: 5 attempts with jittered exponential backoff for all bulk operations (standardized across all importers)
+- **Inter-chunk delay**: 1200ms between data chunks, 1500ms between API pages — prevents platform rate limiting
 - **Auto-resume**: Timed-out imports automatically invoke themselves with resume_offset to continue where they left off
+- **fetchWithRetry**: All ZIP downloaders (HHA, SNF, MA Inpatient) use 3-attempt fetch with AbortController timeout (30s) and exponential backoff
+- **CSV parser**: Proper RFC-compliant quoted-field handling for CSV fallback in autoImportCMSData
+- **Cross-page dedup**: Global dedup set persists across API pages in autoImportCMSData (not page-local)
+- **safeNum returns null**: Missing/blank/suppressed values return `null` not `0` to avoid inflating data
+- **Error sample cap**: 25 samples across all importers for consistent debugging
+- **Year-URL maps**: HHA, SNF, and MA Inpatient all have multi-year URL maps with LATEST_AVAILABLE_YEAR fallback
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports

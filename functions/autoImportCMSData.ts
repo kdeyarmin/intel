@@ -170,13 +170,16 @@ Deno.serve(async (req) => {
             const initialInvalid = batch.invalid_rows || 0;
             const initialDupes = batch.duplicate_rows || 0;
             const errorSamples = [];
+            const addError = (msg) => { if (errorSamples.length < 25) errorSamples.push({ row: totalProcessed, message: msg }); };
             let columnMapping: string[] = [];
             let offset = resume_offset;
+            const globalSeenKeys = new Set();
             let reachedEnd = false;
+            let outerConsecutiveRateLimitChunks = 0;
 
             if (isJsonApi) {
                 // Streaming page-by-page approach
-                while (!isTimeUp(startTime) && !reachedEnd) {
+                while (!isTimeUp(startTime) && !reachedEnd && outerConsecutiveRateLimitChunks < 3) {
                     const separator = file_url.includes('?') ? '&' : '?';
                     const isCmsDataApi = file_url.includes('data-api/v1/dataset');
                     const isDkanApi = file_url.includes('provider-data/api');
@@ -245,9 +248,7 @@ Deno.serve(async (req) => {
                         });
                     }
 
-                    // Process page in chunks to allow granular resume
                     let pageProcessedRaw = 0;
-                    const seenInPage = new Set();
                     let abortOuter = false;
                     
                     for (let i = 0; i < currentPage.length; i += BULK_SIZE) {
@@ -261,7 +262,7 @@ Deno.serve(async (req) => {
                             let mapped = mapRowToEntity(row, import_type, year);
                             if (!mapped) {
                                 chunkInvalid++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Failed to map row' });
+                                addError('Failed to map row');
                                 continue;
                             }
                             mapped = clampNumericFields(mapped);
@@ -269,12 +270,12 @@ Deno.serve(async (req) => {
                             const dedupKey = getDedupKey(mapped, import_type);
                             if (!dedupKey) {
                                 chunkInvalid++;
-                                if (errorSamples.length < 5) errorSamples.push({ row: offset + pageProcessedRaw + chunkInvalid, message: 'Missing required identifier' });
+                                addError('Missing required identifier');
                                 continue;
                             }
 
-                            if (seenInPage.has(dedupKey)) { chunkDuplicate++; continue; }
-                            seenInPage.add(dedupKey);
+                            if (globalSeenKeys.has(dedupKey)) { chunkDuplicate++; continue; }
+                            globalSeenKeys.add(dedupKey);
                             chunkValid++;
                             validDataChunk.push(mapped);
                         }
@@ -286,12 +287,14 @@ Deno.serve(async (req) => {
                             importedCount += result.imported;
                             updatedCount += result.updated;
                             skippedCount += result.skipped;
+                            if (result.rateLimitChunks) outerConsecutiveRateLimitChunks += result.rateLimitChunks;
+                            else if (result.imported > 0) outerConsecutiveRateLimitChunks = 0;
                             if (result.aborted) {
                                 chunkAborted = true;
                             }
                         }
                         
-                        if (chunkAborted) {
+                        if (chunkAborted || outerConsecutiveRateLimitChunks >= 3) {
                             abortOuter = true;
                             break;
                         }
@@ -332,8 +335,8 @@ Deno.serve(async (req) => {
                     await base44.asServiceRole.entities.ImportBatch.update(batch.id, updateData);
 
                     if (abortOuter) break;
-                    // Break outer loop if we timed out in the inner loop
                     if (isTimeUp(startTime)) break;
+                    await delay(1500, startTime);
                 }
             } else {
                 // CSV fallback
@@ -341,7 +344,7 @@ Deno.serve(async (req) => {
                 if (!fullResp.ok) throw new Error(`Failed to fetch: ${fullResp.statusText}`);
                 const text = await fullResp.text();
                 const lines = text.split('\n').filter(l => l.trim());
-                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                const headers = parseCsvLine(lines[0]);
                 columnMapping = headers;
 
                 await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
@@ -364,7 +367,7 @@ Deno.serve(async (req) => {
                     let chunkValid = 0, chunkInvalid = 0, chunkDuplicate = 0;
 
                     for (const line of chunkLines) {
-                        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                        const values = parseCsvLine(line);
                         const row = {};
                         headers.forEach((h, idx) => { row[h] = values[idx]; });
 
@@ -386,10 +389,12 @@ Deno.serve(async (req) => {
                         importedCount += result.imported;
                         updatedCount += result.updated;
                         skippedCount += result.skipped;
+                        if (result.rateLimitChunks) outerConsecutiveRateLimitChunks += result.rateLimitChunks;
+                        else if (result.imported > 0) outerConsecutiveRateLimitChunks = 0;
                         if (result.aborted) chunkAborted = true;
                     }
 
-                    if (chunkAborted) break;
+                    if (chunkAborted || outerConsecutiveRateLimitChunks >= 3) break;
 
                     totalProcessed += chunkLines.length;
                     offset += chunkLines.length;
@@ -402,7 +407,11 @@ Deno.serve(async (req) => {
             }
 
             const partial = !reachedEnd;
+            const rateLimitBreaker = outerConsecutiveRateLimitChunks >= 3;
             const finalStatus = dry_run ? 'completed' : partial ? 'paused' : 'completed';
+            const pauseReason = rateLimitBreaker
+                ? `Rate limit circuit breaker at offset ${offset}. Resume with resume_offset=${offset}`
+                : `Auto-paused at offset ${offset}: time limit. Resume with resume_offset=${offset}`;
 
             await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
                 status: finalStatus,
@@ -417,7 +426,7 @@ Deno.serve(async (req) => {
                 dedup_summary: { created: importedCount, updated: updatedCount, skipped: skippedCount },
                 ...(partial ? {
                     paused_at: new Date().toISOString(),
-                    cancel_reason: `Auto-paused at offset ${offset}: time limit. Resume with resume_offset=${offset}`,
+                    cancel_reason: pauseReason,
                     retry_params: { resume_offset: offset },
                 } : {
                     completed_at: new Date().toISOString(),
@@ -779,9 +788,30 @@ function validateNPI(npi) {
 }
 
 function safeNum(val) {
-    if (!val) return 0;
+    if (val === '' || val === null || val === undefined || val === '*' || val === '—' || val === '-' || val === 'N/A') return null;
     const n = parseFloat(String(val).replace(/[,$%\s]/g, ''));
-    return isNaN(n) ? 0 : n;
+    return isNaN(n) ? null : n;
+}
+
+function parseCsvLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
+                else { inQuotes = false; }
+            } else { current += ch; }
+        } else {
+            if (ch === '"') { inQuotes = true; }
+            else if (ch === ',') { result.push(current.trim()); current = ''; }
+            else { current += ch; }
+        }
+    }
+    result.push(current.trim());
+    return result;
 }
 
 const MAX_SAFE_FLOAT = 999999999999.99;
@@ -827,66 +857,83 @@ function delay(ms, startTime) {
 }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
-// Bulk importer with exponential backoff + jitter for rate limit handling
+const ENTITY_MAP = {
+    'cms_order_referring': 'CMSReferral',
+    'hospice_enrollments': 'HospiceEnrollment',
+    'home_health_enrollments': 'HomeHealthEnrollment',
+    'provider_service_utilization': 'ProviderServiceUtilization',
+    'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
+    'hospice_provider_measures': 'HospiceProviderMeasure',
+    'hospice_state_measures': 'HospiceStateMeasure',
+    'hospice_national_measures': 'HospiceNationalMeasure',
+    'snf_provider_measures': 'SNFProviderMeasure',
+    'nursing_home_providers': 'NursingHomeProvider',
+    'nursing_home_deficiencies': 'NursingHomeDeficiency',
+    'home_health_national_measures': 'HomeHealthNationalMeasure',
+};
+
+async function bulkCreateWithRetry(entity, chunk, label, startTime) {
+    let consecutiveRateLimits = 0;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+            await entity.bulkCreate(chunk);
+            return { ok: true };
+        } catch (e) {
+            const msg = e.message || '';
+            const isRetryable = /rate limit|timeout|network|429|503|502|ECONNRESET/i.test(msg);
+            const isRateLimit = /rate limit|429/i.test(msg);
+            if (isRateLimit) consecutiveRateLimits++;
+            if (consecutiveRateLimits >= 3) return { ok: false, error: msg, rateLimitBreaker: true };
+            if (isRetryable && attempt < 4) {
+                const wait = jitteredBackoff(attempt);
+                if (startTime && Date.now() - startTime + wait > MAX_EXEC_MS) {
+                    return { ok: false, error: msg, aborted: true };
+                }
+                console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
+                await delay(wait, startTime);
+            } else {
+                return { ok: false, error: msg };
+            }
+        }
+    }
+    return { ok: false, error: 'Max retries exceeded' };
+}
+
 async function importChunk(base44, importType, records, startTime) {
     let imported = 0, updated = 0, skipped = 0;
     const chunkErrors = [];
+    let consecutiveRateLimitChunks = 0;
 
-    const entityMap = {
-        'cms_order_referring': 'CMSReferral',
-        'hospice_enrollments': 'HospiceEnrollment',
-        'home_health_enrollments': 'HomeHealthEnrollment',
-        'provider_service_utilization': 'ProviderServiceUtilization',
-        'medical_equipment_suppliers': 'MedicalEquipmentSupplier',
-        'hospice_provider_measures': 'HospiceProviderMeasure',
-        'hospice_state_measures': 'HospiceStateMeasure',
-        'hospice_national_measures': 'HospiceNationalMeasure',
-        'snf_provider_measures': 'SNFProviderMeasure',
-        'nursing_home_providers': 'NursingHomeProvider',
-        'nursing_home_deficiencies': 'NursingHomeDeficiency',
-        'home_health_national_measures': 'HomeHealthNationalMeasure',
-    };
-
-    const entityName = entityMap[importType];
+    const entityName = ENTITY_MAP[importType];
     if (!entityName) return { imported: 0, updated: 0, skipped: 0, errors: [] };
     const entity = base44.asServiceRole.entities[entityName];
 
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
+        if (consecutiveRateLimitChunks >= 3) {
+            console.warn('[importChunk] Circuit breaker: 3 consecutive rate-limited chunks.');
+            return { imported, updated, skipped, errors: chunkErrors, aborted: true };
+        }
         const chunk = records.slice(i, i + BULK_SIZE);
-        let success = false;
-
-        for (let attempt = 0; attempt < 4; attempt++) {
-            try {
-                await entity.bulkCreate(chunk);
-                imported += chunk.length;
-                success = true;
-                break;
-            } catch (e) {
-                const isRetryable = e.message?.includes('Rate limit') || e.message?.includes('timeout') || e.message?.includes('network') || e.message?.includes('503');
-                if (isRetryable && attempt < 3) {
-                    const wait = jitteredBackoff(attempt);
-                    if (Date.now() - startTime + wait > MAX_EXEC_MS) {
-                        return { imported, updated, skipped, errors: chunkErrors, aborted: true };
-                    }
-                    console.warn(`[importChunk] Attempt ${attempt + 1}/4 failed (${e.message}), backing off ${Math.round(wait)}ms`);
-                    await delay(wait, startTime);
-                } else {
-                    chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
-                    console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
-                    skipped += chunk.length;
-                    if (isRetryable) {
-                        // Rate limit exhausted retries, abort the whole chunk processing
-                        return { imported, updated, skipped, errors: chunkErrors, aborted: true, fatalError: true };
-                    }
-                    break;
+        const result = await bulkCreateWithRetry(entity, chunk, `chunk-${i}`, startTime);
+        if (result.ok) {
+            imported += chunk.length;
+            consecutiveRateLimitChunks = 0;
+        } else {
+            chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: result.error });
+            skipped += chunk.length;
+            if (result.aborted || result.rateLimitBreaker) {
+                if (result.rateLimitBreaker) consecutiveRateLimitChunks++;
+                await delay(5000, startTime);
+                if (consecutiveRateLimitChunks >= 3 || result.aborted) {
+                    return { imported, updated, skipped, errors: chunkErrors, aborted: true };
                 }
             }
         }
         if (i + BULK_SIZE < records.length) {
-            await delay(success ? 1200 : 2000, startTime);
+            await delay(1200, startTime);
         }
     }
 
-    return { imported, updated, skipped, errors: chunkErrors };
+    return { imported, updated, skipped, errors: chunkErrors, rateLimitChunks: consecutiveRateLimitChunks };
 }

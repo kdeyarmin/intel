@@ -5,8 +5,14 @@ let execStart = Date.now();
 function isTimeUp() { return (Date.now() - execStart) > MAX_EXEC_MS; }
 function elapsed() { return Date.now() - execStart; }
 
-// URLs are now managed via ImportScheduleConfig entity
-const FALLBACK_MA_URL = 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip';
+const CMS_MA_INPATIENT_URLS = {
+  2023: 'https://data.cms.gov/sites/default/files/2026-01/CPS%20MDCR%20INPT%20MA%202023.zip',
+  2022: 'https://data.cms.gov/sites/default/files/2024-10/CPS%20MDCR%20INPT%20MA%202022.zip',
+  2021: 'https://data.cms.gov/sites/default/files/2024-05/CPS%20MDCR%20INPT%20MA%202021%20FINAL_0.zip',
+  2020: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20INPT%20MA%202020.zip',
+  2019: 'https://data.cms.gov/sites/default/files/2023-02/CPS%20MDCR%20INPT%20MA%202019.zip',
+};
+const LATEST_AVAILABLE_YEAR = Math.max(...Object.keys(CMS_MA_INPATIENT_URLS).map(Number));
 
 const MAX_NETWORK_RETRIES = 3;
 const RETRY_BACKOFF_MS = 2000;
@@ -331,11 +337,12 @@ Deno.serve(async (req) => {
   if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
 
   const payload = await req.json().catch(() => ({}));
-  const { action = 'import', year = 2021, dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
+  const { action = 'import', dry_run = false, custom_url, sheet_filter, row_offset = 0, row_limit } = payload;
+  const year = payload.year || LATEST_AVAILABLE_YEAR;
 
   if (action === 'list_years') {
     return Response.json({
-      available_years: [2021, 2020, 2019, 2018, 2017, 2016],
+      available_years: Object.keys(CMS_MA_INPATIENT_URLS).map(Number).sort((a, b) => b - a),
       source: 'CMS Program Statistics - Medicare Advantage Inpatient Hospital',
     });
   }
@@ -345,9 +352,10 @@ Deno.serve(async (req) => {
     const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_ma_inpatient' });
     if (configs.length > 0) {
       downloadUrl = configs[0].api_url;
-    } else {
-      downloadUrl = FALLBACK_MA_URL;
     }
+  }
+  if (!downloadUrl) {
+    downloadUrl = CMS_MA_INPATIENT_URLS[year] || CMS_MA_INPATIENT_URLS[LATEST_AVAILABLE_YEAR];
   }
 
   if (!downloadUrl) {
@@ -376,6 +384,7 @@ Deno.serve(async (req) => {
           file_url: downloadUrl,
           status: 'processing',
           dry_run,
+          data_year: year,
           retry_params: sheet_filter || row_offset || row_limit ? { sheet_filter, row_offset, row_limit } : undefined,
         });
     }
@@ -649,11 +658,13 @@ Deno.serve(async (req) => {
         }
       } catch (e) { console.warn('[schedule] Config update failed:', e.message); }
 
-      await base44.asServiceRole.entities.AuditEvent.create({
-        event_type: 'import', user_email: user?.email || 'system',
-        details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
-        timestamp: new Date().toISOString(),
-      });
+      try {
+        await base44.asServiceRole.entities.AuditEvent.create({
+          event_type: 'import', user_email: user?.email || 'system',
+          details: { action: 'Medicare MA Inpatient Import', entity: 'MedicareMAInpatient', year, imported_count: imported, errors: errorSamples.length, status: finalStatus },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) { console.warn('[audit] Audit event creation failed:', e.message); }
 
       if (timedOut && !dry_run) {
         base44.asServiceRole.functions.invoke('importMedicareMAInpatient', {

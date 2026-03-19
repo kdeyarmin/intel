@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     }
 
     // Default to a safe year (2 years ago) for generic stats if not provided, otherwise pass through
-    // Individual import functions (HHA, SNF, Part D) handle their own fallbacks to LATEST_AVAILABLE_YEAR
+    // Individual import functions (HHA, SNF, MA Inpatient) handle their own fallbacks to LATEST_AVAILABLE_YEAR
     const resolvedYear = year || (new Date().getFullYear() - 2);
 
     // Call autoImportCMSData via service role, but don't wait for completion

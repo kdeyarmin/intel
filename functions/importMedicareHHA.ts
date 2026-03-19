@@ -44,15 +44,49 @@ function clampNumericFields(record) {
   return record;
 }
 
+const MAX_NETWORK_RETRIES = 3;
+const RETRY_BACKOFF_MS = 2000;
+
+async function fetchWithRetry(url, options = {}, label = 'fetch') {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_NETWORK_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 30000);
+      const resp = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeout);
+      if (resp.ok) return resp;
+      if (resp.status >= 400 && resp.status < 500) {
+        throw new Error(`${label}: HTTP ${resp.status} ${resp.statusText} (non-retryable)`);
+      }
+      lastError = new Error(`${label}: HTTP ${resp.status} ${resp.statusText}`);
+      console.warn(`${label} attempt ${attempt}/${MAX_NETWORK_RETRIES} failed: ${lastError.message}`);
+    } catch (e) {
+      lastError = e;
+      const isAbort = e.name === 'AbortError';
+      const isNetwork = e.message?.includes('fetch') || e.message?.includes('network') || isAbort;
+      if (!isNetwork && !e.message?.includes('HTTP 5')) throw new Error(`${label}: ${e.message}`);
+      console.warn(`${label} attempt ${attempt}/${MAX_NETWORK_RETRIES} failed: ${isAbort ? 'timeout' : e.message}`);
+    }
+    if (attempt < MAX_NETWORK_RETRIES) {
+      const wait = RETRY_BACKOFF_MS * attempt;
+      console.log(`${label}: retrying in ${wait}ms...`);
+      await delay(wait);
+    }
+  }
+  throw new Error(`${label}: Failed after ${MAX_NETWORK_RETRIES} attempts. Last error: ${lastError?.message || 'unknown'}`);
+}
+
 async function downloadAndParseZip(url) {
   console.log(`Downloading ZIP from: ${url}`);
-  const resp = await fetch(url, {
+  const resp = await fetchWithRetry(url, {
+    timeoutMs: 30000,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
       'Accept': 'application/zip, application/octet-stream, */*'
     }
-  });
-  if (!resp.ok) throw new Error(`Failed to download: ${resp.status} ${resp.statusText}`);
+  }, 'HHA-download');
+
   const contentType = resp.headers.get('content-type') || '';
   const arrayBuffer = await resp.arrayBuffer();
   const header = new Uint8Array(arrayBuffer.slice(0, 4));
@@ -286,7 +320,7 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString(), 
         ...ctx 
     };
-    if (errorSamples.length < 100) errorSamples.push(entry);
+    if (errorSamples.length < 25) errorSamples.push(entry);
   };
 
   try {
