@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
         if (rule && rule.enabled) rules.push(rule);
       }
     } else {
-      rules = await base44.entities.DataCleaningRule.filter({ enabled: true });
+      rules = await base44.entities.DataCleaningRule.filter({ enabled: true }, '-created_date', 200);
     }
 
     const changes = [];

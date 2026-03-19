@@ -27,7 +27,7 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
 
   const { data: messages = [] } = useQuery({
     queryKey: ['campaignMessages', campaign_id],
-    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id }),
+    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id }, '-created_date', 2000),
     enabled: !!campaign_id,
     refetchInterval: 5000
   });

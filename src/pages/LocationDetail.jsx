@@ -31,7 +31,7 @@ export default function LocationDetail() {
   // Fetch all providers at this address (same address + city + state)
   const { data: coLocatedLocations = [] } = useQuery({
     queryKey: ['coLocated', location?.address_1, location?.city, location?.state],
-    queryFn: () => base44.entities.ProviderLocation.filter({ city: location.city, state: location.state }),
+    queryFn: () => base44.entities.ProviderLocation.filter({ city: location.city, state: location.state }, '-created_date', 500),
     enabled: !!location?.city && !!location?.state,
   });
 

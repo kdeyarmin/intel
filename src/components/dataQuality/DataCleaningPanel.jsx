@@ -19,7 +19,7 @@ export default function DataCleaningPanel({ provider, onCleaningComplete }) {
 
   const fetchRules = async () => {
     try {
-      const allRules = await base44.entities.DataCleaningRule.filter({ enabled: true });
+      const allRules = await base44.entities.DataCleaningRule.filter({ enabled: true }, '-created_date', 200);
       setRules(allRules || []);
       setSelectedRules(allRules?.map(r => r.id) || []);
     } catch (error) {

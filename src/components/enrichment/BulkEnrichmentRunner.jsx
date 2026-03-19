@@ -23,7 +23,7 @@ export default function BulkEnrichmentRunner({ providers = [], totalProviders = 
   React.useEffect(() => {
     (async () => {
       try {
-        const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'enrichment_details' });
+        const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'enrichment_details' }, '-created_date', 5000);
         setAlreadyEnrichedNPIs(new Set(existing.map(r => r.npi)));
       } catch (e) { console.warn('Could not fetch existing enrichments:', e.message); }
       setLoadedExisting(true);

@@ -17,7 +17,7 @@ export default function DataQualityReportDashboard() {
 
   const { data: alerts = [], isLoading: _loadingAlerts } = useQuery({
     queryKey: ['dataQualityAlerts'],
-    queryFn: () => base44.entities.DataQualityAlert.filter({ status: 'new' }),
+    queryFn: () => base44.entities.DataQualityAlert.filter({ status: 'new' }, '-created_date', 500),
     staleTime: 300000,
   });
 

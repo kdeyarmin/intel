@@ -41,7 +41,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
 
     let members = [];
     for (const lid of listIds) {
-      const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid });
+      const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid }, '-created_date', 5000);
       members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
     }
 

@@ -34,7 +34,7 @@ export default function LeadLists() {
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
       await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
       deleteMutation.mutate(listId);
     } catch (error) {
@@ -138,7 +138,7 @@ function ViewListDialog({ listId, listName }) {
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
       if (members.length === 0) { setLeads([]); return; }
 
       const npis = members.map(m => m.npi);

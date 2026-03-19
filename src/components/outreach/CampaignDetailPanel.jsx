@@ -44,7 +44,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['outreachMessages', campaign.id],
-    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id: campaign.id }),
+    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id: campaign.id }, '-created_date', 2000),
   });
 
   const updateMutation = useMutation({

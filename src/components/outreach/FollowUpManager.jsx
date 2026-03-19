@@ -25,7 +25,7 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
 
   const { data: messages = [], isLoading: loadingMsgs } = useQuery({
     queryKey: ['followUpMessages', selectedCampaignId],
-    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaignId }),
+    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaignId }, '-created_date', 2000),
     enabled: !!selectedCampaignId,
   });
 

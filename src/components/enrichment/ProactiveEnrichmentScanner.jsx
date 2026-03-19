@@ -40,7 +40,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     // Get NPIs already scanned via proactive discovery so we skip them
     let alreadyScannedNPIs = new Set();
     try {
-      const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'proactive_scan' });
+      const existing = await base44.entities.EnrichmentRecord.filter({ field_name: 'proactive_scan' }, '-created_date', 5000);
       alreadyScannedNPIs = new Set(existing.map(r => r.npi));
     } catch (e) { console.warn('Could not fetch existing scans:', e.message); }
 

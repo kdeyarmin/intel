@@ -25,7 +25,7 @@ export default function ProviderOutreach() {
 
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', selectedCampaign?.id],
-    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }) : [],
+    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }, '-created_date', 2000) : [],
     enabled: !!selectedCampaign?.id
   });
 

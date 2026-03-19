@@ -140,6 +140,12 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **N+1 query eliminated**: `bulkEmailLookup.ts` — sequential per-NPI location/taxonomy fetches replaced with single `$in` batch query (2 queries instead of 2×N)
 - **ImportMonitoring.jsx inline async handlers**: "Mark Failed" button and "Delete batch" button both wrapped in try/catch/finally — previously unhandled rejections could crash UI or leave delete spinner stuck
 
+### Round 13 Fixes
+- **Unbounded frontend filters capped (12 instances)**: `ProviderOutreach.jsx` OutreachMessage filter (2000); `LocationDetail.jsx` ProviderLocation city/state filter (500); `FollowUpManager.jsx`, `CampaignPerformanceMetrics.jsx`, `CampaignDetailPanel.jsx` OutreachMessage filters (2000); `CampaignAnalytics.jsx` LeadListMember filter-in-loop (5000); `ReconciliationDashboard.jsx` ProviderReconciliation (1000); `DataQualityReportDashboard.jsx` DataQualityAlert (500); `ProactiveEnrichmentScanner.jsx` EnrichmentRecord (5000); `BulkEnrichmentRunner.jsx` EnrichmentRecord (5000); `DataCleaningPanel.jsx` DataCleaningRule (200); `LeadLists.jsx` LeadListMember delete + load (5000)
+- **Backend unbounded filter capped**: `cleanProviderData.ts` DataCleaningRule.filter (200)
+- **Stuck spinner fixes (2 components)**: `EnrichmentReviewQueue.jsx` handleBatchAction — `setBatchLoading(false)` moved to finally block (was skipped on error); `BatchProviderUpdater.jsx` applyUpdates — `setApplying(false)` moved to finally block, added per-item try/catch so one failure doesn't abort the whole batch
+- **N+1 query fix**: `BatchProviderUpdater.jsx` — ProviderAffiliation.filter moved outside inner `for` loop (was querying once per affiliation, now once per provider)
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

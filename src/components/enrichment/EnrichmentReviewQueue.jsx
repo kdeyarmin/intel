@@ -150,26 +150,31 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
   const handleBatchAction = async (status) => {
     if (selected.size === 0) return;
     setBatchLoading(true);
-    const user = await base44.auth.me();
-    const promises = [...selected].map(async (id) => {
-      const rec = records.find(r => r.id === id);
-      if (!rec) return;
-      await base44.entities.EnrichmentRecord.update(id, {
-        status,
-        reviewed_by: user.email,
-        reviewed_at: new Date().toISOString(),
-      });
-      if (status === 'approved' && rec.enrichment_details) {
-        const provs = await base44.entities.Provider.filter({ npi: rec.npi });
-        if (provs.length > 0 && rec.enrichment_details.group_practices?.length > 0 && !provs[0].organization_name) {
-          await base44.entities.Provider.update(provs[0].id, { organization_name: rec.enrichment_details.group_practices[0] });
+    try {
+      const user = await base44.auth.me();
+      const promises = [...selected].map(async (id) => {
+        const rec = records.find(r => r.id === id);
+        if (!rec) return;
+        await base44.entities.EnrichmentRecord.update(id, {
+          status,
+          reviewed_by: user.email,
+          reviewed_at: new Date().toISOString(),
+        });
+        if (status === 'approved' && rec.enrichment_details) {
+          const provs = await base44.entities.Provider.filter({ npi: rec.npi });
+          if (provs.length > 0 && rec.enrichment_details.group_practices?.length > 0 && !provs[0].organization_name) {
+            await base44.entities.Provider.update(provs[0].id, { organization_name: rec.enrichment_details.group_practices[0] });
+          }
         }
-      }
-    });
-    await Promise.all(promises);
-    setSelected(new Set());
-    setBatchLoading(false);
-    queryClient.invalidateQueries({ queryKey: ['enrichmentRecords'] });
+      });
+      await Promise.all(promises);
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ['enrichmentRecords'] });
+    } catch (err) {
+      console.error('Batch action failed:', err);
+    } finally {
+      setBatchLoading(false);
+    }
   };
 
   const toggleSelect = (id) => {
