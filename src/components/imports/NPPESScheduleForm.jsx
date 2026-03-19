@@ -45,7 +45,7 @@ export default function NPPESScheduleForm({ config, onChange }) {
               <SelectValue placeholder="Select a state" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>All States</SelectItem>
+              <SelectItem value="">All States</SelectItem>
               {US_STATES.map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
@@ -61,7 +61,7 @@ export default function NPPESScheduleForm({ config, onChange }) {
             <SelectValue placeholder="All specialties" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>All Specialties</SelectItem>
+            <SelectItem value="">All Specialties</SelectItem>
             {COMMON_TAXONOMIES.map(t => (
               <SelectItem key={t} value={t}>{t}</SelectItem>
             ))}
@@ -85,7 +85,7 @@ export default function NPPESScheduleForm({ config, onChange }) {
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={null}>All Types</SelectItem>
+              <SelectItem value="">All Types</SelectItem>
               <SelectItem value="NPI-1">Individual (NPI-1)</SelectItem>
               <SelectItem value="NPI-2">Organization (NPI-2)</SelectItem>
             </SelectContent>
