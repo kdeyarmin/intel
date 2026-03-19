@@ -13,17 +13,23 @@ export default function SuccessVsFailureChart({ batches }) {
     
     const filtered = batches.filter(b => new Date(b.created_date) >= cutoff);
 
-    // Group by day
+    // Group by day (using ET timezone for consistency)
+    const toET = (date) => {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'numeric', day: 'numeric' }).formatToParts(date);
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      return `${month}/${day}`;
+    };
     const byDay = {};
     for (let i = 0; i < daysBack; i++) {
       const d = new Date(now - i * 24 * 60 * 60 * 1000);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      const key = toET(d);
       byDay[key] = { day: key, Completed: 0, Failed: 0, Active: 0 };
     }
 
     for (const b of filtered) {
       const d = new Date(b.created_date);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      const key = toET(d);
       if (!byDay[key]) continue;
       if (b.status === 'completed') byDay[key].Completed++;
       else if (b.status === 'failed') byDay[key].Failed++;

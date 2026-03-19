@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       total_recipients: totalMessages,
       sent_count: sentMessages,
       pending_count: messages.filter(m => m.status === 'pending').length,
-      open_rate: totalMessages > 0 ? (openedMessages / sentMessages * 100).toFixed(1) : 0,
+      open_rate: sentMessages > 0 ? (openedMessages / sentMessages * 100).toFixed(1) : 0,
       response_rate: sentMessages > 0 ? (respondedMessages / sentMessages * 100).toFixed(1) : 0,
       bounce_rate: sentMessages > 0 ? (bouncedMessages / sentMessages * 100).toFixed(1) : 0,
       conversion_count: respondedMessages,

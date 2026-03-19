@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
         
         // If we retried any, trigger the worker
         if (retriedCount > 0) {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(()=>{});
+            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(e => console.error('[retryFailedNPPESStates] Failed to invoke crawler:', e.message));
         }
 
         return Response.json({ 

@@ -32,7 +32,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
 
   const totalProviders = (nppesImports || [])
     .filter(b => b.status === 'completed')
-    .reduce((sum, b) => sum + (b.imported_rows || 0), 0);
+    .reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
 
   const successRate = (completed + failed) > 0
     ? Math.round((completed / (completed + failed)) * 100)

@@ -50,6 +50,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.OutreachMessage.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['outreachMessages', campaign.id] }),
+    onError: (err) => alert(`Failed to update message: ${err.message}`),
   });
 
   const statusCounts = messages.reduce((acc, m) => {
@@ -159,8 +160,8 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
                           )}
                       </TableCell>
                       <TableCell><Badge className={`text-[10px] ${statusColors[m.status]}`}>{m.status}</Badge></TableCell>
-                      <TableCell className="text-[10px] text-slate-400">{m.sent_at ? new Date(m.sent_at).toLocaleDateString() : '-'}</TableCell>
-                      <TableCell className="text-[10px] text-slate-400">{m.opened_at ? new Date(m.opened_at).toLocaleDateString() : '-'}</TableCell>
+                      <TableCell className="text-[10px] text-slate-400">{m.sent_at ? new Date(m.sent_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) : '-'}</TableCell>
+                      <TableCell className="text-[10px] text-slate-400">{m.opened_at ? new Date(m.opened_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' }) : '-'}</TableCell>
                       <TableCell className="text-[10px] text-slate-500 max-w-[120px] truncate">{m.response_notes || '-'}</TableCell>
                       <TableCell>
                         <Select value={m.status} onValueChange={(val) => {

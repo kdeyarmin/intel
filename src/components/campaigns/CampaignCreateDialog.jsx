@@ -51,13 +51,18 @@ export default function CampaignCreateDialog({ onCreated }) {
       data.audience_filters = audienceFilters;
       data.audience_size = audienceCount;
     }
-    const campaign = await base44.entities.Campaign.create(data);
-    setSaving(false);
-    setOpen(false);
-    setForm({ name: '', description: '', goal: '', budget: '', target_conversion_rate: '', start_date: '', end_date: '', lead_list_ids: [] });
-    setAudienceFilters({});
-    setAudienceCount(0);
-    onCreated?.(campaign);
+    try {
+      const campaign = await base44.entities.Campaign.create(data);
+      setOpen(false);
+      setForm({ name: '', description: '', goal: '', budget: '', target_conversion_rate: '', start_date: '', end_date: '', lead_list_ids: [] });
+      setAudienceFilters({});
+      setAudienceCount(0);
+      onCreated?.(campaign);
+    } catch (err) {
+      alert(`Failed to create campaign: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

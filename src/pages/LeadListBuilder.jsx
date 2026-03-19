@@ -78,6 +78,7 @@ export default function LeadListBuilder() {
       setCurrentListId(newList.id);
       queryClient.invalidateQueries({ queryKey: ['leadLists'] });
     },
+    onError: (err) => alert(`Failed to create list: ${err.message}`),
   });
 
   const updateMemberMutation = useMutation({
@@ -85,6 +86,7 @@ export default function LeadListBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listMembers'] });
     },
+    onError: (err) => alert(`Failed to update member: ${err.message}`),
   });
 
   const isLoading = loadingProviders || loadingScores || loadingLocations || loadingTaxonomies || loadingUtil;

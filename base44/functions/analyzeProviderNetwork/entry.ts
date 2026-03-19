@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
           total_providers: networkNodes.size,
           total_relationships: networkEdges.length,
           reciprocal_relationships: networkEdges.filter(e => e.reciprocal).length,
-          density: networkEdges.length / (networkNodes.size * (networkNodes.size - 1))
+          density: networkNodes.size > 1 ? networkEdges.length / (networkNodes.size * (networkNodes.size - 1)) : 0
         },
         influencers,
         network_gaps: gaps,

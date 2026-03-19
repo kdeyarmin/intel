@@ -95,8 +95,9 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
       setGeneratorOpen(false);
       toast.success('Follow-up campaign created');
     },
-    onError: () => {
+    onError: (err) => {
       setSendingFollowUp(false);
+      toast.error(`Follow-up failed: ${err.message}`);
     },
   });
 

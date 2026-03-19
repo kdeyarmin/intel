@@ -69,9 +69,9 @@ Deno.serve(async (req) => {
         
         for (const b of allRecentBatches) {
             if (!b.file_name?.startsWith('crawler_')) continue;
-            const parts = b.file_name.split('_');
-            const state = parts[1];
-            if (!state) continue;
+            const stMatch = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch) continue;
+            const state = stMatch[1].toUpperCase();
             
             if (!stateBatches[state]) stateBatches[state] = [];
             stateBatches[state].push(b);
@@ -82,8 +82,10 @@ Deno.serve(async (req) => {
 
         // 4. Analyze each state with a recent failure
         for (const b of crawlerFailures) {
-            const state = b.file_name.split('_')[1];
-            if (!state || !stateBatches[state] || processedStates.has(state)) continue;
+            const stMatch2 = b.file_name.match(/crawler_([A-Z]{2})/i);
+            if (!stMatch2) continue;
+            const state = stMatch2[1].toUpperCase();
+            if (!stateBatches[state] || processedStates.has(state)) continue;
             processedStates.add(state);
 
             // Sort batches for this state: newest first

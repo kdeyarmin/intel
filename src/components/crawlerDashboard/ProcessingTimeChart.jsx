@@ -16,7 +16,7 @@ export default function ProcessingTimeChart({ nppesImports, loading }) {
       return {
         state,
         duration: durationSec,
-        rows: b.total_rows || 0
+        rows: b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0))
       };
     })
     .reverse();
