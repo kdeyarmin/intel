@@ -138,8 +138,9 @@ async function withRetry(fn, maxRetries = 5) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try { return await fn(); } catch (e) {
             const isRateLimit = /429|rate limit|too many requests/i.test(e.message);
-            const isNetwork = /network|connection|reset|timeout/i.test(e.message);
-            if ((isRateLimit || isNetwork) && attempt < maxRetries) {
+            const isNetwork = /network|connection|reset|timeout|ECONNREFUSED|ENOTFOUND/i.test(e.message);
+            const isServerError = /500|502|503|504|internal server error|bad gateway|service unavailable|gateway timeout/i.test(e.message);
+            if ((isRateLimit || isNetwork || isServerError) && attempt < maxRetries) {
                 const backoff = Math.min((Math.pow(2, attempt) * 500) + (Math.random() * 1000), 5000);
                 console.warn(`[Retry] Attempt ${attempt} failed (${e.message}). Retrying in ${backoff}ms...`);
                 await sleep(backoff); 
@@ -148,6 +149,15 @@ async function withRetry(fn, maxRetries = 5) {
             throw e;
         }
     }
+}
+
+const SYSTEM_FIELDS = new Set(['id', 'created_date', 'updated_date', '_id', '__v']);
+function stripSystemFields(obj) {
+    const clean = {};
+    for (const [k, v] of Object.entries(obj)) {
+        if (!SYSTEM_FIELDS.has(k)) clean[k] = v;
+    }
+    return clean;
 }
 
 function isIdentical(a, b, fields) {
@@ -190,7 +200,7 @@ async function upsertProviders(records, base44) {
                             if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
                         }
                         updateTasks.push(async () => {
-                            await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                            await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, stripSystemFields(merged)));
                         });
                     } else { skipped++; }
                 }
@@ -214,10 +224,10 @@ async function upsertProviders(records, base44) {
                     if (j + 2 < updateTasks.length) await sleep(200);
                 }
             }
-            await sleep(50); // Reduced throttle delay
+            await sleep(50);
         } catch (e) {
-            // Fallback: Parallelized individual ops
-            await Promise.all(chunk.map(async p => {
+            console.warn(`[upsertProviders] Batch filter failed for chunk: ${e.message}, falling back to sequential ops`);
+            for (const p of chunk) {
                 try {
                     const ex = (await withRetry(() => base44.asServiceRole.entities.Provider.filter({ npi: p.npi })))[0];
                     if (!ex) { await withRetry(() => base44.asServiceRole.entities.Provider.create(p)); imported++; }
@@ -226,13 +236,12 @@ async function upsertProviders(records, base44) {
                         for (const k of Object.keys(merged)) {
                             if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && ex[k]) merged[k] = ex[k];
                         }
-                        await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, merged));
+                        await withRetry(() => base44.asServiceRole.entities.Provider.update(ex.id, stripSystemFields(merged)));
                         updated++;
                     }
                     else { skipped++; }
                 } catch (err) { console.warn(`[upsertProviders] Fallback op failed for NPI ${p.npi}: ${err.message}`); }
-            }));
-        }
+            }
     }
     return { imported, updated, skipped };
 }
@@ -266,7 +275,7 @@ async function upsertLocations(records, base44) {
                     if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
                 }
                 updateTasks.push(async () => {
-                    await withRetry(() => base44.asServiceRole.entities.ProviderLocation.update(match.id, merged));
+                    await withRetry(() => base44.asServiceRole.entities.ProviderLocation.update(match.id, stripSystemFields(merged)));
                 });
             }
         }
@@ -281,9 +290,13 @@ async function upsertLocations(records, base44) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.bulkCreate(toCreate)); imported += toCreate.length; }
             catch (e) {
                 console.warn(`[upsertLocations] bulkCreate failed: ${e.message}, falling back to individual creates`);
-                await Promise.all(toCreate.map(async loc => {
-                    try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) { console.warn(`[upsertLocations] Individual create failed for NPI ${loc.npi}: ${err.message}`); }
-                }));
+                for (let fi = 0; fi < toCreate.length; fi += 5) {
+                    const fChunk = toCreate.slice(fi, fi + 5);
+                    await Promise.all(fChunk.map(async loc => {
+                        try { await withRetry(() => base44.asServiceRole.entities.ProviderLocation.create(loc)); imported++; } catch (err) { console.warn(`[upsertLocations] Individual create failed for NPI ${loc.npi}: ${err.message}`); }
+                    }));
+                    if (fi + 5 < toCreate.length) await sleep(100);
+                }
             }
         }
     }
@@ -310,7 +323,7 @@ async function upsertTaxonomies(records, base44) {
                     if ((merged[k] === null || merged[k] === undefined || merged[k] === '') && match[k]) merged[k] = match[k];
                 }
                 updateTasks.push(async () => {
-                    await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, merged));
+                    await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.update(match.id, stripSystemFields(merged)));
                 });
             }
         }
@@ -325,9 +338,13 @@ async function upsertTaxonomies(records, base44) {
             try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.bulkCreate(toCreate)); imported += toCreate.length; }
             catch (e) {
                 console.warn(`[upsertTaxonomies] bulkCreate failed: ${e.message}, falling back to individual creates`);
-                await Promise.all(toCreate.map(async tax => {
-                    try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) { console.warn(`[upsertTaxonomies] Individual create failed for NPI ${tax.npi}: ${err.message}`); }
-                }));
+                for (let fi = 0; fi < toCreate.length; fi += 5) {
+                    const fChunk = toCreate.slice(fi, fi + 5);
+                    await Promise.all(fChunk.map(async tax => {
+                        try { await withRetry(() => base44.asServiceRole.entities.ProviderTaxonomy.create(tax)); imported++; } catch (err) { console.warn(`[upsertTaxonomies] Individual create failed for NPI ${tax.npi}: ${err.message}`); }
+                    }));
+                    if (fi + 5 < toCreate.length) await sleep(100);
+                }
             }
         }
     }
@@ -547,14 +564,15 @@ Deno.serve(async (req) => {
             }
         }
         
-        const completedStates = [], failedStates = [], processingStates = [];
+        const completedStates = [], failedStates = [], processingStates = [], pausedStates = [];
         for (const [st, b] of Object.entries(stateLatest)) {
             if (b.status === 'completed') completedStates.push(st);
             else if (b.status === 'failed') failedStates.push(st);
             else if (b.status === 'processing' || b.status === 'validating') processingStates.push(st);
+            else if (b.status === 'paused') pausedStates.push(st);
         }
-        const doneSet = new Set([...completedStates, ...failedStates]);
-        const pendingStates = US_STATES.filter(s => !doneSet.has(s) && !processingStates.includes(s));
+        const knownSet = new Set([...completedStates, ...failedStates, ...processingStates, ...pausedStates]);
+        const pendingStates = US_STATES.filter(s => !knownSet.has(s));
         
         const REGION_STATES = {
             northeast: ['CT','ME','MA','NH','RI','VT','NJ','NY','PA','DE','MD','DC'],
@@ -642,7 +660,8 @@ Deno.serve(async (req) => {
             total_states: US_STATES.length, completed: completedStates.length, failed: failedStates.length,
             processing: processingStates.length, pending: pendingStates.length,
             completed_states: completedStates, failed_states: failedStates,
-            processing_states: processingStates, pending_states: pendingStates,
+            processing_states: processingStates, paused_states: pausedStates, pending_states: pendingStates,
+            paused: pausedStates.length,
             batches: crawlerBatches.slice(0, 60),
             regions: REGION_STATES,
             errors: formattedErrors,
@@ -692,10 +711,19 @@ Deno.serve(async (req) => {
             existingBatches = await base44.asServiceRole.entities.ImportBatch.filter({ import_type: 'nppes_registry' }, '-created_date', 500);
         }
 
+        const batchStartTime = Date.now();
+        let partialStart = false;
+        const unqueuedStates = [];
         for (const st of targetStates) {
+            if (Date.now() - batchStartTime > 15000) {
+                console.warn(`[Crawler] batch_start time guard reached after ${queued} states queued. Remaining states deferred.`);
+                partialStart = true;
+                const idx = targetStates.indexOf(st);
+                unqueuedStates.push(...targetStates.slice(idx));
+                break;
+            }
             if (skip_completed) {
                 const stBatch = existingBatches.find(b => b.file_name?.includes(`crawler_${st}_`));
-                // Only skip truly completed/validating states — NOT stale 'processing' ones from dead workers
                 if (stBatch && (stBatch.status === 'completed' || stBatch.status === 'validating')) {
                     skipped++;
                     continue;
@@ -777,7 +805,7 @@ Deno.serve(async (req) => {
         }
         console.log(`[Crawler] Spawned ${workersSpawned} workers (fire-and-forget)`);
 
-        return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped });
+        return Response.json({ success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped, partial_start: partialStart, unqueued_states: unqueuedStates });
     }
 
     if (action === 'batch_stop') {
@@ -961,9 +989,19 @@ Deno.serve(async (req) => {
 
         let tasksProcessed = 0;
         let consecutiveErrors = 0;
+        let stopFlagCheckCounter = 0;
         
-        // Process loop until time limit
         while ((Date.now() - execStartTime) < MAX_EXEC_MS) {
+            stopFlagCheckCounter++;
+            if (stopFlagCheckCounter % 3 === 0) {
+                try {
+                    const cfgCheck = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+                    if (cfgCheck[0]?.crawler_stopped) {
+                        console.log('[Crawler Worker] Stop flag detected mid-loop, exiting.');
+                        return Response.json({ success: true, processed: tasksProcessed, message: 'Worker stopped by stop flag (mid-loop)' });
+                    }
+                } catch (e) { /* ignore config read errors */ }
+            }
             const pendingList = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'pending' }, 'created_date', 1));
             if (pendingList.length === 0) {
                 // Double check for any stuck items that we might have missed in the initial check
@@ -1079,17 +1117,19 @@ Deno.serve(async (req) => {
                 continue;
             }
 
-            // Claim the task: mark as processing
+            await sleep(Math.floor(Math.random() * 300));
+            const preClaimCheck = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.get(task.id));
+            if (preClaimCheck.status !== 'pending') {
+                console.log(`[Crawler Worker] Task ${task.id} status changed to ${preClaimCheck.status} before claim, skipping`);
+                continue;
+            }
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'processing' }));
-            // Re-read to verify we claimed it (guard against race with other workers or batch_stop/pause)
             const claimedTask = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.get(task.id));
             if (claimedTask.status !== 'processing') {
-                // Another worker or a stop/pause action changed the status — skip this task
                 console.log(`[Crawler Worker] Task ${task.id} was reclaimed (status: ${claimedTask.status}), skipping`);
                 continue;
             }
             
-            // Check if batch exists and read dry_run flag from it
             let taskBatch;
             try {
                 taskBatch = await base44.asServiceRole.entities.ImportBatch.get(task.batch_id);
@@ -1097,7 +1137,10 @@ Deno.serve(async (req) => {
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: 'Batch was deleted' }));
                 continue;
             }
-            // Use batch-level dry_run if not explicitly passed in payload
+            if (taskBatch.status === 'cancelled' || taskBatch.status === 'failed') {
+                await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'failed', error_message: `Batch ${taskBatch.status}` }));
+                continue;
+            }
             const effectiveDryRun = dry_run || taskBatch.dry_run;
 
             const taskStartTime = Date.now();

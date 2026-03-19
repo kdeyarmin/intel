@@ -111,6 +111,14 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **nppesCrawler state zip prefix mapping**: Added STATE_ZIP_PREFIXES lookup so queue items are only created for zip prefixes known to exist in each state (e.g., PA gets 15-19 instead of 00-99). Reduces queue items from 100 to 2-7 per state, workers now immediately process prefixes with actual data
 - **nppesCrawler upsert error handling**: Provider bulkCreate now has explicit try/catch with individual-create fallback and detailed logging for visibility into silent failures
 - **nppesCrawler diagnostic logging**: Added console.log for NPPES API result counts, transformation stats, and upsert outcomes per queue item
+- **nppesCrawler withRetry server errors**: Now retries on 500/502/503/504 + ECONNREFUSED/ENOTFOUND in addition to rate limits and network errors
+- **nppesCrawler stripSystemFields**: All upsert update calls now strip `id`, `created_date`, `updated_date`, `_id`, `__v` before calling `.update()` — prevents silent failures from read-only field rejection
+- **nppesCrawler batch_start time guard**: Loop breaks after 15 seconds to prevent function timeout before workers spawn
+- **nppesCrawler stop flag mid-loop**: Worker checks crawler_stopped config every 3 loop iterations instead of only at start/end
+- **nppesCrawler cancelled batch skip**: Workers now skip tasks whose parent batch is cancelled or failed
+- **nppesCrawler task claim jitter**: Random 0-300ms delay before claiming a task reduces race condition between parallel workers
+- **nppesCrawler paused states in status**: Status endpoint now tracks and returns `paused_states` separately from `pending_states`
+- **nppesCrawler fallback concurrency limit**: Location/taxonomy individual-create fallback now processes in chunks of 5 with 100ms delays instead of unbounded parallel
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
