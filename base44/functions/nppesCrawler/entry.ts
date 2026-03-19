@@ -695,7 +695,7 @@ Deno.serve(async (req) => {
         // We start with a lower base concurrency and let the queue processor self-adjust
         const activeWorkersCount = await base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'processing' }, undefined, 10).then(res => res.length).catch(() => 0);
         
-        const targetWorkers = Math.min(maxConcurrent, 3); // Max initial cluster
+        const targetWorkers = Math.min(maxConcurrent, 2); // Reduced max initial cluster to 2
         const workersToStart = Math.max(0, targetWorkers - activeWorkersCount);
         
         // Fire-and-forget worker spawning — do NOT await, as each worker runs for up to 20 seconds
@@ -706,8 +706,8 @@ Deno.serve(async (req) => {
                 .then(() => console.log(`[Crawler] Worker ${i+1} completed its cycle`))
                 .catch(e => console.error(`[Crawler] Worker ${i+1} failed: ${e.message}`));
             workersSpawned++;
-            // Small stagger to avoid all workers grabbing the same task
-            await sleep(500);
+            // Increased stagger to avoid all workers grabbing the same task and hitting rate limits
+            await sleep(1500);
         }
         console.log(`[Crawler] Spawned ${workersSpawned} workers (fire-and-forget)`);
 
@@ -1176,7 +1176,8 @@ Deno.serve(async (req) => {
 
             // Dynamically scale up if queue is large, healthy, and under worker cap
             const maxAllowedWorkers = config.concurrency || 4;
-            let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 5), maxAllowedWorkers);
+            // More conservative scaling: 1 worker per 10 items instead of 5
+            let targetWorkers = Math.min(Math.ceil(remainingQueueSize / 10), maxAllowedWorkers);
             
             // Adjust based on errors to prevent rate limits
             if (consecutiveErrors > 0) {
