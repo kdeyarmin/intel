@@ -734,7 +734,8 @@ Deno.serve(async (req) => {
                         continue;
                     }
                     
-                    const allDone = items.every(i => i.status === 'completed' || i.status === 'failed');
+                    const remaining = items.filter(i => i.status === 'pending' || i.status === 'processing');
+                    const allDone = remaining.length === 0 && items.some(i => i.status === 'completed' || i.status === 'failed');
                     if (allDone) {
                         const failedItems = items.filter(i => i.status === 'failed');
                         const hasErrors = failedItems.length > 0;
@@ -768,7 +769,7 @@ Deno.serve(async (req) => {
                             const nextPaused = pausedBatches.find(pb => pb.file_name?.startsWith('crawler_'));
                             if (nextPaused) {
                                 await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(nextPaused.id, { status: 'processing' }));
-                                const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 100));
+                                const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ batch_id: nextPaused.id, status: 'paused' }, undefined, 5000));
                                 await Promise.all(pausedItems.map(pi => withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(pi.id, { status: 'pending' }))));
                                 console.log(`[Crawler Worker] Woke up next paused state batch: ${nextPaused.file_name}`);
                             }
@@ -840,7 +841,21 @@ Deno.serve(async (req) => {
                 }
                 
                 if (needSplit) {
-                    // Split task: Create 10 sub-tasks and complete current
+                    // Process already-fetched results before splitting
+                    if (allResults.length > 0) {
+                        const transformed = transformResults(allResults);
+                        stats.valid += transformed.validRows;
+                        stats.invalid += transformed.invalidRows;
+                        if (!dry_run) {
+                            const [provRes] = await Promise.all([
+                                upsertProviders(transformed.providers, base44),
+                                upsertLocations(transformed.locations, base44),
+                                upsertTaxonomies(transformed.taxonomies, base44)
+                            ]);
+                            stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
+                        }
+                    }
+                    // Split task: Create 10 sub-tasks for finer-grained coverage
                     const subTasks = [];
                     for(let i=0; i<=9; i++) {
                         subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
@@ -861,7 +876,11 @@ Deno.serve(async (req) => {
                             upsertLocations(transformed.locations, base44),
                             upsertTaxonomies(transformed.taxonomies, base44)
                         ]);
-                        stats.prov = { imported: provRes.imported, updated: provRes.updated, skipped: provRes.skipped };
+                        stats.prov = {
+                            imported: provRes.imported + locRes.imported + taxRes.imported,
+                            updated: provRes.updated + locRes.updated + taxRes.updated,
+                            skipped: provRes.skipped + locRes.skipped + taxRes.skipped
+                        };
                     }
                     
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));

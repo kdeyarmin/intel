@@ -78,11 +78,13 @@ Deno.serve(async (req) => {
         }
 
         const actionsTaken = [];
+        const processedStates = new Set();
 
         // 4. Analyze each state with a recent failure
         for (const b of crawlerFailures) {
             const state = b.file_name.split('_')[1];
-            if (!state || !stateBatches[state]) continue;
+            if (!state || !stateBatches[state] || processedStates.has(state)) continue;
+            processedStates.add(state);
 
             // Sort batches for this state: newest first
             const batches = [...stateBatches[state]].sort((x, y) => getTimestamp(y.created_date) - getTimestamp(x.created_date));

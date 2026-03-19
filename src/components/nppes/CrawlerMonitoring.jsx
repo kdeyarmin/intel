@@ -10,7 +10,7 @@ export default function CrawlerMonitoring({ status }) {
   // Transform granular_metrics into an array for charts
   const metricsData = Object.entries(status.granular_metrics || {}).map(([state, data]) => ({
     state,
-    avgTime: data.avg_prefix_time_ms / 1000, // convert to seconds
+    avgTime: (data.avg_prefix_time_ms || 0) / 1000, // convert to seconds
     rateLimits: data.rate_limit_hits,
     pendingItems: data.pending_items,
     completedItems: data.completed_items

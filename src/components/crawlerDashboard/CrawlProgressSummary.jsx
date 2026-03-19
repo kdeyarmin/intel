@@ -30,7 +30,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
   const pending = crawlStatus?.pending ?? Math.max(0, totalStates - completed - failed);
   const isActive = crawlStatus?.auto_chain_active;
 
-  const totalProviders = nppesImports
+  const totalProviders = (nppesImports || [])
     .filter(b => b.status === 'completed')
     .reduce((sum, b) => sum + (b.imported_rows || 0), 0);
 
@@ -39,7 +39,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
     : 0;
 
   const avgDuration = (() => {
-    const withDuration = nppesImports.filter(b => b.completed_at && b.created_date);
+    const withDuration = (nppesImports || []).filter(b => b.completed_at && b.created_date);
     if (withDuration.length === 0) return '—';
     const totalMs = withDuration.reduce((sum, b) => {
       return sum + (new Date(b.completed_at) - new Date(b.created_date));

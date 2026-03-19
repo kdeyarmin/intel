@@ -45,9 +45,9 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
             ) : (
               runs.map(run => {
                 const state = run.file_name?.split('_')[1] || '??';
-                const start = new Date(run.created_date);
+                const start = run.created_date ? new Date(run.created_date) : new Date();
                 const end = run.completed_at ? new Date(run.completed_at) : new Date();
-                const durationMs = end - start;
+                const durationMs = Math.max(0, end - start);
                 const durationSec = Math.max(1, Math.round(durationMs / 1000));
                 const rows = run.total_rows || 0;
                 const speed = Math.round(rows / durationSec); // rows/sec

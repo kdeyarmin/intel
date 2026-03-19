@@ -23,21 +23,21 @@ function getStateFromFileName(fileName) {
 export default function ProcessingStates({ crawlStatus, nppesImports, loading }) {
   // Calculate avg duration from completed batches
   const avgDurationMs = useMemo(() => {
-    const completed = nppesImports.filter(b => b.status === 'completed' && b.completed_at && b.created_date);
+    const completed = (nppesImports || []).filter(b => b.status === 'completed' && b.completed_at && b.created_date);
     if (completed.length === 0) return 0;
     const total = completed.reduce((sum, b) => sum + (new Date(b.completed_at) - new Date(b.created_date)), 0);
     return total / completed.length;
   }, [nppesImports]);
 
   // Currently processing batches
-  const processingBatches = nppesImports.filter(b => b.status === 'processing' || b.status === 'validating');
+  const processingBatches = (nppesImports || []).filter(b => b.status === 'processing' || b.status === 'validating');
 
   // States info from crawlStatus - use processing_states array from the status endpoint
   const processingStatesCodes = crawlStatus?.processing_states || [];
 
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
-  const activeItems = processingBatches.length > 0 ? processingBatches : [];
+  const activeItems = processingBatches;
   const isActive = crawlStatus?.auto_chain_active || processingBatches.length > 0 || processingStatesCodes.length > 0;
 
   return (
