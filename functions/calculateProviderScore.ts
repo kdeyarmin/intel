@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 type ScoreBreakdown = Record<string, {
   value: number;
@@ -21,25 +21,28 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'NPI required' }, { status: 400 });
     }
 
-    // Fetch provider data
-    const [provider] = await base44.entities.Provider.filter({ npi });
+    const [provider] = await base44.asServiceRole.entities.Provider.filter({ npi });
     if (!provider) {
       return Response.json({ error: 'Provider not found' }, { status: 404 });
     }
 
     const [taxonomies, utilizations, locations, scoringRules] = await Promise.all([
-      base44.entities.ProviderTaxonomy.filter({ npi }),
-      base44.entities.CMSUtilization.filter({ npi }),
-      base44.entities.ProviderLocation.filter({ npi }),
-      base44.entities.ScoringRule.filter({ enabled: true })
+      base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi }),
+      base44.asServiceRole.entities.CMSUtilization.filter({ npi }),
+      base44.asServiceRole.entities.ProviderLocation.filter({ npi }),
+      base44.asServiceRole.entities.ScoringRule.filter({ enabled: true })
     ]);
 
     const utilization = utilizations[0];
     const primaryTaxonomy = taxonomies.find(t => t.primary_flag) || taxonomies[0];
     const primaryLocation = locations.find(l => l.is_primary) || locations[0];
 
-    // Get weights from scoring rules
-    const weights: Record<string, number> = {};
+    const DEFAULT_WEIGHTS: Record<string, number> = {
+      specialty_match: 0.20, medicare_participation: 0.15, patient_volume: 0.20,
+      service_intensity: 0.15, geographic_priority: 0.10, practice_type: 0.10,
+      behavioral_health: 0.10
+    };
+    const weights: Record<string, number> = { ...DEFAULT_WEIGHTS };
     scoringRules.forEach(rule => {
       weights[rule.category] = rule.weight / 100;
     });
@@ -143,8 +146,7 @@ Deno.serve(async (req) => {
 
     finalScore = Math.round(finalScore);
 
-    // Store the score
-    const existingScores = await base44.entities.LeadScore.filter({ npi });
+    const existingScores = await base44.asServiceRole.entities.LeadScore.filter({ npi });
     const scoreData = {
       npi,
       score: finalScore,
@@ -154,9 +156,9 @@ Deno.serve(async (req) => {
     };
 
     if (existingScores.length > 0) {
-      await base44.entities.LeadScore.update(existingScores[0].id, scoreData);
+      await base44.asServiceRole.entities.LeadScore.update(existingScores[0].id, scoreData);
     } else {
-      await base44.entities.LeadScore.create(scoreData);
+      await base44.asServiceRole.entities.LeadScore.create(scoreData);
     }
 
     return Response.json({

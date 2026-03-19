@@ -171,33 +171,39 @@ export default function ImportMonitoring() {
   const handleBulkRetry = async () => {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
-    const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
-    let successCount = 0;
-    let skipCount = 0;
-    for (const batch of toRetry) {
-      try {
-        await base44.functions.invoke('triggerImport', {
-          import_type: batch.import_type,
-          file_url: batch.file_url || undefined,
-          dry_run: false,
-          year: batch.data_year || undefined,
-          retry_of: batch.id,
-          retry_count: (batch.retry_count || 0) + 1,
-          retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
-          category: batch.category || undefined,
-        });
-        successCount++;
-      } catch (e) {
-        console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        skipCount++;
+    try {
+      const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
+      let successCount = 0;
+      let skipCount = 0;
+      for (const batch of toRetry) {
+        try {
+          await base44.functions.invoke('triggerImport', {
+            import_type: batch.import_type,
+            file_url: batch.file_url || undefined,
+            dry_run: false,
+            year: batch.data_year || undefined,
+            retry_of: batch.id,
+            retry_count: (batch.retry_count || 0) + 1,
+            retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
+            category: batch.category || undefined,
+          });
+          successCount++;
+        } catch (e) {
+          console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
+          skipCount++;
+        }
       }
+      if (successCount > 0) toast.success(`Retried ${successCount} batch${successCount > 1 ? 'es' : ''} successfully`);
+      if (skipCount > 0) toast.error(`${skipCount} batch${skipCount > 1 ? 'es' : ''} failed to retry`);
+      setSelectedForRerun(new Set());
+      setBulkRetryMode(false);
+      refreshBatches();
+    } catch (err) {
+      console.error('[ImportMonitoring] Bulk retry error:', err);
+      toast.error('Bulk retry failed: ' + err.message);
+    } finally {
+      setIsBulkRetrying(false);
     }
-    if (successCount > 0) toast.success(`Retried ${successCount} batch${successCount > 1 ? 'es' : ''} successfully`);
-    if (skipCount > 0) toast.error(`${skipCount} batch${skipCount > 1 ? 'es' : ''} failed to retry`);
-    setSelectedForRerun(new Set());
-    setBulkRetryMode(false);
-    setIsBulkRetrying(false);
-    refreshBatches();
   };
   const pausedBatches = batches.filter(b => b.status === 'paused');
   const [autoFailedIds, setAutoFailedIds] = useState(new Set());
@@ -425,7 +431,7 @@ export default function ImportMonitoring() {
             Auto-Import
           </Button>
           <Button
-            onClick={async () => { setIsRefreshing(true); await refreshBatches(); setIsRefreshing(false); }}
+            onClick={async () => { setIsRefreshing(true); try { await refreshBatches(); } finally { setIsRefreshing(false); } }}
             variant="outline"
             disabled={isRefreshing}
             className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"

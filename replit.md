@@ -120,6 +120,15 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **nppesCrawler paused states in status**: Status endpoint now tracks and returns `paused_states` separately from `pending_states`
 - **nppesCrawler fallback concurrency limit**: Location/taxonomy individual-create fallback now processes in chunks of 5 with 100ms delays instead of unbounded parallel
 
+- **sendCampaignMessages email dispatch fix**: Email send now uses `provider.email || location?.email` to match `recipient_email` assignment — providers with location-only email were getting message records but emails never dispatched
+- **sendCampaignMessages error cap**: Errors array capped at 50 entries in BOTH catch paths (outer per-provider and inner email-send) to prevent unbounded growth on large campaigns
+- **sendCampaignMessages scoped enrichment queries**: Replaced `.list('', 500)` over-fetch with NPI-filtered `$in` queries scoped to target providers — campaigns with >500 providers previously missed enrichment data for providers beyond first page
+- **LeadLists.jsx loading stuck fix**: `loadLeads` wrapped in try/catch/finally — previously if any Promise.all query failed, `setLoading(false)` never ran and UI froze in loading state
+- **ImportMonitoring bulk retry safety**: `handleBulkRetry` wrapped in outer try/catch/finally — `setIsBulkRetrying(false)` now reliably clears even on unexpected errors
+- **ImportMonitoring refresh button**: Inline refresh handler wrapped in try/finally — prevents stuck refresh spinner if `refreshBatches()` throws
+- **aiProjectAnalysis SDK version**: Updated from @base44/sdk@0.8.20 to @0.8.21 (last remaining stale version)
+- **All 66 functions now on SDK 0.8.21**: Complete version consistency across entire functions/ directory
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

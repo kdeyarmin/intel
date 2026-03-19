@@ -39,8 +39,9 @@ async function withRetry(fn, retries = 5, backoff = 1500) {
       return await fn();
     } catch (e) {
       if (i === retries - 1) throw e;
-      if (e.message?.includes('Rate limit') || e.status === 429) {
-        await new Promise(r => setTimeout(r, backoff * (i + 1)));
+      const isRetryable = /429|rate limit|too many requests|500|502|503|504|internal server error|bad gateway|service unavailable|gateway timeout|network|connection|timeout/i.test(e.message) || e.status === 429 || (e.status >= 500 && e.status < 600);
+      if (isRetryable) {
+        await new Promise(r => setTimeout(r, backoff * (i + 1) + Math.random() * 500));
       } else {
         throw e;
       }

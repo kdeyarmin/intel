@@ -137,31 +137,37 @@ function ViewListDialog({ listId, listName }) {
 
   const loadLeads = async () => {
     setLoading(true);
-    const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-    if (members.length === 0) { setLeads([]); setLoading(false); return; }
+    try {
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+      if (members.length === 0) { setLeads([]); return; }
 
-    const npis = members.map(m => m.npi);
-    const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
-      base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
-      base44.entities.CMSUtilization.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
-    ]);
+      const npis = members.map(m => m.npi);
+      const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
+        base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
+        base44.entities.CMSUtilization.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
+      ]);
 
-    const enriched = members.map(member => ({
-      member,
-      provider: providers.find(p => p.npi === member.npi),
-      score: scores.find(s => s.npi === member.npi),
-      location: locations.find(l => l.npi === member.npi && l.is_primary),
-      utilization: utilizations.find(u => u.npi === member.npi),
-      referrals: referrals.find(r => r.npi === member.npi),
-      taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
-    }));
+      const enriched = members.map(member => ({
+        member,
+        provider: providers.find(p => p.npi === member.npi),
+        score: scores.find(s => s.npi === member.npi),
+        location: locations.find(l => l.npi === member.npi && l.is_primary),
+        utilization: utilizations.find(u => u.npi === member.npi),
+        referrals: referrals.find(r => r.npi === member.npi),
+        taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
+      }));
 
-    setLeads(enriched);
-    setLoading(false);
+      setLeads(enriched);
+    } catch (err) {
+      console.error('[LeadLists] Failed to load leads:', err);
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUpdateStatus = async (memberId, status) => {

@@ -44,11 +44,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fetch enrichment data
-    const providers = await base44.asServiceRole.entities.Provider.list('', 500);
-    const locations = await base44.asServiceRole.entities.ProviderLocation.list('', 500);
-    const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('', 500);
-    const scores = await base44.asServiceRole.entities.LeadScore.list('', 500);
+    // Fetch enrichment data scoped to target provider NPIs
+    const targetNPIs = targetProviders.map(p => p.npi);
+    const [locations, taxonomies, scores] = targetNPIs.length > 0
+      ? await Promise.all([
+          base44.asServiceRole.entities.ProviderLocation.filter({ npi: { $in: targetNPIs } }, undefined, 2000),
+          base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi: { $in: targetNPIs } }, undefined, 2000),
+          base44.asServiceRole.entities.LeadScore.filter({ npi: { $in: targetNPIs } }, undefined, 1000),
+        ])
+      : [[], [], []];
 
     const results = {
       campaign_id,
@@ -111,11 +115,11 @@ Deno.serve(async (req) => {
 
           results.messages_created++;
 
-          // Send immediately if requested
-          if (send_now && provider.email) {
+          const recipientEmail = provider.email || location?.email;
+          if (send_now && recipientEmail) {
             try {
               await base44.integrations.Core.SendEmail({
-                to: provider.email,
+                to: recipientEmail,
                 subject,
                 body: finalBody
               });
@@ -128,10 +132,12 @@ Deno.serve(async (req) => {
               results.messages_sent++;
               await new Promise(r => setTimeout(r, 500));
             } catch (emailError) {
-              results.errors.push({
-                npi: provider.npi,
-                error: `Email send failed: ${emailError.message}`
-              });
+              if (results.errors.length < 50) {
+                results.errors.push({
+                  npi: provider.npi,
+                  error: `Email send failed: ${emailError.message}`
+                });
+              }
             }
           }
 
@@ -145,10 +151,12 @@ Deno.serve(async (req) => {
             });
           }
         } catch (error) {
-          results.errors.push({
-            npi: provider.npi,
-            error: error.message
-          });
+          if (results.errors.length < 50) {
+            results.errors.push({
+              npi: provider.npi,
+              error: error.message
+            });
+          }
         }
       }
     }
