@@ -5,10 +5,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, MapPin, Timer } from 'lucide-react';
 
 function estimateCompletion(batch, avgDurationMs) {
-  if (!batch.created_date || !avgDurationMs) return '—';
+  if (!batch.created_date) return '—';
+  if (!avgDurationMs || avgDurationMs <= 0) return 'calculating...';
   const elapsed = Date.now() - new Date(batch.created_date).getTime();
-  const remaining = Math.max(0, avgDurationMs - elapsed);
-  if (remaining === 0) return 'any moment';
+  const remaining = avgDurationMs - elapsed;
+  if (remaining <= 0) {
+    const overdueSec = Math.round(Math.abs(remaining) / 1000);
+    if (overdueSec > 300) return 'stalled';
+    return 'any moment';
+  }
   const sec = Math.round(remaining / 1000);
   if (sec < 60) return `~${sec}s`;
   return `~${Math.ceil(sec / 60)}m`;

@@ -92,7 +92,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
       setBatchResults(data);
 
       if (data.success) {
-        onLog?.(`Batch complete: ${data.states_completed} succeeded, ${data.states_failed} failed, ${data.total_imported} providers imported`, 'success');
+        onLog?.(`Batch complete: ${data.states_completed ?? 0} succeeded, ${data.states_failed ?? 0} failed, ${data.total_imported ?? 0} providers imported`, 'success');
       } else {
         onLog?.(`Batch failed: ${data.error || 'Unknown error'}`, 'error');
       }
