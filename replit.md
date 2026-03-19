@@ -65,6 +65,14 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **Request body validation**: autoImportCMSData wraps `req.json()` in try/catch returning 400 on malformed body
 - **Dynamic year default**: autoImportCMSData defaults to `currentYear - 2` instead of hardcoded 2023
 - **ErrorBoundary**: Top-level React ErrorBoundary in App.jsx catches rendering crashes with recovery UI
+- **Mapper numeric parsing**: All CMS mappers now use `safeNum()` for numeric fields (score, star_rating, percentage, latitude, longitude) — no more string storage for numbers
+- **NPI validation**: hospice_enrollments and home_health_enrollments reject invalid NPIs (consistent with other mappers)
+- **Stalled threshold unified**: triggerImport auto-cancel changed from 2h to 1h, matching cancelStalledImports
+- **Scheduled year logic**: runScheduledImports uses `currentYear - 2` for CMS data (was using currentYear which returns no data)
+- **Import type metadata**: All CMS types in cmsImportTypes.js now have `availableYears` arrays (was missing from 8 types)
+- **FileParser unmount safety**: All setTimeout callbacks check mountedRef to prevent state updates on unmounted components
+- **LeadListBuilder null safety**: Filter logic guards against null NPI values in provider lookups
+- **Dashboard loading skeleton**: RecentActivityCard shows animated skeleton while audit events load
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports

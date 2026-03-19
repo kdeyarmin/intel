@@ -93,9 +93,8 @@ Deno.serve(async (req) => {
 
     if (realActive.length > 0) {
       const existing = realActive[0];
-      // If the active batch has been stuck for over 2 hours, auto-cancel it
       const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date).getTime();
-      if (stuckMs > 2 * 60 * 60 * 1000) {
+      if (stuckMs > 1 * 60 * 60 * 1000) {
         console.warn(`Auto-cancelling stale batch ${existing.id} (stuck ${Math.round(stuckMs / 60000)}min)`);
         await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(existing.id, {
           status: 'failed',

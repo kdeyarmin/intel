@@ -543,10 +543,10 @@ function mapRowToEntity(row, importType, year) {
         }
 
         if (importType === 'home_health_enrollments') {
-            // API fields: ENROLLMENT ID, NPI, CCN, ORGANIZATION NAME, DOING BUSINESS AS NAME, etc.
             const enrollmentId = row['ENROLLMENT ID'] || row['enrollment_id'];
             const npi = row['NPI'] || row['npi'] || '';
             if (!enrollmentId) return null;
+            if (npi && !validateNPI(npi)) return null;
             return {
                 enrollment_id: String(enrollmentId).trim(),
                 npi: String(npi).trim(),
@@ -571,6 +571,7 @@ function mapRowToEntity(row, importType, year) {
             const enrollmentId = row['ENROLLMENT ID'] || row['enrollment_id'];
             const npi = row['NPI'] || row['npi'] || '';
             if (!enrollmentId) return null;
+            if (npi && !validateNPI(npi)) return null;
             return {
                 enrollment_id: String(enrollmentId).trim(),
                 npi: String(npi).trim(),
@@ -627,8 +628,8 @@ function mapRowToEntity(row, importType, year) {
                 specialties: row['specialitieslist'] || '',
                 provider_type: row['providertypelist'] || '',
                 supplies: row['supplieslist'] || '',
-                latitude: row['latitude'] || '',
-                longitude: row['longitude'] || '',
+                latitude: safeNum(row['latitude']),
+                longitude: safeNum(row['longitude']),
                 is_contracted_for_cba: row['is_contracted_for_cba'] || ''
             };
         }
@@ -650,8 +651,8 @@ function mapRowToEntity(row, importType, year) {
                 cms_region: row['cms_region'] || '',
                 measure_code: String(measureCode).trim(),
                 measure_name: row['measure_name'] || '',
-                score: row['score'] || '',
-                star_rating: row['star_rating'] || '',
+                score: safeNum(row['score']),
+                star_rating: safeNum(row['star_rating']),
                 footnote: row['footnote'] || '',
                 date_range: row['date'] || ''
             };
@@ -665,7 +666,7 @@ function mapRowToEntity(row, importType, year) {
                 state: String(state).trim(),
                 measure_code: String(measureCode).trim(),
                 measure_name: row['measure_name'] || '',
-                score: row['score'] || '',
+                score: safeNum(row['score']),
                 footnote: row['footnote'] || '',
                 measure_date_range: row['measure_date_range'] || ''
             };
@@ -677,7 +678,7 @@ function mapRowToEntity(row, importType, year) {
             return {
                 measure_code: String(measureCode).trim(),
                 measure_name: row['measure_name'] || '',
-                score: row['score'] || '',
+                score: safeNum(row['score']),
                 footnote: row['footnote'] || '',
                 date_range: row['date'] || ''
             };
@@ -698,7 +699,7 @@ function mapRowToEntity(row, importType, year) {
                 phone: row['telephone_number'] || '',
                 cms_region: row['cms_region'] || '',
                 measure_code: String(measureCode).trim(),
-                score: row['score'] || '',
+                score: safeNum(row['score']),
                 footnote: row['footnote'] || '',
                 start_date: row['start_date'] || '',
                 end_date: row['end_date'] || '',
@@ -757,8 +758,8 @@ function mapRowToEntity(row, importType, year) {
                 measure_name: String(measureName).trim(),
                 measure_id: String(measureId).trim(),
                 country: String(row['country'] || row['Country'] || 'US').trim(),
-                score: row['score'] != null ? String(row['score']).trim() : '',
-                percentage: row['percentage'] != null ? String(row['percentage']).trim() : '',
+                score: safeNum(row['score']),
+                percentage: safeNum(row['percentage']),
                 footnote: String(row['footnote'] || row['Footnote'] || '').trim(),
                 date_range: String(row['date'] || row['measure_date_range'] || row['Date Range'] || '').trim(),
                 measure_description: String(row['measure_description'] || row['Measure Description'] || '').trim(),

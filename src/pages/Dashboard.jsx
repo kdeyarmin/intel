@@ -24,7 +24,7 @@ export default function Dashboard() {
     refetchInterval: 300000,
   });
 
-  const { data: auditEvents = [] } = useQuery({
+  const { data: auditEvents = [], isLoading: loadingEvents } = useQuery({
     queryKey: ['auditEvents'],
     queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
     staleTime: 60000,
@@ -73,7 +73,7 @@ export default function Dashboard() {
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 gap-6">
-        <RecentActivityCard events={auditEvents} />
+        <RecentActivityCard events={auditEvents} loading={loadingEvents} />
       </div>
 
     </div>

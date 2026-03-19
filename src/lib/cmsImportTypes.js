@@ -7,14 +7,14 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'medicare_hha_stats', label: 'Medicare HHA Stats', supportsUrl: true, availableYears: [2023, 2022, 2021, 2020] },
   { id: 'medicare_ma_inpatient', label: 'Medicare MA Inpatient', supportsUrl: true, availableYears: [2023, 2022, 2021, 2020] },
   { id: 'medicare_snf_stats', label: 'Medicare SNF Stats', supportsUrl: true, availableYears: [2023, 2022, 2021, 2020] },
-  { id: 'medical_equipment_suppliers', label: 'Medical Equipment Suppliers', supportsUrl: true },
-  { id: 'hospice_provider_measures', label: 'Hospice Provider Measures', supportsUrl: true },
-  { id: 'hospice_state_measures', label: 'Hospice State Measures', supportsUrl: true },
-  { id: 'hospice_national_measures', label: 'Hospice National Measures', supportsUrl: true },
-  { id: 'snf_provider_measures', label: 'SNF Provider Measures', supportsUrl: true },
-  { id: 'nursing_home_providers', label: 'Nursing Home Providers', supportsUrl: true },
-  { id: 'nursing_home_deficiencies', label: 'Nursing Home Deficiencies', supportsUrl: true },
-  { id: 'home_health_national_measures', label: 'Home Health National Measures', supportsUrl: true },
+  { id: 'medical_equipment_suppliers', label: 'Medical Equipment Suppliers', supportsUrl: true, availableYears: [2024, 2023, 2022] },
+  { id: 'hospice_provider_measures', label: 'Hospice Provider Measures', supportsUrl: true, availableYears: [2023, 2022, 2021] },
+  { id: 'hospice_state_measures', label: 'Hospice State Measures', supportsUrl: true, availableYears: [2023, 2022, 2021] },
+  { id: 'hospice_national_measures', label: 'Hospice National Measures', supportsUrl: true, availableYears: [2023, 2022, 2021] },
+  { id: 'snf_provider_measures', label: 'SNF Provider Measures', supportsUrl: true, availableYears: [2023, 2022, 2021] },
+  { id: 'nursing_home_providers', label: 'Nursing Home Providers', supportsUrl: true, availableYears: [2024, 2023, 2022] },
+  { id: 'nursing_home_deficiencies', label: 'Nursing Home Deficiencies', supportsUrl: true, availableYears: [2024, 2023, 2022] },
+  { id: 'home_health_national_measures', label: 'Home Health National Measures', supportsUrl: true, availableYears: [2023, 2022, 2021] },
 ];
 
 export const CMS_IMPORT_TYPE_ALIAS_MAP = {

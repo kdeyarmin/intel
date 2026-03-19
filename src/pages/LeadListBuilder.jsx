@@ -95,12 +95,13 @@ export default function LeadListBuilder() {
   const filteredResults = React.useMemo(() => {
     return providers
       .map(provider => {
-        const providerLocations = locations.filter(l => l.npi === provider.npi);
-        const primaryLocation = providerLocations.find(l => l.is_primary) || providerLocations[0];
-        const providerTaxonomies = taxonomies.filter(t => t.npi === provider.npi);
-        const score = scores.find(s => s.npi === provider.npi);
-        const utilization = utilizations.find(u => u.npi === provider.npi);
-        const listMember = listMembers.find(m => m.npi === provider.npi);
+        if (!provider.npi) return null;
+        const providerLocations = locations.filter(l => l?.npi === provider.npi);
+        const primaryLocation = providerLocations.find(l => l?.is_primary) || providerLocations[0];
+        const providerTaxonomies = taxonomies.filter(t => t?.npi === provider.npi);
+        const score = scores.find(s => s?.npi === provider.npi);
+        const utilization = utilizations.find(u => u?.npi === provider.npi);
+        const listMember = listMembers.find(m => m?.npi === provider.npi);
 
         return {
           provider,
@@ -111,6 +112,7 @@ export default function LeadListBuilder() {
           listMember,
         };
       })
+      .filter(Boolean)
       .filter(result => {
         const { location, taxonomy, score, utilization } = result;
 

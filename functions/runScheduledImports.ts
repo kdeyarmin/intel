@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
                     const res = await base44.asServiceRole.functions.invoke('triggerImport', {
                         import_type: resolvedType,
                         file_url: schedule.api_url || undefined,
-                        year: now.getFullYear(),
+                        year: now.getFullYear() - 2,
                         dry_run: false,
                     });
                     const data = res.data?.result || res.data || res;

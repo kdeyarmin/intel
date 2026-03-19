@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -21,6 +21,8 @@ export default function FileParser({ onParsed, selectedType }) {
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
   const handleFileSelect = async (e) => {
     const selectedFile = e.target.files[0];
@@ -87,6 +89,7 @@ export default function FileParser({ onParsed, selectedType }) {
         setProgress(100);
 
         setTimeout(() => {
+          if (!mountedRef.current) return;
           onParsed({ headers, file: selectedFile, file_url, parseMode: 'excel', rowCount: rows.length });
           setUploading(false);
           setProgress(0);
@@ -110,6 +113,7 @@ export default function FileParser({ onParsed, selectedType }) {
         setProgress(100);
 
         setTimeout(() => {
+          if (!mountedRef.current) return;
           onParsed({ headers, file: selectedFile, file_url, parseMode: 'json', rowCount: rows.length });
           setUploading(false);
           setProgress(0);
@@ -133,12 +137,14 @@ export default function FileParser({ onParsed, selectedType }) {
 
         if (isLargeFile) {
           setTimeout(() => {
+            if (!mountedRef.current) return;
             onParsed({ headers, file: selectedFile, file_url: null, parseMode: 'csv_large', delimiter });
             setUploading(false);
             setProgress(0);
           }, 300);
         } else {
           setTimeout(() => {
+            if (!mountedRef.current) return;
             onParsed({ headers, file: selectedFile, file_url, parseMode: 'csv', delimiter });
             setUploading(false);
             setProgress(0);
