@@ -33,7 +33,7 @@ export default function CurrentStateProgress({ status }) {
       if (status?.processing_states?.length > 0) return status.processing_states[0];
       return null;
     }
-    return activeBatch.file_name?.split('_')[1] || null;
+    return (activeBatch.file_name?.match(/crawler_([A-Z]{2})/) || [null, null])[1];
   }, [activeBatch, status]);
 
   if (!stateCode) return null;

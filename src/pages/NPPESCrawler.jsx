@@ -317,7 +317,7 @@ export default function NPPESCrawler() {
               </div>
               <div className="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mt-2">
                  <p className="text-sm font-medium text-indigo-400">Total Processed</p>
-                 <p className="text-2xl font-bold text-indigo-300">{(status?.totals?.processed || 0).toLocaleString()}</p>
+                 <p className="text-2xl font-bold text-indigo-300">{(status?.totals?.processed ?? 0).toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
