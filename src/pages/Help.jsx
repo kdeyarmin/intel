@@ -63,7 +63,7 @@ const GUIDE_SECTIONS = [
     color: 'text-emerald-400',
     content: [
       { heading: 'Advanced Analytics', text: 'Deep-dive analytics with trend analysis, comparative panels, predictive models, and drill-down tables. Use the dashboard builder to create custom visualizations.' },
-      { heading: 'CMS Data', text: 'Explore raw CMS datasets including Medicare Advantage Inpatient, HHA Statistics, Inpatient DRG, Utilization, Referrals, Part D, and SNF data. Filter by year and dataset type.' },
+      { heading: 'CMS Data', text: 'Explore raw CMS datasets including Medicare Advantage Inpatient, HHA Statistics, Inpatient DRG, Utilization, Referrals, and SNF data. Filter by year and dataset type.' },
       { heading: 'Referral Network', text: 'Visualize referral relationships between providers. Identify hub providers, network gaps, and geographic clustering. Use AI recommendations to find new referral targets.' },
       { heading: 'Custom Reports', text: 'Build custom reports by selecting data sources, metrics, filters, and chart types. Save reports for reuse and schedule automated delivery.' },
     ]
@@ -74,7 +74,7 @@ const GUIDE_SECTIONS = [
     icon: Upload,
     color: 'text-orange-400',
     content: [
-      { heading: 'Data Center', text: 'Central hub for all data imports. Choose from supported import types:\n• **NPPES Registry** — National Provider Identifier data\n• **CMS Utilization** — Medicare claims and service data\n• **CMS Referrals** — Provider-to-provider referral patterns\n• **Medicare Part D** — Prescription drug utilization\n• **Medicare HHA Stats** — Home Health Agency statistics\n• **Medicare MA Inpatient** — Medicare Advantage hospital data\n• **Medicare SNF Stats** — Skilled Nursing Facility data\n• And more...' },
+      { heading: 'Data Center', text: 'Central hub for all data imports. Choose from supported import types:\n• **NPPES Registry** — National Provider Identifier data\n• **CMS Utilization** — Medicare claims and service data\n• **CMS Referrals** — Provider-to-provider referral patterns\n• **Medicare HHA Stats** — Home Health Agency statistics\n• **Medicare MA Inpatient** — Medicare Advantage hospital data\n• **Medicare SNF Stats** — Skilled Nursing Facility data\n• And more...' },
       { heading: 'How to Import', text: '1. Go to Admin → Data Center\n2. Select the import category and type\n3. Upload your CSV/Excel file or use the auto-download URL\n4. Review the column mapping (AI-assisted)\n5. Validate the data (dry run recommended first)\n6. Click Import to process the data\n7. Monitor progress in Admin → Import Monitor' },
       { heading: 'Import Monitor', text: 'Track all import batches with real-time progress. View success/failure rates, error samples, and retry failed imports. Filter by status, type, or date range.' },
     ]

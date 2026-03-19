@@ -79,20 +79,20 @@ Deno.serve(async (req) => {
     }
     scores.patient_volume = volumeScore;
 
-    // 4. Part D Prescribing Signals (15%)
+    // 4. Service Intensity (15%)
     const servicesPerPatient = patientVolume > 0 
       ? (utilization?.total_services || 0) / patientVolume 
       : 0;
-    let partDScore = 0;
+    let serviceIntensityScore = 0;
     if (servicesPerPatient >= 12) {
-      partDScore = 100;
+      serviceIntensityScore = 100;
       reasons.push('High service intensity indicates complex care management');
     } else if (servicesPerPatient >= 8) {
-      partDScore = 70;
+      serviceIntensityScore = 70;
     } else if (servicesPerPatient >= 4) {
-      partDScore = 40;
+      serviceIntensityScore = 40;
     }
-    scores.service_intensity = partDScore;
+    scores.service_intensity = serviceIntensityScore;
 
     // 5. Geographic Priority (10%)
     const isPennsylvania = primaryLocation?.state === 'PA';

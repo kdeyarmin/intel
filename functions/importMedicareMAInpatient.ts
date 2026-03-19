@@ -398,6 +398,10 @@ Deno.serve(async (req) => {
   };
 
   try {
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+      updated_date: new Date().toISOString(),
+    }).catch(() => {});
+
     // === Step 1: Download ZIP with retry ===
     console.log(`[download] Fetching: ${downloadUrl}`);
     const resp = await fetchWithRetry(downloadUrl, { 
@@ -410,6 +414,10 @@ Deno.serve(async (req) => {
     const arrayBuffer = await resp.arrayBuffer();
     const sizeMB = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1);
     console.log(`[download] Complete: ${sizeMB}MB in ${elapsed()}ms`);
+
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+      updated_date: new Date().toISOString(),
+    }).catch(() => {});
 
     if (arrayBuffer.byteLength < 1000) {
       throw new Error(`Downloaded file too small (${arrayBuffer.byteLength} bytes) — likely not a valid ZIP. Check the URL.`);
@@ -571,24 +579,27 @@ Deno.serve(async (req) => {
           const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
           if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
+            let deleteRateLimits = 0;
             while (true) {
-                if (isTimeUp()) break;
-                const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
+                if (isTimeUp() || deleteRateLimits >= 3) break;
+                const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 200);
                 if (batchRecs.length === 0) break;
                 
-                for (let i = 0; i < batchRecs.length; i += 50) {
-                    const chunk = batchRecs.slice(i, i + 50);
+                for (let i = 0; i < batchRecs.length; i += 10) {
+                    if (isTimeUp() || deleteRateLimits >= 3) break;
+                    const chunk = batchRecs.slice(i, i + 10);
                     await Promise.all(chunk.map(async (rec) => {
                         try {
                             await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
                         } catch (e) {
-                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                            if (/rate limit|429/i.test(e.message || '')) {
+                                deleteRateLimits++;
                                 await delay(3000);
                                 try { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); } catch(e2) {}
                             }
                         }
                     }));
-                    await delay(100);
+                    await delay(300);
                 }
             }
           }

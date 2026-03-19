@@ -19,7 +19,7 @@ const IMPORT_CATEGORIES = [
   {
     id: 'claims',
     label: 'CMS Claims & Utilization',
-    description: 'Utilization, Part D, referrals, services',
+    description: 'Utilization, referrals, services',
     icon: Activity,
     color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     types: [

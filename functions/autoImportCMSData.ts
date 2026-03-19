@@ -716,11 +716,11 @@ function mapRowToEntity(row, importType, year) {
                 county: row['countyparish'] || '',
                 urban: row['urban'] || '',
                 ownership_type: row['ownership_type'] || '',
-                number_of_certified_beds: row['number_of_certified_beds'] || '',
-                overall_rating: row['overall_rating'] || '',
-                health_inspection_rating: row['health_inspection_rating'] || '',
-                qm_rating: row['qm_rating'] || '',
-                staffing_rating: row['staffing_rating'] || '',
+                number_of_certified_beds: safeNum(row['number_of_certified_beds']),
+                overall_rating: safeNum(row['overall_rating']),
+                health_inspection_rating: safeNum(row['health_inspection_rating']),
+                qm_rating: safeNum(row['qm_rating']),
+                staffing_rating: safeNum(row['staffing_rating']),
                 location_string: row['location'] || ''
             };
         }
@@ -738,25 +738,26 @@ function mapRowToEntity(row, importType, year) {
                 inspection_cycle: row['inspection_cycle'] || '',
                 health_survey_date: row['health_survey_date'] || '',
                 fire_safety_survey_date: row['fire_safety_survey_date'] || '',
-                total_number_of_health_deficiencies: row['total_number_of_health_deficiencies'] || '',
-                total_number_of_fire_safety_deficiencies: row['total_number_of_fire_safety_deficiencies'] || '',
+                total_number_of_health_deficiencies: safeNum(row['total_number_of_health_deficiencies']),
+                total_number_of_fire_safety_deficiencies: safeNum(row['total_number_of_fire_safety_deficiencies']),
                 location_string: row['location'] || ''
             };
         }
 
         if (importType === 'home_health_national_measures') {
-            // The CMS dataset has one row per quality measure with fields like
-            // measure_name, measure_id, country, score/percentage, footnote, etc.
-            // Capture all available fields dynamically to avoid missing data.
-            const mapped: Record<string, string> = {};
-            for (const [key, value] of Object.entries(row)) {
-                if (value != null && value !== '') {
-                    mapped[key] = String(value).trim();
-                }
-            }
-            // Must have at least a measure identifier or country
-            if (!mapped.measure_name && !mapped.measure_id && !mapped.country) return null;
-            return mapped;
+            const measureName = row['measure_name'] || row['Measure Name'] || '';
+            const measureId = row['measure_id'] || row['Measure ID'] || row['CMS Measure ID'] || '';
+            if (!measureName && !measureId) return null;
+            return {
+                measure_name: String(measureName).trim(),
+                measure_id: String(measureId).trim(),
+                country: String(row['country'] || row['Country'] || 'US').trim(),
+                score: row['score'] != null ? String(row['score']).trim() : '',
+                percentage: row['percentage'] != null ? String(row['percentage']).trim() : '',
+                footnote: String(row['footnote'] || row['Footnote'] || '').trim(),
+                date_range: String(row['date'] || row['measure_date_range'] || row['Date Range'] || '').trim(),
+                measure_description: String(row['measure_description'] || row['Measure Description'] || '').trim(),
+            };
         }
 
         return null;

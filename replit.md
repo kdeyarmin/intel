@@ -57,6 +57,10 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **safeNum returns null**: Missing/blank/suppressed values return `null` not `0` to avoid inflating data
 - **Error sample cap**: 25 samples across all importers for consistent debugging
 - **Year-URL maps**: HHA, SNF, and MA Inpatient all have multi-year URL maps with LATEST_AVAILABLE_YEAR fallback
+- **Delete-before-import**: Parallelism reduced from 50 to 10 concurrent deletes, with rate-limit circuit breaker (3 strikes) and 300ms inter-batch delay
+- **Download heartbeat**: All ZIP importers update `updated_date` before and after download to prevent stalled-import false positives
+- **Numeric fields parsed**: nursing_home_providers ratings/beds and nursing_home_deficiencies counts use `safeNum()` instead of raw strings
+- **home_health_national_measures**: Explicit field mapping (measure_name, measure_id, score, etc.) instead of dynamic catch-all
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports

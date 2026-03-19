@@ -316,7 +316,15 @@ Deno.serve(async (req) => {
   };
 
   try {
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+      updated_date: new Date().toISOString(),
+    }).catch(() => {});
+
     const workbook = await downloadAndParseZip(downloadUrl);
+
+    await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+      updated_date: new Date().toISOString(),
+    }).catch(() => {});
     const targetSheets = sheet_filter ? workbook.SheetNames.filter(s => { const t = classifySNFTable(s); return t && sheet_filter.includes(t); }) : workbook.SheetNames;
     const allRecords = [], sheetSummaries = [];
     let totalInvalid = 0, totalWarnings = 0;
@@ -369,23 +377,26 @@ Deno.serve(async (req) => {
         const existing = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1);
         if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);
+            let deleteRateLimits = 0;
             while (true) {
-                if (isTimeUp()) break;
-                const batchRecs = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
+                if (isTimeUp() || deleteRateLimits >= 3) break;
+                const batchRecs = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 200);
                 if (batchRecs.length === 0) break;
-                for (let i = 0; i < batchRecs.length; i += 50) {
-                    const chunk = batchRecs.slice(i, i + 50);
+                for (let i = 0; i < batchRecs.length; i += 10) {
+                    if (isTimeUp() || deleteRateLimits >= 3) break;
+                    const chunk = batchRecs.slice(i, i + 10);
                     await Promise.all(chunk.map(async (rec) => {
                         try {
                             await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
                         } catch (e) {
-                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
+                            if (/rate limit|429/i.test(e.message || '')) {
+                                deleteRateLimits++;
                                 await delay(3000);
                                 try { await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id); } catch(e2) {}
                             }
                         }
                     }));
-                    await delay(100);
+                    await delay(300);
                 }
             }
         }
