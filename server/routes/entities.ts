@@ -6,12 +6,26 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+const BLOCKED_ENTITIES = new Set(["User"]);
+const SENSITIVE_WRITE_FIELDS = new Set(["password_hash", "role"]);
+
 function getTable(entityName: string) {
+  if (BLOCKED_ENTITIES.has(entityName)) {
+    return null;
+  }
   const table = tableMap[entityName];
   if (!table) {
     return null;
   }
   return table;
+}
+
+function sanitizeWriteData(data: Record<string, any>): Record<string, any> {
+  const cleaned = { ...data };
+  for (const field of SENSITIVE_WRITE_FIELDS) {
+    delete cleaned[field];
+  }
+  return cleaned;
 }
 
 function buildOrderBy(table: any, sortField?: string) {
@@ -155,7 +169,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
 
-    const data = toSnakeKeys(req.body);
+    const data = sanitizeWriteData(toSnakeKeys(req.body));
     delete data.id;
     delete data.created_date;
     delete data.updated_date;
@@ -176,7 +190,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     if (!Array.isArray(items)) return res.status(400).json({ message: "Expected array of items" });
 
     const cleaned = items.map((item: any) => {
-      const data = toSnakeKeys(item);
+      const data = sanitizeWriteData(toSnakeKeys(item));
       delete data.id;
       delete data.created_date;
       delete data.updated_date;
@@ -195,7 +209,7 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
 
-    const data = toSnakeKeys(req.body);
+    const data = sanitizeWriteData(toSnakeKeys(req.body));
     delete data.id;
     delete data.created_date;
     data.updated_date = new Date();

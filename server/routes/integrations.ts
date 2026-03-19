@@ -1,7 +1,21 @@
 import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import sgMail from "@sendgrid/mail";
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: "uploads/",
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `${crypto.randomUUID()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 
 const router = Router();
 
@@ -71,8 +85,20 @@ router.post("/email/send", authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
-router.post("/file/upload", authMiddleware, async (req: AuthRequest, res: Response) => {
-  res.status(501).json({ message: "File upload not yet implemented — use a form-based upload endpoint" });
+router.post("/file/upload", authMiddleware, upload.single("file"), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const fileUrl = `/api/storage/${req.file.filename}`;
+    res.json({
+      url: fileUrl,
+      file_url: fileUrl,
+      filename: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 export default router;

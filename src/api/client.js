@@ -155,9 +155,10 @@ export const base44 = {
         });
       },
 
-      async UploadFile(file) {
+      async UploadFile(fileOrObj) {
+        const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", actualFile);
         const token = localStorage.getItem("auth_token");
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
@@ -165,6 +166,13 @@ export const base44 = {
           credentials: "include",
           body: formData,
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ message: res.statusText }));
+          const err = new Error(data.message || `Upload failed: ${res.status}`);
+          err.name = "ApiError";
+          err.status = res.status;
+          throw err;
+        }
         return res.json();
       },
 
@@ -182,10 +190,11 @@ export const base44 = {
 
   functions: {
     async invoke(functionName, params = {}) {
-      return request(`/functions/${functionName}`, {
+      const result = await request(`/functions/${functionName}`, {
         method: "POST",
         body: JSON.stringify(params),
       });
+      return { data: result };
     },
   },
 

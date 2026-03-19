@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
 import authRoutes from "./routes/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
@@ -12,6 +13,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
+app.use("/api/storage", express.static(path.resolve("uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
