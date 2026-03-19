@@ -124,9 +124,14 @@ Deno.serve(async (req) => {
             }
         }
         
-        // If we retried any, trigger the worker
+        // If we retried any, trigger the worker (but respect stop flag)
         if (retriedCount > 0) {
-            base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(e => console.error('[retryFailedNPPESStates] Failed to invoke crawler:', e.message));
+            const latestConfigs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+            if (!latestConfigs[0]?.crawler_stopped) {
+                base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' }).catch(e => console.error('[retryFailedNPPESStates] Failed to invoke crawler:', e.message));
+            } else {
+                console.log('[retryFailedNPPESStates] Crawler stop flag is set, not invoking worker.');
+            }
         }
 
         return Response.json({ 

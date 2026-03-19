@@ -68,9 +68,9 @@ export default function RecentCrawlActivity({ nppesImports, auditEvents, loading
                       </Badge>
                     </div>
                     <p className="text-xs text-slate-500 truncate">
-                      {batch.imported_rows ? `${batch.imported_rows.toLocaleString()} rows` : ''}
-                      {batch.imported_rows && batch.valid_rows ? ' • ' : ''}
-                      {batch.valid_rows ? `${batch.valid_rows.toLocaleString()} valid` : ''}
+                      {batch.imported_rows != null ? `${batch.imported_rows.toLocaleString()} rows` : ''}
+                      {batch.imported_rows != null && batch.valid_rows != null ? ' • ' : ''}
+                      {batch.valid_rows != null ? `${batch.valid_rows.toLocaleString()} valid` : ''}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">

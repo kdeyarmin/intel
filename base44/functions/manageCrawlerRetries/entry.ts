@@ -123,17 +123,42 @@ Deno.serve(async (req) => {
                     // Trigger Retry
                     console.log(`[RetryMonitor] Retrying state ${state}. Failure was ${Math.round(timeSinceFailure/60000)}m ago. Retry #${currentRetryCount + 1}`);
                     
-                    // We invoke the crawler directly
-                    // It will create a NEW batch with retry_count + 1
+                    // Reset the failed items in this batch to pending, then invoke the worker directly
+                    // (batch_start requires admin auth, which service invocations don't have)
                     try {
-                        await base44.asServiceRole.functions.invoke('nppesCrawler', {
-                            action: 'batch_start',
-                            states: [state],
-                            retry_count: currentRetryCount + 1
+                        const failedItems = await base44.asServiceRole.entities.NPPESQueueItem.filter({
+                            batch_id: latest.id,
+                            status: 'failed'
+                        }, undefined, 5000);
+
+                        // Reset items in chunks
+                        for (let ci = 0; ci < failedItems.length; ci += 50) {
+                            const chunk = failedItems.slice(ci, ci + 50);
+                            await Promise.all(chunk.map(item =>
+                                base44.asServiceRole.entities.NPPESQueueItem.update(item.id, {
+                                    status: 'pending',
+                                    retry_count: 0,
+                                    error_message: null
+                                })
+                            ));
+                        }
+
+                        // Update batch status and increment retry count
+                        await base44.asServiceRole.entities.ImportBatch.update(latest.id, {
+                            status: 'processing',
+                            retry_count: currentRetryCount + 1,
+                            cancel_reason: null
                         });
-                        actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1})`);
+
+                        // Check stop flag before invoking worker
+                        const latestConfigs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
+                        if (!latestConfigs[0]?.crawler_stopped) {
+                            await base44.asServiceRole.functions.invoke('nppesCrawler', { action: 'process_queue' });
+                        }
+
+                        actionsTaken.push(`Retried state ${state} (attempt ${currentRetryCount + 1}, ${failedItems.length} items reset)`);
                     } catch(e) {
-                        console.error(`[RetryMonitor] Failed to invoke crawler for ${state}:`, e);
+                        console.error(`[RetryMonitor] Failed to retry state ${state}:`, e);
                     }
                 } else {
                     // Waiting for delay
