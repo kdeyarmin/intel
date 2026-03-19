@@ -32,11 +32,10 @@ export default function ProjectManagement() {
 
   const handleApplyAll = async (assignments) => {
     try {
-      for (const a of assignments) {
-        if (a.taskId && a.assigneeEmail) {
-          await base44.entities.CampaignTask.update(a.taskId, { assigned_to: a.assigneeEmail });
-        }
-      }
+      const updates = assignments
+        .filter(a => a.taskId && a.assigneeEmail)
+        .map(a => base44.entities.CampaignTask.update(a.taskId, { assigned_to: a.assigneeEmail }));
+      await Promise.all(updates);
       queryClient.invalidateQueries({ queryKey: ['campaignTasks'] });
       toast.success('Applied all AI task assignments');
     } catch (error) {

@@ -190,8 +190,9 @@ function renderTemplate(campaign, provider, location, taxonomy, score) {
   };
 
   for (const [key, value] of Object.entries(mergeData)) {
-    subject = subject.replace(new RegExp(key, 'g'), value);
-    body = body.replace(new RegExp(key, 'g'), value);
+    const escaped = key.replace(/[{}]/g, '\\$&');
+    subject = subject.replace(new RegExp(escaped, 'g'), value);
+    body = body.replace(new RegExp(escaped, 'g'), value);
   }
 
   return { subject, body };

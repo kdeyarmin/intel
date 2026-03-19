@@ -32,6 +32,7 @@ Referrals: ${(referrals || []).slice(0, 3).map(r => `Year ${r.year}: ${r.total_r
 
 Look for: volume anomalies, address conflicts, missing critical fields, utilization/referral ratio issues, data staleness.`;
 
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: {
@@ -55,7 +56,11 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
       },
     });
     setResults(res);
-    setAnalyzing(false);
+    } catch (err) {
+      console.error('AI quality analysis failed:', err);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const scoreColor = (s) => s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400';

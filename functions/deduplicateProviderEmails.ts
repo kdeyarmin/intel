@@ -125,7 +125,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting or code blocks.`;
 
       return {
         primary: {
-          ...primaryData,
+          ...(primaryData || {}),
           email: group.primary.email
         },
         primary_reason: group.primary_reason,

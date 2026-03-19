@@ -165,26 +165,37 @@ function ViewListDialog({ listId, listName }) {
   };
 
   const handleUpdateStatus = async (memberId, status) => {
-    await base44.entities.LeadListMember.update(memberId, { status });
-    setLeads(leads.map(l =>
-      l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
-    ));
+    try {
+      await base44.entities.LeadListMember.update(memberId, { status });
+      setLeads(prev => prev.map(l =>
+        l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
+      ));
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
   };
 
   const handleUpdateNotes = async (memberId, notes) => {
-    await base44.entities.LeadListMember.update(memberId, { notes });
-    setLeads(leads.map(l =>
-      l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
-    ));
+    try {
+      await base44.entities.LeadListMember.update(memberId, { notes });
+      setLeads(prev => prev.map(l =>
+        l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
+      ));
+    } catch (err) {
+      console.error('Failed to update notes:', err);
+    }
   };
 
   const handleRemoveProvider = async (memberId) => {
-    await base44.entities.LeadListMember.delete(memberId);
-    setLeads(leads.filter(l => l.member.id !== memberId));
-    // Update list count
-    const list = await base44.entities.LeadList.filter({ id: listId });
-    if (list[0]) {
-      await base44.entities.LeadList.update(listId, { provider_count: Math.max((list[0].provider_count || 0) - 1, 0) });
+    try {
+      await base44.entities.LeadListMember.delete(memberId);
+      setLeads(prev => prev.filter(l => l.member.id !== memberId));
+      const list = await base44.entities.LeadList.filter({ id: listId });
+      if (list[0]) {
+        await base44.entities.LeadList.update(listId, { provider_count: Math.max((list[0].provider_count || 0) - 1, 0) });
+      }
+    } catch (err) {
+      console.error('Failed to remove provider:', err);
     }
   };
 

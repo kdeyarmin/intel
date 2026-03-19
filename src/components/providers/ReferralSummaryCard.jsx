@@ -21,8 +21,10 @@ export default function ReferralSummaryCard({ referrals = [] }) {
     const latest = sorted[sorted.length - 1];
     const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
 
-    const yoy = prev && prev.total_referrals > 0
-      ? ((latest.total_referrals - prev.total_referrals) / prev.total_referrals * 100).toFixed(1)
+    const latestTotal = latest.total_referrals || 0;
+    const prevTotal = prev?.total_referrals || 0;
+    const yoy = prev && prevTotal > 0
+      ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1)
       : null;
 
     const breakdown = TYPES.map(t => ({

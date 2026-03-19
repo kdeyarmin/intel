@@ -44,9 +44,14 @@ ${score?.reasons?.length ? 'Score Reasons: ' + score.reasons.join('; ') : ''}
 
 Summarize who this provider is, their practice characteristics, notable utilization/referral patterns, and their potential value as a business lead. Highlight any standout metrics.`;
 
-    const result = await base44.integrations.Core.InvokeLLM({ prompt });
-    setSummary(result);
-    setLoading(false);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({ prompt });
+      setSummary(result);
+    } catch (err) {
+      console.error('AI summary generation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
