@@ -60,14 +60,6 @@ export default function Dashboard() {
         <TopStatesCard topStates={stats?.topStates || []} loading={loadingStats} />
       </div>
 
-      {/* Email Discovery Trend Chart */}
-      <EmailTrendChart data={stats?.emailStats?.trend} loading={loadingStats} />
-
-      {/* Geographic Coverage Map */}
-      <div className="grid grid-cols-1 gap-6">
-        <DashboardGeospatialMap />
-      </div>
-
       {/* Data Health & Proactive Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DataHealthAlerts />
