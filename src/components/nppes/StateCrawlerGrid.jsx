@@ -14,7 +14,6 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
 
   const getStateStatus = (st) => {
     if (st === currentState && (running || autoMode)) return 'active';
-    if (st === status?.currently_processing_state && autoMode) return 'active';
     if (processingSet.has(st)) return 'processing';
     if (completedSet.has(st)) return 'completed';
     if (failedSet.has(st)) return 'failed';

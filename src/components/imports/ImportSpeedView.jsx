@@ -14,7 +14,7 @@ export default function ImportSpeedView({ batches, onRefresh }) {
   // Calculate speed data
   const speedData = useMemo(() => {
     // filter batches that have some rows and created/updated dates
-    const validBatches = batches.filter(b => b.imported_rows > 0 && b.created_date && (b.completed_at || b.updated_date));
+    const validBatches = batches.filter(b => (b.imported_rows || 0) > 0 && b.created_date && (b.completed_at || b.updated_date));
     
     // sort chronological
     validBatches.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
