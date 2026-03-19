@@ -11,6 +11,7 @@ import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import DataHealthAlerts from '../components/dashboard/DataHealthAlerts';
 import QuickActions from '../components/shared/QuickActions';
 import EmailTrendChart from '../components/dashboard/EmailTrendChart';
+import DashboardGeospatialMap from '../components/dashboard/DashboardGeospatialMap';
 import { LayoutDashboard } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 
