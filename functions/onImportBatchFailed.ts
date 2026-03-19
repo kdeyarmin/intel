@@ -11,37 +11,33 @@ Deno.serve(async (req) => {
         }
 
         let currentData = data;
-        let previousData = old_data;
-
-        // If payload is too large, we must fetch the data directly
         if (payload_too_large) {
             currentData = await base44.asServiceRole.entities.ImportBatch.get(event.entity_id);
-            // We cannot easily know previousData status if payload was too large and it's an update,
-            // but we can assume if it's currently failed, we'll process it. 
-            // To prevent duplicate emails, we could check a custom field like 'notified_failed',
-            // but for now, we'll proceed if it's failed.
         }
 
         if (!currentData) {
              return Response.json({ message: 'No data available' });
         }
 
-        // Check if status changed to failed
-        const statusChangedToFailed = currentData.status === 'failed' && (!previousData || previousData.status !== 'failed');
-        
-        // Also trigger if it was created with 'failed' status
+        const statusChangedToFailed = currentData.status === 'failed' && (!old_data || old_data.status !== 'failed');
         const isNewFailure = event.type === 'create' && currentData.status === 'failed';
 
-        // Additional safeguard for payload_too_large where previousData is null
-        const isJustFailed = currentData.status === 'failed';
-        
-        // Check for performance bottleneck / stalled
-        const statusChangedToPaused = currentData.status === 'paused' && (!previousData || previousData.status !== 'paused');
-        const isBottleneck = statusChangedToPaused && (currentData.cancel_reason?.toLowerCase().includes('stall') || currentData.cancel_reason?.toLowerCase().includes('timeout'));
+        if (statusChangedToFailed || isNewFailure) {
+            console.log(`[onImportBatchFailed] Batch ${event.entity_id} failed: type=${currentData.import_type}, reason=${currentData.cancel_reason || 'unknown'}`);
 
-        if (statusChangedToFailed || isNewFailure || (payload_too_large && isJustFailed) || isBottleneck) {
-            // Email sending has been explicitly disabled for import status changes
-            return Response.json({ success: true, notified: 0, message: 'Email notifications disabled for import failures.' });
+            try {
+                await base44.asServiceRole.entities.AuditEvent.create({
+                    event_type: 'import_failed',
+                    entity_type: 'ImportBatch',
+                    entity_id: event.entity_id,
+                    details: `Import failed: ${currentData.import_type} — ${currentData.cancel_reason || 'Unknown error'}`,
+                    performed_by: 'system',
+                });
+            } catch (auditErr) {
+                console.error('[onImportBatchFailed] Failed to create audit event:', auditErr.message);
+            }
+
+            return Response.json({ success: true, logged: true });
         }
         
         return Response.json({ success: true, message: 'Not a new failure' });

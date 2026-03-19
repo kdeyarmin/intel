@@ -73,6 +73,13 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **FileParser unmount safety**: All setTimeout callbacks check mountedRef to prevent state updates on unmounted components
 - **LeadListBuilder null safety**: Filter logic guards against null NPI values in provider lookups
 - **Dashboard loading skeleton**: RecentActivityCard shows animated skeleton while audit events load
+- **cancelStalledImports paused status**: Now checks `paused` batches too — prevents batches stuck forever if auto-resume invoke fails
+- **cancelStalledImports retry failure**: If retry invoke fails, batch cancel_reason is updated to reflect the failure
+- **getDashboardStats parallel**: All 9 initial data fetches now use Promise.all instead of sequential (major latency improvement)
+- **importNPPESFlatFile error recovery**: bulkCreate failures now fall back to individual inserts with logging instead of silently dropping 500 rows
+- **onImportBatchFailed audit logging**: Cleaned dead code, now creates AuditEvent records for failed batches
+- **Campaigns delete error handling**: handleDelete wrapped in try/catch with toast feedback
+- **Dead code cleanup**: Removed unused _isUploading, _fileInputRef (NewImportDialog), _imported (LiveProgressCard)
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports

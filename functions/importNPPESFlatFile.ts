@@ -191,7 +191,17 @@ async function processBulkRows(rows, mapping, base44, dryRun) {
         try {
             await base44.asServiceRole.entities.Provider.bulkCreate(providers);
         } catch (e) {
-            // Ignore bulk insert conflicts in this simple version
+            console.error(`[importNPPESFlatFile] bulkCreate failed for ${providers.length} rows: ${e.message}. Falling back to individual inserts.`);
+            let individualOk = 0, individualFail = 0;
+            for (const p of providers) {
+                try {
+                    await base44.asServiceRole.entities.Provider.create(p);
+                    individualOk++;
+                } catch (ie) {
+                    individualFail++;
+                }
+            }
+            console.log(`[importNPPESFlatFile] Individual fallback: ${individualOk} created, ${individualFail} skipped (duplicates/errors)`);
         }
     }
 }

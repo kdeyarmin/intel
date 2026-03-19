@@ -21,10 +21,10 @@ Deno.serve(async (req) => {
     const thresholdMs = thresholdHours * 60 * 60 * 1000;
     const now = Date.now();
 
-    // Fetch all batches stuck in validating or processing
-    const [validating, processing] = await Promise.all([
+    const [validating, processing, paused] = await Promise.all([
       base44.asServiceRole.entities.ImportBatch.filter({ status: 'validating' }, '-created_date', 100),
       base44.asServiceRole.entities.ImportBatch.filter({ status: 'processing' }, '-created_date', 100),
+      base44.asServiceRole.entities.ImportBatch.filter({ status: 'paused' }, '-created_date', 100),
     ]);
 
     // Filter out signal/control batches that aren't real imports
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       return fn !== 'batch_process_active' && fn !== 'crawler_batch_stop_signal' && fn !== 'crawler_auto_stop_signal';
     };
 
-    const stalledBatches = [...validating, ...processing].filter(batch => {
+    const stalledBatches = [...validating, ...processing, ...paused].filter(batch => {
       if (!isRealBatch(batch)) return false;
       const lastActivity = new Date(batch.updated_date || batch.created_date).getTime();
       return (now - lastActivity) > thresholdMs;
@@ -130,6 +130,11 @@ Deno.serve(async (req) => {
           }
         } catch (triggerErr) {
           console.error(`Failed to trigger retry for ${batch.id}:`, triggerErr.message);
+          try {
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+              cancel_reason: `Auto-cancelled (stalled in "${batch.status}" for ${thresholdHours}h). Retry attempt ${newRetryCount} FAILED: ${triggerErr.message}`,
+            });
+          } catch (_) {}
         }
 
         results.push({

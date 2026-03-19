@@ -4,32 +4,26 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        // Real totals usually require .count() or similar, but since we can't reliably get full counts fast without a specific query, we'll try to fetch more pages to get a better estimate.
-        // We can do an empty filter to get all records, but there's a limit. 
-        // Using a high limit to get actual totals for the dashboard
         const LIMIT = 100000; 
-
-        // Avoid loading millions of records into memory! Use targeted filters for counts where possible.
-        // We will load a smaller sample for basic counts of other entities to avoid OOM
         const SMALL_LIMIT = 5000;
-        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', SMALL_LIMIT);
-        const locations = await base44.asServiceRole.entities.ProviderLocation.filter({}, undefined, SMALL_LIMIT);
-        const referrals = await base44.asServiceRole.entities.CMSReferral.filter({}, undefined, SMALL_LIMIT);
-        const utilization = await base44.asServiceRole.entities.CMSUtilization.filter({}, undefined, SMALL_LIMIT);
-        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.filter({}, undefined, SMALL_LIMIT);
-        const batches = await base44.asServiceRole.entities.ImportBatch.list('-created_date', 100);
-        const dqScans = await base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1);
 
-        // For providers, let's use targeted filters since we actually need exact stats for the EmailSearchBot
-        const providersWithEmail = await base44.asServiceRole.entities.Provider.filter({ email: { $ne: null } }, undefined, LIMIT);
-        const providersSearched = await base44.asServiceRole.entities.Provider.filter({ email_searched_at: { $ne: null } }, undefined, LIMIT);
+        const [providers, locations, referrals, utilization, taxonomies, batches, dqScans, providersWithEmail, providersSearched] = await Promise.all([
+            base44.asServiceRole.entities.Provider.list('-created_date', SMALL_LIMIT),
+            base44.asServiceRole.entities.ProviderLocation.filter({}, undefined, SMALL_LIMIT),
+            base44.asServiceRole.entities.CMSReferral.filter({}, undefined, SMALL_LIMIT),
+            base44.asServiceRole.entities.CMSUtilization.filter({}, undefined, SMALL_LIMIT),
+            base44.asServiceRole.entities.ProviderTaxonomy.filter({}, undefined, SMALL_LIMIT),
+            base44.asServiceRole.entities.ImportBatch.list('-created_date', 100),
+            base44.asServiceRole.entities.DataQualityScan.list('-created_date', 1),
+            base44.asServiceRole.entities.Provider.filter({ email: { $ne: null } }, undefined, LIMIT),
+            base44.asServiceRole.entities.Provider.filter({ email_searched_at: { $ne: null } }, undefined, LIMIT),
+        ]);
         
         let withEmail = providersWithEmail.length;
         let searched = providersSearched.length;
         
         let valid = 0, risky = 0, invalid = 0, needsEnrichment = 0;
         
-        // Build a zero-filled array for the last 30 days for trend
         const emailTrend = [];
         for (let i = 29; i >= 0; i--) {
             const d = new Date();
@@ -66,7 +60,6 @@ Deno.serve(async (req) => {
             ? Math.max(providers.length, providersWithEmail.length, providersSearched.length)
             : providers.length;
 
-        // Top states
         const stateCounts: Record<string, number> = {};
         for (const loc of locations) {
             if (loc.state) {
@@ -76,14 +69,12 @@ Deno.serve(async (req) => {
         }
         const topStates = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-        // Import health
         const lastCompleted = batches.find(b => b.status === 'completed');
         const lastRefresh = lastCompleted?.completed_at || lastCompleted?.created_date || null;
         const activeBatches = batches.filter(b => b.status === 'processing' || b.status === 'validating').length;
         const completedBatches = batches.filter(b => b.status === 'completed').length;
         const failedBatches = batches.filter(b => b.status === 'failed').length;
 
-        // Data quality
         const latestScan = dqScans[0] || null;
 
         let openAlerts = 0;

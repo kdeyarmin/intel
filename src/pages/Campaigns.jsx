@@ -70,9 +70,15 @@ export default function Campaigns() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this campaign?')) return;
-    await base44.entities.Campaign.delete(id);
-    queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
-    if (selectedCampaign?.id === id) setSelectedCampaign(null);
+    try {
+      await base44.entities.Campaign.delete(id);
+      queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
+      if (selectedCampaign?.id === id) setSelectedCampaign(null);
+    } catch (err) {
+      console.error('Failed to delete campaign:', err);
+      const { toast } = await import('sonner').then(m => m);
+      toast.error('Failed to delete campaign: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleCreated = () => {

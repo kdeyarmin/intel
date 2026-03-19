@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,7 +82,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [typeSearch, setTypeSearch] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [_isUploading, _setIsUploading] = useState(false);
 
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
@@ -98,7 +97,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const _fileInputRef = useRef(null);
+
 
   // Mapping states
   const [csvHeaders, setCsvHeaders] = useState([]);
