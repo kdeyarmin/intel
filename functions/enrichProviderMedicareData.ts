@@ -124,23 +124,23 @@ async function queryMedicareAPI(npi) {
         `${record['First Name'] || ''} ${record['Last Name'] || ''}`.trim() : 
         record['Org Name'],
       quality_measure: {
-        overall_score: parseFloat(record['Quality Score'] || 0)
+        overall_score: record['Quality Score'] != null && record['Quality Score'] !== '' ? parseFloat(record['Quality Score']) : null
       },
       safety_measure: {
-        score: parseFloat(record['Safety Score'] || 0)
+        score: record['Safety Score'] != null && record['Safety Score'] !== '' ? parseFloat(record['Safety Score']) : null
       },
       timeliness_measure: {
-        score: parseFloat(record['Timeliness Score'] || 0)
+        score: record['Timeliness Score'] != null && record['Timeliness Score'] !== '' ? parseFloat(record['Timeliness Score']) : null
       },
       cost_measure: {
-        score: parseFloat(record['Cost Score'] || 0)
+        score: record['Cost Score'] != null && record['Cost Score'] !== '' ? parseFloat(record['Cost Score']) : null
       },
-      readmission_rate: parseFloat(record['Readmission Rate'] || 0),
-      mortality_rate: parseFloat(record['Mortality Rate'] || 0),
-      patient_satisfaction: parseFloat(record['Patient Satisfaction'] || 0),
-      medical_school: record['Medical School'],
-      board_certification: record['Board Certification'],
-      years_in_practice: parseInt(record['Years in Practice'] || 0),
+      readmission_rate: record['Readmission Rate'] != null && record['Readmission Rate'] !== '' ? parseFloat(record['Readmission Rate']) : null,
+      mortality_rate: record['Mortality Rate'] != null && record['Mortality Rate'] !== '' ? parseFloat(record['Mortality Rate']) : null,
+      patient_satisfaction: record['Patient Satisfaction'] != null && record['Patient Satisfaction'] !== '' ? parseFloat(record['Patient Satisfaction']) : null,
+      medical_school: record['Medical School'] || null,
+      board_certification: record['Board Certification'] || null,
+      years_in_practice: record['Years in Practice'] != null && record['Years in Practice'] !== '' ? parseInt(record['Years in Practice']) : null,
       hospital_affiliations: record['Hospital Affiliations']?.split(';') || []
     };
   } catch (error) {

@@ -80,6 +80,12 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **onImportBatchFailed audit logging**: Cleaned dead code, now creates AuditEvent records for failed batches
 - **Campaigns delete error handling**: handleDelete wrapped in try/catch with toast feedback
 - **Dead code cleanup**: Removed unused _isUploading, _fileInputRef (NewImportDialog), _imported (LiveProgressCard)
+- **runDataQualityScan import guard**: Auto-delete of providers with no location/taxonomy is now gated on import activity — skips deletion if any import completed within 2h or is currently in progress
+- **sendCampaignMessages throttle**: 500ms delay between SendEmail calls to prevent rate limit/spam filter issues
+- **verifyProviderEmail auth**: Added admin role check — was previously accessible by any logged-in user
+- **enrichProviderMedicareData null scores**: All numeric fields (quality_score, safety_score, etc.) now return null instead of 0 when data is missing — 0 is a valid score
+- **InteractiveProviderMap dynamic center**: Map center is now calculated from provider data bounds instead of hardcoded PA coordinates
+- **Locations pagination**: Added proper page-based navigation (50 per page) with Previous/Next buttons, replacing the old hidden-100 limit
 
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports

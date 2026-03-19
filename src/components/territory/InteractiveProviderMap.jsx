@@ -8,6 +8,14 @@ import { getProviderCoords } from './zipCoords';
 import ProviderMapPopup from './ProviderMapPopup';
 import 'react-leaflet';
 
+function RecenterMap({ center }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (center) map.setView(center, map.getZoom(), { animate: true });
+  }, [center[0], center[1]]);
+  return null;
+}
+
 // Volume-based Heatmap overlay
 function VolumeDensityLayer({ points }) {
   const clusters = useMemo(() => {
@@ -155,7 +163,15 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
     return pts;
   }, [filteredProviders]);
 
-  const center = [40.27, -77.19]; // PA center
+  const center = useMemo(() => {
+    if (mapPoints.length === 0) return [40.27, -77.19];
+    const lats = mapPoints.map(p => p.lat);
+    const lngs = mapPoints.map(p => p.lng);
+    return [
+      (Math.min(...lats) + Math.max(...lats)) / 2,
+      (Math.min(...lngs) + Math.max(...lngs)) / 2,
+    ];
+  }, [mapPoints]);
   const defaultZoom = 7;
 
   // Map stats
@@ -218,6 +234,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               scrollWheelZoom={true}
             >
               <TileLayer url={tileUrl} attribution={tileAttr} />
+              <RecenterMap center={center} />
               <ResetViewButton center={center} zoom={defaultZoom} />
 
               {showHeatmap && <HeatmapLayer points={mapPoints} />}

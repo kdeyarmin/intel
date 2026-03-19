@@ -15,11 +15,14 @@ import SavedFilterBar from '../components/filters/SavedFilterBar';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import PageHeader from '../components/shared/PageHeader';
 
+const PAGE_SIZE = 50;
+
 export default function Locations() {
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [primaryFilter, setPrimaryFilter] = useState('all');
+  const [page, setPage] = useState(0);
 
   const { data: savedFilters = [] } = useQuery({
     queryKey: ['savedFilters', 'Locations'],
@@ -42,6 +45,7 @@ export default function Locations() {
     setStateFilter(filters.stateFilter || 'all');
     setTypeFilter(filters.typeFilter || 'all');
     setPrimaryFilter(filters.primaryFilter || 'all');
+    setPage(0);
   };
 
   const currentFilters = { search, stateFilter, typeFilter, primaryFilter };
@@ -78,11 +82,15 @@ export default function Locations() {
     });
   }, [locations, search, stateFilter, typeFilter, primaryFilter]);
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedLocations = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   const resetFilters = () => {
     setSearch('');
     setStateFilter('all');
     setTypeFilter('all');
     setPrimaryFilter('all');
+    setPage(0);
   };
 
   return (
@@ -122,12 +130,12 @@ export default function Locations() {
           />
           <SearchFilterBar
             searchTerm={search}
-            onSearchChange={setSearch}
+            onSearchChange={v => { setSearch(v); setPage(0); }}
             onReset={resetFilters}
             filters={[
-              { key: 'state', type: 'select', label: 'State', value: stateFilter, onChange: setStateFilter, options: states },
-              { key: 'type', type: 'select', label: 'Type', value: typeFilter, onChange: setTypeFilter, options: [{ value: 'Practice', label: 'Practice' }, { value: 'Mailing', label: 'Mailing' }] },
-              { key: 'primary', type: 'select', label: 'Primary', value: primaryFilter, onChange: setPrimaryFilter, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
+              { key: 'state', type: 'select', label: 'State', value: stateFilter, onChange: v => { setStateFilter(v); setPage(0); }, options: states },
+              { key: 'type', type: 'select', label: 'Type', value: typeFilter, onChange: v => { setTypeFilter(v); setPage(0); }, options: [{ value: 'Practice', label: 'Practice' }, { value: 'Mailing', label: 'Mailing' }] },
+              { key: 'primary', type: 'select', label: 'Primary', value: primaryFilter, onChange: v => { setPrimaryFilter(v); setPage(0); }, options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
             ]}
           />
         </CardContent>
@@ -166,7 +174,7 @@ export default function Locations() {
                 ) : filtered.length === 0 ? (
                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-slate-500">No locations found</TableCell></TableRow>
                 ) : (
-                  filtered.slice(0, 100).map(loc => (
+                  paginatedLocations.map(loc => (
                     <TableRow key={loc.id}>
                       <TableCell className="font-mono text-sm text-slate-400">{loc.npi}</TableCell>
                        <TableCell className="text-slate-300">{loc.address_1 || '-'}</TableCell>
@@ -187,7 +195,17 @@ export default function Locations() {
               </TableBody>
             </Table>
           </div>
-          {filtered.length > 100 && <p className="text-xs text-slate-500 mt-3 text-center">Showing first 100 of {filtered.length}</p>}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-slate-500">
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

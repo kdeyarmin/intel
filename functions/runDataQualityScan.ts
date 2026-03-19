@@ -402,12 +402,14 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
   const scanBatchId = scan.id;
 
   // Fetch data
-  const [providers, locations, taxonomies, batches] = await Promise.all([
+  const [providers, locations, taxonomies, completedBatches, activeBatches] = await Promise.all([
     base44.asServiceRole.entities.Provider.list('-created_date', 200),
     base44.asServiceRole.entities.ProviderLocation.list('-created_date', 200),
     base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', 200),
     base44.asServiceRole.entities.ImportBatch.filter({ status: 'completed' }, '-created_date', 100),
+    base44.asServiceRole.entities.ImportBatch.list('-updated_date', 50),
   ]);
+  const batches = completedBatches;
 
   const locNPIs = new Set(locations.map(l => l.npi));
   const taxNPIs = new Set(taxonomies.map(t => t.npi));
@@ -482,7 +484,13 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     }
   }
 
-  // Aggregate checks — auto-delete providers with no location
+  const recentActiveImport = batches.find(b => {
+    const completedAt = new Date(b.completed_at || b.updated_date || b.created_date).getTime();
+    return (Date.now() - completedAt) < 2 * 60 * 60 * 1000;
+  });
+  const importInProgress = activeBatches.some(b => b.status === 'processing' || b.status === 'validating' || b.status === 'paused');
+  const safeToAutoDelete = !recentActiveImport && !importInProgress;
+
   const noLocProviders = providers.filter(p => !locNPIs.has(p.npi));
   ruleResults.push({
     rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
@@ -490,18 +498,27 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     pct: providers.length > 0 ? Math.round(((providers.length - noLocProviders.length) / providers.length) * 100) : 100,
   });
   if (noLocProviders.length > 0) {
-    for (const p of noLocProviders) {
-      try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-loc provider ${p.npi}: ${e.message}`); }
+    if (safeToAutoDelete) {
+      for (const p of noLocProviders) {
+        try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-loc provider ${p.npi}: ${e.message}`); }
+      }
+      alertsToCreate.push({
+        rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
+        severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
+        summary: `Auto-deleted ${noLocProviders.length} providers with no associated location record`,
+        affected_count: noLocProviders.length,
+      });
+    } else {
+      console.log(`[DQ] Skipping auto-delete of ${noLocProviders.length} no-location providers: import activity detected`);
+      alertsToCreate.push({
+        rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
+        severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
+        summary: `Found ${noLocProviders.length} providers with no location (auto-delete skipped: recent import activity)`,
+        affected_count: noLocProviders.length,
+      });
     }
-    alertsToCreate.push({
-      rule_id: 'no_location', rule_name: 'Provider Has No Location', category: 'completeness',
-      severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
-      summary: `Auto-deleted ${noLocProviders.length} providers with no associated location record`,
-      affected_count: noLocProviders.length,
-    });
   }
 
-  // Auto-delete providers with no taxonomy
   const noTaxProviders = providers.filter(p => !taxNPIs.has(p.npi));
   ruleResults.push({
     rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
@@ -509,15 +526,25 @@ Respond helpfully. Reference specific alert counts, categories, and scan scores.
     pct: providers.length > 0 ? Math.round(((providers.length - noTaxProviders.length) / providers.length) * 100) : 100,
   });
   if (noTaxProviders.length > 0) {
-    for (const p of noTaxProviders) {
-      try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-tax provider ${p.npi}: ${e.message}`); }
+    if (safeToAutoDelete) {
+      for (const p of noTaxProviders) {
+        try { await base44.asServiceRole.entities.Provider.delete(p.id); autoDeletedCount++; } catch (e) { console.warn(`[DQ] Auto-delete no-tax provider ${p.npi}: ${e.message}`); }
+      }
+      alertsToCreate.push({
+        rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
+        severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
+        summary: `Auto-deleted ${noTaxProviders.length} providers with no associated taxonomy record`,
+        affected_count: noTaxProviders.length,
+      });
+    } else {
+      console.log(`[DQ] Skipping auto-delete of ${noTaxProviders.length} no-taxonomy providers: import activity detected`);
+      alertsToCreate.push({
+        rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
+        severity: 'high', entity_type: 'Provider', status: 'open', scan_batch_id: scanBatchId,
+        summary: `Found ${noTaxProviders.length} providers with no taxonomy (auto-delete skipped: recent import activity)`,
+        affected_count: noTaxProviders.length,
+      });
     }
-    alertsToCreate.push({
-      rule_id: 'no_taxonomy', rule_name: 'Provider Has No Taxonomy', category: 'completeness',
-      severity: 'high', entity_type: 'Provider', status: 'auto_fixed', scan_batch_id: scanBatchId,
-      summary: `Auto-deleted ${noTaxProviders.length} providers with no associated taxonomy record`,
-      affected_count: noTaxProviders.length,
-    });
   }
 
   // Deactivated with locations

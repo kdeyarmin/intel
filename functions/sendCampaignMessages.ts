@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
               });
 
               results.messages_sent++;
+              await new Promise(r => setTimeout(r, 500));
             } catch (emailError) {
               results.errors.push({
                 npi: provider.npi,
