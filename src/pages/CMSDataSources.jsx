@@ -23,7 +23,6 @@ const IMPORT_TYPES = [
   "nppes_registry",
   "medicare_hha_stats",
   "medicare_ma_inpatient",
-  "medicare_part_d_stats",
   "medicare_snf_stats"
 ];
 

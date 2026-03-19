@@ -58,7 +58,6 @@ import Campaigns from './pages/Campaigns';
 import CustomReports from './pages/CustomReports';
 import Dashboard from './pages/Dashboard';
 import DataCenter from './pages/DataCenter';
-import DataHealthDashboard from './pages/DataHealthDashboard';
 import DataQuality from './pages/DataQuality';
 import EmailSearchBot from './pages/EmailSearchBot';
 import EnrichmentHub from './pages/EnrichmentHub';
@@ -103,7 +102,6 @@ export const PAGES = {
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
     "DataCenter": DataCenter,
-    "DataHealthDashboard": DataHealthDashboard,
     "DataQuality": DataQuality,
     "EmailSearchBot": EmailSearchBot,
     "EnrichmentHub": EnrichmentHub,

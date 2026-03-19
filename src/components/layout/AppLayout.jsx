@@ -50,7 +50,6 @@ const NAV_SECTIONS = [
   {
     label: 'Admin',
     items: [
-      { name: 'Data Health', icon: Activity, page: 'DataHealthDashboard', roles: ['admin'] },
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
       { name: 'CMS Data Sources', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
       { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
