@@ -105,10 +105,9 @@ export default function NPPESCrawler() {
     const metrics = status.granular_metrics;
     for (const st of (status.processing_states || [])) {
       const m = metrics[st];
-      if (m && m.completed_items > 0) {
-        // Each state has ~100 zip prefix items
-        const totalItems = m.completed_items + (m.pending_items || 0);
-        const stateProgress = totalItems > 0 ? m.completed_items / totalItems : 0;
+      if (m) {
+        const totalItems = m.total_queue_items || (m.completed_items + (m.pending_items || 0));
+        const stateProgress = totalItems > 0 ? (m.completed_items || 0) / totalItems : 0;
         progressSum += stateProgress;
       }
     }

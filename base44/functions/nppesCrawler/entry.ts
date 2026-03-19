@@ -18,6 +18,8 @@ type CrawlerPayload = {
     item_ids?: string[];
     entity_type?: string;
     taxonomy_description?: string;
+    city?: string;
+    postal_code?: string;
 };
 
 type TransformedProvider = {
@@ -56,6 +58,27 @@ type WorkerStats = {
 };
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function normalizePostalCode(value) {
+    return String(value || '').replace(/[^0-9]/g, '').slice(0, 5);
+}
+
+
+async function incrementBatchQueueSize(base44, batchId, additionalItems) {
+    if (!additionalItems || additionalItems <= 0) return;
+    try {
+        const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.get(batchId));
+        const retry_params = batch.retry_params || {};
+        await withRetry(() => base44.asServiceRole.entities.ImportBatch.update(batchId, {
+            retry_params: {
+                ...retry_params,
+                total_queue_items: (retry_params.total_queue_items || 0) + additionalItems,
+            }
+        }));
+    } catch (e) {
+        console.warn(`[Crawler] Failed to increment queue size for ${batchId}: ${e.message}`);
+    }
+}
 
 async function withRetry(fn, maxRetries = 5) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -432,7 +455,8 @@ Deno.serve(async (req) => {
         let payload: CrawlerPayload = {};
         try { payload = await req.json(); } catch(e) { console.log('[Crawler] No JSON payload, using defaults'); }
         
-        const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false, entity_type, taxonomy_description } = payload;
+        const { action = 'process_queue', states = [], region, concurrency = 1, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code } = payload;
+        const isService = !!(user?.email && user.email.includes('service+'));
 
     // --- UI COMPATIBILITY ACTIONS ---
     if (action === 'status' || action === 'batch_status') {
@@ -509,7 +533,8 @@ Deno.serve(async (req) => {
                     rate_limit_hits: b.rate_limit_count || 0,
                     estimated_remaining_ms,
                     pending_items,
-                    completed_items: rp.completed_items || 0
+                    completed_items: rp.completed_items || 0,
+                    total_queue_items: rp.total_queue_items || (pending_items + (rp.completed_items || 0)) || 100
                 };
             }
         }
@@ -567,7 +592,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_start') {
-        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         // Load configuration and clear stop flag
         const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
@@ -634,24 +659,31 @@ Deno.serve(async (req) => {
             const isInitial = processingCount < maxConcurrent;
             const batchStatus = isInitial ? 'processing' : 'paused';
             
+            const normalizedPostalCode = normalizePostalCode(postal_code);
+            const queuePrefixes = normalizedPostalCode
+                ? [normalizedPostalCode]
+                : Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
+
+            const retryParams: Record<string, any> = {
+                total_queue_items: queuePrefixes.length,
+            };
+            if (entity_type) retryParams.entity_type = entity_type;
+            if (taxonomy_description) retryParams.taxonomy_description = taxonomy_description;
+            if (city) retryParams.city = city;
+            if (normalizedPostalCode) retryParams.postal_code = normalizedPostalCode;
+
             const batchCreateData: any = {
                 import_type: 'nppes_registry',
                 file_name: `crawler_${st}_all_${Date.now()}`,
                 status: batchStatus,
-                dry_run: !!dry_run
+                dry_run: !!dry_run,
+                retry_params: retryParams,
             };
-            // Store filter options in retry_params so the worker can read them
-            if (entity_type || taxonomy_description) {
-                batchCreateData.retry_params = {
-                    entity_type: entity_type || null,
-                    taxonomy_description: taxonomy_description || null
-                };
-            }
             const batch = await withRetry(() => base44.asServiceRole.entities.ImportBatch.create(batchCreateData));
             const items = [];
             const itemStatus = isInitial ? 'pending' : 'paused';
-            for (let i = 0; i <= 99; i++) {
-                items.push({ batch_id: batch.id, state: st, zip_prefix: String(i).padStart(2, '0'), status: itemStatus });
+            for (const prefix of queuePrefixes) {
+                items.push({ batch_id: batch.id, state: st, zip_prefix: prefix, status: itemStatus });
             }
             await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(items));
             queued++;
@@ -683,7 +715,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_stop') {
-        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         // Set a stop flag in config so self-reinvoking workers know to stop
         try {
@@ -724,7 +756,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_pause') {
-        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
         // Pause both pending AND processing items
         const activeItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: { $in: ['pending', 'processing'] } }, undefined, 5000));
         let paused = 0;
@@ -744,7 +776,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'batch_resume') {
-        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
         const pausedItems = await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.filter({ status: 'paused' }, undefined, 1000));
         for (let i = 0; i < pausedItems.length; i += 50) {
            const chunk = pausedItems.slice(i, i+50);
@@ -772,7 +804,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'retry_errors') {
-        if (!user || user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        if (user && user.role !== 'admin' && !isService) return Response.json({ error: 'Forbidden' }, { status: 403 });
         const { item_ids } = payload;
         if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) return Response.json({ error: 'No item IDs provided' }, { status: 400 });
         
@@ -959,14 +991,21 @@ Deno.serve(async (req) => {
                 const params = new URLSearchParams();
                 params.set('limit', String(apiBatchSize));
                 params.set('state', task.state);
-                params.set('postal_code', `${task.zip_prefix}*`);
-                // Apply entity type filter from batch config
+                // Apply batch-level filters from batch config
                 const batchRetryParams = taskBatch.retry_params || {};
+                if (batchRetryParams.city) {
+                    params.set('city', batchRetryParams.city);
+                }
                 if (batchRetryParams.entity_type) {
                     params.set('enumeration_type', batchRetryParams.entity_type);
                 }
                 if (batchRetryParams.taxonomy_description) {
                     params.set('taxonomy_description', batchRetryParams.taxonomy_description);
+                }
+                if (batchRetryParams.postal_code) {
+                    params.set('postal_code', task.zip_prefix.length >= 5 ? task.zip_prefix : `${task.zip_prefix}*`);
+                } else {
+                    params.set('postal_code', `${task.zip_prefix}*`);
                 }
                 
                 let stats: WorkerStats = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
@@ -1032,6 +1071,7 @@ Deno.serve(async (req) => {
                         subTasks.push({ batch_id: task.batch_id, state: task.state, zip_prefix: `${task.zip_prefix}${i}`, status: 'pending' });
                     }
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.bulkCreate(subTasks));
+                    await incrementBatchQueueSize(base44, task.batch_id, subTasks.length);
                     stats.time_ms = Date.now() - taskStartTime;
                     await updateBatchStats(base44, task.batch_id, stats);
                     await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: 'completed' }));
