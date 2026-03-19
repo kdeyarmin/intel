@@ -18,7 +18,7 @@ const _statusColors = {
 export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
   const [sortField, setSortField] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
-  const [_editingNotes, setEditingNotes] = useState(null);
+  const [editingNotes, setEditingNotes] = useState(null);
 
   const handleSort = (field) => {
     if (sortField === field) {

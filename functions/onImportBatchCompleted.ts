@@ -21,8 +21,17 @@ Deno.serve(async (req) => {
         const isNowCompleted = batchData?.status === 'completed';
         const wasCompleted = oldBatchData?.status === 'completed';
 
-        if (!isNowCompleted || (isNowCompleted && wasCompleted && !payload_too_large)) {
-            return Response.json({ success: true, message: 'No relevant status transition' });
+        if (!isNowCompleted) {
+            return Response.json({ success: true, message: 'Not a completion event' });
+        }
+        if (wasCompleted && !payload_too_large) {
+            return Response.json({ success: true, message: 'Already completed, not a new transition' });
+        }
+        if (payload_too_large && !oldBatchData) {
+            const completedAt = batchData.completed_at ? new Date(batchData.completed_at).getTime() : 0;
+            if (completedAt > 0 && (Date.now() - completedAt) > 5 * 60 * 1000) {
+                return Response.json({ success: true, message: 'Stale completion event (payload_too_large), skipping' });
+            }
         }
 
         const completedImportType = batchData.import_type;
@@ -48,6 +57,15 @@ Deno.serve(async (req) => {
         const results = [];
 
         for (const schedule of dependentSchedules) {
+            if (schedule.import_type === completedImportType) {
+                console.warn(`[DependencyManager] Circular dependency detected: ${schedule.import_type} depends on itself. Skipping.`);
+                continue;
+            }
+            if (schedule.depends_on_import_type === schedule.import_type) {
+                console.warn(`[DependencyManager] Self-referencing schedule: ${schedule.label}. Skipping.`);
+                continue;
+            }
+
             console.log(`[DependencyManager] Triggering dependent schedule: ${schedule.label} (${schedule.import_type})`);
 
             let runStatus = 'success';

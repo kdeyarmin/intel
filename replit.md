@@ -87,6 +87,15 @@ Base44 serverless functions (Deno-based) — 66 functions total, covering import
 - **InteractiveProviderMap dynamic center**: Map center is now calculated from provider data bounds instead of hardcoded PA coordinates
 - **Locations pagination**: Added proper page-based navigation (50 per page) with Previous/Next buttons, replacing the old hidden-100 limit
 
+- **calculateProviderScore null safety**: primaryTaxonomy crash fix — `reasons.push` now guards with `&& primaryTaxonomy` before accessing `.taxonomy_description`; primaryLocation also guarded
+- **calculateProviderScore configurable state**: Geographic priority no longer hardcoded to PA — reads `config.target_state` from ScoringRule, falls back to 'PA'
+- **onImportBatchCompleted re-trigger guard**: payload_too_large events now check `completed_at` age (>5min = stale, skip) — prevents duplicate triggers on repeated webhook calls
+- **onImportBatchCompleted circular dependency guard**: Skips schedules where `import_type === completedImportType` (self-triggering) or `depends_on_import_type === import_type` (self-referencing)
+- **BatchActionButtons try/catch**: handlePause, handleCancel, handleSkip all wrapped in try/catch/finally — prevents isActing from staying true on failure (button freeze bug)
+- **predictImportFormat SDK version**: Updated from @base44/sdk@0.8.20 to @0.8.21 for consistency with other functions
+- **AdvancedAnalytics theme fix**: TabsList changed from bg-slate-100 to bg-slate-800/50 to match app's dark theme
+- **LeadListTable variable rename**: `_editingNotes` renamed to `editingNotes` — removing misleading underscore prefix on used state variable
+
 ### Key Function Categories
 - **Import orchestration**: triggerImport, autoImportCMSData, runScheduledImports, cancelStalledImports
 - **Medicare ZIP importers**: importMedicareHHA, importMedicareMAInpatient, importMedicareSNF

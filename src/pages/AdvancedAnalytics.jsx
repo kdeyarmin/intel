@@ -84,7 +84,7 @@ export default function AdvancedAnalytics() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-100 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
+        <TabsList className="bg-slate-800/50 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Custom </span>Dashboards
           </TabsTrigger>

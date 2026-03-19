@@ -21,12 +21,17 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handlePause = async () => {
     setIsActing(true);
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'paused',
-      paused_at: new Date().toISOString(),
-    });
-    setIsActing(false);
-    onAction?.();
+    try {
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'paused',
+        paused_at: new Date().toISOString(),
+      });
+      onAction?.();
+    } catch (err) {
+      console.error('Pause failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   const handleResume = async () => {
@@ -59,33 +64,43 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handleCancel = async () => {
     setIsActing(true);
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      cancel_reason: cancelReason || 'Manually cancelled by user',
-    });
-    setIsActing(false);
-    setCancelDialogOpen(false);
-    setCancelReason('');
-    onAction?.();
+    try {
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: cancelReason || 'Manually cancelled by user',
+      });
+      setCancelDialogOpen(false);
+      setCancelReason('');
+      onAction?.();
+    } catch (err) {
+      console.error('Cancel failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   const handleSkip = async () => {
     setIsActing(true);
-    const existingTags = batch.tags || [];
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      tags: [...new Set([...existingTags, 'skipped'])],
-      error_samples: [
-        ...(batch.error_samples || []),
-        { message: `Marked as skipped: ${skipReason || 'Minor issues bypassed by user'}` },
-      ],
-    });
-    setIsActing(false);
-    setSkipDialogOpen(false);
-    setSkipReason('');
-    onAction?.();
+    try {
+      const existingTags = batch.tags || [];
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        tags: [...new Set([...existingTags, 'skipped'])],
+        error_samples: [
+          ...(batch.error_samples || []),
+          { message: `Marked as skipped: ${skipReason || 'Minor issues bypassed by user'}` },
+        ],
+      });
+      setSkipDialogOpen(false);
+      setSkipReason('');
+      onAction?.();
+    } catch (err) {
+      console.error('Skip failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   if (isActing) {

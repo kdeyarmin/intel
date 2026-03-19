@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const taxonomyDesc = (primaryTaxonomy?.taxonomy_description || '').toLowerCase();
     const specialtyMatch = targetSpecialties.some(s => taxonomyDesc.includes(s));
     scores.specialty_match = specialtyMatch ? 100 : 40;
-    if (specialtyMatch) {
+    if (specialtyMatch && primaryTaxonomy) {
       reasons.push(`Primary specialty (${primaryTaxonomy.taxonomy_description}) aligns with target profile`);
     }
 
@@ -95,10 +95,11 @@ Deno.serve(async (req) => {
     scores.service_intensity = serviceIntensityScore;
 
     // 5. Geographic Priority (10%)
-    const isPennsylvania = primaryLocation?.state === 'PA';
-    scores.geographic_priority = isPennsylvania ? 100 : 20;
-    if (isPennsylvania) {
-      reasons.push(`Located in Pennsylvania (${primaryLocation.city})`);
+    const targetState = (scoringRules.find(r => r.category === 'geographic_priority')?.config?.target_state || 'PA').toUpperCase().trim();
+    const isTargetState = primaryLocation?.state?.toUpperCase().trim() === targetState;
+    scores.geographic_priority = isTargetState ? 100 : (primaryLocation ? 20 : 0);
+    if (isTargetState && primaryLocation) {
+      reasons.push(`Located in ${primaryLocation.state} (${primaryLocation.city || 'unknown city'})`);
     }
 
     // 6. Practice Type (10%)
