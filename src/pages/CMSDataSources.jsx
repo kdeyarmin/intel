@@ -170,7 +170,11 @@ export default function CMSDataSources() {
                     {config.data_year || '-'}
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm text-slate-300 capitalize">{config.schedule_frequency} at {config.schedule_time}</div>
+                    <div className="text-sm text-slate-300 capitalize">
+                      {config.schedule_frequency === 'on_completion' 
+                        ? `After ${config.depends_on_import_type}` 
+                        : `${config.schedule_frequency} at ${config.schedule_time}`}
+                    </div>
                     <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-500/20 text-cyan-400 mt-1' : 'mt-1'}>
                       {config.is_active ? 'Active' : 'Inactive'}
                     </Badge>
