@@ -118,8 +118,9 @@ export default function AIDataEnrichmentPanel({
       : provider?.organization_name || '';
     const specialty = taxonomies.map(t => t.taxonomy_description).filter(Boolean).join(', ');
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare data enrichment specialist. Analyze this ${entityType} record and:
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare data enrichment specialist. Analyze this ${entityType} record and:
 1. Find missing data fields using NPI registry and public healthcare directories
 2. Identify potential corrections to existing data (typos, outdated info, format issues)
 3. Suggest related entities or connections
@@ -141,87 +142,96 @@ CURRENT DATA:
 IDENTIFIED GAPS: ${gaps.map(g => g.label).join(', ') || 'None'}
 
 Return suggestions for filling missing data AND potential corrections. Be thorough but only return data you have reasonable confidence in.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          suggestions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                id: { type: "string" },
-                entity: { type: "string", enum: ["provider", "location", "taxonomy"] },
-                field: { type: "string" },
-                field_label: { type: "string" },
-                current_value: { type: ["string", "null"] },
-                suggested_value: { type: "string" },
-                confidence: { type: "string", enum: ["high", "medium", "low"] },
-                is_correction: { type: "boolean" },
-                reason: { type: "string" },
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            suggestions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  entity: { type: "string", enum: ["provider", "location", "taxonomy"] },
+                  field: { type: "string" },
+                  field_label: { type: "string" },
+                  current_value: { type: ["string", "null"] },
+                  suggested_value: { type: "string" },
+                  confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  is_correction: { type: "boolean" },
+                  reason: { type: "string" },
+                }
               }
-            }
-          },
-          summary: { type: "string" },
-          data_completeness_score: { type: "number" },
+            },
+            summary: { type: "string" },
+            data_completeness_score: { type: "number" },
+          }
         }
-      }
-    });
+      });
 
-    const enriched = (res.suggestions || []).map((s, i) => ({
-      ...s,
-      id: s.id || `sug_${i}`,
-    }));
+      const enriched = (res.suggestions || []).map((s, i) => ({
+        ...s,
+        id: s.id || `sug_${i}`,
+      }));
 
-    setSuggestions({
-      items: enriched,
-      summary: res.summary,
-      completeness: res.data_completeness_score,
-    });
-    setLoading(false);
+      setSuggestions({
+        items: enriched,
+        summary: res.summary,
+        completeness: res.data_completeness_score,
+      });
+    } catch (err) {
+      toast.error('Enrichment analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccept = async (sug) => {
     setAcceptingId(sug.id);
 
-    if (sug.entity === 'provider' && provider?.id) {
-      const update = {};
-      if (['credential', 'gender', 'organization_name', 'email'].includes(sug.field)) {
-        update[sug.field] = sug.suggested_value;
+    try {
+      if (sug.entity === 'provider' && provider?.id) {
+        const update = {};
+        if (['credential', 'gender', 'organization_name', 'email'].includes(sug.field)) {
+          update[sug.field] = sug.suggested_value;
+        }
+        if (sug.field === 'email') {
+          update.email_confidence = sug.confidence;
+          update.email_source = 'AI enrichment';
+        }
+        if (Object.keys(update).length > 0) {
+          await base44.entities.Provider.update(provider.id, update);
+        }
+      } else if (sug.entity === 'location' && location?.id) {
+        const update = {};
+        if (['address_1', 'address_2', 'city', 'state', 'zip', 'phone', 'fax'].includes(sug.field)) {
+          update[sug.field] = sug.suggested_value;
+        }
+        if (Object.keys(update).length > 0) {
+          await base44.entities.ProviderLocation.update(location.id, update);
+        }
+      } else if (sug.entity === 'taxonomy') {
+        if (taxonomies.length > 0 && taxonomies[0].id) {
+          await base44.entities.ProviderTaxonomy.update(taxonomies[0].id, {
+            taxonomy_description: sug.suggested_value,
+          });
+        } else if (provider?.npi) {
+          await base44.entities.ProviderTaxonomy.create({
+            npi: provider.npi,
+            taxonomy_description: sug.suggested_value,
+            primary_flag: true,
+          });
+        }
       }
-      if (sug.field === 'email') {
-        update.email_confidence = sug.confidence;
-        update.email_source = 'AI enrichment';
-      }
-      if (Object.keys(update).length > 0) {
-        await base44.entities.Provider.update(provider.id, update);
-      }
-    } else if (sug.entity === 'location' && location?.id) {
-      const update = {};
-      if (['address_1', 'address_2', 'city', 'state', 'zip', 'phone', 'fax'].includes(sug.field)) {
-        update[sug.field] = sug.suggested_value;
-      }
-      if (Object.keys(update).length > 0) {
-        await base44.entities.ProviderLocation.update(location.id, update);
-      }
-    } else if (sug.entity === 'taxonomy') {
-      if (taxonomies.length > 0 && taxonomies[0].id) {
-        await base44.entities.ProviderTaxonomy.update(taxonomies[0].id, {
-          taxonomy_description: sug.suggested_value,
-        });
-      } else if (provider?.npi) {
-        await base44.entities.ProviderTaxonomy.create({
-          npi: provider.npi,
-          taxonomy_description: sug.suggested_value,
-          primary_flag: true,
-        });
-      }
-    }
 
-    setAccepted(prev => new Set([...prev, sug.id]));
-    setAcceptingId(null);
-    toast.success(`Updated ${sug.field_label}`);
-    if (onDataUpdated) onDataUpdated();
+      setAccepted(prev => new Set([...prev, sug.id]));
+      toast.success(`Updated ${sug.field_label}`);
+      if (onDataUpdated) onDataUpdated();
+    } catch (err) {
+      toast.error(`Failed to update ${sug.field_label}`);
+    } finally {
+      setAcceptingId(null);
+    }
   };
 
   const handleReject = (sug) => {

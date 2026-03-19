@@ -28,7 +28,7 @@ function DatasetRow({ label, lastUpdated, count }) {
   );
 }
 
-export default function TimelinessPanel({ datasets }) {
+export default function TimelinessPanel({ datasets = [] }) {
   return (
     <div>
       <h4 className="text-xs font-semibold text-slate-300 mb-1">Data Timeliness</h4>

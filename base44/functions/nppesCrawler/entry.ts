@@ -881,7 +881,7 @@ Deno.serve(async (req) => {
             } catch (e) {
                 consecutiveErrors++;
                 const newRetryCount = (task.retry_count || 0) + 1;
-                const newStatus = newRetryCount >= 3 ? 'failed' : 'pending';
+                const newStatus = newRetryCount >= maxRetries ? 'failed' : 'pending';
                 await withRetry(() => base44.asServiceRole.entities.NPPESQueueItem.update(task.id, { status: newStatus, error_message: e.message, retry_count: newRetryCount }));
                 // If we're failing repeatedly, break the loop early to let the worker die/backoff
                 if (consecutiveErrors >= 3) {

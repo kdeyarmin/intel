@@ -57,10 +57,10 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
   }, [providers, utilization, referrals, npiState]);
 
   const filtered = useMemo(() => {
-    let r = rows;
+    let r = [...rows];
     if (search) {
       const q = search.toLowerCase();
-      r = r.filter(x => x.name.toLowerCase().includes(q) || x.npi.includes(q));
+      r = r.filter(x => (x.name || '').toLowerCase().includes(q) || (x.npi || '').includes(q));
     }
     if (stateFilter !== 'all') r = r.filter(x => x.state === stateFilter);
     r.sort((a, b) => sortDir === 'desc' ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]);

@@ -31,13 +31,17 @@ export default function ProjectManagement() {
   });
 
   const handleApplyAll = async (assignments) => {
-    for (const a of assignments) {
-      if (a.taskId && a.assigneeEmail) {
-        await base44.entities.CampaignTask.update(a.taskId, { assigned_to: a.assigneeEmail });
+    try {
+      for (const a of assignments) {
+        if (a.taskId && a.assigneeEmail) {
+          await base44.entities.CampaignTask.update(a.taskId, { assigned_to: a.assigneeEmail });
+        }
       }
+      queryClient.invalidateQueries({ queryKey: ['campaignTasks'] });
+      toast.success('Applied all AI task assignments');
+    } catch (error) {
+      toast.error(`Failed to apply assignments: ${error.message}`);
     }
-    queryClient.invalidateQueries({ queryKey: ['campaignTasks'] });
-    toast.success('Applied all AI task assignments');
   };
 
   const getPriorityColor = (priority) => {

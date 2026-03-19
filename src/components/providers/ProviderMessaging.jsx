@@ -191,7 +191,7 @@ Do NOT include subject line, just the body.`,
                   <p className="text-xs text-slate-500">No scheduled events</p>
                 </div>
               )}
-              {events.sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => (
+              {[...events].sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => (
                 <div key={e.id} className="flex items-center gap-2 bg-slate-800/40 rounded-lg p-2 border border-slate-700/30">
                   <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <div className="flex-1 min-w-0">

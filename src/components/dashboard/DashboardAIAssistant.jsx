@@ -141,7 +141,7 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setMessages([]); setHasAutoRun(false); }}
+                onClick={() => { setMessages([]); }}
                 className="text-[11px] h-7 text-slate-500 hover:text-slate-300"
               >
                 <RefreshCw className="w-3 h-3 mr-1" />

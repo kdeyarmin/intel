@@ -32,14 +32,13 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
   // Currently processing batches
   const processingBatches = nppesImports.filter(b => b.status === 'processing' || b.status === 'validating');
 
-  // States info from crawlStatus
-  const stateDetails = crawlStatus?.state_details || {};
-  const processingStates = Object.entries(stateDetails).filter(([_, v]) => v === 'processing');
+  // States info from crawlStatus - use processing_states array from the status endpoint
+  const processingStatesCodes = crawlStatus?.processing_states || [];
 
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
   const activeItems = processingBatches.length > 0 ? processingBatches : [];
-  const isActive = crawlStatus?.auto_chain_active || processingBatches.length > 0;
+  const isActive = crawlStatus?.auto_chain_active || processingBatches.length > 0 || processingStatesCodes.length > 0;
 
   return (
     <Card>
@@ -58,7 +57,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
         </div>
       </CardHeader>
       <CardContent>
-        {!isActive && activeItems.length === 0 && processingStates.length === 0 ? (
+        {!isActive && activeItems.length === 0 && processingStatesCodes.length === 0 ? (
           <div className="text-center py-10">
             <MapPin className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-sm text-slate-400">No states are being processed right now</p>
@@ -96,7 +95,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
               );
             })}
 
-            {processingStates.filter(([st]) => !activeItems.some(b => getStateFromFileName(b.file_name) === st)).map(([st]) => (
+            {processingStatesCodes.filter(st => !activeItems.some(b => getStateFromFileName(b.file_name) === st)).map(st => (
               <div key={st} className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-lg border border-blue-50">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                 <span className="text-sm font-medium text-slate-600">{st}</span>

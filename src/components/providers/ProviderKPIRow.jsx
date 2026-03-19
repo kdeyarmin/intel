@@ -19,8 +19,8 @@ function KPI({ title, value, icon: Icon, color, bgColor }) {
 }
 
 export default function ProviderKPIRow({ utilizations = [], referrals = [], locations = [], _taxonomies = [], score }) {
-  const latestUtil = utilizations.sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  const latestRef = referrals.sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
 
   const fmt = (v) => {
     if (!v) return '—';
