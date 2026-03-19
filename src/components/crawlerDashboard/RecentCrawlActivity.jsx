@@ -29,7 +29,7 @@ function getStateFromFileName(fileName) {
 export default function RecentCrawlActivity({ nppesImports, auditEvents, loading }) {
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
-  const recentBatches = nppesImports.slice(0, 15);
+  const recentBatches = (nppesImports || []).slice(0, 15);
 
   return (
     <Card>

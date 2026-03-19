@@ -11,9 +11,9 @@ export default function CrawlerMonitoring({ status }) {
   const metricsData = Object.entries(status.granular_metrics || {}).map(([state, data]) => ({
     state,
     avgTime: (data.avg_prefix_time_ms || 0) / 1000, // convert to seconds
-    rateLimits: data.rate_limit_hits,
-    pendingItems: data.pending_items,
-    completedItems: data.completed_items
+    rateLimits: data.rate_limit_hits || 0,
+    pendingItems: data.pending_items || 0,
+    completedItems: data.completed_items || 0
   })).sort((a, b) => b.avgTime - a.avgTime);
 
   // Transform errors into an array for charts

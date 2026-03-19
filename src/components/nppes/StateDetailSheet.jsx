@@ -23,7 +23,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
       ) || null;
     },
     enabled: !!stateCode && isOpen,
-    refetchInterval: (data) => (data && data.status === 'processing' ? 2000 : false),
+    refetchInterval: (query) => (query.state.data && query.state.data.status === 'processing' ? 2000 : false),
   });
 
   const { data: errors, isLoading: errorsLoading } = useQuery({

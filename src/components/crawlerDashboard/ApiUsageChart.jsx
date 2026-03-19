@@ -6,7 +6,7 @@ export default function ApiUsageChart({ nppesImports, loading }) {
   if (loading) return <Card className="h-[350px] animate-pulse bg-slate-100" />;
 
   const data = (nppesImports || [])
-    .filter(b => b.import_type === 'nppes_registry' && b.created_date)
+    .filter(b => b.import_type === 'nppes_registry' && b.created_date && b.file_name?.includes('crawler_'))
     .slice(0, 20)
     .reverse()
     .map(b => {
