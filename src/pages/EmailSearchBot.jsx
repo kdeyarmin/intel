@@ -37,9 +37,11 @@ export default function EmailSearchBot() {
   const { data: activeTask } = useQuery({
     queryKey: ['emailSearchTask'],
     queryFn: async () => {
-      const tasks = await base44.entities.BackgroundTask.list('-created_date', 1);
-      const active = tasks.find(t => t.task_type === 'email_search' && t.status === 'processing');
-      return active || tasks.find(t => t.task_type === 'email_search');
+      const tasks = await base44.entities.BackgroundTask.list('-created_date', 10);
+      if (!Array.isArray(tasks) || tasks.length === 0) return null;
+      const emailTasks = tasks.filter(t => t.task_type === 'email_search');
+      if (emailTasks.length === 0) return null;
+      return emailTasks.find(t => t.status === 'processing') || emailTasks[0] || null;
     },
     refetchInterval: 3000
   });

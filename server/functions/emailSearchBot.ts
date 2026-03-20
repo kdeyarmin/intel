@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, backgroundTasks } from "../db/schema";
-import { eq, and, isNull, isNotNull, sql, asc, desc, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const BATCH_DELAY_MS = 1500;
@@ -264,6 +264,20 @@ export async function handleEmailSearchBot(payload: any) {
   }
 
   if (mode === "start_background") {
+    const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
+    const staleTasks = await db.select().from(backgroundTasks)
+      .where(and(
+        eq(backgroundTasks.task_type, "email_search"),
+        eq(backgroundTasks.status, "processing"),
+        lt(backgroundTasks.updated_date, staleThreshold)
+      ));
+    for (const stale of staleTasks) {
+      console.log(`[EmailBot] Resetting stale task ${stale.id} (last updated ${stale.updated_date})`);
+      await db.update(backgroundTasks)
+        .set({ status: "failed", error: "Task became stale (no updates for 5+ minutes)", completed_at: new Date(), updated_date: new Date() })
+        .where(eq(backgroundTasks.id, stale.id));
+    }
+
     const bgSkipSearched = true;
     const [task] = await db
       .insert(backgroundTasks)
