@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
 import NotificationBell from '../shared/NotificationBell';
-import BillingStatusWidget from './BillingStatusWidget';
 
 const NAV_SECTIONS = [
   {
@@ -225,11 +224,6 @@ export default function AppLayout({ children, currentPageName }) {
             );
           })}
         </nav>
-
-        {/* Billing Status Widget */}
-        {user?.role === 'admin' && (
-          <BillingStatusWidget sidebarOpen={sidebarOpen} />
-        )}
 
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60">
