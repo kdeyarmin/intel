@@ -10,21 +10,107 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
     switch (functionName) {
       case "getDashboardStats": {
         const { db } = await import("../db");
-        const { providers, importBatches, outreachCampaigns, dataQualityAlerts, auditEvents } = await import("../db/schema");
-        const { sql, desc } = await import("drizzle-orm");
+        const {
+          providers, providerLocations, providerTaxonomies,
+          cmsReferrals, providerServiceUtilization,
+          importBatches, dataQualityAlerts, dataQualityScans,
+          auditEvents,
+        } = await import("../db/schema");
+        const { sql, desc, eq, isNotNull, and } = await import("drizzle-orm");
 
         const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
-        const [batchCount] = await db.select({ count: sql<number>`count(*)` }).from(importBatches);
-        const [campaignCount] = await db.select({ count: sql<number>`count(*)` }).from(outreachCampaigns);
-        const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
-        const recentActivity = await db.select().from(auditEvents).orderBy(desc(auditEvents.created_date)).limit(10);
+        const totalProviders = Number(providerCount.count);
+
+        const [locationCount] = await db.select({ count: sql<number>`count(*)` }).from(providerLocations);
+        const totalLocations = Number(locationCount.count);
+
+        const [referralCount] = await db.select({ count: sql<number>`count(*)` }).from(cmsReferrals);
+        const totalReferrals = Number(referralCount.count);
+
+        const [utilizationCount] = await db.select({ count: sql<number>`count(*)` }).from(providerServiceUtilization);
+        const totalUtilization = Number(utilizationCount.count);
+
+        const [taxonomyCount] = await db.select({ count: sql<number>`count(*)` }).from(providerTaxonomies);
+        const totalTaxonomies = Number(taxonomyCount.count);
+
+        const [emailCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(isNotNull(providers.email));
+        const withEmail = Number(emailCount.count);
+        const needsEnrichment = totalProviders - withEmail;
+
+        const topStatesRows = await db.select({
+          state: providerLocations.state,
+          count: sql<number>`count(*)`,
+        }).from(providerLocations)
+          .where(isNotNull(providerLocations.state))
+          .groupBy(providerLocations.state)
+          .orderBy(sql`count(*) desc`)
+          .limit(5);
+        const topStates = topStatesRows.map(r => [r.state, Number(r.count)]);
+
+        const { or, inArray } = await import("drizzle-orm");
+        const [activeImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(inArray(importBatches.status, ["processing", "validating", "pending"]));
+        const [completedImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(eq(importBatches.status, "completed"));
+        const [failedImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(eq(importBatches.status, "failed"));
+
+        const [openAlertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new"));
+
+        const latestScan = await db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1);
+        let dataQuality = null;
+        if (latestScan.length > 0) {
+          const scan = latestScan[0] as any;
+          const summary = scan.results_summary as any;
+          let score = 0;
+          if (summary && typeof summary.score === "number") {
+            score = summary.score;
+          } else if (scan.total_records > 0) {
+            score = Math.round(((scan.total_records - (scan.issues_found || 0)) / scan.total_records) * 100);
+          }
+          dataQuality = { score };
+        }
+
+        const completedBatches = await db.select().from(importBatches)
+          .where(eq(importBatches.status, "completed"))
+          .orderBy(desc(importBatches.created_date)).limit(1);
+        const latestBatch = completedBatches.length > 0
+          ? completedBatches
+          : await db.select().from(importBatches).orderBy(desc(importBatches.created_date)).limit(1);
+        const lastRefresh = latestBatch.length > 0 ? (latestBatch[0] as any).created_date : null;
+
+        const providerSamples = await db.select().from(providers).limit(200);
+        const utilizationSamples = await db.select().from(providerServiceUtilization).limit(200);
+        const referralSamples = await db.select().from(cmsReferrals).limit(200);
+        const locationSamples = await db.select().from(providerLocations).limit(200);
 
         return res.json({
-          total_providers: providerCount.count,
-          total_imports: batchCount.count,
-          total_campaigns: campaignCount.count,
-          open_alerts: alertCount.count,
-          recent_activity: recentActivity,
+          totalProviders,
+          totalLocations,
+          totalReferrals,
+          totalUtilization,
+          totalTaxonomies,
+          emailStats: {
+            withEmail,
+            needsEnrichment,
+            isEstimated: false,
+            valid: 0,
+            risky: 0,
+            invalid: 0,
+          },
+          topStates,
+          imports: {
+            active: Number(activeImports.count),
+            completed: Number(completedImports.count),
+            failed: Number(failedImports.count),
+          },
+          openAlerts: Number(openAlertCount.count),
+          dataQuality,
+          lastRefresh,
+          samples: {
+            providers: providerSamples,
+            utilizations: utilizationSamples,
+            referrals: referralSamples,
+            locations: locationSamples,
+          },
+          isEstimatedCounts: false,
         });
       }
 
