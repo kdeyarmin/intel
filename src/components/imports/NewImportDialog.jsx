@@ -199,8 +199,13 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       setResult({ success: true, data: response.data });
       setStep(4);
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || 'Import trigger failed';
-      setError(msg);
+      const isConflict = e?.status === 409 || e?.data?.conflict || (e?.data?.message || '').includes('already');
+      if (isConflict) {
+        setError('This import is already running. Check Import Monitoring for its progress.');
+      } else {
+        const msg = e?.data?.message || e?.data?.error || e?.message || 'Import trigger failed';
+        setError(msg);
+      }
       setStep(4);
     }
     setIsSubmitting(false);
@@ -499,15 +504,25 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   {dryRun && <Badge className="bg-violet-900/200/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
                 </div>
               </>
+            ) : error?.includes('already running') ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-900/20 flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-amber-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-slate-200">Import Already Running</p>
+                  <p className="text-sm text-amber-400 mt-1 max-w-sm">{error}</p>
+                </div>
+              </>
             ) : (
               <>
-                <div className="w-16 h-16 rounded-full bg-red-900/200/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-red-900/20 flex items-center justify-center">
                   <AlertCircle className="w-8 h-8 text-red-400" />
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-semibold text-slate-200">Import Failed to Start</p>
                   <p className="text-sm text-red-400 mt-1 max-w-sm">{error}</p>
-                  <p className="text-xs text-slate-400 mt-2">The batch record was created — check Import Monitoring for details.</p>
+                  <p className="text-xs text-slate-400 mt-2">Check Import Monitoring for details.</p>
                 </div>
               </>
             )}
