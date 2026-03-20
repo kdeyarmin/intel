@@ -14,7 +14,7 @@ export default function EmailBotResults({ results }) {
   if (!results || results.length === 0) return null;
 
   return (
-    <div className="border border-slate-700/50 rounded-lg overflow-hidden">
+    <div className="border border-slate-700/50 rounded-lg overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-800/60 border-slate-700/50">

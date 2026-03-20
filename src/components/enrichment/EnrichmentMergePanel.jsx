@@ -100,7 +100,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-md border border-slate-200 bg-white overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>

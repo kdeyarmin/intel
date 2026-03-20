@@ -23,7 +23,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
         </CardTitle>
         <CardDescription>Detailed performance metrics for recent operations</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

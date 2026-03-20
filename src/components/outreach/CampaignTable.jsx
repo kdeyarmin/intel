@@ -38,7 +38,7 @@ export default function CampaignTable({ campaigns = [], onView, onDelete, onTogg
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Campaigns</CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

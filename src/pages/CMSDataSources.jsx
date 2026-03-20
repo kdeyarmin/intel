@@ -155,7 +155,7 @@ export default function CMSDataSources() {
         </Button>
       </PageHeader>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow-lg">
         <Table>
           <TableHeader className="bg-slate-800/50">
             <TableRow className="border-slate-800">

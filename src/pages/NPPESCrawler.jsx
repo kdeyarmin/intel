@@ -236,18 +236,12 @@ export default function NPPESCrawler() {
 
           <Card className="bg-[#141d30] border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-white text-lg">
-                <span className="flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-indigo-500" />
-                  State Progress
-                </span>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge className="bg-emerald-500/20 text-emerald-400">{completedCount} completed</Badge>
-                    {processingCount > 0 && <Badge className="bg-blue-500/20 text-blue-400">{processingCount} processing</Badge>}
-                    {failedCount > 0 && <Badge className="bg-red-500/20 text-red-400">{failedCount} failed</Badge>}
-                    {pendingCount > 0 && <Badge className="bg-slate-700 text-slate-300">{pendingCount} pending</Badge>}
-                  </div>
+              <CardTitle className="text-white text-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-indigo-500" />
+                    State Progress
+                  </span>
                   <div className="flex border border-slate-700 rounded-md overflow-hidden bg-slate-800">
                     <Button
                       variant={viewMode === 'map' ? 'default' : 'ghost'}
@@ -266,6 +260,12 @@ export default function NPPESCrawler() {
                       <LayoutGrid className="w-3.5 h-3.5" />
                     </Button>
                   </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge className="bg-emerald-500/20 text-emerald-400">{completedCount} completed</Badge>
+                  {processingCount > 0 && <Badge className="bg-blue-500/20 text-blue-400">{processingCount} processing</Badge>}
+                  {failedCount > 0 && <Badge className="bg-red-500/20 text-red-400">{failedCount} failed</Badge>}
+                  {pendingCount > 0 && <Badge className="bg-slate-700 text-slate-300">{pendingCount} pending</Badge>}
                 </div>
               </CardTitle>
             </CardHeader>
