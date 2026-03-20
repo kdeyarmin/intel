@@ -345,7 +345,7 @@ export const cmsReferrals = pgTable("cms_referrals", {
 
 export const medicareFacilities = pgTable("medicare_facilities", {
   id: serial("id").primaryKey(),
-  facility_type: varchar("facility_type", { length: 50 }),
+  facility_type: varchar("facility_type", { length: 100 }),
   provider_id: varchar("provider_id", { length: 50 }),
   facility_name: text("facility_name"),
   address: text("address"),

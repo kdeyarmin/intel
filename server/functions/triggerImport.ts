@@ -220,12 +220,42 @@ function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
 function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
   return {
     facility_type: importType,
-    provider_id: row.cms_certification_number_ccn || row.CMS_Certification_Number || row.provider_id || null,
-    facility_name: row.facility_name || row.Facility_Name || null,
-    address: row.address_line_1 || row.Address || null,
-    city: row.citytown || row.City || null,
-    state: row.state || row.State || null,
-    zip: row.zip_code || row.Zip_Code || null,
+    provider_id:
+      row.cms_certification_number_ccn ||
+      row["CMS Certification Number"] || row.CMS_Certification_Number ||
+      row.CCN || row.ccn ||
+      row.provider_id || row["Provider ID"] ||
+      row.NPI || row.npi ||
+      null,
+    facility_name:
+      row.facility_name || row["Facility Name"] || row.Facility_Name ||
+      row.provider_name || row["Provider Name"] || row.Provider_Name ||
+      row["ORGANIZATION NAME"] || row.organization_name ||
+      row.businessname || row.practicename ||
+      row["DOING BUSINESS AS NAME"] ||
+      row.country ||
+      null,
+    address:
+      row.address_line_1 || row["Address Line 1"] || row.Address_Line_1 ||
+      row["ADDRESS LINE 1"] ||
+      row.provider_address || row["Provider Address"] ||
+      row.practiceaddress1 ||
+      null,
+    city:
+      row.citytown || row["City/Town"] ||
+      row.City || row.CITY || row.city ||
+      row.practicecity ||
+      null,
+    state:
+      row.state || row.State || row.STATE ||
+      row["ENROLLMENT STATE"] ||
+      row.practicestate ||
+      null,
+    zip:
+      row.zip_code || row["Zip Code"] || row.Zip_Code ||
+      row["ZIP CODE"] || row.ZIP_CODE ||
+      row.practicezip9code ||
+      null,
     raw_data: row,
     import_batch_id: String(batchId),
   };
