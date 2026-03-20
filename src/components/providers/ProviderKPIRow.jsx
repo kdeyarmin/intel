@@ -11,7 +11,7 @@ function KPI({ title, value, icon: Icon, color, bgColor }) {
         </div>
         <div>
           <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{title}</p>
-          <p className="text-lg font-bold text-slate-900">{value}</p>
+          <p className="text-lg font-bold text-white">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -31,12 +31,12 @@ export default function ProviderKPIRow({ utilizations = [], referrals = [], loca
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <KPI title="Beneficiaries" value={fmt(latestUtil?.total_medicare_beneficiaries)} icon={Users} color="text-blue-600" bgColor="bg-blue-50" />
-      <KPI title="Services" value={fmt(latestUtil?.total_services)} icon={Activity} color="text-teal-600" bgColor="bg-teal-50" />
-      <KPI title="Medicare Pay" value={latestUtil?.total_medicare_payment ? `$${fmt(latestUtil.total_medicare_payment)}` : '—'} icon={DollarSign} color="text-emerald-600" bgColor="bg-emerald-50" />
-      <KPI title="Total Referrals" value={fmt(latestRef?.total_referrals)} icon={GitBranch} color="text-violet-600" bgColor="bg-violet-50" />
+      <KPI title="Beneficiaries" value={fmt(latestUtil?.total_medicare_beneficiaries)} icon={Users} color="text-blue-600" bgColor="bg-blue-900/20" />
+      <KPI title="Services" value={fmt(latestUtil?.total_services)} icon={Activity} color="text-teal-600" bgColor="bg-teal-900/20" />
+      <KPI title="Medicare Pay" value={latestUtil?.total_medicare_payment ? `$${fmt(latestUtil.total_medicare_payment)}` : '—'} icon={DollarSign} color="text-emerald-600" bgColor="bg-emerald-900/20" />
+      <KPI title="Total Referrals" value={fmt(latestRef?.total_referrals)} icon={GitBranch} color="text-violet-600" bgColor="bg-violet-900/20" />
       <KPI title="Locations" value={locations.length} icon={MapPin} color="text-sky-600" bgColor="bg-sky-50" />
-      <KPI title="Fit Score" value={score?.score ? `${score.score}/100` : '—'} icon={Stethoscope} color="text-amber-600" bgColor="bg-amber-50" />
+      <KPI title="Fit Score" value={score?.score ? `${score.score}/100` : '—'} icon={Stethoscope} color="text-amber-600" bgColor="bg-amber-900/20" />
     </div>
   );
 }

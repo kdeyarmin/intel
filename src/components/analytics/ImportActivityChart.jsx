@@ -20,7 +20,7 @@ export default function ImportActivityChart({ metrics }) {
       </CardHeader>
       <CardContent>
         {chartData.length < 2 ? (
-          <p className="text-sm text-gray-500 text-center py-8">
+          <p className="text-sm text-slate-400 text-center py-8">
             Import activity is tracked daily. Data will appear as imports run.
           </p>
         ) : (

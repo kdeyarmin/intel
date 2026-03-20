@@ -13,9 +13,9 @@ export default function EmailQualityDetails({ analysis, _email, compact = false 
     return (
       <div className="flex items-center gap-2 pt-1.5">
         <Badge className={
-          analysis.score >= 75 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-          analysis.score >= 50 ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-          'bg-red-500/15 text-red-400 border-red-500/20'
+          analysis.score >= 75 ? 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20' :
+          analysis.score >= 50 ? 'bg-amber-900/200/15 text-amber-400 border-amber-500/20' :
+          'bg-red-900/200/15 text-red-400 border-red-500/20'
         } title={`${analysis.score}% confidence`}>
           {analysis.confidence} confidence
         </Badge>
@@ -30,9 +30,9 @@ export default function EmailQualityDetails({ analysis, _email, compact = false 
 
   const getConfidenceColor = (confidence) => {
     switch (confidence) {
-      case 'high': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20';
-      case 'medium': return 'bg-amber-500/15 text-amber-400 border-amber-500/20';
-      case 'low': return 'bg-red-500/15 text-red-400 border-red-500/20';
+      case 'high': return 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20';
+      case 'medium': return 'bg-amber-900/200/15 text-amber-400 border-amber-500/20';
+      case 'low': return 'bg-red-900/200/15 text-red-400 border-red-500/20';
       default: return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
     }
   };

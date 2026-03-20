@@ -12,9 +12,9 @@ const ICON_MAP = {
   insight: Lightbulb,
 };
 const COLOR_MAP = {
-  opportunity: 'text-green-600 bg-green-50',
-  risk: 'text-red-600 bg-red-50',
-  insight: 'text-blue-600 bg-blue-50',
+  opportunity: 'text-green-600 bg-green-900/20',
+  risk: 'text-red-600 bg-red-900/20',
+  insight: 'text-blue-600 bg-blue-900/20',
 };
 
 export default function LocationInsightsPanel({ summaryData }) {
@@ -56,7 +56,7 @@ Provide 4-6 insights. Each insight should have a type (opportunity, risk, or ins
   };
 
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-purple-600" />
@@ -74,7 +74,7 @@ Provide 4-6 insights. Each insight should have a type (opportunity, risk, or ins
       </CardHeader>
       <CardContent>
         {!insights && !loading && (
-          <p className="text-sm text-gray-400 text-center py-8">
+          <p className="text-sm text-slate-500 text-center py-8">
             Click "Generate" to get AI-driven growth opportunities and risk analysis
           </p>
         )}
@@ -90,15 +90,15 @@ Provide 4-6 insights. Each insight should have a type (opportunity, risk, or ins
               const Icon = ICON_MAP[item.type] || Lightbulb;
               const colors = COLOR_MAP[item.type] || COLOR_MAP.insight;
               return (
-                <div key={i} className="bg-white rounded-lg p-3 border border-gray-200">
+                <div key={i} className="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className={`p-1 rounded ${colors}`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">{item.title}</span>
+                    <span className="text-sm font-semibold text-white">{item.title}</span>
                     <Badge variant="outline" className="text-xs capitalize">{item.type}</Badge>
                   </div>
-                  <div className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                  <div className="text-sm text-slate-400 leading-relaxed prose prose-sm max-w-none">
                     <ReactMarkdown>{item.description}</ReactMarkdown>
                   </div>
                 </div>

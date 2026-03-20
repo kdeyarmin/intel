@@ -12,16 +12,16 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  pending_review: { label: 'Pending Review', color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', icon: Clock },
-  approved: { label: 'Approved', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', icon: CheckCircle2 },
-  rejected: { label: 'Rejected', color: 'bg-red-500/15 text-red-400 border-red-500/20', icon: XCircle },
-  auto_applied: { label: 'Auto-Applied', color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', icon: CheckCircle2 },
+  pending_review: { label: 'Pending Review', color: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-900/200/15 text-red-400 border-red-500/20', icon: XCircle },
+  auto_applied: { label: 'Auto-Applied', color: 'bg-cyan-900/200/15 text-cyan-400 border-cyan-500/20', icon: CheckCircle2 },
 };
 
 const CONFIDENCE_COLORS = {
-  high: 'bg-emerald-500/15 text-emerald-400',
-  medium: 'bg-amber-500/15 text-amber-400',
-  low: 'bg-red-500/15 text-red-400',
+  high: 'bg-emerald-900/200/15 text-emerald-400',
+  medium: 'bg-amber-900/200/15 text-amber-400',
+  low: 'bg-red-900/200/15 text-red-400',
 };
 
 function EnrichmentDetailCard({ details, aiExplanation }) {
@@ -96,7 +96,7 @@ function EnrichmentDetailCard({ details, aiExplanation }) {
       )}
       {/* AI Explanation */}
       {aiExplanation && (
-        <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-2.5 mt-2">
+        <div className="bg-violet-900/200/10 border border-violet-500/20 rounded-lg p-2.5 mt-2">
           <div className="flex items-center gap-1.5 mb-1">
             <Info className="w-3.5 h-3.5 text-violet-400" />
             <span className="text-[10px] font-medium text-violet-400">AI Reasoning</span>
@@ -203,12 +203,12 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-slate-300">
             Enrichment Review Queue
-            {pendingCount > 0 && <Badge className="ml-2 bg-amber-500/20 text-amber-400 text-[10px]">{pendingCount} pending</Badge>}
+            {pendingCount > 0 && <Badge className="ml-2 bg-amber-900/200/20 text-amber-400 text-[10px]">{pendingCount} pending</Badge>}
           </CardTitle>
           <div className="flex gap-1">
             {['pending_review', 'approved', 'rejected', 'all'].map(s => (
               <button key={s} onClick={() => { setFilter(s); setSelected(new Set()); }}
-                className={`text-[10px] px-2 py-0.5 rounded ${filter === s ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                className={`text-[10px] px-2 py-0.5 rounded ${filter === s ? 'bg-cyan-900/200/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
                 {s === 'pending_review' ? 'Pending' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
@@ -233,7 +233,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
                   {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                   Approve {selected.size}
                 </Button>
-                <Button size="sm" variant="outline" className="h-6 text-[10px] text-red-400 border-red-500/30 hover:bg-red-500/10 gap-1"
+                <Button size="sm" variant="outline" className="h-6 text-[10px] text-red-400 border-red-500/30 hover:bg-red-900/200/10 gap-1"
                   onClick={() => handleBatchAction('rejected')} disabled={batchLoading}>
                   {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
                   Reject {selected.size}
@@ -291,7 +291,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
                             onClick={() => reviewMutation.mutate({ id: r.id, status: 'approved', npi: r.npi, enrichment_details: r.enrichment_details })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-500/10"
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-900/200/10"
                             disabled={reviewMutation.isPending}
                             onClick={() => reviewMutation.mutate({ id: r.id, status: 'rejected', npi: r.npi })}>
                             <XCircle className="w-3 h-3 mr-1" /> Reject

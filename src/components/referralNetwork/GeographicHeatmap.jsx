@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin } from 'lucide-react';
 
 function getHeatColor(intensity) {
-  if (intensity >= 0.8) return { bg: 'bg-red-500/30', text: 'text-red-400', border: 'border-red-500/30' };
-  if (intensity >= 0.6) return { bg: 'bg-orange-500/25', text: 'text-orange-400', border: 'border-orange-500/25' };
-  if (intensity >= 0.4) return { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/20' };
-  if (intensity >= 0.2) return { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/15' };
+  if (intensity >= 0.8) return { bg: 'bg-red-900/200/30', text: 'text-red-400', border: 'border-red-500/30' };
+  if (intensity >= 0.6) return { bg: 'bg-orange-900/200/25', text: 'text-orange-400', border: 'border-orange-500/25' };
+  if (intensity >= 0.4) return { bg: 'bg-amber-900/200/20', text: 'text-amber-400', border: 'border-amber-500/20' };
+  if (intensity >= 0.2) return { bg: 'bg-cyan-900/200/15', text: 'text-cyan-400', border: 'border-cyan-500/15' };
   return { bg: 'bg-slate-700/30', text: 'text-slate-400', border: 'border-slate-700/30' };
 }
 
@@ -60,7 +60,7 @@ export default function GeographicHeatmap({ nodes = [], locations = [] }) {
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
-                className={`text-[10px] px-2 py-0.5 rounded ${metric === m.key ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`text-[10px] px-2 py-0.5 rounded ${metric === m.key ? 'bg-cyan-900/200/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 {m.label}
               </button>
@@ -91,7 +91,7 @@ export default function GeographicHeatmap({ nodes = [], locations = [] }) {
         <div className="flex items-center justify-center gap-2 mt-3">
           <span className="text-[9px] text-slate-500">Low</span>
           <div className="flex gap-0.5">
-            {['bg-slate-700/30', 'bg-cyan-500/15', 'bg-amber-500/20', 'bg-orange-500/25', 'bg-red-500/30'].map((c, i) => (
+            {['bg-slate-700/30', 'bg-cyan-900/200/15', 'bg-amber-900/200/20', 'bg-orange-900/200/25', 'bg-red-900/200/30'].map((c, i) => (
               <div key={i} className={`w-6 h-2 rounded ${c}`} />
             ))}
           </div>

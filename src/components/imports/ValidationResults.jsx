@@ -17,21 +17,21 @@ export default function ValidationResults({ batch }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
+          <div className="text-center p-4 bg-blue-900/20 rounded-lg">
             <p className="text-2xl font-bold text-blue-600">{batch.total_rows}</p>
-            <p className="text-sm text-gray-600">Total Rows</p>
+            <p className="text-sm text-slate-400">Total Rows</p>
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
+          <div className="text-center p-4 bg-green-900/20 rounded-lg">
             <p className="text-2xl font-bold text-green-600">{batch.valid_rows}</p>
-            <p className="text-sm text-gray-600">Valid Rows</p>
+            <p className="text-sm text-slate-400">Valid Rows</p>
           </div>
-          <div className="text-center p-4 bg-yellow-50 rounded-lg">
+          <div className="text-center p-4 bg-yellow-900/20 rounded-lg">
             <p className="text-2xl font-bold text-yellow-600">{batch.duplicate_rows || 0}</p>
-            <p className="text-sm text-gray-600">Duplicates</p>
+            <p className="text-sm text-slate-400">Duplicates</p>
           </div>
-          <div className="text-center p-4 bg-red-50 rounded-lg">
+          <div className="text-center p-4 bg-red-900/20 rounded-lg">
             <p className="text-2xl font-bold text-red-600">{batch.invalid_rows}</p>
-            <p className="text-sm text-gray-600">Invalid Rows</p>
+            <p className="text-sm text-slate-400">Invalid Rows</p>
           </div>
         </div>
 
@@ -49,10 +49,10 @@ export default function ValidationResults({ batch }) {
             <p className="font-medium text-sm">Error Samples:</p>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {batch.error_samples.map((error, idx) => (
-                <div key={idx} className="p-3 bg-red-50 border border-red-200 rounded text-sm">
-                  <p className="font-medium text-red-800">Row {error.row}:</p>
-                  <p className="text-red-700 mt-1">{error.message}</p>
-                  {error.npi && <p className="text-xs text-gray-600 mt-1">NPI: {error.npi}</p>}
+                <div key={idx} className="p-3 bg-red-900/20 border border-red-200 rounded text-sm">
+                  <p className="font-medium text-red-300">Row {error.row}:</p>
+                  <p className="text-red-400 mt-1">{error.message}</p>
+                  {error.npi && <p className="text-xs text-slate-400 mt-1">NPI: {error.npi}</p>}
                 </div>
               ))}
             </div>

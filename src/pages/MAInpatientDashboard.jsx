@@ -46,11 +46,11 @@ export default function MAInpatientDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-blue-50">
+          <div className="p-2.5 rounded-lg bg-blue-900/20">
             <Building2 className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Medicare Advantage Inpatient</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Medicare Advantage Inpatient</h1>
             <p className="text-sm text-slate-500">Hospital utilization trends, discharge patterns & data health</p>
           </div>
         </div>

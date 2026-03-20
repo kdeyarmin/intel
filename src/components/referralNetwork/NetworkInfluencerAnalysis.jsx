@@ -123,25 +123,25 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-3 bg-slate-50 rounded">
               <p className="text-xs text-slate-600">Total Providers</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">
+              <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.total_providers || 0}
               </p>
             </div>
             <div className="p-3 bg-slate-50 rounded">
               <p className="text-xs text-slate-600">Relationships</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">
+              <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.total_relationships || 0}
               </p>
             </div>
             <div className="p-3 bg-slate-50 rounded">
               <p className="text-xs text-slate-600">Reciprocal Ties</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">
+              <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.reciprocal_relationships || 0}
               </p>
             </div>
             <div className="p-3 bg-slate-50 rounded">
               <p className="text-xs text-slate-600">Network Density</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">
+              <p className="text-2xl font-bold text-white mt-1">
                 {(data.network_metrics?.density * 100).toFixed(1)}%
               </p>
             </div>

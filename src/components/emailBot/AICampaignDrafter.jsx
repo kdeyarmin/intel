@@ -92,7 +92,7 @@ REQUIREMENTS:
   };
 
   return (
-    <div className="space-y-3 p-3 bg-violet-500/5 border border-violet-500/20 rounded-lg">
+    <div className="space-y-3 p-3 bg-violet-900/200/5 border border-violet-500/20 rounded-lg">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-violet-400" />
         <span className="text-xs font-semibold text-violet-300">AI Draft Assistant</span>

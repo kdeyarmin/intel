@@ -74,7 +74,7 @@ export default function DashboardGeospatialMap() {
   const mapActions = (
     <div className="flex items-center gap-2 hidden sm:flex">
       <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
-        <SelectTrigger className="w-[140px] h-7 text-[11px] bg-white">
+        <SelectTrigger className="w-[140px] h-7 text-[11px] bg-slate-800/60">
           <SelectValue placeholder="Specialty" />
         </SelectTrigger>
         <SelectContent>
@@ -88,7 +88,7 @@ export default function DashboardGeospatialMap() {
         </SelectContent>
       </Select>
       <Select value={minVolume} onValueChange={setMinVolume}>
-        <SelectTrigger className="w-[140px] h-7 text-[11px] bg-white">
+        <SelectTrigger className="w-[140px] h-7 text-[11px] bg-slate-800/60">
           <SelectValue placeholder="Min Volume" />
         </SelectTrigger>
         <SelectContent>

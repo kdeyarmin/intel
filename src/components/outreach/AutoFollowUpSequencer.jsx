@@ -113,7 +113,7 @@ Keep each under 100 words.`,
             const enabled = enabledSteps.has(step.id);
             const seqStep = sequence?.steps?.find(s => s.step === step.id);
             return (
-              <div key={step.id} className={`relative border rounded-lg p-3 transition-all ${enabled ? 'border-slate-200' : 'border-slate-100 opacity-50'}`}>
+              <div key={step.id} className={`relative border rounded-lg p-3 transition-all ${enabled ? 'border-slate-700/50' : 'border-slate-700/50 opacity-50'}`}>
                 {i < SEQUENCE_STEPS.length - 1 && <div className="absolute left-6 top-full w-px h-2 bg-slate-200" />}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
@@ -144,8 +144,8 @@ Keep each under 100 words.`,
         </div>
 
         {sequence?.best_send_times && (
-          <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-            <p className="text-[10px] font-medium text-amber-700 mb-0.5">Optimal Send Time</p>
+          <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+            <p className="text-[10px] font-medium text-amber-400 mb-0.5">Optimal Send Time</p>
             <p className="text-[9px] text-amber-600">{sequence.best_send_times.day_of_week} at {sequence.best_send_times.time_of_day} — {sequence.best_send_times.reasoning}</p>
           </div>
         )}

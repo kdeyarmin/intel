@@ -38,9 +38,9 @@ const RULE_TYPE_LABELS = {
 };
 
 const SEVERITY_STYLES = {
-  reject: { icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/15' },
-  warn: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/15' },
-  flag: { icon: Flag, color: 'text-blue-400', bg: 'bg-blue-500/15' },
+  reject: { icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-900/200/15' },
+  warn: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-900/200/15' },
+  flag: { icon: Flag, color: 'text-blue-400', bg: 'bg-blue-900/200/15' },
 };
 
 function getRuleSummary(rule) {
@@ -178,7 +178,7 @@ export default function ValidationRulesManager() {
             >
               <span className="truncate">{IMPORT_TYPE_LABELS[t] || t}</span>
               {count > 0 && (
-                <Badge className={`${isActive ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-700/50 text-slate-500'} text-[9px] ml-2`}>
+                <Badge className={`${isActive ? 'bg-cyan-900/200/20 text-cyan-400' : 'bg-slate-700/50 text-slate-500'} text-[9px] ml-2`}>
                   {count}
                 </Badge>
               )}
@@ -223,7 +223,7 @@ export default function ValidationRulesManager() {
 
         {/* Global rules banner */}
         {selectedType !== '_global' && globalCount > 0 && (
-          <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-2.5 text-xs text-violet-400 flex items-center gap-2">
+          <div className="bg-violet-900/200/10 border border-violet-500/20 rounded-lg p-2.5 text-xs text-violet-400 flex items-center gap-2">
             <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{globalCount} global rule{globalCount !== 1 ? 's' : ''} will also apply to this import type.</span>
             <button className="underline ml-auto" onClick={() => setSelectedType('_global')}>View global rules</button>
@@ -232,7 +232,7 @@ export default function ValidationRulesManager() {
 
         {/* AI Suggestions (for specific import types) */}
          {selectedType !== '_global' && !showAISuggestions && (
-           <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+           <div className="bg-amber-900/200/10 border border-amber-500/20 rounded-lg p-3">
              <div className="flex items-center justify-between gap-2">
                <div className="flex items-center gap-2">
                  <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
@@ -244,7 +244,7 @@ export default function ValidationRulesManager() {
                <Button
                  size="sm"
                  variant="outline"
-                 className="h-7 text-xs bg-transparent border-amber-500/30 text-amber-400 hover:bg-amber-500/10 flex-shrink-0"
+                 className="h-7 text-xs bg-transparent border-amber-500/30 text-amber-400 hover:bg-amber-900/200/10 flex-shrink-0"
                  onClick={() => setShowAISuggestions(true)}
                >
                  View Suggestions
@@ -254,7 +254,7 @@ export default function ValidationRulesManager() {
          )}
 
          {showAISuggestions && selectedType !== '_global' && (
-           <Card className="border-amber-500/30 bg-amber-500/5">
+           <Card className="border-amber-500/30 bg-amber-900/200/5">
              <CardContent className="pt-6">
                <Button
                  size="sm"

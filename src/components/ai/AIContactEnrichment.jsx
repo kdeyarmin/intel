@@ -72,7 +72,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const confColor = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-red-100 text-red-700' };
+  const confColor = { high: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-red-100 text-red-400' };
 
   const ContactRow = ({ icon: Icon, label, items = [] }) => {
     if (!items.length) return null;
@@ -142,16 +142,16 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
                 <div className="flex flex-wrap gap-1.5">
                   {results.social_profiles.map((p, i) => (
                     <a key={i} href={p.url} target="_blank" rel="noopener noreferrer">
-                      <Badge variant="outline" className="text-[10px] hover:bg-blue-50 cursor-pointer">{p.platform}</Badge>
+                      <Badge variant="outline" className="text-[10px] hover:bg-blue-900/20 cursor-pointer">{p.platform}</Badge>
                     </a>
                   ))}
                 </div>
               </div>
             )}
             {results.summary && <p className="text-[10px] text-slate-500 italic">{results.summary}</p>}
-            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-200 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[10px] text-amber-700">AI-generated suggestions. Verify before outreach.</p>
+              <p className="text-[10px] text-amber-400">AI-generated suggestions. Verify before outreach.</p>
             </div>
           </div>
         )}

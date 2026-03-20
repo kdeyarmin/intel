@@ -102,10 +102,10 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
   });
 
   const segmentConfigs = [
-    { key: 'opened_no_response', label: 'Opened, No Response', icon: Eye, color: 'bg-emerald-50 text-emerald-600', borderColor: 'border-emerald-200' },
-    { key: 'not_opened', label: 'Not Opened', icon: Mail, color: 'bg-slate-50 text-slate-500', borderColor: 'border-slate-200' },
-    { key: 'bounced', label: 'Bounced', icon: RefreshCw, color: 'bg-red-50 text-red-500', borderColor: 'border-red-200' },
-    { key: 'responded', label: 'Responded ✓', icon: CheckCircle2, color: 'bg-violet-50 text-violet-600', borderColor: 'border-violet-200' },
+    { key: 'opened_no_response', label: 'Opened, No Response', icon: Eye, color: 'bg-emerald-900/20 text-emerald-600', borderColor: 'border-emerald-200' },
+    { key: 'not_opened', label: 'Not Opened', icon: Mail, color: 'bg-slate-50 text-slate-500', borderColor: 'border-slate-700/50' },
+    { key: 'bounced', label: 'Bounced', icon: RefreshCw, color: 'bg-red-900/20 text-red-500', borderColor: 'border-red-200' },
+    { key: 'responded', label: 'Responded ✓', icon: CheckCircle2, color: 'bg-violet-900/20 text-violet-600', borderColor: 'border-violet-200' },
   ];
 
   return (
@@ -240,7 +240,7 @@ export default function FollowUpManager({ campaigns = [], providers = [] }) {
                         <p className="text-xs font-medium">{fc.name}</p>
                         <p className="text-[10px] text-slate-400">{fc.total_recipients} recipients • {fc.status}</p>
                       </div>
-                      <Badge className={`text-[10px] ${fc.status === 'draft' ? 'bg-slate-100 text-slate-600' : fc.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                      <Badge className={`text-[10px] ${fc.status === 'draft' ? 'bg-slate-100 text-slate-600' : fc.status === 'completed' ? 'bg-green-100 text-green-400' : 'bg-blue-100 text-blue-400'}`}>
                         {fc.status}
                       </Badge>
                     </div>

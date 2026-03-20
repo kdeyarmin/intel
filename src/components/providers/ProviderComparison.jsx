@@ -113,7 +113,7 @@ export default function ProviderComparison({ providerIds = [] }) {
             
             {/* Header Card */}
             <Card className="bg-slate-900 border-slate-800 shadow-lg relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500" />
+              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-900/200" />
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -129,7 +129,7 @@ export default function ProviderComparison({ providerIds = [] }) {
                     </CardDescription>
                   </div>
                   <div className="text-right">
-                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-400 font-bold text-sm border border-cyan-500/20">
+                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-900/200/10 text-cyan-400 font-bold text-sm border border-cyan-500/20">
                       {provider.metrics.performanceScore}
                     </div>
                     <div className="text-[9px] text-slate-500 uppercase tracking-wider mt-1">Score</div>

@@ -92,7 +92,7 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
             return (
               <div
                 key={template.id}
-                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-900/20/30 transition-all cursor-pointer group"
                 onClick={() => onUseTemplate(template)}
               >
                 <div className="flex items-start gap-2.5">

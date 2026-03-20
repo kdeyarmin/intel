@@ -127,7 +127,7 @@ export default function ImportSpeedView({ batches, onRefresh }) {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 text-xs bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                          className="h-8 text-xs bg-red-900/200/10 text-red-400 border-red-500/20 hover:bg-red-900/200/20"
                           onClick={() => setErrorReportBatch(batch)}
                         >
                           View Logs

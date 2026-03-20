@@ -12,8 +12,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 const TYPE_ICONS = { email: Mail, call: Phone, follow_up: UserCheck, meeting: Calendar, research: Search, other: MoreHorizontal };
 const TYPE_COLORS = { email: 'text-blue-400', call: 'text-green-400', follow_up: 'text-amber-400', meeting: 'text-violet-400', research: 'text-cyan-400', other: 'text-slate-400' };
-const PRIORITY_COLORS = { low: 'bg-slate-500/15 text-slate-400', medium: 'bg-blue-500/15 text-blue-400', high: 'bg-amber-500/15 text-amber-400', urgent: 'bg-red-500/15 text-red-400' };
-const _STATUS_COLORS = { todo: 'bg-slate-500/15 text-slate-400', in_progress: 'bg-cyan-500/15 text-cyan-400', completed: 'bg-emerald-500/15 text-emerald-400', skipped: 'bg-slate-500/15 text-slate-500' };
+const PRIORITY_COLORS = { low: 'bg-slate-500/15 text-slate-400', medium: 'bg-blue-900/200/15 text-blue-400', high: 'bg-amber-900/200/15 text-amber-400', urgent: 'bg-red-900/200/15 text-red-400' };
+const _STATUS_COLORS = { todo: 'bg-slate-500/15 text-slate-400', in_progress: 'bg-cyan-900/200/15 text-cyan-400', completed: 'bg-emerald-900/200/15 text-emerald-400', skipped: 'bg-slate-500/15 text-slate-500' };
 
 export default function CampaignTaskManager({ campaignId }) {
   const [showAdd, setShowAdd] = useState(false);
@@ -94,7 +94,7 @@ export default function CampaignTaskManager({ campaignId }) {
         {/* Progress bar */}
         {tasks.length > 0 && (
           <div className="w-full h-1.5 bg-slate-700/60 rounded-full overflow-hidden mt-2">
-            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+            <div className="h-full bg-emerald-900/200 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
         )}
       </CardHeader>

@@ -53,7 +53,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
       <CardContent>
         <div className="flex items-center gap-4">
           <div className="flex-1">
-            <p className="text-3xl font-bold text-slate-900">{(summary.latest?.total_referrals || 0).toLocaleString()}</p>
+            <p className="text-3xl font-bold text-white">{(summary.latest?.total_referrals || 0).toLocaleString()}</p>
             <p className="text-xs text-slate-500">total referrals</p>
             {summary.yoy && (
               <div className="flex items-center gap-1 mt-1">

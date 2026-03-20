@@ -13,10 +13,10 @@ const VALID_STATES = new Set([
 ]);
 
 const typeStyles = {
-  critical: 'bg-red-500/10 border-red-500/20 text-red-400',
-  warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-  info: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
-  success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  critical: 'bg-red-900/200/10 border-red-500/20 text-red-400',
+  warning: 'bg-amber-900/200/10 border-amber-500/20 text-amber-400',
+  info: 'bg-cyan-900/200/10 border-cyan-500/20 text-cyan-400',
+  success: 'bg-emerald-900/200/10 border-emerald-500/20 text-emerald-400',
 };
 
 const iconStyles = {
@@ -195,7 +195,7 @@ export default function AIAnalysisPanel() {
             <Sparkles className="w-4 h-4 text-violet-400" />
             AI Analysis
           </CardTitle>
-          <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">Live data</Badge>
+          <Badge className="bg-violet-900/200/15 text-violet-400 border border-violet-500/20 text-[10px]">Live data</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -240,7 +240,7 @@ export default function AIAnalysisPanel() {
         )}
 
         {findings.length === 0 && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-900/200/10 border border-emerald-500/20 text-xs text-emerald-400">
             <CheckCircle2 className="w-4 h-4" />
             <span>All data quality checks passed — no issues detected.</span>
           </div>

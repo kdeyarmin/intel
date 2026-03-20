@@ -18,13 +18,13 @@ import {
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
 function ResultCard({ match, importing, imported, onImport }) {
-  const confColor = { high: 'bg-green-100 text-green-700 border-green-200', medium: 'bg-amber-100 text-amber-700 border-amber-200', low: 'bg-red-100 text-red-700 border-red-200' };
+  const confColor = { high: 'bg-green-100 text-green-400 border-green-200', medium: 'bg-amber-100 text-amber-400 border-amber-200', low: 'bg-red-100 text-red-400 border-red-200' };
 
   return (
     <div className="flex items-start justify-between p-3.5 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:border-blue-200 hover:shadow-sm transition-all">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-slate-900">{match.name}</span>
+          <span className="text-sm font-semibold text-white">{match.name}</span>
           <Badge className={`text-[9px] border ${confColor[match.confidence] || confColor.low}`}>{match.confidence}</Badge>
           <Badge variant="outline" className="text-[9px]">{match.entity_type}</Badge>
         </div>
@@ -176,7 +176,7 @@ Return up to 10 results, ordered by relevance.`,
   return (
     <div className="space-y-4">
       {/* Description */}
-      <div className="flex items-start gap-3 p-4 bg-blue-50/70 rounded-xl border border-blue-100">
+      <div className="flex items-start gap-3 p-4 bg-blue-900/20/70 rounded-xl border border-blue-100">
         <div className="p-2 rounded-lg bg-blue-100">
           <Search className="w-4 h-4 text-blue-600" />
         </div>
@@ -245,10 +245,10 @@ Return up to 10 results, ordered by relevance.`,
 
       {/* Loading State */}
       {loading && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-blue-200 bg-blue-900/20/50">
           <CardContent className="py-8 flex flex-col items-center gap-2">
             <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-            <p className="text-sm font-medium text-blue-800">Searching the NPPES registry...</p>
+            <p className="text-sm font-medium text-blue-300">Searching the NPPES registry...</p>
             <p className="text-xs text-blue-600">This uses AI-powered web search to find matching NPIs</p>
           </CardContent>
         </Card>
@@ -268,7 +268,7 @@ Return up to 10 results, ordered by relevance.`,
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-medium text-slate-600">{results.matches.length} results found</span>
-                {imported.size > 0 && <Badge className="bg-green-100 text-green-700 text-[10px]">{imported.size} imported</Badge>}
+                {imported.size > 0 && <Badge className="bg-green-100 text-green-400 text-[10px]">{imported.size} imported</Badge>}
               </div>
               {results.matches.map((m, i) => (
                 <ResultCard key={i} match={m} importing={importing} imported={imported} onImport={handleImport} />
@@ -287,9 +287,9 @@ Return up to 10 results, ordered by relevance.`,
       )}
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-900/20 border border-amber-200 rounded-lg">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-        <p className="text-[10px] text-amber-700 leading-relaxed">
+        <p className="text-[10px] text-amber-400 leading-relaxed">
           NPI matches are found via AI web search and should be verified. Imported providers are flagged for NPPES enrichment to pull official registry data.
         </p>
       </div>

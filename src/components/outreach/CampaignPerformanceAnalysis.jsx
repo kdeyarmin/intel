@@ -99,15 +99,15 @@ Provide a thorough analysis including:
   };
 
   const verdictConfig = {
-    success: { color: 'bg-green-100 text-green-800 border-green-200', icon: TrendingUp, label: 'Strong Performance' },
-    moderate: { color: 'bg-amber-100 text-amber-800 border-amber-200', icon: Minus, label: 'Moderate Performance' },
-    underperforming: { color: 'bg-red-100 text-red-800 border-red-200', icon: TrendingDown, label: 'Underperforming' },
+    success: { color: 'bg-green-100 text-green-300 border-green-200', icon: TrendingUp, label: 'Strong Performance' },
+    moderate: { color: 'bg-amber-100 text-amber-300 border-amber-200', icon: Minus, label: 'Moderate Performance' },
+    underperforming: { color: 'bg-red-100 text-red-300 border-red-200', icon: TrendingDown, label: 'Underperforming' },
   };
 
-  const priorityColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+  const priorityColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
 
   return (
-    <Card className="border-violet-200">
+    <Card className="border-violet-500/40">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -124,20 +124,20 @@ Provide a thorough analysis including:
       <CardContent className="space-y-3">
         {/* Quick metrics */}
         <div className="grid grid-cols-4 gap-2">
-          <div className="text-center p-2 rounded-lg bg-blue-50">
-            <p className="text-lg font-bold text-blue-700">{campaign.sent_count || 0}</p>
+          <div className="text-center p-2 rounded-lg bg-blue-900/20">
+            <p className="text-lg font-bold text-blue-400">{campaign.sent_count || 0}</p>
             <p className="text-[9px] text-blue-500">Sent</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-emerald-50">
-            <p className="text-lg font-bold text-emerald-700">{openRate}%</p>
+          <div className="text-center p-2 rounded-lg bg-emerald-900/20">
+            <p className="text-lg font-bold text-emerald-400">{openRate}%</p>
             <p className="text-[9px] text-emerald-500">Open Rate</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-violet-50">
+          <div className="text-center p-2 rounded-lg bg-violet-900/30">
             <p className="text-lg font-bold text-violet-700">{responseRate}%</p>
             <p className="text-[9px] text-violet-500">Response Rate</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-red-50">
-            <p className="text-lg font-bold text-red-700">{bounceRate}%</p>
+          <div className="text-center p-2 rounded-lg bg-red-900/20">
+            <p className="text-lg font-bold text-red-400">{bounceRate}%</p>
             <p className="text-[9px] text-red-500">Bounce Rate</p>
           </div>
         </div>
@@ -162,7 +162,7 @@ Provide a thorough analysis including:
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-semibold">{v.label}</span>
                     {analysis.performance_score && (
-                      <Badge className="bg-white/50 text-[10px]">{analysis.performance_score}/100</Badge>
+                      <Badge className="bg-slate-800/60/50 text-[10px]">{analysis.performance_score}/100</Badge>
                     )}
                   </div>
                   <p className="text-xs leading-relaxed">{analysis.verdict_summary}</p>
@@ -173,14 +173,14 @@ Provide a thorough analysis including:
             {/* Strengths & Weaknesses */}
             <div className="grid grid-cols-2 gap-2">
               {analysis.strengths?.length > 0 && (
-                <div className="bg-green-50 rounded-lg p-2 border border-green-100">
-                  <p className="text-[10px] font-semibold text-green-700 mb-1">✓ Strengths</p>
+                <div className="bg-green-900/20 rounded-lg p-2 border border-green-100">
+                  <p className="text-[10px] font-semibold text-green-400 mb-1">✓ Strengths</p>
                   {analysis.strengths.map((s, i) => <p key={i} className="text-[9px] text-green-600 mb-0.5">• {s}</p>)}
                 </div>
               )}
               {analysis.weaknesses?.length > 0 && (
-                <div className="bg-red-50 rounded-lg p-2 border border-red-100">
-                  <p className="text-[10px] font-semibold text-red-700 mb-1">✗ Weaknesses</p>
+                <div className="bg-red-900/20 rounded-lg p-2 border border-red-100">
+                  <p className="text-[10px] font-semibold text-red-400 mb-1">✗ Weaknesses</p>
                   {analysis.weaknesses.map((w, i) => <p key={i} className="text-[9px] text-red-600 mb-0.5">• {w}</p>)}
                 </div>
               )}
@@ -188,7 +188,7 @@ Provide a thorough analysis including:
 
             {/* Rate Analysis */}
             {analysis.open_rate_analysis && (
-              <div className="bg-slate-50 rounded-lg p-2">
+              <div className="bg-slate-800/40 rounded-lg p-2">
                 <p className="text-[10px] font-medium text-slate-500 mb-0.5">Open Rate Analysis</p>
                 <p className="text-[10px] text-slate-700 leading-relaxed">{analysis.open_rate_analysis}</p>
               </div>
@@ -201,7 +201,7 @@ Provide a thorough analysis including:
                   <Mail className="w-3 h-3 inline mr-1" />Improved Subject Lines
                 </p>
                 {analysis.improved_subject_lines.map((sl, i) => (
-                  <div key={i} className="bg-white border rounded-lg px-2.5 py-1.5 mb-1 hover:border-violet-300">
+                  <div key={i} className="bg-slate-800/60 border rounded-lg px-2.5 py-1.5 mb-1 hover:border-violet-300">
                     <p className="text-[10px] text-slate-800">"{sl}"</p>
                   </div>
                 ))}
@@ -216,7 +216,7 @@ Provide a thorough analysis including:
                 </p>
                 {analysis.send_time_recommendations.map((st, i) => (
                   <div key={i} className="flex items-start gap-2 mb-1">
-                    <Badge className="bg-blue-100 text-blue-700 text-[8px] shrink-0 mt-0.5">{st.time_window}</Badge>
+                    <Badge className="bg-blue-100 text-blue-400 text-[8px] shrink-0 mt-0.5">{st.time_window}</Badge>
                     <p className="text-[9px] text-slate-600">{st.reasoning}</p>
                   </div>
                 ))}
@@ -237,7 +237,7 @@ Provide a thorough analysis including:
 
             {/* Action Plan */}
             {analysis.action_plan?.length > 0 && (
-              <div className="bg-violet-50 rounded-lg p-2 border border-violet-100">
+              <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
                 <p className="text-[10px] font-semibold text-violet-700 mb-1.5">Action Plan</p>
                 {analysis.action_plan.map((a, i) => (
                   <div key={i} className="flex items-start gap-2 mb-1.5">

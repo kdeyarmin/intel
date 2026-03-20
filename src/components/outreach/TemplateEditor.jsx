@@ -33,7 +33,7 @@ export default function TemplateEditor({ subject, onSubjectChange, body, onBodyC
           <Label>Merge Fields</Label>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {MERGE_FIELDS.map(f => (
-              <Badge key={f.tag} variant="outline" className="cursor-pointer text-[10px] hover:bg-blue-50 hover:border-blue-300"
+              <Badge key={f.tag} variant="outline" className="cursor-pointer text-[10px] hover:bg-blue-900/20 hover:border-blue-300"
                 onClick={() => insertField(f.tag, 'body')} title={f.desc}>
                 {f.tag}
               </Badge>

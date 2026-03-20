@@ -16,11 +16,11 @@ import PageHeader from '../components/shared/PageHeader';
 import { formatDateTimeET } from '../components/utils/dateUtils';
 
 const EVENT_TYPE_CONFIG = {
-  import: { label: 'Import', color: 'bg-blue-500/15 text-blue-400 border-blue-500/20', Icon: Upload },
-  export: { label: 'Export', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', Icon: Download },
-  scoring_run: { label: 'Scoring Run', color: 'bg-purple-500/15 text-purple-400 border-purple-500/20', Icon: Calculator },
-  login: { label: 'Login', color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', Icon: UserCheck },
-  permission_change: { label: 'Permission Change', color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', Icon: AlertTriangle },
+  import: { label: 'Import', color: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20', Icon: Upload },
+  export: { label: 'Export', color: 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20', Icon: Download },
+  scoring_run: { label: 'Scoring Run', color: 'bg-purple-900/200/15 text-purple-400 border-purple-500/20', Icon: Calculator },
+  login: { label: 'Login', color: 'bg-cyan-900/200/15 text-cyan-400 border-cyan-500/20', Icon: UserCheck },
+  permission_change: { label: 'Permission Change', color: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20', Icon: AlertTriangle },
 };
 
 function getEventConfig(type) {
@@ -106,7 +106,7 @@ export default function SecurityAudit() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-cyan-500/10">
+            <div className="p-2 rounded-lg bg-cyan-900/200/10">
               <Activity className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
@@ -120,7 +120,7 @@ export default function SecurityAudit() {
 
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
+            <div className="p-2 rounded-lg bg-blue-900/200/10">
               <Users className="w-5 h-5 text-blue-400" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export default function SecurityAudit() {
 
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10">
+            <div className="p-2 rounded-lg bg-emerald-900/200/10">
               <Download className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
@@ -148,7 +148,7 @@ export default function SecurityAudit() {
 
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
+            <div className="p-2 rounded-lg bg-amber-900/200/10">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
             </div>
             <div>
@@ -168,7 +168,7 @@ export default function SecurityAudit() {
             <Filter className="w-4 h-4 text-cyan-400" />
             Filter Events
             {hasActiveFilters && (
-              <Badge variant="outline" className="ml-2 bg-cyan-500/10 text-cyan-400 border-cyan-500/30 text-xs">
+              <Badge variant="outline" className="ml-2 bg-cyan-900/200/10 text-cyan-400 border-cyan-500/30 text-xs">
                 Filtered
               </Badge>
             )}

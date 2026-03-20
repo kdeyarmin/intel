@@ -54,20 +54,20 @@ export default function PackageSelector({ onApply }) {
     <Card>
       <CardHeader>
         <CardTitle>Scoring Packages</CardTitle>
-        <p className="text-sm text-gray-600">Pre-configured weight templates for different use cases</p>
+        <p className="text-sm text-slate-400">Pre-configured weight templates for different use cases</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {packages.map(pkg => {
           const Icon = pkg.icon;
           return (
-            <div key={pkg.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+            <div key={pkg.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-800/40">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
                   <Icon className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>
                   <p className="font-medium">{pkg.name}</p>
-                  <p className="text-sm text-gray-600">{pkg.description}</p>
+                  <p className="text-sm text-slate-400">{pkg.description}</p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     <Badge variant="outline" className="text-xs">Referrals: {pkg.weights.referrals}%</Badge>
                     <Badge variant="outline" className="text-xs">Volume: {pkg.weights.volume}%</Badge>

@@ -45,9 +45,9 @@ export default function ProjectManagement() {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500/10 text-red-500 border-red-500/20';
-      case 'high': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
-      case 'medium': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'urgent': return 'bg-red-900/200/10 text-red-500 border-red-500/20';
+      case 'high': return 'bg-orange-900/200/10 text-orange-500 border-orange-500/20';
+      case 'medium': return 'bg-blue-900/200/10 text-blue-500 border-blue-500/20';
       case 'low': return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
       default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
     }
@@ -148,7 +148,7 @@ export default function ProjectManagement() {
                     Automatically distribute tasks based on team member roles, availability, and task priority.
                   </p>
                   <Button 
-                    className="w-full bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20"
+                    className="w-full bg-cyan-900/200/10 text-cyan-400 hover:bg-cyan-900/200/20 border border-cyan-500/20"
                     onClick={() => analyzeMutation.mutate('assign')}
                     disabled={analyzeMutation.isPending}
                   >
@@ -198,7 +198,7 @@ export default function ProjectManagement() {
                     Predict timelines, identify potential bottlenecks, and assess overall project risk.
                   </p>
                   <Button 
-                    className="w-full bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20"
+                    className="w-full bg-purple-900/200/10 text-purple-400 hover:bg-purple-900/200/20 border border-purple-500/20"
                     onClick={() => analyzeMutation.mutate('analyze')}
                     disabled={analyzeMutation.isPending}
                   >
@@ -215,9 +215,9 @@ export default function ProjectManagement() {
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-xs font-medium text-slate-400">Risk Level</span>
                           <Badge variant="outline" className={`
-                            ${analyzeMutation.data.data.riskLevel === 'High' ? 'bg-red-500/10 text-red-500 border-red-500/20' : ''}
-                            ${analyzeMutation.data.data.riskLevel === 'Medium' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : ''}
-                            ${analyzeMutation.data.data.riskLevel === 'Low' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : ''}
+                            ${analyzeMutation.data.data.riskLevel === 'High' ? 'bg-red-900/200/10 text-red-500 border-red-500/20' : ''}
+                            ${analyzeMutation.data.data.riskLevel === 'Medium' ? 'bg-orange-900/200/10 text-orange-500 border-orange-500/20' : ''}
+                            ${analyzeMutation.data.data.riskLevel === 'Low' ? 'bg-emerald-900/200/10 text-emerald-500 border-emerald-500/20' : ''}
                           `}>
                             {analyzeMutation.data.data.riskLevel}
                           </Badge>
@@ -256,7 +256,7 @@ export default function ProjectManagement() {
                     Intelligent resource allocation recommendations to balance workloads and optimize delivery.
                   </p>
                   <Button 
-                    className="w-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                    className="w-full bg-emerald-900/200/10 text-emerald-400 hover:bg-emerald-900/200/20 border border-emerald-500/20"
                     onClick={() => analyzeMutation.mutate('resource')}
                     disabled={analyzeMutation.isPending}
                   >
@@ -275,7 +275,7 @@ export default function ProjectManagement() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-red-500/5 border border-red-500/10 p-3 rounded-lg">
+                        <div className="bg-red-900/200/5 border border-red-500/10 p-3 rounded-lg">
                           <h4 className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">Overloaded</h4>
                           <div className="space-y-1">
                             {analyzeMutation.data.data.overloadedMembers?.length > 0 ? 
@@ -284,7 +284,7 @@ export default function ProjectManagement() {
                             }
                           </div>
                         </div>
-                        <div className="bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-lg">
+                        <div className="bg-emerald-900/200/5 border border-emerald-500/10 p-3 rounded-lg">
                           <h4 className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-2">Underutilized</h4>
                           <div className="space-y-1">
                             {analyzeMutation.data.data.underutilizedMembers?.length > 0 ? 

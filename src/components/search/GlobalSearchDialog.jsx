@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_CONFIG = {
-  Provider:     { icon: Users,        color: 'bg-blue-500/15 text-blue-400' },
-  Organization: { icon: Building2,    color: 'bg-indigo-500/15 text-indigo-400' },
+  Provider:     { icon: Users,        color: 'bg-blue-900/200/15 text-blue-400' },
+  Organization: { icon: Building2,    color: 'bg-indigo-900/200/15 text-indigo-400' },
   Location:     { icon: MapPin,       color: 'bg-sky-500/15 text-sky-400' },
-  Utilization:  { icon: Activity,     color: 'bg-teal-500/15 text-teal-400' },
-  Referral:     { icon: GitBranch,    color: 'bg-violet-500/15 text-violet-400' },
-  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-500/15 text-emerald-400' },
-  'Lead List':  { icon: ListChecks,   color: 'bg-amber-500/15 text-amber-400' },
+  Utilization:  { icon: Activity,     color: 'bg-teal-900/200/15 text-teal-400' },
+  Referral:     { icon: GitBranch,    color: 'bg-violet-900/200/15 text-violet-400' },
+  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-900/200/15 text-emerald-400' },
+  'Lead List':  { icon: ListChecks,   color: 'bg-amber-900/200/15 text-amber-400' },
   Page:         { icon: FileBarChart2, color: 'bg-slate-500/15 text-slate-400' },
 };
 
@@ -261,7 +261,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           <div className="flex gap-1.5 px-4 py-2 border-b overflow-x-auto">
             <button
               onClick={() => setActiveCategory('all')}
-              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/200/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
             >
               All ({allResults.length})
             </button>
@@ -269,7 +269,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/200/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
               >
                 {cat} ({count})
               </button>
@@ -319,7 +319,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                     key={idx}
                     onClick={() => goTo(item.url)}
                     onMouseEnter={() => setHighlightIdx(idx)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-500/10' : 'hover:bg-slate-800/50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-900/200/10' : 'hover:bg-slate-800/50'}`}
                   >
                     <div className={`p-1.5 rounded-md ${config.color}`}>
                       <Icon className="w-4 h-4" />

@@ -77,7 +77,7 @@ export default function BillingStatusWidget({ sidebarOpen }) {
         </div>
         <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
           <div 
-            className={`h-full rounded-full ${isLow ? 'bg-red-500' : 'bg-cyan-500'}`}
+            className={`h-full rounded-full ${isLow ? 'bg-red-900/200' : 'bg-cyan-900/200'}`}
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -86,7 +86,7 @@ export default function BillingStatusWidget({ sidebarOpen }) {
       <div className="pt-3 border-t border-slate-700/50">
         <div className="flex items-center justify-between mb-2.5">
           <span className="text-[11px] text-slate-400 font-medium">Auto-Imports</span>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${isActive ? 'bg-emerald-900/200/10 text-emerald-400' : 'bg-amber-900/200/10 text-amber-400'}`}>
             {isActive ? 'Running' : 'Paused'}
           </span>
         </div>

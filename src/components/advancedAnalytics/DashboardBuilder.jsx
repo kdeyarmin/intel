@@ -108,12 +108,12 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
               key={db.id}
               onClick={() => onSelect(db.id)}
               className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors border ${
-                activeId === db.id ? 'bg-violet-50 border-violet-200' : 'bg-white border-slate-100 hover:bg-slate-50'
+                activeId === db.id ? 'bg-violet-900/30 border-violet-500/40' : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800/40'
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  {db.is_default && <Badge className="text-[9px] bg-amber-100 text-amber-700 px-1 py-0">Default</Badge>}
+                  {db.is_default && <Badge className="text-[9px] bg-amber-100 text-amber-400 px-1 py-0">Default</Badge>}
                   <span className="text-sm font-medium text-slate-700 truncate">{db.name}</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</p>
@@ -157,7 +157,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
               </DropdownMenu>
             </div>
             {(activeDashboard.widgets || []).map((w) => (
-              <div key={w.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2.5 py-1.5">
+              <div key={w.id} className="flex items-center gap-2 text-xs bg-slate-800/40 rounded px-2.5 py-1.5">
                 <GripVertical className="w-3 h-3 text-slate-300" />
                 <span className="flex-1 text-slate-600 capitalize">{w.type.replace('_', ' ')} Analysis</span>
                 <button onClick={() => removeWidget(w.id)} className="text-slate-400 hover:text-red-500">

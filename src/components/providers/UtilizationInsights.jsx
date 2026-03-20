@@ -15,7 +15,7 @@ export default function UtilizationInsights({ utilization }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">No utilization data available</p>
+          <p className="text-sm text-slate-400">No utilization data available</p>
         </CardContent>
       </Card>
     );
@@ -28,17 +28,17 @@ export default function UtilizationInsights({ utilization }) {
   const servicesPerPatient = (patientVolume !== '<11' && patientVolume > 0) ? (totalServices / patientVolume).toFixed(1) : 0;
 
   const getVolumeIndicator = () => {
-    if (patientVolume === '<11') return { label: 'Low Volume', color: 'bg-gray-100 text-gray-800' };
-    if (patientVolume >= 1000) return { label: 'Very High', color: 'bg-purple-100 text-purple-800' };
-    if (patientVolume >= 500) return { label: 'High', color: 'bg-blue-100 text-blue-800' };
-    if (patientVolume >= 200) return { label: 'Moderate', color: 'bg-green-100 text-green-800' };
-    return { label: 'Low', color: 'bg-gray-100 text-gray-800' };
+    if (patientVolume === '<11') return { label: 'Low Volume', color: 'bg-slate-700/40 text-slate-200' };
+    if (patientVolume >= 1000) return { label: 'Very High', color: 'bg-purple-100 text-purple-300' };
+    if (patientVolume >= 500) return { label: 'High', color: 'bg-blue-100 text-blue-300' };
+    if (patientVolume >= 200) return { label: 'Moderate', color: 'bg-green-100 text-green-300' };
+    return { label: 'Low', color: 'bg-slate-700/40 text-slate-200' };
   };
 
   const getIntensityIndicator = () => {
-    if (servicesPerPatient >= 15) return { label: 'High Intensity', color: 'bg-red-100 text-red-800' };
+    if (servicesPerPatient >= 15) return { label: 'High Intensity', color: 'bg-red-100 text-red-300' };
     if (servicesPerPatient >= 8) return { label: 'Moderate Intensity', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Standard Care', color: 'bg-green-100 text-green-800' };
+    return { label: 'Standard Care', color: 'bg-green-100 text-green-300' };
   };
 
   const volumeIndicator = getVolumeIndicator();
@@ -54,7 +54,7 @@ export default function UtilizationInsights({ utilization }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-3 bg-blue-900/20 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <Users className="h-4 w-4 text-blue-600" />
               <p className="text-xs text-blue-600 font-medium">Patient Volume</p>
@@ -62,10 +62,10 @@ export default function UtilizationInsights({ utilization }) {
             <p className="text-2xl font-bold text-blue-900">
               {patientVolume === '<11' ? '<11' : patientVolume.toLocaleString()}
             </p>
-            <p className="text-xs text-blue-700">Medicare beneficiaries ({utilization.year})</p>
+            <p className="text-xs text-blue-400">Medicare beneficiaries ({utilization.year})</p>
           </div>
 
-          <div className="p-3 bg-teal-50 rounded-lg">
+          <div className="p-3 bg-teal-900/20 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <Activity className="h-4 w-4 text-teal-600" />
               <p className="text-xs text-teal-600 font-medium">Service Intensity</p>
@@ -77,11 +77,11 @@ export default function UtilizationInsights({ utilization }) {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Volume Classification</span>
+            <span className="text-sm text-slate-400">Volume Classification</span>
             <Badge className={volumeIndicator.color}>{volumeIndicator.label}</Badge>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Care Intensity</span>
+            <span className="text-sm text-slate-400">Care Intensity</span>
             <Badge className={intensityIndicator.color}>{intensityIndicator.label}</Badge>
           </div>
         </div>
@@ -89,13 +89,13 @@ export default function UtilizationInsights({ utilization }) {
         <div className="pt-3 border-t">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <p className="text-gray-500">Total Services</p>
+              <p className="text-slate-400">Total Services</p>
               <p className="font-medium">
                 {totalServices === '<11' ? '<11' : totalServices.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-gray-500">Medicare Payments</p>
+              <p className="text-slate-400">Medicare Payments</p>
               <p className="font-medium">
                 ${(utilization.total_medicare_payment || 0).toLocaleString()}
               </p>

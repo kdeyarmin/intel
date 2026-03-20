@@ -45,7 +45,7 @@ function RowInspector({ error, onClose }) {
           </div>
         ))}
       </div>
-      <div className="bg-red-500/5 border border-red-500/15 rounded px-2.5 py-2">
+      <div className="bg-red-900/200/5 border border-red-500/15 rounded px-2.5 py-2">
         <span className="text-[9px] text-slate-500 block mb-0.5">Error Message</span>
         <p className="text-[11px] text-red-300 break-words">{msg}</p>
       </div>
@@ -184,7 +184,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                     <div key={idx}>
                       <div
                         className={`grid grid-cols-[60px_80px_1fr_40px] px-2.5 py-1.5 text-[11px] border-b border-slate-700/10 hover:bg-slate-700/15 transition-colors ${
-                          inspectedRow === idx ? 'bg-cyan-500/5' : ''
+                          inspectedRow === idx ? 'bg-cyan-900/200/5' : ''
                         }`}
                       >
                         <span className="text-slate-300 font-mono">
@@ -231,7 +231,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
           </div>
 
           {/* Solutions */}
-          <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-2.5 space-y-1.5">
+          <div className="bg-emerald-900/200/5 border border-emerald-500/15 rounded-lg p-2.5 space-y-1.5">
             <div className="flex items-center gap-1.5">
               <Lightbulb className="w-3.5 h-3.5 text-yellow-400" />
               <span className="text-[10px] font-semibold text-emerald-400">How to Fix "{config.label}" Errors</span>

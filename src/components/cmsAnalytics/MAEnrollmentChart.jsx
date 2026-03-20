@@ -33,7 +33,7 @@ export default function MAEnrollmentChart({ data, loading }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+          <div className="w-2 h-2 bg-blue-900/200 rounded-full" />
           MA Inpatient Hospital Utilization
         </CardTitle>
         <CardDescription>Discharges by hospital type</CardDescription>

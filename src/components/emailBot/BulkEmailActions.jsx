@@ -120,7 +120,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
         <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
           Bulk Email Actions
           {selectedIds.size > 0 && (
-            <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[10px]">
+            <Badge className="bg-cyan-900/200/15 text-cyan-400 border border-cyan-500/20 text-[10px]">
               {selectedIds.size} selected
             </Badge>
           )}
@@ -138,7 +138,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                 onClick={() => { setStatusFilter(sf.value); setSelectedIds(new Set()); }}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border ${
                   isActive
-                    ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-300'
+                    ? 'border-cyan-500/50 bg-cyan-900/200/10 text-cyan-300'
                     : 'border-slate-700/50 bg-slate-800/30 text-slate-400 hover:border-slate-600'
                 }`}
               >
@@ -211,7 +211,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                 onClick={() => toggleSelect(p.id)}
                 className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all border ${
                   isSelected
-                    ? 'border-cyan-500/40 bg-cyan-500/5'
+                    ? 'border-cyan-500/40 bg-cyan-900/200/5'
                     : 'border-transparent hover:bg-slate-800/40'
                 }`}
               >
@@ -222,9 +222,9 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                   <div className="text-[10px] text-slate-500 truncate">{p.email}</div>
                 </div>
                 <Badge className={`text-[9px] shrink-0 ${
-                  status === 'valid' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                  status === 'risky' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                  status === 'invalid' ? 'bg-red-500/15 text-red-400 border-red-500/20' :
+                  status === 'valid' ? 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20' :
+                  status === 'risky' ? 'bg-amber-900/200/15 text-amber-400 border-amber-500/20' :
+                  status === 'invalid' ? 'bg-red-900/200/15 text-red-400 border-red-500/20' :
                   'bg-slate-500/15 text-slate-400 border-slate-500/20'
                 } border`}>
                   {status}

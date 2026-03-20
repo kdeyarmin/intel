@@ -119,10 +119,10 @@ export default function PredictiveAlerts({ metrics }) {
   }, [metrics]);
 
   const severityStyles = {
-    critical: { bg: 'bg-red-50 border-red-200', icon: 'text-red-600', badge: 'bg-red-100 text-red-700' },
-    warning: { bg: 'bg-yellow-50 border-yellow-200', icon: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-700' },
-    info: { bg: 'bg-blue-50 border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-700' },
-    positive: { bg: 'bg-green-50 border-green-200', icon: 'text-green-600', badge: 'bg-green-100 text-green-700' },
+    critical: { bg: 'bg-red-900/20 border-red-200', icon: 'text-red-600', badge: 'bg-red-100 text-red-400' },
+    warning: { bg: 'bg-yellow-900/20 border-yellow-200', icon: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-700' },
+    info: { bg: 'bg-blue-900/20 border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-400' },
+    positive: { bg: 'bg-green-900/20 border-green-200', icon: 'text-green-600', badge: 'bg-green-100 text-green-400' },
   };
 
   return (
@@ -135,7 +135,7 @@ export default function PredictiveAlerts({ metrics }) {
       </CardHeader>
       <CardContent>
         {metrics.length < 3 ? (
-          <p className="text-sm text-gray-500 text-center py-6">
+          <p className="text-sm text-slate-400 text-center py-6">
             Predictive alerts require at least 3 daily snapshots. Capture snapshots daily to enable forecasting.
           </p>
         ) : (
@@ -148,12 +148,12 @@ export default function PredictiveAlerts({ metrics }) {
                   <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${styles.icon}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <p className="font-medium text-sm text-gray-900">{alert.title}</p>
+                      <p className="font-medium text-sm text-white">{alert.title}</p>
                       <Badge className={`text-[10px] px-1.5 py-0 ${styles.badge}`}>
                         {alert.severity}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-600">{alert.description}</p>
+                    <p className="text-xs text-slate-400">{alert.description}</p>
                   </div>
                 </div>
               );

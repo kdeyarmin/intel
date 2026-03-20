@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 export default function TopLocationsTable({ locations }) {
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Top Locations by Provider Density</CardTitle>
       </CardHeader>
@@ -34,9 +34,9 @@ export default function TopLocationsTable({ locations }) {
                   <TableCell className="text-right">{(loc.avgBeneficiaries || 0).toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge className={
-                      loc.providerCount >= 10 ? 'bg-green-100 text-green-700' :
+                      loc.providerCount >= 10 ? 'bg-green-100 text-green-400' :
                       loc.providerCount >= 5 ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-gray-200 text-gray-600'
+                      'bg-slate-700/50 text-slate-400'
                     }>
                       {loc.providerCount >= 10 ? 'High' : loc.providerCount >= 5 ? 'Medium' : 'Low'}
                     </Badge>
@@ -45,7 +45,7 @@ export default function TopLocationsTable({ locations }) {
               ))}
               {locations.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-400">No location data</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-500">No location data</TableCell>
                 </TableRow>
               )}
             </TableBody>

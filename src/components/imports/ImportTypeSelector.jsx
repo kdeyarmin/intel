@@ -75,7 +75,7 @@ export default function ImportTypeSelector({ onSelect }) {
                 </div>
                 <div>
                   <CardTitle className="text-lg">{type.name}</CardTitle>
-                  <p className="text-sm text-gray-500">{type.description}</p>
+                  <p className="text-sm text-slate-400">{type.description}</p>
                   {type.downloadUrl && (
                     <a href={type.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-1 inline-block" onClick={e => e.stopPropagation()}>
                       Download source file
@@ -86,15 +86,15 @@ export default function ImportTypeSelector({ onSelect }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Required columns:</p>
+                <p className="text-sm font-medium text-slate-300">Required columns:</p>
                 <div className="flex flex-wrap gap-2">
                   {type.requiredColumns.slice(0, 3).map(col => (
-                    <span key={col} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    <span key={col} className="text-xs bg-slate-700/40 px-2 py-1 rounded">
                       {col}
                     </span>
                   ))}
                   {type.requiredColumns.length > 3 && (
-                    <span className="text-xs text-gray-500">+{type.requiredColumns.length - 3} more</span>
+                    <span className="text-xs text-slate-400">+{type.requiredColumns.length - 3} more</span>
                   )}
                 </div>
               </div>

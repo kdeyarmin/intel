@@ -54,11 +54,11 @@ export default function ImportHistoryPanel({ batches }) {
   const hasFilters = statusFilter !== 'all' || dateFrom || dateTo;
 
   return (
-    <div className="border-t px-4 py-3 bg-gray-50">
+    <div className="border-t px-4 py-3 bg-slate-800/40">
       {/* Filters Row */}
       <div className="flex flex-wrap items-end gap-3 mb-3">
         <div className="flex items-center gap-1.5">
-          <Filter className="w-3.5 h-3.5 text-gray-500" />
+          <Filter className="w-3.5 h-3.5 text-slate-400" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
               <SelectValue placeholder="Status" />
@@ -81,7 +81,7 @@ export default function ImportHistoryPanel({ batches }) {
             className="h-8 w-[130px] text-xs"
             placeholder="From"
           />
-          <span className="text-xs text-gray-400">to</span>
+          <span className="text-xs text-slate-500">to</span>
           <Input
             type="date"
             value={dateTo}
@@ -92,7 +92,7 @@ export default function ImportHistoryPanel({ batches }) {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" />
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="h-8 w-[140px] text-xs">
               <SelectValue />
@@ -122,7 +122,7 @@ export default function ImportHistoryPanel({ batches }) {
 
       {/* Results */}
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">
+        <p className="text-sm text-slate-400 text-center py-4">
           {batches.length === 0 ? 'No import history yet' : 'No results match your filters'}
         </p>
       ) : (
@@ -130,7 +130,7 @@ export default function ImportHistoryPanel({ batches }) {
           {filtered.map((batch) => (
             <div
               key={batch.id}
-              className="bg-white p-3 rounded-lg border hover:border-teal-300 transition-colors cursor-pointer"
+              className="bg-slate-800/60 p-3 rounded-lg border hover:border-teal-300 transition-colors cursor-pointer"
               onClick={() => setSelectedBatch(batch)}
             >
               <div className="flex items-start justify-between mb-1.5">
@@ -144,14 +144,14 @@ export default function ImportHistoryPanel({ batches }) {
                   {batch.dry_run && <Badge variant="outline" className="text-xs">Dry Run</Badge>}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">{new Date(batch.created_date).toLocaleString()}</span>
-                  <Eye className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-xs text-slate-400">{new Date(batch.created_date).toLocaleString()}</span>
+                  <Eye className="w-3.5 h-3.5 text-slate-500" />
                 </div>
               </div>
               <div className="text-sm space-y-1">
-                <p className="text-gray-700 truncate">{batch.file_name}</p>
+                <p className="text-slate-300 truncate">{batch.file_name}</p>
                 {batch.total_rows != null && (
-                  <div className="flex gap-4 text-xs text-gray-600">
+                  <div className="flex gap-4 text-xs text-slate-400">
                     <span>Total: {batch.total_rows}</span>
                     <span className="text-green-600">Valid: {batch.valid_rows || 0}</span>
                     <span className="text-red-600">Invalid: {batch.invalid_rows || 0}</span>

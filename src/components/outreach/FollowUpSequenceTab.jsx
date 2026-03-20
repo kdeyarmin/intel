@@ -147,7 +147,7 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
       {results && (
         <div className="space-y-2">
           {/* Strategy */}
-          <div className="bg-violet-50 rounded-lg p-2 border border-violet-100">
+          <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
             <p className="text-[10px] font-semibold text-violet-800">{results.sequence_name}</p>
             <p className="text-[9px] text-violet-600 mt-0.5 leading-relaxed">{results.strategy}</p>
             {results.expected_cumulative_response_rate && (
@@ -164,9 +164,9 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
               const isExpanded = expandedEmail === i;
               return (
                 <div key={i} className="relative mb-2">
-                  <div className="absolute -left-[14px] top-1 w-3 h-3 rounded-full bg-violet-500 border-2 border-white" />
+                  <div className="absolute -left-[14px] top-1 w-3 h-3 rounded-full bg-violet-900/300 border-2 border-white" />
                   <div
-                    className="bg-white border rounded-lg p-2 cursor-pointer hover:border-violet-300 transition-colors"
+                    className="bg-slate-800/60 border rounded-lg p-2 cursor-pointer hover:border-violet-300 transition-colors"
                     onClick={() => setExpandedEmail(isExpanded ? null : i)}
                   >
                     <div className="flex items-center justify-between">
@@ -179,7 +179,7 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
                       <div className="flex items-center gap-1">
                         <Button
                           size="sm" variant="ghost"
-                          className="h-5 text-[9px] text-violet-600 hover:bg-violet-50 px-1.5"
+                          className="h-5 text-[9px] text-violet-600 hover:bg-violet-900/30 px-1.5"
                           onClick={(e) => { e.stopPropagation(); onApplySubject(email.subject); onApplyBody(email.body); toast.success(`Email ${email.email_number} applied`); }}
                         >
                           Use
@@ -218,8 +218,8 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
           {/* Stop conditions */}
           {results.stop_conditions?.length > 0 && (
-            <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-              <p className="text-[10px] font-medium text-amber-700 mb-1">Stop Sequence When:</p>
+            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+              <p className="text-[10px] font-medium text-amber-400 mb-1">Stop Sequence When:</p>
               {results.stop_conditions.map((c, i) => (
                 <p key={i} className="text-[9px] text-amber-600">• {c}</p>
               ))}

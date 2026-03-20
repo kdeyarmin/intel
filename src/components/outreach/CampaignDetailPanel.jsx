@@ -12,11 +12,11 @@ import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const statusColors = {
   pending: 'bg-slate-100 text-slate-600',
-  sent: 'bg-blue-100 text-blue-700',
-  opened: 'bg-emerald-100 text-emerald-700',
+  sent: 'bg-blue-100 text-blue-400',
+  opened: 'bg-emerald-100 text-emerald-400',
   responded: 'bg-violet-100 text-violet-700',
-  bounced: 'bg-red-100 text-red-700',
-  failed: 'bg-red-100 text-red-700',
+  bounced: 'bg-red-100 text-red-400',
+  failed: 'bg-red-100 text-red-400',
 };
 
 const PIE_COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b'];
@@ -64,14 +64,14 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">{campaign.name}</h2>
+          <h2 className="text-lg font-bold text-white">{campaign.name}</h2>
           <p className="text-xs text-slate-500">{campaign.description}</p>
         </div>
         <div className="flex items-center gap-2">
             <Button 
                 variant="outline" 
                 size="sm" 
-                className="text-violet-600 border-violet-200 hover:bg-violet-50 text-xs h-8" 
+                className="text-violet-600 border-violet-200 hover:bg-violet-900/20 text-xs h-8" 
                 onClick={handleGenerateAI} 
                 disabled={generating}
             >
@@ -85,10 +85,10 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           { label: 'Total', value: messages.length, icon: Send, color: 'text-slate-600 bg-slate-50' },
-          { label: 'Sent', value: statusCounts.sent || 0, icon: Send, color: 'text-blue-600 bg-blue-50' },
-          { label: 'Opened', value: statusCounts.opened || 0, icon: Eye, color: 'text-emerald-600 bg-emerald-50' },
-          { label: 'Responded', value: statusCounts.responded || 0, icon: MessageSquare, color: 'text-violet-600 bg-violet-50' },
-          { label: 'Bounced', value: (statusCounts.bounced || 0) + (statusCounts.failed || 0), icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
+          { label: 'Sent', value: statusCounts.sent || 0, icon: Send, color: 'text-blue-600 bg-blue-900/20' },
+          { label: 'Opened', value: statusCounts.opened || 0, icon: Eye, color: 'text-emerald-600 bg-emerald-900/20' },
+          { label: 'Responded', value: statusCounts.responded || 0, icon: MessageSquare, color: 'text-violet-600 bg-violet-900/20' },
+          { label: 'Bounced', value: (statusCounts.bounced || 0) + (statusCounts.failed || 0), icon: AlertTriangle, color: 'text-red-600 bg-red-900/20' },
         ].map(k => {
           const Icon = k.icon;
           return (
@@ -152,7 +152,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
                       <TableCell className="text-xs">{m.recipient_email || <span className="text-slate-300">—</span>}</TableCell>
                       <TableCell>
                           {m.body_html ? (
-                              <Badge variant="outline" className="text-[9px] border-violet-200 text-violet-600 bg-violet-50">
+                              <Badge variant="outline" className="text-[9px] border-violet-200 text-violet-600 bg-violet-900/20">
                                   Generated
                               </Badge>
                           ) : (

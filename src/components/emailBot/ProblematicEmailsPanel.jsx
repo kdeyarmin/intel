@@ -65,7 +65,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
         <Card className="bg-[#141d30] border-amber-500/20">
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg">
+              <div className="p-2 bg-amber-900/200/10 rounded-lg">
                 <ShieldAlert className="w-6 h-6 text-amber-400" />
               </div>
               <div>
@@ -76,7 +76,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
             <Button 
               size="sm" 
               variant="outline" 
-              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 gap-2 whitespace-nowrap"
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-900/200/10 gap-2 whitespace-nowrap"
               onClick={() => handleReverifyGroup('risky')}
               disabled={isVerifying || riskyCount === 0}
             >
@@ -89,7 +89,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
         <Card className="bg-[#141d30] border-red-500/20">
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
+              <div className="p-2 bg-red-900/200/10 rounded-lg">
                 <ShieldX className="w-6 h-6 text-red-400" />
               </div>
               <div>
@@ -100,7 +100,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
             <Button 
               size="sm" 
               variant="outline" 
-              className="border-red-500/30 text-red-400 hover:bg-red-500/10 gap-2 whitespace-nowrap"
+              className="border-red-500/30 text-red-400 hover:bg-red-900/200/10 gap-2 whitespace-nowrap"
               onClick={() => handleReverifyGroup('invalid')}
               disabled={isVerifying || invalidCount === 0}
             >
@@ -130,7 +130,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 text-xs text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 shrink-0"
+              className="h-8 text-xs text-slate-400 hover:text-cyan-400 hover:bg-cyan-900/200/10 shrink-0"
               onClick={() => handleReverifySingle(p.id)}
               disabled={verifyingId === p.id}
             >

@@ -246,7 +246,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800/40 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-cyan-900/200/10 flex items-center justify-center flex-shrink-0">
                       <Icon className="w-4 h-4 text-cyan-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -488,7 +488,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
           <div className="flex-1 flex flex-col items-center justify-center py-8 space-y-4">
             {result?.success ? (
               <>
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-900/200/10 flex items-center justify-center">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </div>
                 <div className="text-center">
@@ -496,12 +496,12 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   <p className="text-sm text-slate-400 mt-1">
                    {selectedType?.name} import has been queued and is now processing.
                   </p>
-                  {dryRun && <Badge className="bg-violet-500/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
+                  {dryRun && <Badge className="bg-violet-900/200/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
                 </div>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-red-900/200/10 flex items-center justify-center">
                   <AlertCircle className="w-8 h-8 text-red-400" />
                 </div>
                 <div className="text-center">

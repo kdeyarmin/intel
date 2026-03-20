@@ -131,18 +131,18 @@ Based on the file name and column headers, determine:
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Type:</span>
-                <Badge className="bg-cyan-500/15 text-cyan-400 text-[10px]">{typeLabel}</Badge>
+                <Badge className="bg-cyan-900/200/15 text-cyan-400 text-[10px]">{typeLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Category:</span>
-                <Badge className="bg-violet-500/15 text-violet-400 text-[10px]">{catLabel}</Badge>
+                <Badge className="bg-violet-900/200/15 text-violet-400 text-[10px]">{catLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Confidence:</span>
                 <Badge className={`text-[10px] ${
-                  confidence >= 80 ? 'bg-emerald-500/15 text-emerald-400' :
-                  confidence >= 50 ? 'bg-amber-500/15 text-amber-400' :
-                  'bg-red-500/15 text-red-400'
+                  confidence >= 80 ? 'bg-emerald-900/200/15 text-emerald-400' :
+                  confidence >= 50 ? 'bg-amber-900/200/15 text-amber-400' :
+                  'bg-red-900/200/15 text-red-400'
                 }`}>{confidence}%</Badge>
               </div>
             </div>
@@ -182,7 +182,7 @@ Based on the file name and column headers, determine:
                     <button
                       key={t.id}
                       onClick={() => handleOverride(t.id, t.category)}
-                      className="text-left text-[11px] px-2 py-1.5 rounded-md border border-slate-700/40 text-slate-300 hover:bg-cyan-500/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-colors"
+                      className="text-left text-[11px] px-2 py-1.5 rounded-md border border-slate-700/40 text-slate-300 hover:bg-cyan-900/200/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-colors"
                     >
                       {t.label}
                     </button>

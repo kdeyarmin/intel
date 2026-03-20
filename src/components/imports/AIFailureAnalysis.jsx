@@ -135,10 +135,10 @@ Be specific and actionable. Reference actual error details from the samples.`,
   if (!batch || batch.status !== 'failed') return null;
 
   const severityColors = {
-    low: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-    medium: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-    high: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
-    critical: 'bg-red-500/15 text-red-400 border-red-500/20',
+    low: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20',
+    medium: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20',
+    high: 'bg-orange-900/200/15 text-orange-400 border-orange-500/20',
+    critical: 'bg-red-900/200/15 text-red-400 border-red-500/20',
   };
 
   const categoryLabels = {
@@ -196,7 +196,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
       {(expanded || !compact) && (
         <CardContent className="space-y-3">
           {loading && (
-            <div className="flex items-center gap-3 p-4 bg-purple-500/5 rounded-lg border border-purple-500/10">
+            <div className="flex items-center gap-3 p-4 bg-purple-900/200/5 rounded-lg border border-purple-500/10">
               <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
               <div>
                 <p className="text-sm text-purple-300">Analyzing failure...</p>
@@ -249,7 +249,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`text-[9px] ${priorityColors[rec.priority]}`}>{rec.priority} priority</span>
                           {rec.automated && (
-                            <Badge className="text-[8px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">auto-fixable</Badge>
+                            <Badge className="text-[8px] bg-emerald-900/200/10 text-emerald-400 border-emerald-500/20">auto-fixable</Badge>
                           )}
                         </div>
                       </div>
@@ -272,7 +272,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                         {analysis.suggested_retry?.mode && analysis.suggested_retry.mode !== 'none' && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             <Badge className="text-[9px] bg-slate-900/50 text-slate-400 border-slate-700">Mode: {analysis.suggested_retry.mode}</Badge>
-                            {analysis.suggested_retry.row_offset > 0 && <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20">offset: {analysis.suggested_retry.row_offset}</Badge>}
+                            {analysis.suggested_retry.row_offset > 0 && <Badge className="text-[9px] bg-amber-900/200/10 text-amber-400 border-amber-500/20">offset: {analysis.suggested_retry.row_offset}</Badge>}
                           </div>
                         )}
                       </div>
@@ -288,7 +288,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                         <p className="text-sm font-medium text-amber-400 flex items-center gap-1.5"><Settings className="w-4 h-4"/> Schema / Mapping Change</p>
                         <p className="text-[11px] text-slate-400 mt-1">{analysis.resolution_explanation || 'The data structure does not match expectations. Adjust validation rules or mapping.'}</p>
                       </div>
-                      <Button onClick={() => window.location.href = '/import-monitoring?tab=rules'} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                      <Button onClick={() => window.location.href = '/import-monitoring?tab=rules'} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-900/200/10">
                         <Settings className="w-3.5 h-3.5 mr-1.5"/> Adjust Rules
                       </Button>
                     </div>
@@ -300,7 +300,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                         <p className="text-sm font-medium text-blue-400 flex items-center gap-1.5"><FileEdit className="w-4 h-4"/> Manual File Cleanup</p>
                         <p className="text-[11px] text-slate-400 mt-1">{analysis.resolution_explanation || 'Source file contains malformed data. Download, fix the errors, and re-upload.'}</p>
                       </div>
-                      <Button onClick={() => window.open(batch.file_url, '_blank')} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                      <Button onClick={() => window.open(batch.file_url, '_blank')} size="sm" variant="outline" className="shrink-0 h-8 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-900/200/10">
                         <Download className="w-3.5 h-3.5 mr-1.5"/> Source File
                       </Button>
                     </div>
@@ -312,7 +312,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                 <>
                   {/* Fallback Smart Retry Button */}
                   {analysis.can_auto_fix && analysis.suggested_retry?.mode !== 'none' && (
-                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
+                    <div className="bg-cyan-900/200/5 border border-cyan-500/20 rounded-lg p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-cyan-300 flex items-center gap-1.5 mb-1">
@@ -324,15 +324,15 @@ Be specific and actionable. Reference actual error details from the samples.`,
                               Mode: {analysis.suggested_retry.mode}
                             </Badge>
                             {analysis.suggested_retry.dry_run_first && (
-                              <Badge className="text-[9px] bg-blue-500/10 text-blue-400 border-blue-500/20">dry run first</Badge>
+                              <Badge className="text-[9px] bg-blue-900/200/10 text-blue-400 border-blue-500/20">dry run first</Badge>
                             )}
                             {analysis.suggested_retry.sheet_filter && (
-                              <Badge className="text-[9px] bg-violet-500/10 text-violet-400 border-violet-500/20">
+                              <Badge className="text-[9px] bg-violet-900/200/10 text-violet-400 border-violet-500/20">
                                 sheet: {analysis.suggested_retry.sheet_filter}
                               </Badge>
                             )}
                             {analysis.suggested_retry.row_offset > 0 && (
-                              <Badge className="text-[9px] bg-amber-500/10 text-amber-400 border-amber-500/20">
+                              <Badge className="text-[9px] bg-amber-900/200/10 text-amber-400 border-amber-500/20">
                                 offset: {analysis.suggested_retry.row_offset}
                               </Badge>
                             )}
@@ -350,7 +350,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                   )}
 
                   {!analysis.can_auto_fix && (
-                    <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-2.5 text-[11px] text-amber-400/80 flex items-start gap-2">
+                    <div className="bg-amber-900/200/5 border border-amber-500/15 rounded-lg p-2.5 text-[11px] text-amber-400/80 flex items-start gap-2">
                       <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                       <span>This issue may require manual intervention (e.g., fixing the source file or updating the import configuration) before retrying.</span>
                     </div>

@@ -9,7 +9,7 @@ export default function ProviderClusterList({ providers }) {
 
   if (providers.length === 0) {
     return (
-      <div className="text-sm text-gray-500 text-center py-4">
+      <div className="text-sm text-slate-400 text-center py-4">
         No providers match criteria
       </div>
     );
@@ -26,19 +26,19 @@ export default function ProviderClusterList({ providers }) {
           <button
             key={idx}
             onClick={() => navigate(createPageUrl('ProviderDetail') + '?npi=' + item.provider.npi)}
-            className="w-full text-left p-3 bg-white border border-gray-200 rounded-lg hover:border-teal-400 hover:bg-teal-50 transition-colors"
+            className="w-full text-left p-3 bg-slate-800/60 border border-slate-700/50 rounded-lg hover:border-teal-400 hover:bg-teal-900/20 transition-colors"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 truncate text-sm">
+                <div className="font-medium text-white truncate text-sm">
                   {name}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
+                <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
                   <MapPin className="h-3 w-3" />
                   <span>{item.location?.city}</span>
                 </div>
                 {item.taxonomy && (
-                  <div className="text-xs text-gray-500 mt-1 truncate">
+                  <div className="text-xs text-slate-400 mt-1 truncate">
                     {item.taxonomy.taxonomy_description}
                   </div>
                 )}

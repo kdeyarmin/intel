@@ -121,7 +121,7 @@ export default function AdvancedAnalytics() {
                   (activeDashboard.widgets || []).length > 0 ? (
                     (activeDashboard.widgets || []).map(w => renderWidget(w))
                   ) : (
-                    <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-xl">
+                    <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-700/50 rounded-xl">
                       <div className="text-center">
                         <LayoutDashboard className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                         <p className="text-sm text-slate-400">Add widgets using the panel on the left</p>
@@ -129,7 +129,7 @@ export default function AdvancedAnalytics() {
                     </div>
                   )
                 ) : (
-                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-xl">
+                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-700/50 rounded-xl">
                     <div className="text-center">
                       <LayoutDashboard className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                       <p className="text-sm text-slate-400">Create a dashboard to get started</p>

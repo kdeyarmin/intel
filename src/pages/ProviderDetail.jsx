@@ -144,7 +144,7 @@ export default function ProviderDetail() {
   if (!provider) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 text-lg mb-4">Provider not found</p>
+        <p className="text-slate-400 text-lg mb-4">Provider not found</p>
         <Button variant="outline" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
         </Button>

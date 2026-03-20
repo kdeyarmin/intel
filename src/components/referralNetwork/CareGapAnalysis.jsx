@@ -79,7 +79,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   <Badge className="bg-slate-700/50 text-slate-300 font-mono">{g.state}</Badge>
                   <span className="text-xs text-slate-500">{g.totalProviders} providers</span>
                 </div>
-                <Badge className={`text-[10px] ${g.gapScore >= 10 ? 'bg-red-500/15 text-red-400' : g.gapScore >= 5 ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                <Badge className={`text-[10px] ${g.gapScore >= 10 ? 'bg-red-900/200/15 text-red-400' : g.gapScore >= 5 ? 'bg-amber-900/200/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
                   Gap Score: {g.gapScore}
                 </Badge>
               </div>
@@ -92,7 +92,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {g.missingSpecialties.slice(0, 6).map(s => (
-                      <Badge key={s} className="bg-red-500/10 text-red-400 text-[9px] border border-red-500/20">{s}</Badge>
+                      <Badge key={s} className="bg-red-900/200/10 text-red-400 text-[9px] border border-red-500/20">{s}</Badge>
                     ))}
                     {g.missingSpecialties.length > 6 && (
                       <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">+{g.missingSpecialties.length - 6} more</Badge>
@@ -109,7 +109,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {g.lowCoverage.slice(0, 4).map(c => (
-                      <Badge key={c.specialty} className="bg-amber-500/10 text-amber-400 text-[9px] border border-amber-500/20">
+                      <Badge key={c.specialty} className="bg-amber-900/200/10 text-amber-400 text-[9px] border border-amber-500/20">
                         {c.specialty} ({c.count})
                       </Badge>
                     ))}

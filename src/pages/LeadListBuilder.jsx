@@ -321,7 +321,7 @@ export default function LeadListBuilder() {
                     placeholder="Optional description"
                   />
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-slate-400">
                   This will save {filteredResults.length} providers
                 </div>
                 <Button onClick={handleSaveList} className="w-full">
@@ -364,7 +364,7 @@ export default function LeadListBuilder() {
                   <Users className="h-5 w-5" />
                   Results
                 </div>
-                <span className="text-base font-normal text-gray-600">
+                <span className="text-base font-normal text-slate-400">
                   {filteredResults.length} providers
                 </span>
               </CardTitle>

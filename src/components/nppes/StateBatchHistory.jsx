@@ -6,10 +6,10 @@ import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusConfig = {
-  completed:  { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-950/30 border-green-900/30', badge: 'bg-green-500/20 text-green-400' },
-  failed:     { icon: XCircle, color: 'text-red-500', bg: 'bg-red-950/30 border-red-900/30', badge: 'bg-red-500/20 text-red-400' },
-  processing: { icon: Loader2, color: 'text-amber-500', bg: 'bg-amber-950/30 border-amber-900/30', badge: 'bg-amber-500/20 text-amber-400', spin: true },
-  validating: { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-950/30 border-blue-900/30', badge: 'bg-blue-500/20 text-blue-400', spin: true },
+  completed:  { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-950/30 border-green-900/30', badge: 'bg-green-900/200/20 text-green-400' },
+  failed:     { icon: XCircle, color: 'text-red-500', bg: 'bg-red-950/30 border-red-900/30', badge: 'bg-red-900/200/20 text-red-400' },
+  processing: { icon: Loader2, color: 'text-amber-500', bg: 'bg-amber-950/30 border-amber-900/30', badge: 'bg-amber-900/200/20 text-amber-400', spin: true },
+  validating: { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-950/30 border-blue-900/30', badge: 'bg-blue-900/200/20 text-blue-400', spin: true },
   cancelled:  { icon: XCircle, color: 'text-slate-500', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
   paused:     { icon: Clock, color: 'text-slate-500', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
 };
@@ -79,7 +79,7 @@ export default function StateBatchHistory({ stateCode }) {
                 <div className="flex items-center gap-2">
                   <Icon className={`w-4 h-4 ${cfg.color} ${cfg.spin ? 'animate-spin' : ''}`} />
                   <span className="text-sm font-medium capitalize">{batch.status}</span>
-                  {i === 0 && <Badge className="text-[10px] h-4 bg-teal-500/20 text-teal-400">Latest</Badge>}
+                  {i === 0 && <Badge className="text-[10px] h-4 bg-teal-900/200/20 text-teal-400">Latest</Badge>}
                   {batch.retry_count > 0 && (
                     <Badge variant="outline" className="text-[10px] h-4 gap-0.5">
                       <RotateCcw className="w-2.5 h-2.5" />

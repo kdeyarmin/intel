@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function ReferralVolumeChart({ data }) {
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Referral Volume by Top Locations</CardTitle>
       </CardHeader>

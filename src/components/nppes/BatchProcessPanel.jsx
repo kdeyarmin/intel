@@ -117,7 +117,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   };
 
   return (
-    <Card className="border-indigo-200 bg-white">
+    <Card className="border-indigo-200 bg-slate-800/60">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Layers className="w-5 h-5 text-indigo-600" />
@@ -189,7 +189,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 </Button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 border rounded-lg bg-slate-50">
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 border rounded-lg bg-slate-800/40">
               {US_STATES.map(st => (
                 <button
                   key={st}
@@ -198,7 +198,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     selectedStates.includes(st)
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300'
+                      : 'bg-slate-800/60 text-slate-600 border border-slate-700/50 hover:border-indigo-300'
                   }`}
                 >
                   {st}
@@ -224,7 +224,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
 
         {/* Summary of what will run */}
         {!batchRunning && (
-          <div className="text-xs text-slate-500 bg-slate-50 border rounded-lg p-3">
+          <div className="text-xs text-slate-500 bg-slate-800/40 border rounded-lg p-3">
             <strong>Preview:</strong>{' '}
             {selectionMode === 'all'
               ? `All ${US_STATES.length} states`
@@ -247,7 +247,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
             </Button>
           ) : (
             <>
-              <div className="flex items-center gap-2 text-sm text-indigo-700">
+              <div className="flex items-center gap-2 text-sm text-indigo-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Batch processing in progress...</span>
               </div>
@@ -267,7 +267,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
 
         {/* Results */}
         {batchResults && (
-          <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
+          <div className="border rounded-lg p-4 bg-slate-800/40 space-y-3">
             <div className="flex items-center gap-2">
               {batchResults.states_failed === 0 ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -279,19 +279,19 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-lg font-bold text-slate-900">{batchResults.states_queued ?? 0}</p>
+              <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
+                <p className="text-lg font-bold text-white">{batchResults.states_queued ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Queued</p>
               </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
+              <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
                 <p className="text-lg font-bold text-emerald-600">{batchResults.states_completed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Completed</p>
               </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
+              <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
                 <p className="text-lg font-bold text-red-600">{batchResults.states_failed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Failed</p>
               </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
+              <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
                 <p className="text-lg font-bold text-blue-600">{(batchResults.total_imported ?? 0).toLocaleString()}</p>
                 <p className="text-[10px] text-slate-500">Imported</p>
               </div>
@@ -301,13 +301,13 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
             {batchResults.results && batchResults.results.length > 0 && (
               <div className="max-h-48 overflow-y-auto space-y-1">
                 {batchResults.results.map((r, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs px-2 py-1.5 bg-white rounded border">
+                  <div key={idx} className="flex items-center justify-between text-xs px-2 py-1.5 bg-slate-800/60 rounded border">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-700 w-6">{r.state}</span>
                       {r.success ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">Success</Badge>
+                        <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-200 text-[10px]">Success</Badge>
                       ) : (
-                        <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px]">Failed</Badge>
+                        <Badge className="bg-red-900/20 text-red-400 border-red-200 text-[10px]">Failed</Badge>
                       )}
                     </div>
                     <span className="text-slate-500">

@@ -39,7 +39,7 @@ export default function EnrichmentButton({ provider, onEnrichmentComplete }) {
       variant="outline"
       onClick={handleEnrich}
       disabled={loading}
-      className="h-8 gap-1.5 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+      className="h-8 gap-1.5 border-purple-500/30 text-purple-400 hover:bg-purple-900/200/10"
     >
       {loading ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />

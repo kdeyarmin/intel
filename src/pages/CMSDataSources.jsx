@@ -191,7 +191,7 @@ export default function CMSDataSources() {
                         ? `After ${getCmsImportTypeLabel(config.depends_on_import_type)}` 
                         : `${config.schedule_frequency} at ${config.schedule_time}`}
                     </div>
-                    <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-500/20 text-cyan-400 mt-1' : 'mt-1'}>
+                    <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-900/200/20 text-cyan-400 mt-1' : 'mt-1'}>
                       {config.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>

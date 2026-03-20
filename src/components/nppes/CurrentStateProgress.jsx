@@ -52,7 +52,7 @@ export default function CurrentStateProgress({ status }) {
   const valid = activeBatch?.valid_rows || 0;
 
   return (
-    <Card className="border-teal-500/30 bg-teal-500/5">
+    <Card className="border-teal-500/30 bg-teal-900/200/5">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export default function CurrentStateProgress({ status }) {
               Crawling: {STATE_NAMES[stateCode] || stateCode} ({stateCode})
             </span>
           </div>
-          <Badge className="bg-teal-500/15 text-teal-400 border border-teal-500/20 text-xs">
+          <Badge className="bg-teal-900/200/15 text-teal-400 border border-teal-500/20 text-xs">
             {completedPrefixes} / {totalPrefixes} {usesDefaultPrefixGrid ? 'zip prefixes' : 'queue items'}
           </Badge>
         </div>
@@ -70,7 +70,7 @@ export default function CurrentStateProgress({ status }) {
         <div className="space-y-1">
           <div className="w-full h-2.5 rounded-full bg-slate-700/80 overflow-hidden">
             <div
-              className="h-full rounded-full bg-teal-500 transition-all duration-700"
+              className="h-full rounded-full bg-teal-900/200 transition-all duration-700"
               style={{ width: `${Math.max(pct, 2)}%` }}
             />
           </div>
@@ -91,7 +91,7 @@ export default function CurrentStateProgress({ status }) {
                   key={prefix}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
                     done
-                      ? 'bg-teal-500/20 text-teal-400 border-teal-500/30'
+                      ? 'bg-teal-900/200/20 text-teal-400 border-teal-500/30'
                       : 'bg-slate-800/50 text-slate-500 border-slate-700/50'
                   }`}
                 >
@@ -104,8 +104,8 @@ export default function CurrentStateProgress({ status }) {
 
         {!usesDefaultPrefixGrid && (filterCity || filterPostalCode) && (
           <div className="flex flex-wrap gap-2 text-[10px] text-slate-300">
-            {filterCity && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">City: {filterCity}</span>}
-            {filterPostalCode && <span className="rounded border border-teal-500/20 bg-teal-500/10 px-2 py-1">Postal: {filterPostalCode}</span>}
+            {filterCity && <span className="rounded border border-teal-500/20 bg-teal-900/200/10 px-2 py-1">City: {filterCity}</span>}
+            {filterPostalCode && <span className="rounded border border-teal-500/20 bg-teal-900/200/10 px-2 py-1">Postal: {filterPostalCode}</span>}
           </div>
         )}
 

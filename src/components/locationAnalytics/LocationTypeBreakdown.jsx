@@ -11,7 +11,7 @@ export default function LocationTypeBreakdown({ practiceCount, mailingCount, pri
   ];
 
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Location Type Breakdown</CardTitle>
       </CardHeader>
@@ -29,7 +29,7 @@ export default function LocationTypeBreakdown({ practiceCount, mailingCount, pri
           </ResponsiveContainer>
         </div>
         <div className="text-center mt-2">
-          <span className="text-xs text-gray-500">{primaryCount} designated as primary locations</span>
+          <span className="text-xs text-slate-400">{primaryCount} designated as primary locations</span>
         </div>
       </CardContent>
     </Card>

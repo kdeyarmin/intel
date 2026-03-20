@@ -12,10 +12,10 @@ const IMPORT_TYPE_LABELS = buildImportTypeLabels({
 });
 
 const statusConfig = {
-  processing: { icon: Loader2, color: 'bg-blue-500/15 text-blue-400', spin: true },
-  validating: { icon: Clock, color: 'bg-yellow-500/15 text-yellow-400' },
-  completed: { icon: CheckCircle2, color: 'bg-emerald-500/15 text-emerald-400' },
-  failed: { icon: XCircle, color: 'bg-red-500/15 text-red-400' },
+  processing: { icon: Loader2, color: 'bg-blue-900/200/15 text-blue-400', spin: true },
+  validating: { icon: Clock, color: 'bg-yellow-900/200/15 text-yellow-400' },
+  completed: { icon: CheckCircle2, color: 'bg-emerald-900/200/15 text-emerald-400' },
+  failed: { icon: XCircle, color: 'bg-red-900/200/15 text-red-400' },
 };
 
 function formatDate(ts) {

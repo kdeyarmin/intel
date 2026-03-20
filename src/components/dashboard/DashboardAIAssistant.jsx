@@ -95,13 +95,13 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2 text-white font-semibold">
-            <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-lg bg-violet-900/200/20 flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             </div>
             CareMetric AI Assistant
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
+            <Badge className="bg-violet-900/200/15 text-violet-400 border border-violet-500/20 text-[10px]">
               Live Data
             </Badge>
             {!isFullPage && (

@@ -8,10 +8,10 @@ import { formatDateET } from '../utils/dateUtils';
 
 const statusColors = {
   draft: 'bg-slate-100 text-slate-700',
-  scheduled: 'bg-blue-100 text-blue-700',
-  sending: 'bg-amber-100 text-amber-700',
-  completed: 'bg-green-100 text-green-700',
-  paused: 'bg-red-100 text-red-700',
+  scheduled: 'bg-blue-100 text-blue-400',
+  sending: 'bg-amber-100 text-amber-400',
+  completed: 'bg-green-100 text-green-400',
+  paused: 'bg-red-100 text-red-400',
 };
 
 const sourceLabels = {

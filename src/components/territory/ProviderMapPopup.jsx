@@ -14,7 +14,7 @@ export default function ProviderMapPopup({ item }) {
     : `${provider.first_name || ''} ${provider.last_name || ''}`.trim();
 
   const getScoreColor = (s) => {
-    if (s >= 80) return 'bg-green-100 text-green-800';
+    if (s >= 80) return 'bg-green-100 text-green-300';
     if (s >= 60) return 'bg-teal-100 text-teal-800';
     if (s >= 40) return 'bg-yellow-100 text-yellow-800';
     return 'bg-slate-100 text-slate-700';
@@ -23,7 +23,7 @@ export default function ProviderMapPopup({ item }) {
   return (
     <div className="min-w-[220px] max-w-[280px]">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="font-semibold text-sm text-slate-900 leading-tight">{name || 'Unknown'}</div>
+        <div className="font-semibold text-sm text-white leading-tight">{name || 'Unknown'}</div>
         <Badge className={`shrink-0 text-[10px] ${getScoreColor(score)}`}>{score}</Badge>
       </div>
 

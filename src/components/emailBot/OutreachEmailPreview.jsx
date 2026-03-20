@@ -54,7 +54,7 @@ export default function OutreachEmailPreview({ outreach, provider, onClose, onSe
 
           {/* Outreach Type */}
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+            <Badge className="bg-purple-900/200/20 text-purple-300 border-purple-500/30">
               {outreach.type.replace(/_/g, ' ').toUpperCase()}
             </Badge>
             {outreach.tone && (

@@ -99,10 +99,10 @@ export default function ProviderLocationMatching() {
   }), [matches]);
 
   const statCards = [
-    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-400', bg: 'bg-blue-500/15' },
-    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
-    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/15' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/15' },
+    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-400', bg: 'bg-blue-900/200/15' },
+    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-900/200/15' },
+    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/200/15' },
+    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-400', bg: 'bg-red-900/200/15' },
   ];
 
   return (
@@ -160,7 +160,7 @@ export default function ProviderLocationMatching() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-blue-500/20 text-blue-400">{stats.override} overrides</Badge>
+              <Badge className="bg-blue-900/200/20 text-blue-400">{stats.override} overrides</Badge>
             </div>
           </CardContent>
         </Card>

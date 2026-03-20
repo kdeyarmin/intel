@@ -21,9 +21,9 @@ const RULE_TYPES = [
 ];
 
 const SEVERITY_OPTIONS = [
-  { id: 'reject', label: 'Reject', icon: ShieldAlert, color: 'text-red-400 bg-red-500/15', desc: 'Row excluded from import' },
-  { id: 'warn', label: 'Warn', icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/15', desc: 'Imported with warning' },
-  { id: 'flag', label: 'Flag', icon: Flag, color: 'text-blue-400 bg-blue-500/15', desc: 'Imported and flagged for review' },
+  { id: 'reject', label: 'Reject', icon: ShieldAlert, color: 'text-red-400 bg-red-900/200/15', desc: 'Row excluded from import' },
+  { id: 'warn', label: 'Warn', icon: AlertTriangle, color: 'text-amber-400 bg-amber-900/200/15', desc: 'Imported with warning' },
+  { id: 'flag', label: 'Flag', icon: Flag, color: 'text-blue-400 bg-blue-900/200/15', desc: 'Imported and flagged for review' },
 ];
 
 const OPERATORS = [

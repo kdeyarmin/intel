@@ -107,7 +107,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
               className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                 selectedMetrics.includes(m.key)
                   ? 'text-white border-transparent'
-                  : 'text-slate-500 border-slate-200 hover:bg-slate-50'
+                  : 'text-slate-500 border-slate-700/50 hover:bg-slate-50'
               }`}
               style={selectedMetrics.includes(m.key) ? { backgroundColor: COLORS[selectedMetrics.indexOf(m.key)] } : {}}
             >

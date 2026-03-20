@@ -11,23 +11,23 @@ import BulkAlertActions from './BulkAlertActions';
 import AlertAIAnalysis from './AlertAIAnalysis';
 
 const severityColors = {
-  low: 'bg-blue-100 text-blue-700',
+  low: 'bg-blue-100 text-blue-400',
   medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
+  high: 'bg-orange-100 text-orange-400',
+  critical: 'bg-red-100 text-red-400',
 };
 
 const categoryColors = {
-  completeness: 'bg-blue-500/15 text-blue-400',
-  accuracy: 'bg-purple-500/15 text-purple-400',
-  timeliness: 'bg-amber-500/15 text-amber-400',
-  consistency: 'bg-teal-500/15 text-teal-400',
+  completeness: 'bg-blue-900/200/15 text-blue-400',
+  accuracy: 'bg-purple-900/200/15 text-purple-400',
+  timeliness: 'bg-amber-900/200/15 text-amber-400',
+  consistency: 'bg-teal-900/200/15 text-teal-400',
 };
 
 const statusIcons = {
   open: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   accepted: <CheckCircle className="w-4 h-4 text-green-500" />,
-  rejected: <XCircle className="w-4 h-4 text-gray-400" />,
+  rejected: <XCircle className="w-4 h-4 text-slate-500" />,
   auto_fixed: <CheckCircle className="w-4 h-4 text-blue-500" />,
 };
 
@@ -102,7 +102,7 @@ export default function AlertsList({ alerts = [] }) {
             <Button 
               size="sm" 
               variant="outline" 
-              className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+              className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-100"
               onClick={() => autoFixMutation.mutate()}
               disabled={autoFixMutation.isPending}
             >
@@ -241,7 +241,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
           </div>
 
           {alert.suggested_value && (
-            <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
+            <div className="bg-violet-900/20 border border-violet-200 rounded-lg p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-violet-600" />
                 <span className="text-xs font-semibold text-violet-700">AI Suggestion</span>

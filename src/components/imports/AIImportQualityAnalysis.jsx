@@ -16,9 +16,9 @@ const ANOMALY_ICONS = {
 function AnomalyCard({ anomaly }) {
   const Icon = ANOMALY_ICONS[anomaly.category] || AlertTriangle;
   const severityColors = {
-    high: 'bg-red-500/15 text-red-400 border-red-500/20',
-    medium: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-    low: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+    high: 'bg-red-900/200/15 text-red-400 border-red-500/20',
+    medium: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20',
+    low: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20',
   };
 
   return (
@@ -49,7 +49,7 @@ function AnomalyCard({ anomaly }) {
         </div>
       )}
       {anomaly.recommendation && (
-        <div className="pl-6 bg-emerald-500/5 border border-emerald-500/20 rounded-md p-2">
+        <div className="pl-6 bg-emerald-900/200/5 border border-emerald-500/20 rounded-md p-2">
           <p className="text-[10px] text-emerald-400">{anomaly.recommendation}</p>
         </div>
       )}
@@ -299,9 +299,9 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
                       <Badge className="bg-slate-700/50 text-slate-300 text-[10px] font-mono">{p.npi}</Badge>
                       <span className="text-xs text-slate-400 flex-1">{p.reason}</span>
                       <Badge className={`text-[9px] ${
-                        p.priority === 'high' ? 'bg-red-500/15 text-red-400' :
-                        p.priority === 'medium' ? 'bg-amber-500/15 text-amber-400' :
-                        'bg-blue-500/15 text-blue-400'
+                        p.priority === 'high' ? 'bg-red-900/200/15 text-red-400' :
+                        p.priority === 'medium' ? 'bg-amber-900/200/15 text-amber-400' :
+                        'bg-blue-900/200/15 text-blue-400'
                       }`}>{p.priority}</Badge>
                     </div>
                   ))}

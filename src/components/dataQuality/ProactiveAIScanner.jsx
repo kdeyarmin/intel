@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 
 const ENTITY_CONFIGS = [
-  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-600 bg-blue-50' },
-  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-600 bg-emerald-50' },
-  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-600 bg-violet-50' },
+  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-600 bg-blue-900/20' },
+  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-600 bg-emerald-900/20' },
+  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-600 bg-violet-900/20' },
 ];
 
 export default function ProactiveAIScanner() {
@@ -159,16 +159,16 @@ Return up to 10 most important issues, prioritized by severity and affected coun
   };
 
   const healthColors = {
-    good: 'bg-green-100 text-green-700 border-green-200',
-    fair: 'bg-amber-100 text-amber-700 border-amber-200',
-    poor: 'bg-red-100 text-red-700 border-red-200',
+    good: 'bg-green-100 text-green-400 border-green-200',
+    fair: 'bg-amber-100 text-amber-400 border-amber-200',
+    poor: 'bg-red-100 text-red-400 border-red-200',
   };
 
   const sevColors = {
-    critical: 'bg-red-100 text-red-700',
-    high: 'bg-orange-100 text-orange-700',
+    critical: 'bg-red-100 text-red-400',
+    high: 'bg-orange-100 text-orange-400',
     medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-blue-100 text-blue-700',
+    low: 'bg-blue-100 text-blue-400',
   };
 
   return (
@@ -215,7 +215,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
         {results && (
           <div className="space-y-4">
             {createdCount > 0 && (
-              <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 flex items-center gap-2">
+              <div className="bg-violet-900/20 border border-violet-200 rounded-lg p-3 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-violet-600 shrink-0" />
                 <p className="text-xs text-violet-700">
                   Created <strong>{createdCount}</strong> new alert{createdCount > 1 ? 's' : ''} for critical/high severity issues. View them in the Alerts tab.
@@ -241,9 +241,9 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                   </div>
 
                   {finding.healthSummary && (
-                    <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-start gap-2">
+                    <div className="px-4 py-2 bg-blue-900/20 border-b border-blue-100 flex items-start gap-2">
                       <Lightbulb className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-                      <p className="text-xs text-blue-700">{finding.healthSummary}</p>
+                      <p className="text-xs text-blue-400">{finding.healthSummary}</p>
                     </div>
                   )}
 
@@ -272,12 +272,12 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                             </div>
                           </div>
                           {issue.root_cause && (
-                            <p className="text-[10px] text-amber-700 bg-amber-50 rounded px-2 py-1">
+                            <p className="text-[10px] text-amber-400 bg-amber-900/20 rounded px-2 py-1">
                               <strong>Cause:</strong> {issue.root_cause}
                             </p>
                           )}
                           {issue.suggested_fix && (
-                            <p className="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                            <p className="text-[10px] text-emerald-400 bg-emerald-900/20 rounded px-2 py-1">
                               <strong>Fix:</strong> {issue.suggested_fix}
                             </p>
                           )}

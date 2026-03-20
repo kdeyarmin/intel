@@ -123,7 +123,7 @@ export default function LiveProgressCard({ activeBatches }) {
                       {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                     </span>
                     <Badge className={`text-[9px] ${
-                      isPaused ? 'bg-amber-500/15 text-amber-400' : 'bg-blue-500/15 text-blue-400'
+                      isPaused ? 'bg-amber-900/200/15 text-amber-400' : 'bg-blue-900/200/15 text-blue-400'
                     }`}>
                       {getPhaseLabel(batch.status)}
                     </Badge>
@@ -145,13 +145,13 @@ export default function LiveProgressCard({ activeBatches }) {
                 {total > 0 && (
                   <div className="space-y-1.5 pt-1">
                     {batch.status === 'validating' && (
-                      <RowProgressBar label="Rows Validated" current={validated} total={total} color="bg-emerald-500" />
+                      <RowProgressBar label="Rows Validated" current={validated} total={total} color="bg-emerald-900/200" />
                     )}
                     {batch.status === 'processing' && (
                       <>
-                        <RowProgressBar label="Rows Imported" current={batch.imported_rows || 0} total={total} color="bg-blue-500" />
+                        <RowProgressBar label="Rows Imported" current={batch.imported_rows || 0} total={total} color="bg-blue-900/200" />
                         {(batch.updated_rows || 0) > 0 && (
-                          <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-500" />
+                          <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-900/200" />
                         )}
                       </>
                     )}

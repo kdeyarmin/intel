@@ -65,7 +65,7 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
   }
 
   return (
-    <Card className="border-teal-200 bg-teal-50">
+    <Card className="border-teal-200 bg-teal-900/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-teal-900">
           <Lightbulb className="h-5 w-5" />

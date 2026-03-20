@@ -22,7 +22,7 @@ export default function ProviderGrowthChart({ metrics }) {
     : 0;
 
   const TrendIcon = growth > 0 ? TrendingUp : growth < 0 ? TrendingDown : Minus;
-  const trendColor = growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-600' : 'text-gray-500';
+  const trendColor = growth > 0 ? 'text-green-600' : growth < 0 ? 'text-red-600' : 'text-slate-400';
 
   return (
     <Card>
@@ -37,7 +37,7 @@ export default function ProviderGrowthChart({ metrics }) {
       </CardHeader>
       <CardContent>
         {chartData.length < 2 ? (
-          <p className="text-sm text-gray-500 text-center py-8">
+          <p className="text-sm text-slate-400 text-center py-8">
             Metrics data is collected daily. More data points will appear over time.
           </p>
         ) : (

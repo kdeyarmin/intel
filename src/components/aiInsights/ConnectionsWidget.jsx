@@ -84,8 +84,8 @@ For each top provider, suggest 1 ideal connection type they should make (e.g., p
     setLoading(false);
   };
 
-  const strColors = { strong: 'bg-green-100 text-green-700', moderate: 'bg-blue-100 text-blue-700', exploratory: 'bg-slate-100 text-slate-600' };
-  const impColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+  const strColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-100 text-slate-600' };
+  const impColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
 
   return (
     <Card className="h-full">
@@ -126,9 +126,9 @@ For each top provider, suggest 1 ideal connection type they should make (e.g., p
               <div>
                 <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1.5">Network Opportunities</p>
                 {results.network_opportunities.map((opp, i) => (
-                  <div key={i} className="bg-blue-50 rounded-lg p-2.5 mb-1.5 border border-blue-100">
+                  <div key={i} className="bg-blue-900/20 rounded-lg p-2.5 mb-1.5 border border-blue-100">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-blue-800">{opp.title}</span>
+                      <span className="text-xs font-semibold text-blue-300">{opp.title}</span>
                       <Badge className={`text-[8px] ${impColors[opp.impact]}`}>{opp.impact}</Badge>
                     </div>
                     <p className="text-[10px] text-blue-600 mt-0.5">{opp.description}</p>

@@ -129,8 +129,8 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
     setLoading(false);
   };
 
-  const riskColors = { low: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', high: 'bg-red-100 text-red-700' };
-  const prioColors = { high: 'border-red-200 bg-red-50', medium: 'border-amber-200 bg-amber-50', low: 'border-slate-200 bg-slate-50' };
+  const riskColors = { low: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', high: 'bg-red-100 text-red-400' };
+  const prioColors = { high: 'border-red-200 bg-red-900/20', medium: 'border-amber-200 bg-amber-900/20', low: 'border-slate-700/50 bg-slate-50' };
 
   return (
     <Card>
@@ -196,7 +196,7 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
                   <p className="text-[11px] text-slate-500 mb-1">{lead.current_status}</p>
                   <div className="flex items-start gap-1.5">
                     <TrendingUp className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-emerald-700">{lead.opportunity}</p>
+                    <p className="text-[11px] text-emerald-400">{lead.opportunity}</p>
                   </div>
                   <p className="text-[10px] text-blue-600 mt-1 font-medium">→ {lead.recommended_action}</p>
                 </div>

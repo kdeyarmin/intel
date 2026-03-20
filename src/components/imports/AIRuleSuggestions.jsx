@@ -177,7 +177,7 @@ export default function AIRuleSuggestions({ importType }) {
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-amber-400" />
         <span className="text-sm font-semibold text-slate-200">AI Rule Suggestions</span>
-        <Badge className="bg-amber-500/15 text-amber-400 border border-amber-500/20 text-[10px]">
+        <Badge className="bg-amber-900/200/15 text-amber-400 border border-amber-500/20 text-[10px]">
           {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
         </Badge>
       </div>
@@ -208,8 +208,8 @@ export default function AIRuleSuggestions({ importType }) {
                         {RULE_TYPE_LABELS[s.ruleType]}
                       </Badge>
                       <Badge className={`text-[8px] ${
-                        s.confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400' :
-                        s.confidence === 'medium' ? 'bg-amber-500/15 text-amber-400' :
+                        s.confidence === 'high' ? 'bg-emerald-900/200/15 text-emerald-400' :
+                        s.confidence === 'medium' ? 'bg-amber-900/200/15 text-amber-400' :
                         'bg-slate-500/15 text-slate-400'
                       }`}>
                         {s.confidence} confidence
@@ -239,7 +239,7 @@ export default function AIRuleSuggestions({ importType }) {
                     {/* Action buttons */}
                      <div className="flex items-center gap-2 justify-end">
                        {isAdded ? (
-                         <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 gap-1">
+                         <Badge className="bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20 gap-1">
                            <Check className="w-3 h-3" /> Rule Added
                          </Badge>
                        ) : (

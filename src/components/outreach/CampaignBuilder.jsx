@@ -226,7 +226,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+              <div className="bg-blue-900/20 border border-blue-200 rounded p-3">
                 <p className="text-sm text-blue-900">
                   💡 Each message will be personalized with provider data (name, specialty, location, etc.)
                   {campaign.ai_personalization && ' and enhanced with AI.'}
@@ -248,9 +248,9 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
               <CardTitle className="text-base">Launch Campaign</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded">
+              <div className="p-4 bg-amber-900/20 border border-amber-200 rounded">
                 <p className="text-sm text-amber-900 font-medium mb-2">Campaign Summary</p>
-                <div className="space-y-1 text-sm text-amber-800">
+                <div className="space-y-1 text-sm text-amber-300">
                   <p>• Name: <strong>{campaign.name}</strong></p>
                   <p>• Target List: <strong>{campaign.lead_list_id ? 'Selected' : 'None'}</strong></p>
                   <p>• Personalization: <strong>{campaign.ai_personalization ? 'Enabled' : 'Disabled'}</strong></p>

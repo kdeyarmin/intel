@@ -21,9 +21,9 @@ const DATASET_LABELS = {
 };
 
 const FREQ_COLORS = {
-  daily: 'bg-blue-100 text-blue-700',
-  weekly: 'bg-purple-100 text-purple-700',
-  monthly: 'bg-amber-100 text-amber-700',
+  daily: 'bg-blue-100 text-blue-400',
+  weekly: 'bg-purple-100 text-purple-400',
+  monthly: 'bg-amber-100 text-amber-400',
 };
 
 export default function ScheduledReportsList({

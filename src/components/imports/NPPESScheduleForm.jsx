@@ -23,13 +23,13 @@ export default function NPPESScheduleForm({ config, onChange }) {
   };
 
   return (
-    <div className="space-y-4 border rounded-lg p-4 bg-blue-50/50">
-      <p className="text-sm font-medium text-blue-800">NPPES Search Criteria</p>
+    <div className="space-y-4 border rounded-lg p-4 bg-blue-900/20/50">
+      <p className="text-sm font-medium text-blue-300">NPPES Search Criteria</p>
 
       <div className="flex items-center justify-between">
         <div>
           <Label>Crawl All 51 States</Label>
-          <p className="text-xs text-gray-500">Process every state sequentially (ignores state filter below)</p>
+          <p className="text-xs text-slate-400">Process every state sequentially (ignores state filter below)</p>
         </div>
         <Switch
           checked={config.crawl_all_states || false}

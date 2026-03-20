@@ -10,10 +10,10 @@ export default function CampaignKPIs({ campaigns = [] }) {
   const responseRate = totalSent > 0 ? ((totalResponded / totalSent) * 100).toFixed(1) : '0';
 
   const kpis = [
-    { label: 'Emails Sent', value: totalSent, icon: Send, color: 'bg-blue-50 text-blue-600' },
-    { label: 'Open Rate', value: `${openRate}%`, icon: Eye, color: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Response Rate', value: `${responseRate}%`, icon: MessageSquare, color: 'bg-violet-50 text-violet-600' },
-    { label: 'Bounced', value: totalBounced, icon: AlertTriangle, color: 'bg-amber-50 text-amber-600' },
+    { label: 'Emails Sent', value: totalSent, icon: Send, color: 'bg-blue-900/20 text-blue-600' },
+    { label: 'Open Rate', value: `${openRate}%`, icon: Eye, color: 'bg-emerald-900/20 text-emerald-600' },
+    { label: 'Response Rate', value: `${responseRate}%`, icon: MessageSquare, color: 'bg-violet-900/20 text-violet-600' },
+    { label: 'Bounced', value: totalBounced, icon: AlertTriangle, color: 'bg-amber-900/20 text-amber-600' },
   ];
 
   return (

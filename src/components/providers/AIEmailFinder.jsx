@@ -153,13 +153,13 @@ For each email assign:
   };
 
   const confColors = {
-    high: 'bg-green-100 text-green-800',
+    high: 'bg-green-100 text-green-300',
     medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-red-100 text-red-800',
+    low: 'bg-red-100 text-red-300',
   };
 
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <Mail className="w-4 h-4 text-blue-600" />
@@ -177,7 +177,7 @@ For each email assign:
       </CardHeader>
       <CardContent>
         {!results && !loading && (
-          <p className="text-sm text-gray-400 text-center py-4">
+          <p className="text-sm text-slate-500 text-center py-4">
             Click "Find Emails" to search for this provider's contact information
           </p>
         )}
@@ -195,7 +195,7 @@ For each email assign:
                   <div key={idx} className="flex items-center justify-between bg-slate-800/40 border border-slate-700/50 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900 truncate">{item.email}</span>
+                        <span className="text-sm font-medium text-white truncate">{item.email}</span>
                         <Badge className={confColors[item.confidence] + ' text-xs'}>
                           {item.confidence}
                         </Badge>
@@ -206,7 +206,7 @@ For each email assign:
                         />
                       </div>
                       {item.source && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">{item.source}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">{item.source}</p>
                       )}
                     </div>
                     <Button
@@ -221,22 +221,22 @@ For each email assign:
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-2">No email addresses found</p>
+              <p className="text-sm text-slate-400 text-center py-2">No email addresses found</p>
             )}
 
             {results.organization_domain && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-400">
                 Organization domain: <span className="font-medium">{results.organization_domain}</span>
               </p>
             )}
 
             {results.notes && (
-              <p className="text-xs text-gray-500">{results.notes}</p>
+              <p className="text-xs text-slate-400">{results.notes}</p>
             )}
 
-            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-200 rounded-lg p-2">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-amber-400">
                 These are AI-generated suggestions, not verified addresses. Always confirm before sending outreach.
               </p>
             </div>

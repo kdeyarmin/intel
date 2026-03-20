@@ -5,9 +5,9 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const categoryColors = {
-  completeness: 'bg-blue-100 text-blue-700',
-  accuracy: 'bg-purple-100 text-purple-700',
-  timeliness: 'bg-amber-100 text-amber-700',
+  completeness: 'bg-blue-100 text-blue-400',
+  accuracy: 'bg-purple-100 text-purple-400',
+  timeliness: 'bg-amber-100 text-amber-400',
   consistency: 'bg-teal-100 text-teal-700',
   duplicate: 'bg-pink-100 text-pink-700',
 };

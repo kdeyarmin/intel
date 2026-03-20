@@ -15,7 +15,7 @@ function Metric({ label, value, status }) {
     bad: <XCircle className="w-3.5 h-3.5 text-red-500" />,
   };
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+    <div className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
       <span className="text-sm text-slate-600">{label}</span>
       <div className="flex items-center gap-1.5">
         {icons[status]}
@@ -106,7 +106,7 @@ function TopValidationIssues({ batches }) {
   if (topIssues.length === 0) return null;
 
   return (
-    <div className="mt-4 pt-3 border-t border-slate-200">
+    <div className="mt-4 pt-3 border-t border-slate-700/50">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Top Validation Issues</p>
       <div className="space-y-1.5">
         {topIssues.map(issue => (

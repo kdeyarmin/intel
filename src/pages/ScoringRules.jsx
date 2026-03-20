@@ -224,7 +224,7 @@ export default function ScoringRules() {
         </Button>
       </div>
 
-      <Card className="mb-6 bg-cyan-500/10 border-cyan-500/20">
+      <Card className="mb-6 bg-cyan-900/200/10 border-cyan-500/20">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>

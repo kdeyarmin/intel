@@ -385,7 +385,7 @@ export default function NPPESCrawlerSettings() {
               onToggle={() => toggleEntityType('NPI-2')}
             />
             {form.crawl_entity_types?.length === 0 && (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+              <p className="text-sm text-red-400 bg-red-900/200/10 border border-red-500/20 p-3 rounded-lg">
                 At least one entity type must be selected for the crawler to function.
               </p>
             )}

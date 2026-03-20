@@ -180,7 +180,7 @@ export default function FileParser({ onParsed, selectedType }) {
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-3">
             <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-slate-400">
               Parsing {fileName}...
             </span>
           </div>
@@ -189,8 +189,8 @@ export default function FileParser({ onParsed, selectedType }) {
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="p-3 bg-red-900/20 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
     </div>

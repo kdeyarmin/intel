@@ -679,7 +679,7 @@ export default function Providers() {
             <span className="text-sm font-normal text-slate-500">
               {sortedProviders.length} results
               {selectedNpis.size > 0 && (
-                <Badge className="ml-2 bg-violet-500/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
+                <Badge className="ml-2 bg-violet-900/200/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
               )}
             </span>
           </CardTitle>
@@ -733,7 +733,7 @@ export default function Providers() {
                     const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[provider.npi] || [])[0];
                     const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
                     return (
-                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-500/5' : ''}>
+                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/200/5' : ''}>
                         <TableCell>
                           <input type="checkbox"
                             checked={selectedNpis.has(provider.npi)}
@@ -773,9 +773,9 @@ export default function Providers() {
                                <span className="text-xs text-slate-400 truncate max-w-[120px]">{provider.email}</span>
                                {provider.email_confidence && (
                                  <Badge className={`text-[10px] border ${
-                                   provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                                   provider.email_confidence === 'medium' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                                   'bg-red-500/15 text-red-400 border-red-500/20'
+                                   provider.email_confidence === 'high' ? 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20' :
+                                   provider.email_confidence === 'medium' ? 'bg-amber-900/200/15 text-amber-400 border-amber-500/20' :
+                                   'bg-red-900/200/15 text-red-400 border-red-500/20'
                                  }`}>{provider.email_confidence}</Badge>
                                )}
                              </div>
@@ -785,7 +785,7 @@ export default function Providers() {
                         </TableCell>
                         <TableCell>
                            {score !== null ? (
-                           <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                           <Badge className="bg-cyan-900/200/15 text-cyan-400 border border-cyan-500/20">
                               {score.toFixed(0)}
                             </Badge>
                           ) : (

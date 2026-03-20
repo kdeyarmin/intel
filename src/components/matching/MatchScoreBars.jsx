@@ -1,11 +1,11 @@
 import React from 'react';
 
 const BAR_COLORS = {
-  specialization: 'bg-purple-500',
-  proximity: 'bg-blue-500',
-  referral: 'bg-teal-500',
-  nameMatch: 'bg-emerald-500',
-  addressMatch: 'bg-amber-500',
+  specialization: 'bg-purple-900/200',
+  proximity: 'bg-blue-900/200',
+  referral: 'bg-teal-900/200',
+  nameMatch: 'bg-emerald-900/200',
+  addressMatch: 'bg-amber-900/200',
 };
 
 export default function MatchScoreBars({ specialization, proximity, referral, nameMatch, addressMatch }) {
@@ -21,8 +21,8 @@ export default function MatchScoreBars({ specialization, proximity, referral, na
     <div className="space-y-2">
       {bars.map(bar => (
         <div key={bar.label} className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 w-24 shrink-0">{bar.label}</span>
-          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <span className="text-xs text-slate-400 w-24 shrink-0">{bar.label}</span>
+          <div className="flex-1 h-2 bg-slate-700/40 rounded-full overflow-hidden">
             <div className={`h-full rounded-full ${bar.color}`} style={{ width: `${bar.value}%` }} />
           </div>
           <span className="text-xs font-medium w-8 text-right">{bar.value}</span>

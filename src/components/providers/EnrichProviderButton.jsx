@@ -222,16 +222,16 @@ Search the NPI registry and healthcare directories to find accurate data for the
               <div className="space-y-2">
                 {/* Summary */}
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center p-2 rounded-lg bg-green-50">
-                    <p className="text-lg font-bold text-green-700">{results.filter(r => r.status === 'enriched').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-green-900/20">
+                    <p className="text-lg font-bold text-green-400">{results.filter(r => r.status === 'enriched').length}</p>
                     <p className="text-[9px] text-green-600">Enriched</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-amber-50">
-                    <p className="text-lg font-bold text-amber-700">{results.filter(r => r.status === 'skipped' || r.status === 'no_new_data').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-amber-900/20">
+                    <p className="text-lg font-bold text-amber-400">{results.filter(r => r.status === 'skipped' || r.status === 'no_new_data').length}</p>
                     <p className="text-[9px] text-amber-600">No Changes</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-red-50">
-                    <p className="text-lg font-bold text-red-700">{results.filter(r => r.status === 'error').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-red-900/20">
+                    <p className="text-lg font-bold text-red-400">{results.filter(r => r.status === 'error').length}</p>
                     <p className="text-[9px] text-red-600">Errors</p>
                   </div>
                 </div>
@@ -247,7 +247,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
                         {r.fieldsUpdated?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {r.fieldsUpdated.map((f, j) => (
-                              <Badge key={j} className="bg-green-100 text-green-700 text-[8px]">{f}</Badge>
+                              <Badge key={j} className="bg-green-100 text-green-400 text-[8px]">{f}</Badge>
                             ))}
                           </div>
                         )}

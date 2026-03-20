@@ -23,12 +23,12 @@ function ProfileCard({ profile, applying, applied, onApply }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">{profile.name}</span>
+            <span className="text-sm font-semibold text-white">{profile.name}</span>
             <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded">{profile.npi}</span>
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
             {dataPoints.map((dp, i) => (
-              <Badge key={i} variant="outline" className="text-[9px] bg-teal-50 text-teal-700 border-teal-200">{dp}</Badge>
+              <Badge key={i} variant="outline" className="text-[9px] bg-teal-900/20 text-teal-700 border-teal-200">{dp}</Badge>
             ))}
           </div>
         </div>
@@ -47,7 +47,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
 
       <div className="space-y-2 text-xs text-slate-600">
         {profile.website && (
-          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+          <div className="flex items-center gap-2 p-2 bg-blue-900/20 rounded-lg">
             <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
             <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate text-[11px]">{profile.website}</a>
           </div>
@@ -68,7 +68,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Board Certifications</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {profile.board_certifications.map((c, j) => (
-                  <Badge key={j} className="bg-violet-50 text-violet-700 border-violet-200 text-[9px]">{c}</Badge>
+                  <Badge key={j} className="bg-violet-900/20 text-violet-700 border-violet-200 text-[9px]">{c}</Badge>
                 ))}
               </div>
             </div>
@@ -229,7 +229,7 @@ Only return information you find with reasonable confidence from public sources.
   return (
     <div className="space-y-4">
       {/* Description */}
-      <div className="flex items-start gap-3 p-4 bg-teal-50/70 rounded-xl border border-teal-100">
+      <div className="flex items-start gap-3 p-4 bg-teal-900/20/70 rounded-xl border border-teal-100">
         <div className="p-2 rounded-lg bg-teal-100">
           <Globe className="w-4 h-4 text-teal-600" />
         </div>
@@ -250,7 +250,7 @@ Only return information you find with reasonable confidence from public sources.
               {providerCount} provider{providerCount !== 1 ? 's' : ''} will be researched
             </div>
             {enrichedProfiles.length > 0 && unappliedCount > 0 && (
-              <Button size="sm" variant="outline" className="h-7 text-xs text-teal-700 border-teal-200 hover:bg-teal-50" onClick={handleApplyAll}>
+              <Button size="sm" variant="outline" className="h-7 text-xs text-teal-700 border-teal-200 hover:bg-teal-900/20" onClick={handleApplyAll}>
                 <Check className="w-3 h-3 mr-1" /> Save All ({unappliedCount})
               </Button>
             )}
@@ -263,7 +263,7 @@ Only return information you find with reasonable confidence from public sources.
 
       {/* Loading */}
       {loading && (
-        <Card className="border-teal-200 bg-teal-50/50">
+        <Card className="border-teal-200 bg-teal-900/20/50">
           <CardContent className="py-8 flex flex-col items-center gap-2">
             <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
             <p className="text-sm font-medium text-teal-800">Researching {providerCount} providers...</p>
@@ -283,9 +283,9 @@ Only return information you find with reasonable confidence from public sources.
           )}
 
           {applied.size > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-900/20 rounded-lg border border-green-200">
               <Check className="w-3.5 h-3.5 text-green-600" />
-              <span className="text-xs font-medium text-green-700">{applied.size} profile{applied.size !== 1 ? 's' : ''} saved</span>
+              <span className="text-xs font-medium text-green-400">{applied.size} profile{applied.size !== 1 ? 's' : ''} saved</span>
             </div>
           )}
 
@@ -307,9 +307,9 @@ Only return information you find with reasonable confidence from public sources.
         </div>
       )}
 
-      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-900/20 border border-amber-200 rounded-lg">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-        <p className="text-[10px] text-amber-700 leading-relaxed">
+        <p className="text-[10px] text-amber-400 leading-relaxed">
           Augmented data is sourced from public websites and directories. Verify accuracy before using for outreach or clinical decisions.
         </p>
       </div>

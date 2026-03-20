@@ -123,8 +123,8 @@ Generate A/B test plan with:
         <div className="space-y-2.5">
           {/* Historical Insight */}
           {results.insights_from_history && (
-            <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-              <p className="text-[10px] font-medium text-blue-700 mb-0.5">📊 Historical Insight</p>
+            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-100">
+              <p className="text-[10px] font-medium text-blue-400 mb-0.5">📊 Historical Insight</p>
               <p className="text-[9px] text-blue-600">{results.insights_from_history}</p>
             </div>
           )}
@@ -133,7 +133,7 @@ Generate A/B test plan with:
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Subject Line Variations</p>
             {results.subject_variations?.map((v, i) => (
-              <div key={i} className="bg-white rounded-lg border p-2 mb-1.5 hover:border-violet-300 transition-colors">
+              <div key={i} className="bg-slate-800/60 rounded-lg border p-2 mb-1.5 hover:border-violet-300 transition-colors">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
                     <Badge className="bg-violet-100 text-violet-700 text-[8px]">{String.fromCharCode(65 + i)}</Badge>
@@ -144,7 +144,7 @@ Generate A/B test plan with:
                       onClick={() => handleCopy(v.subject, `s${i}`)}>
                       {copiedIdx === `s${i}` ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5" />}
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-5 text-[9px] text-violet-600 hover:bg-violet-50 px-1.5"
+                    <Button size="sm" variant="ghost" className="h-5 text-[9px] text-violet-600 hover:bg-violet-900/30 px-1.5"
                       onClick={() => { onApplySubject(v.subject); toast.success('Subject applied'); }}>
                       Use
                     </Button>
@@ -155,7 +155,7 @@ Generate A/B test plan with:
                   <Badge variant="outline" className="text-[8px]">🧠 {v.trigger}</Badge>
                   <span className="text-[8px] text-slate-400">Best for: {v.best_for}</span>
                   {v.predicted_open_lift && (
-                    <Badge className="bg-green-50 text-green-600 text-[8px] border border-green-200">{v.predicted_open_lift}</Badge>
+                    <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-200">{v.predicted_open_lift}</Badge>
                   )}
                 </div>
               </div>
@@ -167,13 +167,13 @@ Generate A/B test plan with:
             <div>
               <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Content Variations</p>
               {results.body_variations.map((v, i) => (
-                <div key={i} className="bg-white rounded-lg border p-2 mb-1.5">
+                <div key={i} className="bg-slate-800/60 rounded-lg border p-2 mb-1.5">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      <Badge className="bg-emerald-100 text-emerald-700 text-[8px]">Body {String.fromCharCode(65 + i)}</Badge>
+                      <Badge className="bg-emerald-100 text-emerald-400 text-[8px]">Body {String.fromCharCode(65 + i)}</Badge>
                       <span className="text-[9px] font-medium text-slate-500">{v.label}</span>
                     </div>
-                    <Button size="sm" variant="ghost" className="h-5 text-[9px] text-violet-600 hover:bg-violet-50 px-1.5"
+                    <Button size="sm" variant="ghost" className="h-5 text-[9px] text-violet-600 hover:bg-violet-900/30 px-1.5"
                       onClick={() => { onApplyBody(v.body); toast.success('Body applied'); }}>
                       Use This
                     </Button>
@@ -182,7 +182,7 @@ Generate A/B test plan with:
                   <div className="flex items-center gap-2">
                     <span className="text-[8px] text-slate-400">{v.approach}</span>
                     {v.predicted_response_lift && (
-                      <Badge className="bg-green-50 text-green-600 text-[8px] border border-green-200">{v.predicted_response_lift}</Badge>
+                      <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-200">{v.predicted_response_lift}</Badge>
                     )}
                   </div>
                 </div>
@@ -192,7 +192,7 @@ Generate A/B test plan with:
 
           {/* Test Methodology */}
           {results.test_methodology && (
-            <div className="bg-violet-50 rounded-lg p-2.5 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-100">
               <p className="text-[10px] font-semibold text-violet-700 mb-1.5">🔬 Test Methodology</p>
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
@@ -213,7 +213,7 @@ Generate A/B test plan with:
                 </div>
               </div>
               {results.test_methodology.success_criteria && (
-                <p className="text-[9px] text-violet-600 mt-1.5 pt-1.5 border-t border-violet-200">
+                <p className="text-[9px] text-violet-600 mt-1.5 pt-1.5 border-t border-violet-500/40">
                   <strong>Success:</strong> {results.test_methodology.success_criteria}
                 </p>
               )}

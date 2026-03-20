@@ -55,7 +55,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Database}
         trend={`${metrics.totalBatches} batches processed`}
         color="text-blue-600"
-        bgColor="bg-blue-500/15"
+        bgColor="bg-blue-900/200/15"
       />
       <KPICard
         title="Avg Processing Time"
@@ -64,7 +64,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Clock}
         trend={`${metrics.completedCount} completed batches`}
         color="text-amber-600"
-        bgColor="bg-amber-500/15"
+        bgColor="bg-amber-900/200/15"
       />
       <KPICard 
         title="Success Rate" 
@@ -72,7 +72,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Activity}
         trend={`${metrics.totalBatches} total batches`}
         color="text-emerald-600"
-        bgColor="bg-emerald-500/15"
+        bgColor="bg-emerald-900/200/15"
       />
       <KPICard 
         title="Newly Imported" 
@@ -80,7 +80,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         icon={Server}
         trend="New records added"
         color="text-purple-600"
-        bgColor="bg-purple-500/15"
+        bgColor="bg-purple-900/200/15"
       />
     </div>
   );

@@ -45,7 +45,7 @@ export default function Login() {
           </h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-900/200/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
               {error}
             </div>
           )}

@@ -53,7 +53,7 @@ export default function EmailCoverageWidget({ providers = [] }) {
             <Mail className="w-4 h-4 text-cyan-400" />
             Email Outreach Readiness
           </span>
-          <Badge className={coveragePct >= 50 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}>
+          <Badge className={coveragePct >= 50 ? 'bg-emerald-900/200/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-900/200/20 text-amber-300 border border-amber-500/30'}>
             {coveragePct}% coverage
           </Badge>
         </CardTitle>
@@ -70,15 +70,15 @@ export default function EmailCoverageWidget({ providers = [] }) {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="text-center p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+          <div className="text-center p-2.5 bg-emerald-900/200/10 border border-emerald-500/20 rounded-lg">
             <div className="text-xl font-bold text-emerald-400">{highConf}</div>
             <div className="text-xs text-emerald-300">High Conf.</div>
           </div>
-          <div className="text-center p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <div className="text-center p-2.5 bg-amber-900/200/10 border border-amber-500/20 rounded-lg">
             <div className="text-xl font-bold text-amber-400">{medConf}</div>
             <div className="text-xs text-amber-300">Medium</div>
           </div>
-          <div className="text-center p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <div className="text-center p-2.5 bg-red-900/200/10 border border-red-500/20 rounded-lg">
             <div className="text-xl font-bold text-red-400">{lowConf}</div>
             <div className="text-xs text-red-300">Low</div>
           </div>
@@ -90,7 +90,7 @@ export default function EmailCoverageWidget({ providers = [] }) {
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>
           <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
-            <div className="h-full bg-violet-500/70 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
+            <div className="h-full bg-violet-900/200/70 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
           </div>
         </div>
 

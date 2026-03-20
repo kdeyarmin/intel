@@ -33,9 +33,9 @@ export default function CrawlProgressChart({ crawlStatus, totalStates, loading }
 
         <div className="flex gap-4 text-xs">
           {[
-            { label: 'Completed', count: completed, color: 'bg-emerald-500' },
-            { label: 'Failed', count: failed, color: 'bg-red-500' },
-            { label: 'Processing', count: processing, color: 'bg-blue-500' },
+            { label: 'Completed', count: completed, color: 'bg-emerald-900/200' },
+            { label: 'Failed', count: failed, color: 'bg-red-900/200' },
+            { label: 'Processing', count: processing, color: 'bg-blue-900/200' },
             { label: 'Pending', count: pending, color: 'bg-amber-400' },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-1.5">

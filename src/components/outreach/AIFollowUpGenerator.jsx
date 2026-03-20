@@ -8,10 +8,10 @@ import { Sparkles, Loader2, Mail, Eye, MessageSquare, ArrowRight } from 'lucide-
 import { toast } from 'sonner';
 
 const SEGMENT_LABELS = {
-  opened_no_response: { label: 'Opened, No Response', icon: Eye, color: 'text-emerald-600 bg-emerald-50' },
-  not_opened: { label: 'Not Opened', icon: Mail, color: 'text-slate-500 bg-slate-50' },
-  bounced: { label: 'Bounced (Retry)', icon: Mail, color: 'text-red-500 bg-red-50' },
-  all_no_response: { label: 'All Non-Responders', icon: MessageSquare, color: 'text-amber-600 bg-amber-50' },
+  opened_no_response: { label: 'Opened, No Response', icon: Eye, color: 'text-emerald-600 bg-emerald-900/20' },
+  not_opened: { label: 'Not Opened', icon: Mail, color: 'text-slate-500 bg-slate-800/40' },
+  bounced: { label: 'Bounced (Retry)', icon: Mail, color: 'text-red-500 bg-red-900/20' },
+  all_no_response: { label: 'All Non-Responders', icon: MessageSquare, color: 'text-amber-600 bg-amber-900/20' },
 };
 
 export default function AIFollowUpGenerator({ campaign, messages = [], onApplyFollowUp }) {
@@ -106,7 +106,7 @@ Each follow-up should:
             const cfg = SEGMENT_LABELS[key];
             const Icon = cfg?.icon || Mail;
             return (
-              <div key={key} className={`rounded-lg px-2.5 py-2 ${cfg?.color || 'bg-slate-50'}`}>
+              <div key={key} className={`rounded-lg px-2.5 py-2 ${cfg?.color || 'bg-slate-800/40'}`}>
                 <div className="flex items-center gap-1.5">
                   <Icon className="w-3 h-3" />
                   <span className="text-[10px] font-medium">{cfg?.label}</span>
@@ -126,13 +126,13 @@ Each follow-up should:
               const count = segments[fu.segment]?.length || 0;
               if (count === 0) return null;
               return (
-                <div key={i} className="border rounded-lg p-3 bg-white">
+                <div key={i} className="border rounded-lg p-3 bg-slate-800/60">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-[9px]">{segCfg?.label || fu.segment}</Badge>
-                      <Badge className="text-[9px] bg-blue-100 text-blue-700">{count} recipients</Badge>
+                      <Badge className="text-[9px] bg-blue-100 text-blue-400">{count} recipients</Badge>
                     </div>
-                    <Button size="sm" variant="ghost" className="h-6 text-[10px] text-blue-600 hover:bg-blue-50 gap-1"
+                    <Button size="sm" variant="ghost" className="h-6 text-[10px] text-blue-600 hover:bg-blue-900/20 gap-1"
                       onClick={() => {
                         onApplyFollowUp({
                           segment: fu.segment,
@@ -161,8 +161,8 @@ Each follow-up should:
             )}
 
             {results.general_tips?.length > 0 && (
-              <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-                <p className="text-[10px] font-medium text-amber-700 mb-1">💡 Follow-Up Tips</p>
+              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+                <p className="text-[10px] font-medium text-amber-400 mb-1">💡 Follow-Up Tips</p>
                 {results.general_tips.map((t, i) => <p key={i} className="text-[9px] text-amber-600">• {t}</p>)}
               </div>
             )}

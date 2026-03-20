@@ -214,7 +214,7 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
   };
 
   return (
-    <Card className="border-violet-200 bg-gradient-to-b from-violet-50/50 to-white">
+    <Card className="border-violet-500/40 bg-gradient-to-b from-violet-50/50 to-white">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-violet-500" />
@@ -353,13 +353,13 @@ function NamingTab({ loading, results, onGenerate, onApplyName, onApplyDescripti
         {loading ? 'Generating...' : 'Generate Campaign Names'}
       </Button>
       {results?.suggestions?.map((s, i) => (
-        <div key={i} className="bg-white rounded-lg border p-2.5 hover:border-violet-300 transition-colors">
+        <div key={i} className="bg-slate-800/60 rounded-lg border p-2.5 hover:border-violet-300 transition-colors">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-800">{s.name}</p>
               <p className="text-[10px] text-slate-500 mt-0.5">{s.description}</p>
             </div>
-            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-violet-600 hover:bg-violet-50 shrink-0 ml-2"
+            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-violet-600 hover:bg-violet-900/30 shrink-0 ml-2"
               onClick={() => { onApplyName(s.name); onApplyDescription(s.description); toast.success('Applied'); }}>
               Apply
             </Button>
@@ -379,10 +379,10 @@ function TemplatesTab({ loading, results, onGenerate, onApplySubject, onApplyBod
         {loading ? 'Generating...' : 'Generate Email Templates'}
       </Button>
       {results?.templates?.map((t, i) => (
-        <div key={i} className="bg-white rounded-lg border p-2.5">
+        <div key={i} className="bg-slate-800/60 rounded-lg border p-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <Badge variant="outline" className="text-[9px]">{t.label}</Badge>
-            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-violet-600 hover:bg-violet-50"
+            <Button size="sm" variant="ghost" className="h-6 text-[10px] text-violet-600 hover:bg-violet-900/30"
               onClick={() => { onApplySubject(t.subject); onApplyBody(t.body); toast.success('Template applied'); }}>
               Use This
             </Button>
@@ -393,8 +393,8 @@ function TemplatesTab({ loading, results, onGenerate, onApplySubject, onApplyBod
         </div>
       ))}
       {results?.tips?.length > 0 && (
-        <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-          <p className="text-[10px] font-medium text-amber-700 mb-1">💡 Tips</p>
+        <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+          <p className="text-[10px] font-medium text-amber-400 mb-1">💡 Tips</p>
           {results.tips.map((tip, i) => (
             <p key={i} className="text-[9px] text-amber-600">• {tip}</p>
           ))}
@@ -405,8 +405,8 @@ function TemplatesTab({ loading, results, onGenerate, onApplySubject, onApplyBod
 }
 
 function PredictTab({ loading, results, onGenerate, targetConfig }) {
-  const impactColors = { positive: 'bg-green-100 text-green-700', negative: 'bg-red-100 text-red-700', neutral: 'bg-slate-100 text-slate-600' };
-  const confColors = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-red-100 text-red-700' };
+  const impactColors = { positive: 'bg-green-100 text-green-400', negative: 'bg-red-100 text-red-400', neutral: 'bg-slate-100 text-slate-600' };
+  const confColors = { high: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-red-100 text-red-400' };
 
   return (
     <div className="space-y-2">
@@ -419,16 +419,16 @@ function PredictTab({ loading, results, onGenerate, targetConfig }) {
         <div className="space-y-2">
           {/* Predicted KPIs */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-blue-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-blue-700">{results.predicted_open_rate || 0}%</p>
+            <div className="bg-blue-900/20 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-blue-400">{results.predicted_open_rate || 0}%</p>
               <p className="text-[9px] text-blue-500">Open Rate</p>
             </div>
-            <div className="bg-violet-50 rounded-lg p-2 text-center">
+            <div className="bg-violet-900/30 rounded-lg p-2 text-center">
               <p className="text-lg font-bold text-violet-700">{results.predicted_response_rate || 0}%</p>
               <p className="text-[9px] text-violet-500">Response Rate</p>
             </div>
-            <div className="bg-emerald-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-emerald-700">{results.estimated_responses || 0}</p>
+            <div className="bg-emerald-900/20 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-emerald-400">{results.estimated_responses || 0}</p>
               <p className="text-[9px] text-emerald-500">Est. Responses</p>
             </div>
           </div>
@@ -443,7 +443,7 @@ function PredictTab({ loading, results, onGenerate, targetConfig }) {
           </div>
 
           {results.overall_assessment && (
-            <p className="text-[10px] text-slate-600 bg-slate-50 rounded-lg px-2.5 py-2 leading-relaxed">{results.overall_assessment}</p>
+            <p className="text-[10px] text-slate-600 bg-slate-800/40 rounded-lg px-2.5 py-2 leading-relaxed">{results.overall_assessment}</p>
           )}
 
           {/* Impact factors */}
@@ -464,7 +464,7 @@ function PredictTab({ loading, results, onGenerate, targetConfig }) {
 
           {/* Recommendations */}
           {results.recommendations?.length > 0 && (
-            <div className="bg-violet-50 rounded-lg p-2 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
               <p className="text-[10px] font-medium text-violet-700 mb-1">Recommendations</p>
               {results.recommendations.map((r, i) => (
                 <p key={i} className="text-[9px] text-violet-600">• {r}</p>

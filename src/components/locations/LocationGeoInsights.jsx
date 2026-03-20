@@ -43,7 +43,7 @@ export default function LocationGeoInsights({ location, coProviders = [], allLoc
             <p className="text-lg font-bold text-sky-900">{insights.uniqueNPIsSameCity}</p>
             <p className="text-[10px] text-sky-500">providers in {location.city}</p>
           </div>
-          <div className="p-3 bg-indigo-50 rounded-lg">
+          <div className="p-3 bg-indigo-900/20 rounded-lg">
             <p className="text-[10px] text-indigo-600 font-medium">Same ZIP</p>
             <p className="text-lg font-bold text-indigo-900">{insights.uniqueNPIsSameZip}</p>
             <p className="text-[10px] text-indigo-500">providers in {location.zip}</p>

@@ -35,7 +35,7 @@ export default function LocationsTable({ locations = [] }) {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {loc.address_1 || '-'}
-                      {loc.is_primary && <Badge className="bg-blue-100 text-blue-700 text-[10px]">Primary</Badge>}
+                      {loc.is_primary && <Badge className="bg-blue-100 text-blue-400 text-[10px]">Primary</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>{loc.city || '-'}</TableCell>

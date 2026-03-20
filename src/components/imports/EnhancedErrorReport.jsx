@@ -109,8 +109,8 @@ function downloadJSONReport(batch) {
 }
 
 const severityColors = {
-  error: 'bg-red-500/15 text-red-400 border-red-500/20',
-  warning: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  error: 'bg-red-900/200/15 text-red-400 border-red-500/20',
+  warning: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20',
   info: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
 };
 
@@ -307,8 +307,8 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                       onClick={() => toggleRow(idx)}
                     >
                       <div className={`w-1 h-8 rounded-full flex-shrink-0 mt-0.5 ${
-                        suggestion.severity === 'error' ? 'bg-red-500' :
-                        suggestion.severity === 'warning' ? 'bg-amber-500' : 'bg-slate-500'
+                        suggestion.severity === 'error' ? 'bg-red-900/200' :
+                        suggestion.severity === 'warning' ? 'bg-amber-900/200' : 'bg-slate-500'
                       }`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -328,7 +328,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                             <span className="text-[9px] text-slate-500">Field: <span className="text-slate-400 font-mono">{err.field}</span></span>
                           )}
                           {suggestion.retryable && (
-                            <Badge className="bg-emerald-500/15 text-emerald-400 text-[9px]">Retryable</Badge>
+                            <Badge className="bg-emerald-900/200/15 text-emerald-400 text-[9px]">Retryable</Badge>
                           )}
                         </div>
                         <p className="text-[11px] text-slate-400 truncate">
@@ -352,7 +352,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                         </div>
 
                         {/* Suggested fix */}
-                        <div className="flex items-start gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-md p-2.5">
+                        <div className="flex items-start gap-2 bg-emerald-900/200/5 border border-emerald-500/20 rounded-md p-2.5">
                           <Lightbulb className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
                           <div>
                             <p className="text-[10px] font-semibold text-emerald-400 mb-0.5">Suggested Fix</p>

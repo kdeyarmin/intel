@@ -97,8 +97,8 @@ Provide:
     setLoading(false);
   };
 
-  const strColors = { strong: 'bg-green-100 text-green-700', moderate: 'bg-blue-100 text-blue-700', exploratory: 'bg-slate-100 text-slate-600' };
-  const prioColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+  const strColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-100 text-slate-600' };
+  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
 
   return (
     <Card>
@@ -120,7 +120,7 @@ Provide:
         {results && (
           <div className="space-y-3">
             {results.location_assessment && (
-              <p className="text-xs text-slate-600 bg-teal-50 rounded-lg px-3 py-2 leading-relaxed border border-teal-100">{results.location_assessment}</p>
+              <p className="text-xs text-slate-600 bg-teal-900/20 rounded-lg px-3 py-2 leading-relaxed border border-teal-100">{results.location_assessment}</p>
             )}
 
             {results.related_connections?.length > 0 && (
@@ -146,9 +146,9 @@ Provide:
                   <TrendingUp className="w-3 h-3" /> Growth Opportunities
                 </p>
                 {results.growth_opportunities.map((g, i) => (
-                  <div key={i} className="bg-emerald-50 rounded-lg p-2.5 mb-1.5 border border-emerald-100">
+                  <div key={i} className="bg-emerald-900/20 rounded-lg p-2.5 mb-1.5 border border-emerald-100">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-emerald-800">{g.title}</span>
+                      <span className="text-xs font-semibold text-emerald-300">{g.title}</span>
                       <Badge className={`text-[9px] ${prioColors[g.priority]}`}>{g.priority}</Badge>
                     </div>
                     <p className="text-[10px] text-emerald-600 mt-0.5">{g.description}</p>
@@ -163,8 +163,8 @@ Provide:
                   <ShieldAlert className="w-3 h-3" /> Competitive Threats
                 </p>
                 {results.competitive_threats.map((t, i) => (
-                  <div key={i} className="bg-red-50 rounded-lg p-2.5 mb-1.5 border border-red-100">
-                    <span className="text-xs font-semibold text-red-800">{t.title}</span>
+                  <div key={i} className="bg-red-900/20 rounded-lg p-2.5 mb-1.5 border border-red-100">
+                    <span className="text-xs font-semibold text-red-300">{t.title}</span>
                     <p className="text-[10px] text-red-600 mt-0.5">{t.description}</p>
                   </div>
                 ))}

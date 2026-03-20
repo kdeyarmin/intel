@@ -127,10 +127,10 @@ For each group, explain WHY these providers should be prioritized, the suggested
   };
 
   const STRATEGY_ICONS = {
-    gap_filling: { icon: MapPin, color: 'text-amber-400 bg-amber-500/15' },
-    high_value: { icon: Target, color: 'text-emerald-400 bg-emerald-500/15' },
-    referral_hubs: { icon: TrendingUp, color: 'text-cyan-400 bg-cyan-500/15' },
-    emerging: { icon: Sparkles, color: 'text-violet-400 bg-violet-500/15' },
+    gap_filling: { icon: MapPin, color: 'text-amber-400 bg-amber-900/200/15' },
+    high_value: { icon: Target, color: 'text-emerald-400 bg-emerald-900/200/15' },
+    referral_hubs: { icon: TrendingUp, color: 'text-cyan-400 bg-cyan-900/200/15' },
+    emerging: { icon: Sparkles, color: 'text-violet-400 bg-violet-900/200/15' },
   };
 
   return (
@@ -149,7 +149,7 @@ For each group, explain WHY these providers should be prioritized, the suggested
         </Button>
 
         {suggestions?.overall_recommendation && (
-          <div className="bg-violet-50 rounded-lg p-2 border border-violet-100">
+          <div className="bg-violet-900/20 rounded-lg p-2 border border-violet-100">
             <p className="text-[10px] text-violet-600 leading-relaxed">{suggestions.overall_recommendation}</p>
           </div>
         )}
@@ -159,7 +159,7 @@ For each group, explain WHY these providers should be prioritized, the suggested
           const Icon = s.icon;
           const isSelected = selectedGroup === i;
           return (
-            <div key={i} className={`rounded-lg border p-3 transition-all cursor-pointer ${isSelected ? 'border-violet-400 bg-violet-50/50' : 'border-slate-200 hover:border-violet-300'}`}
+            <div key={i} className={`rounded-lg border p-3 transition-all cursor-pointer ${isSelected ? 'border-violet-400 bg-violet-900/20/50' : 'border-slate-700/50 hover:border-violet-300'}`}
               onClick={() => setSelectedGroup(isSelected ? null : i)}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
@@ -176,16 +176,16 @@ For each group, explain WHY these providers should be prioritized, the suggested
 
               {isSelected && (
                 <div className="mt-3 space-y-2 text-[10px]">
-                  <div className="bg-blue-50 rounded p-2">
-                    <p className="font-medium text-blue-700 mb-0.5">Why these providers?</p>
+                  <div className="bg-blue-900/20 rounded p-2">
+                    <p className="font-medium text-blue-400 mb-0.5">Why these providers?</p>
                     <p className="text-blue-600">{g.why}</p>
                   </div>
-                  <div className="bg-emerald-50 rounded p-2">
-                    <p className="font-medium text-emerald-700 mb-0.5">Messaging Angle</p>
+                  <div className="bg-emerald-900/20 rounded p-2">
+                    <p className="font-medium text-emerald-400 mb-0.5">Messaging Angle</p>
                     <p className="text-emerald-600">{g.messaging_angle}</p>
                   </div>
-                  <div className="bg-amber-50 rounded p-2">
-                    <p className="font-medium text-amber-700 mb-0.5">Expected Impact</p>
+                  <div className="bg-amber-900/20 rounded p-2">
+                    <p className="font-medium text-amber-400 mb-0.5">Expected Impact</p>
                     <p className="text-amber-600">{g.expected_impact}</p>
                   </div>
                   <Button size="sm" className="w-full h-7 text-[10px] bg-teal-600 hover:bg-teal-700 gap-1"

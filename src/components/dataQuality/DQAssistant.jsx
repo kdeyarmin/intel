@@ -150,7 +150,7 @@ export default function DQAssistant() {
                 size="sm"
                 disabled={loading}
                 onClick={() => handleQuickAction(qa)}
-                className="text-[10px] h-7 gap-1 border-slate-700/50 hover:border-indigo-300 hover:bg-indigo-50"
+                className="text-[10px] h-7 gap-1 border-slate-700/50 hover:border-indigo-300 hover:bg-indigo-900/20"
               >
                 <Icon className="w-3 h-3" />
                 {qa.label}
@@ -238,7 +238,7 @@ function MessageBubble({ message }) {
         {message.data?.actions?.length > 0 && (
           <div className="mt-2 space-y-1">
             {message.data.actions.map((a, i) => (
-              <div key={i} className="flex items-start gap-1.5 bg-blue-500/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
+              <div key={i} className="flex items-start gap-1.5 bg-blue-900/200/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
                 {a.auto_executable ? (
                   <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 ) : (
@@ -287,14 +287,14 @@ function MessageBubble({ message }) {
 
 function AutoFixSummary({ data }) {
   return (
-    <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+    <div className="mt-2 bg-emerald-900/20 border border-emerald-200 rounded-lg p-2.5">
       <div className="flex items-center gap-2 mb-1.5">
         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-        <span className="text-[11px] font-semibold text-emerald-800">Auto-Fix Results</span>
+        <span className="text-[11px] font-semibold text-emerald-300">Auto-Fix Results</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="bg-slate-800/40 rounded p-1.5">
-          <p className="text-lg font-bold text-emerald-700">{data.fixed || 0}</p>
+          <p className="text-lg font-bold text-emerald-400">{data.fixed || 0}</p>
           <p className="text-[9px] text-emerald-600">Fixed</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
@@ -308,7 +308,7 @@ function AutoFixSummary({ data }) {
       </div>
       {data.fix_log?.filter(f => !f.skipped && !f.error).length > 0 && (
         <div className="mt-2 space-y-0.5">
-          <p className="text-[9px] text-emerald-700 font-medium">Applied fixes:</p>
+          <p className="text-[9px] text-emerald-400 font-medium">Applied fixes:</p>
           {data.fix_log.filter(f => !f.skipped && !f.error).slice(0, 5).map((f, i) => (
             <p key={i} className="text-[9px] text-emerald-600">
               • {f.npi}: {f.field} "{f.old}" → "{f.new}" ({f.confidence}% confidence)
@@ -334,8 +334,8 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Trend */}
       {result.trend_analysis && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 mb-2">
-          <p className="text-[10px] text-blue-800">{result.trend_analysis}</p>
+        <div className="bg-blue-900/200/10 border border-blue-500/20 rounded p-2 mb-2">
+          <p className="text-[10px] text-blue-300">{result.trend_analysis}</p>
         </div>
       )}
 
@@ -348,8 +348,8 @@ function PatternResultsPanel({ result, onClose }) {
                 <span className="text-[10px] font-semibold text-slate-700">{p.rule_name}</span>
                 <Badge variant="outline" className="text-[8px]">{p.occurrence_count}x</Badge>
               </div>
-              <p className="text-[9px] text-amber-700 mt-0.5"><strong>Root cause:</strong> {p.root_cause}</p>
-              <p className="text-[9px] text-emerald-700"><strong>Fix:</strong> {p.fix_strategy}</p>
+              <p className="text-[9px] text-amber-400 mt-0.5"><strong>Root cause:</strong> {p.root_cause}</p>
+              <p className="text-[9px] text-emerald-400"><strong>Fix:</strong> {p.fix_strategy}</p>
             </div>
           ))}
         </div>
@@ -361,7 +361,7 @@ function PatternResultsPanel({ result, onClose }) {
           <p className="text-[9px] font-semibold text-slate-500 uppercase">Priority Actions</p>
           {result.action_plan.slice(0, 3).map((a, i) => (
             <div key={i} className="flex items-start gap-1.5">
-              <Badge className="text-[7px] bg-indigo-100 text-indigo-700 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
+              <Badge className="text-[7px] bg-indigo-100 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
               <div>
                 <p className="text-[9px] font-medium text-slate-700">{a.action}</p>
                 <p className="text-[9px] text-slate-500">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
@@ -373,8 +373,8 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Predictions */}
       {result.predictions?.length > 0 && (
-        <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded p-2">
-          <p className="text-[9px] font-semibold text-amber-700 mb-0.5">⚠ Predictions</p>
+        <div className="mt-2 bg-amber-900/200/10 border border-amber-500/20 rounded p-2">
+          <p className="text-[9px] font-semibold text-amber-400 mb-0.5">⚠ Predictions</p>
           {result.predictions.slice(0, 2).map((p, i) => (
             <p key={i} className="text-[9px] text-amber-600">• {p}</p>
           ))}

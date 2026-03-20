@@ -147,7 +147,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
 
       {/* Medicare Data */}
       {enrichments.medicare && (
-        <Card className="bg-slate-50">
+        <Card className="bg-slate-800/40">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -157,27 +157,27 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {enrichments.medicare.quality_metrics?.safety && (
-                <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50">
                   <p className="text-xs text-slate-500 font-medium">Safety Score</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{enrichments.medicare.quality_metrics.safety}</p>
+                  <p className="text-2xl font-bold text-white mt-1">{enrichments.medicare.quality_metrics.safety}</p>
                 </div>
               )}
               {enrichments.medicare.quality_metrics?.timeliness && (
-                <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50">
                   <p className="text-xs text-slate-500 font-medium">Timeliness</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{enrichments.medicare.quality_metrics.timeliness}</p>
+                  <p className="text-2xl font-bold text-white mt-1">{enrichments.medicare.quality_metrics.timeliness}</p>
                 </div>
               )}
               {enrichments.medicare.quality_metrics?.cost && (
-                <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50">
                   <p className="text-xs text-slate-500 font-medium">Cost Score</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{enrichments.medicare.quality_metrics.cost}</p>
+                  <p className="text-2xl font-bold text-white mt-1">{enrichments.medicare.quality_metrics.cost}</p>
                 </div>
               )}
               {enrichments.medicare.quality_metrics?.patient_satisfaction && (
-                <div className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/60 rounded-lg border border-slate-700/50">
                   <p className="text-xs text-slate-500 font-medium">Satisfaction</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{enrichments.medicare.quality_metrics.patient_satisfaction}%</p>
+                  <p className="text-2xl font-bold text-white mt-1">{enrichments.medicare.quality_metrics.patient_satisfaction}%</p>
                 </div>
               )}
             </div>
@@ -187,7 +187,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
 
       {/* NPI Validation */}
       {enrichments.npi_validation && (
-        <Card className={`${enrichments.npi_validation.is_valid ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+        <Card className={`${enrichments.npi_validation.is_valid ? 'bg-green-900/20 border-green-200' : 'bg-amber-900/20 border-amber-200'}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -204,10 +204,10 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
             <p><span className="font-medium">Type:</span> {enrichments.npi_validation.npi_type}</p>
             <p><span className="font-medium">Status:</span> {enrichments.npi_validation.status}</p>
             {enrichments.npi_validation.discrepancies?.length > 0 && (
-              <div className="mt-2 p-2 bg-white rounded border border-amber-300">
+              <div className="mt-2 p-2 bg-slate-800/60 rounded border border-amber-600/50">
                 <p className="font-medium text-xs text-amber-900">Discrepancies:</p>
                 {enrichments.npi_validation.discrepancies.map((d, i) => (
-                  <p key={i} className="text-xs text-amber-700 mt-1">• {d}</p>
+                  <p key={i} className="text-xs text-amber-400 mt-1">• {d}</p>
                 ))}
               </div>
             )}
@@ -217,7 +217,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
 
       {/* DEA Data */}
       {enrichments.dea && (
-        <Card className={`${enrichments.dea.is_dea_registered ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50'}`}>
+        <Card className={`${enrichments.dea.is_dea_registered ? 'bg-emerald-900/20 border-emerald-200' : 'bg-slate-800/40'}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -243,21 +243,21 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2 rounded bg-white border border-slate-200">
+                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
                     <p className="text-xs font-medium text-slate-600">Opioids</p>
-                    <p className="text-sm font-bold text-slate-900 mt-1">
+                    <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.opioids ? '✓' : '✗'}
                     </p>
                   </div>
-                  <div className="p-2 rounded bg-white border border-slate-200">
+                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
                     <p className="text-xs font-medium text-slate-600">Stimulants</p>
-                    <p className="text-sm font-bold text-slate-900 mt-1">
+                    <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.stimulants ? '✓' : '✗'}
                     </p>
                   </div>
-                  <div className="p-2 rounded bg-white border border-slate-200">
+                  <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
                     <p className="text-xs font-medium text-slate-600">Benzodiazepines</p>
-                    <p className="text-sm font-bold text-slate-900 mt-1">
+                    <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.benzodiazepines ? '✓' : '✗'}
                     </p>
                   </div>
@@ -265,10 +265,10 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
               </>
             )}
             {enrichments.dea.restrictions?.length > 0 && (
-              <div className="p-2 rounded bg-amber-100 border border-amber-300">
+              <div className="p-2 rounded bg-amber-100 border border-amber-600/50">
                 <p className="text-xs font-medium text-amber-900">Restrictions:</p>
                 {enrichments.dea.restrictions.map((r, i) => (
-                  <p key={i} className="text-xs text-amber-700 mt-1">• {r}</p>
+                  <p key={i} className="text-xs text-amber-400 mt-1">• {r}</p>
                 ))}
               </div>
             )}

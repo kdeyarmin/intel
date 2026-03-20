@@ -7,12 +7,12 @@ import { base44 } from '@/api/base44Client';
 import { TrendingUp, Loader2, Sparkles, ShieldAlert, Target, Zap } from 'lucide-react';
 
 const TYPE_CFG = {
-  growth: { icon: TrendingUp, bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
-  threat: { icon: ShieldAlert, bg: 'bg-red-50 border-red-200', text: 'text-red-700' },
-  opportunity: { icon: Target, bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
-  action: { icon: Zap, bg: 'bg-violet-50 border-violet-200', text: 'text-violet-700' },
+  growth: { icon: TrendingUp, bg: 'bg-emerald-900/20 border-emerald-200', text: 'text-emerald-400' },
+  threat: { icon: ShieldAlert, bg: 'bg-red-900/20 border-red-200', text: 'text-red-400' },
+  opportunity: { icon: Target, bg: 'bg-blue-900/20 border-blue-200', text: 'text-blue-400' },
+  action: { icon: Zap, bg: 'bg-violet-900/20 border-violet-200', text: 'text-violet-700' },
 };
-const PRIO = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+const PRIO = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
 
 export default function MarketInsightsWidget({ providers = [], locations = [], taxonomies = [], utilizations = [], referrals = [] }) {
   const [results, setResults] = useState(null);
@@ -88,7 +88,7 @@ Provide 6 strategic insights covering growth opportunities, competitive threats,
             <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg p-3 border border-emerald-100">
               <p className="text-xs text-slate-700 leading-relaxed flex-1">{results.summary}</p>
               {results.market_health_score != null && (
-                <Badge className={`ml-3 shrink-0 text-xs ${results.market_health_score >= 70 ? 'bg-emerald-100 text-emerald-700' : results.market_health_score >= 40 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                <Badge className={`ml-3 shrink-0 text-xs ${results.market_health_score >= 70 ? 'bg-emerald-100 text-emerald-400' : results.market_health_score >= 40 ? 'bg-amber-100 text-amber-400' : 'bg-red-100 text-red-400'}`}>
                   {results.market_health_score}/100
                 </Badge>
               )}

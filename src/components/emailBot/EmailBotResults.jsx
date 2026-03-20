@@ -5,9 +5,9 @@ import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import EmailValidationBadge from './EmailValidationBadge';
 
 const confColors = {
-  high: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  medium: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-  low: 'bg-red-500/15 text-red-400 border border-red-500/20',
+  high: 'bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20',
+  medium: 'bg-amber-900/200/15 text-amber-400 border border-amber-500/20',
+  low: 'bg-red-900/200/15 text-red-400 border border-red-500/20',
 };
 
 export default function EmailBotResults({ results }) {

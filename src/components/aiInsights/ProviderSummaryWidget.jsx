@@ -123,22 +123,22 @@ Provide:
           <div className="space-y-4">
             {/* Quick stats */}
             <div className="grid grid-cols-4 gap-2">
-              <div className="bg-blue-50 rounded-lg p-2 text-center">
+              <div className="bg-blue-900/20 rounded-lg p-2 text-center">
                 <Users className="w-4 h-4 text-blue-500 mx-auto mb-0.5" />
-                <p className="text-lg font-bold text-blue-700">{breakdown.individuals}</p>
+                <p className="text-lg font-bold text-blue-400">{breakdown.individuals}</p>
                 <p className="text-[9px] text-blue-500">Individuals</p>
               </div>
-              <div className="bg-indigo-50 rounded-lg p-2 text-center">
+              <div className="bg-indigo-900/20 rounded-lg p-2 text-center">
                 <Building2 className="w-4 h-4 text-indigo-500 mx-auto mb-0.5" />
-                <p className="text-lg font-bold text-indigo-700">{breakdown.organizations}</p>
+                <p className="text-lg font-bold text-indigo-400">{breakdown.organizations}</p>
                 <p className="text-[9px] text-indigo-500">Organizations</p>
               </div>
-              <div className="bg-emerald-50 rounded-lg p-2 text-center">
+              <div className="bg-emerald-900/20 rounded-lg p-2 text-center">
                 <MapPin className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" />
-                <p className="text-lg font-bold text-emerald-700">{breakdown.topStates.length}</p>
+                <p className="text-lg font-bold text-emerald-400">{breakdown.topStates.length}</p>
                 <p className="text-[9px] text-emerald-500">States</p>
               </div>
-              <div className="bg-violet-50 rounded-lg p-2 text-center">
+              <div className="bg-violet-900/20 rounded-lg p-2 text-center">
                 <Stethoscope className="w-4 h-4 text-violet-500 mx-auto mb-0.5" />
                 <p className="text-lg font-bold text-violet-700">{breakdown.topSpecs.length}</p>
                 <p className="text-[9px] text-violet-500">Specialties</p>
@@ -183,7 +183,7 @@ Provide:
               <div className="space-y-3 border-t pt-3">
                 {/* Executive summary */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs font-medium text-blue-800 mb-1">Executive Summary</p>
+                  <p className="text-xs font-medium text-blue-300 mb-1">Executive Summary</p>
                   <p className="text-xs text-slate-700 leading-relaxed">{results.executive_summary}</p>
                 </div>
 
@@ -192,8 +192,8 @@ Provide:
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-medium text-emerald-600 uppercase tracking-wide">Strengths</p>
                     {results.strengths?.map((s, i) => (
-                      <div key={i} className="bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-                        <p className="text-[11px] font-semibold text-emerald-800">{s.title}</p>
+                      <div key={i} className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-100">
+                        <p className="text-[11px] font-semibold text-emerald-300">{s.title}</p>
                         <p className="text-[10px] text-emerald-600">{s.detail}</p>
                       </div>
                     ))}
@@ -201,8 +201,8 @@ Provide:
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-medium text-red-600 uppercase tracking-wide">Gaps</p>
                     {results.gaps?.map((g, i) => (
-                      <div key={i} className="bg-red-50 rounded-lg p-2 border border-red-100">
-                        <p className="text-[11px] font-semibold text-red-800">{g.title}</p>
+                      <div key={i} className="bg-red-900/20 rounded-lg p-2 border border-red-100">
+                        <p className="text-[11px] font-semibold text-red-300">{g.title}</p>
                         <p className="text-[10px] text-red-600">{g.detail}</p>
                       </div>
                     ))}
@@ -227,7 +227,7 @@ Provide:
                       <div key={i} className="border rounded-lg p-2.5">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="text-[11px] font-semibold text-slate-800">{r.recommendation}</span>
-                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-100 text-red-700' : r.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{r.priority}</Badge>
+                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-100 text-red-400' : r.priority === 'medium' ? 'bg-amber-100 text-amber-400' : 'bg-slate-100 text-slate-600'}`}>{r.priority}</Badge>
                         </div>
                         <p className="text-[10px] text-slate-500">{r.rationale}</p>
                       </div>

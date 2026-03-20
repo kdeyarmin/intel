@@ -25,7 +25,7 @@ export default function AINetworkRecommendations() {
 
   if (!data) {
     return (
-      <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
+      <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-500/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-violet-900">
             <Lightbulb className="w-5 h-5" />
@@ -51,19 +51,19 @@ export default function AINetworkRecommendations() {
     <div className="space-y-4">
       {/* Expansion Opportunities */}
       {recommendations.expansion_opportunities?.length > 0 && (
-        <Card className="border-emerald-200 bg-emerald-50">
+        <Card className="border-emerald-200 bg-emerald-900/20">
           <CardHeader>
             <CardTitle className="text-base text-emerald-900">🚀 Expansion Opportunities</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {recommendations.expansion_opportunities.map((opp, i) => (
-              <div key={i} className="p-3 bg-white rounded-lg border border-emerald-200">
+              <div key={i} className="p-3 bg-slate-800/60 rounded-lg border border-emerald-200">
                 <div className="flex items-start gap-2 mb-1">
                   <ArrowRight className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                   <h4 className="font-semibold text-sm text-emerald-900">{opp.opportunity}</h4>
                 </div>
                 <p className="text-xs text-slate-600 ml-6 mb-2">{opp.rationale}</p>
-                <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300">
+                <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-300 border-emerald-300">
                   Impact: {opp.expected_impact}
                 </Badge>
               </div>
@@ -74,21 +74,21 @@ export default function AINetworkRecommendations() {
 
       {/* Partnership Recommendations */}
       {recommendations.partnership_recommendations?.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 bg-blue-900/20">
           <CardHeader>
             <CardTitle className="text-base text-blue-900">🤝 Partnership Recommendations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {recommendations.partnership_recommendations.map((rec, i) => (
-              <div key={i} className="p-3 bg-white rounded-lg border border-blue-200">
+              <div key={i} className="p-3 bg-slate-800/60 rounded-lg border border-blue-200">
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-semibold text-sm text-blue-900">{rec.focus_area}</h4>
                   <Badge 
                     variant="outline" 
                     className={`text-xs ${
-                      rec.priority === 'High' ? 'bg-red-100 text-red-800 border-red-300' :
+                      rec.priority === 'High' ? 'bg-red-100 text-red-300 border-red-300' :
                       rec.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                      'bg-green-100 text-green-800 border-green-300'
+                      'bg-green-100 text-green-300 border-green-300'
                     }`}
                   >
                     {rec.priority} Priority
@@ -103,18 +103,18 @@ export default function AINetworkRecommendations() {
 
       {/* Gap Filling Strategies */}
       {recommendations.gap_filling_strategies?.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-amber-200 bg-amber-900/20">
           <CardHeader>
             <CardTitle className="text-base text-amber-900">🎯 Gap Filling Strategies</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {recommendations.gap_filling_strategies.map((strategy, i) => (
-              <div key={i} className="p-3 bg-white rounded-lg border border-amber-200">
+              <div key={i} className="p-3 bg-slate-800/60 rounded-lg border border-amber-200">
                 <div className="flex items-start gap-2 mb-1">
                   <span className="font-bold text-amber-600">{strategy.specialty}</span>
                 </div>
                 <p className="text-xs text-slate-600 mb-2">{strategy.strategy}</p>
-                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                <Badge variant="outline" className="text-xs bg-amber-100 text-amber-300 border-amber-600/50">
                   Timeline: {strategy.timeline}
                 </Badge>
               </div>

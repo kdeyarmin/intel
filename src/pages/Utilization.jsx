@@ -96,15 +96,15 @@ export default function Utilization() {
         <CardContent className="p-0">
           <div className="rounded-md border-0 overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50">
+              <TableHeader className="bg-slate-50/50">
                 <TableRow>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300">NPI</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300">Service / HCPCS</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300 text-right">Beneficiaries</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300 text-right">Services</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300 text-right">Avg Submitted</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300 text-right">Avg Medicare Paid</TableHead>
-                  <TableHead className="font-semibold text-slate-600 dark:text-slate-300">Year</TableHead>
+                  <TableHead className="font-semibold text-slate-600">NPI</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Service / HCPCS</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">Beneficiaries</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">Services</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">Avg Submitted</TableHead>
+                  <TableHead className="font-semibold text-slate-600 text-right">Avg Medicare Paid</TableHead>
+                  <TableHead className="font-semibold text-slate-600">Year</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,7 +131,7 @@ export default function Utilization() {
                   </TableRow>
                 ) : (
                   filteredRecords.map((record) => (
-                    <TableRow key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                    <TableRow key={record.id} className="hover:bg-slate-50/50/50">
                       <TableCell className="font-medium text-cyan-600">{record.npi}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">

@@ -78,10 +78,10 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
 
   if (discrepancies.length === 0) {
     return (
-      <Card className="bg-slate-50 border-slate-200">
+      <Card className="bg-slate-800/40 border-slate-700/50">
         <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
           <Check className="w-12 h-12 text-green-500 mb-2" />
-          <h3 className="font-medium text-slate-900">Data is Synchronized</h3>
+          <h3 className="font-medium text-white">Data is Synchronized</h3>
           <p className="text-sm text-slate-500 mt-1">Provider record matches NPI Registry data.</p>
         </CardContent>
       </Card>
@@ -89,20 +89,20 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
   }
 
   return (
-    <Card className="border-amber-200 bg-amber-50/30">
+    <Card className="border-amber-200 bg-amber-900/20/30">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Merge className="w-5 h-5 text-amber-600" />
-          <CardTitle className="text-base text-slate-900">Data Comparison & Merge</CardTitle>
+          <CardTitle className="text-base text-white">Data Comparison & Merge</CardTitle>
         </div>
         <CardDescription>
           Found {discrepancies.length} discrepancies between local record and NPI Registry. Select values to update.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border border-slate-200 bg-white overflow-x-auto">
+        <div className="rounded-md border border-slate-700/50 bg-slate-800/60 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50">
+            <TableHeader className="bg-slate-800/40">
               <TableRow>
                 <TableHead className="w-[50px] text-center">Merge</TableHead>
                 <TableHead>Field</TableHead>
@@ -118,7 +118,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                 const currentVal = provider[field.key] || <span className="text-slate-400 italic">Empty</span>;
 
                 return (
-                  <TableRow key={field.key} className={selectedFields[field.key] ? "bg-blue-50/50" : ""}>
+                  <TableRow key={field.key} className={selectedFields[field.key] ? "bg-blue-900/20/50" : ""}>
                     <TableCell className="text-center">
                       <Checkbox 
                         checked={!!selectedFields[field.key]}
@@ -130,7 +130,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                     <TableCell>
                       <ArrowRight className="w-4 h-4 text-slate-400" />
                     </TableCell>
-                    <TableCell className="text-sm font-medium text-blue-700">
+                    <TableCell className="text-sm font-medium text-blue-400">
                       {externalVal || <span className="text-slate-400 italic">Empty</span>}
                     </TableCell>
                   </TableRow>
@@ -140,7 +140,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
           </Table>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between border-t border-amber-100 bg-amber-50/50 pt-4">
+      <CardFooter className="flex justify-between border-t border-amber-100 bg-amber-900/20/50 pt-4">
         <div className="text-xs text-slate-500">
           {Object.keys(selectedFields).filter(k => selectedFields[k]).length} fields selected
         </div>

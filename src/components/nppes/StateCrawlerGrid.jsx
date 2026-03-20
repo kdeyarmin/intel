@@ -21,10 +21,10 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
   };
 
   const statusStyles = {
-    active: 'bg-teal-500/20 border-teal-500/40 text-teal-400',
-    completed: 'bg-green-500/15 border-green-500/30 text-green-400',
-    failed: 'bg-red-500/15 border-red-500/30 text-red-400',
-    processing: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+    active: 'bg-teal-900/200/20 border-teal-500/40 text-teal-400',
+    completed: 'bg-green-900/200/15 border-green-500/30 text-green-400',
+    failed: 'bg-red-900/200/15 border-red-500/30 text-red-400',
+    processing: 'bg-amber-900/200/15 border-amber-500/30 text-amber-400',
     pending: 'bg-slate-800/50 border-slate-700/50 text-slate-500',
   };
 

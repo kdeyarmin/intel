@@ -55,13 +55,13 @@ export default function StateQualityBreakdown({ providers = [], locations = [] }
           <div className="flex gap-1">
             <button
               onClick={() => setViewMode('completeness')}
-              className={`text-[10px] px-2 py-0.5 rounded ${viewMode === 'completeness' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`text-[10px] px-2 py-0.5 rounded ${viewMode === 'completeness' ? 'bg-cyan-900/200/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
             >
               Lowest Quality
             </button>
             <button
               onClick={() => setViewMode('volume')}
-              className={`text-[10px] px-2 py-0.5 rounded ${viewMode === 'volume' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`text-[10px] px-2 py-0.5 rounded ${viewMode === 'volume' ? 'bg-cyan-900/200/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
             >
               By Volume
             </button>

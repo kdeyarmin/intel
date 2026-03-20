@@ -11,7 +11,7 @@ function KPI({ title, value, subtitle, icon: Icon, color, loading }) {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+            <p className="text-2xl font-bold text-white mt-1">{value}</p>
             {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
           <div className={`p-2.5 rounded-lg ${color}`}>
@@ -40,7 +40,7 @@ export default function MAInpatientKPIs({ data, loading }) {
         value={totalDischarges.toLocaleString()}
         subtitle={`Across ${uniqueYears} year(s)`}
         icon={Activity}
-        color="bg-blue-50 text-blue-600"
+        color="bg-blue-900/20 text-blue-600"
         loading={loading}
       />
       <KPI
@@ -48,7 +48,7 @@ export default function MAInpatientKPIs({ data, loading }) {
         value={Math.round(totalPersons).toLocaleString()}
         subtitle="Cumulative persons with utilization"
         icon={Users}
-        color="bg-emerald-50 text-emerald-600"
+        color="bg-emerald-900/20 text-emerald-600"
         loading={loading}
       />
       <KPI
@@ -56,7 +56,7 @@ export default function MAInpatientKPIs({ data, loading }) {
         value={`${avgLOS} days`}
         subtitle="Mean across all records"
         icon={Clock}
-        color="bg-violet-50 text-violet-600"
+        color="bg-violet-900/20 text-violet-600"
         loading={loading}
       />
       <KPI
@@ -64,7 +64,7 @@ export default function MAInpatientKPIs({ data, loading }) {
         value={uniqueTables}
         subtitle={`${data.length.toLocaleString()} total records`}
         icon={Building2}
-        color="bg-amber-50 text-amber-600"
+        color="bg-amber-900/20 text-amber-600"
         loading={loading}
       />
     </div>

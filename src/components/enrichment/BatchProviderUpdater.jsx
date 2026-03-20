@@ -125,7 +125,7 @@ export default function BatchProviderUpdater() {
           <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <Upload className="w-4 h-4 text-emerald-400" />
             Batch Apply to Profiles
-            <Badge className="bg-emerald-500/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
+            <Badge className="bg-emerald-900/200/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
           </CardTitle>
           {selected.size > 0 && (
             <Button size="sm" onClick={applyUpdates} disabled={applying}
@@ -174,7 +174,7 @@ export default function BatchProviderUpdater() {
         })}
 
         {results && (
-          <div className="bg-emerald-500/10 rounded-lg p-2 text-center">
+          <div className="bg-emerald-900/200/10 rounded-lg p-2 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
             <p className="text-xs text-emerald-400">{results.success} profiles updated</p>
             {results.failed > 0 && <p className="text-[10px] text-red-400">{results.failed} failed</p>}

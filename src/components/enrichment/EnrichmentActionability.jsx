@@ -95,11 +95,11 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
   };
 
   const ICONS = {
-    telehealth: { icon: Wifi, color: 'text-cyan-500 bg-cyan-50' },
-    insurance: { icon: ShieldCheck, color: 'text-emerald-500 bg-emerald-50' },
-    volume: { icon: Activity, color: 'text-violet-500 bg-violet-50' },
-    affiliation: { icon: Users, color: 'text-blue-500 bg-blue-50' },
-    reviews: { icon: TrendingUp, color: 'text-amber-500 bg-amber-50' },
+    telehealth: { icon: Wifi, color: 'text-cyan-500 bg-cyan-900/20' },
+    insurance: { icon: ShieldCheck, color: 'text-emerald-500 bg-emerald-900/20' },
+    volume: { icon: Activity, color: 'text-violet-500 bg-violet-900/20' },
+    affiliation: { icon: Users, color: 'text-blue-500 bg-blue-900/20' },
+    reviews: { icon: TrendingUp, color: 'text-amber-500 bg-amber-900/20' },
   };
 
   return (
@@ -149,8 +149,8 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
                       </div>
                       <p className="text-[10px] text-slate-400 mt-1">{a.strategy}</p>
                       <div className="flex gap-2 mt-1.5">
-                        <Badge className="bg-cyan-500/10 text-cyan-400 text-[8px]">{a.data_driver}</Badge>
-                        <Badge className="bg-emerald-500/10 text-emerald-400 text-[8px]">{a.impact}</Badge>
+                        <Badge className="bg-cyan-900/200/10 text-cyan-400 text-[8px]">{a.data_driver}</Badge>
+                        <Badge className="bg-emerald-900/200/10 text-emerald-400 text-[8px]">{a.impact}</Badge>
                       </div>
                     </div>
                   </div>

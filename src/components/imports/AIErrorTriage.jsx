@@ -11,9 +11,9 @@ import {
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage } from './errorCategories';
 
 const PRIORITY_CONFIG = {
-  critical: { label: 'Critical', color: 'bg-red-500/15 text-red-400 border-red-500/20', icon: AlertTriangle, sort: 0 },
-  high: { label: 'High', color: 'bg-orange-500/15 text-orange-400 border-orange-500/20', icon: AlertTriangle, sort: 1 },
-  medium: { label: 'Medium', color: 'bg-amber-500/15 text-amber-400 border-amber-500/20', icon: Clock, sort: 2 },
+  critical: { label: 'Critical', color: 'bg-red-900/200/15 text-red-400 border-red-500/20', icon: AlertTriangle, sort: 0 },
+  high: { label: 'High', color: 'bg-orange-900/200/15 text-orange-400 border-orange-500/20', icon: AlertTriangle, sort: 1 },
+  medium: { label: 'Medium', color: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20', icon: Clock, sort: 2 },
   low: { label: 'Low', color: 'bg-slate-500/15 text-slate-400 border-slate-500/20', icon: Shield, sort: 3 },
 };
 
@@ -129,7 +129,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
             <Sparkles className="w-4 h-4 text-violet-400" />
             <span className="text-sm font-semibold text-slate-200">AI Error Triage</span>
             {analysis && (
-              <Badge className="bg-violet-500/15 text-violet-400 text-[10px]">
+              <Badge className="bg-violet-900/200/15 text-violet-400 text-[10px]">
                 Score: {analysis.data_quality_score}/100
               </Badge>
             )}
@@ -137,7 +137,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs bg-transparent border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+            className="h-7 text-xs bg-transparent border-violet-500/30 text-violet-400 hover:bg-violet-900/200/10"
             onClick={runAnalysis}
             disabled={isAnalyzing}
           >
@@ -170,7 +170,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
             <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
               <p className="text-[11px] text-slate-400 leading-relaxed">{analysis.overall_assessment}</p>
               {analysis.batch_recommendation && (
-                <div className="flex items-start gap-2 mt-2 bg-cyan-500/5 border border-cyan-500/15 rounded-md p-2">
+                <div className="flex items-start gap-2 mt-2 bg-cyan-900/200/5 border border-cyan-500/15 rounded-md p-2">
                   <Lightbulb className="w-3.5 h-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
                   <p className="text-[11px] text-cyan-400">{analysis.batch_recommendation}</p>
                 </div>
@@ -201,7 +201,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
                           <span className="text-xs font-medium text-slate-300">{group.category}</span>
                           <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">{errorCount} errors</Badge>
                           {group.safe_to_ignore && (
-                            <Badge className="bg-emerald-500/15 text-emerald-400 text-[9px]">Safe to ignore</Badge>
+                            <Badge className="bg-emerald-900/200/15 text-emerald-400 text-[9px]">Safe to ignore</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -240,7 +240,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
                             <p className="text-[11px] text-slate-400">{group.estimated_impact}</p>
                           </div>
                           {group.fix_steps?.length > 0 && (
-                            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-md p-2.5">
+                            <div className="bg-emerald-900/200/5 border border-emerald-500/15 rounded-md p-2.5">
                               <p className="text-[10px] font-semibold text-emerald-400 mb-1 flex items-center gap-1">
                                 <Lightbulb className="w-3 h-3" /> How to Fix
                               </p>

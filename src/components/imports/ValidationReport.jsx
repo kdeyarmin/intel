@@ -26,7 +26,7 @@ export default function ValidationReport({ result }) {
   return (
     <div className="space-y-3">
       {/* Summary bar */}
-      <div className={`rounded-lg p-3 border ${isClean ? 'bg-green-50 border-green-200' : rejected > 0 ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+      <div className={`rounded-lg p-3 border ${isClean ? 'bg-green-900/20 border-green-200' : rejected > 0 ? 'bg-amber-900/20 border-amber-200' : 'bg-blue-900/20 border-blue-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium">
             {isClean ? (
@@ -36,26 +36,26 @@ export default function ValidationReport({ result }) {
             ) : (
               <CheckCircle2 className="w-4 h-4 text-blue-600" />
             )}
-            <span className={isClean ? 'text-green-700' : rejected > 0 ? 'text-amber-700' : 'text-blue-700'}>
+            <span className={isClean ? 'text-green-400' : rejected > 0 ? 'text-amber-400' : 'text-blue-400'}>
               Validation: {passRate}% pass rate
             </span>
           </div>
           <div className="flex gap-2">
-            <Badge className="bg-green-100 text-green-800 text-xs">{validated.toLocaleString()} passed</Badge>
-            {rejected > 0 && <Badge className="bg-red-100 text-red-800 text-xs">{rejected.toLocaleString()} rejected</Badge>}
-            {valWarnings > 0 && <Badge className="bg-amber-100 text-amber-800 text-xs">{valWarnings} warnings</Badge>}
+            <Badge className="bg-green-100 text-green-300 text-xs">{validated.toLocaleString()} passed</Badge>
+            {rejected > 0 && <Badge className="bg-red-100 text-red-300 text-xs">{rejected.toLocaleString()} rejected</Badge>}
+            {valWarnings > 0 && <Badge className="bg-amber-100 text-amber-300 text-xs">{valWarnings} warnings</Badge>}
           </div>
         </div>
       </div>
 
       {/* Rule summary */}
       {Object.keys(ruleSummary).length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-3 text-xs space-y-1.5">
-          <p className="font-medium text-gray-700 text-sm">Validation Rules Triggered</p>
+        <div className="bg-slate-800/40 rounded-lg p-3 text-xs space-y-1.5">
+          <p className="font-medium text-slate-300 text-sm">Validation Rules Triggered</p>
           <div className="grid grid-cols-2 gap-1.5">
             {Object.entries(ruleSummary).map(([rule, count]) => (
-              <div key={rule} className="flex items-center justify-between bg-white rounded px-2 py-1 border">
-                <span className="text-gray-600">{rule.replace(/_/g, ' ')}</span>
+              <div key={rule} className="flex items-center justify-between bg-slate-800/60 rounded px-2 py-1 border">
+                <span className="text-slate-400">{rule.replace(/_/g, ' ')}</span>
                 <Badge variant="outline" className="text-xs ml-2">{count}</Badge>
               </div>
             ))}
@@ -68,7 +68,7 @@ export default function ValidationReport({ result }) {
         <div>
           <button
             onClick={() => setShowErrors(!showErrors)}
-            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 font-medium"
+            className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-300 font-medium"
           >
             {showErrors ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             <XCircle className="w-3 h-3" />
@@ -77,12 +77,12 @@ export default function ValidationReport({ result }) {
           {showErrors && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
               {errorSamples.map((e, i) => (
-                <div key={i} className="bg-red-50 rounded px-3 py-2 text-xs border border-red-100 flex items-start gap-2">
+                <div key={i} className="bg-red-900/20 rounded px-3 py-2 text-xs border border-red-100 flex items-start gap-2">
                   <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-medium text-red-700">[{e.rule}]</span>{' '}
+                    <span className="font-medium text-red-400">[{e.rule}]</span>{' '}
                     <span className="text-red-600">{e.message}</span>
-                    <span className="text-gray-400 ml-2">
+                    <span className="text-slate-500 ml-2">
                       {e.sheet && `Sheet: ${e.sheet}`}{e.row != null && `, Row: ${e.row}`}{e.field && `, Field: ${e.field}`}
                     </span>
                   </div>
@@ -98,7 +98,7 @@ export default function ValidationReport({ result }) {
         <div>
           <button
             onClick={() => setShowWarnings(!showWarnings)}
-            className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 font-medium"
+            className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-300 font-medium"
           >
             {showWarnings ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             <AlertTriangle className="w-3 h-3" />
@@ -107,12 +107,12 @@ export default function ValidationReport({ result }) {
           {showWarnings && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
               {warningSamples.map((w, i) => (
-                <div key={i} className="bg-amber-50 rounded px-3 py-2 text-xs border border-amber-100 flex items-start gap-2">
+                <div key={i} className="bg-amber-900/20 rounded px-3 py-2 text-xs border border-amber-100 flex items-start gap-2">
                   <AlertTriangle className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <span className="font-medium text-amber-700">[{w.rule}]</span>{' '}
+                    <span className="font-medium text-amber-400">[{w.rule}]</span>{' '}
                     <span className="text-amber-600">{w.message}</span>
-                    <span className="text-gray-400 ml-2">
+                    <span className="text-slate-500 ml-2">
                       {w.sheet && `Sheet: ${w.sheet}`}{w.row != null && `, Row: ${w.row}`}
                     </span>
                   </div>

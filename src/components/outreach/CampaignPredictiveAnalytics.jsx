@@ -167,11 +167,11 @@ Provide:
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4 text-emerald-500" /> Next Campaign Forecast</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xl font-bold text-emerald-700">{prediction.next_campaign_prediction?.predicted_open_rate}%</p>
+                <div className="bg-emerald-900/20 rounded-lg p-3 text-center">
+                  <p className="text-xl font-bold text-emerald-400">{prediction.next_campaign_prediction?.predicted_open_rate}%</p>
                   <p className="text-[10px] text-emerald-600">Predicted Open Rate</p>
                 </div>
-                <div className="bg-violet-50 rounded-lg p-3 text-center">
+                <div className="bg-violet-900/20 rounded-lg p-3 text-center">
                   <p className="text-xl font-bold text-violet-700">{prediction.next_campaign_prediction?.predicted_response_rate}%</p>
                   <p className="text-[10px] text-violet-600">Predicted Response Rate</p>
                 </div>
@@ -197,8 +197,8 @@ Provide:
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-2 bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-                  <p className="text-[10px] text-emerald-700"><span className="font-medium">Best:</span> {prediction.optimal_send_time?.best_day} {prediction.optimal_send_time?.best_hour}</p>
+                <div className="mt-2 bg-emerald-900/20 rounded-lg p-2 border border-emerald-100">
+                  <p className="text-[10px] text-emerald-400"><span className="font-medium">Best:</span> {prediction.optimal_send_time?.best_day} {prediction.optimal_send_time?.best_hour}</p>
                   <p className="text-[10px] text-red-600"><span className="font-medium">Avoid:</span> {prediction.optimal_send_time?.worst_day}</p>
                   <p className="text-[9px] text-slate-500 mt-0.5">{prediction.optimal_send_time?.reasoning}</p>
                 </div>
@@ -215,7 +215,7 @@ Provide:
                   <div key={i} className="border rounded-lg p-2.5">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-slate-700">{seg.name}</p>
-                      <Badge className="bg-emerald-100 text-emerald-700 text-[9px]">{seg.expected_lift}</Badge>
+                      <Badge className="bg-emerald-100 text-emerald-400 text-[9px]">{seg.expected_lift}</Badge>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5">{seg.description}</p>
                   </div>

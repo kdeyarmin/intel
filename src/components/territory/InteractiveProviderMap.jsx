@@ -118,7 +118,7 @@ function ResetViewButton({ center, zoom }) {
     <Button
       variant="outline"
       size="sm"
-      className="absolute top-2 right-2 z-[1000] bg-white shadow-sm h-7 text-xs gap-1"
+      className="absolute top-2 right-2 z-[1000] bg-slate-800/60 shadow-sm h-7 text-xs gap-1"
       onClick={() => map.setView(center, zoom)}
     >
       <ZoomIn className="w-3 h-3" /> Reset View
@@ -206,7 +206,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               <div className="flex gap-2">
                 <Badge variant="outline" className="text-[10px]">{stats.total} mapped</Badge>
                 <Badge className="bg-teal-100 text-teal-700 text-[10px]">Avg {stats.avgScore}</Badge>
-                <Badge className="bg-green-100 text-green-700 text-[10px]">{stats.high} high</Badge>
+                <Badge className="bg-green-100 text-green-400 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
             {actions}
@@ -223,7 +223,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
       <CardContent className="p-0">
         <div className="relative" style={{ height: '560px' }}>
           {mapPoints.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-sm text-slate-400">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-800/40 text-sm text-slate-400">
               No providers with mappable locations match your filters.
             </div>
           ) : (
@@ -261,7 +261,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
 
           {/* Legend */}
           {colorByScore && mapPoints.length > 0 && (
-            <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
+            <div className="absolute bottom-3 left-3 z-[1000] bg-slate-800/60/95 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
               <div className="text-[10px] font-semibold text-slate-700 mb-1.5">Score Legend</div>
               <div className="space-y-1">
                 {[

@@ -9,10 +9,10 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 
 const _statusColors = {
-  'New': 'bg-blue-100 text-blue-800',
+  'New': 'bg-blue-100 text-blue-300',
   'Contacted': 'bg-yellow-100 text-yellow-800',
-  'Qualified': 'bg-green-100 text-green-800',
-  'Not a fit': 'bg-gray-100 text-gray-800',
+  'Qualified': 'bg-green-100 text-green-300',
+  'Not a fit': 'bg-slate-700/40 text-slate-200',
 };
 
 export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
@@ -149,7 +149,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/200/10"
                     onClick={() => {
                       if (confirm('Remove this provider from the list?')) {
                         onRemove(lead.member.id);

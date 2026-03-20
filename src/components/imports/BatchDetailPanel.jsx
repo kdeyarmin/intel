@@ -21,11 +21,11 @@ const IMPORT_TYPE_LABELS = buildImportTypeLabels({
 });
 
 const statusColors = {
-  processing: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-  validating: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
-  completed: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  failed: 'bg-red-500/15 text-red-400 border border-red-500/20',
-  paused: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+  processing: 'bg-blue-900/200/15 text-blue-400 border border-blue-500/20',
+  validating: 'bg-yellow-900/200/15 text-yellow-400 border border-yellow-500/20',
+  completed: 'bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20',
+  failed: 'bg-red-900/200/15 text-red-400 border border-red-500/20',
+  paused: 'bg-amber-900/200/15 text-amber-400 border border-amber-500/20',
   cancelled: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',
 };
 
@@ -61,9 +61,9 @@ function ProgressBreakdown({ batch }) {
 
   const stages = [
     { label: 'Scanned', count: total, pct: 100, color: 'bg-slate-500' },
-    { label: 'Validated', count: validated, pct: total > 0 ? (validated / total) * 100 : 0, color: 'bg-emerald-500' },
-    { label: 'Imported', count: imported, pct: total > 0 ? (imported / total) * 100 : 0, color: 'bg-blue-500' },
-    { label: 'Updated', count: updated, pct: total > 0 ? (updated / total) * 100 : 0, color: 'bg-violet-500' },
+    { label: 'Validated', count: validated, pct: total > 0 ? (validated / total) * 100 : 0, color: 'bg-emerald-900/200' },
+    { label: 'Imported', count: imported, pct: total > 0 ? (imported / total) * 100 : 0, color: 'bg-blue-900/200' },
+    { label: 'Updated', count: updated, pct: total > 0 ? (updated / total) * 100 : 0, color: 'bg-violet-900/200' },
   ];
 
   return (
@@ -169,9 +169,9 @@ export default function BatchDetailPanel({ batch }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge className={statusColors[batch.status] || ''}>{batch.status}</Badge>
-          {batch.dry_run && <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20">Dry Run</Badge>}
+          {batch.dry_run && <Badge className="bg-violet-900/200/15 text-violet-400 border border-violet-500/20">Dry Run</Badge>}
           {batch.retry_of && (
-            <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/20">
+            <Badge className="text-xs gap-1 bg-amber-900/200/15 text-amber-400 border border-amber-500/20">
               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
             </Badge>
           )}

@@ -69,7 +69,7 @@ Be specific to healthcare/CMS data patterns. Use plain language.`,
   };
 
   return (
-    <Card className="border-amber-500/20 bg-amber-500/5">
+    <Card className="border-amber-500/20 bg-amber-900/200/5">
       <CardHeader className="pb-2">
         <button className="flex items-center justify-between w-full text-left" onClick={() => setExpanded(!expanded)}>
           <CardTitle className="text-sm flex items-center gap-2 text-amber-300">
@@ -100,7 +100,7 @@ Be specific to healthcare/CMS data patterns. Use plain language.`,
               onClick={analyze}
               size="sm"
               variant="outline"
-              className="bg-transparent border-amber-500/30 text-amber-300 hover:bg-amber-500/10 gap-2"
+              className="bg-transparent border-amber-500/30 text-amber-300 hover:bg-amber-900/200/10 gap-2"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Analyze & Suggest Fixes
@@ -144,7 +144,7 @@ Be specific to healthcare/CMS data patterns. Use plain language.`,
                   <p className="text-xs font-medium text-slate-400">Recommended Steps</p>
                   {suggestions.steps.map((step, i) => (
                     <div key={i} className="flex gap-3 p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/20">
-                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-900/200/20 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0">

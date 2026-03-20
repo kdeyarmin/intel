@@ -35,12 +35,12 @@ export default function CrawlerMonitoring({ status }) {
         </div>
         <div className="flex gap-2">
           {hasHighErrorRate && (
-            <Badge className="bg-red-100 text-red-800 border-red-200 gap-1.5 py-1">
+            <Badge className="bg-red-100 text-red-300 border-red-200 gap-1.5 py-1">
               <AlertCircle className="w-3.5 h-3.5" /> High Error Rate Detected
             </Badge>
           )}
           {hasLongProcessing && (
-            <Badge className="bg-amber-100 text-amber-800 border-amber-200 gap-1.5 py-1">
+            <Badge className="bg-amber-100 text-amber-300 border-amber-200 gap-1.5 py-1">
               <Clock className="w-3.5 h-3.5" /> Slow Processing Detected
             </Badge>
           )}

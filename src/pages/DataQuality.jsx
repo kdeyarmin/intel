@@ -129,7 +129,7 @@ export default function DataQuality() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-amber-500/10 border-amber-500/20">
+        <Card className="bg-amber-900/200/10 border-amber-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-amber-400">Open Alerts</p>
@@ -138,7 +138,7 @@ export default function DataQuality() {
             <AlertTriangle className="w-8 h-8 text-amber-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-red-500/10 border-red-500/20">
+        <Card className="bg-red-900/200/10 border-red-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-red-400">Critical / High</p>
@@ -147,7 +147,7 @@ export default function DataQuality() {
             <AlertTriangle className="w-8 h-8 text-red-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-violet-500/10 border-violet-500/20">
+        <Card className="bg-violet-900/200/10 border-violet-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-violet-400">AI Suggestions</p>
@@ -175,7 +175,7 @@ export default function DataQuality() {
           <TabsTrigger value="alerts" className="text-xs">
             Alerts
             {openAlerts.length > 0 && (
-              <Badge className="ml-1.5 bg-amber-500 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
+              <Badge className="ml-1.5 bg-amber-900/200 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="assistant" className="gap-1 text-xs">
