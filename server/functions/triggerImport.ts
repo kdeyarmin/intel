@@ -41,8 +41,8 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   dialysis_state_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2fpu-cgbb/0",
   dialysis_national_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2rkq-ygai/0",
   nursing_home_penalties: "https://data.cms.gov/provider-data/api/1/datastore/query/g6vv-u9sr/0",
-  inpatient_rehab_facility: "https://data.cms.gov/provider-data/api/1/datastore/query/bz9k-gne5/0",
-  long_term_care_hospital: "https://data.cms.gov/provider-data/api/1/datastore/query/6pda-t6nr/0",
+  inpatient_rehab_facility: "",
+  long_term_care_hospital: "",
   medicare_inpatient_by_provider: "https://data.cms.gov/data-api/v1/dataset/ee6fb1a5-39b9-46b3-a980-a7284551a732/data",
   medicare_outpatient_by_provider: "https://data.cms.gov/data-api/v1/dataset/ccbc9a44-40d4-46b4-a709-5caa59212e50/data",
   medicare_physician_by_provider: "https://data.cms.gov/data-api/v1/dataset/8889d81e-2ee7-448f-8713-f071038289b5/data",
@@ -142,8 +142,8 @@ const CMS_DATASET_CATALOG = [
   { id: "dialysis_national_averages", title: "Dialysis Facility - National Averages", description: "National-level aggregate quality measures for dialysis.", category: "Dialysis", records: "~1", priority: "low" },
 
   { id: "fqhc_enrollments", title: "Federally Qualified Health Center Enrollments", description: "CMS enrollment data for FQHCs including NPI, organization name, address, and enrollment status.", category: "Other Facilities", records: "~15K", priority: "high" },
-  { id: "inpatient_rehab_facility", title: "Inpatient Rehabilitation Facilities", description: "Quality measures and provider information for inpatient rehabilitation facilities.", category: "Other Facilities", records: "~1.2K", priority: "medium" },
-  { id: "long_term_care_hospital", title: "Long-Term Care Hospitals", description: "Quality measures and provider data for long-term care hospitals.", category: "Other Facilities", records: "~400", priority: "medium" },
+  { id: "inpatient_rehab_facility", title: "Inpatient Rehabilitation Facilities", description: "CMS API endpoint currently unavailable (404). Dataset may have been retired or relocated.", category: "Other Facilities", records: "N/A", priority: "low", unavailable: true },
+  { id: "long_term_care_hospital", title: "Long-Term Care Hospitals", description: "CMS API endpoint currently unavailable (404). Dataset may have been retired or relocated.", category: "Other Facilities", records: "N/A", priority: "low", unavailable: true },
   { id: "aco_snf_affiliates", title: "ACO Skilled Nursing Facility Affiliates", description: "Affiliations between Accountable Care Organizations and Skilled Nursing Facilities.", category: "Other Facilities", records: "~80K", priority: "low" },
   { id: "aco_reach_providers", title: "ACO REACH Providers", description: "Provider information for ACO Realizing Equity, Access, and Community Health model participants.", category: "Other Facilities", records: "~350K", priority: "low" },
 
@@ -158,12 +158,12 @@ const CMS_DATASET_CATALOG = [
 ];
 
 export function getCMSDatasetCatalog() {
-  const available = Object.keys(IMPORT_TYPE_URLS);
   return {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      available: available.includes(ds.id),
+      available: !!(IMPORT_TYPE_URLS[ds.id]),
+      unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
     categories: [...new Set(CMS_DATASET_CATALOG.map(ds => ds.category))],

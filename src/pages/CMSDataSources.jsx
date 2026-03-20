@@ -387,17 +387,22 @@ export default function CMSDataSources() {
 
                             <Button
                               size="sm"
-                              disabled={isImporting || isProcessing}
-                              onClick={() => handleImport(ds)}
+                              disabled={isImporting || isProcessing || ds.unavailable}
+                              onClick={() => !ds.unavailable && handleImport(ds)}
                               className={`min-w-[100px] ${
-                                isCompleted
+                                ds.unavailable
+                                  ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800'
+                                  : isCompleted
                                   ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                                   : isProcessing
                                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                                   : 'bg-cyan-600 hover:bg-cyan-700 text-white'
                               }`}
+                              title={ds.unavailable ? 'CMS API endpoint unavailable (404)' : ''}
                             >
-                              {isImporting ? (
+                              {ds.unavailable ? (
+                                <span className="text-slate-600">Unavailable</span>
+                              ) : isImporting ? (
                                 <span className="flex items-center gap-2">
                                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                   Starting...
