@@ -16,8 +16,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
-    "@base44/sdk": "^0.8.0",
-    "@base44/vite-plugin": "^1.0.0",
     "@hello-pangea/dnd": "latest",
     "@hookform/resolvers": "latest",
     "@radix-ui/react-accordion": "latest",
