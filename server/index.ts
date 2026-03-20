@@ -63,12 +63,19 @@ app.listen(PORT, "0.0.0.0", async () => {
       const allCrawlerIds = [...crawlerActive, ...resumableFailedCrawlers];
       console.log(`[CareMetric API] Recovering ${allCrawlerIds.length} NPPES crawler batch(es)`);
 
+      const { nppesQueueItems } = await import("./db/schema");
       for (const batch of crawlerActive) {
-        const { nppesQueueItems } = await import("./db/schema");
-        await db.update(importBatches).set({ status: "failed", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
         await db.update(nppesQueueItems)
-          .set({ status: "failed", updated_date: new Date() })
-          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing", "pending"])));
+          .set({ status: "pending", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing"])));
+      }
+
+      for (const batch of resumableFailedCrawlers) {
+        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        await db.update(nppesQueueItems)
+          .set({ status: "pending", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed")));
       }
 
       setTimeout(async () => {
