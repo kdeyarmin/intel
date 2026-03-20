@@ -87,14 +87,21 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           totalReferrals,
           totalUtilization,
           totalTaxonomies,
-          emailStats: {
-            withEmail,
-            needsEnrichment,
-            isEstimated: false,
-            valid: 0,
-            risky: 0,
-            invalid: 0,
-          },
+          emailStats: await (async () => {
+            const [searched] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(isNotNull(providers.email_searched_at));
+            const [validCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "valid"));
+            const [riskyCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "risky"));
+            const [invalidCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "invalid"));
+            return {
+              withEmail,
+              needsEnrichment,
+              searched: Number(searched.count),
+              isEstimated: false,
+              valid: Number(validCount.count),
+              risky: Number(riskyCount.count),
+              invalid: Number(invalidCount.count),
+            };
+          })(),
           topStates,
           imports: {
             active: Number(activeImports.count),
@@ -185,7 +192,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         return res.json(await handleEnrichProviderWithAI(req.body));
       }
       case "emailSearchBot": {
-        const { handleEmailSearchBot } = await import("../functions/stubs");
+        const { handleEmailSearchBot } = await import("../functions/emailSearchBot");
         return res.json(await handleEmailSearchBot(req.body));
       }
       case "analyzeReferralPathways": {
