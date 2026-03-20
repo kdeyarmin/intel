@@ -293,7 +293,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   return inserted;
 }
 
-async function handleAutoImportCMSData(params: any) {
+export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id } = params;
   const MAX_EXEC_MS = 50000;
   const execStartTime = Date.now();

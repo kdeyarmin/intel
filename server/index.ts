@@ -58,8 +58,14 @@ app.listen(PORT, "0.0.0.0", async () => {
         const year = (batch as any).data_year || 2024;
         if (fileUrl) {
           setTimeout(() => {
-            handleAutoImportCMSData(batch.import_type!, fileUrl, year, batch.id, false, resumeOffset)
-              .catch((e: any) => console.error(`[CareMetric API] Auto-resume CMS batch ${batch.id} failed:`, e.message));
+            handleAutoImportCMSData({
+                import_type: batch.import_type,
+                file_url: fileUrl,
+                year,
+                batch_id: batch.id,
+                dry_run: false,
+                resume_offset: resumeOffset,
+              }).catch((e: any) => console.error(`[CareMetric API] Auto-resume CMS batch ${batch.id} failed:`, e.message));
           }, 3000);
           console.log(`  - Batch ${batch.id} (${batch.import_type}) CMS auto-resuming from offset ${resumeOffset}`);
         }
