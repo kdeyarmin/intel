@@ -30,69 +30,85 @@ app.listen(PORT, "0.0.0.0", async () => {
   try {
     const { db } = await import("./db");
     const { importBatches } = await import("./db/schema");
-    const { eq, inArray, lt, and } = await import("drizzle-orm");
+    const { eq, inArray, and } = await import("drizzle-orm");
 
     const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
-    const STALL_THRESHOLD_MS = 15 * 60 * 1000;
-    const cutoff = new Date(Date.now() - STALL_THRESHOLD_MS);
 
-    const stalled = await db.select().from(importBatches)
-      .where(and(
-        inArray(importBatches.status, ["processing", "validating"]),
-        lt(importBatches.updated_date, cutoff),
-      ));
-
-    for (const batch of stalled) {
-      if (isCrawler(batch)) {
-        const { nppesQueueItems } = await import("./db/schema");
-        await db.update(importBatches).set({ status: "failed", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        await db.update(nppesQueueItems)
-          .set({ status: "failed", updated_date: new Date() })
-          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing", "pending"])));
-        console.log(`  - Batch ${batch.id} (crawler) marked failed for auto-resume`);
-      } else {
-        const resumeOffset = (batch as any).retry_params?.resume_offset || (batch as any).total_rows || 0;
-        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        const { handleAutoImportCMSData } = await import("./functions/triggerImport");
-        const fileUrl = (batch as any).retry_params?.file_url;
-        const year = (batch as any).data_year || 2024;
-        if (fileUrl) {
-          setTimeout(() => {
-            handleAutoImportCMSData({
-                import_type: batch.import_type,
-                file_url: fileUrl,
-                year,
-                batch_id: batch.id,
-                dry_run: false,
-                resume_offset: resumeOffset,
-              }).catch((e: any) => console.error(`[CareMetric API] Auto-resume CMS batch ${batch.id} failed:`, e.message));
-          }, 3000);
-          console.log(`  - Batch ${batch.id} (${batch.import_type}) CMS auto-resuming from offset ${resumeOffset}`);
-        }
-      }
-    }
+    const activeBatches = await db.select().from(importBatches)
+      .where(inArray(importBatches.status, ["processing", "validating"]));
 
     const failedCrawlerBatches = await db.select().from(importBatches)
       .where(and(
         eq(importBatches.import_type, "nppes_registry"),
         eq(importBatches.status, "failed"),
       ));
-    const resumableCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
+    const resumableFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
 
-    if (resumableCrawlers.length > 0) {
-      console.log(`[CareMetric API] Found ${resumableCrawlers.length} failed NPPES crawler batch(es) to auto-resume`);
+    const crawlerActive = activeBatches.filter(isCrawler);
+    const cmsActive = activeBatches.filter(b => !isCrawler(b));
+
+    if (crawlerActive.length > 0 || resumableFailedCrawlers.length > 0) {
+      const allCrawlerIds = [...crawlerActive, ...resumableFailedCrawlers];
+      console.log(`[CareMetric API] Recovering ${allCrawlerIds.length} NPPES crawler batch(es)`);
+
+      for (const batch of crawlerActive) {
+        const { nppesQueueItems } = await import("./db/schema");
+        await db.update(importBatches).set({ status: "failed", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        await db.update(nppesQueueItems)
+          .set({ status: "failed", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing", "pending"])));
+      }
+
       setTimeout(async () => {
         try {
           const { handleNppesCrawler } = await import("./functions/nppesCrawler");
           await handleNppesCrawler({ action: "batch_resume" }, { role: "admin" });
-          console.log(`[CareMetric API] NPPES crawler batches auto-resumed`);
+          console.log(`[CareMetric API] NPPES crawler batches resumed`);
         } catch (e: any) {
           console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
         }
       }, 5000);
     }
+
+    if (cmsActive.length > 0) {
+      console.log(`[CareMetric API] Recovering ${cmsActive.length} CMS import batch(es)`);
+      const { handleAutoImportCMSData } = await import("./functions/triggerImport");
+
+      for (let i = 0; i < cmsActive.length; i++) {
+        const batch = cmsActive[i] as any;
+        const resumeOffset = batch.retry_params?.resume_offset || batch.total_rows || 0;
+        const fileUrl = batch.retry_params?.file_url;
+        const year = batch.data_year || 2024;
+
+        if (fileUrl) {
+          await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+          setTimeout(() => {
+            handleAutoImportCMSData({
+              import_type: batch.import_type,
+              file_url: fileUrl,
+              year,
+              batch_id: batch.id,
+              dry_run: false,
+              resume_offset: resumeOffset,
+            }).catch((e: any) => console.error(`[CareMetric API] CMS batch ${batch.id} resume failed:`, e.message));
+          }, 3000 + i * 2000);
+          console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from offset ${resumeOffset}`);
+        } else {
+          await db.update(importBatches).set({
+            status: "failed",
+            error_samples: [{ row: 0, message: "No file_url stored — cannot auto-resume" }],
+            updated_date: new Date(),
+          }).where(eq(importBatches.id, batch.id));
+          console.log(`  - Batch ${batch.id} (${batch.import_type}) failed — no file_url for resume`);
+        }
+      }
+    }
+
+    if (activeBatches.length === 0 && resumableFailedCrawlers.length === 0) {
+      console.log(`[CareMetric API] No imports to recover`);
+    }
   } catch (e: any) {
-    console.error(`[CareMetric API] Stall detection error:`, e.message);
+    console.error(`[CareMetric API] Startup recovery error:`, e.message);
   }
 });
 
