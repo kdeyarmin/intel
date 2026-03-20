@@ -170,10 +170,11 @@ export default function EmailSearchBot() {
 
   const derivedRunProgress = useMemo(() => {
     if (!activeTask) return allRunProgress;
+    const meta = activeTask.metadata || {};
     return {
-      totalSearched: activeTask.processed_items || 0,
-      totalFound: activeTask.success_count || 0,
-      batchNumber: activeTask.current_batch_number || 0,
+      totalSearched: meta.processed_items || activeTask.progress || 0,
+      totalFound: meta.success_count || 0,
+      batchNumber: meta.current_batch_number || 0,
       status: activeTask.status === 'cancelled' ? 'stopped' : activeTask.status === 'processing' ? 'running' : 'complete',
       startTime: activeTask.started_at ? new Date(activeTask.started_at).getTime() : Date.now(),
       batchTimes: []
