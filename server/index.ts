@@ -42,8 +42,10 @@ app.listen(PORT, "0.0.0.0", async () => {
       ));
 
     if (stalled.length > 0) {
-      console.log(`[CareMetric API] Found ${stalled.length} stalled import(s), marking as failed`);
-      for (const batch of stalled) {
+      const cmsStalled = stalled.filter(b => b.import_type !== "nppes_registry" && b.file_name && !b.file_name.startsWith("crawler_"));
+      const crawlerStalled = stalled.filter(b => b.import_type === "nppes_registry" || b.file_name?.startsWith("crawler_"));
+
+      for (const batch of crawlerStalled) {
         await db.update(importBatches).set({
           status: "failed",
           error_samples: [
@@ -54,6 +56,36 @@ app.listen(PORT, "0.0.0.0", async () => {
         }).where(eq(importBatches.id, batch.id));
         console.log(`  - Batch ${batch.id} (${batch.import_type}) marked failed: stalled since ${batch.updated_date}`);
       }
+
+      for (const batch of cmsStalled) {
+        const resumeOffset = (batch as any).retry_params?.resume_offset || (batch as any).total_rows || 0;
+        console.log(`  - Batch ${batch.id} (${batch.import_type}) stalled, auto-resuming from offset ${resumeOffset}`);
+        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        try {
+          const { handleAutoImportCMSData } = await import("./functions/triggerImport");
+          const fileUrl = (batch as any).retry_params?.file_url;
+          const year = (batch as any).data_year || 2024;
+          if (fileUrl) {
+            setTimeout(() => {
+              handleAutoImportCMSData(batch.import_type!, fileUrl, year, batch.id, false, resumeOffset)
+                .catch((e: any) => console.error(`[CareMetric API] Auto-resume batch ${batch.id} failed:`, e.message));
+            }, 3000);
+          } else {
+            await db.update(importBatches).set({
+              status: "failed",
+              error_samples: [
+                ...(Array.isArray((batch as any).error_samples) ? (batch as any).error_samples : []),
+                { row: 0, message: "Job stalled — no file_url in retry_params for auto-resume" },
+              ],
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch.id));
+          }
+        } catch (resumeErr: any) {
+          console.error(`[CareMetric API] Auto-resume error for batch ${batch.id}:`, resumeErr.message);
+        }
+      }
+
+      console.log(`[CareMetric API] Stall recovery: ${crawlerStalled.length} marked failed, ${cmsStalled.length} auto-resumed`);
     }
   } catch (e: any) {
     console.error(`[CareMetric API] Stall detection error:`, e.message);
