@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, XCircle, Clock, ChevronRight } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES } from './errorCategories';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+import ResumeImportButton from './ResumeImportButton';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels();
 
@@ -73,6 +74,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                       {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
                     </Badge>
                   )}
+                  <ResumeImportButton batch={batch} onResumed={onViewErrors ? () => onViewErrors(null) : undefined} />
                   <ChevronRight className="w-4 h-4 text-slate-500" />
                 </div>
               </div>

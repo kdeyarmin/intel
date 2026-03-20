@@ -612,7 +612,7 @@ async function processQueueWorker(dryRun: boolean) {
 }
 
 export async function handleNppesCrawler(payload: any, user: any) {
-  const { action = "process_queue", states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code, item_ids } = payload;
+  const { action = "process_queue", states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code, item_ids, batch_id } = payload;
 
   if (action === "cleanup_orphans") {
     let cleaned = 0;
@@ -892,27 +892,44 @@ export async function handleNppesCrawler(payload: any, user: any) {
       await db.update(nppesCrawlerConfigs).set({ crawler_stopped: false, updated_date: new Date() }).where(eq(nppesCrawlerConfigs.id, configs[0].id));
     }
 
-    const pausedBatches = await db.select().from(importBatches)
-      .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "paused")))
-      .orderBy(asc(importBatches.created_date)).limit(200);
-    const pausedCrawlerBatches = pausedBatches.filter((pb) => pb.file_name?.startsWith("crawler_"));
-    const batchesToResume = pausedCrawlerBatches.slice(0, maxConcurrentBatches);
+    let batchesToResume: any[] = [];
+
+    if (batch_id) {
+      const [targetBatch] = await db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1);
+      if (targetBatch && (targetBatch.status === "paused" || targetBatch.status === "failed") && targetBatch.file_name?.startsWith("crawler_")) {
+        batchesToResume = [targetBatch];
+      } else {
+        return { success: false, message: `Batch ${batch_id} is not a resumable crawler batch (status: ${targetBatch?.status || 'not found'}).` };
+      }
+    } else {
+      const resumableBatches = await db.select().from(importBatches)
+        .where(and(
+          eq(importBatches.import_type, "nppes_registry"),
+          inArray(importBatches.status, ["paused", "failed"])
+        ))
+        .orderBy(asc(importBatches.created_date)).limit(200);
+      const crawlerBatches = resumableBatches.filter((pb) => pb.file_name?.startsWith("crawler_"));
+      batchesToResume = crawlerBatches.slice(0, maxConcurrentBatches);
+    }
 
     if (batchesToResume.length === 0) {
-      return { success: true, message: "No paused crawler batches found." };
+      return { success: true, message: "No paused or failed crawler batches found." };
     }
 
     for (const pb of batchesToResume) {
       await db.update(importBatches).set({ status: "processing", updated_date: new Date() }).where(eq(importBatches.id, pb.id));
       await db.update(nppesQueueItems)
         .set({ status: "pending", updated_date: new Date() })
-        .where(and(eq(nppesQueueItems.batch_id, pb.id), eq(nppesQueueItems.status, "paused")));
+        .where(and(
+          eq(nppesQueueItems.batch_id, pb.id),
+          inArray(nppesQueueItems.status, ["paused", "failed"])
+        ));
     }
 
     const resumeDryRun = dry_run || batchesToResume.some((pb) => pb.dry_run);
     setTimeout(() => processQueueWorker(resumeDryRun).catch((e) => console.error("[Crawler] Resume invoke failed:", e.message)), 500);
 
-    return { success: true, message: `Crawler resumed ${batchesToResume.length} state batch${batchesToResume.length === 1 ? "" : "es"}.` };
+    return { success: true, message: `Crawler resumed ${batchesToResume.length} batch${batchesToResume.length === 1 ? "" : "es"}.` };
   }
 
   if (action === "retry_errors") {

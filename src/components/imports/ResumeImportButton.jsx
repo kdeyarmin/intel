@@ -7,9 +7,10 @@ import { toast } from 'sonner';
 export default function ResumeImportButton({ batch, onResumed }) {
   const [loading, setLoading] = useState(false);
 
-  // Can resume if paused or failed, and has resume params or progress
+  const isNPPES = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
+
   const canResume = (batch.status === 'paused' || batch.status === 'failed') && 
-                    (batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
+                    (isNPPES || batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
 
   if (!canResume) return null;
 
@@ -17,31 +18,37 @@ export default function ResumeImportButton({ batch, onResumed }) {
     e.stopPropagation();
     setLoading(true);
     try {
-      // Determine offset
-      const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+      if (isNPPES) {
+        await base44.functions.invoke('nppesCrawler', {
+          action: 'batch_resume',
+          batch_id: batch.id,
+          dry_run: batch.dry_run || false,
+        });
+        toast.success('NPPES crawler batch resumed');
+      } else {
+        const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
 
-      // Update status first
-      if (batch.status === 'failed' || batch.status === 'paused') {
-        try {
-          await base44.entities.ImportBatch.update(batch.id, {
-            status: 'processing',
-            paused_at: null,
-            cancel_reason: "",
-          });
-        } catch (__) { /* best-effort */ }
+        if (batch.status === 'failed' || batch.status === 'paused') {
+          try {
+            await base44.entities.ImportBatch.update(batch.id, {
+              status: 'processing',
+              paused_at: null,
+              cancel_reason: "",
+            });
+          } catch (__) { /* best-effort */ }
+        }
+        
+        await base44.functions.invoke('triggerImport', {
+          import_type: batch.import_type,
+          file_url: batch.retry_params?.file_url || batch.file_url,
+          year: batch.data_year || 2023,
+          resume_offset: offset,
+          dry_run: batch.dry_run,
+          batch_id: batch.id,
+        });
+
+        toast.success(`Resuming import from row ${offset.toLocaleString()}`);
       }
-      
-      // Call backend to resume
-      await base44.functions.invoke('triggerImport', {
-        import_type: batch.import_type,
-        file_url: batch.file_url,
-        year: batch.data_year || 2023,
-        resume_offset: offset,
-        dry_run: batch.dry_run,
-        batch_id: batch.id, // Reuse the same batch
-      });
-
-      toast.success(`Resuming import from row ${offset.toLocaleString()}`);
       if (onResumed) onResumed();
     } catch (error) {
       console.error('Resume failed:', error);
