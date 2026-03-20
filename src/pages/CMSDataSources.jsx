@@ -1,443 +1,440 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { Database, Plus, Edit2, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import {
-  SCHEDULABLE_CMS_IMPORT_TYPES,
-  normalizeCmsImportType,
-  getCmsImportTypeLabel,
-  getCmsImportTypeYears,
-} from '@/lib/cmsImportTypes';
+  Database, Search, Download, CheckCircle2, Clock, AlertCircle,
+  ChevronDown, ChevronRight, Filter, ArrowUpDown, Building2, Heart,
+  Home, Stethoscope, Activity, Users, Pill, CircleDot
+} from 'lucide-react';
+
+const CATEGORY_ICONS = {
+  "Physicians & Clinicians": Stethoscope,
+  "Hospitals": Building2,
+  "Home Health": Home,
+  "Hospice": Heart,
+  "Nursing Homes & SNF": Users,
+  "Dialysis": CircleDot,
+  "Other Facilities": Activity,
+  "Medicare Programs": Pill,
+};
+
+const CATEGORY_COLORS = {
+  "Physicians & Clinicians": "cyan",
+  "Hospitals": "blue",
+  "Home Health": "green",
+  "Hospice": "violet",
+  "Nursing Homes & SNF": "orange",
+  "Dialysis": "red",
+  "Other Facilities": "yellow",
+  "Medicare Programs": "light-blue",
+};
+
+const PRIORITY_CONFIG = {
+  high: { label: "High Priority", className: "bg-cyan-900/30 text-cyan-400 border-cyan-800/50" },
+  medium: { label: "Medium", className: "bg-slate-800/50 text-slate-400 border-slate-700/50" },
+  low: { label: "Low", className: "bg-slate-900/50 text-slate-500 border-slate-800/50" },
+};
 
 export default function CMSDataSources() {
   const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingConfig, setEditingConfig] = useState(null);
-  const [formData, setFormData] = useState({});
-  const [testingId, setTestingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [importingIds, setImportingIds] = useState(new Set());
+  const [sortBy, setSortBy] = useState('priority');
 
-  const updateImportType = (importType) => {
-    const normalizedImportType = normalizeCmsImportType(importType);
-    const availableYears = getCmsImportTypeYears(normalizedImportType);
+  const { data: catalog, isLoading: catalogLoading } = useQuery({
+    queryKey: ['cmsCatalog'],
+    queryFn: () => base44.functions.invoke('getCMSDatasetCatalog', {}),
+  });
 
-    setFormData(prev => {
-      const currentYear = prev.data_year ? parseInt(prev.data_year, 10) : undefined;
-      const nextYear = availableYears?.length
-        ? (availableYears.includes(currentYear) ? currentYear : availableYears[0])
-        : prev.data_year;
+  const { data: batches } = useQuery({
+    queryKey: ['importBatches'],
+    queryFn: () => base44.entities.ImportBatch.list('-created_date', 200),
+    refetchInterval: 10000,
+  });
 
-      return {
-        ...prev,
-        import_type: normalizedImportType,
-        data_year: nextYear ?? '',
+  const importMutation = useMutation({
+    mutationFn: async ({ importType, year }) => {
+      return base44.functions.invoke('triggerImport', {
+        import_type: importType,
+        year: year || new Date().getFullYear() - 2,
+      });
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`Import started for ${variables.importType}`);
+      setImportingIds(prev => { const n = new Set(prev); n.delete(variables.importType); return n; });
+      queryClient.invalidateQueries({ queryKey: ['importBatches'] });
+    },
+    onError: (error, variables) => {
+      const msg = error?.data?.message || error?.data?.error || error?.message || 'Import failed';
+      if (error?.status === 409 || error?.data?.conflict || msg.includes('already in progress')) {
+        toast.info('This import is already running');
+      } else {
+        toast.error(msg);
+      }
+      setImportingIds(prev => { const n = new Set(prev); n.delete(variables.importType); return n; });
+    },
+  });
+
+  const batchStatusMap = useMemo(() => {
+    const map = {};
+    if (batches) {
+      for (const b of batches) {
+        const key = b.import_type;
+        if (!map[key] || new Date(b.created_date) > new Date(map[key].created_date)) {
+          map[key] = b;
+        }
+      }
+    }
+    return map;
+  }, [batches]);
+
+  const datasets = catalog?.data?.datasets || catalog?.datasets || [];
+  const categories = catalog?.data?.categories || catalog?.categories || [];
+
+  const filteredDatasets = useMemo(() => {
+    let filtered = datasets;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(ds =>
+        ds.title.toLowerCase().includes(q) ||
+        ds.description.toLowerCase().includes(q) ||
+        ds.id.toLowerCase().includes(q)
+      );
+    }
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(ds => ds.category === selectedCategory);
+    }
+    if (selectedPriority !== 'all') {
+      filtered = filtered.filter(ds => ds.priority === selectedPriority);
+    }
+    if (sortBy === 'priority') {
+      const order = { high: 0, medium: 1, low: 2 };
+      filtered = [...filtered].sort((a, b) => (order[a.priority] || 2) - (order[b.priority] || 2));
+    } else if (sortBy === 'name') {
+      filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortBy === 'records') {
+      const parseRecords = (r) => {
+        const s = (r || '').replace(/[^0-9.KMB]/gi, '');
+        let n = parseFloat(s) || 0;
+        if (s.includes('B')) n *= 1e9;
+        else if (s.includes('M')) n *= 1e6;
+        else if (s.includes('K')) n *= 1e3;
+        return n;
       };
+      filtered = [...filtered].sort((a, b) => parseRecords(b.records) - parseRecords(a.records));
+    }
+    return filtered;
+  }, [datasets, searchQuery, selectedCategory, selectedPriority, sortBy]);
+
+  const groupedDatasets = useMemo(() => {
+    const groups = {};
+    for (const ds of filteredDatasets) {
+      if (!groups[ds.category]) groups[ds.category] = [];
+      groups[ds.category].push(ds);
+    }
+    return groups;
+  }, [filteredDatasets]);
+
+  const toggleCategory = (cat) => {
+    setExpandedCategories(prev => {
+      const n = new Set(prev);
+      if (n.has(cat)) n.delete(cat); else n.add(cat);
+      return n;
     });
   };
 
-  const { data: configs, isLoading } = useQuery({
-    queryKey: ['importScheduleConfigs'],
-    queryFn: () => base44.entities.ImportScheduleConfig.list()
-  });
-
-  const saveConfig = useMutation({
-    mutationFn: async (data) => {
-      if (editingConfig) {
-        return await base44.entities.ImportScheduleConfig.update(editingConfig.id, data);
-      } else {
-        return await base44.entities.ImportScheduleConfig.create(data);
-      }
-    },
-    onSuccess: () => {
-      toast.success('Configuration saved successfully');
-      setIsModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
-    },
-    onError: (error) => {
-      toast.error(`Error saving config: ${error.message}`);
-    }
-  });
-
-  const deleteConfig = useMutation({
-    mutationFn: async (id) => {
-      return await base44.entities.ImportScheduleConfig.delete(id);
-    },
-    onSuccess: () => {
-      toast.success('Configuration deleted');
-      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
-    },
-    onError: (error) => {
-      toast.error(`Error deleting config: ${error.message}`);
-    }
-  });
-
-  const testConfig = async (id) => {
-    setTestingId(id);
-    try {
-      const res = await base44.functions.invoke('testCMSUrl', { id });
-      if (res.data.success && res.data.isValid) {
-        toast.success('URL is valid and accessible');
-      } else {
-        toast.error(res.data.config?.last_run_summary || 'URL validation failed');
-      }
-      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
-    } catch (e) {
-      toast.error(`Failed to test URL: ${e.message}`);
-    } finally {
-      setTestingId(null);
-    }
+  const handleImport = (ds) => {
+    setImportingIds(prev => new Set(prev).add(ds.id));
+    importMutation.mutate({ importType: ds.id });
   };
 
-  const handleOpenModal = (config = null) => {
-    setEditingConfig(config);
-    if (config) {
-      const normalizedImportType = normalizeCmsImportType(config.import_type);
-      setFormData({
-        import_type: normalizedImportType,
-        label: config.label,
-        data_year: config.data_year || '',
-        api_url: config.api_url,
-        schedule_frequency: config.schedule_frequency,
-        depends_on_import_type: normalizeCmsImportType(config.depends_on_import_type) || '',
-        schedule_time: config.schedule_time || '02:00',
-        is_active: config.is_active
-      });
+  const getStatusInfo = (dsId) => {
+    const batch = batchStatusMap[dsId];
+    if (!batch) return null;
+    return batch;
+  };
+
+  const allExpanded = Object.keys(groupedDatasets).length === expandedCategories.size;
+  const toggleAll = () => {
+    if (allExpanded) {
+      setExpandedCategories(new Set());
     } else {
-      setFormData({
-        import_type: 'medicare_hha_stats',
-        label: '',
-        data_year: new Date().getFullYear(),
-        api_url: '',
-        schedule_frequency: 'weekly',
-        depends_on_import_type: '',
-        schedule_time: '02:00',
-        is_active: true
-      });
+      setExpandedCategories(new Set(Object.keys(groupedDatasets)));
     }
-    setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const normalizedImportType = normalizeCmsImportType(formData.import_type);
-    const parsedYear = formData.data_year ? parseInt(formData.data_year, 10) : undefined;
+  const categoryStats = useMemo(() => {
+    const stats = {};
+    for (const ds of datasets) {
+      if (!stats[ds.category]) stats[ds.category] = { total: 0, imported: 0, processing: 0 };
+      stats[ds.category].total++;
+      const batch = batchStatusMap[ds.id];
+      if (batch?.status === 'completed') stats[ds.category].imported++;
+      if (batch?.status === 'processing') stats[ds.category].processing++;
+    }
+    return stats;
+  }, [datasets, batchStatusMap]);
 
-    saveConfig.mutate({
-      ...formData,
-      import_type: normalizedImportType,
-      depends_on_import_type: normalizeCmsImportType(formData.depends_on_import_type) || '',
-      data_year: parsedYear
-    });
-  };
+  if (catalogLoading) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <PageHeader title="CMS Dataset Catalog" icon={Database} breadcrumbs={[{ label: 'Admin', path: '#' }, { label: 'CMS Dataset Catalog' }]} />
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
-        title="CMS Data Sources"
+        title="CMS Dataset Catalog"
         icon={Database}
-        breadcrumbs={[
-          { label: 'Admin', path: '#' },
-          { label: 'CMS Data Sources' }
-        ]}
+        breadcrumbs={[{ label: 'Admin', path: '#' }, { label: 'CMS Dataset Catalog' }]}
       >
-        <Button onClick={() => handleOpenModal()} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Data Source
-        </Button>
+        <div className="flex items-center gap-3 text-sm text-slate-400">
+          <span>{datasets.length} datasets available</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-green-400">{Object.values(batchStatusMap).filter(b => b.status === 'completed').length} imported</span>
+          <span className="text-cyan-400">{Object.values(batchStatusMap).filter(b => b.status === 'processing').length} active</span>
+        </div>
       </PageHeader>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow-lg">
-        <Table>
-          <TableHeader className="bg-slate-800/50">
-            <TableRow className="border-slate-800">
-              <TableHead className="text-slate-300">Label / Type</TableHead>
-              <TableHead className="text-slate-300">Year</TableHead>
-              <TableHead className="text-slate-300">Schedule</TableHead>
-              <TableHead className="text-slate-300">URL Status</TableHead>
-              <TableHead className="text-slate-300 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-slate-500">Loading sources...</TableCell>
-              </TableRow>
-            ) : configs?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-slate-500">No data sources configured.</TableCell>
-              </TableRow>
-            ) : (
-              configs?.map((config) => (
-                <TableRow key={config.id} className="border-slate-800/50 hover:bg-slate-800/20">
-                  <TableCell>
-                    <div className="font-medium text-slate-200">{config.label}</div>
-                    <div className="text-xs text-slate-500">{getCmsImportTypeLabel(config.import_type)}</div>
-                  </TableCell>
-                  <TableCell className="text-slate-300">
-                    {config.data_year || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-slate-300 capitalize">
-                      {config.schedule_frequency === 'on_completion' 
-                        ? `After ${getCmsImportTypeLabel(config.depends_on_import_type)}` 
-                        : `${config.schedule_frequency} at ${config.schedule_time}`}
-                    </div>
-                    <Badge variant={config.is_active ? 'default' : 'secondary'} className={config.is_active ? 'bg-cyan-900/200/20 text-cyan-400 mt-1' : 'mt-1'}>
-                      {config.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      {config.last_verified_at ? (
-                        <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                          {config.cms_metadata ? (
-                            <CheckCircle2 className="w-3 h-3 text-green-400" />
-                          ) : (
-                            <AlertCircle className="w-3 h-3 text-red-400" />
-                          )}
-                          <span>Verified: {format(new Date(config.last_verified_at), 'MMM d, h:mm a')}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500 italic">Never verified</span>
-                      )}
-                      {config.cms_metadata && (
-                        <span className="text-[10px] text-slate-500 ml-4.5">
-                          Size: {Math.round((config.cms_metadata.content_length || 0) / 1024 / 1024)} MB
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={testingId !== null}
-                        onClick={() => testConfig(config.id)}
-                        className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
-                        title="Test URL"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${testingId === config.id ? 'animate-spin' : ''}`} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenModal(config)}
-                        className="text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm('Delete this configuration?')) {
-                            deleteConfig.mutate(config.id);
-                          }
-                        }}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-950/30"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[250px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Input
+            placeholder="Search datasets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-500" />
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+
+        <select
+          value={selectedPriority}
+          onChange={(e) => setSelectedPriority(e.target.value)}
+          className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+        >
+          <option value="all">All Priorities</option>
+          <option value="high">High Priority</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <div className="flex items-center gap-2">
+          <ArrowUpDown className="w-4 h-4 text-slate-500" />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+          >
+            <option value="priority">Sort by Priority</option>
+            <option value="name">Sort by Name</option>
+            <option value="records">Sort by Size</option>
+          </select>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleAll}
+          className="text-slate-400 hover:text-slate-200"
+        >
+          {allExpanded ? 'Collapse All' : 'Expand All'}
+        </Button>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-          <DialogHeader>
-            <DialogTitle>{editingConfig ? 'Edit Data Source' : 'Add Data Source'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Label / Name</Label>
-                <Input
-                  required
-                  placeholder="e.g. Medicare HHA 2023"
-                  value={formData.label || ''}
-                  onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                  className="bg-slate-950 border-slate-800"
-                />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        {categories.map(cat => {
+          const stats = categoryStats[cat] || { total: 0, imported: 0, processing: 0 };
+          const IconComp = CATEGORY_ICONS[cat] || Database;
+          const isActive = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(isActive ? 'all' : cat)}
+              className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-all text-center ${
+                isActive
+                  ? 'bg-cyan-900/30 border-cyan-700/50 text-cyan-400'
+                  : 'bg-slate-900/50 border-slate-800/50 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+              }`}
+            >
+              <IconComp className="w-5 h-5" />
+              <span className="text-xs font-medium leading-tight">{cat}</span>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <span>{stats.total}</span>
+                {stats.imported > 0 && <span className="text-green-400">({stats.imported})</span>}
+                {stats.processing > 0 && <span className="text-cyan-400 animate-pulse">({stats.processing})</span>}
               </div>
-              <div className="space-y-2">
-                <Label>Import Type</Label>
-                <Select
-                  value={formData.import_type}
-                  onValueChange={updateImportType}
-                >
-                  <SelectTrigger className="bg-slate-950 border-slate-800">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    {SCHEDULABLE_CMS_IMPORT_TYPES.map(type => (
-                      <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data Year (Optional)</Label>
-                {getCmsImportTypeYears(formData.import_type)?.length ? (
-                  <Select
-                    value={formData.data_year ? String(formData.data_year) : ''}
-                    onValueChange={(value) => setFormData({ ...formData, data_year: value })}
-                  >
-                    <SelectTrigger className="bg-slate-950 border-slate-800">
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                      {getCmsImportTypeYears(formData.import_type).map(year => (
-                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    type="number"
-                    placeholder="2023"
-                    value={formData.data_year || ''}
-                    onChange={(e) => setFormData({ ...formData, data_year: e.target.value })}
-                    className="bg-slate-950 border-slate-800"
-                  />
-                )}
-              </div>
-              <div className="space-y-2 flex flex-col justify-end">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active || false}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-cyan-500/20"
-                  />
-                  <span className="text-sm font-medium">Active Schedule</span>
-                </label>
-              </div>
-            </div>
+      <div className="flex flex-col gap-4">
+        {Object.entries(groupedDatasets).map(([category, items]) => {
+          const isExpanded = expandedCategories.has(category) || selectedCategory !== 'all' || searchQuery;
+          const IconComp = CATEGORY_ICONS[category] || Database;
+          const stats = categoryStats[category] || { total: 0, imported: 0, processing: 0 };
 
-            <div className="space-y-2">
-              <Label>Source URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  required
-                  placeholder="https://data.cms.gov/..."
-                  value={formData.api_url || ''}
-                  onChange={(e) => setFormData({ ...formData, api_url: e.target.value })}
-                  className="bg-slate-950 border-slate-800 flex-1"
-                />
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    if (!formData.api_url) {
-                      toast.error("Please enter a URL first");
-                      return;
-                    }
-                    const toastId = toast.loading("Analyzing format with AI...");
-                    try {
-                      const res = await base44.functions.invoke('predictImportFormat', { url: formData.api_url });
-                      if (res.data.success && res.data.prediction) {
-                        const { import_type, data_year, explanation } = res.data.prediction;
-                        setFormData(prev => ({
-                          ...prev,
-                          import_type: normalizeCmsImportType(import_type) || prev.import_type,
-                          data_year: data_year || prev.data_year
-                        }));
-                        toast.success("Format detected successfully", { id: toastId });
-                        if (explanation) toast(explanation);
-                      } else {
-                        toast.error(res.data.error || "Failed to predict format", { id: toastId });
-                      }
-                    } catch {
-                      toast.error("Error connecting to AI", { id: toastId });
-                    }
-                  }}
-                  className="bg-slate-900 border-slate-700 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Auto-Detect
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Frequency</Label>
-                <Select
-                  value={formData.schedule_frequency}
-                  onValueChange={(v) => setFormData({ ...formData, schedule_frequency: v })}
-                >
-                  <SelectTrigger className="bg-slate-950 border-slate-800">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="on_completion">On Completion</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {formData.schedule_frequency === 'on_completion' ? (
-                <div className="space-y-2">
-                  <Label>Depends On (Wait for)</Label>
-                  <Select
-                    value={formData.depends_on_import_type}
-                    onValueChange={(v) => setFormData({ ...formData, depends_on_import_type: v })}
-                  >
-                    <SelectTrigger className="bg-slate-950 border-slate-800">
-                      <SelectValue placeholder="Select type..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                      {SCHEDULABLE_CMS_IMPORT_TYPES
-                        .filter(type => type.id !== formData.import_type)
-                        .map(type => (
-                          <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+          return (
+            <Card key={category} className="bg-slate-900/80 border-slate-800">
+              <button
+                onClick={() => toggleCategory(category)}
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors rounded-t-lg"
+              >
+                <div className="flex items-center gap-3">
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  <IconComp className="w-5 h-5 text-cyan-400" />
+                  <span className="font-semibold text-slate-200">{category}</span>
+                  <Badge variant="outline" className="border-slate-700 text-slate-400 text-xs">
+                    {items.length} dataset{items.length !== 1 ? 's' : ''}
+                  </Badge>
+                  {stats.imported > 0 && (
+                    <Badge className="bg-green-900/30 text-green-400 border-green-800/50 text-xs">
+                      {stats.imported} imported
+                    </Badge>
+                  )}
+                  {stats.processing > 0 && (
+                    <Badge className="bg-cyan-900/30 text-cyan-400 border-cyan-800/50 text-xs animate-pulse">
+                      {stats.processing} importing
+                    </Badge>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label>Time (HH:MM)</Label>
-                  <Input
-                    required
-                    type="time"
-                    value={formData.schedule_time || ''}
-                    onChange={(e) => setFormData({ ...formData, schedule_time: e.target.value })}
-                    className="bg-slate-950 border-slate-800"
-                  />
-                </div>
+              </button>
+
+              {isExpanded && (
+                <CardContent className="p-0">
+                  <div className="border-t border-slate-800">
+                    {items.map((ds, idx) => {
+                      const statusBatch = getStatusInfo(ds.id);
+                      const isImporting = importingIds.has(ds.id);
+                      const isProcessing = statusBatch?.status === 'processing';
+                      const isCompleted = statusBatch?.status === 'completed';
+                      const isFailed = statusBatch?.status === 'failed';
+                      const priorityCfg = PRIORITY_CONFIG[ds.priority] || PRIORITY_CONFIG.low;
+
+                      return (
+                        <div
+                          key={ds.id}
+                          className={`flex items-start gap-4 px-5 py-4 ${idx > 0 ? 'border-t border-slate-800/50' : ''} hover:bg-slate-800/20 transition-colors`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-slate-200 truncate">{ds.title}</h4>
+                              <Badge className={`text-[10px] px-1.5 py-0 ${priorityCfg.className}`}>
+                                {priorityCfg.label}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-slate-500 line-clamp-2 mb-2">{ds.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                              <span className="font-mono">{ds.records} records</span>
+                              <span className="text-slate-700">|</span>
+                              <span className="font-mono text-slate-600">{ds.id}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            {isCompleted && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                <div className="text-right">
+                                  <div className="text-green-400 font-medium">Imported</div>
+                                  <div className="text-slate-500">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
+                                </div>
+                              </div>
+                            )}
+                            {isProcessing && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <Clock className="w-4 h-4 text-cyan-400 animate-pulse" />
+                                <div className="text-right">
+                                  <div className="text-cyan-400 font-medium">Importing...</div>
+                                  <div className="text-slate-500">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
+                                </div>
+                              </div>
+                            )}
+                            {isFailed && (
+                              <div className="flex items-center gap-2 text-xs">
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                                <span className="text-red-400">Failed</span>
+                              </div>
+                            )}
+
+                            <Button
+                              size="sm"
+                              disabled={isImporting || isProcessing}
+                              onClick={() => handleImport(ds)}
+                              className={`min-w-[100px] ${
+                                isCompleted
+                                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                                  : isProcessing
+                                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                  : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                              }`}
+                            >
+                              {isImporting ? (
+                                <span className="flex items-center gap-2">
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Starting...
+                                </span>
+                              ) : isProcessing ? (
+                                'Running...'
+                              ) : isCompleted ? (
+                                <span className="flex items-center gap-1.5">
+                                  <Download className="w-3.5 h-3.5" />
+                                  Re-import
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5">
+                                  <Download className="w-3.5 h-3.5" />
+                                  Import
+                                </span>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
               )}
-            </div>
+            </Card>
+          );
+        })}
+      </div>
 
-            <DialogFooter className="pt-4">
-              <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saveConfig.isPending} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                {saveConfig.isPending ? 'Saving...' : 'Save Configuration'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {filteredDatasets.length === 0 && (
+        <div className="text-center py-16 text-slate-500">
+          <Database className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p className="text-lg">No datasets match your filters</p>
+          <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>
+        </div>
+      )}
     </div>
   );
 }

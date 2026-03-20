@@ -20,6 +20,52 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   nursing_home_providers: "https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0",
   nursing_home_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/tbry-pc2d/0",
   home_health_national_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/97z8-de96/0",
+  hospital_enrollments: "https://data.cms.gov/data-api/v1/dataset/f6f6505c-e8b0-4d57-b258-e2b94133aaf2/data",
+  hospital_all_owners: "https://data.cms.gov/data-api/v1/dataset/029c119f-f79c-49be-9100-344d31d10344/data",
+  hospital_cost_report: "https://data.cms.gov/data-api/v1/dataset/44060663-47d8-4ced-a115-b53b4c270acb/data",
+  hospital_service_area: "https://data.cms.gov/data-api/v1/dataset/8708ca8b-8636-44ed-8303-724cbfaf78ad/data",
+  hospital_general_info: "https://data.cms.gov/provider-data/api/1/datastore/query/xubh-q36u/0",
+  hospital_readmissions: "https://data.cms.gov/provider-data/api/1/datastore/query/9n3s-kdb3/0",
+  hospital_complications: "https://data.cms.gov/provider-data/api/1/datastore/query/ynj2-r877/0",
+  hospital_infections: "https://data.cms.gov/provider-data/api/1/datastore/query/77hc-ibv8/0",
+  hospital_value_based_purchasing: "https://data.cms.gov/provider-data/api/1/datastore/query/ypbt-wvdk/0",
+  fqhc_enrollments: "https://data.cms.gov/data-api/v1/dataset/4bcae866-3411-439a-b762-90a6187c194b/data",
+  hospice_all_owners: "https://data.cms.gov/data-api/v1/dataset/e983965e-1603-4cb8-82b5-c40090e380d1/data",
+  hospice_general_info: "https://data.cms.gov/provider-data/api/1/datastore/query/yc9t-dgbk/0",
+  hospice_provider_data: "https://data.cms.gov/provider-data/api/1/datastore/query/252m-zfp9/0",
+  home_health_agencies: "https://data.cms.gov/provider-data/api/1/datastore/query/6jpm-sxkc/0",
+  home_health_all_owners: "https://data.cms.gov/data-api/v1/dataset/fc009b2d-7846-44b1-b4a1-692f0c143879/data",
+  home_health_cost_report: "https://data.cms.gov/data-api/v1/dataset/4999da74-1d8d-4a6f-934e-2d7ea470cc63/data",
+  home_health_state_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/tee5-ixt5/0",
+  dialysis_facility_listing: "https://data.cms.gov/provider-data/api/1/datastore/query/23ew-n7w9/0",
+  dialysis_state_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2fpu-cgbb/0",
+  dialysis_national_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2rkq-ygai/0",
+  nursing_home_penalties: "https://data.cms.gov/provider-data/api/1/datastore/query/g6vv-u9sr/0",
+  inpatient_rehab_facility: "https://data.cms.gov/provider-data/api/1/datastore/query/bz9k-gne5/0",
+  long_term_care_hospital: "https://data.cms.gov/provider-data/api/1/datastore/query/6pda-t6nr/0",
+  medicare_inpatient_by_provider: "https://data.cms.gov/data-api/v1/dataset/ee6fb1a5-39b9-46b3-a980-a7284551a732/data",
+  medicare_outpatient_by_provider: "https://data.cms.gov/data-api/v1/dataset/ccbc9a44-40d4-46b4-a709-5caa59212e50/data",
+  medicare_physician_by_provider: "https://data.cms.gov/data-api/v1/dataset/8889d81e-2ee7-448f-8713-f071038289b5/data",
+  medicare_dme_by_supplier: "https://data.cms.gov/data-api/v1/dataset/a2d56d3f-3531-4315-9d87-e29986516b41/data",
+  medicare_dme_by_referring: "https://data.cms.gov/data-api/v1/dataset/f8603e5b-9c47-4c52-9b47-a4ef92dfada4/data",
+  medicare_part_d_prescribers: "https://data.cms.gov/data-api/v1/dataset/14d8e8a9-7e9b-4370-a044-bf97c46b4b44/data",
+  medicare_dialysis_facilities: "https://data.cms.gov/data-api/v1/dataset/f8610e87-ba25-43a3-a49e-927dbc8701ae/data",
+  medicare_snf_utilization: "https://data.cms.gov/data-api/v1/dataset/eaed338b-847e-41b1-a4d3-a206f40dc72b/data",
+  medicare_hha_utilization: "https://data.cms.gov/data-api/v1/dataset/43ef03ce-2b60-40a8-958e-146195b5fec7/data",
+  medicare_hospice_utilization: "https://data.cms.gov/data-api/v1/dataset/4e73f1b5-82cb-4682-8ad2-28493f0b6840/data",
+  medicare_irf_utilization: "https://data.cms.gov/data-api/v1/dataset/0d9eebff-7e23-4b1e-8e29-362eea132df5/data",
+  medicare_ltch_utilization: "https://data.cms.gov/data-api/v1/dataset/2935c3fe-b18a-4e39-a0c5-e70573664f19/data",
+  medicare_fee_for_service_enrollment: "https://data.cms.gov/data-api/v1/dataset/2457ea29-fc82-48b0-86ec-3b0755de7515/data",
+  medicare_monthly_enrollment: "https://data.cms.gov/data-api/v1/dataset/d7fabe1e-d19b-4333-9eff-e80e0643f2fd/data",
+  aco_snf_affiliates: "https://data.cms.gov/data-api/v1/dataset/5b227bd9-82d4-4145-86fd-809e02ca7f18/data",
+  aco_reach_providers: "https://data.cms.gov/data-api/v1/dataset/e0eba16f-ce0d-4037-96ce-2af70c718c98/data",
+  home_infusion_therapy: "https://data.cms.gov/data-api/v1/dataset/31f25ab6-2fe3-4bad-ac5a-90635ed79935/data",
+  market_saturation_county: "https://data.cms.gov/data-api/v1/dataset/8900b9c5-50b7-43de-9bdd-0d7113a8355e/data",
+  market_saturation_cbsa: "https://data.cms.gov/data-api/v1/dataset/9b0e7798-d945-48fc-9861-d38bb5083a74/data",
+  provider_taxonomy_crosswalk: "https://data.cms.gov/data-api/v1/dataset/113eb0bc-0c9a-4d91-9f93-3f6b28c0bf6b/data",
+  hospital_price_transparency: "https://data.cms.gov/data-api/v1/dataset/6a3aa708-3c9d-411a-a1a4-e046d3ade7ef/data",
+  medicare_spending_by_drug_d: "https://data.cms.gov/data-api/v1/dataset/7e0b4365-fd63-4a29-8f5e-e0ac9f66a81b/data",
+  medicare_spending_by_drug_b: "https://data.cms.gov/data-api/v1/dataset/76a714ad-3a2c-43ac-b76d-9dadf8f7d890/data",
 };
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
@@ -41,6 +87,87 @@ function isAllowedUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+const CMS_DATASET_CATALOG = [
+  { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
+  { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
+  { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
+  { id: "medicare_dme_by_supplier", title: "DME Suppliers - by Supplier", description: "Medicare Durable Medical Equipment, Devices & Supplies payment and utilization data by supplier.", category: "Physicians & Clinicians", records: "~70K", priority: "medium" },
+  { id: "medicare_dme_by_referring", title: "DME - by Referring Provider", description: "DME utilization data grouped by the referring physician or provider.", category: "Physicians & Clinicians", records: "~400K", priority: "medium" },
+  { id: "medical_equipment_suppliers", title: "Medical Equipment Supplier Directory", description: "Directory of DMEPOS suppliers including business name, address, specialties, and supplies lists.", category: "Physicians & Clinicians", records: "~58K", priority: "medium" },
+  { id: "medicare_part_d_prescribers", title: "Part D Prescribers - by Provider", description: "Medicare Part D prescribing data summarized at the individual prescriber level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "medium" },
+  { id: "provider_taxonomy_crosswalk", title: "Provider & Supplier Taxonomy Crosswalk", description: "Maps Medicare provider types and specialties to standard healthcare taxonomy codes.", category: "Physicians & Clinicians", records: "~4K", priority: "low" },
+
+  { id: "hospital_enrollments", title: "Hospital Enrollments", description: "CMS enrollment data for all hospitals including NPI, CCN, organization name, address, and enrollment status.", category: "Hospitals", records: "~8K", priority: "high" },
+  { id: "hospital_general_info", title: "Hospital General Information", description: "Comprehensive hospital profile data including type, ownership, emergency services, and overall quality ratings.", category: "Hospitals", records: "~5K", priority: "high" },
+  { id: "hospital_all_owners", title: "Hospital All Owners", description: "Ownership information for all Medicare-certified hospitals.", category: "Hospitals", records: "~30K", priority: "medium" },
+  { id: "hospital_readmissions", title: "Hospital Readmissions Reduction Program", description: "Hospital performance on readmission measures with excess readmission ratios and payment reduction data.", category: "Hospitals", records: "~20K", priority: "high" },
+  { id: "hospital_complications", title: "Complications and Deaths - Hospital", description: "Hospital-level data on complication rates and mortality measures for key conditions.", category: "Hospitals", records: "~50K", priority: "high" },
+  { id: "hospital_infections", title: "Healthcare Associated Infections - Hospital", description: "Hospital-level HAI data including CLABSI, CAUTI, SSI, MRSA, and C.diff infection rates.", category: "Hospitals", records: "~40K", priority: "high" },
+  { id: "hospital_value_based_purchasing", title: "Hospital Value-Based Purchasing Scores", description: "Total Performance Scores for the Hospital VBP Program including clinical, efficiency, safety, and patient experience domains.", category: "Hospitals", records: "~3K", priority: "medium" },
+  { id: "hospital_cost_report", title: "Hospital Provider Cost Report", description: "Cost report data including revenues, expenses, bed counts, and financial performance metrics.", category: "Hospitals", records: "~7K", priority: "medium" },
+  { id: "hospital_service_area", title: "Hospital Service Area", description: "Geographic service area definitions for Medicare-certified hospitals.", category: "Hospitals", records: "~200K", priority: "low" },
+  { id: "hospital_price_transparency", title: "Hospital Price Transparency Enforcement", description: "Enforcement activities and outcomes for hospital price transparency compliance.", category: "Hospitals", records: "~2K", priority: "low" },
+  { id: "medicare_inpatient_by_provider", title: "Medicare Inpatient Hospitals - by Provider", description: "Inpatient hospital charge and payment data aggregated by provider including DRG utilization.", category: "Hospitals", records: "~200K", priority: "medium" },
+  { id: "medicare_outpatient_by_provider", title: "Medicare Outpatient Hospitals - by Provider", description: "Outpatient hospital service utilization and payment data by provider and APC code.", category: "Hospitals", records: "~3M", priority: "medium" },
+
+  { id: "home_health_enrollments", title: "Home Health Agency Enrollments", description: "CMS enrollment data for home health agencies including NPI, CCN, organization details, and enrollment status.", category: "Home Health", records: "~12K", priority: "high" },
+  { id: "home_health_agencies", title: "Home Health Care Agencies", description: "Provider-level quality measures for home health agencies including star ratings and outcome measures.", category: "Home Health", records: "~8K", priority: "high" },
+  { id: "home_health_all_owners", title: "Home Health Agency All Owners", description: "Ownership information for all Medicare-certified home health agencies.", category: "Home Health", records: "~30K", priority: "medium" },
+  { id: "home_health_cost_report", title: "Home Health Agency Cost Report", description: "Financial cost report data for home health agencies including revenue, expenses, and visit counts.", category: "Home Health", records: "~12K", priority: "medium" },
+  { id: "home_health_state_measures", title: "Home Health Care - State Data", description: "Quality measures for home health care aggregated at the state level.", category: "Home Health", records: "~55", priority: "low" },
+  { id: "home_health_national_measures", title: "Home Health Care - National Data", description: "National-level aggregate quality and outcome measures for home health care.", category: "Home Health", records: "~1", priority: "low" },
+  { id: "medicare_hha_utilization", title: "Medicare Post-Acute Care - Home Health", description: "Post-acute care utilization data for home health agencies.", category: "Home Health", records: "~10K", priority: "medium" },
+  { id: "home_infusion_therapy", title: "Home Infusion Therapy Providers", description: "Directory of Medicare-enrolled home infusion therapy providers.", category: "Home Health", records: "~2K", priority: "low" },
+
+  { id: "hospice_enrollments", title: "Hospice Enrollments", description: "CMS enrollment data for hospice providers including NPI, CCN, organization name, and enrollment status.", category: "Hospice", records: "~6K", priority: "high" },
+  { id: "hospice_general_info", title: "Hospice - General Information", description: "Comprehensive hospice profile data including CCN, address, phone, ownership type, and CMS region.", category: "Hospice", records: "~6K", priority: "high" },
+  { id: "hospice_provider_data", title: "Hospice - Provider Data", description: "Detailed provider-level quality and utilization measures for hospice facilities.", category: "Hospice", records: "~40K", priority: "high" },
+  { id: "hospice_provider_measures", title: "Hospice CAHPS Survey - Provider Data", description: "Hospice CAHPS patient experience survey results at the provider level.", category: "Hospice", records: "~174K", priority: "medium" },
+  { id: "hospice_all_owners", title: "Hospice All Owners", description: "Ownership information for all Medicare-certified hospice providers.", category: "Hospice", records: "~15K", priority: "medium" },
+  { id: "hospice_state_measures", title: "Hospice CAHPS Survey - State Data", description: "State-level aggregate hospice CAHPS patient experience survey results.", category: "Hospice", records: "~1.1K", priority: "low" },
+  { id: "hospice_national_measures", title: "Hospice CAHPS Survey - National Data", description: "National-level aggregate hospice CAHPS survey results.", category: "Hospice", records: "~24", priority: "low" },
+  { id: "medicare_hospice_utilization", title: "Medicare Post-Acute Care - Hospice", description: "Post-acute care utilization and spending data for hospice providers.", category: "Hospice", records: "~5K", priority: "medium" },
+
+  { id: "nursing_home_providers", title: "Nursing Home Provider Information", description: "Comprehensive nursing home data including beds, residents, ownership, star ratings, and staffing information.", category: "Nursing Homes & SNF", records: "~15K", priority: "high" },
+  { id: "snf_provider_measures", title: "Skilled Nursing Facility Quality Measures", description: "Provider-level quality measures for SNFs including readmission, falls, pressure ulcers, and staffing metrics.", category: "Nursing Homes & SNF", records: "~838K", priority: "high" },
+  { id: "nursing_home_deficiencies", title: "Nursing Home Deficiencies", description: "Survey deficiency data for nursing homes including scope, severity, and correction status.", category: "Nursing Homes & SNF", records: "~44K", priority: "medium" },
+  { id: "nursing_home_penalties", title: "Nursing Home Penalties", description: "Civil money penalties and payment denials imposed on nursing home facilities.", category: "Nursing Homes & SNF", records: "~5K", priority: "medium" },
+  { id: "medicare_snf_utilization", title: "Medicare Post-Acute Care - SNF", description: "Post-acute care utilization and spending data for skilled nursing facilities.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
+
+  { id: "dialysis_facility_listing", title: "Dialysis Facility Listing", description: "Directory of all Medicare-certified dialysis facilities with addresses and key facility information.", category: "Dialysis", records: "~8K", priority: "high" },
+  { id: "medicare_dialysis_facilities", title: "Medicare Dialysis Facilities", description: "Medicare enrollment and utilization data for dialysis facilities.", category: "Dialysis", records: "~8K", priority: "medium" },
+  { id: "dialysis_state_averages", title: "Dialysis Facility - State Averages", description: "State-level aggregate quality measures for dialysis facilities.", category: "Dialysis", records: "~55", priority: "low" },
+  { id: "dialysis_national_averages", title: "Dialysis Facility - National Averages", description: "National-level aggregate quality measures for dialysis.", category: "Dialysis", records: "~1", priority: "low" },
+
+  { id: "fqhc_enrollments", title: "Federally Qualified Health Center Enrollments", description: "CMS enrollment data for FQHCs including NPI, organization name, address, and enrollment status.", category: "Other Facilities", records: "~15K", priority: "high" },
+  { id: "inpatient_rehab_facility", title: "Inpatient Rehabilitation Facilities", description: "Quality measures and provider information for inpatient rehabilitation facilities.", category: "Other Facilities", records: "~1.2K", priority: "medium" },
+  { id: "long_term_care_hospital", title: "Long-Term Care Hospitals", description: "Quality measures and provider data for long-term care hospitals.", category: "Other Facilities", records: "~400", priority: "medium" },
+  { id: "aco_snf_affiliates", title: "ACO Skilled Nursing Facility Affiliates", description: "Affiliations between Accountable Care Organizations and Skilled Nursing Facilities.", category: "Other Facilities", records: "~80K", priority: "low" },
+  { id: "aco_reach_providers", title: "ACO REACH Providers", description: "Provider information for ACO Realizing Equity, Access, and Community Health model participants.", category: "Other Facilities", records: "~350K", priority: "low" },
+
+  { id: "medicare_fee_for_service_enrollment", title: "Medicare FFS Public Provider Enrollment", description: "Public enrollment data for Medicare Fee-For-Service providers.", category: "Medicare Programs", records: "~3M", priority: "medium" },
+  { id: "medicare_monthly_enrollment", title: "Medicare Monthly Enrollment", description: "Monthly Medicare enrollment statistics and trends.", category: "Medicare Programs", records: "~5K", priority: "low" },
+  { id: "medicare_irf_utilization", title: "Medicare Post-Acute Care - IRF", description: "Inpatient rehabilitation facility utilization and payment data.", category: "Medicare Programs", records: "~1.2K", priority: "low" },
+  { id: "medicare_ltch_utilization", title: "Medicare Post-Acute Care - LTCH", description: "Long-term care hospital utilization and payment data.", category: "Medicare Programs", records: "~400", priority: "low" },
+  { id: "market_saturation_county", title: "Market Saturation & Utilization - County", description: "Healthcare market saturation and utilization metrics at the county level.", category: "Medicare Programs", records: "~20K", priority: "medium" },
+  { id: "market_saturation_cbsa", title: "Market Saturation & Utilization - CBSA", description: "Healthcare market saturation data at the Core-Based Statistical Area level.", category: "Medicare Programs", records: "~1K", priority: "low" },
+  { id: "medicare_spending_by_drug_d", title: "Medicare Part D Spending by Drug", description: "Medicare Part D drug spending data including total spending, claims, and beneficiary counts.", category: "Medicare Programs", records: "~4K", priority: "low" },
+  { id: "medicare_spending_by_drug_b", title: "Medicare Part B Spending by Drug", description: "Medicare Part B drug spending and utilization data.", category: "Medicare Programs", records: "~700", priority: "low" },
+];
+
+export function getCMSDatasetCatalog() {
+  const available = Object.keys(IMPORT_TYPE_URLS);
+  return {
+    datasets: CMS_DATASET_CATALOG.map(ds => ({
+      ...ds,
+      url: IMPORT_TYPE_URLS[ds.id] || null,
+      available: available.includes(ds.id),
+    })),
+    total: CMS_DATASET_CATALOG.length,
+    categories: [...new Set(CMS_DATASET_CATALOG.map(ds => ds.category))],
+  };
 }
 
 export async function handleTriggerImport(payload: any, user: any) {

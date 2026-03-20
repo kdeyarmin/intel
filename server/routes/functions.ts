@@ -157,6 +157,11 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         }
       }
 
+      case "getCMSDatasetCatalog": {
+        const { getCMSDatasetCatalog } = await import("../functions/triggerImport");
+        return res.json(await getCMSDatasetCatalog());
+      }
+
       case "importNPPESFlatFile": {
         const { handleImportNPPESFlatFile } = await import("../functions/importNPPESFlatFile");
         try {
