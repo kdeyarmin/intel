@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, backgroundTasks } from "../db/schema";
-import { eq, and, isNull, isNotNull, sql, asc, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, sql, asc, desc, inArray } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 const BATCH_DELAY_MS = 1500;
@@ -238,7 +238,16 @@ async function getProvidersForSearch(batchSize: number, skipSearched: boolean, s
 }
 
 export async function handleEmailSearchBot(payload: any) {
-  const { mode, npi, batch_size = 5, skip_already_searched = true, total_items, task_id } = payload;
+  const { mode, npi, batch_size: rawBatchSize = 5, skip_already_searched = true, total_items, task_id } = payload;
+  const batch_size = Math.max(1, Math.min(50, Number(rawBatchSize) || 5));
+
+  if (!mode || !["single", "batch", "start_background", "stop_background"].includes(mode)) {
+    return { success: false, message: `Invalid mode: ${mode}. Use single, batch, start_background, or stop_background.` };
+  }
+
+  if (mode === "single" && !npi) {
+    return { success: false, message: "NPI is required for single mode." };
+  }
 
   if (mode === "stop_background") {
     if (task_id) {
@@ -255,6 +264,7 @@ export async function handleEmailSearchBot(payload: any) {
   }
 
   if (mode === "start_background") {
+    const bgSkipSearched = true;
     const [task] = await db
       .insert(backgroundTasks)
       .values({
@@ -263,7 +273,7 @@ export async function handleEmailSearchBot(payload: any) {
         progress: 0,
         metadata: {
           batch_size,
-          skip_already_searched,
+          skip_already_searched: bgSkipSearched,
           total_items: total_items || 0,
           processed_items: 0,
           success_count: 0,
@@ -273,7 +283,7 @@ export async function handleEmailSearchBot(payload: any) {
       })
       .returning();
 
-    runBackgroundSearch(task.id, batch_size, skip_already_searched).catch((err) => {
+    runBackgroundSearch(task.id, batch_size, bgSkipSearched).catch((err) => {
       console.error("[EmailBot] Background search error:", err.message);
       db.update(backgroundTasks)
         .set({
@@ -314,7 +324,7 @@ export async function handleEmailSearchBot(payload: any) {
     const locs = await db
       .select()
       .from(providerLocations)
-      .where(sql`${providerLocations.npi} = ANY(${npis})`);
+      .where(inArray(providerLocations.npi, npis as string[]));
     for (const loc of locs) {
       if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
         locationMap.set(loc.npi, loc);
@@ -324,9 +334,9 @@ export async function handleEmailSearchBot(payload: any) {
     const taxs = await db
       .select()
       .from(providerTaxonomies)
-      .where(sql`${providerTaxonomies.npi} = ANY(${npis})`);
+      .where(inArray(providerTaxonomies.npi, npis as string[]));
     for (const tax of taxs) {
-      if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.primary_flag)) {
+      if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
         taxonomyMap.set(tax.npi, tax);
       }
     }
@@ -385,7 +395,7 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       const locs = await db
         .select()
         .from(providerLocations)
-        .where(sql`${providerLocations.npi} = ANY(${npis})`);
+        .where(inArray(providerLocations.npi, npis as string[]));
       for (const loc of locs) {
         if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
           locationMap.set(loc.npi, loc);
@@ -395,9 +405,9 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       const taxs = await db
         .select()
         .from(providerTaxonomies)
-        .where(sql`${providerTaxonomies.npi} = ANY(${npis})`);
+        .where(inArray(providerTaxonomies.npi, npis as string[]));
       for (const tax of taxs) {
-        if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.primary_flag)) {
+        if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
           taxonomyMap.set(tax.npi, tax);
         }
       }
@@ -438,21 +448,28 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
     }
   }
 
-  await db
-    .update(backgroundTasks)
-    .set({
-      status: "completed",
-      progress: totalProcessed,
-      result: { total_processed: totalProcessed, total_found: totalFound, batches: batchNumber },
-      metadata: {
-        processed_items: totalProcessed,
-        success_count: totalFound,
-        current_batch_number: batchNumber,
-      },
-      completed_at: new Date(),
-      updated_date: new Date(),
-    })
+  const [finalTask] = await db
+    .select()
+    .from(backgroundTasks)
     .where(eq(backgroundTasks.id, taskId));
 
-  console.log(`[EmailBot] Background search completed: ${totalProcessed} searched, ${totalFound} found`);
+  if (finalTask && finalTask.status !== "cancelled") {
+    await db
+      .update(backgroundTasks)
+      .set({
+        status: "completed",
+        progress: totalProcessed,
+        result: { total_processed: totalProcessed, total_found: totalFound, batches: batchNumber },
+        metadata: {
+          processed_items: totalProcessed,
+          success_count: totalFound,
+          current_batch_number: batchNumber,
+        },
+        completed_at: new Date(),
+        updated_date: new Date(),
+      })
+      .where(eq(backgroundTasks.id, taskId));
+  }
+
+  console.log(`[EmailBot] Background search ${finalTask?.status === "cancelled" ? "cancelled" : "completed"}: ${totalProcessed} searched, ${totalFound} found`);
 }

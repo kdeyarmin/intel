@@ -66,6 +66,7 @@ Connection in `server/db/index.ts`.
   - `server/functions/triggerImport.ts` — Import trigger (CMS API, NPPES flat files, ZIP imports)
   - `server/functions/importNPPESFlatFile.ts` — Streaming CSV file importer with byte-offset pagination
   - `server/functions/helpers.ts` — Shared DB helpers (entity CRUD, retry, upsert)
+  - `server/functions/emailSearchBot.ts` — AI-powered email discovery (single/batch/background, Claude-based search + validation)
   - `server/functions/stubs.ts` — Placeholder handlers for functions pending full migration
   - `server/middleware/auth.ts` — JWT auth middleware (authMiddleware, adminOnly)
 - `src/` — React frontend
@@ -112,8 +113,8 @@ Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, Pr
 - Admin account: kdeyarmin@comcast.net (role: admin)
 
 ### Backend Functions (29 total)
-- **Fully migrated**: getDashboardStats (full dashboard shape: counts, emailStats, topStates, imports, dataQuality, samples), getDataHealthMetrics, nppesCrawler (all 7 actions), triggerImport (with CMS data insertion and resume support), importNPPESFlatFile
-- **Stub handlers** (return placeholder responses): validateDataQuality, runDataQualityScan, enrichProviderWithAI, emailSearchBot, analyzeReferralPathways, matchProvidersToLocations, generateScheduledReport, testCMSUrl, predictImportFormat, testCMSApiConnector, enrichProviderThirdParty, verifyProviderEmail, bulkVerifyEmails, enrichProviderMedicareData, validateProviderNPI, enrichProviderDEAData, cleanProviderData, analyzeProviderNetwork, reconcileProviderData, generateHyperPersonalizedMessages, trackCampaignMetrics, sendCampaignMessages, calculateOutreachScore, analyzeImportedDataset, aiProjectAnalysis
+- **Fully migrated**: getDashboardStats (full dashboard shape: counts, emailStats with real searched/valid/risky/invalid counts, topStates, imports, dataQuality, samples), getDataHealthMetrics, nppesCrawler (all 7 actions), triggerImport (with CMS data insertion and resume support), importNPPESFlatFile, emailSearchBot (single/batch/background modes with Claude AI email discovery, validation, and auto-save to provider records), getCMSDatasetCatalog
+- **Stub handlers** (return placeholder responses): validateDataQuality, runDataQualityScan, enrichProviderWithAI, analyzeReferralPathways, matchProvidersToLocations, generateScheduledReport, testCMSUrl, predictImportFormat, testCMSApiConnector, enrichProviderThirdParty, verifyProviderEmail, bulkVerifyEmails, enrichProviderMedicareData, validateProviderNPI, enrichProviderDEAData, cleanProviderData, analyzeProviderNetwork, reconcileProviderData, generateHyperPersonalizedMessages, trackCampaignMetrics, sendCampaignMessages, calculateOutreachScore, analyzeImportedDataset, aiProjectAnalysis
 - **Security**: triggerImport requires admin role; file_url restricted to CMS government domains; crawler uses atomic task claiming to prevent duplicate processing
 
 ### Import System
