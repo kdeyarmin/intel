@@ -153,8 +153,8 @@ const CMS_DATASET_CATALOG = [
   { id: "medicare_ltch_utilization", title: "Medicare Post-Acute Care - LTCH", description: "Long-term care hospital utilization and payment data.", category: "Medicare Programs", records: "~400", priority: "low" },
   { id: "market_saturation_county", title: "Market Saturation & Utilization - County", description: "Healthcare market saturation and utilization metrics at the county level.", category: "Medicare Programs", records: "~20K", priority: "medium" },
   { id: "market_saturation_cbsa", title: "Market Saturation & Utilization - CBSA", description: "Healthcare market saturation data at the Core-Based Statistical Area level.", category: "Medicare Programs", records: "~1K", priority: "low" },
-  { id: "medicare_spending_by_drug_d", title: "Medicare Part D Spending by Drug", description: "Medicare Part D drug spending data including total spending, claims, and beneficiary counts.", category: "Medicare Programs", records: "~4K", priority: "low" },
-  { id: "medicare_spending_by_drug_b", title: "Medicare Part B Spending by Drug", description: "Medicare Part B drug spending and utilization data.", category: "Medicare Programs", records: "~700", priority: "low" },
+  { id: "medicare_spending_by_drug_d", title: "Medicare Part D Spending by Drug", description: "Medicare Part D drug spending data including total spending, claims, and beneficiary counts.", category: "Medicare Programs", records: "~14.3K", priority: "low" },
+  { id: "medicare_spending_by_drug_b", title: "Medicare Part B Spending by Drug", description: "Medicare Part B drug spending and utilization data.", category: "Medicare Programs", records: "~734", priority: "low" },
 ];
 
 export function getCMSDatasetCatalog() {
