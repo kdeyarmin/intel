@@ -32,6 +32,7 @@ app.listen(PORT, "0.0.0.0", async () => {
     const { importBatches } = await import("./db/schema");
     const { eq, inArray, lt, and } = await import("drizzle-orm");
 
+    const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
     const STALL_THRESHOLD_MS = 15 * 60 * 1000;
     const cutoff = new Date(Date.now() - STALL_THRESHOLD_MS);
 
@@ -41,51 +42,48 @@ app.listen(PORT, "0.0.0.0", async () => {
         lt(importBatches.updated_date, cutoff),
       ));
 
-    if (stalled.length > 0) {
-      const cmsStalled = stalled.filter(b => b.import_type !== "nppes_registry" && b.file_name && !b.file_name.startsWith("crawler_"));
-      const crawlerStalled = stalled.filter(b => b.import_type === "nppes_registry" || b.file_name?.startsWith("crawler_"));
-
-      for (const batch of crawlerStalled) {
-        await db.update(importBatches).set({
-          status: "failed",
-          error_samples: [
-            ...(Array.isArray((batch as any).error_samples) ? (batch as any).error_samples : []),
-            { row: 0, message: "Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress" },
-          ],
-          updated_date: new Date(),
-        }).where(eq(importBatches.id, batch.id));
-        console.log(`  - Batch ${batch.id} (${batch.import_type}) marked failed: stalled since ${batch.updated_date}`);
-      }
-
-      for (const batch of cmsStalled) {
+    for (const batch of stalled) {
+      if (isCrawler(batch)) {
+        const { nppesQueueItems } = await import("./db/schema");
+        await db.update(importBatches).set({ status: "failed", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        await db.update(nppesQueueItems)
+          .set({ status: "failed", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing", "pending"])));
+        console.log(`  - Batch ${batch.id} (crawler) marked failed for auto-resume`);
+      } else {
         const resumeOffset = (batch as any).retry_params?.resume_offset || (batch as any).total_rows || 0;
-        console.log(`  - Batch ${batch.id} (${batch.import_type}) stalled, auto-resuming from offset ${resumeOffset}`);
         await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        try {
-          const { handleAutoImportCMSData } = await import("./functions/triggerImport");
-          const fileUrl = (batch as any).retry_params?.file_url;
-          const year = (batch as any).data_year || 2024;
-          if (fileUrl) {
-            setTimeout(() => {
-              handleAutoImportCMSData(batch.import_type!, fileUrl, year, batch.id, false, resumeOffset)
-                .catch((e: any) => console.error(`[CareMetric API] Auto-resume batch ${batch.id} failed:`, e.message));
-            }, 3000);
-          } else {
-            await db.update(importBatches).set({
-              status: "failed",
-              error_samples: [
-                ...(Array.isArray((batch as any).error_samples) ? (batch as any).error_samples : []),
-                { row: 0, message: "Job stalled — no file_url in retry_params for auto-resume" },
-              ],
-              updated_date: new Date(),
-            }).where(eq(importBatches.id, batch.id));
-          }
-        } catch (resumeErr: any) {
-          console.error(`[CareMetric API] Auto-resume error for batch ${batch.id}:`, resumeErr.message);
+        const { handleAutoImportCMSData } = await import("./functions/triggerImport");
+        const fileUrl = (batch as any).retry_params?.file_url;
+        const year = (batch as any).data_year || 2024;
+        if (fileUrl) {
+          setTimeout(() => {
+            handleAutoImportCMSData(batch.import_type!, fileUrl, year, batch.id, false, resumeOffset)
+              .catch((e: any) => console.error(`[CareMetric API] Auto-resume CMS batch ${batch.id} failed:`, e.message));
+          }, 3000);
+          console.log(`  - Batch ${batch.id} (${batch.import_type}) CMS auto-resuming from offset ${resumeOffset}`);
         }
       }
+    }
 
-      console.log(`[CareMetric API] Stall recovery: ${crawlerStalled.length} marked failed, ${cmsStalled.length} auto-resumed`);
+    const failedCrawlerBatches = await db.select().from(importBatches)
+      .where(and(
+        eq(importBatches.import_type, "nppes_registry"),
+        eq(importBatches.status, "failed"),
+      ));
+    const resumableCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
+
+    if (resumableCrawlers.length > 0) {
+      console.log(`[CareMetric API] Found ${resumableCrawlers.length} failed NPPES crawler batch(es) to auto-resume`);
+      setTimeout(async () => {
+        try {
+          const { handleNppesCrawler } = await import("./functions/nppesCrawler");
+          await handleNppesCrawler({ action: "batch_resume" }, { role: "admin" });
+          console.log(`[CareMetric API] NPPES crawler batches auto-resumed`);
+        } catch (e: any) {
+          console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
+        }
+      }, 5000);
     }
   } catch (e: any) {
     console.error(`[CareMetric API] Stall detection error:`, e.message);
