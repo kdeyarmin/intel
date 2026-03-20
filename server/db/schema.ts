@@ -14,7 +14,7 @@ export const users = pgTable("users", {
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }).unique(),
-  entity_type: varchar("entity_type", { length: 10 }),
+  entity_type: varchar("entity_type", { length: 50 }),
   first_name: varchar("first_name", { length: 255 }),
   last_name: varchar("last_name", { length: 255 }),
   organization_name: text("organization_name"),
