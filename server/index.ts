@@ -43,9 +43,21 @@ app.listen(PORT, "0.0.0.0", async () => {
         eq(importBatches.status, "failed"),
       ));
     const resumableFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
+    const emptyFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && !((b as any).imported_rows > 0));
 
     const crawlerActive = activeBatches.filter(isCrawler);
     const cmsActive = activeBatches.filter(b => !isCrawler(b));
+
+    if (emptyFailedCrawlers.length > 0) {
+      console.log(`[CareMetric API] Resetting ${emptyFailedCrawlers.length} empty failed crawler batch(es) to paused`);
+      const { nppesQueueItems } = await import("./db/schema");
+      for (const batch of emptyFailedCrawlers) {
+        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        await db.update(nppesQueueItems)
+          .set({ status: "pending", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed")));
+      }
+    }
 
     if (crawlerActive.length > 0 || resumableFailedCrawlers.length > 0) {
       const allCrawlerIds = [...crawlerActive, ...resumableFailedCrawlers];
