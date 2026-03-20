@@ -61,7 +61,12 @@ Connection in `server/db/index.ts`.
   - `server/routes/auth.ts` — Auth endpoints (login, signup, me, logout)
   - `server/routes/entities.ts` — Generic entity CRUD (list, filter, get, create, update, delete, bulk)
   - `server/routes/integrations.ts` — AI (Claude), email (SendGrid), file upload (Multer)
-  - `server/routes/functions.ts` — Backend functions (getDashboardStats, getDataHealthMetrics)
+  - `server/routes/functions.ts` — Backend function router (29 functions wired)
+  - `server/functions/nppesCrawler.ts` — NPPES Registry crawler (status, batch_start/stop/pause/resume, process_queue, retry_errors)
+  - `server/functions/triggerImport.ts` — Import trigger (CMS API, NPPES flat files, ZIP imports)
+  - `server/functions/importNPPESFlatFile.ts` — Streaming CSV file importer with byte-offset pagination
+  - `server/functions/helpers.ts` — Shared DB helpers (entity CRUD, retry, upsert)
+  - `server/functions/stubs.ts` — Placeholder handlers for functions pending full migration
   - `server/middleware/auth.ts` — JWT auth middleware (authMiddleware, adminOnly)
 - `src/` — React frontend
   - `src/api/client.js` — Drop-in API client replacing Base44 SDK
@@ -104,5 +109,9 @@ Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, Pr
 - AI integration uses Anthropic Claude
 - Email integration uses SendGrid
 - File upload implemented with Multer
-- Functions: getDashboardStats and getDataHealthMetrics migrated; other legacy functions return 404
 - Admin account: kdeyarmin@comcast.net (role: admin)
+
+### Backend Functions (29 total)
+- **Fully migrated**: getDashboardStats, getDataHealthMetrics, nppesCrawler (all 7 actions), triggerImport, importNPPESFlatFile
+- **Stub handlers** (return placeholder responses): validateDataQuality, runDataQualityScan, enrichProviderWithAI, emailSearchBot, analyzeReferralPathways, matchProvidersToLocations, generateScheduledReport, testCMSUrl, predictImportFormat, testCMSApiConnector, enrichProviderThirdParty, verifyProviderEmail, bulkVerifyEmails, enrichProviderMedicareData, validateProviderNPI, enrichProviderDEAData, cleanProviderData, analyzeProviderNetwork, reconcileProviderData, generateHyperPersonalizedMessages, trackCampaignMetrics, sendCampaignMessages, calculateOutreachScore, analyzeImportedDataset, aiProjectAnalysis
+- **Security**: triggerImport requires admin role; file_url restricted to CMS government domains; crawler uses atomic task claiming to prevent duplicate processing
