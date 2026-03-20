@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { importBatches } from "../db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities } from "../db/schema";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 
 const IMPORT_TYPE_ALIASES: Record<string, string> = {
@@ -139,16 +139,32 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
 
   const resolvedYear = year || new Date().getFullYear() - 2;
+  const resolvedOffset = resume_offset || 0;
 
-  const [batch] = await db.insert(importBatches).values({
-    import_type,
-    file_name: `cms_${import_type}_${resolvedYear}`,
-    status: "processing",
-    dry_run: !!dry_run,
-    total_rows: 0,
-    imported_rows: 0,
-    retry_params: { year: resolvedYear, resume_offset: resume_offset || 0, retry_of, retry_count, retry_tags, category },
-  }).returning();
+  let activeBatchId: number;
+
+  if (batch_id) {
+    await db.update(importBatches).set({
+      status: "processing",
+      cancel_reason: null,
+      cancelled_at: null,
+      error_samples: null,
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl },
+      updated_date: new Date(),
+    }).where(eq(importBatches.id, batch_id));
+    activeBatchId = batch_id;
+  } else {
+    const [batch] = await db.insert(importBatches).values({
+      import_type,
+      file_name: `cms_${import_type}_${resolvedYear}`,
+      status: "processing",
+      dry_run: !!dry_run,
+      total_rows: 0,
+      imported_rows: 0,
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl },
+    }).returning();
+    activeBatchId = batch.id;
+  }
 
   setTimeout(() => {
     handleAutoImportCMSData({
@@ -156,20 +172,125 @@ export async function handleTriggerImport(payload: any, user: any) {
       file_url: resolvedUrl,
       year: resolvedYear,
       dry_run,
-      resume_offset: resume_offset || 0,
-      batch_id: batch.id,
+      resume_offset: resolvedOffset,
+      batch_id: activeBatchId,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
   return {
     success: true,
-    message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
+    message: batch_id
+      ? `Resuming import for ${import_type} from offset ${resolvedOffset}. Check Data Center for progress.`
+      : `Import process for ${import_type} started in the background. Check Data Center for progress.`,
     import_type,
-    batch_id: batch.id,
+    batch_id: activeBatchId,
     file_url: resolvedUrl,
     year: resolvedYear,
     dry_run,
+    resumed: !!batch_id,
   };
+}
+
+function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
+  return {
+    npi: row.NPI || row.npi || null,
+    referred_to_npi: null,
+    referred_to_name: [row.LAST_NAME || row.last_name, row.FIRST_NAME || row.first_name].filter(Boolean).join(", ") || null,
+    total_referrals: null,
+    total_beneficiaries: null,
+    data_year: String(year),
+    raw_data: row,
+    import_batch_id: String(batchId),
+  };
+}
+
+function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
+  return {
+    npi: row.Rndrng_NPI || row.npi || null,
+    service_type: row.Rndrng_Prvdr_Type || row.HCPCS_Desc || null,
+    total_services: row.Tot_Srvcs || null,
+    total_unique_benes: row.Tot_Benes || null,
+    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg || null,
+    total_medicare_payment_amt: row.Avg_Mdcr_Pymt_Amt || null,
+    data_year: String(year),
+    raw_data: row,
+  };
+}
+
+function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
+  return {
+    facility_type: importType,
+    provider_id: row.cms_certification_number_ccn || row.CMS_Certification_Number || row.provider_id || null,
+    facility_name: row.facility_name || row.Facility_Name || null,
+    address: row.address_line_1 || row.Address || null,
+    city: row.citytown || row.City || null,
+    state: row.state || row.State || null,
+    zip: row.zip_code || row.Zip_Code || null,
+    raw_data: row,
+    import_batch_id: String(batchId),
+  };
+}
+
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<number> {
+  if (rows.length === 0) return 0;
+
+  const CHUNK_SIZE = 100;
+  let inserted = 0;
+
+  if (importType === "cms_order_referring") {
+    const mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId)).filter(r => r.npi);
+    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
+      const chunk = mapped.slice(i, i + CHUNK_SIZE);
+      try {
+        await db.insert(cmsReferrals).values(chunk);
+        inserted += chunk.length;
+      } catch (e: any) {
+        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
+        for (const row of chunk) {
+          try {
+            await db.insert(cmsReferrals).values(row);
+            inserted++;
+          } catch { /* skip duplicate/invalid */ }
+        }
+      }
+    }
+  } else if (importType === "provider_service_utilization") {
+    const mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId)).filter(r => r.npi);
+    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
+      const chunk = mapped.slice(i, i + CHUNK_SIZE);
+      try {
+        await db.insert(providerServiceUtilization).values(chunk);
+        inserted += chunk.length;
+      } catch (e: any) {
+        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
+        for (const row of chunk) {
+          try {
+            await db.insert(providerServiceUtilization).values(row);
+            inserted++;
+          } catch { /* skip duplicate/invalid */ }
+        }
+      }
+    }
+  } else {
+    const mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId)).filter(r => r.provider_id || r.facility_name);
+    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
+      const chunk = mapped.slice(i, i + CHUNK_SIZE);
+      try {
+        await db.insert(medicareFacilities).values(chunk);
+        inserted += chunk.length;
+      } catch (e: any) {
+        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
+        for (const row of chunk) {
+          try {
+            await db.insert(medicareFacilities).values(row);
+            inserted++;
+          } catch { /* skip duplicate/invalid */ }
+        }
+      }
+    }
+  }
+
+  return inserted;
 }
 
 async function handleAutoImportCMSData(params: any) {
@@ -177,15 +298,25 @@ async function handleAutoImportCMSData(params: any) {
   const MAX_EXEC_MS = 50000;
   const execStartTime = Date.now();
   const PAGE_SIZE = 500;
+  const isProviderDataAPI = file_url.includes("/datastore/query/");
 
   try {
     let offset = resume_offset;
-    let totalFetched = 0;
+    let totalFetched = resume_offset;
+    let totalInserted = 0;
     let hasMore = true;
+    let consecutiveErrors = 0;
+    const errors: any[] = [];
 
     while (hasMore && Date.now() - execStartTime < MAX_EXEC_MS) {
-      const separator = file_url.includes("?") ? "&" : "?";
-      const url = `${file_url}${separator}offset=${offset}&size=${PAGE_SIZE}`;
+      let url: string;
+      if (isProviderDataAPI) {
+        const separator = file_url.includes("?") ? "&" : "?";
+        url = `${file_url}${separator}offset=${offset}&limit=${PAGE_SIZE}`;
+      } else {
+        const separator = file_url.includes("?") ? "&" : "?";
+        url = `${file_url}${separator}offset=${offset}&size=${PAGE_SIZE}`;
+      }
 
       let response: Response;
       try {
@@ -194,30 +325,71 @@ async function handleAutoImportCMSData(params: any) {
         response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeout);
       } catch (e: any) {
-        console.error(`[AutoImportCMS] Fetch failed at offset ${offset}: ${e.message}`);
-        break;
+        consecutiveErrors++;
+        const errMsg = `Fetch failed at offset ${offset}: ${e.message}`;
+        console.error(`[AutoImportCMS] ${errMsg}`);
+        errors.push({ offset, message: errMsg });
+        if (consecutiveErrors >= 3) {
+          await db.update(importBatches).set({
+            status: "failed",
+            error_samples: errors.slice(-5),
+            updated_date: new Date(),
+          }).where(eq(importBatches.id, batch_id));
+          return;
+        }
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
+      }
+
+      if (response.status === 429) {
+        console.warn(`[AutoImportCMS] Rate limited at offset ${offset}, waiting 10s`);
+        await new Promise(r => setTimeout(r, 10000));
+        continue;
       }
 
       if (!response.ok) {
-        console.error(`[AutoImportCMS] HTTP ${response.status} at offset ${offset}`);
-        break;
+        consecutiveErrors++;
+        const errMsg = `HTTP ${response.status} at offset ${offset}`;
+        console.error(`[AutoImportCMS] ${errMsg}`);
+        errors.push({ offset, message: errMsg });
+        if (consecutiveErrors >= 3) {
+          await db.update(importBatches).set({
+            status: "failed",
+            error_samples: errors.slice(-5),
+            updated_date: new Date(),
+          }).where(eq(importBatches.id, batch_id));
+          return;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
       }
 
+      consecutiveErrors = 0;
       const data = await response.json();
-      const rows = Array.isArray(data) ? data : data.data || data.results || [];
+      const rows = Array.isArray(data) ? data : data.results || data.data || [];
 
       if (rows.length === 0) {
         hasMore = false;
         break;
       }
 
+      if (!dry_run) {
+        try {
+          const inserted = await insertCMSRows(import_type, rows, year, batch_id);
+          totalInserted += inserted;
+        } catch (e: any) {
+          console.error(`[AutoImportCMS] Insert error at offset ${offset}: ${e.message}`);
+          errors.push({ offset, message: `Insert error: ${e.message}` });
+        }
+      }
+
       totalFetched += rows.length;
       offset += rows.length;
 
       await db.update(importBatches).set({
-        imported_rows: totalFetched,
+        imported_rows: totalInserted,
         total_rows: totalFetched,
-        retry_params: { ...(params as any), resume_offset: offset },
+        retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted },
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch_id));
 
@@ -227,6 +399,7 @@ async function handleAutoImportCMSData(params: any) {
     }
 
     if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
+      console.log(`[AutoImportCMS] Time limit reached, scheduling continuation at offset ${offset}`);
       setTimeout(() => {
         handleAutoImportCMSData({ ...params, resume_offset: offset })
           .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
@@ -237,12 +410,14 @@ async function handleAutoImportCMSData(params: any) {
     await db.update(importBatches).set({
       status: "completed",
       completed_at: new Date(),
-      imported_rows: totalFetched,
+      imported_rows: totalInserted,
       total_rows: totalFetched,
+      error_samples: errors.length > 0 ? errors.slice(-5) : null,
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
+    console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}`);
   } catch (e: any) {
-    console.error(`[AutoImportCMS] Error:`, e.message);
+    console.error(`[AutoImportCMS] Fatal error:`, e.message);
     await db.update(importBatches).set({
       status: "failed",
       error_samples: [{ message: e.message, phase: "cms_import" }],
