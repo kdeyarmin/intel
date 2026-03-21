@@ -48,6 +48,13 @@ export default function EmailSearchBot() {
 
   const isBackgroundRunning = activeTask?.status === 'processing';
 
+  React.useEffect(() => {
+    if (activeTask && activeTask.status !== 'processing') {
+      setIsRunning(false);
+      setIsRunningAll(false);
+    }
+  }, [activeTask?.status]);
+
   const { data: dashStats } = useQuery({
     queryKey: ['emailBotDashStats'],
     queryFn: async () => {
@@ -188,8 +195,8 @@ export default function EmailSearchBot() {
     const headers = ['NPI','Name','Credential','Type','Specialty','Email','Confidence','Validation','Source','City','State','ZIP','Phone'];
     const rows = withEmail.map(p => {
       const name = p.entity_type === 'Individual' ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : p.organization_name || '';
-      const loc = allLocations.find(l => l.npi === p.npi && l.is_primary) || allLocations.find(l => l.npi === p.npi);
-      const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag) || allTaxonomies.find(t => t.npi === p.npi);
+      const loc = allLocations.find(l => l.npi === p.npi && l.location_type === 'Practice') || allLocations.find(l => l.npi === p.npi);
+      const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary) || allTaxonomies.find(t => t.npi === p.npi);
       return [p.npi, name, p.credential||'', p.entity_type||'', tax?.taxonomy_description||'', p.email, p.email_confidence||'', p.email_validation_status||'', p.email_source||'', loc?.city||'', loc?.state||'', loc?.zip||'', loc?.phone||''];
     });
 
@@ -482,8 +489,8 @@ export default function EmailSearchBot() {
 
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             {filteredProviders.slice(0, 50).map((p) => {
-              const loc = allLocations.find(l => l.npi === p.npi && l.is_primary) || allLocations.find(l => l.npi === p.npi);
-              const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag) || allTaxonomies.find(t => t.npi === p.npi);
+              const loc = allLocations.find(l => l.npi === p.npi && l.location_type === 'Practice') || allLocations.find(l => l.npi === p.npi);
+              const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary) || allTaxonomies.find(t => t.npi === p.npi);
               return (
                 <div key={p.id} className="flex items-start gap-2">
                   <input

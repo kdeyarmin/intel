@@ -13,7 +13,7 @@ import { sleep, withRetry, stripSystemFields, isIdentical } from "./helpers";
 
 const NPPES_API_BASE =
   "https://npiregistry.cms.hhs.gov/api/?version=2.1";
-const MAX_EXEC_MS = 25000;
+const MAX_EXEC_MS = 55000;
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DC","DE","FL","GA","HI","ID","IL","IN",
@@ -53,9 +53,19 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 2;
 const MAX_CACHE_SIZE = 5000;
 let globalRateLimitDelay = 0;
 let lastRateLimitHit = 0;
+let activeWorkerCount = 0;
+const MAX_CONCURRENT_WORKERS = 3;
 
 function normalizePostalCode(value: any) {
   return String(value || "").replace(/[^0-9]/g, "").slice(0, 5);
+}
+
+function pruneExpiredCache() {
+  if (apiCache.size < 100) return;
+  const now = Date.now();
+  for (const [key, val] of apiCache) {
+    if (now - val.timestamp > CACHE_TTL_MS) apiCache.delete(key);
+  }
 }
 
 async function fetchNPPESPage(params: URLSearchParams, stats: any) {
@@ -65,6 +75,7 @@ async function fetchNPPESPage(params: URLSearchParams, stats: any) {
     if (Date.now() - cached.timestamp < CACHE_TTL_MS) return cached.data;
     apiCache.delete(apiUrl);
   }
+  if (apiCache.size > MAX_CACHE_SIZE / 2) pruneExpiredCache();
   if (globalRateLimitDelay > 0) {
     if (Date.now() - lastRateLimitHit > 60000) {
       globalRateLimitDelay = 0;
@@ -364,6 +375,11 @@ async function incrementBatchQueueSize(batchId: number, additionalItems: number)
 }
 
 async function processQueueWorker(dryRun: boolean) {
+  if (activeWorkerCount >= MAX_CONCURRENT_WORKERS) {
+    console.log(`[Crawler Worker] Already ${activeWorkerCount} workers active, skipping new spawn`);
+    return { success: true, message: "Worker limit reached", processed: 0 };
+  }
+  activeWorkerCount++;
   const execStartTime = Date.now();
   try {
     const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
@@ -608,6 +624,8 @@ async function processQueueWorker(dryRun: boolean) {
   } catch (err: any) {
     console.error("[Crawler Worker] crash:", err);
     return { success: false, error: err.message };
+  } finally {
+    activeWorkerCount = Math.max(0, activeWorkerCount - 1);
   }
 }
 

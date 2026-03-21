@@ -156,7 +156,14 @@ Be strict: most AI-inferred emails without verified domains should be "risky" at
       };
     });
 
-    const best = enrichedEmails[0];
+    const validationRank: Record<string, number> = { valid: 3, risky: 2, unknown: 1, invalid: 0 };
+    const confidenceRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
+    const sorted = [...enrichedEmails].sort((a, b) => {
+      const vDiff = (validationRank[b.validation_status] || 0) - (validationRank[a.validation_status] || 0);
+      if (vDiff !== 0) return vDiff;
+      return (confidenceRank[b.confidence] || 0) - (confidenceRank[a.confidence] || 0);
+    });
+    const best = sorted[0];
     return {
       npi: provider.npi,
       name,
@@ -165,7 +172,7 @@ Be strict: most AI-inferred emails without verified domains should be "risky" at
       validation_status: best.validation_status,
       validation_reason: best.validation_reason,
       emails_found: enrichedEmails.length,
-      all_emails: enrichedEmails,
+      all_emails: sorted,
     };
   } catch (err: any) {
     return {
@@ -443,6 +450,8 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       totalProcessed++;
       if (result.best_email) totalFound++;
 
+      const taskMeta = (await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)))[0];
+      const prevMeta: any = taskMeta?.metadata || {};
       await db
         .update(backgroundTasks)
         .set({
@@ -450,6 +459,7 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
           metadata: {
             batch_size: batchSize,
             skip_already_searched: skipSearched,
+            total_items: prevMeta.total_items || 0,
             processed_items: totalProcessed,
             success_count: totalFound,
             current_batch_number: batchNumber,
@@ -468,6 +478,7 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
     .where(eq(backgroundTasks.id, taskId));
 
   if (finalTask && finalTask.status !== "cancelled") {
+    const prevMeta: any = finalTask.metadata || {};
     await db
       .update(backgroundTasks)
       .set({
@@ -475,6 +486,9 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
         progress: totalProcessed,
         result: { total_processed: totalProcessed, total_found: totalFound, batches: batchNumber },
         metadata: {
+          batch_size: prevMeta.batch_size || prevMeta.batch_size,
+          skip_already_searched: prevMeta.skip_already_searched,
+          total_items: prevMeta.total_items || 0,
           processed_items: totalProcessed,
           success_count: totalFound,
           current_batch_number: batchNumber,
