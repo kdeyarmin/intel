@@ -280,6 +280,63 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         return res.json(await handleAiProjectAnalysis(req.body));
       }
 
+      case "importAgentChat": {
+        const { message, history } = req.body;
+        const { db } = await import("../db");
+        const { importBatches } = await import("../db/schema");
+        const { sql, eq, inArray, desc } = await import("drizzle-orm");
+
+        const batchRows = await db.select({
+          id: importBatches.id,
+          import_type: importBatches.import_type,
+          status: importBatches.status,
+          imported_rows: importBatches.imported_rows,
+          total_rows: importBatches.total_rows,
+          error_count: importBatches.error_count,
+          created_date: importBatches.created_date,
+        }).from(importBatches)
+          .orderBy(desc(importBatches.created_date))
+          .limit(20);
+
+        const systemPrompt = `You are the CareMetric AI Import Manager. You help monitor and troubleshoot data import jobs.
+
+Current import batches (most recent 20):
+${JSON.stringify(batchRows, null, 2)}
+
+You can answer questions about:
+- Import job status (active, completed, failed, paused)
+- Error counts and failure reasons
+- Import progress and row counts
+- General data import troubleshooting
+
+Be concise and helpful. Use markdown formatting for readability.`;
+
+        const Anthropic = (await import("@anthropic-ai/sdk")).default;
+        const anthropic = new Anthropic();
+
+        const chatMessages = (history || [])
+          .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+          .map((m: any) => ({ role: m.role, content: m.content }));
+
+        if (!chatMessages.length || chatMessages[chatMessages.length - 1]?.content !== message) {
+          chatMessages.push({ role: 'user' as const, content: message });
+        }
+
+        const response = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: chatMessages,
+        });
+
+        const reply = response.content
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text)
+          .join('\n');
+
+        return res.json({ reply });
+      }
+
       default:
         return res.status(404).json({
           message: `Function '${functionName}' not found.`,
