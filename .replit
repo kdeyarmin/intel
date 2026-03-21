@@ -63,3 +63,7 @@ publicDir = "dist"
 [userenv.shared]
 VITE_BASE44_APP_BASE_URL = "https://base44.app"
 VITE_BASE44_APP_ID = "6993c62145573ca8a97ad4a9"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
