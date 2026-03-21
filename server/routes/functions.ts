@@ -3,12 +3,18 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+let dashboardStatsCache: { data: any; timestamp: number } | null = null;
+const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
+
 router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
 
   try {
     switch (functionName) {
       case "getDashboardStats": {
+        if (dashboardStatsCache && (Date.now() - dashboardStatsCache.timestamp < DASHBOARD_CACHE_TTL)) {
+          return res.json(dashboardStatsCache.data);
+        }
         const { db } = await import("../db");
         const {
           providers, providerLocations, providerTaxonomies,
@@ -18,43 +24,80 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         } = await import("../db/schema");
         const { sql, desc, eq, isNotNull, and } = await import("drizzle-orm");
 
-        const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
-        const totalProviders = Number(providerCount.count);
-
-        const [locationCount] = await db.select({ count: sql<number>`count(*)` }).from(providerLocations);
-        const totalLocations = Number(locationCount.count);
-
-        const [referralCount] = await db.select({ count: sql<number>`count(*)` }).from(cmsReferrals);
-        const totalReferrals = Number(referralCount.count);
-
-        const [utilizationCount] = await db.select({ count: sql<number>`count(*)` }).from(providerServiceUtilization);
-        const totalUtilization = Number(utilizationCount.count);
-
-        const [taxonomyCount] = await db.select({ count: sql<number>`count(*)` }).from(providerTaxonomies);
-        const totalTaxonomies = Number(taxonomyCount.count);
-
-        const [emailCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(isNotNull(providers.email));
-        const withEmail = Number(emailCount.count);
-        const needsEnrichment = totalProviders - withEmail;
-
-        const topStatesRows = await db.select({
-          state: providerLocations.state,
-          count: sql<number>`count(*)`,
-        }).from(providerLocations)
-          .where(isNotNull(providerLocations.state))
-          .groupBy(providerLocations.state)
-          .orderBy(sql`count(*) desc`)
-          .limit(5);
-        const topStates = topStatesRows.map(r => [r.state, Number(r.count)]);
+        const estimatedCounts = await db.execute(sql`
+          SELECT
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'providers') AS providers,
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_locations') AS locations,
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'cms_referrals') AS referrals,
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_service_utilization') AS utilization,
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies
+        `);
+        const est = (estimatedCounts as any).rows?.[0] || (estimatedCounts as any)[0] || {};
+        const totalProviders = Number(est.providers || 0);
+        const totalLocations = Number(est.locations || 0);
+        const totalReferrals = Number(est.referrals || 0);
+        const totalUtilization = Number(est.utilization || 0);
+        const totalTaxonomies = Number(est.taxonomies || 0);
 
         const { or, inArray } = await import("drizzle-orm");
-        const [activeImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(inArray(importBatches.status, ["processing", "validating", "pending"]));
-        const [completedImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(eq(importBatches.status, "completed"));
-        const [failedImports] = await db.select({ count: sql<number>`count(*)` }).from(importBatches).where(eq(importBatches.status, "failed"));
 
-        const [openAlertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new"));
+        const [
+          providerStatsResult,
+          topStatesResult,
+          importCountsResult,
+          openAlertCountArr,
+          latestScan,
+          completedBatches,
+          locationStatsResult,
+          utilYearResult,
+        ] = await Promise.all([
+          db.execute(sql`
+            SELECT
+              count(*) FILTER (WHERE email IS NOT NULL) AS with_email,
+              count(*) FILTER (WHERE email IS NULL) AS without_email,
+              count(*) FILTER (WHERE email_searched_at IS NOT NULL) AS searched,
+              count(*) FILTER (WHERE email_validation_status = 'valid') AS valid,
+              count(*) FILTER (WHERE email_validation_status = 'risky') AS risky,
+              count(*) FILTER (WHERE email_validation_status = 'invalid') AS invalid,
+              count(*) FILTER (WHERE (first_name IS NULL OR first_name = '') AND (organization_name IS NULL OR organization_name = '')) AS needs_enrichment,
+              count(*) FILTER (WHERE status = 'Deactivated') AS deactivated
+            FROM providers
+          `),
+          db.execute(sql`
+            SELECT state, count(*) AS count FROM provider_locations
+            WHERE state IS NOT NULL
+            GROUP BY state ORDER BY count DESC LIMIT 5
+          `),
+          db.execute(sql`
+            SELECT
+              count(*) FILTER (WHERE status IN ('processing','validating','pending')) AS active,
+              count(*) FILTER (WHERE status = 'completed') AS completed,
+              count(*) FILTER (WHERE status = 'failed') AS failed
+            FROM import_batches
+          `),
+          db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new")),
+          db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1),
+          db.select().from(importBatches).where(eq(importBatches.status, "completed")).orderBy(desc(importBatches.created_date)).limit(1),
+          db.execute(sql`
+            SELECT count(*) AS count FROM provider_locations
+            WHERE phone IS NULL OR phone = ''
+          `),
+          db.execute(sql`SELECT max(data_year) AS max_year FROM provider_service_utilization LIMIT 1`),
+        ]);
 
-        const latestScan = await db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1);
+        const ps = ((providerStatsResult as any).rows || providerStatsResult)?.[0] || {};
+        const withEmail = Number(ps.with_email || 0);
+        const needsEnrichment = Number(ps.without_email || 0);
+
+        const tsRows = (topStatesResult as any).rows || topStatesResult;
+        const topStates = (Array.isArray(tsRows) ? tsRows : []).map((r: any) => [r.state, Number(r.count)]);
+
+        const icRow = ((importCountsResult as any).rows || importCountsResult)?.[0] || {};
+        const lastRefreshBatch = completedBatches.length > 0
+          ? completedBatches
+          : await db.select().from(importBatches).orderBy(desc(importBatches.created_date)).limit(1);
+        const lastRefresh = lastRefreshBatch.length > 0 ? (lastRefreshBatch[0] as any).created_date : null;
+
         let dataQuality = null;
         if (latestScan.length > 0) {
           const scan = latestScan[0] as any;
@@ -68,57 +111,112 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           dataQuality = { score };
         }
 
-        const completedBatches = await db.select().from(importBatches)
-          .where(eq(importBatches.status, "completed"))
-          .orderBy(desc(importBatches.created_date)).limit(1);
-        const latestBatch = completedBatches.length > 0
-          ? completedBatches
-          : await db.select().from(importBatches).orderBy(desc(importBatches.created_date)).limit(1);
-        const lastRefresh = latestBatch.length > 0 ? (latestBatch[0] as any).created_date : null;
+        const npRow = ((locationStatsResult as any).rows || locationStatsResult)?.[0] || {};
+        const uyRow = ((utilYearResult as any).rows || utilYearResult)?.[0] || {};
 
-        const providerSamples = await db.select().from(providers).limit(200);
-        const utilizationSamples = await db.select().from(providerServiceUtilization).limit(200);
-        const referralSamples = await db.select().from(cmsReferrals).limit(200);
-        const locationSamples = await db.select().from(providerLocations).limit(200);
+        const providerSamples: any[] = [];
+        const utilizationSamples: any[] = [];
+        const referralSamples: any[] = [];
+        const locationSamples: any[] = [];
 
-        return res.json({
+        const result = {
           totalProviders,
           totalLocations,
           totalReferrals,
           totalUtilization,
           totalTaxonomies,
-          emailStats: await (async () => {
-            const [searched] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(isNotNull(providers.email_searched_at));
-            const [validCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "valid"));
-            const [riskyCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "risky"));
-            const [invalidCount] = await db.select({ count: sql<number>`count(*)` }).from(providers).where(eq(providers.email_validation_status, "invalid"));
-            return {
-              withEmail,
-              needsEnrichment,
-              searched: Number(searched.count),
-              isEstimated: false,
-              valid: Number(validCount.count),
-              risky: Number(riskyCount.count),
-              invalid: Number(invalidCount.count),
-            };
-          })(),
+          emailStats: {
+            withEmail,
+            needsEnrichment,
+            searched: Number(ps.searched || 0),
+            isEstimated: false,
+            valid: Number(ps.valid || 0),
+            risky: Number(ps.risky || 0),
+            invalid: Number(ps.invalid || 0),
+          },
           topStates,
           imports: {
-            active: Number(activeImports.count),
-            completed: Number(completedImports.count),
-            failed: Number(failedImports.count),
+            active: Number(icRow.active || 0),
+            completed: Number(icRow.completed || 0),
+            failed: Number(icRow.failed || 0),
           },
-          openAlerts: Number(openAlertCount.count),
+          openAlerts: Number(openAlertCountArr[0]?.count || 0),
           dataQuality,
           lastRefresh,
+          proactiveInsights: {
+            needsEnrichment: Number(ps.needs_enrichment || 0),
+            deactivatedProviders: Number(ps.deactivated || 0),
+            noPhoneLocations: Number(npRow.count || 0),
+            latestUtilYear: Number(uyRow.max_year || 0),
+          },
           samples: {
             providers: providerSamples,
             utilizations: utilizationSamples,
             referrals: referralSamples,
             locations: locationSamples,
           },
-          isEstimatedCounts: false,
-        });
+          isEstimatedCounts: true,
+        };
+        dashboardStatsCache = { data: result, timestamp: Date.now() };
+        return res.json(result);
+      }
+
+      case "getDataHealthAlerts": {
+        const { db } = await import("../db");
+        const { leadScores, providers, providerLocations, providerTaxonomies } = await import("../db/schema");
+        const { sql, eq, inArray, isNotNull, desc } = await import("drizzle-orm");
+
+        const highScores = await db.select().from(leadScores)
+          .where(sql`score >= 80`)
+          .orderBy(desc(leadScores.score))
+          .limit(100);
+
+        if (highScores.length === 0) {
+          return res.json({ alerts: [] });
+        }
+
+        const scoreNpis = highScores.map((s: any) => s.npi).filter(Boolean);
+        const matchedProviders = scoreNpis.length > 0
+          ? await db.select().from(providers).where(inArray(providers.npi, scoreNpis))
+          : [];
+        const matchedLocations = scoreNpis.length > 0
+          ? await db.select().from(providerLocations).where(inArray(providerLocations.npi, scoreNpis))
+          : [];
+        const matchedTaxonomies = scoreNpis.length > 0
+          ? await db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, scoreNpis))
+          : [];
+
+        const alerts: any[] = [];
+        for (const scoreItem of highScores) {
+          const npi = (scoreItem as any).npi;
+          const prov = matchedProviders.find((p: any) => p.npi === npi);
+          if (!prov) continue;
+
+          const locs = matchedLocations.filter((l: any) => l.npi === npi);
+          const taxs = matchedTaxonomies.filter((t: any) => t.npi === npi);
+
+          const hasEmail = !!(prov as any).email;
+          const hasPhone = locs.some((l: any) => !!l.phone) || !!(prov as any).cell_phone;
+          const hasSpecialty = taxs.some((t: any) => !!t.taxonomy_description);
+
+          const missing: string[] = [];
+          if (!hasEmail) missing.push('Email');
+          if (!hasPhone) missing.push('Phone');
+          if (!hasSpecialty) missing.push('Specialty');
+
+          if (missing.length > 0) {
+            alerts.push({
+              npi,
+              name: (prov as any).entity_type === 'Individual'
+                ? `${(prov as any).first_name || ''} ${(prov as any).last_name || ''}`.trim()
+                : (prov as any).organization_name || npi,
+              score: (scoreItem as any).score,
+              missing,
+            });
+          }
+        }
+
+        return res.json({ alerts: alerts.sort((a, b) => b.score - a.score).slice(0, 50) });
       }
 
       case "getDataHealthMetrics": {

@@ -30,11 +30,7 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
-  // Extract samples from dashboard stats
-  const providersSample = stats?.samples?.providers || [];
-  const utilizationSample = stats?.samples?.utilizations || [];
-  const referralsSample = stats?.samples?.referrals || [];
-  const locationsSample = stats?.samples?.locations || [];
+  const proactiveInsights = stats?.proactiveInsights || null;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
@@ -63,12 +59,7 @@ export default function Dashboard() {
       {/* Data Health & Proactive Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DataHealthAlerts />
-        <ProactiveAlerts
-          providers={providersSample}
-          utilizations={utilizationSample}
-          referrals={referralsSample}
-          locations={locationsSample}
-        />
+        <ProactiveAlerts proactiveInsights={proactiveInsights} />
       </div>
 
       {/* Recent Activity */}

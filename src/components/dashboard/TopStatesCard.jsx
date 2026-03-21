@@ -26,7 +26,7 @@ export default function TopStatesCard({ topStates = [], loading }) {
             {topStates.map(([state, count], index) => {
               const pct = (count / maxCount) * 100;
               const colors = [
-                'bg-cyan-900/200', 'bg-cyan-400', 'bg-cyan-300/80', 'bg-sky-400/60', 'bg-sky-300/40'
+                'bg-cyan-500', 'bg-cyan-400', 'bg-cyan-400/80', 'bg-sky-400/60', 'bg-sky-400/40'
               ];
               return (
                 <div key={state} className="group">
