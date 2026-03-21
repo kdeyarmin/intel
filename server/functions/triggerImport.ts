@@ -344,7 +344,40 @@ function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
   };
 }
 
+function deriveStatisticalId(row: any, importType: string, index?: number): string | null {
+  let id: string | null = null;
+  if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
+    id = row.Brnd_Name || row.Gnrc_Name || row.HCPCS_Cd || null;
+  } else if (importType === "medicare_monthly_enrollment") {
+    id = [row.YEAR, row.MONTH, row.BENE_STATE_ABRVTN].filter(Boolean).join("_") || null;
+  } else if (importType === "market_saturation_county" || importType === "market_saturation_cbsa") {
+    const svc = (row.type_of_service || "").substring(0, 15);
+    id = [row.state_fips, row.county_fips, svc].filter(Boolean).join("_") || null;
+  } else if (importType === "medicare_fee_for_service_enrollment") {
+    id = [row.YEAR, row.BENE_STATE_ABRVTN].filter(Boolean).join("_") || null;
+  } else if (importType === "medicare_irf_utilization" || importType === "medicare_ltch_utilization") {
+    id = row.CCN || row.ccn || row.Provider_ID || row.provider_id || null;
+  }
+  return id ? id.substring(0, 50) : null;
+}
+
+function deriveStatisticalName(row: any, importType: string): string | null {
+  if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
+    return [row.Brnd_Name, row.Gnrc_Name, row.HCPCS_Desc].filter(Boolean).join(" — ") || null;
+  }
+  if (importType === "medicare_monthly_enrollment") {
+    return [row.BENE_STATE_DESC, row.BENE_COUNTY_DESC, row.YEAR, row.MONTH].filter(Boolean).join(" ") || null;
+  }
+  if (importType === "market_saturation_county" || importType === "market_saturation_cbsa") {
+    return [row.type_of_service, row.state, row.county].filter(Boolean).join(" — ") || null;
+  }
+  return null;
+}
+
 function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
+  const statId = deriveStatisticalId(row, importType);
+  const statName = deriveStatisticalName(row, importType);
+
   return {
     facility_type: importType,
     provider_id:
@@ -354,6 +387,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row.CCN || row.ccn ||
       row.provider_id || row["Provider ID"] ||
       row.NPI || row.npi ||
+      statId ||
       null,
     facility_name:
       row.facility_name || row["Facility Name"] || row.Facility_Name ||
@@ -362,6 +396,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row["ORGANIZATION NAME"] || row.organization_name ||
       row.businessname || row.practicename ||
       row["DOING BUSINESS AS NAME"] ||
+      statName ||
       null,
     address:
       row.address_line_1 || row["Address Line 1"] || row.Address_Line_1 ||
@@ -379,6 +414,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
     state:
       row.state || row.State || row.STATE ||
       row["State Code"] || row.Rndrng_Prvdr_State_Abrvtn ||
+      row.BENE_STATE_ABRVTN ||
       row["ENROLLMENT STATE"] ||
       row.practicestate ||
       null,
