@@ -357,6 +357,16 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = [row.YEAR, row.BENE_STATE_ABRVTN].filter(Boolean).join("_") || null;
   } else if (importType === "medicare_irf_utilization" || importType === "medicare_ltch_utilization") {
     id = row.CCN || row.ccn || row.Provider_ID || row.provider_id || null;
+  } else if (importType === "hospice_state_measures" || importType === "home_health_state_measures") {
+    id = [row.state, row.measure_code].filter(Boolean).join("_") || null;
+  } else if (importType === "hospice_national_measures") {
+    id = row.measure_code || null;
+  } else if (importType === "home_health_national_measures") {
+    id = row.country || "nation";
+  } else if (importType === "hospital_service_area") {
+    id = [row.MEDICARE_PROV_NUM, row.ZIP_CD_OF_RESIDENCE].filter(Boolean).join("_") || null;
+  } else if (importType === "medicare_hha_utilization") {
+    id = row.PRVDR_ID || null;
   }
   return id ? id.substring(0, 50) : null;
 }
@@ -370,6 +380,21 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   }
   if (importType === "market_saturation_county" || importType === "market_saturation_cbsa") {
     return [row.type_of_service, row.state, row.county].filter(Boolean).join(" — ") || null;
+  }
+  if (importType === "hospice_state_measures" || importType === "home_health_state_measures") {
+    return [row.state, row.measure_name || row.measure_code].filter(Boolean).join(" — ") || null;
+  }
+  if (importType === "hospice_national_measures") {
+    return row.measure_name || row.measure_code || null;
+  }
+  if (importType === "home_health_national_measures") {
+    return row.country || "National Measures";
+  }
+  if (importType === "hospital_service_area") {
+    return [row.MEDICARE_PROV_NUM, row.ZIP_CD_OF_RESIDENCE].filter(Boolean).join(" — ZIP ") || null;
+  }
+  if (importType === "medicare_hha_utilization") {
+    return row.PRVDR_NAME || null;
   }
   return null;
 }
@@ -387,6 +412,8 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row.CCN || row.ccn ||
       row.provider_id || row["Provider ID"] ||
       row.NPI || row.npi ||
+      row.Rndrng_NPI || row.Suplr_NPI || row.Rfrg_NPI ||
+      row.PRVDR_ID || row.MEDICARE_PROV_NUM ||
       statId ||
       null,
     facility_name:
@@ -396,6 +423,8 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row["ORGANIZATION NAME"] || row.organization_name ||
       row.businessname || row.practicename ||
       row["DOING BUSINESS AS NAME"] ||
+      row.Rndrng_Prvdr_Last_Org_Name || row.Suplr_Prvdr_Last_Name_Org || row.Rfrg_Prvdr_Last_Name_Org ||
+      row.PRVDR_NAME || row["HHA Name"] ||
       statName ||
       null,
     address:
@@ -404,12 +433,15 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row["Street Address"] || row.Rndrng_Prvdr_St ||
       row.provider_address || row["Provider Address"] ||
       row.practiceaddress1 ||
+      row.Rndrng_Prvdr_St1 || row.Suplr_Prvdr_St1 || row.Rfrg_Prvdr_St1 ||
       null,
     city:
       row.citytown || row["City/Town"] ||
       row.City || row.CITY || row.city ||
       row.Rndrng_Prvdr_City ||
       row.practicecity ||
+      row.Suplr_Prvdr_City || row.Rfrg_Prvdr_City ||
+      row.PRVDR_CITY ||
       null,
     state:
       row.state || row.State || row.STATE ||
@@ -417,12 +449,15 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row.BENE_STATE_ABRVTN ||
       row["ENROLLMENT STATE"] ||
       row.practicestate ||
+      row.Suplr_Prvdr_State_Abrvtn || row.Rfrg_Prvdr_State_Abrvtn ||
       null,
     zip:
       row.zip_code || row["Zip Code"] || row.Zip_Code ||
       row["ZIP CODE"] || row.ZIP_CODE ||
       row.Rndrng_Prvdr_Zip5 ||
       row.practicezip9code ||
+      row.Suplr_Prvdr_Zip5 || row.Rfrg_Prvdr_Zip5 ||
+      row.PRVDR_ZIP ||
       null,
     raw_data: row,
     import_batch_id: String(batchId),
