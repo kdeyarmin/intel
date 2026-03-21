@@ -350,6 +350,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
     provider_id:
       row.cms_certification_number_ccn ||
       row["CMS Certification Number"] || row.CMS_Certification_Number ||
+      row["Provider CCN"] || row.Rndrng_Prvdr_CCN ||
       row.CCN || row.ccn ||
       row.provider_id || row["Provider ID"] ||
       row.NPI || row.npi ||
@@ -357,30 +358,34 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
     facility_name:
       row.facility_name || row["Facility Name"] || row.Facility_Name ||
       row.provider_name || row["Provider Name"] || row.Provider_Name ||
+      row["Hospital Name"] || row.Rndrng_Prvdr_Org_Name ||
       row["ORGANIZATION NAME"] || row.organization_name ||
       row.businessname || row.practicename ||
       row["DOING BUSINESS AS NAME"] ||
-      row.country ||
       null,
     address:
       row.address_line_1 || row["Address Line 1"] || row.Address_Line_1 ||
       row["ADDRESS LINE 1"] ||
+      row["Street Address"] || row.Rndrng_Prvdr_St ||
       row.provider_address || row["Provider Address"] ||
       row.practiceaddress1 ||
       null,
     city:
       row.citytown || row["City/Town"] ||
       row.City || row.CITY || row.city ||
+      row.Rndrng_Prvdr_City ||
       row.practicecity ||
       null,
     state:
       row.state || row.State || row.STATE ||
+      row["State Code"] || row.Rndrng_Prvdr_State_Abrvtn ||
       row["ENROLLMENT STATE"] ||
       row.practicestate ||
       null,
     zip:
       row.zip_code || row["Zip Code"] || row.Zip_Code ||
       row["ZIP CODE"] || row.ZIP_CODE ||
+      row.Rndrng_Prvdr_Zip5 ||
       row.practicezip9code ||
       null,
     raw_data: row,
