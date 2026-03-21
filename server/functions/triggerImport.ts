@@ -361,7 +361,7 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
   } else if (importType === "hospital_price_transparency") {
     id = row.Case_ID || null;
   } else if (importType === "medicare_part_d_prescribers") {
-    id = row.PRSCRBR_NPI || null;
+    id = row.Prscrbr_NPI || row.PRSCRBR_NPI || null;
   } else if (importType === "medicare_fee_for_service_enrollment") {
     id = [row.YEAR, row.BENE_STATE_ABRVTN].filter(Boolean).join("_") || null;
   } else if (importType === "medicare_irf_utilization" || importType === "medicare_ltch_utilization") {
@@ -432,7 +432,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row["Provider CCN"] || row.Rndrng_Prvdr_CCN ||
       row.CCN || row.ccn ||
       row.provider_id || row["Provider ID"] ||
-      row.NPI || row.npi || row.PRSCRBR_NPI ||
+      row.NPI || row.npi || row.Prscrbr_NPI || row.PRSCRBR_NPI ||
       row.Rndrng_NPI || row.Suplr_NPI || row.Rfrg_NPI ||
       row.PRVDR_ID || row.MEDICARE_PROV_NUM || row.Case_ID ||
       statId ||
