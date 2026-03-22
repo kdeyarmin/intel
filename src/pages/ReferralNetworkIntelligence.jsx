@@ -33,81 +33,42 @@ export default function ReferralNetworkIntelligence() {
   const [hubSortKey, setHubSortKey] = useState('hubScore');
   const [hubSortDir, setHubSortDir] = useState('desc');
 
-  const { data: providers = [], isLoading: lp } = useQuery({
-    queryKey: ['rnProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 500),
-    staleTime: 120000,
-  });
-  const { data: referrals = [], isLoading: lr } = useQuery({
-    queryKey: ['rnReferrals'],
+  const { data: networkData, isLoading: loading, isError, error, refetch } = useQuery({
+    queryKey: ['rnNetworkData'],
     queryFn: async () => {
-      const rows = await base44.entities.CMSReferral.list('-created_date', 500);
-      return rows.map(r => ({
-        ...r,
-        year: r.data_year,
-        total_referrals: 1,
-      }));
+      const result = await base44.functions.invoke('getReferralNetworkData', {});
+      return result.data || result;
     },
-    staleTime: 120000,
-  });
-  const { data: locations = [] } = useQuery({
-    queryKey: ['rnLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
-    staleTime: 120000,
-  });
-  const { data: taxonomies = [] } = useQuery({
-    queryKey: ['rnTax'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
-    staleTime: 120000,
+    staleTime: 300000,
+    retry: 2,
   });
 
-  const loading = lp || lr;
+  const availableStates = useMemo(() => {
+    if (!networkData?.nodes) return [];
+    return [...new Set(networkData.nodes.map(n => n.state).filter(Boolean))].sort();
+  }, [networkData]);
 
-  const npiState = useMemo(() => {
-    const m = {};
-    locations.forEach(l => { if (l.is_primary && l.state) m[l.npi] = l.state; });
-    return m;
-  }, [locations]);
-
-  const npiSpecialty = useMemo(() => {
-    const m = {};
-    taxonomies.forEach(t => { if (t.primary_flag && t.taxonomy_description) m[t.npi] = t.taxonomy_description; });
-    return m;
-  }, [taxonomies]);
-
-  const availableStates = useMemo(() => [...new Set(Object.values(npiState))].sort(), [npiState]);
-  const availableSpecialties = useMemo(() => [...new Set(Object.values(npiSpecialty))].sort(), [npiSpecialty]);
+  const availableSpecialties = useMemo(() => {
+    if (!networkData?.nodes) return [];
+    return [...new Set(networkData.nodes.map(n => n.specialty).filter(Boolean))].sort();
+  }, [networkData]);
 
   const { allNodes, allEdges } = useMemo(() => {
-    const provMap = {};
-    providers.forEach(p => { provMap[p.npi] = p; });
+    if (!networkData?.nodes) return { allNodes: [], allEdges: [] };
 
-    const latestByNPI = {};
-    referrals.forEach(r => {
-      if (!latestByNPI[r.npi] || r.year > latestByNPI[r.npi].year) latestByNPI[r.npi] = r;
-    });
-
-    const totalByNPI = {};
-    referrals.forEach(r => { totalByNPI[r.npi] = (totalByNPI[r.npi] || 0) + (r.total_referrals || 0); });
-
-    const nodesArr = Object.entries(latestByNPI).map(([npi, ref]) => {
-      const prov = provMap[npi];
-      const label = prov
-        ? prov.entity_type === 'Individual' ? `${prov.first_name || ''} ${prov.last_name || ''}`.trim() : prov.organization_name || npi
-        : npi;
-      const outbound = ref.total_referrals || 0;
-      const inbound = prov?.entity_type === 'Organization' ? Math.round(outbound * 0.6) : Math.round(outbound * 0.2);
-      return { npi, label, entityType: prov?.entity_type || 'Unknown', state: npiState[npi] || '', specialty: npiSpecialty[npi] || '', outbound, inbound, totalVolume: totalByNPI[npi] || 0, connections: 0, hubScore: 0, isHub: false };
+    const nodesArr = networkData.nodes.map(n => {
+      const outbound = n.referralCount || 0;
+      const inbound = n.entityType === 'Organization' ? Math.round(outbound * 0.6) : Math.round(outbound * 0.2);
+      return { npi: n.npi, label: n.label, entityType: n.entityType, state: n.state, city: n.city, specialty: n.specialty, outbound, inbound, totalVolume: outbound, connections: 0, hubScore: 0, isHub: false };
     });
 
     const byState = {};
     nodesArr.forEach(n => { const st = n.state || '__none'; if (!byState[st]) byState[st] = []; byState[st].push(n); });
-
     const edgesArr = [];
     Object.values(byState).forEach(stateNodes => {
       const sorted = [...stateNodes].sort((a, b) => b.totalVolume - a.totalVolume);
-      for (let i = 0; i < Math.min(sorted.length, 20); i++) {
-        for (let j = i + 1; j < Math.min(sorted.length, 20); j++) {
+      for (let i = 0; i < Math.min(sorted.length, 15); i++) {
+        for (let j = i + 1; j < Math.min(sorted.length, 15); j++) {
           const vol = Math.min(sorted[i].totalVolume, sorted[j].totalVolume);
           if (vol > 0) {
             const weight = (sorted[i].entityType !== sorted[j].entityType) ? 1.5 : 1;
@@ -130,7 +91,7 @@ export default function ReferralNetworkIntelligence() {
     sortedByScore.slice(0, Math.max(hubCutoff, 3)).forEach(n => { n.isHub = true; });
 
     return { allNodes: nodesArr, allEdges: edgesArr };
-  }, [providers, referrals, npiState, npiSpecialty]);
+  }, [networkData]);
 
   const { filteredNodes, filteredEdges } = useMemo(() => {
     let fn = allNodes;
@@ -168,7 +129,15 @@ export default function ReferralNetworkIntelligence() {
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Network' }]}
       />
 
-      {loading ? (
+      {isError ? (
+        <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-6 text-center space-y-3">
+          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" />
+          <p className="text-red-300 text-sm">Failed to load referral network data</p>
+          <button onClick={() => refetch()} className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-md text-xs transition-colors">
+            Retry
+          </button>
+        </div>
+      ) : loading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-20 bg-slate-700/50" />)}</div>
           <Skeleton className="h-12 bg-slate-700/50" />
@@ -247,15 +216,15 @@ export default function ReferralNetworkIntelligence() {
             </TabsContent>
 
             <TabsContent value="geographic" className="mt-4">
-              <GeographicHeatmap nodes={filteredNodes} locations={locations} />
+              <GeographicHeatmap nodes={filteredNodes} />
             </TabsContent>
 
             <TabsContent value="gaps" className="mt-4">
-              <CareGapAnalysis nodes={filteredNodes} locations={locations} />
+              <CareGapAnalysis nodes={filteredNodes} typeBreakdown={networkData?.typeBreakdown} />
             </TabsContent>
 
             <TabsContent value="insights" className="mt-4">
-              <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} locations={locations} />
+              <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} />
             </TabsContent>
 
             <TabsContent value="influencers" className="mt-4">

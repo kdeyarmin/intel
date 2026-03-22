@@ -10,16 +10,12 @@ const KEY_SPECIALTIES = [
   'Gastroenterology', 'Nephrology', 'Urology', 'Ophthalmology', 'Endocrinology',
 ];
 
-export default function CareGapAnalysis({ nodes = [], locations = [] }) {
+export default function CareGapAnalysis({ nodes = [], typeBreakdown }) {
   const gaps = useMemo(() => {
-    // Build state → specialties map
-    const npiState = {};
-    locations.forEach(l => { if (l.npi && l.state) npiState[l.npi] = l.state; });
-
     const stateSpecialties = {};
     const stateCounts = {};
     nodes.forEach(n => {
-      const st = n.state || npiState[n.npi];
+      const st = n.state;
       if (!st) return;
       if (!stateSpecialties[st]) stateSpecialties[st] = {};
       if (!stateCounts[st]) stateCounts[st] = 0;

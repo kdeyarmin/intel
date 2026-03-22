@@ -299,6 +299,55 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         return res.json(cmsResult);
       }
 
+      case "getReferralNetworkData": {
+        const { db } = await import("../db");
+        const { sql } = await import("drizzle-orm");
+
+        const enrichedResult = await db.execute(sql`
+          WITH top_refs AS (
+            SELECT referred_npi AS npi, referral_records
+            FROM mv_cms_top_referrals
+            ORDER BY referral_records DESC
+            LIMIT 500
+          )
+          SELECT t.npi, t.referral_records,
+            p.first_name, p.last_name, p.organization_name, p.entity_type,
+            pl.state, pl.city,
+            pt.taxonomy_description AS specialty
+          FROM top_refs t
+          LEFT JOIN providers p ON p.npi = t.npi
+          LEFT JOIN LATERAL (
+            SELECT pl2.state, pl2.city FROM provider_locations pl2 WHERE pl2.npi = t.npi LIMIT 1
+          ) pl ON true
+          LEFT JOIN LATERAL (
+            SELECT pt2.taxonomy_description FROM provider_taxonomies pt2 WHERE pt2.npi = t.npi AND pt2.is_primary = true LIMIT 1
+          ) pt ON true
+        `);
+
+        const enrichedRows = ((enrichedResult as any).rows || enrichedResult) || [];
+        const totalReferrals = enrichedRows.reduce((s: number, r: any) => s + Number(r.referral_records || 0), 0);
+
+        const nodes = enrichedRows.map((r: any) => ({
+          npi: r.npi,
+          label: r.entity_type === 'Individual'
+            ? `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.npi
+            : r.organization_name || r.npi,
+          entityType: r.entity_type || 'Unknown',
+          state: r.state || '',
+          city: r.city || '',
+          specialty: r.specialty || '',
+          referralCount: Number(r.referral_records || 0),
+        }));
+
+        return res.json({
+          nodes,
+          edges: [],
+          typeBreakdown: {
+            total: totalReferrals,
+          },
+        });
+      }
+
       case "getDataHealthMetrics": {
         const { db } = await import("../db");
         const { providers, dataQualityAlerts, dataQualityScans } = await import("../db/schema");

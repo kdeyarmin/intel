@@ -10,16 +10,13 @@ function getHeatColor(intensity) {
   return { bg: 'bg-slate-700/30', text: 'text-slate-400', border: 'border-slate-700/30' };
 }
 
-export default function GeographicHeatmap({ nodes = [], locations = [] }) {
+export default function GeographicHeatmap({ nodes = [] }) {
   const [metric, setMetric] = useState('providers');
 
   const stateData = useMemo(() => {
-    const npiState = {};
-    locations.forEach(l => { if (l.npi && l.state) npiState[l.npi] = l.state; });
-
     const states = {};
     nodes.forEach(n => {
-      const st = n.state || npiState[n.npi];
+      const st = n.state;
       if (!st) return;
       if (!states[st]) states[st] = { state: st, providers: 0, volume: 0, hubs: 0, specialties: new Set() };
       states[st].providers++;
@@ -39,7 +36,7 @@ export default function GeographicHeatmap({ nodes = [], locations = [] }) {
       ...s,
       intensity: (metric === 'providers' ? s.providers : metric === 'volume' ? s.volume : s.hubs) / maxVal,
     })).sort((a, b) => b.intensity - a.intensity);
-  }, [nodes, locations, metric]);
+  }, [nodes, metric]);
 
   if (stateData.length === 0) return null;
 
