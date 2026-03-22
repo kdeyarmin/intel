@@ -545,10 +545,10 @@ export async function handleAutoImportCMSData(params: any) {
   const isProviderDataAPI = file_url.includes("/datastore/query/");
 
   try {
-    let offset = resume_offset;
-    let totalFetched = resume_offset;
-    let totalInserted = total_inserted;
-    let totalSkipped = total_skipped;
+    let offset = Number(resume_offset) || 0;
+    let totalFetched = offset;
+    let totalInserted = Number(total_inserted) || 0;
+    let totalSkipped = Number(total_skipped) || 0;
     let hasMore = true;
     let consecutiveErrors = 0;
     const errors: any[] = [];
