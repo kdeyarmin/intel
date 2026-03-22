@@ -395,7 +395,7 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
       if (fieldsToSave.length === 0) { no_data++; continue; }
 
       const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
-      const autoApplyThreshold = 0.5;
+      const autoApplyThreshold = 0;
 
       await db.insert(enrichmentRecords).values({
         npi,
