@@ -5,6 +5,28 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const BATCH_DELAY_MS = 1500;
 
+const activeTaskIds = new Set<number>();
+
+export async function cleanupOrphanedEmailTasks() {
+  try {
+    const orphaned = await db.select().from(backgroundTasks)
+      .where(and(
+        eq(backgroundTasks.task_type, "email_search"),
+        eq(backgroundTasks.status, "processing")
+      ));
+    for (const task of orphaned) {
+      if (!activeTaskIds.has(task.id)) {
+        console.log(`[EmailBot] Cleaning up orphaned task ${task.id}`);
+        await db.update(backgroundTasks)
+          .set({ status: "failed", error: "Orphaned task - server restarted", completed_at: new Date(), updated_date: new Date() })
+          .where(eq(backgroundTasks.id, task.id));
+      }
+    }
+  } catch (err: any) {
+    console.error("[EmailBot] Orphan cleanup error:", err.message);
+  }
+}
+
 function getAnthropicClient() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
@@ -258,6 +280,7 @@ export async function handleEmailSearchBot(payload: any) {
 
   if (mode === "stop_background") {
     if (task_id) {
+      activeTaskIds.delete(task_id);
       await db
         .update(backgroundTasks)
         .set({
@@ -271,7 +294,7 @@ export async function handleEmailSearchBot(payload: any) {
   }
 
   if (mode === "start_background") {
-    const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000);
     const staleTasks = await db.select().from(backgroundTasks)
       .where(and(
         eq(backgroundTasks.task_type, "email_search"),
@@ -279,10 +302,24 @@ export async function handleEmailSearchBot(payload: any) {
         lt(backgroundTasks.updated_date, staleThreshold)
       ));
     for (const stale of staleTasks) {
+      activeTaskIds.delete(stale.id);
       console.log(`[EmailBot] Resetting stale task ${stale.id} (last updated ${stale.updated_date})`);
       await db.update(backgroundTasks)
-        .set({ status: "failed", error: "Task became stale (no updates for 5+ minutes)", completed_at: new Date(), updated_date: new Date() })
+        .set({ status: "failed", error: "Task became stale (no updates for 2+ minutes)", completed_at: new Date(), updated_date: new Date() })
         .where(eq(backgroundTasks.id, stale.id));
+    }
+    const orphanedInMemory = await db.select().from(backgroundTasks)
+      .where(and(
+        eq(backgroundTasks.task_type, "email_search"),
+        eq(backgroundTasks.status, "processing")
+      ));
+    for (const task of orphanedInMemory) {
+      if (!activeTaskIds.has(task.id)) {
+        console.log(`[EmailBot] Cleaning orphaned in-memory task ${task.id}`);
+        await db.update(backgroundTasks)
+          .set({ status: "failed", error: "Orphaned task - process no longer running", completed_at: new Date(), updated_date: new Date() })
+          .where(eq(backgroundTasks.id, task.id));
+      }
     }
 
     const bgSkipSearched = true;
@@ -304,8 +341,10 @@ export async function handleEmailSearchBot(payload: any) {
       })
       .returning();
 
+    activeTaskIds.add(task.id);
     runBackgroundSearch(task.id, batch_size, bgSkipSearched).catch((err) => {
       console.error("[EmailBot] Background search error:", err.message);
+      activeTaskIds.delete(task.id);
       db.update(backgroundTasks)
         .set({
           status: "failed",
@@ -499,5 +538,6 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       .where(eq(backgroundTasks.id, taskId));
   }
 
+  activeTaskIds.delete(taskId);
   console.log(`[EmailBot] Background search ${finalTask?.status === "cancelled" ? "cancelled" : "completed"}: ${totalProcessed} searched, ${totalFound} found`);
 }

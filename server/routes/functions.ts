@@ -43,6 +43,11 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
 
         const { or, inArray } = await import("drizzle-orm");
 
+        const safeQuery = async (queryFn: () => Promise<any>, fallback: any = null) => {
+          try { return await queryFn(); }
+          catch (e: any) { console.warn(`[getDashboardStats] Non-critical query failed: ${e.message?.substring(0, 100)}`); return fallback; }
+        };
+
         const [
           providerStatsResult,
           topStatesResult,
@@ -53,7 +58,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           locationStatsResult,
           utilYearResult,
         ] = await Promise.all([
-          db.execute(sql`
+          safeQuery(() => db.execute(sql`
             SELECT
               count(*) FILTER (WHERE email IS NOT NULL) AS with_email,
               count(*) FILTER (WHERE email IS NULL) AS without_email,
@@ -64,27 +69,27 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
               count(*) FILTER (WHERE (first_name IS NULL OR first_name = '') AND (organization_name IS NULL OR organization_name = '')) AS needs_enrichment,
               count(*) FILTER (WHERE status = 'Deactivated') AS deactivated
             FROM providers
-          `),
-          db.execute(sql`
+          `), [{}]),
+          safeQuery(() => db.execute(sql`
             SELECT state, count(*) AS count FROM provider_locations
             WHERE state IS NOT NULL
             GROUP BY state ORDER BY count DESC LIMIT 5
-          `),
-          db.execute(sql`
+          `), []),
+          safeQuery(() => db.execute(sql`
             SELECT
               count(*) FILTER (WHERE status IN ('processing','validating','pending')) AS active,
               count(*) FILTER (WHERE status = 'completed') AS completed,
               count(*) FILTER (WHERE status = 'failed') AS failed
             FROM import_batches
-          `),
-          db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new")),
-          db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1),
-          db.select().from(importBatches).where(eq(importBatches.status, "completed")).orderBy(desc(importBatches.created_date)).limit(1),
-          db.execute(sql`
+          `), [{}]),
+          safeQuery(() => db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new")), [{ count: 0 }]),
+          safeQuery(() => db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1), []),
+          safeQuery(() => db.select().from(importBatches).where(eq(importBatches.status, "completed")).orderBy(desc(importBatches.created_date)).limit(1), []),
+          safeQuery(() => db.execute(sql`
             SELECT count(*) AS count FROM provider_locations
             WHERE phone IS NULL OR phone = ''
-          `),
-          db.execute(sql`SELECT max(data_year) AS max_year FROM provider_service_utilization LIMIT 1`),
+          `), [{ count: 0 }]),
+          safeQuery(() => db.execute(sql`SELECT max(data_year) AS max_year FROM provider_service_utilization LIMIT 1`), [{}]),
         ]);
 
         const ps = ((providerStatsResult as any).rows || providerStatsResult)?.[0] || {};

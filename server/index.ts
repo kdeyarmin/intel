@@ -126,6 +126,13 @@ app.listen(PORT, "0.0.0.0", async () => {
     if (activeBatches.length === 0 && resumableFailedCrawlers.length === 0) {
       console.log(`[CareMetric API] No imports to recover`);
     }
+
+    try {
+      const { cleanupOrphanedEmailTasks } = await import("./functions/emailSearchBot");
+      await cleanupOrphanedEmailTasks();
+    } catch (e: any) {
+      console.error(`[CareMetric API] Email task cleanup error:`, e.message);
+    }
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);
   }
