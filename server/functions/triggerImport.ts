@@ -539,9 +539,9 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
 export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0 } = params;
-  const MAX_EXEC_MS = 50000;
+  const MAX_EXEC_MS = 110000;
   const execStartTime = Date.now();
-  const PAGE_SIZE = 500;
+  const PAGE_SIZE = 1000;
   const isProviderDataAPI = file_url.includes("/datastore/query/");
 
   try {
@@ -646,11 +646,11 @@ export async function handleAutoImportCMSData(params: any) {
     }
 
     if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
-      console.log(`[AutoImportCMS] Time limit reached, scheduling continuation at offset ${offset}`);
-      setTimeout(() => {
+      console.log(`[AutoImportCMS] Time limit reached at offset ${offset}, inserted=${totalInserted}, scheduling immediate continuation`);
+      setImmediate(() => {
         handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped })
           .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
-      }, 500);
+      });
       return;
     }
 
