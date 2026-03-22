@@ -104,8 +104,8 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
       {/* Completed/stopped summary */}
       {!isActive && (isComplete || isStopped) && (
         <div className={`rounded-lg p-3 text-sm ${isComplete
-          ? 'bg-emerald-900/200/10 text-emerald-400 border border-emerald-500/20'
-          : 'bg-amber-900/200/10 text-amber-400 border border-amber-500/20'
+          ? 'bg-emerald-900/10 text-emerald-400 border border-emerald-500/20'
+          : 'bg-amber-900/10 text-amber-400 border border-amber-500/20'
         }`}>
           {isComplete
             ? `✅ Complete — searched ${totalSearched.toLocaleString()} providers across ${batchNumber} batches, found ${totalFound.toLocaleString()} emails (${metrics.findRate.toFixed(0)}% find rate).`

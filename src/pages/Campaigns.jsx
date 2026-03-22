@@ -168,7 +168,7 @@ export default function Campaigns() {
       ) : filtered.length === 0 ? (
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-12 text-center">
-            <Megaphone className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+            <Megaphone className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-400 mb-1">No campaigns found</p>
             <p className="text-xs text-slate-500">Create your first campaign to start tracking outreach performance</p>
           </CardContent>

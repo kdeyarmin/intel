@@ -204,7 +204,7 @@ export default function CMSDataSources() {
       >
         <div className="flex items-center gap-3 text-sm text-slate-400">
           <span>{datasets.length} datasets available</span>
-          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">|</span>
           <span className="text-green-400">{Object.values(batchStatusMap).filter(b => b.status === 'completed').length} imported</span>
           <span className="text-cyan-400">{Object.values(batchStatusMap).filter(b => b.status === 'processing').length} active</span>
         </div>
@@ -354,8 +354,8 @@ export default function CMSDataSources() {
                             <p className="text-sm text-slate-500 line-clamp-2 mb-2">{ds.description}</p>
                             <div className="flex items-center gap-4 text-xs text-slate-500">
                               <span className="font-mono">{ds.records} records</span>
-                              <span className="text-slate-700">|</span>
-                              <span className="font-mono text-slate-600">{ds.id}</span>
+                              <span className="text-slate-300">|</span>
+                              <span className="font-mono text-slate-400">{ds.id}</span>
                             </div>
                           </div>
 
@@ -391,7 +391,7 @@ export default function CMSDataSources() {
                               onClick={() => !ds.unavailable && handleImport(ds)}
                               className={`min-w-[100px] ${
                                 ds.unavailable
-                                  ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800'
+                                  ? 'bg-slate-900 text-slate-400 cursor-not-allowed border border-slate-800'
                                   : isCompleted
                                   ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                                   : isProcessing
@@ -401,7 +401,7 @@ export default function CMSDataSources() {
                               title={ds.unavailable ? 'CMS API endpoint unavailable (404)' : ''}
                             >
                               {ds.unavailable ? (
-                                <span className="text-slate-600">Unavailable</span>
+                                <span className="text-slate-400">Unavailable</span>
                               ) : isImporting ? (
                                 <span className="flex items-center gap-2">
                                   <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />

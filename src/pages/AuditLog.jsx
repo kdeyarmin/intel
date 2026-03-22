@@ -25,9 +25,9 @@ export default function AuditLog() {
 
   const getEventColor = (type) => {
     switch (type) {
-      case 'import': return 'bg-blue-900/200/15 text-blue-400 border-blue-500/20';
-      case 'export': return 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20';
-      case 'scoring_run': return 'bg-purple-900/200/15 text-purple-400 border-purple-500/20';
+      case 'import': return 'bg-blue-900/15 text-blue-400 border-blue-500/20';
+      case 'export': return 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20';
+      case 'scoring_run': return 'bg-purple-900/15 text-purple-400 border-purple-500/20';
       default: return 'bg-slate-500/15 text-slate-400 border-slate-500/20';
     }
   };

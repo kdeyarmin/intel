@@ -30,12 +30,12 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
   };
 
   return (
-    <Card className="border-red-500/30 bg-red-900/200/5">
+    <Card className="border-red-500/30 bg-red-900/5">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2 text-red-400">
           <AlertTriangle className="w-5 h-5" />
           Critical Import Failures ({criticalBatches.length})
-          <Badge className="bg-red-900/200/20 text-red-300 text-[10px] ml-2">Last 48h</Badge>
+          <Badge className="bg-red-900/20 text-red-300 text-[10px] ml-2">Last 48h</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -70,7 +70,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                     {formatTimeAgo(batch.created_date)}
                   </span>
                   {batch.error_samples?.length > 0 && (
-                    <Badge className="bg-red-900/200/15 text-red-400 text-[9px]">
+                    <Badge className="bg-red-900/15 text-red-400 text-[9px]">
                       {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
                     </Badge>
                   )}

@@ -129,7 +129,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
         >
           <Layers className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-slate-200">Cross-Batch Error Resolution</span>
-          <Badge className="bg-red-900/200/15 text-red-400 text-[10px]">
+          <Badge className="bg-red-900/15 text-red-400 text-[10px]">
             {failedBatches.length} failed
           </Badge>
           <Badge className="bg-slate-700/50 text-slate-400 text-[10px]">
@@ -201,7 +201,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                     <div
                       key={batch.id}
                       className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected ? 'bg-cyan-900/200/5 border-cyan-500/30' : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
+                        isSelected ? 'bg-cyan-900/5 border-cyan-500/30' : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
                       }`}
                       onClick={() => toggleBatch(batch.id)}
                     >
@@ -218,7 +218,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                           <span className="text-[10px] text-slate-500 truncate">{batch.file_name}</span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <Badge className="bg-red-900/200/15 text-red-400 text-[8px]">
+                          <Badge className="bg-red-900/15 text-red-400 text-[8px]">
                             {(batch.error_samples || []).length} errors
                           </Badge>
                           {cats.slice(0, 3).map(cat => (

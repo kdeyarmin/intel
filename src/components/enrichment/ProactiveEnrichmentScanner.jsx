@@ -206,7 +206,7 @@ Only return data you can verify. Provide specific numbers and names.`,
 
         {results && (
           <div className="grid grid-cols-3 gap-2">
-            <div className="bg-emerald-900/200/10 rounded-lg p-2 text-center">
+            <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
               <p className="text-lg font-bold text-emerald-400">{results.enriched}</p>
               <p className="text-[9px] text-slate-500">Found Data</p>
@@ -216,7 +216,7 @@ Only return data you can verify. Provide specific numbers and names.`,
               <p className="text-lg font-bold text-slate-400">{results.no_data}</p>
               <p className="text-[9px] text-slate-500">No Data</p>
             </div>
-            <div className="bg-red-900/200/10 rounded-lg p-2 text-center">
+            <div className="bg-red-900/10 rounded-lg p-2 text-center">
               <XCircle className="w-4 h-4 text-red-400 mx-auto mb-1" />
               <p className="text-lg font-bold text-red-400">{results.errors}</p>
               <p className="text-[9px] text-slate-500">Errors</p>

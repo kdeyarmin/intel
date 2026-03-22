@@ -171,19 +171,19 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
           <div className="space-y-3">
             {results.summary && (
               <div className="bg-gradient-to-r from-violet-50 to-blue-50 rounded-lg p-3 border border-violet-100">
-                <p className="text-xs text-slate-700 leading-relaxed">{results.summary}</p>
+                <p className="text-xs text-slate-300 leading-relaxed">{results.summary}</p>
               </div>
             )}
 
             <div className="space-y-2">
               {results.top_referral_leads?.map((lead, i) => (
-                <div key={i} className="border rounded-lg p-3 hover:bg-slate-50/50 transition-colors">
+                <div key={i} className="border rounded-lg p-3 hover:bg-slate-800/50 transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">
                         {i + 1}
                       </div>
-                      <span className="text-sm font-semibold text-slate-800">{lead.name}</span>
+                      <span className="text-sm font-semibold text-slate-300">{lead.name}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Badge className="text-[10px] bg-violet-100 text-violet-700">{lead.potential_score}/100</Badge>
@@ -210,9 +210,9 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
                   <div key={i} className={`rounded-lg p-2.5 border ${prioColors[obs.priority]}`}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <AlertTriangle className="w-3 h-3 text-slate-500" />
-                      <span className="text-xs font-semibold text-slate-700">{obs.title}</span>
+                      <span className="text-xs font-semibold text-slate-300">{obs.title}</span>
                     </div>
-                    <p className="text-[10px] text-slate-600">{obs.insight}</p>
+                    <p className="text-[10px] text-slate-400">{obs.insight}</p>
                   </div>
                 ))}
               </div>

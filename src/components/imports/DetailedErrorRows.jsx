@@ -27,8 +27,8 @@ function getSeverity(error) {
 }
 
 const severityConfig = {
-  error: { color: 'bg-red-900/200/15 text-red-400 border-red-500/20', icon: 'text-red-400' },
-  warning: { color: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20', icon: 'text-amber-400' },
+  error: { color: 'bg-red-900/15 text-red-400 border-red-500/20', icon: 'text-red-400' },
+  warning: { color: 'bg-amber-900/15 text-amber-400 border-amber-500/20', icon: 'text-amber-400' },
   info: { color: 'bg-slate-500/15 text-slate-400 border-slate-500/20', icon: 'text-slate-400' },
 };
 
@@ -92,7 +92,7 @@ export default function DetailedErrorRows({ errors, maxVisible = 10 }) {
 
             {isRowExpanded && resolution && (
               <div className="px-3 pb-3 pt-1 border-t border-slate-700/30">
-                <div className="flex items-start gap-2 bg-emerald-900/200/5 border border-emerald-500/20 rounded-md p-2">
+                <div className="flex items-start gap-2 bg-emerald-900/5 border border-emerald-500/20 rounded-md p-2">
                   <Lightbulb className="w-3.5 h-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-[10px] font-semibold text-emerald-400 mb-0.5">Suggested Resolution</p>

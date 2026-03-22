@@ -55,11 +55,11 @@ export default function FollowUpRuleBuilder({ rules = [], onChange }) {
           const seg = SEGMENT_OPTIONS.find(s => s.value === rule.segment);
           const SegIcon = seg?.icon || Mail;
           return (
-            <div key={rule.id || idx} className="border rounded-lg p-3 bg-slate-50/50 space-y-2.5">
+            <div key={rule.id || idx} className="border rounded-lg p-3 bg-slate-800/50 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <SegIcon className={`w-3.5 h-3.5 ${seg?.color || ''}`} />
-                  <span className="text-xs font-medium text-slate-700">Rule {idx + 1}</span>
+                  <span className="text-xs font-medium text-slate-300">Rule {idx + 1}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={rule.enabled} onCheckedChange={(v) => updateRule(idx, 'enabled', v)} />

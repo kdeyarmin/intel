@@ -114,7 +114,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   {db.is_default && <Badge className="text-[9px] bg-amber-100 text-amber-400 px-1 py-0">Default</Badge>}
-                  <span className="text-sm font-medium text-slate-700 truncate">{db.name}</span>
+                  <span className="text-sm font-medium text-slate-300 truncate">{db.name}</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</p>
               </div>
@@ -159,7 +159,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
             {(activeDashboard.widgets || []).map((w) => (
               <div key={w.id} className="flex items-center gap-2 text-xs bg-slate-800/40 rounded px-2.5 py-1.5">
                 <GripVertical className="w-3 h-3 text-slate-300" />
-                <span className="flex-1 text-slate-600 capitalize">{w.type.replace('_', ' ')} Analysis</span>
+                <span className="flex-1 text-slate-400 capitalize">{w.type.replace('_', ' ')} Analysis</span>
                 <button onClick={() => removeWidget(w.id)} className="text-slate-400 hover:text-red-500">
                   <Trash2 className="w-3 h-3" />
                 </button>

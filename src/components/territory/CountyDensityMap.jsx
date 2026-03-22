@@ -6,7 +6,7 @@ import { MapPin } from 'lucide-react';
 export default function CountyDensityMap({ countyStats }) {
   const getDensityColor = (count) => {
     if (count >= 50) return 'bg-teal-600';
-    if (count >= 20) return 'bg-teal-900/200';
+    if (count >= 20) return 'bg-teal-900/20';
     if (count >= 10) return 'bg-teal-400';
     if (count >= 5) return 'bg-teal-300';
     return 'bg-teal-200';

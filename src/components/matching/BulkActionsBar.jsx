@@ -20,7 +20,7 @@ export default function BulkActionsBar({ selectedCount, onBulkAction, onClearSel
         <Button
           size="sm"
           variant="secondary"
-          className="bg-green-900/200 hover:bg-green-600 text-white border-0"
+          className="bg-green-900/20 hover:bg-green-600 text-white border-0"
           onClick={() => handleAction('approved')}
           disabled={!!loading}
         >
@@ -30,7 +30,7 @@ export default function BulkActionsBar({ selectedCount, onBulkAction, onClearSel
         <Button
           size="sm"
           variant="secondary"
-          className="bg-red-900/200 hover:bg-red-600 text-white border-0"
+          className="bg-red-900/20 hover:bg-red-600 text-white border-0"
           onClick={() => handleAction('rejected')}
           disabled={!!loading}
         >
@@ -40,7 +40,7 @@ export default function BulkActionsBar({ selectedCount, onBulkAction, onClearSel
         <Button
           size="sm"
           variant="secondary"
-          className="bg-yellow-900/200 hover:bg-yellow-600 text-white border-0"
+          className="bg-yellow-900/20 hover:bg-yellow-600 text-white border-0"
           onClick={() => handleAction('suggested')}
           disabled={!!loading}
         >

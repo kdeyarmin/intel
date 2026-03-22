@@ -104,7 +104,7 @@ Provide a thorough analysis including:
     underperforming: { color: 'bg-red-100 text-red-300 border-red-200', icon: TrendingDown, label: 'Underperforming' },
   };
 
-  const priorityColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+  const priorityColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <Card className="border-violet-500/40">
@@ -190,7 +190,7 @@ Provide a thorough analysis including:
             {analysis.open_rate_analysis && (
               <div className="bg-slate-800/40 rounded-lg p-2">
                 <p className="text-[10px] font-medium text-slate-500 mb-0.5">Open Rate Analysis</p>
-                <p className="text-[10px] text-slate-700 leading-relaxed">{analysis.open_rate_analysis}</p>
+                <p className="text-[10px] text-slate-300 leading-relaxed">{analysis.open_rate_analysis}</p>
               </div>
             )}
 
@@ -202,7 +202,7 @@ Provide a thorough analysis including:
                 </p>
                 {analysis.improved_subject_lines.map((sl, i) => (
                   <div key={i} className="bg-slate-800/60 border rounded-lg px-2.5 py-1.5 mb-1 hover:border-violet-300">
-                    <p className="text-[10px] text-slate-800">"{sl}"</p>
+                    <p className="text-[10px] text-slate-300">"{sl}"</p>
                   </div>
                 ))}
               </div>
@@ -217,7 +217,7 @@ Provide a thorough analysis including:
                 {analysis.send_time_recommendations.map((st, i) => (
                   <div key={i} className="flex items-start gap-2 mb-1">
                     <Badge className="bg-blue-100 text-blue-400 text-[8px] shrink-0 mt-0.5">{st.time_window}</Badge>
-                    <p className="text-[9px] text-slate-600">{st.reasoning}</p>
+                    <p className="text-[9px] text-slate-400">{st.reasoning}</p>
                   </div>
                 ))}
               </div>
@@ -230,7 +230,7 @@ Provide a thorough analysis including:
                   <Target className="w-3 h-3 inline mr-1" />Targeting Refinements
                 </p>
                 {analysis.targeting_refinements.map((t, i) => (
-                  <p key={i} className="text-[9px] text-slate-600 mb-0.5">• {t}</p>
+                  <p key={i} className="text-[9px] text-slate-400 mb-0.5">• {t}</p>
                 ))}
               </div>
             )}

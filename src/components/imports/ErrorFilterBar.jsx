@@ -4,9 +4,9 @@ import { X, Filter } from 'lucide-react';
 import { ERROR_CATEGORIES } from './errorCategories';
 
 const SEVERITY_OPTIONS = [
-  { key: 'reject', label: 'Rejected', color: 'bg-red-900/200/15 text-red-400 border-red-500/20' },
-  { key: 'warn', label: 'Warned', color: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20' },
-  { key: 'flag', label: 'Flagged', color: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20' },
+  { key: 'reject', label: 'Rejected', color: 'bg-red-900/15 text-red-400 border-red-500/20' },
+  { key: 'warn', label: 'Warned', color: 'bg-amber-900/15 text-amber-400 border-amber-500/20' },
+  { key: 'flag', label: 'Flagged', color: 'bg-blue-900/15 text-blue-400 border-blue-500/20' },
 ];
 
 export default function ErrorFilterBar({ filters, onFilterChange, errorCategories = [] }) {

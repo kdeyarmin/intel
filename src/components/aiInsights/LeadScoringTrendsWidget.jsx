@@ -60,8 +60,8 @@ export default function LeadScoringTrendsWidget({ scores = [], providers = [] })
           <div className="space-y-4">
             {/* KPI chips */}
             <div className="grid grid-cols-5 gap-2">
-              <div className="bg-slate-50 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-slate-700">{avgScore}</p>
+              <div className="bg-slate-800/60 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-slate-300">{avgScore}</p>
                 <p className="text-[9px] text-slate-400">Avg Score</p>
               </div>
               {Object.entries(tiers).map(([tier, count]) => (
@@ -114,12 +114,12 @@ export default function LeadScoringTrendsWidget({ scores = [], providers = [] })
                     : s.npi;
                   const tier = s.score >= 80 ? 'hot' : s.score >= 60 ? 'warm' : s.score >= 40 ? 'medium' : 'low';
                   return (
-                    <div key={s.id || i} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+                    <div key={s.id || i} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-800/60 transition-colors">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: TIER_COLORS[tier] }}>
                           {i + 1}
                         </div>
-                        <span className="text-xs font-medium text-slate-700 truncate">{name}</span>
+                        <span className="text-xs font-medium text-slate-300 truncate">{name}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge className="text-[10px]" style={{ backgroundColor: `${TIER_COLORS[tier]}20`, color: TIER_COLORS[tier] }}>

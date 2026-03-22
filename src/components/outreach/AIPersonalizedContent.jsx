@@ -108,7 +108,7 @@ Keep the email body under 150 words. Be warm but professional.`,
                   <Check className="w-3 h-3 mr-0.5" /> Use
                 </Button>
               </div>
-              <p className="text-[11px] text-slate-700 font-medium">{result.primary_subject}</p>
+              <p className="text-[11px] text-slate-300 font-medium">{result.primary_subject}</p>
             </div>
 
             {/* Alt subjects */}
@@ -116,7 +116,7 @@ Keep the email body under 150 words. Be warm but professional.`,
               <div key={i} className="bg-slate-800/40 rounded-lg border p-2 flex items-center justify-between">
                 <div>
                   <Badge variant="outline" className="text-[8px] text-slate-500">Variant {i + 1}</Badge>
-                  <p className="text-[10px] text-slate-600 mt-0.5">{s}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{s}</p>
                 </div>
                 <Button size="sm" variant="ghost" className="h-5 text-[9px] text-slate-500"
                   onClick={() => { onApplySubject(s); toast.success('Subject applied'); }}>Use</Button>
@@ -132,7 +132,7 @@ Keep the email body under 150 words. Be warm but professional.`,
                   <Check className="w-3 h-3 mr-0.5" /> Use
                 </Button>
               </div>
-              <p className="text-[10px] text-slate-600 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">{result.body}</p>
+              <p className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">{result.body}</p>
             </div>
 
             {/* Personalization notes */}
@@ -146,7 +146,7 @@ Keep the email body under 150 words. Be warm but professional.`,
             {result.key_hooks?.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {result.key_hooks.map((h, i) => (
-                  <Badge key={i} className="bg-slate-100 text-slate-600 text-[8px]">{h}</Badge>
+                  <Badge key={i} className="bg-slate-700 text-slate-400 text-[8px]">{h}</Badge>
                 ))}
               </div>
             )}

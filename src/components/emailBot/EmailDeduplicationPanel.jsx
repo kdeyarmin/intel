@@ -28,11 +28,11 @@ export default function EmailDeduplicationPanel({ emailGroups, _providerId, onGe
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge className="bg-emerald-900/200/20 text-emerald-300 border-emerald-500/30">
+                      <Badge className="bg-emerald-900/20 text-emerald-300 border-emerald-500/30">
                         Primary
                       </Badge>
                       {primary.quality_score && primary.quality_score >= 75 && (
-                        <Badge className="bg-blue-900/200/20 text-blue-300 border-blue-500/30 text-xs">
+                        <Badge className="bg-blue-900/20 text-blue-300 border-blue-500/30 text-xs">
                           High Quality
                         </Badge>
                       )}

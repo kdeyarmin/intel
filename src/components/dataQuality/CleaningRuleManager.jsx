@@ -176,7 +176,7 @@ export default function CleaningRuleManager() {
                   <div className="flex gap-1 mt-2 flex-wrap">
                     <Badge variant="outline" className="h-5 text-xs">{rule.rule_type}</Badge>
                     <Badge variant="outline" className="h-5 text-xs">{rule.target_field}</Badge>
-                    {rule.enabled && <Badge className="h-5 text-xs bg-green-900/200/20 text-green-300">Active</Badge>}
+                    {rule.enabled && <Badge className="h-5 text-xs bg-green-900/20 text-green-300">Active</Badge>}
                   </div>
                 </div>
                 <div className="flex gap-1 ml-4 flex-shrink-0">

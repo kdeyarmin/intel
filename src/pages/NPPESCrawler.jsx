@@ -146,7 +146,7 @@ export default function NPPESCrawler() {
                 <Badge className={
                   isRunning ? "bg-green-100 text-green-400 hover:bg-green-100" : 
                   isPaused ? "bg-amber-100 text-amber-400 hover:bg-amber-100" : 
-                  "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                  "bg-slate-700 text-slate-300 hover:bg-slate-700"
                 }>
                   {isRunning ? 'Running' : isPaused ? 'Paused' : 'Idle'}
                 </Badge>
@@ -262,9 +262,9 @@ export default function NPPESCrawler() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <Badge className="bg-emerald-900/200/20 text-emerald-400">{completedCount} completed</Badge>
-                  {processingCount > 0 && <Badge className="bg-blue-900/200/20 text-blue-400">{processingCount} processing</Badge>}
-                  {failedCount > 0 && <Badge className="bg-red-900/200/20 text-red-400">{failedCount} failed</Badge>}
+                  <Badge className="bg-emerald-900/20 text-emerald-400">{completedCount} completed</Badge>
+                  {processingCount > 0 && <Badge className="bg-blue-900/20 text-blue-400">{processingCount} processing</Badge>}
+                  {failedCount > 0 && <Badge className="bg-red-900/20 text-red-400">{failedCount} failed</Badge>}
                   {pendingCount > 0 && <Badge className="bg-slate-700 text-slate-300">{pendingCount} pending</Badge>}
                 </div>
               </CardTitle>
@@ -342,7 +342,7 @@ export default function NPPESCrawler() {
                   <p className="text-xl font-bold text-white">{(status?.totals?.api_calls ?? 0).toLocaleString()}</p>
                 </div>
               </div>
-              <div className="p-3 bg-indigo-900/200/10 rounded-lg border border-indigo-500/20 mt-2">
+              <div className="p-3 bg-indigo-900/10 rounded-lg border border-indigo-500/20 mt-2">
                  <p className="text-sm font-medium text-indigo-400">Total Processed</p>
                  <p className="text-2xl font-bold text-indigo-300">{(status?.totals?.processed ?? 0).toLocaleString()}</p>
               </div>
@@ -359,7 +359,7 @@ export default function NPPESCrawler() {
                   <p className="text-sm font-medium text-slate-400 mb-1">States Processing</p>
                   <p className="text-2xl font-bold text-white">{processingCount}</p>
                 </div>
-                <Bot className={`w-8 h-8 ${isRunning ? 'text-indigo-400 animate-pulse' : 'text-slate-600'}`} />
+                <Bot className={`w-8 h-8 ${isRunning ? 'text-indigo-400 animate-pulse' : 'text-slate-400'}`} />
               </div>
               
               <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50 flex items-center justify-between">
@@ -373,7 +373,7 @@ export default function NPPESCrawler() {
               </div>
 
               {failedCount > 0 && (
-                <div className="p-4 bg-red-900/200/10 rounded-lg border border-red-500/20 flex items-start gap-3">
+                <div className="p-4 bg-red-900/10 rounded-lg border border-red-500/20 flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-300">Errors Detected</p>

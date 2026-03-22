@@ -146,7 +146,7 @@ function ViewListDialog({ listId, listName }) {
         base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
         base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
         base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
-        base44.entities.CMSUtilization.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.ProviderServiceUtilization.filter({ npi: { $in: npis } }, undefined, 1000).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
         base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
         base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
       ]);

@@ -167,7 +167,7 @@ export default function ExportImportData({ open, onOpenChange }) {
                 onClick={() => { setExportTarget('history'); setStatusFilter('all'); setTypeFilter('all'); }}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   exportTarget === 'history'
-                    ? 'bg-cyan-900/200/10 border-cyan-500/30 text-cyan-400'
+                    ? 'bg-cyan-900/10 border-cyan-500/30 text-cyan-400'
                     : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -178,7 +178,7 @@ export default function ExportImportData({ open, onOpenChange }) {
                 onClick={() => { setExportTarget('rules'); setStatusFilter('all'); setTypeFilter('all'); }}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   exportTarget === 'rules'
-                    ? 'bg-cyan-900/200/10 border-cyan-500/30 text-cyan-400'
+                    ? 'bg-cyan-900/10 border-cyan-500/30 text-cyan-400'
                     : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -196,7 +196,7 @@ export default function ExportImportData({ open, onOpenChange }) {
                 onClick={() => setFormat('csv')}
                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   format === 'csv'
-                    ? 'bg-emerald-900/200/10 border-emerald-500/30 text-emerald-400'
+                    ? 'bg-emerald-900/10 border-emerald-500/30 text-emerald-400'
                     : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -206,7 +206,7 @@ export default function ExportImportData({ open, onOpenChange }) {
                 onClick={() => setFormat('json')}
                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   format === 'json'
-                    ? 'bg-emerald-900/200/10 border-emerald-500/30 text-emerald-400'
+                    ? 'bg-emerald-900/10 border-emerald-500/30 text-emerald-400'
                     : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:text-slate-200'
                 }`}
               >

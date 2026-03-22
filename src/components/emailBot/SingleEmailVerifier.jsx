@@ -6,9 +6,9 @@ import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw } from 'lucide-re
 import { toast } from 'sonner';
 
 const statusConfig = {
-  valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/200/10', label: 'Valid' },
-  risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/200/10', label: 'Risky' },
-  invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/200/10', label: 'Invalid' },
+  valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/10', label: 'Valid' },
+  risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/10', label: 'Risky' },
+  invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/10', label: 'Invalid' },
 };
 
 export default function SingleEmailVerifier({ provider, onVerified }) {
@@ -81,7 +81,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
       {displayResult?.riskFlags?.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {displayResult.riskFlags.slice(0, 5).map((flag, i) => (
-            <Badge key={i} className="bg-red-900/200/10 text-red-400 border border-red-500/20 text-[9px]">{flag}</Badge>
+            <Badge key={i} className="bg-red-900/10 text-red-400 border border-red-500/20 text-[9px]">{flag}</Badge>
           ))}
         </div>
       )}

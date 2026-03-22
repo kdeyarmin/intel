@@ -17,7 +17,7 @@ export default function ProviderMapPopup({ item }) {
     if (s >= 80) return 'bg-green-100 text-green-300';
     if (s >= 60) return 'bg-teal-100 text-teal-800';
     if (s >= 40) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-slate-100 text-slate-700';
+    return 'bg-slate-700 text-slate-300';
   };
 
   return (
@@ -27,7 +27,7 @@ export default function ProviderMapPopup({ item }) {
         <Badge className={`shrink-0 text-[10px] ${getScoreColor(score)}`}>{score}</Badge>
       </div>
 
-      <div className="space-y-1 text-xs text-slate-600">
+      <div className="space-y-1 text-xs text-slate-400">
         {taxonomy?.taxonomy_description && (
           <div className="flex items-center gap-1">
             <Activity className="w-3 h-3 shrink-0" />

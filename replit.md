@@ -103,6 +103,14 @@ The frontend API client (`src/api/client.js`) mirrors the Base44 SDK interface:
 ## Entity Table Map (49 entities)
 Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, ProviderLocationMatch, ImportBatch, ImportValidationRule, DataQualityScan, DataQualityAlert, DataCleaningRule, OutreachCampaign, OutreachMessage, CampaignTemplate, LeadList, LeadListMember, CMSUtilization, CMSReferral, MedicareFacility, MedicareMAInpatient, CMSHHAStats, CMSSNFStats, MedicareHHAStats, MedicareSNFStats, EnrichmentRecord, AuditEvent, AnalyticsDashboard, ScoringRule, CampaignTask, NPPESQueueItem, NPPESCrawlerConfig, CMSApiConnector, ErrorReport, ReferralPathwayAnalysis, PreferredAgency, ProviderReconciliation, ProviderServiceUtilization, MetricsSnapshot, Campaign, CampaignSequenceStep, SavedFilter, ScheduledReport, ScheduledExport, CustomReport, BackgroundTask, ReconciliationSettings, ReconciliationJob, ImportScheduleConfig, ProviderNPIValidation, ProviderMedicareCompare, ProviderDEASchedules, InpatientDRG, ColumnMappingRule, ApiInteractionLog
 
+## Entity Data Migration Notes
+- **CMSUtilization table is EMPTY** (0 rows) — all frontend queries use `ProviderServiceUtilization` (10.5M rows) with field mapping: `data_year→year`, `total_medicare_payment_amt→total_medicare_payment`, `total_unique_benes→total_medicare_beneficiaries`
+- **CMSReferral.total_referrals is always NULL** — each row IS a referral; count rows per NPI for volume; parse raw_data flags (HHA/HOSPICE/DME) for type breakdown
+- **MedicareMAInpatient, InpatientDRG, MedicareHHAStats, MedicareSNFStats** tables are EMPTY — use `MedicareFacility` entity instead (14M rows with facility_type field)
+- **Empty tables (0 rows)**: lead_lists, lead_scores, campaigns, outreach_campaigns, scoring_rules, data_quality_scans, cms_utilization, inpatient_drg, medicare_hha_stats, medicare_snf_stats, custom_reports, provider_location_matches
+- **Database indexes**: idx_psu_data_year (DESC), psu_npi_idx, idx_medfac_created, idx_medicare_facilities_type — critical for sorting queries on large tables
+- **Dark theme**: Always use text-slate-300/400, bg-slate-800/900; NEVER use text-slate-600/700/800, bg-white, bg-slate-50
+
 ## Migration Status
 - Fully migrated from Base44 SDK to self-hosted PostgreSQL + Express.js + Drizzle ORM
 - Frontend API client is a drop-in replacement for Base44 SDK

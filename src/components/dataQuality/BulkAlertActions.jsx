@@ -47,7 +47,7 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
   if (selectedIds.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-100 border rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-slate-700 border rounded-lg">
       <Badge variant="outline" className="text-xs">{selectedIds.length} selected</Badge>
       <div className="flex gap-2 ml-auto">
         {withSuggestions.length > 0 && (

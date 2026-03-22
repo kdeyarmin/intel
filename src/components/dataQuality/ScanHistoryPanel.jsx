@@ -32,16 +32,16 @@ export default function ScanHistoryPanel({ scans = [] }) {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium text-slate-700">
+                  <span className="text-xs font-medium text-slate-300">
                     {scan.completed_at ? formatDateTimeET(scan.completed_at) : 'Running...'}
                   </span>
                   <Badge variant="secondary" className="text-[10px]">{scan.status}</Badge>
                 </div>
                 {scan.scores && (
                   <div className="flex gap-3 text-[10px] text-slate-500">
-                    <span>Overall: <strong className="text-slate-700">{scan.scores.overall}%</strong></span>
-                    <span>Alerts: <strong className="text-slate-700">{scan.alerts_generated || 0}</strong></span>
-                    <span>Records: <strong className="text-slate-700">{(scan.total_records_scanned || 0).toLocaleString()}</strong></span>
+                    <span>Overall: <strong className="text-slate-300">{scan.scores.overall}%</strong></span>
+                    <span>Alerts: <strong className="text-slate-300">{scan.alerts_generated || 0}</strong></span>
+                    <span>Records: <strong className="text-slate-300">{(scan.total_records_scanned || 0).toLocaleString()}</strong></span>
                   </div>
                 )}
                 {scan.summary && (

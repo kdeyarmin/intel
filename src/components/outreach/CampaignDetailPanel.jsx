@@ -11,7 +11,7 @@ import { X, Send, Eye, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const statusColors = {
-  pending: 'bg-slate-100 text-slate-600',
+  pending: 'bg-slate-700 text-slate-400',
   sent: 'bg-blue-100 text-blue-400',
   opened: 'bg-emerald-100 text-emerald-400',
   responded: 'bg-violet-100 text-violet-700',
@@ -84,7 +84,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
       {/* Summary metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Total', value: messages.length, icon: Send, color: 'text-slate-600 bg-slate-50' },
+          { label: 'Total', value: messages.length, icon: Send, color: 'text-slate-400 bg-slate-50' },
           { label: 'Sent', value: statusCounts.sent || 0, icon: Send, color: 'text-blue-600 bg-blue-900/20' },
           { label: 'Opened', value: statusCounts.opened || 0, icon: Eye, color: 'text-emerald-600 bg-emerald-900/20' },
           { label: 'Responded', value: statusCounts.responded || 0, icon: MessageSquare, color: 'text-violet-600 bg-violet-900/20' },

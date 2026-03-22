@@ -21,9 +21,9 @@ const RULE_TYPES = [
 ];
 
 const SEVERITY_OPTIONS = [
-  { id: 'reject', label: 'Reject', icon: ShieldAlert, color: 'text-red-400 bg-red-900/200/15', desc: 'Row excluded from import' },
-  { id: 'warn', label: 'Warn', icon: AlertTriangle, color: 'text-amber-400 bg-amber-900/200/15', desc: 'Imported with warning' },
-  { id: 'flag', label: 'Flag', icon: Flag, color: 'text-blue-400 bg-blue-900/200/15', desc: 'Imported and flagged for review' },
+  { id: 'reject', label: 'Reject', icon: ShieldAlert, color: 'text-red-400 bg-red-900/15', desc: 'Row excluded from import' },
+  { id: 'warn', label: 'Warn', icon: AlertTriangle, color: 'text-amber-400 bg-amber-900/15', desc: 'Imported with warning' },
+  { id: 'flag', label: 'Flag', icon: Flag, color: 'text-blue-400 bg-blue-900/15', desc: 'Imported and flagged for review' },
 ];
 
 const OPERATORS = [
@@ -163,7 +163,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                 <option key={r.id} value={r.id}>{r.label}</option>
               ))}
             </select>
-            {ruleType && <p className="text-[10px] text-slate-600">{ruleType.desc}</p>}
+            {ruleType && <p className="text-[10px] text-slate-400">{ruleType.desc}</p>}
           </div>
 
           {/* Config by type */}
@@ -183,7 +183,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                   placeholder="e.g. ^\d{10}$ for 10-digit NPI"
                   className="h-8 text-xs font-mono bg-slate-800/50 border-slate-700 text-slate-300"
                 />
-                <p className="text-[10px] text-slate-600">JavaScript regex — do not include delimiters</p>
+                <p className="text-[10px] text-slate-400">JavaScript regex — do not include delimiters</p>
               </div>
             )}
 
@@ -289,7 +289,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                       <option key={op.id} value={op.id}>{op.label} ({op.id})</option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-slate-600">
+                  <p className="text-[10px] text-slate-400">
                     "{form.column || 'column'}" {OPERATORS.find(o => o.id === (form.config.operator || 'gt'))?.label} "{form.config.other_column || 'other_column'}"
                   </p>
                 </div>
@@ -309,7 +309,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                   placeholder='e.g. row.total_services > 0 || row.status === "Inactive"'
                   className="h-8 text-xs font-mono bg-slate-800/50 border-slate-700 text-slate-300"
                 />
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-slate-400">
                   Use <code className="text-cyan-400">row.column_name</code> to reference fields. Must evaluate to true/false.
                 </p>
               </div>

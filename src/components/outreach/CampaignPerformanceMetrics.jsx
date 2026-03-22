@@ -108,31 +108,31 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-slate-600">Total Recipients</p>
+            <p className="text-xs text-slate-400">Total Recipients</p>
             <p className="text-2xl font-bold mt-1">{metrics.total_recipients}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-slate-600">Sent</p>
+            <p className="text-xs text-slate-400">Sent</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">{metrics.sent_count}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-slate-600">Open Rate</p>
+            <p className="text-xs text-slate-400">Open Rate</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{metrics.open_rate}%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-slate-600">Response Rate</p>
+            <p className="text-xs text-slate-400">Response Rate</p>
             <p className="text-2xl font-bold text-purple-600 mt-1">{metrics.response_rate}%</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs text-slate-600">Converted</p>
+            <p className="text-xs text-slate-400">Converted</p>
             <p className="text-2xl font-bold text-emerald-600 mt-1">{metrics.conversion_count}</p>
           </CardContent>
         </Card>
@@ -196,7 +196,7 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
           <div className="space-y-3">
             {statusData.map((status) => (
               status.value > 0 && (
-                <div key={status.name} className="flex items-center justify-between p-3 bg-slate-50 rounded">
+                <div key={status.name} className="flex items-center justify-between p-3 bg-slate-800/60 rounded">
                   <div className="flex items-center gap-3">
                     <div
                       className="w-3 h-3 rounded-full"
@@ -206,7 +206,7 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg">{status.value}</p>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-slate-400">
                       {((status.value / metrics.total_recipients) * 100).toFixed(1)}% of total
                     </p>
                   </div>

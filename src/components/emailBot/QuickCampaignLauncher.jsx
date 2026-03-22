@@ -131,7 +131,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
                 {eligibleProviders.length} eligible recipients
               </span>
               {selectedProviders.length !== eligibleProviders.length && (
-                <Badge className="bg-amber-900/200/15 text-amber-400 text-[9px] border border-amber-500/20">
+                <Badge className="bg-amber-900/15 text-amber-400 text-[9px] border border-amber-500/20">
                   {selectedProviders.length - eligibleProviders.length} excluded
                 </Badge>
               )}
@@ -142,7 +142,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
             {/* AI Tips */}
             {aiTips.length > 0 && (
-              <div className="p-2.5 bg-violet-900/200/5 border border-violet-500/15 rounded-lg">
+              <div className="p-2.5 bg-violet-900/5 border border-violet-500/15 rounded-lg">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Info className="w-3 h-3 text-violet-400" />
                   <span className="text-[10px] font-medium text-violet-300">AI Tips</span>
@@ -238,7 +238,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
         {step === 'done' && (
           <div className="text-center space-y-4 py-4">
-            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-900/200/15 flex items-center justify-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-900/15 flex items-center justify-center">
               <Mail className="w-6 h-6 text-emerald-400" />
             </div>
             <div>

@@ -145,7 +145,7 @@ Each follow-up should:
                       <ArrowRight className="w-3 h-3" /> Apply
                     </Button>
                   </div>
-                  <p className="text-[10px] font-medium text-slate-700 mb-0.5">Subject: {fu.subject}</p>
+                  <p className="text-[10px] font-medium text-slate-300 mb-0.5">Subject: {fu.subject}</p>
                   <p className="text-[10px] text-slate-500 whitespace-pre-wrap leading-relaxed max-h-20 overflow-y-auto">{fu.body}</p>
                   <div className="flex items-center gap-2 mt-2">
                     {fu.tone && <Badge variant="outline" className="text-[8px]">Tone: {fu.tone}</Badge>}

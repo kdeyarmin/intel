@@ -73,9 +73,9 @@ export default function TextMatchFilter({ columns, activeTextFilters, onFiltersC
       {activeTextFilters.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {activeTextFilters.map(f => (
-            <Badge key={f.id} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-violet-900/200/10 text-violet-400 border border-violet-500/20">
+            <Badge key={f.id} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-violet-900/10 text-violet-400 border border-violet-500/20">
               {getColumnLabel(f.column)} {getModeLabel(f.mode)} "{f.term}"
-              <button onClick={() => removeFilter(f.id)} className="hover:bg-violet-900/200/20 rounded-full p-0.5">
+              <button onClick={() => removeFilter(f.id)} className="hover:bg-violet-900/20 rounded-full p-0.5">
                 <X className="w-3 h-3" />
               </button>
             </Badge>

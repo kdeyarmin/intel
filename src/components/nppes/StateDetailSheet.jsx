@@ -37,11 +37,11 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'completed': return 'text-green-400 bg-green-900/200/10 border-green-500/20';
-      case 'failed': return 'text-red-400 bg-red-900/200/10 border-red-500/20';
-      case 'processing': case 'validating': return 'text-amber-400 bg-amber-900/200/10 border-amber-500/20';
-      case 'paused': return 'text-blue-400 bg-blue-900/200/10 border-blue-500/20';
-      case 'cancelled': return 'text-orange-400 bg-orange-900/200/10 border-orange-500/20';
+      case 'completed': return 'text-green-400 bg-green-900/10 border-green-500/20';
+      case 'failed': return 'text-red-400 bg-red-900/10 border-red-500/20';
+      case 'processing': case 'validating': return 'text-amber-400 bg-amber-900/10 border-amber-500/20';
+      case 'paused': return 'text-blue-400 bg-blue-900/10 border-blue-500/20';
+      case 'cancelled': return 'text-orange-400 bg-orange-900/10 border-orange-500/20';
       default: return 'text-slate-400 bg-slate-800/40 border-slate-700/50';
     }
   };

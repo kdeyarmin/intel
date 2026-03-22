@@ -1,11 +1,11 @@
 import React from 'react';
 
 const BAR_COLORS = {
-  specialization: 'bg-purple-900/200',
-  proximity: 'bg-blue-900/200',
-  referral: 'bg-teal-900/200',
-  nameMatch: 'bg-emerald-900/200',
-  addressMatch: 'bg-amber-900/200',
+  specialization: 'bg-purple-900/20',
+  proximity: 'bg-blue-900/20',
+  referral: 'bg-teal-900/20',
+  nameMatch: 'bg-emerald-900/20',
+  addressMatch: 'bg-amber-900/20',
 };
 
 export default function MatchScoreBars({ specialization, proximity, referral, nameMatch, addressMatch }) {

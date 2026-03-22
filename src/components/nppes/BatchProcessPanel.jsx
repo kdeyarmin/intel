@@ -129,7 +129,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
         {/* Selection mode */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-slate-600">Selection Mode</Label>
+            <Label className="text-xs font-medium text-slate-400">Selection Mode</Label>
             <Select value={selectionMode} onValueChange={setSelectionMode} disabled={batchRunning}>
               <SelectTrigger>
                 <SelectValue />
@@ -144,7 +144,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
 
           {selectionMode === 'region' && (
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-slate-600">Region</Label>
+              <Label className="text-xs font-medium text-slate-400">Region</Label>
               <Select value={selectedRegion} onValueChange={setSelectedRegion} disabled={batchRunning}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose region" />
@@ -159,7 +159,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
           )}
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-slate-600">Concurrency (1–5)</Label>
+            <Label className="text-xs font-medium text-slate-400">Concurrency (1–5)</Label>
             <Select value={concurrency} onValueChange={setConcurrency} disabled={batchRunning}>
               <SelectTrigger>
                 <SelectValue />
@@ -177,7 +177,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
         {selectionMode === 'custom' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-slate-600">
+              <Label className="text-xs font-medium text-slate-400">
                 Select States ({selectedStates.length} selected)
               </Label>
               <div className="flex gap-2">
@@ -198,7 +198,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                   className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                     selectedStates.includes(st)
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-800/60 text-slate-600 border border-slate-700/50 hover:border-indigo-300'
+                      : 'bg-slate-800/60 text-slate-400 border border-slate-700/50 hover:border-indigo-300'
                   }`}
                 >
                   {st}
@@ -218,7 +218,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
               disabled={batchRunning}
               className="rounded"
             />
-            <span className="text-slate-600">Skip already completed states</span>
+            <span className="text-slate-400">Skip already completed states</span>
           </label>
         </div>
 
@@ -274,7 +274,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
               ) : (
                 <AlertCircle className="w-5 h-5 text-amber-500" />
               )}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-slate-300">
                 Batch {batchResults.stopped ? 'Stopped' : 'Complete'}
               </span>
             </div>
@@ -303,7 +303,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 {batchResults.results.map((r, idx) => (
                   <div key={idx} className="flex items-center justify-between text-xs px-2 py-1.5 bg-slate-800/60 rounded border">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-700 w-6">{r.state}</span>
+                      <span className="font-semibold text-slate-300 w-6">{r.state}</span>
                       {r.success ? (
                         <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-200 text-[10px]">Success</Badge>
                       ) : (

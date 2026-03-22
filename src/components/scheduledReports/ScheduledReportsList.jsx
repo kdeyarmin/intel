@@ -65,8 +65,8 @@ export default function ScheduledReportsList({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-semibold text-slate-800 truncate">{report.name}</h3>
-                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-100 text-slate-600'}`}>
+                  <h3 className="text-sm font-semibold text-slate-300 truncate">{report.name}</h3>
+                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-700 text-slate-400'}`}>
                     {report.frequency}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">

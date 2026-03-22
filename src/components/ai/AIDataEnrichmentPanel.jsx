@@ -22,7 +22,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
     <div className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 hover:border-slate-700/50 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-slate-700">{suggestion.field_label}</span>
+          <span className="text-xs font-semibold text-slate-300">{suggestion.field_label}</span>
           <Badge className={`text-[9px] ${confColor[suggestion.confidence] || confColor.low}`}>
             {suggestion.confidence}
           </Badge>
@@ -33,7 +33,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
         {suggestion.current_value && (
           <p className="text-[10px] text-slate-400 line-through">{suggestion.current_value}</p>
         )}
-        <p className="text-sm text-slate-800 font-medium">{suggestion.suggested_value}</p>
+        <p className="text-sm text-slate-300 font-medium">{suggestion.suggested_value}</p>
         {suggestion.reason && (
           <p className="text-[10px] text-slate-400 mt-0.5">{suggestion.reason}</p>
         )}
@@ -274,11 +274,11 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         {/* Data gaps summary */}
         <button
           onClick={() => setShowGaps(!showGaps)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/60 rounded-lg hover:bg-slate-700 transition-colors"
         >
           <div className="flex items-center gap-2">
             {showGaps ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-            <span className="text-xs font-medium text-slate-600">Data Gaps</span>
+            <span className="text-xs font-medium text-slate-400">Data Gaps</span>
           </div>
           <GapBadge count={gaps.length} />
         </button>
@@ -316,13 +316,13 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             {/* Completeness score */}
             {suggestions.completeness != null && (
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-500 transition-all"
                     style={{ width: `${suggestions.completeness}%` }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-slate-700">{suggestions.completeness}%</span>
+                <span className="text-xs font-semibold text-slate-300">{suggestions.completeness}%</span>
               </div>
             )}
 

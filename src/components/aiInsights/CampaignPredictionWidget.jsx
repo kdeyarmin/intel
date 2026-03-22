@@ -104,7 +104,7 @@ Provide:
                   <Badge variant="outline" className="text-[10px]">Next open: ~{results.predicted_next_open_rate}%</Badge>
                   <Badge variant="outline" className="text-[10px]">Next response: ~{results.predicted_next_response_rate}%</Badge>
                 </div>
-                <p className="text-xs text-slate-600 bg-violet-900/20 rounded-lg px-3 py-2 leading-relaxed border border-violet-100">{results.health_assessment}</p>
+                <p className="text-xs text-slate-400 bg-violet-900/20 rounded-lg px-3 py-2 leading-relaxed border border-violet-100">{results.health_assessment}</p>
                 {results.best_pattern && (
                   <p className="text-[10px] text-violet-600 italic">🏆 Best pattern: {results.best_pattern}</p>
                 )}

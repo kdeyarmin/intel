@@ -57,7 +57,10 @@ export default function TerritoryIntelligence() {
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['tiUtilizations'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 500);
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     staleTime: 120000,
   });
 

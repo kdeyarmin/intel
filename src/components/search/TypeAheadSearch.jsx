@@ -81,7 +81,7 @@ export default function TypeAheadSearch({
               <button
                 key={idx}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${
-                  idx === highlightIdx ? 'bg-slate-100' : 'hover:bg-slate-800/40'
+                  idx === highlightIdx ? 'bg-slate-700' : 'hover:bg-slate-800/40'
                 }`}
                 onMouseEnter={() => setHighlightIdx(idx)}
                 onClick={() => {
@@ -92,7 +92,7 @@ export default function TypeAheadSearch({
               >
                 <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-slate-800 truncate block">{item.label}</span>
+                  <span className="text-slate-300 truncate block">{item.label}</span>
                   {item.sublabel && <span className="text-[11px] text-slate-400 truncate block">{item.sublabel}</span>}
                 </div>
                 {item.badge && (

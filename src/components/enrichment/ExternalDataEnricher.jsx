@@ -233,7 +233,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
             {enrichments.dea.is_dea_registered && (
               <>
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-600">Authorized Schedules:</p>
+                  <p className="text-xs font-medium text-slate-400">Authorized Schedules:</p>
                   <div className="flex flex-wrap gap-1">
                     {enrichments.dea.authorized_schedules?.map((s, i) => (
                       <Badge key={i} variant="outline" className="text-xs">
@@ -244,19 +244,19 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                    <p className="text-xs font-medium text-slate-600">Opioids</p>
+                    <p className="text-xs font-medium text-slate-400">Opioids</p>
                     <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.opioids ? '✓' : '✗'}
                     </p>
                   </div>
                   <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                    <p className="text-xs font-medium text-slate-600">Stimulants</p>
+                    <p className="text-xs font-medium text-slate-400">Stimulants</p>
                     <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.stimulants ? '✓' : '✗'}
                     </p>
                   </div>
                   <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                    <p className="text-xs font-medium text-slate-600">Benzodiazepines</p>
+                    <p className="text-xs font-medium text-slate-400">Benzodiazepines</p>
                     <p className="text-sm font-bold text-white mt-1">
                       {enrichments.dea.can_prescribe?.benzodiazepines ? '✓' : '✗'}
                     </p>

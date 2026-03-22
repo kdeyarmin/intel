@@ -20,7 +20,7 @@ export default function ExportFormatSelector({ format, onFormatChange }) {
             onClick={() => onFormatChange(opt.key)}
             className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-sm ${
               active
-                ? 'border-cyan-500 bg-cyan-900/200/10 text-cyan-400'
+                ? 'border-cyan-500 bg-cyan-900/10 text-cyan-400'
                 : 'border-slate-700 hover:border-slate-600 text-slate-400'
             }`}
           >

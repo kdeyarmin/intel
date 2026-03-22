@@ -15,7 +15,7 @@ export default function KPICard({ title, value, subtitle, icon: Icon, iconColor,
               {subtitle && <p className="text-sm text-slate-300 mt-0.5">{subtitle}</p>}
               {trend && (
                 <div className={`inline-flex items-center gap-1 mt-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                  trend.direction === 'up' ? 'bg-emerald-900/200/10 text-emerald-400' : 'bg-red-900/200/10 text-red-400'
+                  trend.direction === 'up' ? 'bg-emerald-900/10 text-emerald-400' : 'bg-red-900/10 text-red-400'
                 }`}>
                   <span>{trend.direction === 'up' ? '↑' : '↓'}</span>
                   <span>{trend.label}</span>

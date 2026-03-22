@@ -100,7 +100,7 @@ export default function DataQualityScore() {
             ))}
           </div>
         ) : (
-          <div className="flex items-center gap-2 p-3 bg-emerald-900/200/10 rounded border border-emerald-500/20">
+          <div className="flex items-center gap-2 p-3 bg-emerald-900/10 rounded border border-emerald-500/20">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <p className="text-sm text-emerald-300">All data validation checks passed</p>
           </div>

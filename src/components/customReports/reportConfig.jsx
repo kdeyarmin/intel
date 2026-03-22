@@ -2,22 +2,21 @@
 
 export const DATASET_CONFIG = {
   cms_utilization: {
-    label: 'CMS Provider Utilization',
-    entity: 'CMSUtilization',
+    label: 'Provider Service Utilization',
+    entity: 'ProviderServiceUtilization',
     metrics: [
       { key: 'total_services', label: 'Total Services' },
-      { key: 'total_medicare_beneficiaries', label: 'Medicare Beneficiaries' },
-      { key: 'total_submitted_charges', label: 'Submitted Charges ($)' },
-      { key: 'total_medicare_allowed', label: 'Medicare Allowed ($)' },
-      { key: 'total_medicare_payment', label: 'Medicare Payment ($)' },
-      { key: 'drug_services', label: 'Drug Services' },
+      { key: 'total_unique_benes', label: 'Medicare Beneficiaries' },
+      { key: 'average_submitted_chrg_amt', label: 'Avg Submitted Charge ($)' },
+      { key: 'total_medicare_payment_amt', label: 'Medicare Payment ($)' },
     ],
     groupOptions: [
-      { key: 'year', label: 'Year' },
+      { key: 'data_year', label: 'Year' },
       { key: 'npi', label: 'Provider NPI' },
+      { key: 'service_type', label: 'Service Type' },
     ],
-    filters: ['year'],
-    yearField: 'year',
+    filters: ['data_year'],
+    yearField: 'data_year',
   },
   cms_referrals: {
     label: 'CMS Referral Patterns',
@@ -38,8 +37,8 @@ export const DATASET_CONFIG = {
     yearField: 'year',
   },
   ma_inpatient: {
-    label: 'MA Inpatient Hospital',
-    entity: 'MedicareMAInpatient',
+    label: 'Medicare Facilities',
+    entity: 'MedicareFacility',
     metrics: [
       { key: 'total_discharges', label: 'Total Discharges' },
       { key: 'total_covered_days', label: 'Covered Days' },
@@ -62,7 +61,7 @@ export const DATASET_CONFIG = {
   },
   hha_stats: {
     label: 'Home Health Agency Stats',
-    entity: 'MedicareHHAStats',
+    entity: 'MedicareFacility',
     metrics: [
       { key: 'persons_served', label: 'Persons Served' },
       { key: 'total_visits', label: 'Total Visits' },
@@ -85,7 +84,7 @@ export const DATASET_CONFIG = {
   },
   inpatient_drg: {
     label: 'Inpatient DRG',
-    entity: 'InpatientDRG',
+    entity: 'MedicareFacility',
     metrics: [
       { key: 'total_discharges', label: 'Total Discharges' },
       { key: 'avg_covered_charges', label: 'Avg Covered Charges ($)' },
@@ -102,7 +101,7 @@ export const DATASET_CONFIG = {
   },
   snf_stats: {
     label: 'Medicare SNF',
-    entity: 'MedicareSNFStats',
+    entity: 'MedicareFacility',
     metrics: [
       { key: 'persons_served', label: 'Persons Served' },
       { key: 'total_stays', label: 'Total Stays' },

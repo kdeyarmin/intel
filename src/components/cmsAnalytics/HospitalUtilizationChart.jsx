@@ -28,7 +28,7 @@ export default function HospitalUtilizationChart({ data, loading }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <div className="w-2 h-2 bg-amber-900/200 rounded-full" />
+          <div className="w-2 h-2 bg-amber-900/20 rounded-full" />
           Inpatient DRG by State
         </CardTitle>
         <CardDescription>Top states by total discharges</CardDescription>

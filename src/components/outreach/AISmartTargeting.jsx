@@ -127,10 +127,10 @@ For each group, explain WHY these providers should be prioritized, the suggested
   };
 
   const STRATEGY_ICONS = {
-    gap_filling: { icon: MapPin, color: 'text-amber-400 bg-amber-900/200/15' },
-    high_value: { icon: Target, color: 'text-emerald-400 bg-emerald-900/200/15' },
-    referral_hubs: { icon: TrendingUp, color: 'text-cyan-400 bg-cyan-900/200/15' },
-    emerging: { icon: Sparkles, color: 'text-violet-400 bg-violet-900/200/15' },
+    gap_filling: { icon: MapPin, color: 'text-amber-400 bg-amber-900/15' },
+    high_value: { icon: Target, color: 'text-emerald-400 bg-emerald-900/15' },
+    referral_hubs: { icon: TrendingUp, color: 'text-cyan-400 bg-cyan-900/15' },
+    emerging: { icon: Sparkles, color: 'text-violet-400 bg-violet-900/15' },
   };
 
   return (
@@ -167,11 +167,11 @@ For each group, explain WHY these providers should be prioritized, the suggested
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-800">{g.name}</p>
+                    <p className="text-xs font-semibold text-slate-300">{g.name}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">{g.description}</p>
                   </div>
                 </div>
-                <Badge className="bg-slate-100 text-slate-600 text-[10px] shrink-0">{g.npis?.length || g.estimated_count || 0}</Badge>
+                <Badge className="bg-slate-700 text-slate-400 text-[10px] shrink-0">{g.npis?.length || g.estimated_count || 0}</Badge>
               </div>
 
               {isSelected && (

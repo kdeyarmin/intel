@@ -117,7 +117,7 @@ Also provide:
 
   const impactColors = { positive: 'text-green-600', negative: 'text-red-600', neutral: 'text-slate-500' };
   const impactIcons = { positive: TrendingUp, negative: TrendingDown, neutral: Target };
-  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <div className="space-y-2">
@@ -131,7 +131,7 @@ Also provide:
           {/* Strategic Assessment */}
           <div className="bg-slate-800/40 rounded-lg p-2.5 border">
             <p className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Strategic Assessment</p>
-            <p className="text-[10px] text-slate-700 leading-relaxed">{strategy.strategic_assessment}</p>
+            <p className="text-[10px] text-slate-300 leading-relaxed">{strategy.strategic_assessment}</p>
           </div>
 
           {/* Patterns */}
@@ -144,7 +144,7 @@ Also provide:
                   <div key={i} className="flex items-start gap-1.5 mb-1.5">
                     <Icon className={`w-3 h-3 mt-0.5 shrink-0 ${impactColors[p.impact]}`} />
                     <div>
-                      <p className="text-[10px] font-medium text-slate-700">{p.pattern}</p>
+                      <p className="text-[10px] font-medium text-slate-300">{p.pattern}</p>
                       <p className="text-[9px] text-slate-400">{p.insight}</p>
                     </div>
                   </div>
@@ -173,10 +173,10 @@ Also provide:
           {strategy.campaign_strategies?.map((s, i) => (
             <div key={i} className="bg-slate-800/60 rounded-lg border p-2.5 hover:border-violet-300 transition-colors">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] font-bold text-slate-800">{s.name}</p>
+                <p className="text-[10px] font-bold text-slate-300">{s.name}</p>
                 <Badge className={`text-[8px] ${prioColors[s.priority]}`}>{s.priority}</Badge>
               </div>
-              <p className="text-[9px] text-slate-600 mb-1.5">{s.concept}</p>
+              <p className="text-[9px] text-slate-400 mb-1.5">{s.concept}</p>
               <div className="grid grid-cols-2 gap-1.5 mb-1.5">
                 <div className="bg-blue-900/20 rounded px-2 py-1">
                   <p className="text-[8px] text-blue-400">Target</p>

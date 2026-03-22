@@ -65,7 +65,7 @@ export default function HubAnalysisTable({ hubs = [], sortKey, _sortDir, onSort 
                     <td className="text-right font-mono text-violet-400">{fv(h.inbound)}</td>
                     <td className="text-right text-slate-400">{h.connections}</td>
                     <td className="text-right">
-                      <Badge className={`text-[10px] ${h.hubScore >= 80 ? 'bg-red-900/200/15 text-red-400' : h.hubScore >= 50 ? 'bg-amber-900/200/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                      <Badge className={`text-[10px] ${h.hubScore >= 80 ? 'bg-red-900/15 text-red-400' : h.hubScore >= 50 ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
                         {h.hubScore}
                       </Badge>
                     </td>

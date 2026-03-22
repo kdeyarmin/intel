@@ -34,7 +34,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-600 mb-4">
+          <p className="text-sm text-slate-400 mb-4">
             Identify key influencers and decision-makers in your provider network.
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
@@ -85,7 +85,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
           {topInfluencers.map((influencer, idx) => (
             <div 
               key={influencer.npi} 
-              className="p-3 border rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+              className="p-3 border rounded-lg hover:bg-slate-800/50 cursor-pointer transition-colors"
               onClick={() => onInfluencerSelect?.(influencer.npi)}
             >
               <div className="flex items-start justify-between mb-2">
@@ -101,11 +101,11 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 bg-slate-50 rounded flex items-center gap-2">
+                <div className="p-2 bg-slate-800/50 rounded flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-blue-500" />
                   <span>{influencer.outbound_referrals} referrals sent</span>
                 </div>
-                <div className="p-2 bg-slate-50 rounded flex items-center gap-2">
+                <div className="p-2 bg-slate-800/50 rounded flex items-center gap-2">
                   <Users className="w-4 h-4 text-purple-500" />
                   <span>{influencer.network_size} active partners</span>
                 </div>
@@ -121,26 +121,26 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3 bg-slate-50 rounded">
-              <p className="text-xs text-slate-600">Total Providers</p>
+            <div className="p-3 bg-slate-800/50 rounded">
+              <p className="text-xs text-slate-400">Total Providers</p>
               <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.total_providers || 0}
               </p>
             </div>
-            <div className="p-3 bg-slate-50 rounded">
-              <p className="text-xs text-slate-600">Relationships</p>
+            <div className="p-3 bg-slate-800/50 rounded">
+              <p className="text-xs text-slate-400">Relationships</p>
               <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.total_relationships || 0}
               </p>
             </div>
-            <div className="p-3 bg-slate-50 rounded">
-              <p className="text-xs text-slate-600">Reciprocal Ties</p>
+            <div className="p-3 bg-slate-800/50 rounded">
+              <p className="text-xs text-slate-400">Reciprocal Ties</p>
               <p className="text-2xl font-bold text-white mt-1">
                 {data.network_metrics?.reciprocal_relationships || 0}
               </p>
             </div>
-            <div className="p-3 bg-slate-50 rounded">
-              <p className="text-xs text-slate-600">Network Density</p>
+            <div className="p-3 bg-slate-800/50 rounded">
+              <p className="text-xs text-slate-400">Network Density</p>
               <p className="text-2xl font-bold text-white mt-1">
                 {(data.network_metrics?.density * 100).toFixed(1)}%
               </p>

@@ -29,7 +29,10 @@ export default function DataQualityWidget() {
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['utilization'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 10000),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 10000);
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     staleTime: 60000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
@@ -126,7 +129,7 @@ export default function DataQualityWidget() {
     );
   }
 
-  const overallColor = scores.overall >= 80 ? 'bg-emerald-900/200/20 text-emerald-300 border-emerald-500/30' : scores.overall >= 50 ? 'bg-amber-900/200/20 text-amber-300 border-amber-500/30' : 'bg-red-900/200/20 text-red-300 border-red-500/30';
+  const overallColor = scores.overall >= 80 ? 'bg-emerald-900/20 text-emerald-300 border-emerald-500/30' : scores.overall >= 50 ? 'bg-amber-900/20 text-amber-300 border-amber-500/30' : 'bg-red-900/20 text-red-300 border-red-500/30';
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10">

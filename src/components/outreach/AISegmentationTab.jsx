@@ -109,7 +109,7 @@ Provide:
     }
   };
 
-  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
   const valColors = { high: 'text-green-600', medium: 'text-amber-600', low: 'text-slate-400' };
 
   return (
@@ -124,7 +124,7 @@ Provide:
           {/* Overall Recommendation */}
           {results.overall_recommendation && (
             <div className="bg-slate-800/40 rounded-lg p-2 border">
-              <p className="text-[10px] text-slate-700 leading-relaxed">{results.overall_recommendation}</p>
+              <p className="text-[10px] text-slate-300 leading-relaxed">{results.overall_recommendation}</p>
             </div>
           )}
 
@@ -136,7 +136,7 @@ Provide:
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
                     <Badge className={`text-[8px] ${prioColors[s.priority]}`}>{s.priority}</Badge>
-                    <p className="text-[10px] font-bold text-slate-800">{s.name}</p>
+                    <p className="text-[10px] font-bold text-slate-300">{s.name}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-3 h-3 text-emerald-500" />
@@ -173,7 +173,7 @@ Provide:
               <p className="text-[10px] font-semibold text-emerald-400 mb-1.5">💰 Budget Allocation</p>
               <div className="flex h-4 rounded-full overflow-hidden mb-1.5">
                 {results.segments.map((s, i) => {
-                  const colors = ['bg-violet-900/300', 'bg-blue-900/200', 'bg-emerald-900/200', 'bg-amber-900/200', 'bg-pink-900/200', 'bg-slate-400'];
+                  const colors = ['bg-violet-900/300', 'bg-blue-900/20', 'bg-emerald-900/20', 'bg-amber-900/20', 'bg-pink-900/20', 'bg-slate-400'];
                   return (
                     <div key={i} className={`${colors[i % colors.length]} transition-all`}
                       style={{ width: `${s.budget_allocation_pct}%` }}
@@ -183,11 +183,11 @@ Provide:
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 {results.segments.map((s, i) => {
-                  const dots = ['bg-violet-900/300', 'bg-blue-900/200', 'bg-emerald-900/200', 'bg-amber-900/200', 'bg-pink-900/200', 'bg-slate-400'];
+                  const dots = ['bg-violet-900/300', 'bg-blue-900/20', 'bg-emerald-900/20', 'bg-amber-900/20', 'bg-pink-900/20', 'bg-slate-400'];
                   return (
                     <div key={i} className="flex items-center gap-1">
                       <div className={`w-2 h-2 rounded-full ${dots[i % dots.length]}`} />
-                      <span className="text-[8px] text-slate-600">{s.name} ({s.budget_allocation_pct}%)</span>
+                      <span className="text-[8px] text-slate-400">{s.name} ({s.budget_allocation_pct}%)</span>
                     </div>
                   );
                 })}
@@ -205,10 +205,10 @@ Provide:
                 </div>
                 {results.priority_matrix.map((p, i) => (
                   <div key={i} className="grid grid-cols-4 gap-0 px-2 py-1.5 border-t text-[9px]">
-                    <span className="font-medium text-slate-700">{p.segment}</span>
+                    <span className="font-medium text-slate-300">{p.segment}</span>
                     <span className={`font-medium ${valColors[p.value]}`}>{p.value}</span>
                     <span className="text-slate-500">{p.effort}</span>
-                    <span className="text-slate-600">{p.recommendation}</span>
+                    <span className="text-slate-400">{p.recommendation}</span>
                   </div>
                 ))}
               </div>
@@ -233,7 +233,7 @@ Provide:
                 <div key={i} className="flex items-start gap-2 mb-1.5">
                   <Badge variant="outline" className="text-[8px] shrink-0 mt-0.5">{t.tier}</Badge>
                   <div>
-                    <p className="text-[9px] text-slate-600">{t.criteria}</p>
+                    <p className="text-[9px] text-slate-400">{t.criteria}</p>
                     <p className="text-[9px] text-violet-600 font-medium">{t.strategy}</p>
                   </div>
                 </div>

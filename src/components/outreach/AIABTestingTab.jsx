@@ -150,7 +150,7 @@ Generate A/B test plan with:
                     </Button>
                   </div>
                 </div>
-                <p className="text-[10px] font-medium text-slate-800 mb-1">"{v.subject}"</p>
+                <p className="text-[10px] font-medium text-slate-300 mb-1">"{v.subject}"</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className="text-[8px]">🧠 {v.trigger}</Badge>
                   <span className="text-[8px] text-slate-400">Best for: {v.best_for}</span>
@@ -178,7 +178,7 @@ Generate A/B test plan with:
                       Use This
                     </Button>
                   </div>
-                  <p className="text-[9px] text-slate-600 whitespace-pre-wrap leading-relaxed max-h-20 overflow-y-auto mb-1">{v.body}</p>
+                  <p className="text-[9px] text-slate-400 whitespace-pre-wrap leading-relaxed max-h-20 overflow-y-auto mb-1">{v.body}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-[8px] text-slate-400">{v.approach}</span>
                     {v.predicted_response_lift && (

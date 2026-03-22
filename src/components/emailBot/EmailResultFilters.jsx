@@ -25,13 +25,13 @@ export default function EmailResultFilters({ filters, onFiltersChange, counts })
         <SelectContent>
           <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="valid">
-            <span className="flex items-center gap-1.5">Valid <Badge className="bg-emerald-900/200/20 text-emerald-400 text-[9px] px-1">{counts.valid}</Badge></span>
+            <span className="flex items-center gap-1.5">Valid <Badge className="bg-emerald-900/20 text-emerald-400 text-[9px] px-1">{counts.valid}</Badge></span>
           </SelectItem>
           <SelectItem value="risky">
-            <span className="flex items-center gap-1.5">Risky <Badge className="bg-amber-900/200/20 text-amber-400 text-[9px] px-1">{counts.risky}</Badge></span>
+            <span className="flex items-center gap-1.5">Risky <Badge className="bg-amber-900/20 text-amber-400 text-[9px] px-1">{counts.risky}</Badge></span>
           </SelectItem>
           <SelectItem value="invalid">
-            <span className="flex items-center gap-1.5">Invalid <Badge className="bg-red-900/200/20 text-red-400 text-[9px] px-1">{counts.invalid}</Badge></span>
+            <span className="flex items-center gap-1.5">Invalid <Badge className="bg-red-900/20 text-red-400 text-[9px] px-1">{counts.invalid}</Badge></span>
           </SelectItem>
           <SelectItem value="unknown">
             <span className="flex items-center gap-1.5">Unknown <Badge className="bg-slate-500/20 text-slate-400 text-[9px] px-1">{counts.unknown}</Badge></span>
@@ -46,13 +46,13 @@ export default function EmailResultFilters({ filters, onFiltersChange, counts })
         <SelectContent>
           <SelectItem value="all">All Confidence</SelectItem>
           <SelectItem value="high">
-            <span className="flex items-center gap-1.5">High <Badge className="bg-emerald-900/200/20 text-emerald-400 text-[9px] px-1">{counts.highConf}</Badge></span>
+            <span className="flex items-center gap-1.5">High <Badge className="bg-emerald-900/20 text-emerald-400 text-[9px] px-1">{counts.highConf}</Badge></span>
           </SelectItem>
           <SelectItem value="medium">
-            <span className="flex items-center gap-1.5">Medium <Badge className="bg-amber-900/200/20 text-amber-400 text-[9px] px-1">{counts.medConf}</Badge></span>
+            <span className="flex items-center gap-1.5">Medium <Badge className="bg-amber-900/20 text-amber-400 text-[9px] px-1">{counts.medConf}</Badge></span>
           </SelectItem>
           <SelectItem value="low">
-            <span className="flex items-center gap-1.5">Low <Badge className="bg-red-900/200/20 text-red-400 text-[9px] px-1">{counts.lowConf}</Badge></span>
+            <span className="flex items-center gap-1.5">Low <Badge className="bg-red-900/20 text-red-400 text-[9px] px-1">{counts.lowConf}</Badge></span>
           </SelectItem>
         </SelectContent>
       </Select>

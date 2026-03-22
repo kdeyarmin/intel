@@ -61,9 +61,9 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
           </div>
         </div>
         <div className="flex gap-3 mt-1">
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-blue-900/200" /> Individual</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-violet-900/200" /> Organization</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-red-900/200" /> Hub</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-blue-900/20" /> Individual</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-violet-900/20" /> Organization</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-red-900/20" /> Hub</div>
         </div>
       </CardHeader>
       <CardContent className="p-0">

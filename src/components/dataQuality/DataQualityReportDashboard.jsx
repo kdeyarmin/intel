@@ -84,8 +84,8 @@ export default function DataQualityReportDashboard() {
                 </div>
               </div>
               <div className={`rounded-full w-32 h-32 flex items-center justify-center ${
-                currentScan.completeness_score >= 80 ? 'bg-green-900/200/20' :
-                currentScan.completeness_score >= 60 ? 'bg-yellow-900/200/20' : 'bg-red-900/200/20'
+                currentScan.completeness_score >= 80 ? 'bg-green-900/20' :
+                currentScan.completeness_score >= 60 ? 'bg-yellow-900/20' : 'bg-red-900/20'
               }`}>
                 <div className="text-center">
                   <CheckCircle className={`w-12 h-12 mx-auto ${
@@ -225,7 +225,7 @@ export default function DataQualityReportDashboard() {
                   <span className="text-sm text-slate-400 capitalize">{field.replace(/_/g, ' ')}</span>
                   <div className="flex items-center gap-2">
                     <div className="h-2 bg-slate-700 rounded-full w-32">
-                      <div className="h-full bg-emerald-900/200 rounded-full" style={{ width: `${stats.percent}%` }} />
+                      <div className="h-full bg-emerald-900/20 rounded-full" style={{ width: `${stats.percent}%` }} />
                     </div>
                     <span className="text-sm font-medium text-white w-12 text-right">{stats.percent}%</span>
                   </div>

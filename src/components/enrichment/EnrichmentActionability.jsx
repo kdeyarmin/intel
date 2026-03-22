@@ -149,8 +149,8 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
                       </div>
                       <p className="text-[10px] text-slate-400 mt-1">{a.strategy}</p>
                       <div className="flex gap-2 mt-1.5">
-                        <Badge className="bg-cyan-900/200/10 text-cyan-400 text-[8px]">{a.data_driver}</Badge>
-                        <Badge className="bg-emerald-900/200/10 text-emerald-400 text-[8px]">{a.impact}</Badge>
+                        <Badge className="bg-cyan-900/10 text-cyan-400 text-[8px]">{a.data_driver}</Badge>
+                        <Badge className="bg-emerald-900/10 text-emerald-400 text-[8px]">{a.impact}</Badge>
                       </div>
                     </div>
                   </div>

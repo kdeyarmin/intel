@@ -125,7 +125,7 @@ export default function BatchProviderUpdater() {
           <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <Upload className="w-4 h-4 text-emerald-400" />
             Batch Apply to Profiles
-            <Badge className="bg-emerald-900/200/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
+            <Badge className="bg-emerald-900/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
           </CardTitle>
           {selected.size > 0 && (
             <Button size="sm" onClick={applyUpdates} disabled={applying}
@@ -160,21 +160,21 @@ export default function BatchProviderUpdater() {
                       onCheckedChange={() => setSelected(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}
                       className="border-slate-600" />
                     <span className="text-[10px] text-slate-400 truncate">{r.provider_name || r.npi}</span>
-                    <span className="text-[9px] text-slate-600 truncate flex-1">
+                    <span className="text-[9px] text-slate-400 truncate flex-1">
                       {gc.key === 'organization' && r.enrichment_details?.group_practices?.[0]}
                       {gc.key === 'affiliations' && r.enrichment_details?.hospital_affiliations?.slice(0, 2).join(', ')}
                       {gc.key === 'telehealth' && (r.enrichment_details?.telehealth_available ? '✓ Available' : '✗ N/A')}
                     </span>
                   </div>
                 ))}
-                {items.length > 10 && <p className="text-[9px] text-slate-600">+{items.length - 10} more</p>}
+                {items.length > 10 && <p className="text-[9px] text-slate-400">+{items.length - 10} more</p>}
               </div>
             </div>
           );
         })}
 
         {results && (
-          <div className="bg-emerald-900/200/10 rounded-lg p-2 text-center">
+          <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
             <p className="text-xs text-emerald-400">{results.success} profiles updated</p>
             {results.failed > 0 && <p className="text-[10px] text-red-400">{results.failed} failed</p>}

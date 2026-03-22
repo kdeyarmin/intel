@@ -66,7 +66,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
               </div>
             )}
             {summary.dominant && (
-              <p className="text-[10px] text-slate-400 mt-2">Primary channel: <span className="font-medium text-slate-600">{summary.dominant}</span></p>
+              <p className="text-[10px] text-slate-400 mt-2">Primary channel: <span className="font-medium text-slate-400">{summary.dominant}</span></p>
             )}
           </div>
           {summary.breakdown.length > 0 && (
@@ -86,7 +86,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
           {summary.breakdown.map((b, i) => (
             <div key={b.name} className="flex items-center gap-1.5 text-[10px]">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-              <span className="text-slate-600">{b.name}: {b.value.toLocaleString()}</span>
+              <span className="text-slate-400">{b.name}: {b.value.toLocaleString()}</span>
             </div>
           ))}
         </div>

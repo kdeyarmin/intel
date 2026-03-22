@@ -109,7 +109,7 @@ Do NOT include subject line, just the body.`,
             <div className="min-h-[120px] max-h-[250px] overflow-y-auto space-y-2 pr-1">
               {messages.length === 0 ? (
                 <div className="text-center py-6">
-                  <MessageSquare className="w-6 h-6 text-slate-600 mx-auto mb-1" />
+                  <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                   <p className="text-xs text-slate-500">No messages yet with {providerName}</p>
                   {!providerEmail && (
                     <p className="text-[10px] text-amber-400 mt-1">No email on file — run email finder first</p>
@@ -187,7 +187,7 @@ Do NOT include subject line, just the body.`,
             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
               {events.length === 0 && !showNewEvent && (
                 <div className="text-center py-6">
-                  <Calendar className="w-6 h-6 text-slate-600 mx-auto mb-1" />
+                  <Calendar className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                   <p className="text-xs text-slate-500">No scheduled events</p>
                 </div>
               )}
@@ -202,7 +202,7 @@ Do NOT include subject line, just the body.`,
                     {e.notes && <p className="text-[9px] text-slate-500">{e.notes}</p>}
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => removeEvent(e.id)}
-                    className="h-5 w-5 p-0 text-slate-600 hover:text-red-400">
+                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400">
                     <X className="w-3 h-3" />
                   </Button>
                 </div>

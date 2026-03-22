@@ -3,9 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, ShieldAlert, ShieldX, AlertCircle, ChevronDown, ChevronUp, Server, Globe, Mail } from 'lucide-react';
 
 const statusConfig = {
-  valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/200/10 border-emerald-500/20', label: 'Valid' },
-  risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/200/10 border-amber-500/20', label: 'Risky' },
-  invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/200/10 border-red-500/20', label: 'Invalid' },
+  valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/10 border-emerald-500/20', label: 'Valid' },
+  risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/10 border-amber-500/20', label: 'Risky' },
+  invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/10 border-red-500/20', label: 'Invalid' },
   error: { icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/10 border-slate-500/20', label: 'Error' },
   unknown: { icon: AlertCircle, color: 'text-slate-400', bg: 'bg-slate-500/10 border-slate-500/20', label: 'Unknown' },
 };
@@ -43,8 +43,8 @@ export default function EmailVerificationResultRow({ result }) {
         <div className="flex items-center gap-1.5 shrink-0">
           {result.confidence && (
             <Badge className={`text-[10px] ${
-              result.confidence === 'high' ? 'bg-emerald-900/200/15 text-emerald-400' :
-              result.confidence === 'medium' ? 'bg-amber-900/200/15 text-amber-400' :
+              result.confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400' :
+              result.confidence === 'medium' ? 'bg-amber-900/15 text-amber-400' :
               'bg-slate-500/15 text-slate-400'
             }`}>
               {result.confidence}
@@ -67,7 +67,7 @@ export default function EmailVerificationResultRow({ result }) {
             )}
             {result.smtp && result.smtp.reachable != null && (
               <div className={`flex items-center gap-1 text-[10px] rounded px-2 py-1 ${
-                result.smtp.reachable ? 'text-emerald-400 bg-emerald-900/200/10' : 'text-red-400 bg-red-900/200/10'
+                result.smtp.reachable ? 'text-emerald-400 bg-emerald-900/10' : 'text-red-400 bg-red-900/10'
               }`}>
                 <Server className="w-3 h-3" />
                 SMTP: {result.smtp.reachable ? 'Reachable' : 'Unreachable'}
@@ -75,8 +75,8 @@ export default function EmailVerificationResultRow({ result }) {
             )}
             {result.catchAll && (
               <div className={`flex items-center gap-1 text-[10px] rounded px-2 py-1 ${
-                result.catchAll.isCatchAll === 'likely' ? 'text-amber-400 bg-amber-900/200/10' :
-                result.catchAll.isCatchAll === 'unlikely' ? 'text-emerald-400 bg-emerald-900/200/10' :
+                result.catchAll.isCatchAll === 'likely' ? 'text-amber-400 bg-amber-900/10' :
+                result.catchAll.isCatchAll === 'unlikely' ? 'text-emerald-400 bg-emerald-900/10' :
                 'text-slate-400 bg-slate-800/40'
               }`}>
                 <Mail className="w-3 h-3" />

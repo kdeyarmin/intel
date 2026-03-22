@@ -8,9 +8,9 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '../../utils';
 
 const PRIORITY_STYLES = {
-  critical: 'bg-red-900/200/15 text-red-400 border-red-500/30',
-  high: 'bg-amber-900/200/15 text-amber-400 border-amber-500/30',
-  medium: 'bg-blue-900/200/15 text-blue-400 border-blue-500/30',
+  critical: 'bg-red-900/15 text-red-400 border-red-500/30',
+  high: 'bg-amber-900/15 text-amber-400 border-amber-500/30',
+  medium: 'bg-blue-900/15 text-blue-400 border-blue-500/30',
   low: 'bg-slate-700/50 text-slate-400 border-slate-600',
 };
 
@@ -195,7 +195,7 @@ Be very specific about locations, specialties, and organizational types.`,
                     {p.populations_served?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {p.populations_served.map((pop, j) => (
-                          <Badge key={j} className="bg-violet-900/200/10 text-violet-400 text-[8px] border border-violet-500/20">{pop}</Badge>
+                          <Badge key={j} className="bg-violet-900/10 text-violet-400 text-[8px] border border-violet-500/20">{pop}</Badge>
                         ))}
                       </div>
                     )}

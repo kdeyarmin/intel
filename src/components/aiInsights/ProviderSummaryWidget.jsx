@@ -184,7 +184,7 @@ Provide:
                 {/* Executive summary */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
                   <p className="text-xs font-medium text-blue-300 mb-1">Executive Summary</p>
-                  <p className="text-xs text-slate-700 leading-relaxed">{results.executive_summary}</p>
+                  <p className="text-xs text-slate-300 leading-relaxed">{results.executive_summary}</p>
                 </div>
 
                 {/* Strengths and Gaps side by side */}
@@ -211,10 +211,10 @@ Provide:
 
                 {/* Demographic patterns */}
                 {results.demographic_patterns?.length > 0 && (
-                  <div className="bg-slate-50 rounded-lg p-2.5 border">
+                  <div className="bg-slate-800/60 rounded-lg p-2.5 border">
                     <p className="text-[10px] font-medium text-slate-500 uppercase mb-1">Key Patterns</p>
                     {results.demographic_patterns.map((p, i) => (
-                      <p key={i} className="text-[10px] text-slate-600 mb-0.5">• {p}</p>
+                      <p key={i} className="text-[10px] text-slate-400 mb-0.5">• {p}</p>
                     ))}
                   </div>
                 )}
@@ -226,8 +226,8 @@ Provide:
                     {results.strategic_recommendations.map((r, i) => (
                       <div key={i} className="border rounded-lg p-2.5">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-[11px] font-semibold text-slate-800">{r.recommendation}</span>
-                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-100 text-red-400' : r.priority === 'medium' ? 'bg-amber-100 text-amber-400' : 'bg-slate-100 text-slate-600'}`}>{r.priority}</Badge>
+                          <span className="text-[11px] font-semibold text-slate-300">{r.recommendation}</span>
+                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-100 text-red-400' : r.priority === 'medium' ? 'bg-amber-100 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>{r.priority}</Badge>
                         </div>
                         <p className="text-[10px] text-slate-500">{r.rationale}</p>
                       </div>

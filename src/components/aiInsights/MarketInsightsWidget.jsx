@@ -12,7 +12,7 @@ const TYPE_CFG = {
   opportunity: { icon: Target, bg: 'bg-blue-900/20 border-blue-200', text: 'text-blue-400' },
   action: { icon: Zap, bg: 'bg-violet-900/20 border-violet-200', text: 'text-violet-700' },
 };
-const PRIO = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+const PRIO = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
 export default function MarketInsightsWidget({ providers = [], locations = [], taxonomies = [], utilizations = [], referrals = [] }) {
   const [results, setResults] = useState(null);
@@ -86,7 +86,7 @@ Provide 6 strategic insights covering growth opportunities, competitive threats,
         {results && (
           <div className="space-y-3">
             <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg p-3 border border-emerald-100">
-              <p className="text-xs text-slate-700 leading-relaxed flex-1">{results.summary}</p>
+              <p className="text-xs text-slate-300 leading-relaxed flex-1">{results.summary}</p>
               {results.market_health_score != null && (
                 <Badge className={`ml-3 shrink-0 text-xs ${results.market_health_score >= 70 ? 'bg-emerald-100 text-emerald-400' : results.market_health_score >= 40 ? 'bg-amber-100 text-amber-400' : 'bg-red-100 text-red-400'}`}>
                   {results.market_health_score}/100

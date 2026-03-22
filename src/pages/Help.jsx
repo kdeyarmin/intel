@@ -290,7 +290,7 @@ export default function Help() {
         {filteredSections.length === 0 && (
           <Card className="bg-[#141d30] border-slate-700/50">
             <CardContent className="py-12 text-center">
-              <Search className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <Search className="w-10 h-10 text-slate-400 mx-auto mb-3" />
               <p className="text-slate-400">No topics match "{searchTerm}"</p>
             </CardContent>
           </Card>

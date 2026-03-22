@@ -24,12 +24,37 @@ export default function AdvancedAnalytics() {
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['aaUtil'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 500);
+      return rows.map(r => ({
+        ...r,
+        year: r.data_year,
+        total_medicare_payment: r.total_medicare_payment_amt || 0,
+        total_medicare_beneficiaries: r.total_unique_benes || 0,
+        total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1),
+        drug_services: 0,
+      }));
+    },
     staleTime: 120000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['aaRef'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.CMSReferral.list('-created_date', 500);
+      return rows.map(r => {
+        const rd = r.raw_data || {};
+        return {
+          ...r,
+          year: r.data_year,
+          total_referrals: 1,
+          home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
+          hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
+          snf_referrals: 0,
+          dme_referrals: rd.DME === 'Y' ? 1 : 0,
+          imaging_referrals: 0,
+        };
+      });
+    },
     staleTime: 120000,
   });
   const { data: locations = [], isLoading: _ll } = useQuery({

@@ -60,7 +60,7 @@ Provide:
   };
 
   const scoreColor = (s) => s >= 75 ? 'text-emerald-400' : s >= 50 ? 'text-amber-400' : 'text-red-400';
-  const scoreBg = (s) => s >= 75 ? 'bg-emerald-900/200/15' : s >= 50 ? 'bg-amber-900/200/15' : 'bg-red-900/200/15';
+  const scoreBg = (s) => s >= 75 ? 'bg-emerald-900/15' : s >= 50 ? 'bg-amber-900/15' : 'bg-red-900/15';
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">
@@ -114,7 +114,7 @@ Provide:
               <div className="flex items-center gap-2">
                 <Target className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-xs text-slate-300">Priority</span>
-                <Badge className={`text-[9px] ${analysis.overall_priority === 'high' ? 'bg-emerald-900/200/15 text-emerald-400' : analysis.overall_priority === 'medium' ? 'bg-amber-900/200/15 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>
+                <Badge className={`text-[9px] ${analysis.overall_priority === 'high' ? 'bg-emerald-900/15 text-emerald-400' : analysis.overall_priority === 'medium' ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>
                   {analysis.overall_priority}
                 </Badge>
               </div>
@@ -132,7 +132,7 @@ Provide:
                 <p className={`text-[10px] font-medium uppercase tracking-wide mb-1 ${section.color}`}>{section.label}</p>
                 <ul className="space-y-0.5">
                   {section.items.slice(0, 3).map((r, i) => (
-                    <li key={i} className="text-[11px] text-slate-300 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-slate-600">{r}</li>
+                    <li key={i} className="text-[11px] text-slate-300 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-slate-400">{r}</li>
                   ))}
                 </ul>
               </div>
@@ -140,7 +140,7 @@ Provide:
 
             {/* Engagement approach */}
             {analysis.engagement_approach && (
-              <div className="bg-cyan-900/200/10 border border-cyan-500/20 rounded-lg p-2">
+              <div className="bg-cyan-900/10 border border-cyan-500/20 rounded-lg p-2">
                 <p className="text-[10px] font-medium text-cyan-400 mb-0.5">Recommended Approach</p>
                 <p className="text-[11px] text-slate-300">{analysis.engagement_approach}</p>
               </div>

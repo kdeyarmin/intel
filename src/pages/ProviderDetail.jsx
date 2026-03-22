@@ -74,7 +74,10 @@ export default function ProviderDetail() {
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['providerUtilAll', npi],
-    queryFn: () => base44.entities.CMSUtilization.filter({ npi }),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi });
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1) }));
+    },
     enabled: !!npi,
   });
 
@@ -336,7 +339,7 @@ export default function ProviderDetail() {
                               </div>
                               <Badge variant="outline">{msg.status}</Badge>
                            </div>
-                           <p className="text-sm text-slate-600 line-clamp-2">{msg.body}</p>
+                           <p className="text-sm text-slate-400 line-clamp-2">{msg.body}</p>
                         </div>
                       ))}
                      </div>

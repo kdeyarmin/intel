@@ -7,7 +7,7 @@ import { Eye, Trash2, Play, Pause, Sparkles } from 'lucide-react';
 import { formatDateET } from '../utils/dateUtils';
 
 const statusColors = {
-  draft: 'bg-slate-100 text-slate-700',
+  draft: 'bg-slate-700 text-slate-300',
   scheduled: 'bg-blue-100 text-blue-400',
   sending: 'bg-amber-100 text-amber-400',
   completed: 'bg-green-100 text-green-400',
@@ -57,7 +57,7 @@ export default function CampaignTable({ campaigns = [], onView, onDelete, onTogg
             {campaigns.map(c => {
               const openRate = c.sent_count > 0 ? ((c.opened_count / c.sent_count) * 100).toFixed(1) : '-';
               return (
-                <TableRow key={c.id} className="hover:bg-slate-50/50">
+                <TableRow key={c.id} className="hover:bg-slate-800/50">
                   <TableCell>
                     <div>
                       <p className="font-medium text-sm">{c.name}</p>
@@ -68,7 +68,7 @@ export default function CampaignTable({ campaigns = [], onView, onDelete, onTogg
                     <Badge variant="outline" className="text-[10px]">{sourceLabels[c.source_criteria] || c.source_criteria}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={`text-[10px] ${statusColors[c.status] || 'bg-slate-100'}`}>{c.status}</Badge>
+                    <Badge className={`text-[10px] ${statusColors[c.status] || 'bg-slate-700'}`}>{c.status}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs">{c.sent_count || 0}</TableCell>
                   <TableCell className="text-right font-mono text-xs text-emerald-600">{c.opened_count || 0}</TableCell>

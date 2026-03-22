@@ -58,7 +58,7 @@ export default function BatchTagManager({ batch, onUpdate }) {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="tag name"
-            className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
             autoFocus
           />
           <Button size="sm" variant="ghost" className="h-6 px-1 text-slate-400 hover:text-cyan-400" onClick={addTag}>

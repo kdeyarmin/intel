@@ -89,7 +89,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
     }
   };
 
-  const strengthColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-100 text-slate-600' };
+  const strengthColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
 
   return (
     <Card>
@@ -115,13 +115,13 @@ Suggest 5 types of providers/organizations this provider should connect with, an
         {results && (
           <div className="space-y-3">
             {results.network_summary && (
-              <p className="text-xs text-slate-600 bg-blue-900/20 rounded-lg px-3 py-2 leading-relaxed">{results.network_summary}</p>
+              <p className="text-xs text-slate-400 bg-blue-900/20 rounded-lg px-3 py-2 leading-relaxed">{results.network_summary}</p>
             )}
             {results.suggestions?.map((s, i) => (
-              <div key={i} className="border rounded-lg p-3 hover:bg-slate-50/50 transition-colors">
+              <div key={i} className="border rounded-lg p-3 hover:bg-slate-800/50 transition-colors">
                 <div className="flex items-start justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-800">{s.category}</span>
+                    <span className="text-xs font-semibold text-slate-300">{s.category}</span>
                     <Badge className={`text-[9px] ${strengthColors[s.relationship_strength] || strengthColors.exploratory}`}>
                       {s.relationship_strength}
                     </Badge>

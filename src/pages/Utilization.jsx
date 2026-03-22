@@ -45,8 +45,7 @@ export default function Utilization() {
     const term = searchTerm.toLowerCase();
     return (
       (record.npi && record.npi.toLowerCase().includes(term)) ||
-      (record.hcpcs_code && record.hcpcs_code.toLowerCase().includes(term)) ||
-      (record.hcpcs_description && record.hcpcs_description.toLowerCase().includes(term))
+      (record.service_type && record.service_type.toLowerCase().includes(term))
     );
   });
 
@@ -66,7 +65,7 @@ export default function Utilization() {
         <div className="relative flex-1 w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Search by NPI, HCPCS code or description..." 
+            placeholder="Search by NPI or service type..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
@@ -96,15 +95,15 @@ export default function Utilization() {
         <CardContent className="p-0">
           <div className="rounded-md border-0 overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/50">
+              <TableHeader className="bg-slate-800/50">
                 <TableRow>
-                  <TableHead className="font-semibold text-slate-600">NPI</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Service / HCPCS</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Beneficiaries</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Services</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Avg Submitted</TableHead>
-                  <TableHead className="font-semibold text-slate-600 text-right">Avg Medicare Paid</TableHead>
-                  <TableHead className="font-semibold text-slate-600">Year</TableHead>
+                  <TableHead className="font-semibold text-slate-400">NPI</TableHead>
+                  <TableHead className="font-semibold text-slate-400">Service Type</TableHead>
+                  <TableHead className="font-semibold text-slate-400 text-right">Beneficiaries</TableHead>
+                  <TableHead className="font-semibold text-slate-400 text-right">Services</TableHead>
+                  <TableHead className="font-semibold text-slate-400 text-right">Avg Submitted</TableHead>
+                  <TableHead className="font-semibold text-slate-400 text-right">Total Medicare Paid</TableHead>
+                  <TableHead className="font-semibold text-slate-400">Year</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,23 +130,18 @@ export default function Utilization() {
                   </TableRow>
                 ) : (
                   filteredRecords.map((record) => (
-                    <TableRow key={record.id} className="hover:bg-slate-50/50/50">
-                      <TableCell className="font-medium text-cyan-600">{record.npi}</TableCell>
+                    <TableRow key={record.id} className="hover:bg-slate-800/50">
+                      <TableCell className="font-medium text-cyan-400">{record.npi}</TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-sm">{record.hcpcs_code}</span>
-                          <span className="text-xs text-muted-foreground truncate max-w-xs" title={record.hcpcs_description}>
-                            {record.hcpcs_description}
-                          </span>
-                        </div>
+                        <span className="font-medium text-sm text-slate-300">{record.service_type || '-'}</span>
                       </TableCell>
-                      <TableCell className="text-right">{record.total_beneficiaries?.toLocaleString() || '-'}</TableCell>
-                      <TableCell className="text-right">{record.total_services?.toLocaleString() || '-'}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {record.avg_submitted_charge ? `$${record.avg_submitted_charge.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
+                      <TableCell className="text-right text-slate-300">{record.total_unique_benes?.toLocaleString() || '-'}</TableCell>
+                      <TableCell className="text-right text-slate-300">{record.total_services?.toLocaleString() || '-'}</TableCell>
+                      <TableCell className="text-right text-slate-400">
+                        {record.average_submitted_chrg_amt ? `$${Number(record.average_submitted_chrg_amt).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-medium text-green-600">
-                        {record.avg_medicare_payment ? `$${record.avg_medicare_payment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
+                      <TableCell className="text-right font-medium text-green-400">
+                        {record.total_medicare_payment_amt ? `$${Number(record.total_medicare_payment_amt).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{record.data_year || '-'}</Badge>

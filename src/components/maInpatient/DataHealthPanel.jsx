@@ -16,7 +16,7 @@ function Metric({ label, value, status }) {
   };
   return (
     <div className="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
-      <span className="text-sm text-slate-600">{label}</span>
+      <span className="text-sm text-slate-400">{label}</span>
       <div className="flex items-center gap-1.5">
         {icons[status]}
         <span className={`text-sm font-medium ${colors[status]}`}>{value}</span>
@@ -116,7 +116,7 @@ function TopValidationIssues({ batches }) {
                 ? <XCircle className="w-3 h-3 text-red-400" />
                 : <AlertTriangle className="w-3 h-3 text-amber-400" />
               }
-              <span className="text-xs text-slate-600">{issue.rule.replace(/_/g, ' ')}</span>
+              <span className="text-xs text-slate-400">{issue.rule.replace(/_/g, ' ')}</span>
             </div>
             <Badge variant="outline" className="text-xs">{issue.count.toLocaleString()}</Badge>
           </div>

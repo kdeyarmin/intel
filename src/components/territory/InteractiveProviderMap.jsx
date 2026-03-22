@@ -262,7 +262,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
           {/* Legend */}
           {colorByScore && mapPoints.length > 0 && (
             <div className="absolute bottom-3 left-3 z-[1000] bg-slate-800/60/95 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
-              <div className="text-[10px] font-semibold text-slate-700 mb-1.5">Score Legend</div>
+              <div className="text-[10px] font-semibold text-slate-300 mb-1.5">Score Legend</div>
               <div className="space-y-1">
                 {[
                   { color: '#16a34a', label: '80–100 (Excellent)' },
@@ -273,7 +273,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                 ].map(({ color, label }) => (
                   <div key={color} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-[10px] text-slate-600">{label}</span>
+                    <span className="text-[10px] text-slate-400">{label}</span>
                   </div>
                 ))}
               </div>

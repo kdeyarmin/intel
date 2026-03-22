@@ -54,13 +54,13 @@ export default function LocationGeoInsights({ location, coProviders = [], allLoc
           <div>
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1.5">At This Address</p>
             <div className="flex gap-2">
-              <div className="flex items-center gap-1.5 text-xs bg-slate-50 rounded px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 text-xs bg-slate-800/60 rounded px-2.5 py-1.5">
                 <Users className="w-3 h-3 text-blue-500" />
-                <span className="text-slate-600">{insights.individualCount} Individual{insights.individualCount !== 1 ? 's' : ''}</span>
+                <span className="text-slate-400">{insights.individualCount} Individual{insights.individualCount !== 1 ? 's' : ''}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-xs bg-slate-50 rounded px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 text-xs bg-slate-800/60 rounded px-2.5 py-1.5">
                 <Building2 className="w-3 h-3 text-indigo-500" />
-                <span className="text-slate-600">{insights.orgCount} Organization{insights.orgCount !== 1 ? 's' : ''}</span>
+                <span className="text-slate-400">{insights.orgCount} Organization{insights.orgCount !== 1 ? 's' : ''}</span>
               </div>
             </div>
           </div>

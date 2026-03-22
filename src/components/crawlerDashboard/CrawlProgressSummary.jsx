@@ -56,7 +56,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         value={completed}
         icon={CheckCircle2}
         color="text-emerald-400"
-        bgColor="bg-emerald-900/200/15"
+        bgColor="bg-emerald-900/15"
         loading={loading}
       />
       <KPI
@@ -64,7 +64,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         value={pending}
         icon={Clock}
         color="text-amber-400"
-        bgColor="bg-amber-900/200/15"
+        bgColor="bg-amber-900/15"
         loading={loading}
       />
       <KPI
@@ -72,7 +72,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         value={failed}
         icon={XCircle}
         color="text-red-400"
-        bgColor="bg-red-900/200/15"
+        bgColor="bg-red-900/15"
         loading={loading}
       />
       <KPI
@@ -80,7 +80,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         value={totalProviders.toLocaleString()}
         icon={Users}
         color="text-blue-400"
-        bgColor="bg-blue-900/200/15"
+        bgColor="bg-blue-900/15"
         loading={loading}
       />
       <KPI
@@ -88,7 +88,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         value={`${successRate}%`}
         icon={BarChart3}
         color="text-violet-400"
-        bgColor="bg-violet-900/200/15"
+        bgColor="bg-violet-900/15"
         loading={loading}
       />
       <KPI
@@ -98,7 +98,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
         color="text-sky-400"
         bgColor="bg-sky-500/15"
         loading={loading}
-        badge={isActive ? <Badge className="bg-emerald-900/200/20 text-emerald-400 text-[10px]">Live</Badge> : null}
+        badge={isActive ? <Badge className="bg-emerald-900/20 text-emerald-400 text-[10px]">Live</Badge> : null}
       />
     </div>
   );

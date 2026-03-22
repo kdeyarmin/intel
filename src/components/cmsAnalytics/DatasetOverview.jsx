@@ -56,10 +56,10 @@ export default function DatasetOverview({ importBatches, loading }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {datasetStats.map(d => (
-              <div key={d.type} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              <div key={d.type} className="flex items-center gap-3 p-3 bg-slate-800/60 rounded-lg">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-700 truncate">{d.label}</p>
+                  <p className="text-sm font-medium text-slate-300 truncate">{d.label}</p>
                   <p className="text-xs text-slate-500">
                     {d.totalImported.toLocaleString()} rows • {d.importCount} imports
                   </p>

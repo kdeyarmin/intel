@@ -171,10 +171,10 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-slate-100 text-slate-600 text-[8px]">
+                        <Badge className="bg-slate-700 text-slate-400 text-[8px]">
                           <Clock className="w-2.5 h-2.5 mr-0.5" />{email.send_day}
                         </Badge>
-                        <p className="text-[10px] font-medium text-slate-800">Email {email.email_number}</p>
+                        <p className="text-[10px] font-medium text-slate-300">Email {email.email_number}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
@@ -194,17 +194,17 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
                       <div className="mt-2 space-y-1.5">
                         <div>
                           <p className="text-[9px] text-slate-400 font-medium">Subject:</p>
-                          <p className="text-[10px] text-slate-700 font-medium">{email.subject}</p>
+                          <p className="text-[10px] text-slate-300 font-medium">{email.subject}</p>
                         </div>
                         {email.subject_alt && (
                           <div>
                             <p className="text-[9px] text-slate-400 font-medium">A/B Alt:</p>
-                            <p className="text-[10px] text-slate-600 italic">{email.subject_alt}</p>
+                            <p className="text-[10px] text-slate-400 italic">{email.subject_alt}</p>
                           </div>
                         )}
                         <div>
                           <p className="text-[9px] text-slate-400 font-medium">Body:</p>
-                          <p className="text-[10px] text-slate-600 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                          <p className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
                             {email.body}
                           </p>
                         </div>

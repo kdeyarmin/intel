@@ -69,12 +69,12 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
           {hasErrors ? (
             <div className="space-y-3">
               {errors.map((error, index) => (
-                <div key={index} className="flex gap-3 items-start p-3 rounded bg-red-900/200/5 border border-red-500/10 text-sm">
+                <div key={index} className="flex gap-3 items-start p-3 rounded bg-red-900/5 border border-red-500/10 text-sm">
                   <FileWarning className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
                   <div className="space-y-1 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       {error.row !== undefined && (
-                        <Badge variant="outline" className="border-red-500/20 text-red-400 bg-red-900/200/10 text-[10px] h-5">
+                        <Badge variant="outline" className="border-red-500/20 text-red-400 bg-red-900/10 text-[10px] h-5">
                           Row {error.row}
                         </Badge>
                       )}

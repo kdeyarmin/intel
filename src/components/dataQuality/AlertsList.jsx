@@ -18,10 +18,10 @@ const severityColors = {
 };
 
 const categoryColors = {
-  completeness: 'bg-blue-900/200/15 text-blue-400',
-  accuracy: 'bg-purple-900/200/15 text-purple-400',
-  timeliness: 'bg-amber-900/200/15 text-amber-400',
-  consistency: 'bg-teal-900/200/15 text-teal-400',
+  completeness: 'bg-blue-900/15 text-blue-400',
+  accuracy: 'bg-purple-900/15 text-purple-400',
+  timeliness: 'bg-amber-900/15 text-amber-400',
+  consistency: 'bg-teal-900/15 text-teal-400',
 };
 
 const statusIcons = {
@@ -216,7 +216,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
         {statusIcons[alert.status]}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-slate-800 truncate">{alert.summary}</span>
+            <span className="text-sm font-medium text-slate-300 truncate">{alert.summary}</span>
             {alert.suggested_value && <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />}
           </div>
           <div className="flex gap-2 mt-1">

@@ -114,7 +114,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400" onClick={handlePause}>
             <Pause className="w-3 h-3" /> Pause
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/200/10" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
@@ -122,17 +122,17 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {isPaused && (
         <>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/200/10" onClick={handleResume}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/10" onClick={handleResume}>
             <RefreshCw className="w-3 h-3" /> Resume
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/200/10" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
       )}
 
       {canRetry && (
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/200/10" onClick={onRetryClick}>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/10" onClick={onRetryClick}>
           <RefreshCw className="w-3 h-3" /> Retry{batch.retry_count > 0 ? ` (${batch.retry_count}/${MAX_RETRIES})` : ''}
         </Button>
       )}
@@ -159,7 +159,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
             placeholder="Reason for cancellation (optional)"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
           />
           <DialogFooter>
             <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
@@ -180,7 +180,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           <p className="text-sm text-slate-400">
             This will mark the batch as completed with a "skipped" tag. Use this for batches with minor issues that don't need to be retried.
           </p>
-          <div className="bg-amber-900/200/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 space-y-1">
+          <div className="bg-amber-900/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 space-y-1">
             <p className="font-medium">Batch Summary:</p>
             <p>Total: {batch.total_rows?.toLocaleString() || 0} · Valid: {batch.valid_rows?.toLocaleString() || 0} · Imported: {batch.imported_rows?.toLocaleString() || 0}</p>
             {batch.invalid_rows > 0 && <p className="text-red-400">{batch.invalid_rows} invalid rows will be ignored</p>}
@@ -189,7 +189,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
             placeholder="Reason for skipping (optional)"
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
-            className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
           />
           <DialogFooter>
             <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setSkipDialogOpen(false)}>Cancel</Button>

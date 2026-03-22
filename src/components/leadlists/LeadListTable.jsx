@@ -149,7 +149,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-red-400 hover:text-red-300 hover:bg-red-900/200/10"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-900/10"
                     onClick={() => {
                       if (confirm('Remove this provider from the list?')) {
                         onRemove(lead.member.id);

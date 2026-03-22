@@ -178,7 +178,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
 
           {/* Schedule */}
           <div className="border-t pt-3 space-y-3">
-            <Label className="text-xs font-semibold text-slate-700">Schedule</Label>
+            <Label className="text-xs font-semibold text-slate-300">Schedule</Label>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Frequency *</Label>
@@ -227,7 +227,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
 
           {/* Recipients */}
           <div className="border-t pt-3 space-y-2">
-            <Label className="text-xs font-semibold text-slate-700">Recipients *</Label>
+            <Label className="text-xs font-semibold text-slate-300">Recipients *</Label>
             <div className="flex gap-2">
               <Input
                 placeholder="email@example.com"

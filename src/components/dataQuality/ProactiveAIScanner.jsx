@@ -229,8 +229,8 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                 <div key={finding.entity} className="border rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 bg-slate-50">
                     <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm font-semibold text-slate-800">{finding.label}</span>
+                      <Icon className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-semibold text-slate-300">{finding.label}</span>
                       <span className="text-xs text-slate-400">({finding.totalRecords} records)</span>
                     </div>
                     {finding.health && (
@@ -261,7 +261,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                               {issue.severity}
                             </Badge>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium text-slate-800">{issue.summary}</p>
+                              <p className="text-xs font-medium text-slate-300">{issue.summary}</p>
                               <div className="flex gap-2 mt-0.5">
                                 <Badge variant="outline" className="text-[8px]">{issue.category}</Badge>
                                 {issue.field_name && <Badge variant="outline" className="text-[8px]">{issue.field_name}</Badge>}

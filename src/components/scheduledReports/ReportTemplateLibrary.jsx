@@ -96,12 +96,12 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
                 onClick={() => onUseTemplate(template)}
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-md bg-slate-100 group-hover:bg-blue-100 transition-colors">
-                    <Icon className="w-4 h-4 text-slate-600 group-hover:text-blue-600" />
+                  <div className="p-1.5 rounded-md bg-slate-700 group-hover:bg-blue-100 transition-colors">
+                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-semibold text-slate-800 truncate">{template.name}</h4>
+                      <h4 className="text-xs font-semibold text-slate-300 truncate">{template.name}</h4>
                       <Badge variant="outline" className="text-[9px] shrink-0">{template.frequency}</Badge>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{template.description}</p>

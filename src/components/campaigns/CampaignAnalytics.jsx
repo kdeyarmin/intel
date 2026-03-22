@@ -15,9 +15,9 @@ import CampaignAutomationPanel from './CampaignAutomationPanel';
 const _STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
   draft: 'bg-slate-500/15 text-slate-400',
-  active: 'bg-emerald-900/200/15 text-emerald-400',
-  paused: 'bg-amber-900/200/15 text-amber-400',
-  completed: 'bg-blue-900/200/15 text-blue-400',
+  active: 'bg-emerald-900/15 text-emerald-400',
+  paused: 'bg-amber-900/15 text-amber-400',
+  completed: 'bg-blue-900/15 text-blue-400',
   archived: 'bg-slate-500/15 text-slate-500',
 };
 
@@ -116,7 +116,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
           </TabsTrigger>
           <TabsTrigger value="leads" className="text-xs gap-1 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Users className="w-3.5 h-3.5" /> Leads
-            {leadStats.total > 0 && <Badge className="bg-cyan-900/200/20 text-cyan-400 text-[9px] ml-1">{leadStats.total}</Badge>}
+            {leadStats.total > 0 && <Badge className="bg-cyan-900/20 text-cyan-400 text-[9px] ml-1">{leadStats.total}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="tasks" className="text-xs gap-1 data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ListTodo className="w-3.5 h-3.5" /> Tasks
@@ -201,7 +201,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
                           <td className="text-center text-green-400">{row.qualified}</td>
                           <td className="text-center text-slate-400">{row.notAFit}</td>
                           <td className="text-center">
-                            <Badge className={`text-[10px] ${row.cvr >= (campaign.target_conversion_rate || 0) ? 'bg-green-900/200/15 text-green-400' : 'bg-slate-500/15 text-slate-400'}`}>
+                            <Badge className={`text-[10px] ${row.cvr >= (campaign.target_conversion_rate || 0) ? 'bg-green-900/15 text-green-400' : 'bg-slate-500/15 text-slate-400'}`}>
                               {row.cvr}%
                             </Badge>
                           </td>
@@ -217,7 +217,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
           {leadStats.total === 0 && (
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="py-8 text-center">
-                <Users className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-400">No leads linked to this campaign yet</p>
                 <p className="text-xs text-slate-500 mt-1">Add lead lists to this campaign to start tracking lead progress</p>
               </CardContent>
@@ -252,7 +252,7 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
                 const actual = sent > 0 ? (conv / sent) * 100 : 0;
                 return (
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${actual >= campaign.target_conversion_rate ? 'bg-emerald-900/200' : 'bg-blue-900/200'}`}
+                    className={`h-full rounded-full transition-all duration-700 ${actual >= campaign.target_conversion_rate ? 'bg-emerald-900/20' : 'bg-blue-900/20'}`}
                     style={{ width: `${Math.min(actual, 100)}%` }}
                   />
                 );

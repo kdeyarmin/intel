@@ -129,7 +129,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
               <p className="text-muted-foreground flex items-center gap-1"><Key className="w-4 h-4" /> API Key</p>
               <p className="font-medium">{connector.api_key ? '••••••••' : 'None'}</p>
             </div>
-            <div className="space-y-1 col-span-2 bg-slate-50 p-3 rounded-md">
+            <div className="space-y-1 col-span-2 bg-slate-800/60 p-3 rounded-md">
               <p className="text-muted-foreground flex items-center gap-1 mb-1"><Clock className="w-4 h-4" /> Last Tested</p>
               <div className="flex items-center justify-between">
                 <span>
@@ -144,7 +144,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
         )}
       </CardContent>
 
-      <CardFooter className="flex justify-between border-t bg-slate-50/50 pt-4 pb-4">
+      <CardFooter className="flex justify-between border-t bg-slate-800/50 pt-4 pb-4">
         {isEditing ? (
           <>
             <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>

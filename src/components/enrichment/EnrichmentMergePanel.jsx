@@ -126,7 +126,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                       />
                     </TableCell>
                     <TableCell className="font-medium text-sm">{field.label}</TableCell>
-                    <TableCell className="text-sm text-slate-600">{currentVal}</TableCell>
+                    <TableCell className="text-sm text-slate-400">{currentVal}</TableCell>
                     <TableCell>
                       <ArrowRight className="w-4 h-4 text-slate-400" />
                     </TableCell>

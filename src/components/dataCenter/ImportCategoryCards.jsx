@@ -9,7 +9,7 @@ const IMPORT_CATEGORIES = [
     label: 'Provider Data',
     description: 'NPPES provider registry, monthly downloads',
     icon: Users,
-    color: 'bg-cyan-900/200/10 text-cyan-400 border-cyan-500/20',
+    color: 'bg-cyan-900/10 text-cyan-400 border-cyan-500/20',
     types: [
       { id: 'nppes_monthly', name: 'NPPES File Upload', description: 'Upload NPPES CSV file', requiredColumns: ['NPI', 'Entity Type Code', 'Provider Last Name (Legal Name)', 'Provider First Name'], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
       { id: 'nppes_registry', name: 'NPPES Registry Search', description: 'Search & import from NPPES API', requiredColumns: [], downloadUrl: 'https://download.cms.gov/nppes/NPI_Files.html' },
@@ -21,7 +21,7 @@ const IMPORT_CATEGORIES = [
     label: 'CMS Claims & Utilization',
     description: 'Utilization, referrals, services',
     icon: Activity,
-    color: 'bg-blue-900/200/10 text-blue-400 border-blue-500/20',
+    color: 'bg-blue-900/10 text-blue-400 border-blue-500/20',
     types: [
       { id: 'cms_utilization', name: 'Provider Utilization', description: 'Medicare Part B utilization', requiredColumns: ['NPI', 'Year', 'Total Services', 'Total Medicare Beneficiaries', 'Total Medicare Payment Amount'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-physician-other-practitioners/medicare-physician-other-practitioners-by-provider-and-service' },
       { id: 'cms_order_referring', name: 'Order & Referring', description: 'Ordering and referring data', requiredColumns: ['NPI', 'HHA', 'HOSPICE', 'DME', 'PARTB'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/ordering-and-referring' },
@@ -33,7 +33,7 @@ const IMPORT_CATEGORIES = [
     label: 'Enrollment & Ownership',
     description: 'Home health, hospice, provider ownership',
     icon: Building2,
-    color: 'bg-violet-900/200/10 text-violet-400 border-violet-500/20',
+    color: 'bg-violet-900/10 text-violet-400 border-violet-500/20',
     types: [
       { id: 'provider_ownership', name: 'Provider Ownership', description: 'Ownership & control info', requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership' },
       { id: 'hospice_enrollments', name: 'Hospice Enrollments', description: 'Hospice provider enrollment', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
@@ -45,7 +45,7 @@ const IMPORT_CATEGORIES = [
     label: 'Facility & Cost Data',
     description: 'Nursing homes, cost reports, DRG, PDGM',
     icon: FileText,
-    color: 'bg-amber-900/200/10 text-amber-400 border-amber-500/20',
+    color: 'bg-amber-900/10 text-amber-400 border-amber-500/20',
     types: [
       { id: 'nursing_home_chains', name: 'Nursing Home Chains', description: 'Chain performance data', requiredColumns: ['Chain', 'Chain ID', 'Number of facilities', 'Average overall 5-star rating'], downloadUrl: 'https://data.cms.gov/provider-data/dataset/b2ux-wtdv' },
       { id: 'home_health_cost_reports', name: 'Cost Reports', description: 'HHA financial data', requiredColumns: ['rpt_rec_num', 'Provider CCN', 'HHA Name', 'Total Cost'], downloadUrl: 'https://data.cms.gov/provider-compliance/cost-report/home-health-agency-cost-report' },
@@ -112,14 +112,14 @@ export default function ImportCategoryCards({ onSelectCategory, batches = [] }) 
                     <span>Updated {formatDistanceToNow(dates.lastUpdate, { addSuffix: true })}</span>
                   </div>
                   <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                    <CalendarClock className="w-3 h-3 text-slate-600" />
+                    <CalendarClock className="w-3 h-3 text-slate-400" />
                     <span>Next: {format(dates.nextExpected, 'MMM d, yyyy')}</span>
                   </div>
                 </div>
               ) : (
-                <p className="text-[10px] text-slate-600 mt-2">No imports yet</p>
+                <p className="text-[10px] text-slate-400 mt-2">No imports yet</p>
               )}
-              <p className="text-[10px] text-slate-600 mt-1">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
+              <p className="text-[10px] text-slate-400 mt-1">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
             </CardContent>
           </Card>
         );

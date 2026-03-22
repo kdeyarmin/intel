@@ -153,10 +153,10 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded border">
+              <div className="flex items-center justify-between p-3 bg-slate-800/60 rounded border">
                 <div>
                   <Label className="text-sm font-medium">AI Personalization</Label>
-                  <p className="text-xs text-slate-600 mt-0.5">Personalize each message based on provider profile</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Personalize each message based on provider profile</p>
                 </div>
                 <Switch
                   checked={campaign.ai_personalization}
@@ -176,7 +176,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Email Template</CardTitle>
-              <p className="text-xs text-slate-600 mt-1">Use {{merge_fields}} for personalization</p>
+              <p className="text-xs text-slate-400 mt-1">Use {{merge_fields}} for personalization</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -215,14 +215,14 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
               <CardTitle className="text-base">Message Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded border">
+              <div className="p-4 bg-slate-800/60 rounded border">
                 <div className="mb-3">
-                  <p className="text-xs text-slate-600">Subject:</p>
+                  <p className="text-xs text-slate-400">Subject:</p>
                   <p className="font-semibold text-sm">{campaign.subject_template || 'No subject'}</p>
                 </div>
                 <div className="border-t pt-3">
-                  <p className="text-xs text-slate-600 mb-2">Body:</p>
-                  <div className="text-sm whitespace-pre-wrap text-slate-700">{campaign.body_template || 'No body'}</div>
+                  <p className="text-xs text-slate-400 mb-2">Body:</p>
+                  <div className="text-sm whitespace-pre-wrap text-slate-300">{campaign.body_template || 'No body'}</div>
                 </div>
               </div>
 

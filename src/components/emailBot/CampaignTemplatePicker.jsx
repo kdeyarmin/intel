@@ -70,10 +70,10 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
   };
 
   const categoryColors = {
-    introduction: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20',
-    partnership: 'bg-violet-900/200/15 text-violet-400 border-violet-500/20',
-    follow_up: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20',
-    referral: 'bg-emerald-900/200/15 text-emerald-400 border-emerald-500/20',
+    introduction: 'bg-blue-900/15 text-blue-400 border-blue-500/20',
+    partnership: 'bg-violet-900/15 text-violet-400 border-violet-500/20',
+    follow_up: 'bg-amber-900/15 text-amber-400 border-amber-500/20',
+    referral: 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20',
     custom: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
   };
 

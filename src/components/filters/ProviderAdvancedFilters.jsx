@@ -59,7 +59,7 @@ export default function ProviderAdvancedFilters({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="text-slate-500 hover:text-slate-700 h-9 text-xs gap-1"
+          className="text-slate-500 hover:text-slate-300 h-9 text-xs gap-1"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           More
@@ -67,7 +67,7 @@ export default function ProviderAdvancedFilters({
         </Button>
 
         {activeCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-600 h-9 text-xs gap-1">
+          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-400 h-9 text-xs gap-1">
             <X className="w-3 h-3" /> Clear ({activeCount})
           </Button>
         )}
@@ -154,9 +154,9 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function FilterChip({ label, onRemove }) {
   return (
-    <Badge variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-900/200/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-900/200/15 cursor-default">
+    <Badge variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-900/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-900/15 cursor-default">
       {label}
-      <button onClick={onRemove} className="hover:bg-cyan-900/200/20 rounded-full p-0.5 transition-colors">
+      <button onClick={onRemove} className="hover:bg-cyan-900/20 rounded-full p-0.5 transition-colors">
         <X className="w-3 h-3" />
       </button>
     </Badge>

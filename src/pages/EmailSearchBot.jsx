@@ -296,18 +296,18 @@ export default function EmailSearchBot() {
           </TabsTrigger>
           <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Users className="w-3.5 h-3.5" /> Providers
-            {stats.withEmail > 0 && <Badge className="bg-cyan-900/200/20 text-cyan-400 text-[9px] ml-1">{stats.withEmail}</Badge>}
+            {stats.withEmail > 0 && <Badge className="bg-cyan-900/20 text-cyan-400 text-[9px] ml-1">{stats.withEmail}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
             {stats.risky + stats.invalid > 0 && (
-              <Badge className="bg-amber-900/200/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+              <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="issues" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <AlertTriangle className="w-3.5 h-3.5" /> Issues
             {stats.risky + stats.invalid > 0 && (
-              <Badge className="bg-amber-900/200/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+              <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
@@ -376,7 +376,7 @@ export default function EmailSearchBot() {
 
           {/* Running indicator */}
           {isRunning && !isRunningAll && (
-            <Card className="border-cyan-500/20 bg-cyan-900/200/5">
+            <Card className="border-cyan-500/20 bg-cyan-900/5">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="animate-pulse"><Bot className="w-5 h-5 text-cyan-400" /></div>
                 <div>
@@ -393,8 +393,8 @@ export default function EmailSearchBot() {
               <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-cyan-400" />
                 Results
-                <Badge className="bg-cyan-900/200/15 text-cyan-400 border border-cyan-500/20 text-[10px]">{lastResults.length} searched</Badge>
-                <Badge className="bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20 text-[10px]">
+                <Badge className="bg-cyan-900/15 text-cyan-400 border border-cyan-500/20 text-[10px]">{lastResults.length} searched</Badge>
+                <Badge className="bg-emerald-900/15 text-emerald-400 border border-emerald-500/20 text-[10px]">
                   {lastResults.filter(r => r.best_email).length} found
                 </Badge>
               </h2>
@@ -418,9 +418,9 @@ export default function EmailSearchBot() {
                       ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
                       : p.organization_name || p.npi;
                     const confColor = {
-                      high: 'bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20',
-                      medium: 'bg-amber-900/200/15 text-amber-400 border border-amber-500/20',
-                      low: 'bg-red-900/200/15 text-red-400 border border-red-500/20',
+                      high: 'bg-emerald-900/15 text-emerald-400 border border-emerald-500/20',
+                      medium: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
+                      low: 'bg-red-900/15 text-red-400 border border-red-500/20',
                     }[p.email_confidence] || 'bg-slate-500/15 text-slate-400 border border-slate-500/20';
 
                     return (
@@ -444,7 +444,7 @@ export default function EmailSearchBot() {
           )}
 
           {/* Disclaimer */}
-          <div className="flex items-start gap-2 bg-amber-900/200/10 border border-amber-500/20 rounded-lg p-3">
+          <div className="flex items-start gap-2 bg-amber-900/10 border border-amber-500/20 rounded-lg p-3">
             <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-400/80">
               Email addresses are found via AI web search and may not be 100% accurate.
@@ -459,7 +459,7 @@ export default function EmailSearchBot() {
 
           {/* Selection actions bar */}
           {selectedNpis.size > 0 && (
-            <div className="flex items-center gap-3 p-3 bg-cyan-900/200/10 border border-cyan-500/20 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-cyan-900/10 border border-cyan-500/20 rounded-lg">
               <span className="text-xs text-cyan-300">{selectedNpis.size} selected</span>
               <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 gap-1">
                 <Send className="w-3 h-3" /> Email Campaign
@@ -537,7 +537,7 @@ export default function EmailSearchBot() {
         <TabsContent value="outreach" className="space-y-5">
           <Card className="bg-[#141d30] border-slate-700/50">
             <CardContent className="p-6 text-center space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-full bg-cyan-900/200/10 flex items-center justify-center">
+              <div className="w-14 h-14 mx-auto rounded-full bg-cyan-900/10 flex items-center justify-center">
                 <Send className="w-7 h-7 text-cyan-400" />
               </div>
               <div>

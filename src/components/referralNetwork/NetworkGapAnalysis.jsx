@@ -34,7 +34,7 @@ export default function NetworkGapAnalysis() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-600 mb-4">
+          <p className="text-sm text-slate-400 mb-4">
             Identify underutilized specialties and referral opportunities.
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
@@ -70,7 +70,7 @@ export default function NetworkGapAnalysis() {
         </CardHeader>
         <CardContent>
           {gaps.length === 0 ? (
-            <p className="text-sm text-slate-600">No significant gaps detected in your network.</p>
+            <p className="text-sm text-slate-400">No significant gaps detected in your network.</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -94,11 +94,11 @@ export default function NetworkGapAnalysis() {
                         {gap.utilization_percent}% utilized
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-600 mb-2">
+                    <p className="text-xs text-slate-400 mb-2">
                       {gap.active_referrers} of {gap.total_providers} providers are active in your network
                     </p>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-slate-700">Underutilized providers:</p>
+                      <p className="text-xs font-medium text-slate-400">Underutilized providers:</p>
                       <div className="flex flex-wrap gap-1">
                         {gap.underutilized?.map((provider) => (
                           <Badge key={provider.npi} variant="outline" className="text-xs">

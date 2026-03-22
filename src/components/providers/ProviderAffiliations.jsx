@@ -22,20 +22,20 @@ const TYPE_LABELS = {
 };
 
 const TYPE_COLORS = {
-  hospital: 'bg-blue-900/200/15 text-blue-400',
-  medical_group: 'bg-violet-900/200/15 text-violet-400',
-  health_system: 'bg-cyan-900/200/15 text-cyan-400',
-  clinic: 'bg-emerald-900/200/15 text-emerald-400',
-  academic: 'bg-amber-900/200/15 text-amber-400',
+  hospital: 'bg-blue-900/15 text-blue-400',
+  medical_group: 'bg-violet-900/15 text-violet-400',
+  health_system: 'bg-cyan-900/15 text-cyan-400',
+  clinic: 'bg-emerald-900/15 text-emerald-400',
+  academic: 'bg-amber-900/15 text-amber-400',
   other: 'bg-slate-500/15 text-slate-400',
 };
 
 const SOURCE_BADGES = {
   manual: { label: 'Manual', cls: 'bg-slate-700/50 text-slate-400' },
-  ai_suggested: { label: 'AI Suggested', cls: 'bg-violet-900/200/15 text-violet-400' },
-  nppes: { label: 'NPPES', cls: 'bg-cyan-900/200/15 text-cyan-400' },
-  cms: { label: 'CMS', cls: 'bg-blue-900/200/15 text-blue-400' },
-  enrichment: { label: 'Enriched', cls: 'bg-emerald-900/200/15 text-emerald-400' },
+  ai_suggested: { label: 'AI Suggested', cls: 'bg-violet-900/15 text-violet-400' },
+  nppes: { label: 'NPPES', cls: 'bg-cyan-900/15 text-cyan-400' },
+  cms: { label: 'CMS', cls: 'bg-blue-900/15 text-blue-400' },
+  enrichment: { label: 'Enriched', cls: 'bg-emerald-900/15 text-emerald-400' },
 };
 
 export default function ProviderAffiliations({ npi, provider, location, taxonomies }) {
@@ -175,11 +175,11 @@ Only return affiliations you can verify. Be specific with names.`,
               <Sparkles className="w-3 h-3" /> {pending.length} pending review
             </p>
             {pending.map(a => (
-              <div key={a.id} className="flex items-center justify-between p-2 rounded-lg border border-amber-500/20 bg-amber-900/200/5 mb-1">
+              <div key={a.id} className="flex items-center justify-between p-2 rounded-lg border border-amber-500/20 bg-amber-900/5 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Badge className={`text-[9px] ${TYPE_COLORS[a.affiliation_type] || ''}`}>{TYPE_LABELS[a.affiliation_type]}</Badge>
                   <span className="text-xs text-slate-300 truncate">{a.affiliation_name}</span>
-                  {a.confidence && <Badge className={`text-[8px] ${a.confidence === 'high' ? 'bg-emerald-900/200/15 text-emerald-400' : a.confidence === 'medium' ? 'bg-amber-900/200/15 text-amber-400' : 'bg-red-900/200/15 text-red-400'}`}>{a.confidence}</Badge>}
+                  {a.confidence && <Badge className={`text-[8px] ${a.confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400' : a.confidence === 'medium' ? 'bg-amber-900/15 text-amber-400' : 'bg-red-900/15 text-red-400'}`}>{a.confidence}</Badge>}
                   <Badge className={`text-[8px] ${SOURCE_BADGES[a.source]?.cls || ''}`}>{SOURCE_BADGES[a.source]?.label}</Badge>
                 </div>
                 <div className="flex gap-1 shrink-0">
@@ -187,7 +187,7 @@ Only return affiliations you can verify. Be specific with names.`,
                     onClick={() => updateMut.mutate({ id: a.id, data: { status: 'confirmed' } })}>
                     <CheckCircle2 className="w-3 h-3" />
                   </Button>
-                  <Button size="sm" variant="outline" className="h-6 w-6 p-0 text-red-400 border-red-500/30 hover:bg-red-900/200/10"
+                  <Button size="sm" variant="outline" className="h-6 w-6 p-0 text-red-400 border-red-500/30 hover:bg-red-900/10"
                     onClick={() => updateMut.mutate({ id: a.id, data: { status: 'rejected' } })}>
                     <XCircle className="w-3 h-3" />
                   </Button>
@@ -242,7 +242,7 @@ Only return affiliations you can verify. Be specific with names.`,
             <div className="space-y-3">
               <Input placeholder="Organization name" value={form.affiliation_name}
                 onChange={e => setForm({ ...form, affiliation_name: e.target.value })}
-                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               <Select value={form.affiliation_type} onValueChange={v => setForm({ ...form, affiliation_type: v })}>
                 <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -251,10 +251,10 @@ Only return affiliations you can verify. Be specific with names.`,
               </Select>
               <Input placeholder="Role (e.g., Attending, Staff)" value={form.role}
                 onChange={e => setForm({ ...form, role: e.target.value })}
-                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               <Input placeholder="Notes" value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
-                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+                className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAdd(false)} className="bg-transparent border-slate-700 text-slate-400">Cancel</Button>
@@ -285,7 +285,7 @@ Only return affiliations you can verify. Be specific with names.`,
                 </Select>
                 <Input placeholder="Role" value={editAff.role || ''}
                   onChange={e => setEditAff({ ...editAff, role: e.target.value })}
-                  className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+                  className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               </div>
             )}
             <DialogFooter>

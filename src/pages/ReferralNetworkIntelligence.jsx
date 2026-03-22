@@ -40,7 +40,14 @@ export default function ReferralNetworkIntelligence() {
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['rnReferrals'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.CMSReferral.list('-created_date', 500);
+      return rows.map(r => ({
+        ...r,
+        year: r.data_year,
+        total_referrals: 1,
+      }));
+    },
     staleTime: 120000,
   });
   const { data: locations = [] } = useQuery({

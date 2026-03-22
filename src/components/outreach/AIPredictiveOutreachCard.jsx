@@ -61,11 +61,11 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-medium">Engagement Likelihood</span>
-                  <Badge variant={provider.ai_outreach_score > 75 ? "default" : provider.ai_outreach_score > 40 ? "secondary" : "destructive"} className={provider.ai_outreach_score > 75 ? "bg-emerald-900/200 hover:bg-emerald-600" : ""}>
+                  <Badge variant={provider.ai_outreach_score > 75 ? "default" : provider.ai_outreach_score > 40 ? "secondary" : "destructive"} className={provider.ai_outreach_score > 75 ? "bg-emerald-900/20 hover:bg-emerald-600" : ""}>
                     {provider.ai_outreach_score > 75 ? 'High' : provider.ai_outreach_score > 40 ? 'Medium' : 'Low'}
                   </Badge>
                 </div>
-                <Progress value={provider.ai_outreach_score} className="h-2 bg-slate-100" />
+                <Progress value={provider.ai_outreach_score} className="h-2 bg-slate-700" />
               </div>
             </div>
 
@@ -74,7 +74,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
                 <p className="text-xs font-semibold text-indigo-300 mb-1 flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5" /> Optimal Strategy
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed">
+                <p className="text-sm text-slate-300 leading-relaxed">
                   {provider.ai_outreach_strategy}
                 </p>
               </div>
@@ -87,7 +87,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
                 </p>
                 <ul className="space-y-1.5">
                   {provider.ai_engagement_factors.map((factor, idx) => (
-                    <li key={idx} className="text-sm text-slate-600 flex items-start gap-2">
+                    <li key={idx} className="text-sm text-slate-400 flex items-start gap-2">
                       <span className="text-indigo-400 mt-0.5">•</span>
                       <span className="flex-1">{factor}</span>
                     </li>

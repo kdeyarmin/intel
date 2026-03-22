@@ -56,7 +56,7 @@ export default function TemplateEditor({ subject, onSubjectChange, body, onBodyC
         {/* Live preview */}
         <div className="border rounded-lg p-4 bg-slate-50">
           <p className="text-[10px] font-medium text-slate-400 uppercase mb-2">Preview (sample data)</p>
-          <p className="text-sm font-medium text-slate-800 mb-2">
+          <p className="text-sm font-medium text-slate-300 mb-2">
             {(subject || '(no subject)')
               .replace(/\{\{provider_name\}\}/g, 'Dr. Jane Smith')
               .replace(/\{\{npi\}\}/g, '1234567890')
@@ -68,7 +68,7 @@ export default function TemplateEditor({ subject, onSubjectChange, body, onBodyC
               .replace(/\{\{beneficiaries\}\}/g, '340')
               .replace(/\{\{organization\}\}/g, 'Smith Medical Group')}
           </p>
-          <div className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+          <div className="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">
             {(body || '(no body)')
               .replace(/\{\{provider_name\}\}/g, 'Dr. Jane Smith')
               .replace(/\{\{npi\}\}/g, '1234567890')

@@ -173,7 +173,7 @@ export default function AlertNotificationSettings() {
                     <p className="text-[10px] text-slate-400">Always active when alerts are enabled</p>
                   </div>
                 </div>
-                <Badge className="bg-emerald-900/200/15 text-emerald-400 text-[9px]">Active</Badge>
+                <Badge className="bg-emerald-900/15 text-emerald-400 text-[9px]">Active</Badge>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-slate-800/50 border border-slate-700/30 rounded-lg">
                 <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function AlertNotificationSettings() {
                     Enable
                   </Button>
                 ) : (
-                  <Badge className="bg-red-900/200/15 text-red-400 text-[9px]">Blocked</Badge>
+                  <Badge className="bg-red-900/15 text-red-400 text-[9px]">Blocked</Badge>
                 )}
               </div>
             </div>

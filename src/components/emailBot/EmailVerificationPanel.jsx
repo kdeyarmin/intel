@@ -130,7 +130,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
                   onClick={() => setMode(opt.value)}
                   className={`p-2.5 rounded-lg border text-left transition-all ${
                     mode === opt.value
-                      ? 'border-cyan-500/50 bg-cyan-900/200/10'
+                      ? 'border-cyan-500/50 bg-cyan-900/10'
                       : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600'
                   }`}
                 >
@@ -180,11 +180,11 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
               Verification Results
-              <Badge className="bg-cyan-900/200/15 text-cyan-400 border border-cyan-500/20 text-[10px]">
+              <Badge className="bg-cyan-900/15 text-cyan-400 border border-cyan-500/20 text-[10px]">
                 {results.verified} verified
               </Badge>
               {results.remaining > 0 && (
-                <Badge className="bg-amber-900/200/15 text-amber-400 border border-amber-500/20 text-[10px]">
+                <Badge className="bg-amber-900/15 text-amber-400 border border-amber-500/20 text-[10px]">
                   {results.remaining} remaining
                 </Badge>
               )}

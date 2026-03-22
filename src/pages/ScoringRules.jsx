@@ -66,7 +66,8 @@ export default function ScoringRules() {
     setCalculating(true);
     try {
       const providers = await base44.entities.Provider.list('-created_date', 5000);
-      const utilizations = await base44.entities.CMSUtilization.list('-created_date', 5000);
+      const rawUtil = await base44.entities.ProviderServiceUtilization.list('-data_year', 5000);
+      const utilizations = rawUtil.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
       const locations = await base44.entities.ProviderLocation.list('-created_date', 5000);
       const taxonomies = await base44.entities.ProviderTaxonomy.list('-created_date', 5000);
       const currentRules = rules.filter(r => r.enabled !== false);
@@ -224,7 +225,7 @@ export default function ScoringRules() {
         </Button>
       </div>
 
-      <Card className="mb-6 bg-cyan-900/200/10 border-cyan-500/20">
+      <Card className="mb-6 bg-cyan-900/10 border-cyan-500/20">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>

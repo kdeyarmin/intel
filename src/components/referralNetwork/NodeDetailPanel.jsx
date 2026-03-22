@@ -27,17 +27,17 @@ export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose 
         <div className="flex gap-2 flex-wrap">
           <Badge variant="outline" className="text-[10px] font-mono text-slate-400">{node.npi}</Badge>
           <Badge variant="outline" className="text-[10px] text-slate-400">{node.entityType}</Badge>
-          {node.isHub && <Badge className="bg-red-900/200/15 text-red-400 text-[10px]">Hub</Badge>}
+          {node.isHub && <Badge className="bg-red-900/15 text-red-400 text-[10px]">Hub</Badge>}
           {node.state && <Badge variant="outline" className="text-[10px] text-slate-400">{node.state}</Badge>}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-blue-900/200/10 rounded-lg p-2">
+          <div className="bg-blue-900/10 rounded-lg p-2">
             <p className="text-lg font-bold text-blue-400">{fv(node.outbound)}</p>
             <p className="text-[10px] text-blue-400/60">Outbound</p>
           </div>
-          <div className="bg-violet-900/200/10 rounded-lg p-2">
+          <div className="bg-violet-900/10 rounded-lg p-2">
             <p className="text-lg font-bold text-violet-400">{fv(node.inbound)}</p>
             <p className="text-[10px] text-violet-400/60">Inbound</p>
           </div>

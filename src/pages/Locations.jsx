@@ -183,7 +183,7 @@ export default function Locations() {
                        <TableCell className="text-slate-300">{loc.zip || '-'}</TableCell>
                        <TableCell className="text-slate-300">{loc.phone || '-'}</TableCell>
                        <TableCell><Badge variant="outline" className="text-slate-300">{loc.location_type || '-'}</Badge></TableCell>
-                       <TableCell>{loc.is_primary ? <Badge className="bg-blue-900/200/15 text-blue-400 border border-blue-500/20">Primary</Badge> : <span className="text-slate-500">-</span>}</TableCell>
+                       <TableCell>{loc.is_primary ? <Badge className="bg-blue-900/15 text-blue-400 border border-blue-500/20">Primary</Badge> : <span className="text-slate-500">-</span>}</TableCell>
                       <TableCell>
                         <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>
                           <Button variant="outline" size="sm" className="text-xs h-7">View</Button>

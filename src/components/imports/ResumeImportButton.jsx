@@ -62,7 +62,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
     <Button 
       size="sm" 
       variant="outline" 
-      className="h-7 text-xs gap-1 bg-transparent text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/200/10"
+      className="h-7 text-xs gap-1 bg-transparent text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/10"
       onClick={handleResume}
       disabled={loading}
     >

@@ -42,7 +42,7 @@ export default function SNFStatsChart({ data = [], loading }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-slate-700">
+        <CardTitle className="text-sm font-semibold text-slate-300">
           Medicare SNF — {isGeo ? 'Top States by Payments' : 'Utilization by Entitlement'}
         </CardTitle>
       </CardHeader>

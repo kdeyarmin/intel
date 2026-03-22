@@ -62,7 +62,7 @@ export default function AINetworkRecommendations() {
                   <ArrowRight className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
                   <h4 className="font-semibold text-sm text-emerald-900">{opp.opportunity}</h4>
                 </div>
-                <p className="text-xs text-slate-600 ml-6 mb-2">{opp.rationale}</p>
+                <p className="text-xs text-slate-400 ml-6 mb-2">{opp.rationale}</p>
                 <Badge variant="outline" className="text-xs bg-emerald-100 text-emerald-300 border-emerald-300">
                   Impact: {opp.expected_impact}
                 </Badge>
@@ -94,7 +94,7 @@ export default function AINetworkRecommendations() {
                     {rec.priority} Priority
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-600">{rec.action}</p>
+                <p className="text-xs text-slate-400">{rec.action}</p>
               </div>
             ))}
           </CardContent>
@@ -113,7 +113,7 @@ export default function AINetworkRecommendations() {
                 <div className="flex items-start gap-2 mb-1">
                   <span className="font-bold text-amber-600">{strategy.specialty}</span>
                 </div>
-                <p className="text-xs text-slate-600 mb-2">{strategy.strategy}</p>
+                <p className="text-xs text-slate-400 mb-2">{strategy.strategy}</p>
                 <Badge variant="outline" className="text-xs bg-amber-100 text-amber-300 border-amber-600/50">
                   Timeline: {strategy.timeline}
                 </Badge>
@@ -130,7 +130,7 @@ export default function AINetworkRecommendations() {
             <CardTitle className="text-base text-purple-900">📊 Influence Strategy</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-700 leading-relaxed">{recommendations.influence_strategy}</p>
+            <p className="text-sm text-slate-400 leading-relaxed">{recommendations.influence_strategy}</p>
           </CardContent>
         </Card>
       )}

@@ -129,7 +129,7 @@ Provide:
             <p className="text-[10px] text-slate-500">Avg Response Rate</p>
           </CardContent></Card>
           <Card><CardContent className="p-3 text-center">
-            <p className="text-lg font-bold text-slate-700">{historicalStats.count}</p>
+            <p className="text-lg font-bold text-slate-300">{historicalStats.count}</p>
             <p className="text-[10px] text-slate-500">Campaigns Run</p>
           </CardContent></Card>
         </div>
@@ -214,7 +214,7 @@ Provide:
                 {prediction.recommended_segments.map((seg, i) => (
                   <div key={i} className="border rounded-lg p-2.5">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium text-slate-700">{seg.name}</p>
+                      <p className="text-xs font-medium text-slate-300">{seg.name}</p>
                       <Badge className="bg-emerald-100 text-emerald-400 text-[9px]">{seg.expected_lift}</Badge>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5">{seg.description}</p>
@@ -231,7 +231,7 @@ Provide:
               <CardContent>
                 <ul className="space-y-1">
                   {prediction.improvement_factors.map((f, i) => (
-                    <li key={i} className="text-[10px] text-slate-600 pl-3 relative before:content-['→'] before:absolute before:left-0 before:text-violet-400">{f}</li>
+                    <li key={i} className="text-[10px] text-slate-400 pl-3 relative before:content-['→'] before:absolute before:left-0 before:text-violet-400">{f}</li>
                   ))}
                 </ul>
               </CardContent>

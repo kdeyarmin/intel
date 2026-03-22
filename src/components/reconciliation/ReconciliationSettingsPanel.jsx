@@ -231,9 +231,9 @@ export default function ReconciliationSettingsPanel() {
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-slate-400">{log.response_time_ms}ms</span>
                     {log.is_success ? (
-                      <Badge className="bg-green-900/200/20 text-green-400 hover:bg-green-900/200/20">HTTP {log.status_code}</Badge>
+                      <Badge className="bg-green-900/20 text-green-400 hover:bg-green-900/20">HTTP {log.status_code}</Badge>
                     ) : (
-                      <Badge className="bg-red-900/200/20 text-red-400 hover:bg-red-900/200/20">HTTP {log.status_code || 'ERROR'}</Badge>
+                      <Badge className="bg-red-900/20 text-red-400 hover:bg-red-900/20">HTTP {log.status_code || 'ERROR'}</Badge>
                     )}
                   </div>
                 </div>

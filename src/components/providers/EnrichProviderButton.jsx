@@ -189,13 +189,13 @@ Search the NPI registry and healthcare directories to find accurate data for the
           </DialogHeader>
 
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-400">
               AI will search public healthcare directories and the NPI registry to find missing details
               for <strong>{providers.length}</strong> selected provider{providers.length !== 1 ? 's' : ''}.
             </p>
 
-            <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 space-y-1">
-              <p className="font-medium text-slate-700">Fields that will be enriched:</p>
+            <div className="text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 space-y-1">
+              <p className="font-medium text-slate-300">Fields that will be enriched:</p>
               <p>• Credential (MD, DO, NP, etc.)</p>
               <p>• Organization name</p>
               <p>• Primary specialty</p>
@@ -239,10 +239,10 @@ Search the NPI registry and healthcare directories to find accurate data for the
                 {/* Details */}
                 <div className="max-h-[250px] overflow-y-auto space-y-1">
                   {results.map((r, i) => (
-                    <div key={i} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg">
+                    <div key={i} className="flex items-start gap-2 p-2 bg-slate-800/60 rounded-lg">
                       {statusIcons[r.status] || statusIcons.error}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-slate-800 truncate">{r.name}</p>
+                        <p className="text-xs font-medium text-slate-300 truncate">{r.name}</p>
                         <p className="text-[10px] text-slate-400 font-mono">{r.npi}</p>
                         {r.fieldsUpdated?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5">

@@ -223,7 +223,7 @@ function MessageBubble({ message }) {
         <div className={`rounded-xl px-3 py-2 text-xs leading-relaxed ${
           isUser
             ? 'bg-indigo-600 text-white ml-auto'
-            : 'bg-slate-100 text-slate-800'
+            : 'bg-slate-700 text-slate-300'
         }`}>
           {isUser ? (
             <p>{message.content}</p>
@@ -238,14 +238,14 @@ function MessageBubble({ message }) {
         {message.data?.actions?.length > 0 && (
           <div className="mt-2 space-y-1">
             {message.data.actions.map((a, i) => (
-              <div key={i} className="flex items-start gap-1.5 bg-blue-900/200/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
+              <div key={i} className="flex items-start gap-1.5 bg-blue-900/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
                 {a.auto_executable ? (
                   <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 ) : (
                   <Wrench className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
                 )}
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-700">{a.action}</p>
+                  <p className="text-[10px] font-semibold text-slate-300">{a.action}</p>
                   <p className="text-[10px] text-slate-500">{a.description}</p>
                 </div>
               </div>
@@ -334,7 +334,7 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Trend */}
       {result.trend_analysis && (
-        <div className="bg-blue-900/200/10 border border-blue-500/20 rounded p-2 mb-2">
+        <div className="bg-blue-900/10 border border-blue-500/20 rounded p-2 mb-2">
           <p className="text-[10px] text-blue-300">{result.trend_analysis}</p>
         </div>
       )}
@@ -345,7 +345,7 @@ function PatternResultsPanel({ result, onClose }) {
           {result.recurring_patterns.slice(0, 3).map((p, i) => (
             <div key={i} className="bg-slate-800/40 border rounded p-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-slate-700">{p.rule_name}</span>
+                <span className="text-[10px] font-semibold text-slate-300">{p.rule_name}</span>
                 <Badge variant="outline" className="text-[8px]">{p.occurrence_count}x</Badge>
               </div>
               <p className="text-[9px] text-amber-400 mt-0.5"><strong>Root cause:</strong> {p.root_cause}</p>
@@ -363,7 +363,7 @@ function PatternResultsPanel({ result, onClose }) {
             <div key={i} className="flex items-start gap-1.5">
               <Badge className="text-[7px] bg-indigo-100 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
               <div>
-                <p className="text-[9px] font-medium text-slate-700">{a.action}</p>
+                <p className="text-[9px] font-medium text-slate-300">{a.action}</p>
                 <p className="text-[9px] text-slate-500">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
               </div>
             </div>
@@ -373,7 +373,7 @@ function PatternResultsPanel({ result, onClose }) {
 
       {/* Predictions */}
       {result.predictions?.length > 0 && (
-        <div className="mt-2 bg-amber-900/200/10 border border-amber-500/20 rounded p-2">
+        <div className="mt-2 bg-amber-900/10 border border-amber-500/20 rounded p-2">
           <p className="text-[9px] font-semibold text-amber-400 mb-0.5">⚠ Predictions</p>
           {result.predictions.slice(0, 2).map((p, i) => (
             <p key={i} className="text-[9px] text-amber-600">• {p}</p>

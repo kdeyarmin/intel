@@ -117,10 +117,10 @@ Keep each under 100 words.`,
                 {i < SEQUENCE_STEPS.length - 1 && <div className="absolute left-6 top-full w-px h-2 bg-slate-200" />}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center`}>
+                    <div className={`w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center`}>
                       <Icon className={`w-3 h-3 ${step.color}`} />
                     </div>
-                    <span className="text-xs font-medium text-slate-700">Step {step.id}: {step.label}</span>
+                    <span className="text-xs font-medium text-slate-300">Step {step.id}: {step.label}</span>
                     <Badge variant="outline" className="text-[9px]"><Clock className="w-2.5 h-2.5 mr-0.5" />{step.delay}</Badge>
                   </div>
                   <Switch checked={enabled} onCheckedChange={() => {
@@ -129,7 +129,7 @@ Keep each under 100 words.`,
                 </div>
                 {seqStep && enabled && (
                   <div className="ml-8 space-y-1.5 mt-2">
-                    <p className="text-[10px] text-slate-700"><span className="font-medium">Subject:</span> {seqStep.subject}</p>
+                    <p className="text-[10px] text-slate-300"><span className="font-medium">Subject:</span> {seqStep.subject}</p>
                     <p className="text-[10px] text-slate-500 leading-relaxed max-h-16 overflow-y-auto">{seqStep.body}</p>
                     <p className="text-[9px] text-violet-500 italic">{seqStep.reasoning}</p>
                     <Button size="sm" className="h-6 text-[10px] bg-teal-600 hover:bg-teal-700 gap-1"

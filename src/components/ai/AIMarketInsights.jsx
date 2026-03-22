@@ -13,7 +13,7 @@ const INSIGHT_COLORS = {
   opportunity: 'bg-blue-900/20 border-blue-200 text-blue-300',
   action: 'bg-violet-900/20 border-violet-200 text-violet-800',
 };
-const PRIORITY_COLORS = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+const PRIORITY_COLORS = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
 export default function AIMarketInsights({ provider, location, taxonomies, utilizations = [], referrals = [], score }) {
   const [results, setResults] = useState(null);
@@ -142,7 +142,7 @@ Also provide an overall market position assessment.`,
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-slate-700 leading-relaxed">{results.market_position}</p>
+              <p className="text-xs text-slate-300 leading-relaxed">{results.market_position}</p>
             </div>
 
             {/* Insights */}

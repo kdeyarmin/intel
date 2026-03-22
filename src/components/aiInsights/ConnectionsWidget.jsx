@@ -84,8 +84,8 @@ For each top provider, suggest 1 ideal connection type they should make (e.g., p
     setLoading(false);
   };
 
-  const strColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-100 text-slate-600' };
-  const impColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-100 text-slate-600' };
+  const strColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
+  const impColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <Card className="h-full">
@@ -107,9 +107,9 @@ For each top provider, suggest 1 ideal connection type they should make (e.g., p
         {results && (
           <div className="space-y-3">
             {results.provider_connections?.map((pc, i) => (
-              <div key={i} className="border rounded-lg p-2.5 hover:bg-slate-50/50 transition-colors">
+              <div key={i} className="border rounded-lg p-2.5 hover:bg-slate-800/50 transition-colors">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-slate-800">{pc.provider_name}</span>
+                  <span className="text-xs font-semibold text-slate-300">{pc.provider_name}</span>
                   <div className="flex items-center gap-1.5">
                     <Badge className={`text-[8px] ${strColors[pc.strength] || strColors.moderate}`}>{pc.strength}</Badge>
                     <Link to={createPageUrl(`ProviderDetail?npi=${pc.npi}`)}>

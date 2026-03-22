@@ -171,7 +171,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
       {results?.insights && (
         <div className="space-y-2">
           {/* Summary */}
-          <p className="text-[10px] text-slate-600 bg-slate-800/40 rounded-lg px-2 py-1.5 leading-relaxed">
+          <p className="text-[10px] text-slate-400 bg-slate-800/40 rounded-lg px-2 py-1.5 leading-relaxed">
             {results.insights.audience_summary}
           </p>
 
@@ -182,7 +182,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
               {results.insights.segments.map((seg, i) => (
                 <div key={i} className="bg-slate-800/60 border rounded-lg p-2 mb-1">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-slate-700">{seg.name}</p>
+                    <p className="text-[10px] font-semibold text-slate-300">{seg.name}</p>
                     <Badge variant="outline" className="text-[8px]">{seg.percentage}%</Badge>
                   </div>
                   <p className="text-[9px] text-slate-500 mt-0.5">{seg.description}</p>
@@ -217,7 +217,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
               <p className="text-[10px] font-medium text-slate-400 uppercase mb-1">Subject Line Variations</p>
               {results.insights.subject_line_variations.map((sl, i) => (
                 <div key={i} className="bg-slate-800/60 border rounded-lg p-2 mb-1 hover:border-violet-300 transition-colors">
-                  <p className="text-[10px] font-medium text-slate-800">"{sl.subject}"</p>
+                  <p className="text-[10px] font-medium text-slate-300">"{sl.subject}"</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className="text-[8px]">{sl.style}</Badge>
                     <span className="text-[8px] text-slate-400">{sl.expected_performance}</span>

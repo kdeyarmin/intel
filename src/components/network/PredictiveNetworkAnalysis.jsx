@@ -160,7 +160,7 @@ Provide data-driven predictions with confidence levels.`,
     setLoading(false);
   };
 
-  const SEVERITY_COLORS = { critical: 'bg-red-900/200/15 text-red-400', high: 'bg-amber-900/200/15 text-amber-400', moderate: 'bg-blue-900/200/15 text-blue-400', medium: 'bg-amber-900/200/15 text-amber-400', low: 'bg-slate-700/50 text-slate-400' };
+  const SEVERITY_COLORS = { critical: 'bg-red-900/15 text-red-400', high: 'bg-amber-900/15 text-amber-400', moderate: 'bg-blue-900/15 text-blue-400', medium: 'bg-amber-900/15 text-amber-400', low: 'bg-slate-700/50 text-slate-400' };
   const TREND_ICONS = { growing: '↑', stable: '→', declining: '↓' };
   const TREND_COLORS = { growing: 'text-emerald-400', stable: 'text-slate-400', declining: 'text-red-400' };
   const tooltipStyle = { background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11, color: '#e2e8f0' };
@@ -238,7 +238,7 @@ Provide data-driven predictions with confidence levels.`,
                       </div>
                       <p className="text-[9px] text-slate-500">{p.socioeconomic_factor}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {p.affected_specialties?.map(s => <Badge key={s} className="bg-red-900/200/10 text-red-400 text-[8px]">{s}</Badge>)}
+                        {p.affected_specialties?.map(s => <Badge key={s} className="bg-red-900/10 text-red-400 text-[8px]">{s}</Badge>)}
                       </div>
                       <p className="text-[10px] text-cyan-400 mt-1">{p.recommendation}</p>
                     </div>
@@ -283,7 +283,7 @@ Provide data-driven predictions with confidence levels.`,
                       <Badge className={`text-[8px] ${SEVERITY_COLORS[p.priority]}`}>{p.priority} priority</Badge>
                     </div>
                     <p className="text-[10px] text-slate-400 mt-1.5">{p.rationale}</p>
-                    <Badge className="bg-emerald-900/200/10 text-emerald-400 text-[8px] mt-1">{p.expected_impact}</Badge>
+                    <Badge className="bg-emerald-900/10 text-emerald-400 text-[8px] mt-1">{p.expected_impact}</Badge>
                   </div>
                 ))}
               </CardContent>

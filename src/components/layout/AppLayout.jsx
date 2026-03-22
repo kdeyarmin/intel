@@ -211,7 +211,7 @@ export default function AppLayout({ children, currentPageName }) {
                       onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
-                          ? 'bg-cyan-900/200/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
+                          ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
                           : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >

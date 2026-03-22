@@ -16,9 +16,9 @@ const ANOMALY_ICONS = {
 function AnomalyCard({ anomaly }) {
   const Icon = ANOMALY_ICONS[anomaly.category] || AlertTriangle;
   const severityColors = {
-    high: 'bg-red-900/200/15 text-red-400 border-red-500/20',
-    medium: 'bg-amber-900/200/15 text-amber-400 border-amber-500/20',
-    low: 'bg-blue-900/200/15 text-blue-400 border-blue-500/20',
+    high: 'bg-red-900/15 text-red-400 border-red-500/20',
+    medium: 'bg-amber-900/15 text-amber-400 border-amber-500/20',
+    low: 'bg-blue-900/15 text-blue-400 border-blue-500/20',
   };
 
   return (
@@ -49,7 +49,7 @@ function AnomalyCard({ anomaly }) {
         </div>
       )}
       {anomaly.recommendation && (
-        <div className="pl-6 bg-emerald-900/200/5 border border-emerald-500/20 rounded-md p-2">
+        <div className="pl-6 bg-emerald-900/5 border border-emerald-500/20 rounded-md p-2">
           <p className="text-[10px] text-emerald-400">{anomaly.recommendation}</p>
         </div>
       )}
@@ -75,7 +75,10 @@ export default function AIImportQualityAnalysis() {
 
   const { data: utilization = [] } = useQuery({
     queryKey: ['util_sample_dq'],
-    queryFn: () => base44.entities.CMSUtilization.list('-updated_date', 100),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 100);
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     staleTime: 120000,
   });
 
@@ -240,7 +243,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
       <CardContent>
         {!results && !analyzing && (
           <div className="text-center py-8">
-            <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-400" />
             <p className="text-sm text-slate-400">Click "Run AI Analysis" to scan imported data for quality issues</p>
             <p className="text-xs text-slate-400 mt-1">Checks for volume anomalies, address conflicts, missing data, and pattern inconsistencies</p>
           </div>
@@ -299,9 +302,9 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
                       <Badge className="bg-slate-700/50 text-slate-300 text-[10px] font-mono">{p.npi}</Badge>
                       <span className="text-xs text-slate-400 flex-1">{p.reason}</span>
                       <Badge className={`text-[9px] ${
-                        p.priority === 'high' ? 'bg-red-900/200/15 text-red-400' :
-                        p.priority === 'medium' ? 'bg-amber-900/200/15 text-amber-400' :
-                        'bg-blue-900/200/15 text-blue-400'
+                        p.priority === 'high' ? 'bg-red-900/15 text-red-400' :
+                        p.priority === 'medium' ? 'bg-amber-900/15 text-amber-400' :
+                        'bg-blue-900/15 text-blue-400'
                       }`}>{p.priority}</Badge>
                     </div>
                   ))}

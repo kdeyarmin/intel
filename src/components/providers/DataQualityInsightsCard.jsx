@@ -60,10 +60,10 @@ export default function DataQualityInsightsCard({ npi, provider }) {
           <div className="space-y-1">
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Open Alerts</p>
             {openAlerts.slice(0, 5).map(a => (
-              <div key={a.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2.5 py-1.5">
+              <div key={a.id} className="flex items-center gap-2 text-xs bg-slate-800/60 rounded px-2.5 py-1.5">
                 {a.suggested_value ? <Sparkles className="w-3 h-3 text-violet-500 shrink-0" /> : <AlertTriangle className="w-3 h-3 text-slate-400 shrink-0" />}
-                <span className="flex-1 truncate text-slate-600">{a.summary}</span>
-                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-100 text-red-400' : a.severity === 'high' ? 'bg-orange-100 text-orange-400' : 'bg-slate-100 text-slate-600'}`}>
+                <span className="flex-1 truncate text-slate-400">{a.summary}</span>
+                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-100 text-red-400' : a.severity === 'high' ? 'bg-orange-100 text-orange-400' : 'bg-slate-700 text-slate-400'}`}>
                   {a.severity}
                 </Badge>
               </div>

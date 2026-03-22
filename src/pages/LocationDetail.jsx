@@ -53,7 +53,10 @@ export default function LocationDetail() {
   // Fetch utilization data for the main NPI
   const { data: utilizations = [] } = useQuery({
     queryKey: ['locUtil', location?.npi],
-    queryFn: () => base44.entities.CMSUtilization.filter({ npi: location.npi }),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi: location.npi });
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     enabled: !!location?.npi,
   });
 
@@ -153,7 +156,7 @@ export default function LocationDetail() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{location.location_type || 'Unknown Type'}</Badge>
-                {location.is_primary && <Badge className="bg-blue-900/200/20 text-blue-400">Primary Location</Badge>}
+                {location.is_primary && <Badge className="bg-blue-900/20 text-blue-400">Primary Location</Badge>}
                 <Badge variant="outline" className="font-mono">NPI: {location.npi}</Badge>
               </div>
             </div>
@@ -195,21 +198,21 @@ export default function LocationDetail() {
               <CardContent>
                 {latestUtil ? (
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-blue-900/200/10 rounded-lg border border-blue-500/20">
+                    <div className="p-3 bg-blue-900/10 rounded-lg border border-blue-500/20">
                       <p className="text-[10px] text-blue-400 font-medium">Beneficiaries</p>
                       <p className="text-xl font-bold text-white">{(latestUtil.total_medicare_beneficiaries || 0).toLocaleString()}</p>
                       <p className="text-[10px] text-blue-400/70">{latestUtil.year}</p>
                     </div>
-                    <div className="p-3 bg-teal-900/200/10 rounded-lg border border-teal-500/20">
+                    <div className="p-3 bg-teal-900/10 rounded-lg border border-teal-500/20">
                       <p className="text-[10px] text-teal-400 font-medium">Total Services</p>
                       <p className="text-xl font-bold text-white">{(latestUtil.total_services || 0).toLocaleString()}</p>
                       <p className="text-[10px] text-teal-400/70">{latestUtil.year}</p>
                     </div>
-                    <div className="p-3 bg-emerald-900/200/10 rounded-lg border border-emerald-500/20">
+                    <div className="p-3 bg-emerald-900/10 rounded-lg border border-emerald-500/20">
                       <p className="text-[10px] text-emerald-400 font-medium">Medicare Payment</p>
                       <p className="text-xl font-bold text-white">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
                     </div>
-                    <div className="p-3 bg-violet-900/200/10 rounded-lg border border-violet-500/20">
+                    <div className="p-3 bg-violet-900/10 rounded-lg border border-violet-500/20">
                       <p className="text-[10px] text-violet-400 font-medium">Drug Services</p>
                       <p className="text-xl font-bold text-white">{(latestUtil.drug_services || 0).toLocaleString()}</p>
                     </div>
@@ -235,11 +238,11 @@ export default function LocationDetail() {
                       <span className="text-lg font-bold text-white">{(latestRef.total_referrals || 0).toLocaleString()}</span>
                     </div>
                     {[
-                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-900/200/20 text-blue-400' },
-                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-900/200/20 text-purple-400' },
-                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-900/200/20 text-amber-400' },
-                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-900/200/20 text-green-400' },
-                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-900/200/20 text-pink-400' },
+                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-900/20 text-blue-400' },
+                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-900/20 text-purple-400' },
+                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-900/20 text-amber-400' },
+                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-900/20 text-green-400' },
+                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-900/20 text-pink-400' },
                     ].filter(r => r.value > 0).map(r => (
                       <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
                         <span className="text-sm text-slate-400">{r.label}</span>
@@ -263,7 +266,7 @@ export default function LocationDetail() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {locTaxonomies.map(t => (
-                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-900/200/15 border-blue-500/30 text-blue-400' : ''}`}>
+                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-900/15 border-blue-500/30 text-blue-400' : ''}`}>
                       {t.taxonomy_description || t.taxonomy_code}
                       {t.primary_flag && <span className="ml-1 text-[9px]">★</span>}
                     </Badge>
@@ -309,13 +312,13 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Shield className="w-4 h-4 text-amber-500" />
                   Data Quality
-                  <Badge className="bg-amber-900/200/20 text-amber-400 text-[10px] ml-auto">{openDQAlerts.length} open</Badge>
+                  <Badge className="bg-amber-900/20 text-amber-400 text-[10px] ml-auto">{openDQAlerts.length} open</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {openDQAlerts.slice(0, 4).map(a => (
                   <div key={a.id} className="text-xs bg-slate-800/40 rounded px-2.5 py-1.5 flex items-center gap-2">
-                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${a.severity === 'critical' ? 'bg-red-900/200/20 text-red-400' : 'bg-amber-900/200/20 text-amber-400'}`}>{a.severity}</Badge>
+                    <Badge variant="secondary" className={`text-[9px] shrink-0 ${a.severity === 'critical' ? 'bg-red-900/20 text-red-400' : 'bg-amber-900/20 text-amber-400'}`}>{a.severity}</Badge>
                     <span className="truncate text-slate-400">{a.summary}</span>
                   </div>
                 ))}

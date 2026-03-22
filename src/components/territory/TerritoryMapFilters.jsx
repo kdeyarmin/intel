@@ -141,7 +141,7 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
 
         <div className="pt-2 border-t text-center">
           <p className="text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">{providerCount}</span> providers on map
+            <span className="font-semibold text-slate-300">{providerCount}</span> providers on map
           </p>
         </div>
       </CardContent>

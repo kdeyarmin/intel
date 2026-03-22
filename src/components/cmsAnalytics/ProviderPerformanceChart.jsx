@@ -48,7 +48,7 @@ export default function ProviderPerformanceChart({ utilization, referrals, loadi
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <div className="w-2 h-2 bg-emerald-900/200 rounded-full" />
+          <div className="w-2 h-2 bg-emerald-900/20 rounded-full" />
           Provider Performance & Referrals
         </CardTitle>
         <CardDescription>Top providers by Medicare payments & referral breakdown</CardDescription>

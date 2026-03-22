@@ -95,7 +95,7 @@ export default function EmailSearchScheduler({ stats, onTriggerRun }) {
         {/* Status banner */}
         <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
           schedule.enabled
-            ? 'bg-emerald-900/200/10 border-emerald-500/20 text-emerald-400'
+            ? 'bg-emerald-900/10 border-emerald-500/20 text-emerald-400'
             : 'bg-slate-800/50 border-slate-700/50 text-slate-400'
         }`}>
           <div className={`w-2 h-2 rounded-full ${schedule.enabled ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
