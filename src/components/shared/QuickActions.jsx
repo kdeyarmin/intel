@@ -9,7 +9,7 @@ import { Activity } from 'lucide-react';
 const ACTIONS = [
   { label: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', color: 'text-cyan-400 bg-cyan-900/10', roles: ['admin'] },
   { label: 'Import Data', icon: Upload, page: 'DataCenter', color: 'text-blue-400 bg-blue-900/10', roles: ['admin'] },
-  { label: 'Find Emails', icon: Mail, page: 'EmailSearchBot', color: 'text-emerald-400 bg-emerald-900/10', roles: ['admin'] },
+  { label: 'Find Emails', icon: Mail, page: 'ProviderIntelligence', color: 'text-emerald-400 bg-emerald-900/10', roles: ['admin'] },
   { label: 'Build Lead List', icon: Target, page: 'LeadListBuilder', color: 'text-violet-400 bg-violet-900/10', roles: ['admin', 'user'] },
   { label: 'Quality Scan', icon: Shield, page: 'DataQuality', color: 'text-amber-400 bg-amber-900/10', roles: ['admin'] },
   { label: 'AI Assistant', icon: Bot, page: 'AIAssistant', color: 'text-cyan-400 bg-cyan-900/10', roles: ['admin', 'user'] },

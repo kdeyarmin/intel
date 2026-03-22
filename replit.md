@@ -18,7 +18,7 @@ A React/Vite frontend application for healthcare provider intelligence, CRM, and
 ## Key Sections
 - Dashboard with provider database stats and proactive alerts
 - Provider management (All Providers, Locations, Territory Map)
-- Sales & Outreach (Project Management, Lead Lists, Email Bot, Campaigns, Outreach)
+- Sales & Outreach (Project Management, Lead Lists, Provider Intelligence, Campaigns, Outreach)
 - Analytics (CMS Data, Network, Advanced, Custom Reports)
 - AI Assistant and AI enrichment tools
 - Data imports from Medicare/CMS datasets

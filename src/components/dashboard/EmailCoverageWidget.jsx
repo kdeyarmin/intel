@@ -95,7 +95,7 @@ export default function EmailCoverageWidget({ providers = [] }) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Link to={createPageUrl('EmailSearchBot')} className="flex-1">
+          <Link to={createPageUrl('ProviderIntelligence')} className="flex-1">
             <Button variant="outline" size="sm" className="w-full text-xs gap-1.5 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400 hover:border-cyan-500/30">
               <Bot className="w-3.5 h-3.5" /> Run Email Bot
             </Button>

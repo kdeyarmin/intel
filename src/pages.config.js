@@ -59,8 +59,7 @@ import CustomReports from './pages/CustomReports.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import DataQuality from './pages/DataQuality.jsx';
-import EmailSearchBot from './pages/EmailSearchBot.jsx';
-import EnrichmentHub from './pages/EnrichmentHub.jsx';
+import ProviderIntelligence from './pages/ProviderIntelligence.jsx';
 import Help from './pages/Help.jsx';
 import ImportAnalytics from './pages/ImportAnalytics.jsx';
 import ImportMonitoring from './pages/ImportMonitoring.jsx';
@@ -103,8 +102,9 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "DataCenter": DataCenter,
     "DataQuality": DataQuality,
-    "EmailSearchBot": EmailSearchBot,
-    "EnrichmentHub": EnrichmentHub,
+    "EmailSearchBot": ProviderIntelligence,
+    "EnrichmentHub": ProviderIntelligence,
+    "ProviderIntelligence": ProviderIntelligence,
     "Help": Help,
     "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,

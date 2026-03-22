@@ -4,10 +4,14 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Search, Send, Users } from 'lucide-react';
+import { Brain, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Search, Send, Users, Sparkles, Shield, Bot } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner';
+import ProactiveEnrichmentScanner from '../components/enrichment/ProactiveEnrichmentScanner';
+import EnrichmentReviewQueue from '../components/enrichment/EnrichmentReviewQueue';
+import EnrichmentActionability from '../components/enrichment/EnrichmentActionability';
+import BatchProviderUpdater from '../components/enrichment/BatchProviderUpdater';
 import EmailBotControls from '../components/emailBot/EmailBotControls';
 import EmailBotResults from '../components/emailBot/EmailBotResults';
 import EmailValidationBadge from '../components/emailBot/EmailValidationBadge';
@@ -16,9 +20,11 @@ import ProblematicEmailsPanel from '../components/emailBot/ProblematicEmailsPane
 import EmailResultFilters from '../components/emailBot/EmailResultFilters';
 import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
 import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import PageHeader from '../components/shared/PageHeader';
 
-export default function EmailSearchBot() {
+export default function ProviderIntelligence() {
+  const [activeTab, setActiveTab] = useState('intelligence');
   const [batchSize, setBatchSize] = useState(5);
   const [skipSearched, setSkipSearched] = useState(true);
   const [singleNpi, setSingleNpi] = useState('');
@@ -27,12 +33,11 @@ export default function EmailSearchBot() {
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, _setAllRunProgress] = useState(null);
-  const [activeTab, setActiveTab] = useState('search');
+  const [emailSubTab, setEmailSubTab] = useState('search');
   const [filters, setFilters] = useState({ validation: 'all', confidence: 'all', source: 'all' });
   const [selectedNpis, setSelectedNpis] = useState(new Set());
   const [showCampaignLauncher, setShowCampaignLauncher] = useState(false);
   const queryClient = useQueryClient();
-  const _stopRef = React.useRef(false);
 
   const { data: activeTask } = useQuery({
     queryKey: ['emailSearchTask'],
@@ -56,7 +61,7 @@ export default function EmailSearchBot() {
   }, [activeTask?.status]);
 
   const { data: dashStats } = useQuery({
-    queryKey: ['emailBotDashStats'],
+    queryKey: ['dashboardStats'],
     queryFn: async () => {
       const res = await base44.functions.invoke('getDashboardStats');
       return res.data;
@@ -85,21 +90,16 @@ export default function EmailSearchBot() {
     staleTime: 120000,
   });
 
-  const stats = useMemo(() => {
+  const emailStats = useMemo(() => {
     const total = dashStats?.totalProviders || providers.length;
     const es = dashStats?.emailStats;
     if (es) {
       const searched = es.searched || 0;
       const remaining = Math.max(0, total - searched);
       return {
-        total,
-        withEmail: es.withEmail || 0,
-        searched,
-        remaining,
+        total, withEmail: es.withEmail || 0, searched, remaining,
         validated: (es.valid || 0) + (es.risky || 0) + (es.invalid || 0),
-        valid: es.valid || 0,
-        risky: es.risky || 0,
-        invalid: es.invalid || 0,
+        valid: es.valid || 0, risky: es.risky || 0, invalid: es.invalid || 0,
         isEstimated: es.isEstimated || false,
       };
     }
@@ -107,10 +107,7 @@ export default function EmailSearchBot() {
     const searched = providers.filter(p => p.email_searched_at).length;
     const remaining = Math.max(0, total - searched);
     return {
-      total,
-      withEmail,
-      searched,
-      remaining,
+      total, withEmail, searched, remaining,
       validated: providers.filter(p => p.email_validation_status && p.email_validation_status !== '').length,
       valid: providers.filter(p => p.email_validation_status === 'valid').length,
       risky: providers.filter(p => p.email_validation_status === 'risky').length,
@@ -124,16 +121,13 @@ export default function EmailSearchBot() {
     setLastResults(null);
     try {
       const response = await base44.functions.invoke('emailSearchBot', {
-        mode,
-        npi: npi || null,
-        batch_size: batchSize,
-        skip_already_searched: skipSearched,
+        mode, npi: npi || null, batch_size: batchSize, skip_already_searched: skipSearched,
       });
       const data = response.data;
       setLastResults(data.results || []);
       toast.success(`Searched ${data.searched} providers, found emails for ${data.found}`);
       queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] });
-      queryClient.invalidateQueries({ queryKey: ['emailBotDashStats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     } catch (e) {
       toast.error('Email search failed: ' + e.message);
     } finally {
@@ -145,13 +139,10 @@ export default function EmailSearchBot() {
     setIsRunningAll(true);
     setIsRunning(true);
     setStopRequested(false);
-    
     try {
       await base44.functions.invoke('emailSearchBot', {
-        mode: 'start_background',
-        batch_size: batchSize,
-        skip_already_searched: skipSearched,
-        total_items: stats.remaining
+        mode: 'start_background', batch_size: batchSize,
+        skip_already_searched: skipSearched, total_items: emailStats.remaining
       });
       toast.success('Background search started. You can safely navigate away.');
       queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
@@ -165,10 +156,7 @@ export default function EmailSearchBot() {
   const handleStopAll = async () => {
     setStopRequested(true);
     if (activeTask?.id) {
-      await base44.functions.invoke('emailSearchBot', {
-        mode: 'stop_background',
-        task_id: activeTask.id
-      });
+      await base44.functions.invoke('emailSearchBot', { mode: 'stop_background', task_id: activeTask.id });
       queryClient.invalidateQueries({ queryKey: ['emailSearchTask'] });
       setIsRunning(false);
       setIsRunningAll(false);
@@ -191,7 +179,6 @@ export default function EmailSearchBot() {
   const downloadFullEmailCSV = () => {
     const withEmail = providers.filter(p => p.email);
     if (withEmail.length === 0) { toast.error('No providers with emails to export'); return; }
-
     const headers = ['NPI','Name','Credential','Type','Specialty','Email','Confidence','Validation','Source','City','State','ZIP','Phone'];
     const rows = withEmail.map(p => {
       const name = p.entity_type === 'Individual' ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : p.organization_name || '';
@@ -199,7 +186,6 @@ export default function EmailSearchBot() {
       const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary) || allTaxonomies.find(t => t.npi === p.npi);
       return [p.npi, name, p.credential||'', p.entity_type||'', tax?.taxonomy_description||'', p.email, p.email_confidence||'', p.email_validation_status||'', p.email_source||'', loc?.city||'', loc?.state||'', loc?.zip||'', loc?.phone||''];
     });
-
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -214,10 +200,8 @@ export default function EmailSearchBot() {
   };
 
   const recentFinds = useMemo(() => {
-    return providers
-      .filter(p => p.email && p.email_searched_at)
-      .sort((a, b) => new Date(b.email_searched_at) - new Date(a.email_searched_at))
-      .slice(0, 10);
+    return providers.filter(p => p.email && p.email_searched_at)
+      .sort((a, b) => new Date(b.email_searched_at) - new Date(a.email_searched_at)).slice(0, 10);
   }, [providers]);
 
   const filterCounts = useMemo(() => {
@@ -251,10 +235,6 @@ export default function EmailSearchBot() {
     }).sort((a, b) => new Date(b.email_searched_at || 0) - new Date(a.email_searched_at || 0));
   }, [providers, filters]);
 
-  const selectedProviderObjects = useMemo(() => {
-    return providers.filter(p => selectedNpis.has(p.npi));
-  }, [providers, selectedNpis]);
-
   const toggleSelectProvider = (npi) => {
     setSelectedNpis(prev => {
       const next = new Set(prev);
@@ -264,50 +244,35 @@ export default function EmailSearchBot() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedNpis.size === filteredProviders.length) {
-      setSelectedNpis(new Set());
-    } else {
-      setSelectedNpis(new Set(filteredProviders.map(p => p.npi)));
-    }
+    if (selectedNpis.size === filteredProviders.length) setSelectedNpis(new Set());
+    else setSelectedNpis(new Set(filteredProviders.map(p => p.npi)));
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
-        <Skeleton className="h-10 w-72" />
-        <div className="grid grid-cols-2 gap-5">{[1,2].map(i => <Skeleton key={i} className="h-40" />)}</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       <PageHeader
-        title="Email Search Bot"
-        subtitle="AI-powered email discovery for providers"
-        icon={Bot}
-        breadcrumbs={[{ label: 'Sales & Outreach', page: 'ProviderOutreach' }, { label: 'Email Bot' }]}
+        title="Provider Intelligence"
+        subtitle="AI-powered enrichment, email discovery, and data quality in one place"
+        icon={Brain}
+        breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Provider Intelligence' }]}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
-          <TabsTrigger value="search" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
-            <Search className="w-3.5 h-3.5" /> Search
+          <TabsTrigger value="intelligence" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+            <Brain className="w-3.5 h-3.5" /> Intelligence Bot
+          </TabsTrigger>
+          <TabsTrigger value="email" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+            <Mail className="w-3.5 h-3.5" /> Email Search
           </TabsTrigger>
           <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <Users className="w-3.5 h-3.5" /> Providers
-            {stats.withEmail > 0 && <Badge className="bg-cyan-900/20 text-cyan-400 text-[9px] ml-1">{stats.withEmail}</Badge>}
+            {emailStats.withEmail > 0 && <Badge className="bg-cyan-900/20 text-cyan-400 text-[9px] ml-1">{emailStats.withEmail}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
-            {stats.risky + stats.invalid > 0 && (
-              <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="issues" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
-            <AlertTriangle className="w-3.5 h-3.5" /> Issues
-            {stats.risky + stats.invalid > 0 && (
-              <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{stats.risky + stats.invalid}</Badge>
+            {emailStats.risky + emailStats.invalid > 0 && (
+              <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{emailStats.risky + emailStats.invalid}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
@@ -315,66 +280,84 @@ export default function EmailSearchBot() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="search" className="space-y-5">
-          {/* Stats Row */}
+        <TabsContent value="intelligence" className="space-y-6">
+          <div className="bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <Shield className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-violet-300 mb-1">Combined Intelligence</p>
+                <p className="text-xs text-slate-400">
+                  The Intelligence Bot enriches provider records and searches for email addresses in a single AI call — 66% fewer API calls than running them separately.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <BulkEnrichmentRunner totalProviders={dashStats?.totalProviders || 0} />
+              <ProactiveEnrichmentScanner totalProviders={dashStats?.totalProviders || 0} />
+              <EnrichmentActionability />
+            </div>
+            <div className="lg:col-span-2 space-y-4">
+              <BatchProviderUpdater />
+              <EnrichmentReviewQueue />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="email" className="space-y-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-white">{stats.total.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-white">{emailStats.total.toLocaleString()}</div>
                 <div className="text-xs text-slate-500">Total Providers</div>
               </CardContent>
             </Card>
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-emerald-400">{stats.withEmail.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
+                <div className="text-2xl font-bold text-emerald-400">{emailStats.withEmail.toLocaleString()}{emailStats.isEstimated ? '~' : ''}</div>
                 <div className="text-xs text-emerald-500/80">Have Email</div>
               </CardContent>
             </Card>
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-cyan-400">{stats.searched.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
+                <div className="text-2xl font-bold text-cyan-400">{emailStats.searched.toLocaleString()}{emailStats.isEstimated ? '~' : ''}</div>
                 <div className="text-xs text-cyan-500/80">Already Searched</div>
               </CardContent>
             </Card>
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-amber-400">{stats.remaining.toLocaleString()}{stats.isEstimated ? '~' : ''}</div>
+                <div className="text-2xl font-bold text-amber-400">{emailStats.remaining.toLocaleString()}{emailStats.isEstimated ? '~' : ''}</div>
                 <div className="text-xs text-amber-500/80">Remaining</div>
               </CardContent>
             </Card>
             <Card className="bg-[#141d30] border-cyan-500/30 col-span-2 sm:col-span-1 flex items-center justify-center">
               <CardContent className="p-4 text-center">
-                <Button onClick={downloadFullEmailCSV} disabled={stats.withEmail === 0} size="sm" className="bg-cyan-600 hover:bg-cyan-700 gap-2">
+                <Button onClick={downloadFullEmailCSV} disabled={emailStats.withEmail === 0} size="sm" className="bg-cyan-600 hover:bg-cyan-700 gap-2">
                   <Download className="w-3.5 h-3.5" /> Export CSV
                 </Button>
-                <div className="text-[10px] text-slate-500 mt-1.5">{stats.withEmail.toLocaleString()} ready</div>
+                <div className="text-[10px] text-slate-500 mt-1.5">{emailStats.withEmail.toLocaleString()} ready</div>
               </CardContent>
             </Card>
           </div>
 
-          {stats.isEstimated && (
+          {emailStats.isEstimated && (
             <p className="text-[10px] text-slate-500 text-center -mt-2">~ counts are estimated</p>
           )}
 
-          {/* Controls */}
           <EmailBotControls
-            batchSize={batchSize}
-            setBatchSize={setBatchSize}
-            skipSearched={skipSearched}
-            setSkipSearched={setSkipSearched}
-            singleNpi={singleNpi}
-            setSingleNpi={setSingleNpi}
+            batchSize={batchSize} setBatchSize={setBatchSize}
+            skipSearched={skipSearched} setSkipSearched={setSkipSearched}
+            singleNpi={singleNpi} setSingleNpi={setSingleNpi}
             isRunning={isRunning || isBackgroundRunning}
             isRunningAll={isRunningAll || isBackgroundRunning}
-            onRunAll={runSearchAll}
-            onStopAll={handleStopAll}
+            onRunAll={runSearchAll} onStopAll={handleStopAll}
             stopRequested={stopRequested}
             onRunSingle={() => runSearch('single', singleNpi.trim())}
-            stats={stats}
-            allRunProgress={derivedRunProgress}
+            stats={emailStats} allRunProgress={derivedRunProgress}
           />
 
-          {/* Running indicator */}
           {isRunning && !isRunningAll && (
             <Card className="border-cyan-500/20 bg-cyan-900/5">
               <CardContent className="p-4 flex items-center gap-3">
@@ -387,28 +370,22 @@ export default function EmailSearchBot() {
             </Card>
           )}
 
-          {/* Results */}
           {lastResults && (
             <div>
               <h2 className="text-base font-semibold text-slate-200 mb-3 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-cyan-400" />
-                Results
+                <Mail className="w-4 h-4 text-cyan-400" /> Results
                 <Badge className="bg-cyan-900/15 text-cyan-400 border border-cyan-500/20 text-[10px]">{lastResults.length} searched</Badge>
-                <Badge className="bg-emerald-900/15 text-emerald-400 border border-emerald-500/20 text-[10px]">
-                  {lastResults.filter(r => r.best_email).length} found
-                </Badge>
+                <Badge className="bg-emerald-900/15 text-emerald-400 border border-emerald-500/20 text-[10px]">{lastResults.filter(r => r.best_email).length} found</Badge>
               </h2>
               <EmailBotResults results={lastResults} />
             </div>
           )}
 
-          {/* Recent Finds */}
           {recentFinds.length > 0 && !lastResults && (
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-slate-200">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  Recently Found Emails
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Recently Found Emails
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -422,7 +399,6 @@ export default function EmailSearchBot() {
                       medium: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
                       low: 'bg-red-900/15 text-red-400 border border-red-500/20',
                     }[p.email_confidence] || 'bg-slate-500/15 text-slate-400 border border-slate-500/20';
-
                     return (
                       <div key={p.id || idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                         <div className="min-w-0 flex-1">
@@ -443,21 +419,17 @@ export default function EmailSearchBot() {
             </Card>
           )}
 
-          {/* Disclaimer */}
           <div className="flex items-start gap-2 bg-amber-900/10 border border-amber-500/20 rounded-lg p-3">
             <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-400/80">
-              Email addresses are found via AI web search and may not be 100% accurate.
-              Always verify before using for outreach.
+              Email addresses are found via AI web search and may not be 100% accurate. Always verify before using for outreach.
             </p>
           </div>
         </TabsContent>
 
-        {/* Providers with enriched data and filters */}
         <TabsContent value="providers" className="space-y-4">
           <EmailResultFilters filters={filters} onFiltersChange={setFilters} counts={filterCounts} />
 
-          {/* Selection actions bar */}
           {selectedNpis.size > 0 && (
             <div className="flex items-center gap-3 p-3 bg-cyan-900/10 border border-cyan-500/20 rounded-lg">
               <span className="text-xs text-cyan-300">{selectedNpis.size} selected</span>
@@ -472,12 +444,8 @@ export default function EmailSearchBot() {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
-                onChange={toggleSelectAll}
-                className="rounded border-slate-600"
-              />
+              <input type="checkbox" checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
+                onChange={toggleSelectAll} className="rounded border-slate-600" />
               <span className="text-xs text-slate-500">
                 {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} with email
               </span>
@@ -493,91 +461,49 @@ export default function EmailSearchBot() {
               const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary) || allTaxonomies.find(t => t.npi === p.npi);
               return (
                 <div key={p.id} className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedNpis.has(p.npi)}
-                    onChange={() => toggleSelectProvider(p.npi)}
-                    className="rounded border-slate-600 mt-3.5"
-                  />
+                  <input type="checkbox" checked={selectedNpis.has(p.npi)}
+                    onChange={() => toggleSelectProvider(p.npi)} className="rounded border-slate-600 mt-3.5" />
                   <div className="flex-1">
-                    <EnrichedProviderCard
-                      provider={p}
-                      location={loc}
-                      taxonomy={tax}
-                      onEnriched={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
-                    />
+                    <EnrichedProviderCard provider={p} location={loc} taxonomy={tax} />
                   </div>
                 </div>
               );
             })}
             {filteredProviders.length > 50 && (
-              <p className="text-xs text-slate-500 text-center py-2">Showing 50 of {filteredProviders.length} — use filters to narrow results</p>
-            )}
-            {filteredProviders.length === 0 && (
-              <div className="text-center py-8 text-slate-500 text-sm">No providers match current filters</div>
+              <p className="text-center text-xs text-slate-500 py-2">
+                Showing 50 of {filteredProviders.length} providers. Use filters to narrow results.
+              </p>
             )}
           </div>
         </TabsContent>
 
         <TabsContent value="verify" className="space-y-5">
-          <EmailVerificationPanel
-            providers={providers}
-            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
-          />
+          <EmailVerificationPanel providers={providers} />
+          <ProblematicEmailsPanel providers={providers} />
         </TabsContent>
 
-        <TabsContent value="issues" className="space-y-5">
-          <ProblematicEmailsPanel
-            providers={providers}
-            onRefresh={() => queryClient.invalidateQueries({ queryKey: ['emailBotProviders'] })}
-          />
-        </TabsContent>
-
-        {/* Outreach tab - quick campaign creation */}
         <TabsContent value="outreach" className="space-y-5">
-          <Card className="bg-[#141d30] border-slate-700/50">
-            <CardContent className="p-6 text-center space-y-4">
-              <div className="w-14 h-14 mx-auto rounded-full bg-cyan-900/10 flex items-center justify-center">
-                <Send className="w-7 h-7 text-cyan-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-200">Email Campaigns</h3>
-                <p className="text-sm text-slate-400 mt-1">
-                  Select providers from the "Providers" tab and launch personalized email campaigns
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
-                  <div className="text-xl font-bold text-emerald-400">{stats.valid}</div>
-                  <div className="text-[10px] text-slate-500">Valid Emails</div>
-                </div>
-                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
-                  <div className="text-xl font-bold text-amber-400">{stats.risky}</div>
-                  <div className="text-[10px] text-slate-500">Risky Emails</div>
-                </div>
-                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/30">
-                  <div className="text-xl font-bold text-red-400">{stats.invalid}</div>
-                  <div className="text-[10px] text-slate-500">Invalid Emails</div>
-                </div>
-              </div>
-              <div className="flex justify-center gap-3">
-                <Button onClick={() => setActiveTab('providers')} className="gap-2 bg-cyan-600 hover:bg-cyan-700">
-                  <Users className="w-4 h-4" /> Select Providers
-                </Button>
-              </div>
-              <p className="text-[10px] text-slate-500">
-                Tip: Use the Providers tab to filter by validation status, then select providers and click "Email Campaign"
-              </p>
-            </CardContent>
-          </Card>
+          <QuickCampaignLauncher
+            providers={providers.filter(p => selectedNpis.has(p.npi))}
+            onClose={() => setShowCampaignLauncher(false)}
+            allProviders={providers}
+          />
         </TabsContent>
       </Tabs>
 
-      <QuickCampaignLauncher
-        selectedProviders={selectedProviderObjects}
-        open={showCampaignLauncher}
-        onOpenChange={setShowCampaignLauncher}
-      />
+      <DataSourcesFooter />
+
+      {showCampaignLauncher && selectedNpis.size > 0 && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCampaignLauncher(false)}>
+          <div className="max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <QuickCampaignLauncher
+              providers={providers.filter(p => selectedNpis.has(p.npi))}
+              onClose={() => setShowCampaignLauncher(false)}
+              allProviders={providers}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

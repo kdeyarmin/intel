@@ -90,7 +90,7 @@ export default function DatabaseOverview({ stats, loading }) {
           title="Emails Found"
           value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
           subtitle={`${emailPct}%${stats?.emailStats?.isEstimated ? '~' : ''} coverage`}
-          link="EmailSearchBot"
+          link="ProviderIntelligence"
           loading={loading}
         />
       </div>
