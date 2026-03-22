@@ -18,6 +18,7 @@ import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
+import ImportSpeedView from '../components/imports/ImportSpeedView';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
