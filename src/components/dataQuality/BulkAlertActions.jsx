@@ -23,9 +23,9 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
         try {
           const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
           if (action === 'dismiss') {
-            await base44.entities.DataQualityAlert.update(id, { ...base, status: 'closed' });
+            await base44.functions.invoke('runDataQualityScan', { action: 'dismiss', alert_id: id });
           } else if (action === 'apply_fix') {
-            await base44.entities.DataQualityAlert.update(id, { ...base, status: 'resolved', resolved_at: new Date().toISOString() });
+            await base44.functions.invoke('runDataQualityScan', { action: 'apply_fix', alert_id: id });
           }
         } catch (e) {
           failures++;

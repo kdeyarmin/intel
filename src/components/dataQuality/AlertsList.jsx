@@ -25,7 +25,10 @@ const categoryColors = {
 };
 
 const statusIcons = {
+  new: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   open: <AlertTriangle className="w-4 h-4 text-amber-500" />,
+  resolved: <CheckCircle className="w-4 h-4 text-green-500" />,
+  dismissed: <XCircle className="w-4 h-4 text-slate-500" />,
   accepted: <CheckCircle className="w-4 h-4 text-green-500" />,
   rejected: <XCircle className="w-4 h-4 text-slate-500" />,
   auto_fixed: <CheckCircle className="w-4 h-4 text-blue-500" />,
@@ -34,7 +37,7 @@ const statusIcons = {
 export default function AlertsList({ alerts = [] }) {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSeverity, setFilterSeverity] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('open');
+  const [filterStatus, setFilterStatus] = useState('new');
   const [expandedId, setExpandedId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const queryClient = useQueryClient();
@@ -44,7 +47,7 @@ export default function AlertsList({ alerts = [] }) {
   };
 
   const toggleAll = (filtered) => {
-    const openIds = filtered.filter(a => a.status === 'open').map(a => a.id);
+    const openIds = filtered.filter(a => a.status === 'new' || a.status === 'open').map(a => a.id);
     if (openIds.length > 0 && openIds.every(id => selectedIds.includes(id))) {
       setSelectedIds([]);
     } else {
@@ -82,16 +85,27 @@ export default function AlertsList({ alerts = [] }) {
     onError: (err) => alert(`Auto-fix failed: ${err.message}`),
   });
 
+  const CATEGORY_RULES = {
+    completeness: ['missing_name', 'missing_credential', 'missing_enum_date', 'missing_email', 'no_location', 'no_taxonomy', 'missing_address', 'missing_city'],
+    accuracy: ['invalid_npi', 'invalid_state', 'invalid_phone'],
+    timeliness: ['stale_data'],
+    consistency: ['org_with_gender', 'deactivated_with_location'],
+  };
+  const getCategory = (alertType) => {
+    for (const [cat, rules] of Object.entries(CATEGORY_RULES)) {
+      if (rules.includes(alertType)) return cat;
+    }
+    return 'other';
+  };
+
   const filtered = alerts.filter(a => {
-    if (filterCategory !== 'all' && a.category !== filterCategory) return false;
+    if (filterCategory !== 'all' && getCategory(a.alert_type) !== filterCategory) return false;
     if (filterSeverity !== 'all' && a.severity !== filterSeverity) return false;
     if (filterStatus !== 'all' && a.status !== filterStatus) return false;
     return true;
   });
 
-  // Separate aggregate alerts from individual ones
-  const aggregateAlerts = filtered.filter(a => a.affected_count > 1);
-  const individualAlerts = filtered.filter(a => a.affected_count <= 1);
+  const aggregateAlerts = filtered;
 
   return (
     <Card>
@@ -115,9 +129,9 @@ export default function AlertsList({ alerts = [] }) {
               <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="accepted">Fixed</SelectItem>
-                <SelectItem value="rejected">Dismissed</SelectItem>
+                <SelectItem value="new">Open</SelectItem>
+                <SelectItem value="resolved">Fixed</SelectItem>
+                <SelectItem value="dismissed">Dismissed</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -150,10 +164,10 @@ export default function AlertsList({ alerts = [] }) {
           onClear={() => setSelectedIds([])}
         />
 
-        {filtered.length > 0 && filtered.some(a => a.status === 'open') && (
+        {filtered.length > 0 && filtered.some(a => a.status === 'new' || a.status === 'open') && (
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={filtered.filter(a => a.status === 'open').length > 0 && filtered.filter(a => a.status === 'open').every(a => selectedIds.includes(a.id))}
+              checked={filtered.filter(a => a.status === 'new' || a.status === 'open').length > 0 && filtered.filter(a => a.status === 'new' || a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
             <span className="text-xs text-slate-500">Select all open alerts</span>
@@ -180,19 +194,6 @@ export default function AlertsList({ alerts = [] }) {
                 onSelect={() => toggleSelect(alert.id)}
               />
             ))}
-            {individualAlerts.map(alert => (
-              <AlertRow
-                key={alert.id}
-                alert={alert}
-                expanded={expandedId === alert.id}
-                onToggle={() => setExpandedId(expandedId === alert.id ? null : alert.id)}
-                onApplyFix={() => applyFixMutation.mutate(alert.id)}
-                onDismiss={() => dismissMutation.mutate(alert.id)}
-                isFixing={applyFixMutation.isPending}
-                selected={selectedIds.includes(alert.id)}
-                onSelect={() => toggleSelect(alert.id)}
-              />
-            ))}
           </div>
         )}
       </CardContent>
@@ -202,9 +203,9 @@ export default function AlertsList({ alerts = [] }) {
 
 function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, selected, onSelect }) {
   return (
-    <div className={`border rounded-lg transition-colors ${selected ? 'ring-2 ring-blue-300' : ''} ${alert.status === 'open' ? 'bg-slate-800/40' : 'bg-slate-800/40 opacity-70'}`}>
+    <div className={`border rounded-lg transition-colors ${selected ? 'ring-2 ring-blue-300' : ''} ${(alert.status === 'new' || alert.status === 'open') ? 'bg-slate-800/40' : 'bg-slate-800/40 opacity-70'}`}>
       <div className="flex items-center gap-1 px-2 py-3">
-        {alert.status === 'open' && (
+        {(alert.status === 'new' || alert.status === 'open') && (
           <Checkbox
             checked={selected}
             onCheckedChange={onSelect}
@@ -213,19 +214,19 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
           />
         )}
         <button onClick={onToggle} className="flex-1 flex items-center gap-3 px-2 text-left">
-        {statusIcons[alert.status]}
+        {statusIcons[alert.status] || statusIcons.new}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-slate-300 truncate">{alert.summary}</span>
+            <span className="text-sm font-medium text-slate-300 truncate">{alert.title || alert.summary}</span>
             {alert.suggested_value && <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />}
           </div>
           <div className="flex gap-2 mt-1">
-            <Badge variant="secondary" className={`text-[10px] ${categoryColors[alert.category] || ''}`}>{alert.category}</Badge>
+            <Badge variant="secondary" className={`text-[10px] ${categoryColors[alert.alert_type] || ''}`}>{alert.alert_type || alert.category}</Badge>
             <Badge variant="secondary" className={`text-[10px] ${severityColors[alert.severity] || ''}`}>{alert.severity}</Badge>
-            {alert.affected_count > 1 && (
-              <span className="text-[10px] text-slate-400">{alert.affected_count} records</span>
-            )}
           </div>
+          {alert.description && (
+            <p className="text-xs text-slate-500 mt-1 truncate">{alert.description}</p>
+          )}
         </div>
         {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
         </button>
@@ -256,7 +257,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
           {/* AI Root Cause & Solutions */}
           <AlertAIAnalysis alert={alert} />
 
-          {alert.status === 'open' && (
+          {(alert.status === 'new' || alert.status === 'open') && (
             <div className="flex gap-2 pt-1">
               {alert.suggested_value && (
                 <Button

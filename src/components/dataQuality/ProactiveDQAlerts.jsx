@@ -41,18 +41,18 @@ export default function ProactiveDQAlerts() {
     try {
     const scanHistory = scans.slice(0, 10).map(s => ({
       date: s.created_date,
-      scores: s.scores,
-      alertCount: s.alert_count || 0,
+      scores: s.results_summary?.scores || {},
+      alertCount: s.results_summary?.alerts_generated || 0,
     }));
 
     const alertBreakdown = {
-      open: alerts.filter(a => a.status === 'open').length,
+      open: alerts.filter(a => a.status === 'new' || a.status === 'open').length,
       critical: alerts.filter(a => a.severity === 'critical').length,
       high: alerts.filter(a => a.severity === 'high').length,
       byCategory: {},
     };
-    alerts.filter(a => a.status === 'open').forEach(a => {
-      const cat = a.category || 'other';
+    alerts.filter(a => a.status === 'new' || a.status === 'open').forEach(a => {
+      const cat = a.alert_type || 'other';
       alertBreakdown.byCategory[cat] = (alertBreakdown.byCategory[cat] || 0) + 1;
     });
 

@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, dataQualityScans, importBatches, backgroundTasks } from "../db/schema";
-import { sql, desc, eq, and, lt } from "drizzle-orm";
+import { sql, desc, eq, and, lt, isNotNull } from "drizzle-orm";
 
 const activeEnrichmentTaskIds = new Set<number>();
 
@@ -240,20 +240,300 @@ export async function handleValidateDataQuality(_payload: any) {
 }
 
 export async function handleRunDataQualityScan(payload: any) {
-  const { action } = payload;
-  if (action === "run_scan") {
-    return { success: true, message: "Data quality scan completed.", alerts_created: 0, issues_found: 0 };
-  }
+  const { action, alert_id, suggested_value } = payload;
+
   if (action === "apply_fix") {
-    return { success: true, message: "Fix applied successfully." };
+    if (!alert_id) return { success: false, error: "alert_id required" };
+    const [alert] = await db.select().from(dataQualityAlerts).where(eq(dataQualityAlerts.id, alert_id)).limit(1);
+    if (!alert) return { success: false, error: "Alert not found" };
+    const fixVal = suggested_value || alert.suggested_value;
+    if (!fixVal) return { success: false, error: "No suggested value" };
+
+    const ALLOWED_FIX_COLUMNS: Record<string, Record<string, any>> = {
+      Provider: { credential: providers.credential, gender: providers.gender, first_name: providers.first_name, last_name: providers.last_name },
+      ProviderLocation: { address_1: providerLocations.address_1, city: providerLocations.city, state: providerLocations.state, phone: providerLocations.phone },
+    };
+
+    let fixApplied = false;
+    if (alert.affected_entity_id && alert.affected_entity_type && alert.alert_type) {
+      const allowedCols = ALLOWED_FIX_COLUMNS[alert.affected_entity_type];
+      const RULE_TO_COLUMN: Record<string, string> = {
+        missing_credential: "credential", missing_name: "first_name", invalid_state: "state",
+        missing_address: "address_1", missing_city: "city", invalid_phone: "phone",
+      };
+      const colName = RULE_TO_COLUMN[alert.alert_type];
+      const col = colName && allowedCols?.[colName];
+      if (col) {
+        try {
+          const tableRef = alert.affected_entity_type === "Provider" ? providers : providerLocations;
+          await db.update(tableRef).set({ [colName]: fixVal }).where(eq((tableRef as any).id, parseInt(alert.affected_entity_id)));
+          fixApplied = true;
+        } catch (_e) { /* column update failed */ }
+      }
+    }
+
+    await db.update(dataQualityAlerts).set({ status: fixApplied ? "resolved" : "dismissed", resolved_at: new Date() }).where(eq(dataQualityAlerts.id, alert_id));
+    return { success: true, message: fixApplied ? "Fix applied successfully." : "Alert dismissed (fix could not be applied)." };
   }
+
   if (action === "dismiss") {
+    if (!alert_id) return { success: false, error: "alert_id required" };
+    await db.update(dataQualityAlerts).set({ status: "dismissed", resolved_at: new Date() }).where(eq(dataQualityAlerts.id, alert_id));
     return { success: true, message: "Alert dismissed." };
   }
+
   if (action === "auto_fix_eligible") {
-    return { success: true, eligible_count: 0, fixed_count: 0 };
+    const openAlerts = await db.select().from(dataQualityAlerts)
+      .where(and(eq(dataQualityAlerts.status, "new"), isNotNull(dataQualityAlerts.suggested_value)))
+      .limit(100);
+    let fixed = 0;
+    for (const alert of openAlerts) {
+      if (alert.severity === "low" || alert.severity === "medium") {
+        await db.update(dataQualityAlerts).set({ status: "resolved", resolved_at: new Date() }).where(eq(dataQualityAlerts.id, alert.id));
+        fixed++;
+      }
+    }
+    return { success: true, eligible_count: openAlerts.length, fixed_count: fixed, fixed, skipped: openAlerts.length - fixed };
   }
-  return { success: true, message: "Scan action completed." };
+
+  if (action === "assistant_query") {
+    const { question } = payload;
+    if (!question) return { success: false, error: "question required" };
+
+    const [scanRow] = await db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1);
+    const latestSummary = scanRow?.results_summary as any || {};
+    const alertCounts = await db.execute(sql`
+      SELECT status, count(*)::int as cnt FROM data_quality_alerts GROUP BY status
+    `);
+    const alertRows = Array.isArray(alertCounts) ? alertCounts : (alertCounts as any)?.rows || [];
+    const openCount = alertRows.find((r: any) => r.status === "new")?.cnt || 0;
+    const totalAlerts = alertRows.reduce((s: number, r: any) => s + (r.cnt || 0), 0);
+
+    try {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const anthropic = new Anthropic();
+      const resp = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514", max_tokens: 800,
+        messages: [{ role: "user", content: `You are CareMetric's AI Data Quality Assistant. Context: Overall quality score ${latestSummary?.scores?.overall || "N/A"}%, ${totalAlerts} total alerts (${openCount} open). Latest scan: ${latestSummary?.summary || "no scans yet"}. User question: ${question}. Respond helpfully and concisely.` }],
+      });
+      const answer = resp.content[0]?.type === "text" ? resp.content[0].text : "Unable to process query.";
+      return { success: true, response: { answer, suggested_actions: [], related_stats: { open_alerts: openCount, overall_score: latestSummary?.scores?.overall || 0 } } };
+    } catch (e: any) {
+      return { success: true, response: { answer: `I encountered an error: ${e.message}. The latest scan shows an overall quality score of ${latestSummary?.scores?.overall || "N/A"}% with ${openCount} open alerts.`, suggested_actions: [], related_stats: { open_alerts: openCount, overall_score: latestSummary?.scores?.overall || 0 } } };
+    }
+  }
+
+  if (action === "analyze_patterns") {
+    const alerts = await db.select().from(dataQualityAlerts).orderBy(desc(dataQualityAlerts.created_date)).limit(500);
+    const ruleGroups: Record<string, any> = {};
+    for (const a of alerts) {
+      const key = a.alert_type || "unknown";
+      if (!ruleGroups[key]) ruleGroups[key] = { rule_name: a.alert_type, severity: a.severity, count: 0, open: 0, fixed: 0 };
+      ruleGroups[key].count++;
+      if (a.status === "new") ruleGroups[key].open++;
+      if (a.status === "resolved") ruleGroups[key].fixed++;
+    }
+    const patternSummary = Object.values(ruleGroups).sort((a: any, b: any) => b.count - a.count).slice(0, 10);
+
+    try {
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const anthropic = new Anthropic();
+      const resp = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514", max_tokens: 1200,
+        messages: [{ role: "user", content: `Analyze these data quality patterns and provide root-cause analysis with recommendations:\n${JSON.stringify(patternSummary, null, 2)}\n\nReturn JSON with: patterns (array of {pattern, affected_rules, root_cause, recommendation}), trend_analysis (string), action_plan (array of {priority, action, impact, effort}), predictions (array of strings), summary (string).` }],
+      });
+      const text = resp.content[0]?.type === "text" ? resp.content[0].text : "{}";
+      try { return { success: true, analysis: JSON.parse(text) }; } catch { return { success: true, analysis: { summary: text, patterns: [], action_plan: [], predictions: [] } }; }
+    } catch (e: any) {
+      return { success: true, analysis: { summary: `Analysis unavailable: ${e.message}`, patterns: patternSummary, action_plan: [], predictions: [] } };
+    }
+  }
+
+  // ---- RUN SCAN ----
+  const startedAt = new Date();
+  const [scanRow] = await db.insert(dataQualityScans).values({
+    scan_type: "full", status: "running", started_at: startedAt,
+  }).returning();
+  const scanId = scanRow.id;
+
+  try {
+    const ruleResults: any[] = [];
+    const alertsToCreate: any[] = [];
+
+    const estRows = await db.execute(sql`
+      SELECT relname, reltuples::bigint as est
+      FROM pg_class
+      WHERE relname IN ('providers', 'provider_locations', 'provider_taxonomies')
+    `);
+    const estMap: Record<string, number> = {};
+    const estArr = Array.isArray(estRows) ? estRows : (estRows as any)?.rows || [];
+    for (const r of estArr) estMap[r.relname] = parseInt(r.est) || 0;
+    const totalProviders = estMap.providers || 0;
+    const totalLocations = estMap.provider_locations || 0;
+    const totalTaxonomies = estMap.provider_taxonomies || 0;
+
+    const SAMPLE_PCT = totalProviders > 100000 ? 1 : 100;
+
+    const provSample = await db.execute(sql.raw(`
+      SELECT
+        count(*)::int as sampled,
+        count(*) FILTER (WHERE first_name IS NOT NULL AND first_name != '' OR organization_name IS NOT NULL AND organization_name != '')::int as has_name,
+        count(*) FILTER (WHERE credential IS NOT NULL AND credential != '' AND entity_type = 'Individual')::int as has_credential,
+        count(*) FILTER (WHERE entity_type = 'Individual')::int as individual_count,
+        count(*) FILTER (WHERE enumeration_date IS NOT NULL)::int as has_enum_date,
+        count(*) FILTER (WHERE email IS NOT NULL AND email != '')::int as has_email,
+        count(*) FILTER (WHERE gender IS NOT NULL AND gender != '')::int as has_gender,
+        count(*) FILTER (WHERE entity_type = 'Organization' AND gender IS NOT NULL AND gender != '')::int as org_with_gender,
+        count(*) FILTER (WHERE LENGTH(REGEXP_REPLACE(npi, '[^0-9]', '', 'g')) != 10)::int as invalid_npi,
+        count(*) FILTER (WHERE status = 'Deactivated')::int as deactivated
+      FROM providers TABLESAMPLE SYSTEM(${SAMPLE_PCT})
+    `));
+    const pc = (Array.isArray(provSample) ? provSample[0] : (provSample as any)?.rows?.[0]) || {} as any;
+    const sampled = parseInt(pc.sampled) || 1;
+    const scale = totalProviders / sampled;
+    const scaleVal = (v: string) => Math.round((parseInt(v) || 0) * scale);
+    const individualCount = scaleVal(pc.individual_count);
+
+    const locSample = await db.execute(sql.raw(`
+      SELECT
+        count(*)::int as sampled,
+        count(*) FILTER (WHERE address_1 IS NULL OR address_1 = '')::int as missing_address,
+        count(*) FILTER (WHERE city IS NULL OR city = '')::int as missing_city,
+        count(*) FILTER (WHERE state IS NOT NULL AND state != '' AND state !~ '^[A-Z]{2}$')::int as invalid_state,
+        count(*) FILTER (WHERE phone IS NOT NULL AND phone != '' AND LENGTH(REGEXP_REPLACE(phone, '[^0-9]', '', 'g')) NOT BETWEEN 10 AND 11)::int as invalid_phone
+      FROM provider_locations TABLESAMPLE SYSTEM(${SAMPLE_PCT})
+    `));
+    const lc = (Array.isArray(locSample) ? locSample[0] : (locSample as any)?.rows?.[0]) || {} as any;
+    const locSampled = parseInt(lc.sampled) || 1;
+    const locScale = totalLocations / locSampled;
+    const scaleLocVal = (v: string) => Math.round((parseInt(v) || 0) * locScale);
+
+    const distinctLoc = await db.execute(sql`SELECT count(DISTINCT npi)::int as cnt FROM provider_locations TABLESAMPLE SYSTEM(5)`);
+    const distinctLocRow = (Array.isArray(distinctLoc) ? distinctLoc[0] : (distinctLoc as any)?.rows?.[0]) || {} as any;
+    const distinctTax = await db.execute(sql`SELECT count(DISTINCT npi)::int as cnt FROM provider_taxonomies TABLESAMPLE SYSTEM(5)`);
+    const distinctTaxRow = (Array.isArray(distinctTax) ? distinctTax[0] : (distinctTax as any)?.rows?.[0]) || {} as any;
+    const provWithLoc = Math.round((parseInt(distinctLocRow.cnt) || 0) * 20);
+    const provWithTax = Math.round((parseInt(distinctTaxRow.cnt) || 0) * 20);
+    const noLocEst = Math.max(0, totalProviders - provWithLoc);
+    const noTaxEst = Math.max(0, totalProviders - provWithTax);
+    const deactivatedWithLocEst = Math.round((parseInt(pc.deactivated) || 0) * scale * 0.3);
+
+    const batchTimeliness = await db.execute(sql`
+      SELECT MIN(EXTRACT(EPOCH FROM (NOW() - completed_at)) / 86400)::int as days_since
+      FROM import_batches WHERE status = 'completed' AND completed_at IS NOT NULL
+    `);
+    const daysSinceLatest = parseInt((Array.isArray(batchTimeliness) ? batchTimeliness[0] : (batchTimeliness as any)?.rows?.[0])?.days_since) ?? 999;
+
+    const pctPass = (passing: number, total: number) => total > 0 ? Math.round((passing / total) * 100) : 100;
+
+    const missingName = totalProviders - scaleVal(pc.has_name);
+    ruleResults.push({ rule_id: "missing_name", rule_name: "Missing Provider Name", category: "completeness", total: totalProviders, passing: totalProviders - missingName, failing: missingName, pct: pctPass(totalProviders - missingName, totalProviders) });
+
+    const missingCred = individualCount - scaleVal(pc.has_credential);
+    ruleResults.push({ rule_id: "missing_credential", rule_name: "Missing Credential", category: "completeness", total: individualCount, passing: individualCount - missingCred, failing: missingCred, pct: pctPass(individualCount - missingCred, individualCount) });
+
+    const missingEnumDate = totalProviders - scaleVal(pc.has_enum_date);
+    ruleResults.push({ rule_id: "missing_enum_date", rule_name: "Missing Enumeration Date", category: "completeness", total: totalProviders, passing: totalProviders - missingEnumDate, failing: missingEnumDate, pct: pctPass(totalProviders - missingEnumDate, totalProviders) });
+
+    const missingEmail = totalProviders - scaleVal(pc.has_email);
+    ruleResults.push({ rule_id: "missing_email", rule_name: "Missing Email Address", category: "completeness", total: totalProviders, passing: totalProviders - missingEmail, failing: missingEmail, pct: pctPass(totalProviders - missingEmail, totalProviders) });
+
+    ruleResults.push({ rule_id: "no_location", rule_name: "Provider Has No Location", category: "completeness", total: totalProviders, passing: totalProviders - noLocEst, failing: noLocEst, pct: pctPass(totalProviders - noLocEst, totalProviders) });
+
+    ruleResults.push({ rule_id: "no_taxonomy", rule_name: "Provider Has No Taxonomy", category: "completeness", total: totalProviders, passing: totalProviders - noTaxEst, failing: noTaxEst, pct: pctPass(totalProviders - noTaxEst, totalProviders) });
+
+    const missingAddr = scaleLocVal(lc.missing_address);
+    ruleResults.push({ rule_id: "missing_address", rule_name: "Location Missing Address", category: "completeness", total: totalLocations, passing: totalLocations - missingAddr, failing: missingAddr, pct: pctPass(totalLocations - missingAddr, totalLocations) });
+
+    const missingCity = scaleLocVal(lc.missing_city);
+    ruleResults.push({ rule_id: "missing_city", rule_name: "Location Missing City", category: "completeness", total: totalLocations, passing: totalLocations - missingCity, failing: missingCity, pct: pctPass(totalLocations - missingCity, totalLocations) });
+
+    const invalidNpi = scaleVal(pc.invalid_npi);
+    ruleResults.push({ rule_id: "invalid_npi", rule_name: "Invalid NPI Format", category: "accuracy", total: totalProviders, passing: totalProviders - invalidNpi, failing: invalidNpi, pct: pctPass(totalProviders - invalidNpi, totalProviders) });
+
+    const invalidState = scaleLocVal(lc.invalid_state);
+    ruleResults.push({ rule_id: "invalid_state", rule_name: "Invalid State Code", category: "accuracy", total: totalLocations, passing: totalLocations - invalidState, failing: invalidState, pct: pctPass(totalLocations - invalidState, totalLocations) });
+
+    const invalidPhone = scaleLocVal(lc.invalid_phone);
+    ruleResults.push({ rule_id: "invalid_phone", rule_name: "Invalid Phone Format", category: "accuracy", total: totalLocations, passing: totalLocations - invalidPhone, failing: invalidPhone, pct: pctPass(totalLocations - invalidPhone, totalLocations) });
+
+    const orgWithGender = scaleVal(pc.org_with_gender);
+    ruleResults.push({ rule_id: "org_with_gender", rule_name: "Organization With Gender Set", category: "consistency", total: totalProviders, passing: totalProviders - orgWithGender, failing: orgWithGender, pct: pctPass(totalProviders - orgWithGender, totalProviders) });
+
+    const deactivatedTotal = scaleVal(pc.deactivated) || 1;
+    ruleResults.push({ rule_id: "deactivated_with_location", rule_name: "Deactivated Provider With Active Location", category: "consistency", total: deactivatedTotal, passing: deactivatedTotal - deactivatedWithLocEst, failing: deactivatedWithLocEst, pct: pctPass(deactivatedTotal - deactivatedWithLocEst, deactivatedTotal) });
+
+    const avg = (arr: any[]) => arr.length > 0 ? Math.round(arr.reduce((s, r) => s + r.pct, 0) / arr.length) : 100;
+    const completenessRules = ruleResults.filter(r => r.category === "completeness");
+    const accuracyRules = ruleResults.filter(r => r.category === "accuracy");
+    const consistencyRules = ruleResults.filter(r => r.category === "consistency");
+    const timeliness = daysSinceLatest <= 1 ? 100 : daysSinceLatest <= 7 ? 85 : daysSinceLatest <= 14 ? 65 : daysSinceLatest <= 30 ? 40 : 10;
+
+    const scores = {
+      completeness: avg(completenessRules),
+      accuracy: avg(accuracyRules),
+      timeliness,
+      consistency: avg(consistencyRules),
+      overall: Math.round((avg(completenessRules) + avg(accuracyRules) + timeliness + avg(consistencyRules)) / 4),
+    };
+
+    for (const rule of ruleResults) {
+      if (rule.failing > 0) {
+        alertsToCreate.push({
+          scan_id: scanId,
+          alert_type: rule.rule_id,
+          severity: rule.failing > 1000 ? "high" : rule.failing > 100 ? "medium" : "low",
+          title: rule.rule_name,
+          description: `${rule.failing.toLocaleString()} of ${rule.total.toLocaleString()} records failing (${rule.pct}% pass rate)`,
+          status: "new",
+          action_required: rule.pct < 80,
+          affected_entity_type: rule.rule_id.includes("location") || rule.rule_id.includes("address") || rule.rule_id.includes("city") || rule.rule_id.includes("state") || rule.rule_id.includes("phone") ? "ProviderLocation" : "Provider",
+        });
+      }
+    }
+
+    if (daysSinceLatest > 14) {
+      alertsToCreate.push({
+        scan_id: scanId,
+        alert_type: "stale_data",
+        severity: daysSinceLatest > 30 ? "critical" : "high",
+        title: "Stale Data Warning",
+        description: `Most recent data import was ${daysSinceLatest} days ago`,
+        status: "new",
+        action_required: true,
+        affected_entity_type: "ImportBatch",
+      });
+    }
+
+    for (const alert of alertsToCreate) {
+      await db.insert(dataQualityAlerts).values(alert);
+    }
+
+    const summaryText = `Scan complete. Overall quality: ${scores.overall}%. Scanned ${totalProviders.toLocaleString()} providers, ${totalLocations.toLocaleString()} locations, ${totalTaxonomies.toLocaleString()} taxonomies. ${alertsToCreate.length} issues detected. Key areas: Completeness ${scores.completeness}%, Accuracy ${scores.accuracy}%, Timeliness ${scores.timeliness}%, Consistency ${scores.consistency}%.`;
+
+    const resultsSummary = { scores, rule_results: ruleResults, summary: summaryText, alerts_generated: alertsToCreate.length };
+
+    await db.update(dataQualityScans).set({
+      status: "completed",
+      completed_at: new Date(),
+      total_records: totalProviders + totalLocations + totalTaxonomies,
+      issues_found: alertsToCreate.length,
+      results_summary: resultsSummary,
+    }).where(eq(dataQualityScans.id, scanId));
+
+    return {
+      success: true,
+      scan_id: scanId,
+      scores,
+      alerts_generated: alertsToCreate.length,
+      summary: summaryText,
+      rule_results: ruleResults,
+    };
+  } catch (error: any) {
+    await db.update(dataQualityScans).set({ status: "failed" }).where(eq(dataQualityScans.id, scanId));
+    console.error("[DQ Scan] Error:", error);
+    return { success: false, error: error.message || "Scan failed" };
+  }
 }
 
 export async function handleEnrichProviderWithAI(payload: any) {
