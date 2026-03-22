@@ -522,6 +522,18 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { handleEnrichProviderThirdParty } = await import("../functions/stubs");
         return res.json(await handleEnrichProviderThirdParty(req.body));
       }
+      case "enrichBulkServerSide": {
+        const { handleEnrichBulkServerSide } = await import("../functions/stubs");
+        return res.json(await handleEnrichBulkServerSide(req.body));
+      }
+      case "getEnrichmentCandidateCount": {
+        const { handleGetEnrichmentCandidateCount } = await import("../functions/stubs");
+        return res.json(await handleGetEnrichmentCandidateCount(req.body));
+      }
+      case "proactiveScanServerSide": {
+        const { handleProactiveScanServerSide } = await import("../functions/stubs");
+        return res.json(await handleProactiveScanServerSide(req.body));
+      }
       case "verifyProviderEmail": {
         const { handleVerifyProviderEmail } = await import("../functions/stubs");
         return res.json(await handleVerifyProviderEmail(req.body));

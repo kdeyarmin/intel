@@ -12,20 +12,12 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function EnrichmentHub() {
-  // Use dashboard stats for accurate total count
   const { data: stats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
       const res = await base44.functions.invoke('getDashboardStats');
       return res.data;
     },
-    staleTime: 120000,
-  });
-
-  // Fetch a working sample for the enrichment runners
-  const { data: providers = [] } = useQuery({
-    queryKey: ['enrichProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 5000),
     staleTime: 120000,
   });
 
@@ -38,7 +30,6 @@ export default function EnrichmentHub() {
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Enrichment' }]}
       />
 
-      {/* Source info */}
       <div className="bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <Shield className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
@@ -62,14 +53,12 @@ export default function EnrichmentHub() {
         </div>
       </div>
 
-      {/* Stats overview */}
       <EnrichmentStats />
 
-      {/* Runner + Scanner + Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-4">
-          <BulkEnrichmentRunner providers={providers} totalProviders={stats?.totalProviders || providers.length} />
-          <ProactiveEnrichmentScanner providers={providers} totalProviders={stats?.totalProviders || providers.length} />
+          <BulkEnrichmentRunner totalProviders={stats?.totalProviders || 0} />
+          <ProactiveEnrichmentScanner totalProviders={stats?.totalProviders || 0} />
           <EnrichmentActionability />
         </div>
         <div className="lg:col-span-2 space-y-4">

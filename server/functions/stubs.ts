@@ -211,6 +211,187 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
   return { success: true, enriched, no_data, errors, total: npis.length, message: `Enriched ${enriched} of ${npis.length} providers` };
 }
 
+export async function handleGetEnrichmentCandidateCount(_payload: any) {
+  const totalRows = await db.execute(sql`SELECT reltuples::bigint AS count FROM pg_class WHERE relname = 'providers'`);
+  const totalProviders = Number((totalRows as any)?.[0]?.count || (totalRows as any)?.rows?.[0]?.count || 0);
+
+  const enrichedRows = await db.execute(sql`
+    SELECT COUNT(DISTINCT npi)::int AS count FROM enrichment_records WHERE field_name = 'enrichment_details'
+  `);
+  const enrichedCount = Number((enrichedRows as any)?.[0]?.count || (enrichedRows as any)?.rows?.[0]?.count || 0);
+
+  return {
+    success: true,
+    totalProviders,
+    enrichedCount,
+    unenrichedCount: totalProviders - enrichedCount,
+  };
+}
+
+export async function handleEnrichBulkServerSide(payload: any) {
+  const { batch_size = 10, auto_apply_high_confidence = false, offset = 0 } = payload;
+  const limit = Math.min(batch_size, 50);
+
+  const npis: string[] = [];
+  const rawRows = await db.execute(sql`
+    SELECT p.npi FROM providers p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM enrichment_records er
+      WHERE er.npi = p.npi AND er.field_name = 'enrichment_details'
+    )
+    ORDER BY p.npi
+    LIMIT ${limit}
+  `);
+  const rows = Array.isArray(rawRows) ? rawRows : (rawRows as any)?.rows || [];
+  for (const r of rows) {
+    if (r.npi) npis.push(r.npi);
+  }
+
+  if (npis.length === 0) {
+    return { success: true, enriched: 0, no_data: 0, errors: 0, total: 0, hasMore: false, message: "No more unenriched providers found" };
+  }
+
+  const result = await handleEnrichProviderThirdParty({ npis, batch_size: npis.length, auto_apply_high_confidence });
+  return {
+    ...result,
+    processedNpis: npis,
+    hasMore: npis.length === limit,
+  };
+}
+
+export async function handleProactiveScanServerSide(payload: any) {
+  const { batch_size = 5, data_points = ['patient_volume', 'insurance', 'telehealth'] } = payload;
+  const limit = Math.min(batch_size, 25);
+
+  const rawRows = await db.execute(sql`
+    SELECT p.npi, p.first_name, p.last_name, p.organization_name, p.entity_type, p.credential
+    FROM providers p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM enrichment_records er
+      WHERE er.npi = p.npi AND er.field_name = 'proactive_scan'
+    )
+    ORDER BY p.npi
+    LIMIT ${limit}
+  `);
+
+  const providers = Array.isArray(rawRows) ? rawRows : (rawRows as any)?.rows || [];
+  if (providers.length === 0) {
+    return { success: true, enriched: 0, no_data: 0, errors: 0, total: 0, details: [], message: "All providers have been scanned." };
+  }
+
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const anthropic = new Anthropic();
+  const { enrichmentRecords } = await import("../db/schema");
+
+  const DATA_POINT_MAP: Record<string, string> = {
+    patient_volume: "Estimated patient panel size",
+    insurance: "Which insurance plans accepted",
+    telehealth: "Whether provider offers telehealth",
+    office_hours: "Practice hours and availability",
+    pricing: "Self-pay/cash pay pricing if available",
+  };
+
+  let enriched = 0, no_data = 0, errors = 0;
+  const details: any[] = [];
+
+  for (const p of providers) {
+    try {
+      const name = p.entity_type === 'Individual'
+        ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+        : p.organization_name || p.npi;
+
+      const pointDescriptions = data_points
+        .map((k: string) => `- ${DATA_POINT_MAP[k] || k}`)
+        .join('\n');
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 800,
+        messages: [{
+          role: "user",
+          content: `Find the following specific data about this healthcare provider. Only return data you can reasonably infer.
+
+Provider: ${name}
+NPI: ${p.npi}
+Credential: ${p.credential || 'Unknown'}
+
+Data points to find:
+${pointDescriptions}
+
+Return a JSON object with these fields:
+{
+  "estimated_patient_volume": "number or description if known, else null",
+  "insurance_accepted": ["plan1", "plan2"] or [],
+  "telehealth_available": true/false/null,
+  "office_hours": "description if known, else null",
+  "cash_pay_info": "description if known, else null",
+  "data_found": true/false (true if ANY field has real data)
+}
+
+Only return the JSON object.`
+        }],
+      });
+
+      const text = response.content[0].type === "text" ? response.content[0].text : "";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) { no_data++; details.push({ npi: p.npi, name, status: 'no_data' }); continue; }
+
+      const res = JSON.parse(jsonMatch[0]);
+
+      if (!res.data_found) {
+        no_data++;
+        details.push({ npi: p.npi, name, status: 'no_data' });
+        await db.insert(enrichmentRecords).values({
+          npi: p.npi,
+          source: 'ai_proactive_scan',
+          field_name: 'proactive_scan',
+          new_value: 'No data found',
+          confidence: 0.2,
+          status: 'rejected',
+          enrichment_details: { data_points },
+        });
+        continue;
+      }
+
+      const summaryParts: string[] = [];
+      if (res.estimated_patient_volume) summaryParts.push(`Patient Vol: ${res.estimated_patient_volume}`);
+      if (res.insurance_accepted?.length > 0) summaryParts.push(`Insurance: ${res.insurance_accepted.slice(0, 3).join(', ')}`);
+      if (res.telehealth_available !== null && res.telehealth_available !== undefined) summaryParts.push(`Telehealth: ${res.telehealth_available ? 'Yes' : 'No'}`);
+      if (res.office_hours) summaryParts.push(`Hours: ${res.office_hours}`);
+
+      await db.insert(enrichmentRecords).values({
+        npi: p.npi,
+        source: 'ai_proactive_scan',
+        field_name: 'proactive_scan',
+        new_value: summaryParts.join(' | ') || 'Scanned - minimal data',
+        confidence: summaryParts.length > 2 ? 0.7 : 0.5,
+        status: summaryParts.length > 0 ? 'pending' : 'rejected',
+        enrichment_details: res,
+      });
+
+      if (summaryParts.length > 0) {
+        enriched++;
+        details.push({ npi: p.npi, name, status: 'enriched', fields: summaryParts.length });
+      } else {
+        no_data++;
+        details.push({ npi: p.npi, name, status: 'no_data' });
+      }
+    } catch (e: any) {
+      console.error(`[ProactiveScan] Error for NPI ${p.npi}:`, e.message);
+      errors++;
+      details.push({ npi: p.npi, name: p.npi, status: 'error', error: e.message });
+    }
+  }
+
+  return {
+    success: true,
+    enriched, no_data, errors,
+    total: providers.length,
+    details,
+    message: `Scanned ${providers.length} providers: ${enriched} enriched, ${no_data} no data, ${errors} errors`,
+  };
+}
+
 export async function handleVerifyProviderEmail(payload: any) {
   return { success: true, verified: false, message: "Email verification requires external API configuration." };
 }
