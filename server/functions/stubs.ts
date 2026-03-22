@@ -2,6 +2,122 @@ import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, dataQualityScans, importBatches } from "../db/schema";
 import { sql, desc, eq } from "drizzle-orm";
 
+interface EnrichmentJobState {
+  status: "idle" | "running" | "stopping" | "completed" | "error";
+  enriched: number;
+  noData: number;
+  errors: number;
+  total: number;
+  batchSize: number;
+  autoApply: boolean;
+  startedAt: string | null;
+  lastBatchAt: string | null;
+  message: string;
+  errorDetail?: string;
+}
+
+const enrichmentJob: EnrichmentJobState = {
+  status: "idle",
+  enriched: 0,
+  noData: 0,
+  errors: 0,
+  total: 0,
+  batchSize: 10,
+  autoApply: false,
+  startedAt: null,
+  lastBatchAt: null,
+  message: "",
+};
+
+async function runEnrichmentLoop() {
+  if (enrichmentJob.status !== "running") return;
+
+  try {
+    const limit = Math.min(enrichmentJob.batchSize, 50);
+    const rawRows = await db.execute(sql`
+      SELECT p.npi FROM providers p
+      WHERE NOT EXISTS (
+        SELECT 1 FROM enrichment_records er
+        WHERE er.npi = p.npi AND er.field_name = 'enrichment_details'
+      )
+      ORDER BY p.npi
+      LIMIT ${limit}
+    `);
+    const rows = Array.isArray(rawRows) ? rawRows : (rawRows as any)?.rows || [];
+    const npis: string[] = [];
+    for (const r of rows as any[]) {
+      if (r.npi) npis.push(r.npi);
+    }
+
+    if (npis.length === 0) {
+      enrichmentJob.status = "completed";
+      enrichmentJob.message = `Completed. Enriched ${enrichmentJob.enriched} providers total.`;
+      return;
+    }
+
+    const result = await handleEnrichProviderThirdParty({
+      npis,
+      batch_size: npis.length,
+      auto_apply_high_confidence: enrichmentJob.autoApply,
+    });
+
+    enrichmentJob.enriched += result.enriched || 0;
+    enrichmentJob.noData += result.no_data || 0;
+    enrichmentJob.errors += result.errors || 0;
+    enrichmentJob.total += result.total || 0;
+    enrichmentJob.lastBatchAt = new Date().toISOString();
+    enrichmentJob.message = `Running... ${enrichmentJob.enriched} enriched, ${enrichmentJob.total} processed`;
+
+    if (enrichmentJob.status === "stopping") {
+      enrichmentJob.status = "idle";
+      enrichmentJob.message = `Stopped. Enriched ${enrichmentJob.enriched} of ${enrichmentJob.total} processed.`;
+      return;
+    }
+
+    setTimeout(() => runEnrichmentLoop(), 500);
+  } catch (e: any) {
+    console.error("[EnrichmentJob] Error:", e.message);
+    enrichmentJob.errors++;
+    enrichmentJob.errorDetail = e.message;
+    if (enrichmentJob.status === "running") {
+      setTimeout(() => runEnrichmentLoop(), 5000);
+    }
+  }
+}
+
+export function handleEnrichmentJobStart(payload: any) {
+  if (enrichmentJob.status === "running") {
+    return { success: false, message: "Enrichment job is already running", job: enrichmentJob };
+  }
+  enrichmentJob.status = "running";
+  enrichmentJob.enriched = 0;
+  enrichmentJob.noData = 0;
+  enrichmentJob.errors = 0;
+  enrichmentJob.total = 0;
+  enrichmentJob.batchSize = Math.min(payload.batch_size || 10, 50);
+  enrichmentJob.autoApply = payload.auto_apply_high_confidence || false;
+  enrichmentJob.startedAt = new Date().toISOString();
+  enrichmentJob.lastBatchAt = null;
+  enrichmentJob.message = "Starting...";
+  enrichmentJob.errorDetail = undefined;
+
+  setTimeout(() => runEnrichmentLoop(), 0);
+  return { success: true, message: "Enrichment job started", job: enrichmentJob };
+}
+
+export function handleEnrichmentJobStop() {
+  if (enrichmentJob.status !== "running") {
+    return { success: false, message: "No enrichment job is running", job: enrichmentJob };
+  }
+  enrichmentJob.status = "stopping";
+  enrichmentJob.message = "Stopping after current batch...";
+  return { success: true, message: "Stop signal sent", job: enrichmentJob };
+}
+
+export function handleEnrichmentJobStatus() {
+  return { success: true, job: enrichmentJob };
+}
+
 export async function handleValidateDataQuality(_payload: any) {
   const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
   const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);

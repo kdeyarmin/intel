@@ -534,6 +534,18 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { handleProactiveScanServerSide } = await import("../functions/stubs");
         return res.json(await handleProactiveScanServerSide(req.body));
       }
+      case "enrichmentJobStart": {
+        const { handleEnrichmentJobStart } = await import("../functions/stubs");
+        return res.json(handleEnrichmentJobStart(req.body));
+      }
+      case "enrichmentJobStop": {
+        const { handleEnrichmentJobStop } = await import("../functions/stubs");
+        return res.json(handleEnrichmentJobStop());
+      }
+      case "enrichmentJobStatus": {
+        const { handleEnrichmentJobStatus } = await import("../functions/stubs");
+        return res.json(handleEnrichmentJobStatus());
+      }
       case "verifyProviderEmail": {
         const { handleVerifyProviderEmail } = await import("../functions/stubs");
         return res.json(await handleVerifyProviderEmail(req.body));
