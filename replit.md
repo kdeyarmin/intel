@@ -131,7 +131,7 @@ Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, Pr
 ### Import System
 - **CMS API imports**: Fetches data from CMS government APIs and inserts into PostgreSQL tables (cmsReferrals, providerServiceUtilization, medicareFacilities)
 - **Data mapping**: CMS order/referring → cmsReferrals; provider utilization → providerServiceUtilization; hospice/SNF/nursing → medicareFacilities
-- **Supported datasets**: hospital_cost_report, inpatient, outpatient, Part D drugs, market_saturation_county, market_saturation_cbsa, provider_taxonomy_crosswalk, hospital_price_transparency, medicare_part_d_prescribers, medicare_fee_for_service_enrollment, hospice/home_health state measures, and more
+- **Supported datasets (85 total)**: 9 categories — Physicians & Clinicians, Doctors & Clinicians (national file, MIPS, group measures), Hospitals (HCAHPS, timely care, imaging, spending, HAC, psychiatric, ASC, joint replacement), Home Health (HHCAHPS, zip data), Hospice (zip data), Nursing Homes & SNF (ownership, fire safety, health deficiencies, MDS quality, claims quality, SNF quality reporting), Dialysis (ICH CAHPS survey), Other Facilities (IRF general/provider, LTCH general/provider), Medicare Programs
 - **Field mapping**: `mapMedicareFacilityRow` handles provider_id extraction from CCN, NPI, Prscrbr_NPI, Case_ID, etc.; `deriveStatisticalId` generates synthetic IDs for aggregate datasets (CBSA, taxonomy crosswalk); all IDs truncated to varchar(50)
 - **Resume support**: Failed/stalled imports can be resumed from their last offset via batch_id parameter; frontend ResumeImportButton supported
 - **Stall detection**: Server startup checks for batches stuck in "processing" >15 min and marks them failed
