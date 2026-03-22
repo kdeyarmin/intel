@@ -12,17 +12,25 @@ import {
 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  pending_review: { label: 'Pending Review', color: 'bg-amber-900/15 text-amber-400 border-amber-500/20', icon: Clock },
+  pending: { label: 'Pending Review', color: 'bg-amber-900/15 text-amber-400 border-amber-500/20', icon: Clock },
   approved: { label: 'Approved', color: 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20', icon: CheckCircle2 },
+  applied: { label: 'Applied', color: 'bg-cyan-900/15 text-cyan-400 border-cyan-500/20', icon: CheckCircle2 },
   rejected: { label: 'Rejected', color: 'bg-red-900/15 text-red-400 border-red-500/20', icon: XCircle },
-  auto_applied: { label: 'Auto-Applied', color: 'bg-cyan-900/15 text-cyan-400 border-cyan-500/20', icon: CheckCircle2 },
 };
 
-const CONFIDENCE_COLORS = {
-  high: 'bg-emerald-900/15 text-emerald-400',
-  medium: 'bg-amber-900/15 text-amber-400',
-  low: 'bg-red-900/15 text-red-400',
-};
+function getConfidenceInfo(val) {
+  if (val === null || val === undefined) return { label: 'unknown', cls: 'bg-slate-700/30 text-slate-400' };
+  const num = typeof val === 'number' ? val : parseFloat(val);
+  if (isNaN(num)) {
+    const s = String(val).toLowerCase();
+    if (s === 'high') return { label: 'high', cls: 'bg-emerald-900/15 text-emerald-400' };
+    if (s === 'low') return { label: 'low', cls: 'bg-red-900/15 text-red-400' };
+    return { label: s, cls: 'bg-amber-900/15 text-amber-400' };
+  }
+  if (num >= 0.75) return { label: `${Math.round(num * 100)}%`, cls: 'bg-emerald-900/15 text-emerald-400' };
+  if (num >= 0.5) return { label: `${Math.round(num * 100)}%`, cls: 'bg-amber-900/15 text-amber-400' };
+  return { label: `${Math.round(num * 100)}%`, cls: 'bg-red-900/15 text-red-400' };
+}
 
 function EnrichmentDetailCard({ details, aiExplanation }) {
   if (!details) return null;
@@ -108,7 +116,7 @@ function EnrichmentDetailCard({ details, aiExplanation }) {
   );
 }
 
-export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' }) {
+export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState(null);
   const [filter, setFilter] = useState(statusFilter);
@@ -186,7 +194,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
   };
 
   const toggleSelectAll = () => {
-    const pending = records.filter(r => r.status === 'pending_review');
+    const pending = records.filter(r => r.status === 'pending');
     if (selected.size === pending.length) {
       setSelected(new Set());
     } else {
@@ -194,7 +202,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
     }
   };
 
-  const pendingRecords = records.filter(r => r.status === 'pending_review');
+  const pendingRecords = records.filter(r => r.status === 'pending');
   const pendingCount = pendingRecords.length;
 
   return (
@@ -206,17 +214,17 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
             {pendingCount > 0 && <Badge className="ml-2 bg-amber-900/20 text-amber-400 text-[10px]">{pendingCount} pending</Badge>}
           </CardTitle>
           <div className="flex gap-1">
-            {['pending_review', 'approved', 'rejected', 'all'].map(s => (
+            {['pending', 'applied', 'approved', 'rejected', 'all'].map(s => (
               <button key={s} onClick={() => { setFilter(s); setSelected(new Set()); }}
                 className={`text-[10px] px-2 py-0.5 rounded ${filter === s ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                {s === 'pending_review' ? 'Pending' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === 'pending' ? 'Pending' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
         {/* Batch actions bar */}
-        {filter === 'pending_review' && pendingCount > 0 && (
+        {filter === 'pending' && pendingCount > 0 && (
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-700/50">
             <Checkbox
               checked={selected.size === pendingCount && pendingCount > 0}
@@ -254,8 +262,8 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
           <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
             {records.map(r => {
               const isExpanded = expandedId === r.id;
-              const sc = STATUS_CONFIG[r.status] || STATUS_CONFIG.pending_review;
-              const isPending = r.status === 'pending_review';
+              const sc = STATUS_CONFIG[r.status] || STATUS_CONFIG.pending;
+              const isPending = r.status === 'pending';
               return (
                 <div key={r.id} className="border border-slate-700/50 rounded-lg p-3 hover:bg-slate-800/30 transition-colors">
                   <div className="flex items-start justify-between gap-2">
@@ -274,12 +282,12 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
                         </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge className={`text-[10px] border ${sc.color}`}>{sc.label}</Badge>
-                          <Badge className={`text-[10px] ${CONFIDENCE_COLORS[r.confidence] || ''}`}>{r.confidence} confidence</Badge>
+                          <Badge className={`text-[10px] ${getConfidenceInfo(r.confidence).cls}`}>{getConfidenceInfo(r.confidence).label} confidence</Badge>
                           <span className="text-[10px] text-slate-500">{r.source}</span>
-                          <Badge className="bg-slate-700/40 text-slate-400 text-[9px]">{r.enrichment_type}</Badge>
+                          {(r.fieldName || r.field_name) && <Badge className="bg-slate-700/40 text-slate-400 text-[9px]">{r.fieldName || r.field_name}</Badge>}
                         </div>
-                        {r.new_value && (
-                          <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{r.new_value}</p>
+                        {(r.newValue || r.new_value) && (
+                          <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{r.newValue || r.new_value}</p>
                         )}
                       </div>
                     </div>
@@ -288,7 +296,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
                         <>
                           <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white"
                             disabled={reviewMutation.isPending}
-                            onClick={() => reviewMutation.mutate({ id: r.id, status: 'approved', npi: r.npi, enrichment_details: r.enrichment_details })}>
+                            onClick={() => reviewMutation.mutate({ id: r.id, status: 'approved', npi: r.npi, enrichment_details: r.enrichmentDetails || r.enrichment_details })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
                           </Button>
                           <Button size="sm" variant="outline" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-900/10"
@@ -304,7 +312,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending_review' 
                       </Button>
                     </div>
                   </div>
-                  {isExpanded && <EnrichmentDetailCard details={r.enrichment_details} aiExplanation={r.enrichment_details?.ai_explanation} />}
+                  {isExpanded && <EnrichmentDetailCard details={r.enrichmentDetails || r.enrichment_details} aiExplanation={(r.enrichmentDetails || r.enrichment_details)?.ai_explanation} />}
                 </div>
               );
             })}
