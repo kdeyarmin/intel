@@ -915,7 +915,7 @@ export default function ImportMonitoring() {
                             <span>Validated: {((batch.valid_rows || 0) + (batch.invalid_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
                           )}
                           {batch.status === 'processing' && (
-                            <span>Imported: {((batch.imported_rows || 0) + (batch.updated_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
+                            <span>New: {((batch.imported_rows || 0) + (batch.updated_rows || 0)).toLocaleString()}{(batch.skipped_rows || 0) > 0 ? ` · ${batch.skipped_rows.toLocaleString()} dupes` : ''} / {batch.total_rows.toLocaleString()} fetched</span>
                           )}
                         </div>
                       )}
@@ -955,11 +955,11 @@ export default function ImportMonitoring() {
                       </div>
                     ) : (
                       <>
-                        {batch.total_rows > 0 && <div><span className="text-slate-400">Total: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
+                        {batch.total_rows > 0 && <div><span className="text-slate-400">Fetched: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
                         {batch.valid_rows > 0 && <div><span className="text-slate-400">Validated: </span><span className="font-semibold text-emerald-400">{batch.valid_rows.toLocaleString()}</span></div>}
-                        {batch.imported_rows > 0 && <div><span className="text-slate-400">Imported: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
+                        {batch.imported_rows > 0 && <div><span className="text-slate-400">New: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
                         {batch.updated_rows > 0 && <div><span className="text-slate-400">Updated: </span><span className="font-semibold text-violet-400">{batch.updated_rows.toLocaleString()}</span></div>}
-                        {batch.skipped_rows > 0 && <div><span className="text-slate-400">Skipped: </span><span className="font-semibold text-slate-300">{batch.skipped_rows.toLocaleString()}</span></div>}
+                        {batch.skipped_rows > 0 && <div title="Duplicates or rows missing required fields"><span className="text-slate-400">Duplicates: </span><span className="font-semibold text-amber-400">{batch.skipped_rows.toLocaleString()}</span></div>}
                         {batch.invalid_rows > 0 && <div><span className="text-slate-400">Invalid: </span><span className="font-semibold text-red-400">{batch.invalid_rows.toLocaleString()}</span></div>}
                         {batch.status === 'failed' && batch.valid_rows > 0 && !batch.imported_rows && (
                           <div className="text-xs text-amber-400 italic">Validated but failed during import</div>
@@ -1191,8 +1191,9 @@ function ImportHistoryView({ batches, formatTimestamp }) {
                           <p className="text-xs text-slate-500 truncate">{b.file_name}</p>
                         </div>
                         <div className="flex items-center gap-4 text-xs text-slate-500 flex-shrink-0">
-                          {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} imported</span>}
-                          {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} total</span>}
+                          {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} new</span>}
+                          {b.skipped_rows > 0 && <span className="text-amber-400">{b.skipped_rows.toLocaleString()} dupes</span>}
+                          {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} fetched</span>}
                           <span className="w-24 text-right">{formatTimestamp(b.created_date).replace(/, \d{4}/, '')}</span>
                         </div>
                         {(b.tags || []).length > 0 && (

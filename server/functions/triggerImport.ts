@@ -489,70 +489,56 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
   };
 }
 
-async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<number> {
-  if (rows.length === 0) return 0;
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
+  if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
   const CHUNK_SIZE = 100;
   let inserted = 0;
+  let skipped = 0;
+
+  let mapped: any[];
+  let table: any;
 
   if (importType === "cms_order_referring") {
-    const mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId)).filter(r => r.npi);
-    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
-      const chunk = mapped.slice(i, i + CHUNK_SIZE);
-      try {
-        await db.insert(cmsReferrals).values(chunk);
-        inserted += chunk.length;
-      } catch (e: any) {
-        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
-        for (const row of chunk) {
-          try {
-            await db.insert(cmsReferrals).values(row);
-            inserted++;
-          } catch { /* skip duplicate/invalid */ }
-        }
-      }
-    }
+    mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId));
+    mapped = mapped.filter(r => r.npi);
+    table = cmsReferrals;
   } else if (importType === "provider_service_utilization") {
-    const mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId)).filter(r => r.npi);
-    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
-      const chunk = mapped.slice(i, i + CHUNK_SIZE);
-      try {
-        await db.insert(providerServiceUtilization).values(chunk);
-        inserted += chunk.length;
-      } catch (e: any) {
-        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
-        for (const row of chunk) {
-          try {
-            await db.insert(providerServiceUtilization).values(row);
-            inserted++;
-          } catch { /* skip duplicate/invalid */ }
-        }
-      }
-    }
+    mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
+    mapped = mapped.filter(r => r.npi);
+    table = providerServiceUtilization;
   } else {
-    const mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId)).filter(r => r.provider_id || r.facility_name);
-    for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
-      const chunk = mapped.slice(i, i + CHUNK_SIZE);
-      try {
-        await db.insert(medicareFacilities).values(chunk);
-        inserted += chunk.length;
-      } catch (e: any) {
-        console.error(`[CMS Insert] Chunk error for ${importType}: ${e.message}`);
-        for (const row of chunk) {
-          try {
-            await db.insert(medicareFacilities).values(row);
-            inserted++;
-          } catch { /* skip duplicate/invalid */ }
+    mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId));
+    mapped = mapped.filter(r => r.provider_id || r.facility_name);
+    table = medicareFacilities;
+  }
+
+  if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: rows.length };
+
+  const filteredCount = rows.length - mapped.length;
+
+  for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
+    const chunk = mapped.slice(i, i + CHUNK_SIZE);
+    try {
+      await db.insert(table).values(chunk);
+      inserted += chunk.length;
+    } catch (e: any) {
+      for (const row of chunk) {
+        try {
+          await db.insert(table).values(row);
+          inserted++;
+        } catch {
+          skipped++;
         }
       }
     }
   }
 
-  return inserted;
+  return { inserted, skipped, filtered: filteredCount };
 }
 
 export async function handleAutoImportCMSData(params: any) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0 } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0 } = params;
   const MAX_EXEC_MS = 50000;
   const execStartTime = Date.now();
   const PAGE_SIZE = 500;
@@ -562,6 +548,7 @@ export async function handleAutoImportCMSData(params: any) {
     let offset = resume_offset;
     let totalFetched = resume_offset;
     let totalInserted = total_inserted;
+    let totalSkipped = total_skipped;
     let hasMore = true;
     let consecutiveErrors = 0;
     const errors: any[] = [];
@@ -633,8 +620,9 @@ export async function handleAutoImportCMSData(params: any) {
 
       if (!dry_run) {
         try {
-          const inserted = await insertCMSRows(import_type, rows, year, batch_id);
-          totalInserted += inserted;
+          const result = await insertCMSRows(import_type, rows, year, batch_id);
+          totalInserted += result.inserted;
+          totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {
           console.error(`[AutoImportCMS] Insert error at offset ${offset}: ${e.message}`);
           errors.push({ offset, message: `Insert error: ${e.message}` });
@@ -646,8 +634,9 @@ export async function handleAutoImportCMSData(params: any) {
 
       await db.update(importBatches).set({
         imported_rows: totalInserted,
+        skipped_rows: totalSkipped,
         total_rows: totalFetched,
-        retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted },
+        retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch_id));
 
@@ -659,7 +648,7 @@ export async function handleAutoImportCMSData(params: any) {
     if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
       console.log(`[AutoImportCMS] Time limit reached, scheduling continuation at offset ${offset}`);
       setTimeout(() => {
-        handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted })
+        handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped })
           .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
       }, 500);
       return;
@@ -669,11 +658,12 @@ export async function handleAutoImportCMSData(params: any) {
       status: "completed",
       completed_at: new Date(),
       imported_rows: totalInserted,
+      skipped_rows: totalSkipped,
       total_rows: totalFetched,
       error_samples: errors.length > 0 ? errors.slice(-5) : null,
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
-    console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}`);
+    console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);
     await db.update(importBatches).set({
