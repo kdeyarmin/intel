@@ -532,24 +532,31 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         return res.json(await handleEnrichBulkServerSide(req.body));
       }
       case "getEnrichmentCandidateCount": {
-        const { handleGetEnrichmentCandidateCount } = await import("../functions/stubs");
-        return res.json(await handleGetEnrichmentCandidateCount(req.body));
+        const { handleGetIntelCandidateCount } = await import("../functions/providerIntelligenceBot");
+        return res.json(await handleGetIntelCandidateCount());
       }
       case "proactiveScanServerSide": {
         const { handleProactiveScanServerSide } = await import("../functions/stubs");
         return res.json(await handleProactiveScanServerSide(req.body));
       }
-      case "enrichmentJobStart": {
-        const { handleEnrichmentJobStart } = await import("../functions/stubs");
-        return res.json(await handleEnrichmentJobStart(req.body));
+      case "enrichmentJobStart":
+      case "intelJobStart": {
+        const { handleIntelJobStart } = await import("../functions/providerIntelligenceBot");
+        return res.json(await handleIntelJobStart(req.body));
       }
-      case "enrichmentJobStop": {
-        const { handleEnrichmentJobStop } = await import("../functions/stubs");
-        return res.json(await handleEnrichmentJobStop());
+      case "enrichmentJobStop":
+      case "intelJobStop": {
+        const { handleIntelJobStop } = await import("../functions/providerIntelligenceBot");
+        return res.json(await handleIntelJobStop());
       }
-      case "enrichmentJobStatus": {
-        const { handleEnrichmentJobStatus } = await import("../functions/stubs");
-        return res.json(await handleEnrichmentJobStatus());
+      case "enrichmentJobStatus":
+      case "intelJobStatus": {
+        const { handleIntelJobStatus } = await import("../functions/providerIntelligenceBot");
+        return res.json(await handleIntelJobStatus());
+      }
+      case "getIntelCandidateCount": {
+        const { handleGetIntelCandidateCount } = await import("../functions/providerIntelligenceBot");
+        return res.json(await handleGetIntelCandidateCount());
       }
       case "verifyProviderEmail": {
         const { handleVerifyProviderEmail } = await import("../functions/stubs");
