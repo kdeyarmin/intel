@@ -505,6 +505,10 @@ async function processQueueWorker(dryRun: boolean) {
         await db.update(nppesQueueItems).set({ status: "failed", error_message: `Batch ${taskBatch?.status || "deleted"}`, updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
         continue;
       }
+
+      try {
+        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, task.batch_id!));
+      } catch (_) {}
       const effectiveDryRun = dryRun || taskBatch.dry_run;
       const taskStartTime = Date.now();
       try {

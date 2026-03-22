@@ -148,10 +148,12 @@ export default function ImportMonitoring() {
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
+  const CRAWLER_STALE_THRESHOLD_MS = 60 * 60 * 1000;
   const isStale = (batch) => {
     if (batch.status !== 'processing' && batch.status !== 'validating') return false;
     const updated = new Date(batch.updated_date || batch.created_date);
-    return (Date.now() - updated.getTime()) > STALE_THRESHOLD_MS;
+    const threshold = batch.import_type === 'nppes_registry' ? CRAWLER_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
+    return (Date.now() - updated.getTime()) > threshold;
   };
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
@@ -358,11 +360,11 @@ export default function ImportMonitoring() {
   };
 
   const statusColors = {
-    processing: 'bg-blue-900/200/15 text-blue-400 border border-blue-500/20',
-    validating: 'bg-yellow-900/200/15 text-yellow-400 border border-yellow-500/20',
-    completed: 'bg-emerald-900/200/15 text-emerald-400 border border-emerald-500/20',
-    failed: 'bg-red-900/200/15 text-red-400 border border-red-500/20',
-    paused: 'bg-amber-900/200/15 text-amber-400 border border-amber-500/20',
+    processing: 'bg-blue-900/15 text-blue-400 border border-blue-500/20',
+    validating: 'bg-yellow-900/15 text-yellow-400 border border-yellow-500/20',
+    completed: 'bg-emerald-900/15 text-emerald-400 border border-emerald-500/20',
+    failed: 'bg-red-900/15 text-red-400 border border-red-500/20',
+    paused: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
     cancelled: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',
   };
 
@@ -559,7 +561,7 @@ export default function ImportMonitoring() {
 
       {/* Auto-failed notification */}
       {autoFailedIds.size > 0 && (
-        <Card className="border-red-500/30 bg-red-900/200/10">
+        <Card className="border-red-500/30 bg-red-900/10">
           <CardContent className="py-3">
             <div className="flex items-center gap-2">
               <XCircle className="w-5 h-5 text-red-400" />
@@ -598,7 +600,7 @@ export default function ImportMonitoring() {
 
       {/* Stale Jobs Warning */}
       {staleBatches.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-900/200/10">
+        <Card className="border-amber-500/30 bg-amber-900/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2 text-amber-400">
               <AlertCircle className="w-5 h-5" />
@@ -619,7 +621,7 @@ export default function ImportMonitoring() {
                   </div>
                   <Button
                     size="sm" variant="outline"
-                    className="text-red-400 border-red-500/30 hover:bg-red-900/200/10"
+                    className="text-red-400 border-red-500/30 hover:bg-red-900/10"
                     onClick={async () => {
                       try {
                         await base44.entities.ImportBatch.update(batch.id, {
@@ -809,7 +811,7 @@ export default function ImportMonitoring() {
                 <div key={batch.id} className={`p-4 border rounded-lg hover:bg-slate-800/30 transition-colors ${
                   bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES
                     ? selectedForRerun.has(batch.id)
-                      ? 'border-cyan-500/40 bg-cyan-900/200/5'
+                      ? 'border-cyan-500/40 bg-cyan-900/5'
                       : 'border-slate-700/50 cursor-pointer'
                     : 'border-slate-700/50'
                 }`}
@@ -835,7 +837,7 @@ export default function ImportMonitoring() {
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                           </h3>
                           {batch.retry_of && (
-                            <Badge className="text-xs gap-1 bg-amber-900/200/15 text-amber-400 border border-amber-500/20">
+                            <Badge className="text-xs gap-1 bg-amber-900/15 text-amber-400 border border-amber-500/20">
                               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
                             </Badge>
                           )}
@@ -855,7 +857,7 @@ export default function ImportMonitoring() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/200/10"
+                          className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                           onClick={() => setErrorReportBatch(batch)}
                         >
                           Error Report
@@ -864,7 +866,7 @@ export default function ImportMonitoring() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/200/10"
+                        className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                         disabled={deletingBatchId === batch.id}
                         onClick={() => setConfirmDeleteBatch(batch)}
                       >
@@ -902,7 +904,7 @@ export default function ImportMonitoring() {
                       <div className="w-full h-2 rounded-full bg-slate-700/80 overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            batch.status === 'paused' ? 'bg-amber-900/200' : batch.status === 'validating' ? 'bg-yellow-900/200' : 'bg-cyan-900/200'
+                            batch.status === 'paused' ? 'bg-amber-500' : batch.status === 'validating' ? 'bg-yellow-500' : 'bg-cyan-500'
                           }`}
                           style={{ width: `${getProgress(batch)}%` }}
                         />
@@ -1060,11 +1062,11 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   });
 
   const statusColors = {
-    processing: 'bg-blue-900/200/15 text-blue-400',
-    validating: 'bg-yellow-900/200/15 text-yellow-400',
-    completed: 'bg-emerald-900/200/15 text-emerald-400',
-    failed: 'bg-red-900/200/15 text-red-400',
-    paused: 'bg-amber-900/200/15 text-amber-400',
+    processing: 'bg-blue-900/15 text-blue-400',
+    validating: 'bg-yellow-900/15 text-yellow-400',
+    completed: 'bg-emerald-900/15 text-emerald-400',
+    failed: 'bg-red-900/15 text-red-400',
+    paused: 'bg-amber-900/15 text-amber-400',
     cancelled: 'bg-slate-500/15 text-slate-400',
   };
 
