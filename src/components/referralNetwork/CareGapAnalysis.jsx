@@ -45,7 +45,7 @@ export default function CareGapAnalysis({ nodes = [], typeBreakdown }) {
     });
 
     return gapList.sort((a, b) => b.gapScore - a.gapScore).slice(0, 12);
-  }, [nodes, locations]);
+  }, [nodes]);
 
   if (gaps.length === 0) {
     return (
