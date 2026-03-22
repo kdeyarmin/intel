@@ -15,7 +15,7 @@ const SPECIALTIES = [
   'Occupational Therapy', 'Speech-Language Pathology',
 ];
 
-export default function TerritoryMapFilters({ filters, onChange, onReset, providerCount }) {
+export default function TerritoryMapFilters({ filters, onChange, onReset, providerCount, availableStates = [] }) {
   const update = (key, value) => onChange({ ...filters, [key]: value });
 
   const activeCount = [
@@ -54,12 +54,18 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All States</SelectItem>
-              <SelectItem value="PA">Pennsylvania</SelectItem>
-              <SelectItem value="NJ">New Jersey</SelectItem>
-              <SelectItem value="NY">New York</SelectItem>
-              <SelectItem value="DE">Delaware</SelectItem>
-              <SelectItem value="MD">Maryland</SelectItem>
-              <SelectItem value="OH">Ohio</SelectItem>
+              {availableStates.length > 0 ? availableStates.map(s => (
+                <SelectItem key={s.state} value={s.state}>{s.state} ({s.count.toLocaleString()})</SelectItem>
+              )) : (
+                <>
+                  <SelectItem value="PA">Pennsylvania</SelectItem>
+                  <SelectItem value="NJ">New Jersey</SelectItem>
+                  <SelectItem value="NY">New York</SelectItem>
+                  <SelectItem value="DE">Delaware</SelectItem>
+                  <SelectItem value="MD">Maryland</SelectItem>
+                  <SelectItem value="OH">Ohio</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
