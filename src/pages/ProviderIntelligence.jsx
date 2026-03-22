@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Search, Send, Users, Sparkles, Shield, Bot } from 'lucide-react';
+import { Brain, Mail, AlertTriangle, CheckCircle2, Download, ShieldCheck, Send, Users, Shield, Bot } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import BulkEnrichmentRunner from '../components/enrichment/BulkEnrichmentRunner';
@@ -20,7 +20,6 @@ import ProblematicEmailsPanel from '../components/emailBot/ProblematicEmailsPane
 import EmailResultFilters from '../components/emailBot/EmailResultFilters';
 import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
 import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderIntelligence() {
@@ -33,7 +32,6 @@ export default function ProviderIntelligence() {
   const [stopRequested, setStopRequested] = useState(false);
   const [lastResults, setLastResults] = useState(null);
   const [allRunProgress, _setAllRunProgress] = useState(null);
-  const [emailSubTab, setEmailSubTab] = useState('search');
   const [filters, setFilters] = useState({ validation: 'all', confidence: 'all', source: 'all' });
   const [selectedNpis, setSelectedNpis] = useState(new Set());
   const [showCampaignLauncher, setShowCampaignLauncher] = useState(false);
@@ -71,7 +69,7 @@ export default function ProviderIntelligence() {
     retry: 1,
   });
 
-  const { data: providers = [], isLoading } = useQuery({
+  const { data: providers = [] } = useQuery({
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
@@ -235,6 +233,10 @@ export default function ProviderIntelligence() {
     }).sort((a, b) => new Date(b.email_searched_at || 0) - new Date(a.email_searched_at || 0));
   }, [providers, filters]);
 
+  const selectedProvidersList = useMemo(() => {
+    return providers.filter(p => selectedNpis.has(p.npi));
+  }, [providers, selectedNpis]);
+
   const toggleSelectProvider = (npi) => {
     setSelectedNpis(prev => {
       const next = new Set(prev);
@@ -262,21 +264,22 @@ export default function ProviderIntelligence() {
           <TabsTrigger value="intelligence" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
             <Brain className="w-3.5 h-3.5" /> Intelligence Bot
           </TabsTrigger>
-          <TabsTrigger value="email" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+          <TabsTrigger value="email" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
             <Mail className="w-3.5 h-3.5" /> Email Search
           </TabsTrigger>
-          <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+          <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
             <Users className="w-3.5 h-3.5" /> Providers
-            {emailStats.withEmail > 0 && <Badge className="bg-cyan-900/20 text-cyan-400 text-[9px] ml-1">{emailStats.withEmail}</Badge>}
+            {emailStats.withEmail > 0 && <Badge className="bg-violet-900/20 text-violet-400 text-[9px] ml-1">{emailStats.withEmail}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+          <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
             {emailStats.risky + emailStats.invalid > 0 && (
               <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{emailStats.risky + emailStats.invalid}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400">
+          <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
             <Send className="w-3.5 h-3.5" /> Outreach
+            {selectedNpis.size > 0 && <Badge className="bg-emerald-900/20 text-emerald-400 text-[9px] ml-1">{selectedNpis.size}</Badge>}
           </TabsTrigger>
         </TabsList>
 
@@ -431,10 +434,10 @@ export default function ProviderIntelligence() {
           <EmailResultFilters filters={filters} onFiltersChange={setFilters} counts={filterCounts} />
 
           {selectedNpis.size > 0 && (
-            <div className="flex items-center gap-3 p-3 bg-cyan-900/10 border border-cyan-500/20 rounded-lg">
-              <span className="text-xs text-cyan-300">{selectedNpis.size} selected</span>
-              <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 gap-1">
-                <Send className="w-3 h-3" /> Email Campaign
+            <div className="flex items-center gap-3 p-3 bg-violet-900/10 border border-violet-500/20 rounded-lg">
+              <span className="text-xs text-violet-300">{selectedNpis.size} selected</span>
+              <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1">
+                <Send className="w-3 h-3" /> Launch Campaign
               </Button>
               <Button onClick={() => setSelectedNpis(new Set())} variant="ghost" size="sm" className="h-7 text-xs text-slate-400 ml-auto">
                 Clear selection
@@ -474,6 +477,13 @@ export default function ProviderIntelligence() {
                 Showing 50 of {filteredProviders.length} providers. Use filters to narrow results.
               </p>
             )}
+            {filteredProviders.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="w-8 h-8 text-slate-600 mx-auto mb-3" />
+                <p className="text-sm text-slate-400">No providers with emails match the current filters</p>
+                <p className="text-xs text-slate-500 mt-1">Try adjusting filters or run the Email Search bot first</p>
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -483,27 +493,59 @@ export default function ProviderIntelligence() {
         </TabsContent>
 
         <TabsContent value="outreach" className="space-y-5">
-          <QuickCampaignLauncher
-            providers={providers.filter(p => selectedNpis.has(p.npi))}
-            onClose={() => setShowCampaignLauncher(false)}
-            allProviders={providers}
-          />
+          {selectedNpis.size > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-violet-400" />
+                  <span className="text-sm font-medium text-slate-200">{selectedNpis.size} providers selected for outreach</span>
+                </div>
+                <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="bg-violet-600 hover:bg-violet-700 gap-1.5">
+                  <Send className="w-3.5 h-3.5" /> Create Campaign
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {selectedProvidersList.map(p => {
+                  const name = p.entity_type === 'Individual'
+                    ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+                    : p.organization_name || p.npi;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
+                        <div className="text-xs text-slate-500">{p.email || 'No email'}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {p.email_validation_status && (
+                          <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} size="sm" />
+                        )}
+                        <Button onClick={() => toggleSelectProvider(p.npi)} variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-500 hover:text-red-400">×</Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Send className="w-10 h-10 text-slate-600 mx-auto mb-4" />
+              <p className="text-base font-medium text-slate-300 mb-2">No providers selected</p>
+              <p className="text-sm text-slate-500 mb-4">
+                Go to the Providers tab, select providers with emails, then come back here to launch a campaign.
+              </p>
+              <Button onClick={() => setActiveTab('providers')} variant="outline" size="sm" className="border-slate-700 text-slate-300 gap-1.5">
+                <Users className="w-3.5 h-3.5" /> Browse Providers
+              </Button>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
-      <DataSourcesFooter />
-
-      {showCampaignLauncher && selectedNpis.size > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCampaignLauncher(false)}>
-          <div className="max-w-lg w-full" onClick={e => e.stopPropagation()}>
-            <QuickCampaignLauncher
-              providers={providers.filter(p => selectedNpis.has(p.npi))}
-              onClose={() => setShowCampaignLauncher(false)}
-              allProviders={providers}
-            />
-          </div>
-        </div>
-      )}
+      <QuickCampaignLauncher
+        selectedProviders={selectedProvidersList}
+        open={showCampaignLauncher}
+        onOpenChange={setShowCampaignLauncher}
+      />
     </div>
   );
 }
