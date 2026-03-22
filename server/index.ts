@@ -130,8 +130,10 @@ app.listen(PORT, "0.0.0.0", async () => {
     try {
       const { cleanupOrphanedEmailTasks } = await import("./functions/emailSearchBot");
       await cleanupOrphanedEmailTasks();
+      const { cleanupOrphanedEnrichmentTasks } = await import("./functions/stubs");
+      await cleanupOrphanedEnrichmentTasks();
     } catch (e: any) {
-      console.error(`[CareMetric API] Email task cleanup error:`, e.message);
+      console.error(`[CareMetric API] Background task cleanup error:`, e.message);
     }
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);

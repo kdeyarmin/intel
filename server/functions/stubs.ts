@@ -1,39 +1,62 @@
 import { db } from "../db";
-import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, dataQualityScans, importBatches } from "../db/schema";
-import { sql, desc, eq } from "drizzle-orm";
+import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, dataQualityScans, importBatches, backgroundTasks } from "../db/schema";
+import { sql, desc, eq, and, lt } from "drizzle-orm";
 
-interface EnrichmentJobState {
-  status: "idle" | "running" | "stopping" | "completed" | "error";
-  enriched: number;
-  noData: number;
-  errors: number;
-  total: number;
-  batchSize: number;
-  autoApply: boolean;
-  startedAt: string | null;
-  lastBatchAt: string | null;
-  message: string;
-  errorDetail?: string;
+const activeEnrichmentTaskIds = new Set<number>();
+
+async function getActiveEnrichmentTask() {
+  const [task] = await db.select().from(backgroundTasks)
+    .where(and(
+      eq(backgroundTasks.task_type, "enrichment"),
+      eq(backgroundTasks.status, "processing")
+    ))
+    .limit(1);
+  return task || null;
 }
 
-const enrichmentJob: EnrichmentJobState = {
-  status: "idle",
-  enriched: 0,
-  noData: 0,
-  errors: 0,
-  total: 0,
-  batchSize: 10,
-  autoApply: false,
-  startedAt: null,
-  lastBatchAt: null,
-  message: "",
-};
+function taskToJobState(task: any) {
+  if (!task) {
+    return {
+      status: "idle" as const,
+      enriched: 0, noData: 0, errors: 0, total: 0,
+      batchSize: 10, autoApply: false,
+      startedAt: null, lastBatchAt: null, message: "",
+    };
+  }
+  const meta: any = task.metadata || {};
+  const statusMap: Record<string, string> = {
+    processing: "running",
+    completed: "completed",
+    cancelled: "idle",
+    failed: "error",
+  };
+  return {
+    status: statusMap[task.status] || "idle",
+    enriched: meta.enriched || 0,
+    noData: meta.no_data || 0,
+    errors: meta.errors || 0,
+    total: meta.total || 0,
+    batchSize: meta.batch_size || 10,
+    autoApply: false,
+    startedAt: task.started_at ? new Date(task.started_at).toISOString() : null,
+    lastBatchAt: meta.last_batch_at || null,
+    message: meta.message || "",
+    errorDetail: task.error || undefined,
+    taskId: task.id,
+  };
+}
 
-async function runEnrichmentLoop() {
-  if (enrichmentJob.status !== "running") return;
+async function runEnrichmentLoop(taskId: number) {
+  const [task] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+  if (!task || task.status !== "processing") {
+    activeEnrichmentTaskIds.delete(taskId);
+    return;
+  }
+
+  const meta: any = task.metadata || {};
 
   try {
-    const limit = Math.min(enrichmentJob.batchSize, 50);
+    const limit = Math.min(meta.batch_size || 10, 50);
     const rawRows = await db.execute(sql`
       SELECT p.npi FROM providers p
       WHERE NOT EXISTS (
@@ -50,72 +73,158 @@ async function runEnrichmentLoop() {
     }
 
     if (npis.length === 0) {
-      enrichmentJob.status = "completed";
-      enrichmentJob.message = `Completed. Enriched ${enrichmentJob.enriched} providers total.`;
+      activeEnrichmentTaskIds.delete(taskId);
+      await db.update(backgroundTasks).set({
+        status: "completed",
+        metadata: { ...meta, message: `Completed. Enriched ${meta.enriched || 0} providers total.` },
+        completed_at: new Date(),
+        updated_date: new Date(),
+      }).where(eq(backgroundTasks.id, taskId));
       return;
     }
 
     const result = await handleEnrichProviderThirdParty({
       npis,
       batch_size: npis.length,
-      auto_apply_high_confidence: enrichmentJob.autoApply,
+      auto_apply_high_confidence: false,
     });
 
-    enrichmentJob.enriched += result.enriched || 0;
-    enrichmentJob.noData += result.no_data || 0;
-    enrichmentJob.errors += result.errors || 0;
-    enrichmentJob.total += result.total || 0;
-    enrichmentJob.lastBatchAt = new Date().toISOString();
-    enrichmentJob.message = `Running... ${enrichmentJob.enriched} enriched, ${enrichmentJob.total} processed`;
+    const newMeta = {
+      ...meta,
+      enriched: (meta.enriched || 0) + (result.enriched || 0),
+      no_data: (meta.no_data || 0) + (result.no_data || 0),
+      errors: (meta.errors || 0) + (result.errors || 0),
+      total: (meta.total || 0) + (result.total || 0),
+      last_batch_at: new Date().toISOString(),
+      message: `Running... ${(meta.enriched || 0) + (result.enriched || 0)} enriched, ${(meta.total || 0) + (result.total || 0)} processed`,
+    };
 
-    if (enrichmentJob.status === "stopping") {
-      enrichmentJob.status = "idle";
-      enrichmentJob.message = `Stopped. Enriched ${enrichmentJob.enriched} of ${enrichmentJob.total} processed.`;
+    await db.update(backgroundTasks).set({
+      progress: newMeta.total,
+      metadata: newMeta,
+      updated_date: new Date(),
+    }).where(eq(backgroundTasks.id, taskId));
+
+    const [freshTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+    if (!freshTask || freshTask.status === "cancelled") {
+      activeEnrichmentTaskIds.delete(taskId);
       return;
     }
 
-    setTimeout(() => runEnrichmentLoop(), 500);
+    setTimeout(() => runEnrichmentLoop(taskId), 500);
   } catch (e: any) {
     console.error("[EnrichmentJob] Error:", e.message);
-    enrichmentJob.errors++;
-    enrichmentJob.errorDetail = e.message;
-    if (enrichmentJob.status === "running") {
-      setTimeout(() => runEnrichmentLoop(), 5000);
+    const newMeta = {
+      ...meta,
+      errors: (meta.errors || 0) + 1,
+      message: `Error: ${e.message?.substring(0, 100)}`,
+    };
+    await db.update(backgroundTasks).set({
+      metadata: newMeta,
+      updated_date: new Date(),
+    }).where(eq(backgroundTasks.id, taskId));
+
+    const [freshTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+    if (freshTask && freshTask.status === "processing") {
+      setTimeout(() => runEnrichmentLoop(taskId), 5000);
+    } else {
+      activeEnrichmentTaskIds.delete(taskId);
     }
   }
 }
 
-export function handleEnrichmentJobStart(payload: any) {
-  if (enrichmentJob.status === "running") {
-    return { success: false, message: "Enrichment job is already running", job: enrichmentJob };
+export async function handleEnrichmentJobStart(payload: any) {
+  const existing = await getActiveEnrichmentTask();
+  if (existing && activeEnrichmentTaskIds.has(existing.id)) {
+    return { success: false, message: "Enrichment job is already running", job: taskToJobState(existing) };
   }
-  enrichmentJob.status = "running";
-  enrichmentJob.enriched = 0;
-  enrichmentJob.noData = 0;
-  enrichmentJob.errors = 0;
-  enrichmentJob.total = 0;
-  enrichmentJob.batchSize = Math.min(payload.batch_size || 10, 50);
-  enrichmentJob.autoApply = payload.auto_apply_high_confidence || false;
-  enrichmentJob.startedAt = new Date().toISOString();
-  enrichmentJob.lastBatchAt = null;
-  enrichmentJob.message = "Starting...";
-  enrichmentJob.errorDetail = undefined;
 
-  setTimeout(() => runEnrichmentLoop(), 0);
-  return { success: true, message: "Enrichment job started", job: enrichmentJob };
+  if (existing && !activeEnrichmentTaskIds.has(existing.id)) {
+    console.log(`[EnrichmentJob] Cleaning orphaned task ${existing.id}`);
+    await db.update(backgroundTasks).set({
+      status: "failed", error: "Orphaned - server restarted",
+      completed_at: new Date(), updated_date: new Date(),
+    }).where(eq(backgroundTasks.id, existing.id));
+  }
+
+  const batchSize = Math.min(payload.batch_size || 10, 50);
+  const [task] = await db.insert(backgroundTasks).values({
+    task_type: "enrichment",
+    status: "processing",
+    progress: 0,
+    metadata: {
+      batch_size: batchSize,
+      enriched: 0, no_data: 0, errors: 0, total: 0,
+      message: "Starting...",
+      last_batch_at: null,
+    },
+    started_at: new Date(),
+  }).returning();
+
+  activeEnrichmentTaskIds.add(task.id);
+  setTimeout(() => runEnrichmentLoop(task.id), 0);
+  return { success: true, message: "Enrichment job started", job: taskToJobState(task) };
 }
 
-export function handleEnrichmentJobStop() {
-  if (enrichmentJob.status !== "running") {
-    return { success: false, message: "No enrichment job is running", job: enrichmentJob };
+export async function handleEnrichmentJobStop() {
+  const existing = await getActiveEnrichmentTask();
+  if (!existing) {
+    return { success: false, message: "No enrichment job is running", job: taskToJobState(null) };
   }
-  enrichmentJob.status = "stopping";
-  enrichmentJob.message = "Stopping after current batch...";
-  return { success: true, message: "Stop signal sent", job: enrichmentJob };
+  activeEnrichmentTaskIds.delete(existing.id);
+  await db.update(backgroundTasks).set({
+    status: "cancelled",
+    completed_at: new Date(),
+    updated_date: new Date(),
+  }).where(eq(backgroundTasks.id, existing.id));
+  const meta: any = existing.metadata || {};
+  return {
+    success: true, message: "Enrichment stopped",
+    job: { ...taskToJobState(existing), status: "idle", message: `Stopped. Enriched ${meta.enriched || 0} of ${meta.total || 0} processed.` },
+  };
 }
 
-export function handleEnrichmentJobStatus() {
-  return { success: true, job: enrichmentJob };
+export async function handleEnrichmentJobStatus() {
+  const existing = await getActiveEnrichmentTask();
+  if (existing && !activeEnrichmentTaskIds.has(existing.id)) {
+    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000);
+    if (existing.updated_date && existing.updated_date < staleThreshold) {
+      await db.update(backgroundTasks).set({
+        status: "failed", error: "Stale - no updates for 2+ minutes",
+        completed_at: new Date(), updated_date: new Date(),
+      }).where(eq(backgroundTasks.id, existing.id));
+      return { success: true, job: taskToJobState(null) };
+    }
+  }
+  if (!existing) {
+    const [lastTask] = await db.select().from(backgroundTasks)
+      .where(eq(backgroundTasks.task_type, "enrichment"))
+      .orderBy(desc(backgroundTasks.id))
+      .limit(1);
+    return { success: true, job: taskToJobState(lastTask || null) };
+  }
+  return { success: true, job: taskToJobState(existing) };
+}
+
+export async function cleanupOrphanedEnrichmentTasks() {
+  try {
+    const orphaned = await db.select().from(backgroundTasks)
+      .where(and(
+        eq(backgroundTasks.task_type, "enrichment"),
+        eq(backgroundTasks.status, "processing")
+      ));
+    for (const task of orphaned) {
+      if (!activeEnrichmentTaskIds.has(task.id)) {
+        console.log(`[EnrichmentJob] Cleaning up orphaned task ${task.id}`);
+        await db.update(backgroundTasks).set({
+          status: "failed", error: "Orphaned - server restarted",
+          completed_at: new Date(), updated_date: new Date(),
+        }).where(eq(backgroundTasks.id, task.id));
+      }
+    }
+  } catch (err: any) {
+    console.error("[EnrichmentJob] Orphan cleanup error:", err.message);
+  }
 }
 
 export async function handleValidateDataQuality(_payload: any) {

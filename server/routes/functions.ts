@@ -541,15 +541,15 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
       }
       case "enrichmentJobStart": {
         const { handleEnrichmentJobStart } = await import("../functions/stubs");
-        return res.json(handleEnrichmentJobStart(req.body));
+        return res.json(await handleEnrichmentJobStart(req.body));
       }
       case "enrichmentJobStop": {
         const { handleEnrichmentJobStop } = await import("../functions/stubs");
-        return res.json(handleEnrichmentJobStop());
+        return res.json(await handleEnrichmentJobStop());
       }
       case "enrichmentJobStatus": {
         const { handleEnrichmentJobStatus } = await import("../functions/stubs");
-        return res.json(handleEnrichmentJobStatus());
+        return res.json(await handleEnrichmentJobStatus());
       }
       case "verifyProviderEmail": {
         const { handleVerifyProviderEmail } = await import("../functions/stubs");
