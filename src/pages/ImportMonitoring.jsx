@@ -212,10 +212,11 @@ export default function ImportMonitoring() {
   const [autoFailedIds, setAutoFailedIds] = useState(new Set());
   const autoFailProcessed = useRef(new Set());
 
-  // Auto-mark stale jobs as failed
+  // Auto-mark stale jobs as failed (skip crawler batches — server handles their recovery)
+  const isCrawlerBatch = (b) => b.import_type === 'nppes_registry' && b.file_name?.startsWith('crawler_');
   useEffect(() => {
     if (staleBatches.length === 0) return;
-    const toFail = staleBatches.filter(b => !autoFailProcessed.current.has(b.id));
+    const toFail = staleBatches.filter(b => !autoFailProcessed.current.has(b.id) && !isCrawlerBatch(b));
     if (toFail.length === 0) return;
 
     (async () => {

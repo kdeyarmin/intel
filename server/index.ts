@@ -80,9 +80,10 @@ app.listen(PORT, "0.0.0.0", async () => {
 
       setTimeout(async () => {
         try {
-          const { handleNppesCrawler } = await import("./functions/nppesCrawler");
+          const { handleNppesCrawler, startCrawlerWatchdog } = await import("./functions/nppesCrawler");
           await handleNppesCrawler({ action: "batch_resume" }, { role: "admin" });
           console.log(`[CareMetric API] NPPES crawler batches resumed`);
+          startCrawlerWatchdog();
         } catch (e: any) {
           console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
         }
@@ -126,6 +127,11 @@ app.listen(PORT, "0.0.0.0", async () => {
     if (activeBatches.length === 0 && resumableFailedCrawlers.length === 0) {
       console.log(`[CareMetric API] No imports to recover`);
     }
+
+    try {
+      const { startCrawlerWatchdog } = await import("./functions/nppesCrawler");
+      startCrawlerWatchdog();
+    } catch (_) {}
 
     try {
       const { cleanupOrphanedEmailTasks } = await import("./functions/emailSearchBot");

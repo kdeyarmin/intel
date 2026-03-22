@@ -987,3 +987,48 @@ export async function handleNppesCrawler(payload: any, user: any) {
 
   return { error: "Unknown action" };
 }
+
+let watchdogInterval: ReturnType<typeof setInterval> | null = null;
+const WATCHDOG_INTERVAL_MS = 5 * 60 * 1000;
+const CRAWLER_STALE_THRESHOLD_MS = 10 * 60 * 1000;
+
+export function startCrawlerWatchdog() {
+  if (watchdogInterval) return;
+  watchdogInterval = setInterval(async () => {
+    try {
+      const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default")).catch(() => [] as any[]);
+      if (configs[0]?.crawler_stopped) return;
+
+      const processingBatches = await db.select().from(importBatches)
+        .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "processing")));
+      const crawlerBatches = processingBatches.filter((b) => b.file_name?.startsWith("crawler_"));
+      if (crawlerBatches.length === 0) return;
+
+      const staleCrawlers = crawlerBatches.filter((b) => {
+        const updated = new Date(b.updated_date || b.created_date!).getTime();
+        return Date.now() - updated > CRAWLER_STALE_THRESHOLD_MS;
+      });
+
+      if (staleCrawlers.length === 0) return;
+
+      console.log(`[Crawler Watchdog] Detected ${staleCrawlers.length} stale crawler batch(es), recovering...`);
+
+      for (const batch of staleCrawlers) {
+        await db.update(nppesQueueItems)
+          .set({ status: "pending", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "processing")));
+        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+      }
+
+      const pendingCount = await db.select({ count: sql<number>`count(*)` }).from(nppesQueueItems).where(eq(nppesQueueItems.status, "pending"));
+      if ((pendingCount[0]?.count || 0) > 0 && activeWorkerCount === 0) {
+        console.log(`[Crawler Watchdog] Restarting worker — ${pendingCount[0]?.count} pending items, 0 active workers`);
+        activeWorkerCount = 0;
+        processQueueWorker(false).catch((e) => console.error("[Crawler Watchdog] Worker restart failed:", e.message));
+      }
+    } catch (e: any) {
+      console.error("[Crawler Watchdog] Error:", e.message);
+    }
+  }, WATCHDOG_INTERVAL_MS);
+  console.log("[Crawler Watchdog] Started — checking every 5 minutes");
+}
