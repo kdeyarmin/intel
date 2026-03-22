@@ -5,6 +5,8 @@ const router = Router();
 
 let dashboardStatsCache: { data: any; timestamp: number } | null = null;
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
+let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
+const CMS_CACHE_TTL = 10 * 60 * 1000;
 
 router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
@@ -217,6 +219,84 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         }
 
         return res.json({ alerts: alerts.sort((a, b) => b.score - a.score).slice(0, 50) });
+      }
+
+      case "getCMSAnalytics": {
+        if (cmsAnalyticsCache && (Date.now() - cmsAnalyticsCache.timestamp < CMS_CACHE_TTL)) {
+          return res.json(cmsAnalyticsCache.data);
+        }
+        const { db } = await import("../db");
+        const { sql } = await import("drizzle-orm");
+
+        const [
+          topServicesResult,
+          topReferredResult,
+          facilityTypesResult,
+          tableEstimates,
+          utilSummaryResult,
+        ] = await Promise.all([
+          db.execute(sql`SELECT * FROM mv_cms_util_by_type ORDER BY total_payments DESC NULLS LAST LIMIT 20`),
+          db.execute(sql`SELECT * FROM mv_cms_top_referrals ORDER BY referral_records DESC LIMIT 15`),
+          db.execute(sql`SELECT * FROM mv_cms_facility_types ORDER BY record_count DESC LIMIT 15`),
+          db.execute(sql`
+            SELECT relname, reltuples::bigint AS est
+            FROM pg_class
+            WHERE relname IN ('provider_service_utilization','cms_referrals','medicare_facilities')
+          `),
+          db.execute(sql`
+            SELECT count(*) AS types,
+              sum(provider_count) AS providers,
+              sum(total_payments) AS total_payments,
+              sum(total_services) AS total_services
+            FROM mv_cms_util_by_type
+          `),
+        ]);
+
+        const topServices = ((topServicesResult as any).rows || topServicesResult) || [];
+        const topReferred = ((topReferredResult as any).rows || topReferredResult) || [];
+        const facilityTypes = ((facilityTypesResult as any).rows || facilityTypesResult) || [];
+        const estRows = ((tableEstimates as any).rows || tableEstimates) || [];
+        const estMap: any = {};
+        estRows.forEach((r: any) => { estMap[r.relname] = Number(r.est || 0); });
+        const utilSummary = (((utilSummaryResult as any).rows || utilSummaryResult) || [])[0] || {};
+
+        const cmsResult = {
+          utilization: {
+            topServices: topServices.map((r: any) => ({
+              service_type: r.service_type,
+              provider_count: Number(r.provider_count || 0),
+              total_services: Number(r.total_services || 0),
+              total_payments: Number(r.total_payments || 0),
+              total_beneficiaries: Number(r.total_beneficiaries || 0),
+            })),
+            summary: {
+              unique_service_types: Number(utilSummary.types || 0),
+              unique_providers: Number(utilSummary.providers || 0),
+              total_payments: Number(utilSummary.total_payments || 0),
+              total_services: Number(utilSummary.total_services || 0),
+            },
+          },
+          referrals: {
+            topReferred: topReferred.map((r: any) => ({
+              npi: r.referred_npi,
+              referral_records: Number(r.referral_records || 0),
+            })),
+            totalRecords: estMap.cms_referrals || 0,
+          },
+          facilities: {
+            byType: facilityTypes.map((r: any) => ({
+              type: r.facility_type,
+              count: Number(r.record_count || 0),
+            })),
+          },
+          tableCounts: {
+            provider_service_utilization: estMap.provider_service_utilization || 0,
+            cms_referrals: estMap.cms_referrals || 0,
+            medicare_facilities: estMap.medicare_facilities || 0,
+          },
+        };
+        cmsAnalyticsCache = { data: cmsResult, timestamp: Date.now() };
+        return res.json(cmsResult);
       }
 
       case "getDataHealthMetrics": {
