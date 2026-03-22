@@ -253,10 +253,10 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
 
   const validTypes = Object.keys(IMPORT_TYPE_URLS);
-  if (!validTypes.includes(import_type)) {
+  if (!validTypes.includes(import_type) && !file_url) {
     throw {
       status: 400,
-      message: `Invalid import_type. Must be one of: ${[...validTypes, ...Object.keys(ZIP_FUNCTION_MAP), "nppes_flat_file"].join(", ")}`,
+      message: `Invalid import_type for auto-import (no CMS URL configured). Either provide a file_url or use one of: ${[...validTypes, ...Object.keys(ZIP_FUNCTION_MAP), "nppes_flat_file"].join(", ")}`,
     };
   }
 
