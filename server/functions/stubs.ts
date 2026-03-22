@@ -285,14 +285,17 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
 
       if (fieldsToSave.length === 0) { no_data++; continue; }
 
+      const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
+      const autoApplyThreshold = 0.5;
+
       await db.insert(enrichmentRecords).values({
         npi,
         source: "claude_ai",
         field_name: "enrichment_details",
         old_value: null,
         new_value: JSON.stringify(enrichmentData),
-        confidence: fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length,
-        status: auto_apply_high_confidence ? "applied" : "pending",
+        confidence: avgConfidence,
+        status: avgConfidence >= autoApplyThreshold ? "applied" : "pending",
         enrichment_details: enrichmentData,
       });
 
@@ -304,12 +307,12 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
           old_value: null,
           new_value: f.value,
           confidence: f.confidence,
-          status: auto_apply_high_confidence && f.confidence >= 0.8 ? "applied" : "pending",
+          status: f.confidence >= autoApplyThreshold ? "applied" : "pending",
           enrichment_details: { field: f.field, source: "AI inference" },
         });
       }
 
-      if (auto_apply_high_confidence) {
+      if (avgConfidence >= autoApplyThreshold) {
         const updates: any = {};
         if (enrichmentData.gender && !provider.gender) updates.gender = enrichmentData.gender;
         if (Object.keys(updates).length > 0) {

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Sparkles, Loader2, CheckCircle2, XCircle, AlertTriangle, Database, StopCircle } from 'lucide-react';
 
 export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
-  const [autoApply, setAutoApply] = useState(false);
   const [batchSize, setBatchSize] = useState(10);
 
   const [candidateStats, setCandidateStats] = useState(null);
@@ -59,7 +58,6 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
     try {
       const res = await base44.functions.invoke('enrichmentJobStart', {
         batch_size: batchSize,
-        auto_apply_high_confidence: autoApply,
       });
       setJob(res.data?.job);
       setPolling(true);
@@ -153,9 +151,10 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
               </select>
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-slate-400">Auto-apply high confidence results</Label>
-              <Switch checked={autoApply} onCheckedChange={setAutoApply} />
+            <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-2">
+              <p className="text-[10px] text-emerald-400">
+                Records with 50%+ confidence are auto-applied. Lower confidence records go to review queue.
+              </p>
             </div>
           </div>
         )}
