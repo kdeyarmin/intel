@@ -5,6 +5,21 @@ import { eq } from "drizzle-orm";
 const MAX_EXEC_MS = 50000;
 const BULK_INSERT_SIZE = 500;
 
+async function safeFlatFileQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (attempt === 3) {
+        console.warn(`[importNPPESFlatFile] ${label} failed after 3 attempts: ${e.message}`);
+        return fallback;
+      }
+      await new Promise(r => setTimeout(r, attempt * 2000));
+    }
+  }
+  return fallback;
+}
+
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -99,10 +114,13 @@ export async function handleImportNPPESFlatFile(payload: any) {
           await processBulkRows(rowsAccumulator, batch.dry_run || false);
           rowsAccumulator = [];
 
-          await db.update(importBatches).set({
-            imported_rows: (batch.imported_rows || 0) + recordsProcessed,
-            updated_date: new Date(),
-          }).where(eq(importBatches.id, batch_id));
+          await safeFlatFileQuery(
+            () => db.update(importBatches).set({
+              imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch_id)),
+            undefined, "update progress"
+          );
 
           if (Date.now() - execStartTime > MAX_EXEC_MS) {
             try { reader.cancel(); } catch (_) {}
@@ -114,7 +132,7 @@ export async function handleImportNPPESFlatFile(payload: any) {
                 headers: currentHeaders,
                 total_rows: total_rows + recordsProcessed,
               }).catch((e: any) => console.error(`[importNPPESFlatFile] Auto-resume error:`, e.message));
-            }, 500);
+            }, 2000);
             return { success: true, message: "Time limit reached, triggering next chunk", next_offset: currentByteOffset };
           }
         }
@@ -125,22 +143,28 @@ export async function handleImportNPPESFlatFile(payload: any) {
       await processBulkRows(rowsAccumulator, batch.dry_run || false);
     }
 
-    await db.update(importBatches).set({
-      imported_rows: (batch.imported_rows || 0) + recordsProcessed,
-      status: "completed",
-      completed_at: new Date(),
-      cancel_reason: "",
-      updated_date: new Date(),
-    }).where(eq(importBatches.id, batch_id));
+    await safeFlatFileQuery(
+      () => db.update(importBatches).set({
+        imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+        status: "completed",
+        completed_at: new Date(),
+        cancel_reason: "",
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, "complete batch"
+    );
 
     return { success: true, message: "Finished processing file." };
   } catch (e: any) {
     console.error(`[importNPPESFlatFile] Error:`, e.message);
-    await db.update(importBatches).set({
-      status: "failed",
-      error_samples: [{ message: e.message }],
-      updated_date: new Date(),
-    }).where(eq(importBatches.id, batch_id));
+    await safeFlatFileQuery(
+      () => db.update(importBatches).set({
+        status: "failed",
+        error_samples: [{ message: e.message }],
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, "fail batch"
+    );
     throw e;
   }
 }
@@ -164,18 +188,19 @@ async function processBulkRows(rows: any[], dryRun: boolean) {
   }
 
   if (providerRows.length > 0) {
-    try {
-      await db.insert(providers).values(providerRows).onConflictDoNothing();
-    } catch (e: any) {
-      console.error(`[importNPPESFlatFile] bulkCreate failed for ${providerRows.length} rows: ${e.message}. Falling back.`);
+    const bulkResult = await safeFlatFileQuery(
+      async () => { await db.insert(providers).values(providerRows).onConflictDoNothing(); return true; },
+      false, "bulk insert providers"
+    );
+    if (!bulkResult) {
       let ok = 0, fail = 0;
       for (const p of providerRows) {
-        try {
-          await db.insert(providers).values(p).onConflictDoNothing();
-          ok++;
-        } catch (_) {
-          fail++;
-        }
+        const singleOk = await safeFlatFileQuery(
+          async () => { await db.insert(providers).values(p).onConflictDoNothing(); return true; },
+          false, "single insert provider"
+        );
+        if (singleOk) ok++;
+        else fail++;
       }
       console.log(`[importNPPESFlatFile] Individual fallback: ${ok} created, ${fail} skipped`);
     }

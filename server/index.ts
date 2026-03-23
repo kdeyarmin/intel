@@ -35,35 +35,60 @@ const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`[CareMetric API] Server running on port ${PORT}`);
 
+  async function safeStartupQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await fn();
+      } catch (e: any) {
+        if (attempt === 3) {
+          console.warn(`[CareMetric API] ${label} failed after 3 attempts: ${e.message}`);
+          return fallback;
+        }
+        await new Promise(r => setTimeout(r, attempt * 2000));
+      }
+    }
+    return fallback;
+  }
+
   try {
     const { db } = await import("./db");
     const { users, importBatches } = await import("./db/schema");
     const { eq: eqCheck } = await import("drizzle-orm");
     const bcryptLib = await import("bcryptjs");
 
-    const [existingAdmin] = await db.select().from(users).where(eqCheck(users.email, "kdeyarmin@comcast.net")).limit(1);
+    const [existingAdmin] = await safeStartupQuery(
+      () => db.select().from(users).where(eqCheck(users.email, "kdeyarmin@comcast.net")).limit(1),
+      [] as any[], "check admin"
+    );
     if (!existingAdmin) {
       const hash = await bcryptLib.default.hash("Baileydog1!", 10);
-      await db.insert(users).values({
-        email: "kdeyarmin@comcast.net",
-        password_hash: hash,
-        role: "admin",
-        full_name: "K Deyarmin",
-      });
+      await safeStartupQuery(
+        () => db.insert(users).values({
+          email: "kdeyarmin@comcast.net",
+          password_hash: hash,
+          role: "admin",
+          full_name: "K Deyarmin",
+        }),
+        undefined, "seed admin"
+      );
       console.log("[CareMetric API] Admin user seeded");
     }
     const { eq, inArray, and } = await import("drizzle-orm");
 
     const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
 
-    const activeBatches = await db.select().from(importBatches)
-      .where(inArray(importBatches.status, ["processing", "validating"]));
+    const activeBatches = await safeStartupQuery(
+      () => db.select().from(importBatches).where(inArray(importBatches.status, ["processing", "validating"])),
+      [] as any[], "fetch active batches"
+    );
 
-    const failedCrawlerBatches = await db.select().from(importBatches)
-      .where(and(
+    const failedCrawlerBatches = await safeStartupQuery(
+      () => db.select().from(importBatches).where(and(
         eq(importBatches.import_type, "nppes_registry"),
         eq(importBatches.status, "failed"),
-      ));
+      )),
+      [] as any[], "fetch failed crawlers"
+    );
     const resumableFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
     const emptyFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && !((b as any).imported_rows > 0));
 
@@ -74,10 +99,16 @@ app.listen(PORT, "0.0.0.0", async () => {
       console.log(`[CareMetric API] Resetting ${emptyFailedCrawlers.length} empty failed crawler batch(es) to paused`);
       const { nppesQueueItems } = await import("./db/schema");
       for (const batch of emptyFailedCrawlers) {
-        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        await db.update(nppesQueueItems)
-          .set({ status: "pending", updated_date: new Date() })
-          .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed")));
+        await safeStartupQuery(
+          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+          undefined, `pause empty crawler ${batch.id}`
+        );
+        await safeStartupQuery(
+          () => db.update(nppesQueueItems)
+            .set({ status: "pending", updated_date: new Date() })
+            .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
+          undefined, `reset queue ${batch.id}`
+        );
       }
     }
 
@@ -87,17 +118,29 @@ app.listen(PORT, "0.0.0.0", async () => {
 
       const { nppesQueueItems } = await import("./db/schema");
       for (const batch of crawlerActive) {
-        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        await db.update(nppesQueueItems)
-          .set({ status: "pending", updated_date: new Date() })
-          .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing"])));
+        await safeStartupQuery(
+          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+          undefined, `pause crawler ${batch.id}`
+        );
+        await safeStartupQuery(
+          () => db.update(nppesQueueItems)
+            .set({ status: "pending", updated_date: new Date() })
+            .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing"]))),
+          undefined, `reset processing ${batch.id}`
+        );
       }
 
       for (const batch of resumableFailedCrawlers) {
-        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        await db.update(nppesQueueItems)
-          .set({ status: "pending", updated_date: new Date() })
-          .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed")));
+        await safeStartupQuery(
+          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+          undefined, `pause failed crawler ${batch.id}`
+        );
+        await safeStartupQuery(
+          () => db.update(nppesQueueItems)
+            .set({ status: "pending", updated_date: new Date() })
+            .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
+          undefined, `reset failed items ${batch.id}`
+        );
       }
 
       setTimeout(async () => {
@@ -133,8 +176,8 @@ app.listen(PORT, "0.0.0.0", async () => {
               dry_run: false,
               resume_offset: resumeOffset,
             }).catch((e: any) => console.error(`[CareMetric API] CMS batch ${batch.id} resume failed:`, e.message));
-          }, 3000 + i * 2000);
-          console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from offset ${resumeOffset}`);
+          }, 10000 + i * 5000);
+          console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from offset ${resumeOffset} (delay ${10 + i * 5}s)`);
         } else {
           await db.update(importBatches).set({
             status: "failed",

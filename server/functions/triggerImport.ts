@@ -594,6 +594,21 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
   };
 }
 
+async function safeImportQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (attempt === 3) {
+        console.warn(`[CMS Import] ${label} failed after 3 attempts: ${e.message}`);
+        return fallback;
+      }
+      await new Promise(r => setTimeout(r, attempt * 2000));
+    }
+  }
+  return fallback;
+}
+
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
@@ -624,17 +639,23 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
   for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
     const chunk = mapped.slice(i, i + CHUNK_SIZE);
-    try {
-      await db.insert(table).values(chunk);
-      inserted += chunk.length;
-    } catch (e: any) {
+    const result = await safeImportQuery(
+      async () => {
+        await db.insert(table).values(chunk);
+        return chunk.length;
+      },
+      -1, `bulk insert ${importType}`
+    );
+    if (result >= 0) {
+      inserted += result;
+    } else {
       for (const row of chunk) {
-        try {
-          await db.insert(table).values(row);
-          inserted++;
-        } catch {
-          skipped++;
-        }
+        const ok = await safeImportQuery(
+          async () => { await db.insert(table).values(row); return true; },
+          false, `single insert ${importType}`
+        );
+        if (ok) inserted++;
+        else skipped++;
       }
     }
   }
@@ -680,11 +701,14 @@ export async function handleAutoImportCMSData(params: any) {
         console.error(`[AutoImportCMS] ${errMsg}`);
         errors.push({ offset, message: errMsg });
         if (consecutiveErrors >= 3) {
-          await db.update(importBatches).set({
-            status: "failed",
-            error_samples: errors.slice(-5),
-            updated_date: new Date(),
-          }).where(eq(importBatches.id, batch_id));
+          await safeImportQuery(
+            () => db.update(importBatches).set({
+              status: "failed",
+              error_samples: errors.slice(-5),
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch_id)),
+            undefined, `fail on fetch error ${import_type}`
+          );
           return;
         }
         await new Promise(r => setTimeout(r, 3000));
@@ -703,11 +727,14 @@ export async function handleAutoImportCMSData(params: any) {
         console.error(`[AutoImportCMS] ${errMsg}`);
         errors.push({ offset, message: errMsg });
         if (consecutiveErrors >= 3) {
-          await db.update(importBatches).set({
-            status: "failed",
-            error_samples: errors.slice(-5),
-            updated_date: new Date(),
-          }).where(eq(importBatches.id, batch_id));
+          await safeImportQuery(
+            () => db.update(importBatches).set({
+              status: "failed",
+              error_samples: errors.slice(-5),
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch_id)),
+            undefined, `fail on HTTP error ${import_type}`
+          );
           return;
         }
         await new Promise(r => setTimeout(r, 2000));
@@ -737,13 +764,16 @@ export async function handleAutoImportCMSData(params: any) {
       totalFetched += rows.length;
       offset += rows.length;
 
-      await db.update(importBatches).set({
-        imported_rows: totalInserted,
-        skipped_rows: totalSkipped,
-        total_rows: totalFetched,
-        retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
-        updated_date: new Date(),
-      }).where(eq(importBatches.id, batch_id));
+      await safeImportQuery(
+        () => db.update(importBatches).set({
+          imported_rows: totalInserted,
+          skipped_rows: totalSkipped,
+          total_rows: totalFetched,
+          retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+          updated_date: new Date(),
+        }).where(eq(importBatches.id, batch_id)),
+        undefined, `update progress ${import_type}`
+      );
 
       if (rows.length < PAGE_SIZE) {
         hasMore = false;
@@ -761,22 +791,28 @@ export async function handleAutoImportCMSData(params: any) {
       return;
     }
 
-    await db.update(importBatches).set({
-      status: "completed",
-      completed_at: new Date(),
-      imported_rows: totalInserted,
-      skipped_rows: totalSkipped,
-      total_rows: totalFetched,
-      error_samples: errors.length > 0 ? errors.slice(-5) : null,
-      updated_date: new Date(),
-    }).where(eq(importBatches.id, batch_id));
+    await safeImportQuery(
+      () => db.update(importBatches).set({
+        status: "completed",
+        completed_at: new Date(),
+        imported_rows: totalInserted,
+        skipped_rows: totalSkipped,
+        total_rows: totalFetched,
+        error_samples: errors.length > 0 ? errors.slice(-5) : null,
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, `complete ${import_type}`
+    );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);
-    await db.update(importBatches).set({
-      status: "failed",
-      error_samples: [{ message: e.message, phase: "cms_import" }],
-      updated_date: new Date(),
-    }).where(eq(importBatches.id, batch_id));
+    await safeImportQuery(
+      () => db.update(importBatches).set({
+        status: "failed",
+        error_samples: [{ message: e.message, phase: "cms_import" }],
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, `fail ${import_type}`
+    );
   }
 }

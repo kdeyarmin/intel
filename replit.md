@@ -136,3 +136,5 @@ Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, Pr
 - **Resume support**: Failed/stalled imports can be resumed from their last offset via batch_id parameter; frontend ResumeImportButton supported
 - **Stall detection**: Server startup checks for batches stuck in "processing" >15 min and marks them failed
 - **Error handling**: 3 consecutive fetch failures → auto-fail; rate limit (429) → 10s backoff; chunk insert failures → row-by-row fallback
+- **DB resilience**: All import systems (CMS, NPPES flat file, NPPES crawler, IntelBot) use retry wrappers (`safeImportQuery`, `safeFlatFileQuery`, `safeCrawlerQuery`, `safeDbQuery`) that retry DB operations 3x with escalating backoff (2s/4s/6s). CMS imports have 200ms inter-page delay and 3s inter-batch delay to prevent DB pool exhaustion. Startup recovery uses `safeStartupQuery` and staggers CMS imports by 5s each. Crawler workers auto-restart up to 5x on crash via `processQueueWorkerWithRestart`. IntelBot stale threshold is 10 minutes (not 2).
+- **DB pool**: max 50 connections, 20s idle timeout, 20s connection timeout (server/db/index.ts)
