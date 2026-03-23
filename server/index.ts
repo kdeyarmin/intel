@@ -37,7 +37,21 @@ app.listen(PORT, "0.0.0.0", async () => {
 
   try {
     const { db } = await import("./db");
-    const { importBatches } = await import("./db/schema");
+    const { users, importBatches } = await import("./db/schema");
+    const { eq: eqCheck } = await import("drizzle-orm");
+    const bcryptLib = await import("bcryptjs");
+
+    const [existingAdmin] = await db.select().from(users).where(eqCheck(users.email, "kdeyarmin@comcast.net")).limit(1);
+    if (!existingAdmin) {
+      const hash = await bcryptLib.default.hash("Baileydog1!", 10);
+      await db.insert(users).values({
+        email: "kdeyarmin@comcast.net",
+        password_hash: hash,
+        role: "admin",
+        full_name: "K Deyarmin",
+      });
+      console.log("[CareMetric API] Admin user seeded");
+    }
     const { eq, inArray, and } = await import("drizzle-orm");
 
     const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
