@@ -592,12 +592,13 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
       }
       case "cleanupAllImports": {
         const { db } = await import("../db");
-        const { importBatches, nppesQueueItems } = await import("../db/schema");
-        const { sql, inArray } = await import("drizzle-orm");
-        const cancelled = await db.execute(sql`UPDATE import_batches SET status = 'cancelled', updated_date = NOW() WHERE status IN ('processing', 'validating', 'paused')`);
-        const deleted = await db.execute(sql`DELETE FROM import_batches WHERE status = 'cancelled'`);
-        const queueDeleted = await db.execute(sql`DELETE FROM nppes_queue_items`);
-        return res.json({ success: true, message: "All stalled/paused/cancelled imports and queue items deleted" });
+        const { sql } = await import("drizzle-orm");
+        await db.execute(sql`UPDATE import_batches SET status = 'cancelled', updated_date = NOW() WHERE status IN ('processing', 'validating', 'paused', 'failed')`);
+        await db.execute(sql`DELETE FROM import_batches WHERE status = 'cancelled'`);
+        await db.execute(sql`DELETE FROM nppes_queue_items`);
+        const remaining = await db.execute(sql`SELECT status, count(*)::int as cnt FROM import_batches GROUP BY status ORDER BY status`);
+        const rows = Array.isArray(remaining) ? remaining : (remaining as any)?.rows || [];
+        return res.json({ success: true, message: "All non-completed imports and queue items deleted", remaining: rows });
       }
       case "generateHyperPersonalizedMessages": {
         const { handleGenerateHyperPersonalizedMessages } = await import("../functions/stubs");
