@@ -590,6 +590,15 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { handleReconcileProviderData } = await import("../functions/reconciliation");
         return res.json(await handleReconcileProviderData(req.body));
       }
+      case "cleanupAllImports": {
+        const { db } = await import("../db");
+        const { importBatches, nppesQueueItems } = await import("../db/schema");
+        const { sql, inArray } = await import("drizzle-orm");
+        const cancelled = await db.execute(sql`UPDATE import_batches SET status = 'cancelled', updated_date = NOW() WHERE status IN ('processing', 'validating', 'paused')`);
+        const deleted = await db.execute(sql`DELETE FROM import_batches WHERE status = 'cancelled'`);
+        const queueDeleted = await db.execute(sql`DELETE FROM nppes_queue_items`);
+        return res.json({ success: true, message: "All stalled/paused/cancelled imports and queue items deleted" });
+      }
       case "generateHyperPersonalizedMessages": {
         const { handleGenerateHyperPersonalizedMessages } = await import("../functions/stubs");
         return res.json(await handleGenerateHyperPersonalizedMessages(req.body));
