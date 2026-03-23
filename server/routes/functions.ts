@@ -587,7 +587,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         return res.json(await handleAnalyzeProviderNetwork(req.body));
       }
       case "reconcileProviderData": {
-        const { handleReconcileProviderData } = await import("../functions/stubs");
+        const { handleReconcileProviderData } = await import("../functions/reconciliation");
         return res.json(await handleReconcileProviderData(req.body));
       }
       case "generateHyperPersonalizedMessages": {
