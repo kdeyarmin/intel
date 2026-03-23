@@ -198,68 +198,81 @@ async function saveEnrichment(npi: string, enrichment: any) {
 
   const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
 
-  await db.insert(enrichmentRecords).values({
-    npi,
-    source: "claude_ai",
-    field_name: "enrichment_details",
-    old_value: null,
-    new_value: JSON.stringify(enrichment),
-    confidence: avgConfidence,
-    status: "applied",
-    enrichment_details: enrichment,
-  });
-
-  for (const f of fieldsToSave) {
+  try {
     await db.insert(enrichmentRecords).values({
       npi,
       source: "claude_ai",
-      field_name: f.field,
+      field_name: "enrichment_details",
       old_value: null,
-      new_value: f.value,
-      confidence: f.confidence,
+      new_value: JSON.stringify(enrichment),
+      confidence: avgConfidence,
       status: "applied",
-      enrichment_details: { field: f.field, source: "AI inference" },
+      enrichment_details: enrichment,
     });
+  } catch (e: any) {
+    console.warn(`[IntelBot] Failed to save enrichment for ${npi}: ${e.message}`);
+    return 0;
   }
 
-  const [provider] = await db.select().from(providers).where(eq(providers.npi, npi)).limit(1);
-  if (provider) {
-    const updates: any = {};
-    if (enrichment.gender && !provider.gender) updates.gender = enrichment.gender;
-    if (Object.keys(updates).length > 0) {
-      await db.update(providers).set({ ...updates, updated_date: new Date() }).where(eq(providers.npi, npi));
-    }
+  for (const f of fieldsToSave) {
+    try {
+      await db.insert(enrichmentRecords).values({
+        npi,
+        source: "claude_ai",
+        field_name: f.field,
+        old_value: null,
+        new_value: f.value,
+        confidence: f.confidence,
+        status: "applied",
+        enrichment_details: { field: f.field, source: "AI inference" },
+      });
+    } catch (_) {}
   }
+
+  try {
+    const [provider] = await db.select().from(providers).where(eq(providers.npi, npi)).limit(1);
+    if (provider) {
+      const updates: any = {};
+      if (enrichment.gender && !provider.gender) updates.gender = enrichment.gender;
+      if (Object.keys(updates).length > 0) {
+        await db.update(providers).set({ ...updates, updated_date: new Date() }).where(eq(providers.npi, npi));
+      }
+    }
+  } catch (_) {}
 
   return fieldsToSave.length;
 }
 
 async function saveEmail(provider: any, result: any) {
-  if (!result.best_email) {
+  try {
+    if (!result.best_email) {
+      await db.update(providers).set({
+        email_searched_at: new Date(),
+        updated_date: new Date(),
+      }).where(eq(providers.id, provider.id));
+      return;
+    }
+
     await db.update(providers).set({
+      email: result.best_email,
+      email_confidence: result.email_confidence,
+      email_source: result.all_emails[0]?.source || "ai_search",
+      email_validation_status: result.email_validation_status,
+      email_validation_reason: result.email_validation_reason,
+      additional_emails: result.all_emails.length > 1
+        ? result.all_emails.slice(1).map((e: any) => ({
+            email: e.email,
+            confidence: e.confidence,
+            source: e.source,
+            validation_status: e.validation_status,
+          }))
+        : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
     }).where(eq(providers.id, provider.id));
-    return;
+  } catch (e: any) {
+    console.warn(`[IntelBot] Failed to save email for NPI ${provider.npi}: ${e.message}`);
   }
-
-  await db.update(providers).set({
-    email: result.best_email,
-    email_confidence: result.email_confidence,
-    email_source: result.all_emails[0]?.source || "ai_search",
-    email_validation_status: result.email_validation_status,
-    email_validation_reason: result.email_validation_reason,
-    additional_emails: result.all_emails.length > 1
-      ? result.all_emails.slice(1).map((e: any) => ({
-          email: e.email,
-          confidence: e.confidence,
-          source: e.source,
-          validation_status: e.validation_status,
-        }))
-      : null,
-    email_searched_at: new Date(),
-    updated_date: new Date(),
-  }).where(eq(providers.id, provider.id));
 }
 
 function taskToJobState(task: any) {
@@ -322,12 +335,47 @@ async function getProvidersNeedingWork(batchSize: number) {
   return Array.isArray(rawRows) ? rawRows : (rawRows as any)?.rows || [];
 }
 
+async function safeDbQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (attempt === 3) {
+        console.warn(`[IntelBot] ${label} failed after 3 attempts: ${e.message}`);
+        return fallback;
+      }
+      await new Promise(r => setTimeout(r, attempt * 2000));
+    }
+  }
+  return fallback;
+}
+
+let intelLoopRetries = 0;
+const MAX_LOOP_RETRIES = 10;
+
 async function runIntelLoop(taskId: number) {
-  const [task] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+  if (!activeTaskIds.has(taskId)) return;
+
+  let task: any = null;
+  try {
+    const rows = await safeDbQuery(
+      () => db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)),
+      [] as any[], "check task"
+    );
+    task = rows[0];
+  } catch (_) {}
+
   if (!task || task.status !== "processing") {
+    if (!task && intelLoopRetries < MAX_LOOP_RETRIES) {
+      intelLoopRetries++;
+      console.log(`[IntelBot] Could not read task ${taskId}, retrying in 10s (attempt ${intelLoopRetries}/${MAX_LOOP_RETRIES})`);
+      setTimeout(() => runIntelLoop(taskId), 10000);
+      return;
+    }
     activeTaskIds.delete(taskId);
     return;
   }
+  intelLoopRetries = 0;
 
   const meta: any = task.metadata || {};
 
@@ -337,12 +385,12 @@ async function runIntelLoop(taskId: number) {
 
     if (rows.length === 0) {
       activeTaskIds.delete(taskId);
-      await db.update(backgroundTasks).set({
+      await safeDbQuery(() => db.update(backgroundTasks).set({
         status: "completed",
         metadata: { ...meta, message: `Completed. ${meta.enriched || 0} enriched, ${meta.emails_found || 0} emails found.` },
         completed_at: new Date(),
         updated_date: new Date(),
-      }).where(eq(backgroundTasks.id, taskId));
+      }).where(eq(backgroundTasks.id, taskId)), undefined, "complete task");
       return;
     }
 
@@ -351,16 +399,20 @@ async function runIntelLoop(taskId: number) {
     const taxonomyMap = new Map<string, any>();
 
     if (npis.length > 0) {
-      const locs = await db.select().from(providerLocations)
-        .where(inArray(providerLocations.npi, npis));
+      const locs = await safeDbQuery(
+        () => db.select().from(providerLocations).where(inArray(providerLocations.npi, npis)),
+        [] as any[], "fetch locations"
+      );
       for (const loc of locs) {
         if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
           locationMap.set(loc.npi, loc);
         }
       }
 
-      const taxs = await db.select().from(providerTaxonomies)
-        .where(inArray(providerTaxonomies.npi, npis));
+      const taxs = await safeDbQuery(
+        () => db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis)),
+        [] as any[], "fetch taxonomies"
+      );
       for (const tax of taxs) {
         if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
           taxonomyMap.set(tax.npi, tax);
@@ -374,17 +426,25 @@ async function runIntelLoop(taskId: number) {
     let batchNoData = 0;
     let batchErrors = 0;
 
+    let cancelledMidBatch = false;
+    let cancelCheckCounter = 0;
+
     for (const prov of rows) {
-      const [freshTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
-      if (!freshTask || freshTask.status === "cancelled") {
-        activeTaskIds.delete(taskId);
-        return;
+      cancelCheckCounter++;
+      if (cancelCheckCounter % 5 === 0) {
+        const checkRows = await safeDbQuery(
+          () => db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)),
+          null as any, "cancel check"
+        );
+        const freshTask = checkRows?.[0];
+        if (freshTask && freshTask.status === "cancelled") {
+          cancelledMidBatch = true;
+          break;
+        }
       }
 
       const loc = locationMap.get(prov.npi || "");
       const tax = taxonomyMap.get(prov.npi || "");
-
-      const needsEnrichment = true;
       const needsEmail = !prov.email_searched_at;
 
       try {
@@ -410,6 +470,11 @@ async function runIntelLoop(taskId: number) {
       await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
     }
 
+    if (cancelledMidBatch) {
+      activeTaskIds.delete(taskId);
+      return;
+    }
+
     const newMeta = {
       ...meta,
       enriched: (meta.enriched || 0) + batchEnriched,
@@ -421,37 +486,25 @@ async function runIntelLoop(taskId: number) {
       message: `Running... ${(meta.enriched || 0) + batchEnriched} enriched, ${(meta.emails_found || 0) + batchEmails} emails found, ${(meta.total || 0) + rows.length} processed`,
     };
 
-    await db.update(backgroundTasks).set({
+    await safeDbQuery(() => db.update(backgroundTasks).set({
       progress: newMeta.total,
       metadata: newMeta,
       updated_date: new Date(),
-    }).where(eq(backgroundTasks.id, taskId));
-
-    const [check] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
-    if (!check || check.status === "cancelled") {
-      activeTaskIds.delete(taskId);
-      return;
-    }
+    }).where(eq(backgroundTasks.id, taskId)), undefined, "update progress");
 
     setTimeout(() => runIntelLoop(taskId), 500);
   } catch (e: any) {
-    console.error("[IntelBot] Error:", e.message);
-    const newMeta = {
-      ...meta,
-      errors: (meta.errors || 0) + 1,
-      message: `Error: ${e.message?.substring(0, 100)}`,
-    };
-    await db.update(backgroundTasks).set({
-      metadata: newMeta,
-      updated_date: new Date(),
-    }).where(eq(backgroundTasks.id, taskId));
+    console.error("[IntelBot] Loop error:", e.message);
+    if (!activeTaskIds.has(taskId)) return;
 
-    const [freshTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
-    if (freshTask && freshTask.status === "processing") {
-      setTimeout(() => runIntelLoop(taskId), 5000);
-    } else {
-      activeTaskIds.delete(taskId);
-    }
+    try {
+      await db.update(backgroundTasks).set({
+        metadata: { ...meta, errors: (meta.errors || 0) + 1, message: `Error: ${e.message?.substring(0, 100)}` },
+        updated_date: new Date(),
+      }).where(eq(backgroundTasks.id, taskId));
+    } catch (_) {}
+
+    setTimeout(() => runIntelLoop(taskId), 10000);
   }
 }
 
@@ -509,10 +562,10 @@ export async function handleIntelJobStop() {
 export async function handleIntelJobStatus() {
   const existing = await getActiveIntelTask();
   if (existing && !activeTaskIds.has(existing.id)) {
-    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000);
+    const staleThreshold = new Date(Date.now() - 10 * 60 * 1000);
     if (existing.updated_date && existing.updated_date < staleThreshold) {
       await db.update(backgroundTasks).set({
-        status: "failed", error: "Stale - no updates for 2+ minutes",
+        status: "failed", error: "Stale - no updates for 10+ minutes",
         completed_at: new Date(), updated_date: new Date(),
       }).where(eq(backgroundTasks.id, existing.id));
       return { success: true, job: taskToJobState(null) };
