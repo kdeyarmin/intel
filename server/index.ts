@@ -23,7 +23,15 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-const PORT = parseInt(process.env.API_PORT || "3001");
+if (process.env.NODE_ENV === "production") {
+  const distPath = path.resolve("dist");
+  app.use(express.static(distPath));
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
+
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`[CareMetric API] Server running on port ${PORT}`);
 
