@@ -598,19 +598,18 @@ async function processQueueWorker(dryRun: boolean) {
         consecutiveErrors++;
         const newRetryCount = (task.retry_count || 0) + 1;
         const newStatus = newRetryCount >= maxRetries ? "failed" : "pending";
-        await db.update(nppesQueueItems).set({ status: newStatus, error_message: e.message, retry_count: newRetryCount, updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
-        if (consecutiveErrors >= 3) {
-          console.warn(`Worker hit 3 consecutive errors, backing off. Last error: ${e.message}`);
-          await db.insert(dataQualityAlerts).values({
-            alert_type: "new_issue_detected",
-            severity: "high",
-            title: "Sustained Crawler Error Rate",
-            description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
-            status: "new",
-          });
-          break;
+        try {
+          await db.update(nppesQueueItems).set({ status: newStatus, error_message: String(e.message).substring(0, 500), retry_count: newRetryCount, updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
+        } catch (dbErr: any) {
+          console.warn(`[Crawler Worker] DB error updating task ${task.id}: ${dbErr.message}`);
         }
-        await sleep(consecutiveErrors * 2000);
+        if (consecutiveErrors >= 5) {
+          console.warn(`[Crawler Worker] Hit ${consecutiveErrors} consecutive errors, backing off 30s. Last: ${e.message}`);
+          await sleep(30000);
+          consecutiveErrors = 0;
+        } else {
+          await sleep(consecutiveErrors * 2000);
+        }
       }
     }
 
@@ -619,8 +618,14 @@ async function processQueueWorker(dryRun: boolean) {
       return { success: true, processed: tasksProcessed, message: "Worker stopped by stop flag" };
     }
 
-    const remainingQueue = await db.select({ count: sql<number>`count(*)` }).from(nppesQueueItems).where(eq(nppesQueueItems.status, "pending"));
-    const remainingQueueSize = remainingQueue[0]?.count || 0;
+    let remainingQueueSize = 0;
+    try {
+      const remainingQueue = await db.select({ count: sql<number>`count(*)` }).from(nppesQueueItems).where(eq(nppesQueueItems.status, "pending"));
+      remainingQueueSize = remainingQueue[0]?.count || 0;
+    } catch (dbErr: any) {
+      console.warn(`[Crawler Worker] DB error checking remaining queue: ${dbErr.message}`);
+      remainingQueueSize = 1;
+    }
     if (remainingQueueSize > 0) {
       setTimeout(() => processQueueWorker(dryRun).catch((e) => console.error("[Crawler] Re-invoke failed:", e.message)), 500);
     }
