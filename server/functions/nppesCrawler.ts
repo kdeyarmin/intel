@@ -13,7 +13,7 @@ import { sleep, withRetry, stripSystemFields, isIdentical } from "./helpers";
 
 const NPPES_API_BASE =
   "https://npiregistry.cms.hhs.gov/api/?version=2.1";
-const MAX_EXEC_MS = 55000;
+const MAX_EXEC_MS = 120000;
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DC","DE","FL","GA","HI","ID","IL","IN",
@@ -54,7 +54,7 @@ const MAX_CACHE_SIZE = 5000;
 let globalRateLimitDelay = 0;
 let lastRateLimitHit = 0;
 let activeWorkerCount = 0;
-const MAX_CONCURRENT_WORKERS = 3;
+const MAX_CONCURRENT_WORKERS = 5;
 
 function normalizePostalCode(value: any) {
   return String(value || "").replace(/[^0-9]/g, "").slice(0, 5);
@@ -96,7 +96,7 @@ async function fetchNPPESPage(params: URLSearchParams, stats: any) {
       if (response.status === 429 && stats) {
         stats.rate_limit_hits = (stats.rate_limit_hits || 0) + 1;
         stats.shouldSlowDown = true;
-        globalRateLimitDelay = Math.min((globalRateLimitDelay || 2000) * 1.5, 15000);
+        globalRateLimitDelay = Math.min((globalRateLimitDelay || 1000) * 1.3, 5000);
         lastRateLimitHit = Date.now();
       }
       if (response.status === 429 || response.status >= 500) {
@@ -183,53 +183,43 @@ function transformResults(allResults: any[]) {
 }
 
 async function upsertProviders(records: any[]) {
-  const FIELDS = ["first_name","last_name","credential","gender","organization_name","status","entity_type","last_updated_date"];
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 50;
+  const BULK_SIZE = 100;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
-    const npis = chunk.map((p: any) => p.npi);
     try {
-      const existing = await db.select().from(providers).where(inArray(providers.npi, npis));
-      const existingMap = new Map(existing.map((e) => [e.npi, e]));
-      const toCreate: any[] = [];
-      for (const p of chunk) {
-        const ex = existingMap.get(p.npi);
-        if (!ex) {
-          toCreate.push(p);
-        } else if (ex.last_updated_date !== p.last_updated_date || ex.status !== p.status || !isIdentical(p, ex, FIELDS)) {
-          const merged: any = {};
-          for (const k of FIELDS) {
-            merged[k] = (p[k] !== null && p[k] !== undefined && p[k] !== "") ? p[k] : ex[k as keyof typeof ex];
-          }
-          merged.npi = p.npi;
-          try {
-            await db.update(providers).set({ ...merged, updated_date: new Date() }).where(eq(providers.id, ex.id));
-            updated++;
-          } catch (e: any) { console.warn(`[upsertProviders] Update failed: ${e.message}`); }
-        } else {
-          skipped++;
-        }
-      }
-      if (toCreate.length > 0) {
-        try {
-          await db.insert(providers).values(toCreate).onConflictDoNothing();
-          imported += toCreate.length;
-        } catch (e: any) {
-          for (const p of toCreate) {
-            try { await db.insert(providers).values(p).onConflictDoNothing(); imported++; }
-            catch (ie: any) { console.warn(`[upsertProviders] Individual failed NPI ${p.npi}: ${ie.message}`); }
-          }
-        }
-      }
+      const result = await db.insert(providers).values(chunk)
+        .onConflictDoUpdate({
+          target: providers.npi,
+          set: {
+            first_name: sql`COALESCE(NULLIF(excluded.first_name, ''), ${providers.first_name})`,
+            last_name: sql`COALESCE(NULLIF(excluded.last_name, ''), ${providers.last_name})`,
+            credential: sql`COALESCE(NULLIF(excluded.credential, ''), ${providers.credential})`,
+            gender: sql`COALESCE(NULLIF(excluded.gender, ''), ${providers.gender})`,
+            organization_name: sql`COALESCE(NULLIF(excluded.organization_name, ''), ${providers.organization_name})`,
+            status: sql`excluded.status`,
+            entity_type: sql`excluded.entity_type`,
+            last_updated_date: sql`COALESCE(excluded.last_updated_date, ${providers.last_updated_date})`,
+            updated_date: sql`NOW()`,
+          },
+        });
+      imported += chunk.length;
     } catch (e: any) {
-      console.warn(`[upsertProviders] Batch failed: ${e.message}`);
       for (const p of chunk) {
         try {
-          const [ex] = await db.select().from(providers).where(eq(providers.npi, p.npi)).limit(1);
-          if (!ex) { await db.insert(providers).values(p).onConflictDoNothing(); imported++; }
-          else { skipped++; }
-        } catch (err: any) { console.warn(`[upsertProviders] Fallback failed NPI ${p.npi}: ${err.message}`); }
+          await db.insert(providers).values(p)
+            .onConflictDoUpdate({
+              target: providers.npi,
+              set: {
+                first_name: sql`COALESCE(NULLIF(excluded.first_name, ''), ${providers.first_name})`,
+                last_name: sql`COALESCE(NULLIF(excluded.last_name, ''), ${providers.last_name})`,
+                status: sql`excluded.status`,
+                entity_type: sql`excluded.entity_type`,
+                updated_date: sql`NOW()`,
+              },
+            });
+          imported++;
+        } catch (ie: any) { console.warn(`[upsertProviders] Failed NPI ${p.npi}: ${ie.message}`); }
       }
     }
   }
@@ -237,47 +227,42 @@ async function upsertProviders(records: any[]) {
 }
 
 async function upsertLocations(records: any[]) {
-  const FIELDS = ["address_1","address_2","city","state","zip","phone","fax"];
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 50;
+  const BULK_SIZE = 150;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
-    const npis = [...new Set(chunk.map((l: any) => l.npi))];
-    const existing = await db.select().from(providerLocations).where(inArray(providerLocations.npi, npis));
-    const existingMap: Record<string, any[]> = {};
-    for (const e of existing) {
-      if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
-      existingMap[e.npi!].push(e);
-    }
-    const toCreate: any[] = [];
-    for (const loc of chunk) {
-      const exLocs = existingMap[loc.npi] || [];
-      const match = exLocs.find((ex: any) =>
-        ex.location_type === loc.location_type &&
-        (ex.address_1 || "").trim().toLowerCase() === (loc.address_1 || "").trim().toLowerCase() &&
-        (ex.zip || "").substring(0, 5) === (loc.zip || "").substring(0, 5)
-      );
-      if (!match) {
-        toCreate.push(loc);
-      } else if (isIdentical(loc, match, FIELDS)) {
-        skipped++;
-      } else {
-        const merged: any = {};
-        for (const k of FIELDS) {
-          merged[k] = (loc[k] !== null && loc[k] !== undefined && loc[k] !== "") ? loc[k] : match[k];
-        }
-        try {
-          await db.update(providerLocations).set({ ...merged, updated_date: new Date() }).where(eq(providerLocations.id, match.id));
-          updated++;
-        } catch (e: any) { console.warn(`[upsertLocations] Update failed: ${e.message}`); }
+    try {
+      await db.insert(providerLocations).values(chunk);
+      imported += chunk.length;
+    } catch (e: any) {
+      const npis = [...new Set(chunk.map((l: any) => l.npi))];
+      const existing = await db.select().from(providerLocations).where(inArray(providerLocations.npi, npis));
+      const existingMap: Record<string, any[]> = {};
+      for (const e of existing) {
+        if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
+        existingMap[e.npi!].push(e);
       }
-    }
-    if (toCreate.length > 0) {
-      try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
-      catch (e: any) {
-        for (const loc of toCreate) {
-          try { await db.insert(providerLocations).values(loc); imported++; }
-          catch (err: any) { console.warn(`[upsertLocations] Individual failed: ${err.message}`); }
+      const toCreate: any[] = [];
+      for (const loc of chunk) {
+        const exLocs = existingMap[loc.npi] || [];
+        const match = exLocs.find((ex: any) =>
+          ex.location_type === loc.location_type &&
+          (ex.address_1 || "").trim().toLowerCase() === (loc.address_1 || "").trim().toLowerCase() &&
+          (ex.zip || "").substring(0, 5) === (loc.zip || "").substring(0, 5)
+        );
+        if (!match) {
+          toCreate.push(loc);
+        } else {
+          skipped++;
+        }
+      }
+      if (toCreate.length > 0) {
+        try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
+        catch (bulkErr: any) {
+          for (const loc of toCreate) {
+            try { await db.insert(providerLocations).values(loc); imported++; }
+            catch (err: any) { skipped++; }
+          }
         }
       }
     }
@@ -286,43 +271,38 @@ async function upsertLocations(records: any[]) {
 }
 
 async function upsertTaxonomies(records: any[]) {
-  const FIELDS = ["taxonomy_description","is_primary","license_number","license_state"];
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 50;
+  const BULK_SIZE = 150;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
-    const npis = [...new Set(chunk.map((t: any) => t.npi))];
-    const existing = await db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis));
-    const existingMap: Record<string, any[]> = {};
-    for (const e of existing) {
-      if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
-      existingMap[e.npi!].push(e);
-    }
-    const toCreate: any[] = [];
-    for (const tax of chunk) {
-      const exTaxes = existingMap[tax.npi] || [];
-      const match = exTaxes.find((ex: any) => (ex.taxonomy_code || "").trim() === (tax.taxonomy_code || "").trim());
-      if (!match) {
-        toCreate.push(tax);
-      } else if (isIdentical(tax, match, FIELDS)) {
-        skipped++;
-      } else {
-        const merged: any = {};
-        for (const k of FIELDS) {
-          merged[k] = (tax[k] !== null && tax[k] !== undefined && tax[k] !== "") ? tax[k] : match[k];
-        }
-        try {
-          await db.update(providerTaxonomies).set({ ...merged, updated_date: new Date() }).where(eq(providerTaxonomies.id, match.id));
-          updated++;
-        } catch (e: any) { console.warn(`[upsertTaxonomies] Update failed: ${e.message}`); }
+    try {
+      await db.insert(providerTaxonomies).values(chunk);
+      imported += chunk.length;
+    } catch (e: any) {
+      const npis = [...new Set(chunk.map((t: any) => t.npi))];
+      const existing = await db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis));
+      const existingMap: Record<string, any[]> = {};
+      for (const e of existing) {
+        if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
+        existingMap[e.npi!].push(e);
       }
-    }
-    if (toCreate.length > 0) {
-      try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
-      catch (e: any) {
-        for (const tax of toCreate) {
-          try { await db.insert(providerTaxonomies).values(tax); imported++; }
-          catch (err: any) { console.warn(`[upsertTaxonomies] Individual failed: ${err.message}`); }
+      const toCreate: any[] = [];
+      for (const tax of chunk) {
+        const exTaxes = existingMap[tax.npi] || [];
+        const match = exTaxes.find((ex: any) => (ex.taxonomy_code || "").trim() === (tax.taxonomy_code || "").trim());
+        if (!match) {
+          toCreate.push(tax);
+        } else {
+          skipped++;
+        }
+      }
+      if (toCreate.length > 0) {
+        try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
+        catch (bulkErr: any) {
+          for (const tax of toCreate) {
+            try { await db.insert(providerTaxonomies).values(tax); imported++; }
+            catch (err: any) { skipped++; }
+          }
         }
       }
     }
@@ -332,30 +312,37 @@ async function upsertTaxonomies(records: any[]) {
 
 async function updateBatchStats(batchId: number, stats: any) {
   try {
-    const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId)).limit(1);
-    if (!batch) return;
-    const retry_params: any = { ...(batch.retry_params as any || {}) };
-    if (stats.time_ms) {
-      retry_params.total_time_ms = (retry_params.total_time_ms || 0) + stats.time_ms;
-      retry_params.completed_items = (retry_params.completed_items || 0) + 1;
-      const existing = retry_params.processed_prefixes || [];
-      if (stats.prefix && !existing.includes(stats.prefix)) {
-        retry_params.processed_prefixes = [...existing, stats.prefix];
-      }
-    }
-    const updatePayload: any = {
-      valid_rows: (batch.valid_rows || 0) + (stats.valid || 0),
-      invalid_rows: (batch.invalid_rows || 0) + (stats.invalid || 0),
-      imported_rows: (batch.imported_rows || 0) + (stats.prov?.imported || 0),
-      updated_rows: (batch.updated_rows || 0) + (stats.prov?.updated || 0),
-      skipped_rows: (batch.skipped_rows || 0) + (stats.prov?.skipped || 0),
-      api_requests_count: (batch.api_requests_count || 0) + (stats.api_calls || 0),
-      rate_limit_count: (batch.rate_limit_count || 0) + (stats.rate_limit_hits || 0),
-      retry_params,
-      updated_date: new Date(),
-    };
-    updatePayload.total_rows = updatePayload.imported_rows + updatePayload.updated_rows + updatePayload.skipped_rows + updatePayload.invalid_rows;
-    await db.update(importBatches).set(updatePayload).where(eq(importBatches.id, batchId));
+    const validInc = stats.valid || 0;
+    const invalidInc = stats.invalid || 0;
+    const importedInc = stats.prov?.imported || 0;
+    const updatedInc = stats.prov?.updated || 0;
+    const skippedInc = stats.prov?.skipped || 0;
+    const apiInc = stats.api_calls || 0;
+    const rlInc = stats.rate_limit_hits || 0;
+    const timeMs = stats.time_ms || 0;
+
+    await db.execute(sql`
+      UPDATE import_batches SET
+        valid_rows = COALESCE(valid_rows, 0) + ${validInc},
+        invalid_rows = COALESCE(invalid_rows, 0) + ${invalidInc},
+        imported_rows = COALESCE(imported_rows, 0) + ${importedInc},
+        updated_rows = COALESCE(updated_rows, 0) + ${updatedInc},
+        skipped_rows = COALESCE(skipped_rows, 0) + ${skippedInc},
+        total_rows = COALESCE(imported_rows, 0) + ${importedInc} + COALESCE(updated_rows, 0) + ${updatedInc} + COALESCE(skipped_rows, 0) + ${skippedInc} + COALESCE(invalid_rows, 0) + ${invalidInc},
+        api_requests_count = COALESCE(api_requests_count, 0) + ${apiInc},
+        rate_limit_count = COALESCE(rate_limit_count, 0) + ${rlInc},
+        retry_params = jsonb_set(
+          jsonb_set(
+            COALESCE(retry_params::jsonb, '{}'::jsonb),
+            '{total_time_ms}',
+            to_jsonb(COALESCE((retry_params::jsonb->>'total_time_ms')::int, 0) + ${timeMs})
+          ),
+          '{completed_items}',
+          to_jsonb(COALESCE((retry_params::jsonb->>'completed_items')::int, 0) + 1)
+        ),
+        updated_date = NOW()
+      WHERE id = ${batchId}
+    `);
   } catch (e: any) {
     console.error(`[Crawler] FAILED to update batch stats for ${batchId}: ${e.message}`);
   }
@@ -364,11 +351,16 @@ async function updateBatchStats(batchId: number, stats: any) {
 async function incrementBatchQueueSize(batchId: number, additionalItems: number) {
   if (!additionalItems || additionalItems <= 0) return;
   try {
-    const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId)).limit(1);
-    if (!batch) return;
-    const retry_params: any = { ...(batch.retry_params as any || {}) };
-    retry_params.total_queue_items = (retry_params.total_queue_items || 0) + additionalItems;
-    await db.update(importBatches).set({ retry_params, updated_date: new Date() }).where(eq(importBatches.id, batchId));
+    await db.execute(sql`
+      UPDATE import_batches SET
+        retry_params = jsonb_set(
+          COALESCE(retry_params::jsonb, '{}'::jsonb),
+          '{total_queue_items}',
+          to_jsonb(COALESCE((retry_params::jsonb->>'total_queue_items')::int, 0) + ${additionalItems})
+        ),
+        updated_date = NOW()
+      WHERE id = ${batchId}
+    `);
   } catch (e: any) {
     console.warn(`[Crawler] Failed to increment queue size for ${batchId}: ${e.message}`);
   }
@@ -392,33 +384,33 @@ async function processQueueWorker(dryRun: boolean) {
     const maxRetries = config.max_retries || 3;
     const apiDelayMs = config.api_delay_ms !== undefined && config.api_delay_ms !== null ? config.api_delay_ms : 200;
 
-    const stuck = await db.select().from(nppesQueueItems)
-      .where(eq(nppesQueueItems.status, "processing"))
-      .orderBy(asc(nppesQueueItems.updated_date)).limit(200);
-    for (const item of stuck) {
-      if (item.updated_date && Date.now() - new Date(item.updated_date).getTime() > 600000) {
-        await db.update(nppesQueueItems).set({ status: "pending", retry_count: (item.retry_count || 0) + 1, updated_date: new Date() }).where(eq(nppesQueueItems.id, item.id));
-      }
-    }
+    await db.execute(sql`
+      UPDATE nppes_queue_items SET status = 'pending', retry_count = retry_count + 1, updated_date = NOW()
+      WHERE status = 'processing' AND updated_date < NOW() - INTERVAL '10 minutes'
+    `).catch(() => {});
 
     let tasksProcessed = 0;
     let consecutiveErrors = 0;
     let stopFlagCheckCounter = 0;
+    let prefetchedTasks: any[] = [];
+    const batchCache = new Map<number, { batch: any; fetchedAt: number }>();
 
     while (Date.now() - execStartTime < MAX_EXEC_MS) {
       stopFlagCheckCounter++;
-      if (stopFlagCheckCounter % 3 === 0) {
+      if (stopFlagCheckCounter % 5 === 0) {
         const cfgCheck = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
         if (cfgCheck[0]?.crawler_stopped) {
           return { success: true, processed: tasksProcessed, message: "Worker stopped by stop flag (mid-loop)" };
         }
       }
 
-      const pendingList = await db.select().from(nppesQueueItems)
-        .where(eq(nppesQueueItems.status, "pending"))
-        .orderBy(asc(nppesQueueItems.created_date)).limit(1);
+      if (prefetchedTasks.length === 0) {
+        prefetchedTasks = await db.select().from(nppesQueueItems)
+          .where(eq(nppesQueueItems.status, "pending"))
+          .orderBy(asc(nppesQueueItems.created_date)).limit(10);
+      }
 
-      if (pendingList.length === 0) {
+      if (prefetchedTasks.length === 0) {
         const processingBatchList = await db.select().from(importBatches)
           .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "processing")));
         let batchesClosed = 0;
@@ -478,7 +470,7 @@ async function processQueueWorker(dryRun: boolean) {
         return { success: true, message: "Queue empty", processed: tasksProcessed };
       }
 
-      const task = pendingList[0];
+      const task = prefetchedTasks.shift()!;
       if ((task.retry_count || 0) >= maxRetries) {
         await db.update(nppesQueueItems).set({ status: "failed", error_message: "Max retries exceeded", updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
         continue;
@@ -494,21 +486,23 @@ async function processQueueWorker(dryRun: boolean) {
       }
 
       let taskBatch: any;
-      try {
-        const [b] = await db.select().from(importBatches).where(eq(importBatches.id, task.batch_id!)).limit(1);
-        taskBatch = b;
-      } catch (e: any) {
-        await db.update(nppesQueueItems).set({ status: "failed", error_message: "Batch was deleted", updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
-        continue;
+      const cached = batchCache.get(task.batch_id!);
+      if (cached && Date.now() - cached.fetchedAt < 30000) {
+        taskBatch = cached.batch;
+      } else {
+        try {
+          const [b] = await db.select().from(importBatches).where(eq(importBatches.id, task.batch_id!)).limit(1);
+          taskBatch = b;
+          if (b) batchCache.set(task.batch_id!, { batch: b, fetchedAt: Date.now() });
+        } catch (e: any) {
+          await db.update(nppesQueueItems).set({ status: "failed", error_message: "Batch was deleted", updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
+          continue;
+        }
       }
       if (!taskBatch || taskBatch.status === "cancelled" || taskBatch.status === "failed") {
         await db.update(nppesQueueItems).set({ status: "failed", error_message: `Batch ${taskBatch?.status || "deleted"}`, updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
         continue;
       }
-
-      try {
-        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, task.batch_id!));
-      } catch (_) {}
       const effectiveDryRun = dryRun || taskBatch.dry_run;
       const taskStartTime = Date.now();
       try {
@@ -592,8 +586,8 @@ async function processQueueWorker(dryRun: boolean) {
         }
         tasksProcessed++;
         consecutiveErrors = 0;
-        if (stats.shouldSlowDown) await sleep(5000);
-        else await sleep(apiDelayMs);
+        if (stats.shouldSlowDown) await sleep(2000);
+        else if (apiDelayMs > 0) await sleep(Math.min(apiDelayMs, 100));
       } catch (e: any) {
         consecutiveErrors++;
         const newRetryCount = (task.retry_count || 0) + 1;
@@ -842,9 +836,9 @@ export async function handleNppesCrawler(payload: any, user: any) {
       if (isInitial) processingCount++;
     }
 
-    const workersToStart = Math.min(maxConcurrent, 2);
+    const workersToStart = Math.min(maxConcurrent, MAX_CONCURRENT_WORKERS);
     for (let i = 0; i < workersToStart; i++) {
-      setTimeout(() => processQueueWorker(dry_run).catch((e) => console.error(`[Crawler] Worker ${i + 1} failed:`, e.message)), i * 1500);
+      setTimeout(() => processQueueWorker(dry_run).catch((e) => console.error(`[Crawler] Worker ${i + 1} failed:`, e.message)), i * 500);
     }
 
     return { success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped };
