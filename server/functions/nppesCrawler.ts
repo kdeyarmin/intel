@@ -366,6 +366,21 @@ async function incrementBatchQueueSize(batchId: number, additionalItems: number)
   }
 }
 
+async function safeCrawlerQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (attempt === 3) {
+        console.warn(`[Crawler] ${label} failed after 3 attempts: ${e.message}`);
+        return fallback;
+      }
+      await sleep(attempt * 2000);
+    }
+  }
+  return fallback;
+}
+
 async function processQueueWorker(dryRun: boolean) {
   if (activeWorkerCount >= MAX_CONCURRENT_WORKERS) {
     console.log(`[Crawler Worker] Already ${activeWorkerCount} workers active, skipping new spawn`);
@@ -374,7 +389,10 @@ async function processQueueWorker(dryRun: boolean) {
   activeWorkerCount++;
   const execStartTime = Date.now();
   try {
-    const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
+    const configs = await safeCrawlerQuery(
+      () => db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default")),
+      [] as any[], "load config"
+    );
     const config = configs[0] || {} as any;
     if (config.crawler_stopped) {
       console.log("[Crawler Worker] Stop flag detected, exiting.");
@@ -398,16 +416,22 @@ async function processQueueWorker(dryRun: boolean) {
     while (Date.now() - execStartTime < MAX_EXEC_MS) {
       stopFlagCheckCounter++;
       if (stopFlagCheckCounter % 5 === 0) {
-        const cfgCheck = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
+        const cfgCheck = await safeCrawlerQuery(
+          () => db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default")),
+          [] as any[], "stop flag check"
+        );
         if (cfgCheck[0]?.crawler_stopped) {
           return { success: true, processed: tasksProcessed, message: "Worker stopped by stop flag (mid-loop)" };
         }
       }
 
       if (prefetchedTasks.length === 0) {
-        prefetchedTasks = await db.select().from(nppesQueueItems)
-          .where(eq(nppesQueueItems.status, "pending"))
-          .orderBy(asc(nppesQueueItems.created_date)).limit(10);
+        prefetchedTasks = await safeCrawlerQuery(
+          () => db.select().from(nppesQueueItems)
+            .where(eq(nppesQueueItems.status, "pending"))
+            .orderBy(asc(nppesQueueItems.created_date)).limit(10),
+          [] as any[], "prefetch tasks"
+        );
       }
 
       if (prefetchedTasks.length === 0) {
@@ -621,14 +645,36 @@ async function processQueueWorker(dryRun: boolean) {
       remainingQueueSize = 1;
     }
     if (remainingQueueSize > 0) {
-      setTimeout(() => processQueueWorker(dryRun).catch((e) => console.error("[Crawler] Re-invoke failed:", e.message)), 500);
+      setTimeout(() => processQueueWorkerWithRestart(dryRun).catch((e) => console.error("[Crawler] Re-invoke failed:", e.message)), 500);
     }
     return { success: true, processed: tasksProcessed, message: "Time limit reached, re-invoked" };
   } catch (err: any) {
-    console.error("[Crawler Worker] crash:", err);
+    console.error("[Crawler Worker] crash:", err.message);
     return { success: false, error: err.message };
   } finally {
     activeWorkerCount = Math.max(0, activeWorkerCount - 1);
+  }
+}
+
+let workerCrashRetries = 0;
+const MAX_WORKER_CRASH_RETRIES = 5;
+
+async function processQueueWorkerWithRestart(dryRun: boolean) {
+  try {
+    const result = await processQueueWorker(dryRun);
+    workerCrashRetries = 0;
+    return result;
+  } catch (e: any) {
+    workerCrashRetries++;
+    if (workerCrashRetries <= MAX_WORKER_CRASH_RETRIES) {
+      const delay = workerCrashRetries * 10000;
+      console.warn(`[Crawler] Worker crashed, restarting in ${delay / 1000}s (attempt ${workerCrashRetries}/${MAX_WORKER_CRASH_RETRIES}): ${e.message}`);
+      setTimeout(() => processQueueWorkerWithRestart(dryRun).catch(() => {}), delay);
+    } else {
+      console.error(`[Crawler] Worker crashed ${MAX_WORKER_CRASH_RETRIES} times, giving up. Watchdog will recover.`);
+      workerCrashRetries = 0;
+    }
+    return { success: false, error: e.message };
   }
 }
 
@@ -838,7 +884,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
 
     const workersToStart = Math.min(maxConcurrent, MAX_CONCURRENT_WORKERS);
     for (let i = 0; i < workersToStart; i++) {
-      setTimeout(() => processQueueWorker(dry_run).catch((e) => console.error(`[Crawler] Worker ${i + 1} failed:`, e.message)), i * 500);
+      setTimeout(() => processQueueWorkerWithRestart(dry_run).catch((e) => console.error(`[Crawler] Worker ${i + 1} failed:`, e.message)), i * 500);
     }
 
     return { success: true, states_queued: queued, states_completed: 0, states_failed: 0, total_imported: 0, skipped };
@@ -948,7 +994,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
     }
 
     const resumeDryRun = dry_run || batchesToResume.some((pb) => pb.dry_run);
-    setTimeout(() => processQueueWorker(resumeDryRun).catch((e) => console.error("[Crawler] Resume invoke failed:", e.message)), 500);
+    setTimeout(() => processQueueWorkerWithRestart(resumeDryRun).catch((e) => console.error("[Crawler] Resume invoke failed:", e.message)), 500);
 
     return { success: true, message: `Crawler resumed ${batchesToResume.length} batch${batchesToResume.length === 1 ? "" : "es"}.` };
   }
@@ -975,12 +1021,12 @@ export async function handleNppesCrawler(payload: any, user: any) {
         }
       } catch (e: any) { console.warn(`[Crawler] Failed to update batch ${bid}:`, e.message); }
     }
-    setTimeout(() => processQueueWorker(dry_run).catch((e) => console.error("[Crawler] Retry invoke failed:", e.message)), 500);
+    setTimeout(() => processQueueWorkerWithRestart(dry_run).catch((e) => console.error("[Crawler] Retry invoke failed:", e.message)), 500);
     return { success: true, message: `Queued ${retried} failed tasks for retry.` };
   }
 
   if (action === "process_queue") {
-    const result = await processQueueWorker(dry_run);
+    const result = await processQueueWorkerWithRestart(dry_run);
     return result;
   }
 
@@ -1023,7 +1069,7 @@ export function startCrawlerWatchdog() {
       if ((pendingCount[0]?.count || 0) > 0 && activeWorkerCount === 0) {
         console.log(`[Crawler Watchdog] Restarting worker — ${pendingCount[0]?.count} pending items, 0 active workers`);
         activeWorkerCount = 0;
-        processQueueWorker(false).catch((e) => console.error("[Crawler Watchdog] Worker restart failed:", e.message));
+        processQueueWorkerWithRestart(false).catch((e) => console.error("[Crawler Watchdog] Worker restart failed:", e.message));
       }
     } catch (e: any) {
       console.error("[Crawler Watchdog] Error:", e.message);
