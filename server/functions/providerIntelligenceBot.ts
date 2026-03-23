@@ -198,8 +198,8 @@ async function saveEnrichment(npi: string, enrichment: any) {
 
   const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
 
-  try {
-    await db.insert(enrichmentRecords).values({
+  const inserted = await safeDbQuery(
+    () => db.insert(enrichmentRecords).values({
       npi,
       source: "claude_ai",
       field_name: "enrichment_details",
@@ -208,15 +208,14 @@ async function saveEnrichment(npi: string, enrichment: any) {
       confidence: avgConfidence,
       status: "applied",
       enrichment_details: enrichment,
-    });
-  } catch (e: any) {
-    console.warn(`[IntelBot] Failed to save enrichment for ${npi}: ${e.message}`);
-    return 0;
-  }
+    }),
+    null, `save enrichment ${npi}`
+  );
+  if (!inserted) return 0;
 
   for (const f of fieldsToSave) {
-    try {
-      await db.insert(enrichmentRecords).values({
+    await safeDbQuery(
+      () => db.insert(enrichmentRecords).values({
         npi,
         source: "claude_ai",
         field_name: f.field,
@@ -225,11 +224,12 @@ async function saveEnrichment(npi: string, enrichment: any) {
         confidence: f.confidence,
         status: "applied",
         enrichment_details: { field: f.field, source: "AI inference" },
-      });
-    } catch (_) {}
+      }),
+      null, `save field ${f.field}`
+    );
   }
 
-  try {
+  await safeDbQuery(async () => {
     const [provider] = await db.select().from(providers).where(eq(providers.npi, npi)).limit(1);
     if (provider) {
       const updates: any = {};
@@ -238,22 +238,25 @@ async function saveEnrichment(npi: string, enrichment: any) {
         await db.update(providers).set({ ...updates, updated_date: new Date() }).where(eq(providers.npi, npi));
       }
     }
-  } catch (_) {}
+  }, null, `update provider ${npi}`);
 
   return fieldsToSave.length;
 }
 
 async function saveEmail(provider: any, result: any) {
-  try {
-    if (!result.best_email) {
-      await db.update(providers).set({
+  if (!result.best_email) {
+    await safeDbQuery(
+      () => db.update(providers).set({
         email_searched_at: new Date(),
         updated_date: new Date(),
-      }).where(eq(providers.id, provider.id));
-      return;
-    }
+      }).where(eq(providers.id, provider.id)),
+      null, `mark email searched ${provider.npi}`
+    );
+    return;
+  }
 
-    await db.update(providers).set({
+  await safeDbQuery(
+    () => db.update(providers).set({
       email: result.best_email,
       email_confidence: result.email_confidence,
       email_source: result.all_emails[0]?.source || "ai_search",
@@ -269,10 +272,9 @@ async function saveEmail(provider: any, result: any) {
         : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
-    }).where(eq(providers.id, provider.id));
-  } catch (e: any) {
-    console.warn(`[IntelBot] Failed to save email for NPI ${provider.npi}: ${e.message}`);
-  }
+    }).where(eq(providers.id, provider.id)),
+    null, `save email ${provider.npi}`
+  );
 }
 
 function taskToJobState(task: any) {

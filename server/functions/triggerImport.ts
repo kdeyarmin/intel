@@ -748,14 +748,16 @@ export async function handleAutoImportCMSData(params: any) {
       if (rows.length < PAGE_SIZE) {
         hasMore = false;
       }
+
+      await new Promise(r => setTimeout(r, 200));
     }
 
     if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
       console.log(`[AutoImportCMS] Time limit reached at offset ${offset}, inserted=${totalInserted}, scheduling immediate continuation`);
-      setImmediate(() => {
+      setTimeout(() => {
         handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped })
           .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
-      });
+      }, 3000);
       return;
     }
 
