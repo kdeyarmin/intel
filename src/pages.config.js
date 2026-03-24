@@ -58,12 +58,15 @@ import CustomReports from './pages/CustomReports.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import DataQuality from './pages/DataQuality.jsx';
+import DialysisFacilities from './pages/DialysisFacilities.jsx';
+import DMESuppliers from './pages/DMESuppliers.jsx';
 import ProviderIntelligence from './pages/ProviderIntelligence.jsx';
 import FacilityDetail from './pages/FacilityDetail.jsx';
 import Help from './pages/Help.jsx';
 import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
 import Hospices from './pages/Hospices.jsx';
 import Hospitals from './pages/Hospitals.jsx';
+import InpatientRehab from './pages/InpatientRehab.jsx';
 import ImportAnalytics from './pages/ImportAnalytics.jsx';
 import ImportMonitoring from './pages/ImportMonitoring.jsx';
 import ImportOverview from './pages/ImportOverview.jsx';
@@ -71,6 +74,7 @@ import LeadListBuilder from './pages/LeadListBuilder.jsx';
 import LeadLists from './pages/LeadLists.jsx';
 import LocationDetail from './pages/LocationDetail.jsx';
 import Locations from './pages/Locations.jsx';
+import LongTermCare from './pages/LongTermCare.jsx';
 import MAInpatientDashboard from './pages/MAInpatientDashboard.jsx';
 import NursingHomes from './pages/NursingHomes.jsx';
 import NPPESCrawler from './pages/NPPESCrawler.jsx';
@@ -104,6 +108,8 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "DataCenter": DataCenter,
     "DataQuality": DataQuality,
+    "DialysisFacilities": DialysisFacilities,
+    "DMESuppliers": DMESuppliers,
     "EmailSearchBot": ProviderIntelligence,
     "EnrichmentHub": ProviderIntelligence,
     "FacilityDetail": FacilityDetail,
@@ -112,6 +118,7 @@ export const PAGES = {
     "HomeHealthAgencies": HomeHealthAgencies,
     "Hospices": Hospices,
     "Hospitals": Hospitals,
+    "InpatientRehab": InpatientRehab,
     "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
     "ImportOverview": ImportOverview,
@@ -119,6 +126,7 @@ export const PAGES = {
     "LeadLists": LeadLists,
     "LocationDetail": LocationDetail,
     "Locations": Locations,
+    "LongTermCare": LongTermCare,
     "MAInpatientDashboard": MAInpatientDashboard,
     "NursingHomes": NursingHomes,
     "NPPESCrawler": NPPESCrawler,

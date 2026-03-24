@@ -43,6 +43,7 @@ import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
 import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreachCard';
 import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
 import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
+import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -276,6 +277,12 @@ export default function ProviderDetail() {
         <TabsContent value="clinical" className="space-y-6">
           {cmsData?.mips?.has_data && (
             <MIPSPerformanceCard mipsData={cmsData.mips} />
+          )}
+          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data) && (
+            <ProviderCMSDataCard
+              clinicianData={cmsData.clinician}
+              utilizationCmsData={cmsData.utilization_cms}
+            />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />

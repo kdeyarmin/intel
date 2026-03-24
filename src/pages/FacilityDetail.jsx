@@ -11,10 +11,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const FACILITY_LABELS = {
-  hospital: { title: 'Hospital', color: 'blue', back: 'Hospitals' },
-  home_health: { title: 'Home Health Agency', color: 'green', back: 'HomeHealthAgencies' },
-  hospice: { title: 'Hospice', color: 'purple', back: 'Hospices' },
-  snf: { title: 'Nursing Facility', color: 'amber', back: 'NursingHomes' },
+  hospital: { title: 'Hospital', back: 'Hospitals', iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
+  home_health: { title: 'Home Health Agency', back: 'HomeHealthAgencies', iconCls: 'text-green-400', badgeCls: 'bg-green-900/30 text-green-400 border-green-500/30' },
+  hospice: { title: 'Hospice', back: 'Hospices', iconCls: 'text-purple-400', badgeCls: 'bg-purple-900/30 text-purple-400 border-purple-500/30' },
+  snf: { title: 'Nursing Facility', back: 'NursingHomes', iconCls: 'text-amber-400', badgeCls: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
+  dialysis: { title: 'Dialysis Facility', back: 'DialysisFacilities', iconCls: 'text-teal-400', badgeCls: 'bg-teal-900/30 text-teal-400 border-teal-500/30' },
+  irf: { title: 'Inpatient Rehab Facility', back: 'InpatientRehab', iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
+  ltch: { title: 'Long-Term Care Hospital', back: 'LongTermCare', iconCls: 'text-orange-400', badgeCls: 'bg-orange-900/30 text-orange-400 border-orange-500/30' },
+  dme: { title: 'DME Supplier', back: 'DMESuppliers', iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
 };
 
 const TYPE_LABELS = {
@@ -56,6 +60,38 @@ const TYPE_LABELS = {
   nursing_home_penalties: 'Penalties',
   nursing_home_claims_quality: 'Claims Quality',
   medicare_snf_utilization: 'SNF Utilization',
+  hospital_general_info: 'General Information',
+  hospital_enrollments: 'Enrollment Data',
+  hospital_all_owners: 'Ownership',
+  hospital_cost_report: 'Cost Report',
+  hospital_value_based_purchasing: 'Value-Based Purchasing',
+  hospital_price_transparency: 'Price Transparency',
+  hospital_joint_replacement: 'Joint Replacement',
+  hospital_imaging_efficiency: 'Imaging Efficiency',
+  hospital_hcahps_survey: 'HCAHPS Survey',
+  hospital_timely_effective_care: 'Timely & Effective Care',
+  medicare_inpatient_by_provider: 'Inpatient Utilization',
+  medicare_outpatient_by_provider: 'Outpatient Utilization',
+  medicare_ma_inpatient: 'MA Inpatient',
+  home_health_all_owners: 'Ownership',
+  home_health_national_measures: 'National Measures',
+  home_health_state_measures: 'State Measures',
+  home_health_zip_data: 'ZIP-Level Data',
+  hospice_all_owners: 'Ownership',
+  dialysis_patient_survey: 'Patient Survey',
+  dialysis_facility_listing: 'Facility Listing',
+  dialysis_state_averages: 'State Averages',
+  dialysis_national_averages: 'National Averages',
+  medicare_dialysis_facilities: 'Dialysis Utilization',
+  inpatient_rehab_general_info: 'General Information',
+  inpatient_rehab_provider_data: 'Provider Data',
+  medicare_irf_utilization: 'IRF Utilization',
+  long_term_care_general_info: 'General Information',
+  long_term_care_provider_data: 'Provider Data',
+  medicare_ltch_utilization: 'LTCH Utilization',
+  medical_equipment_suppliers: 'Supplier Info',
+  medicare_dme_by_supplier: 'DME by Supplier',
+  medicare_dme_by_referring: 'DME by Referring',
 };
 
 function formatCurrency(val) {
@@ -192,7 +228,7 @@ export default function FacilityDetail() {
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2">
-            <Building2 className={`w-6 h-6 text-${config.color}-400`} />
+            <Building2 className={`w-6 h-6 ${config.iconCls}`} />
             <h1 className="text-xl sm:text-2xl font-bold text-slate-100 truncate">{data.facility_name || 'Unknown Facility'}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
@@ -200,7 +236,7 @@ export default function FacilityDetail() {
               <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{data.city}, {data.state} {data.zip}</span>
             )}
             <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />ID: {providerId}</span>
-            <Badge className={`bg-${config.color}-900/30 text-${config.color}-400 border-${config.color}-500/30`}>{config.title}</Badge>
+            <Badge className={config.badgeCls}>{config.title}</Badge>
           </div>
         </div>
         {data.quality_rating && (

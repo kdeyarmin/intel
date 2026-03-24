@@ -8,7 +8,7 @@ export default function NursingHomes() {
       facilityGroup="snf"
       title="Nursing Homes & SNFs"
       icon={Home}
-      color="amber"
+      iconCls="text-amber-400"
       detailPage="FacilityDetail"
     />
   );

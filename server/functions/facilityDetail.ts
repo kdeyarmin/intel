@@ -4,22 +4,30 @@ import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
   hospital: [
-    "hospital_readmissions", "hospital_hcahps", "hospital_timely_care",
-    "hospital_spending", "hospital_hac", "hospital_imaging",
-    "hospital_service_area", "hospital_unplanned_visits",
-    "hospital_payment_value", "hospital_complications",
-    "hospital_infections", "hospital_psychiatric",
-    "hospital_asc_quality", "hospital_veterans",
+    "hospital_general_info", "hospital_enrollments", "hospital_all_owners",
+    "hospital_cost_report", "hospital_readmissions", "hospital_hcahps_survey",
+    "hospital_timely_effective_care", "hospital_spending_per_beneficiary",
+    "hospital_spending_by_claim", "hospital_hac_reduction",
+    "hospital_imaging_efficiency", "hospital_service_area",
+    "hospital_unplanned_visits", "hospital_complications", "hospital_infections",
+    "hospital_psychiatric_facility", "hospital_value_based_purchasing",
+    "hospital_price_transparency", "hospital_joint_replacement",
+    "ambulatory_surgical_center",
+    "medicare_inpatient_by_provider", "medicare_outpatient_by_provider",
+    "medicare_ma_inpatient",
   ],
   home_health: [
-    "home_health_agencies", "home_health_enrollments", "home_health_cost_report",
-    "home_health_patient_survey", "home_health_hhcahps",
+    "home_health_agencies", "home_health_enrollments", "home_health_all_owners",
+    "home_health_cost_report", "home_health_patient_survey",
+    "home_health_national_measures", "home_health_state_measures",
+    "home_health_zip_data",
     "medicare_hha_utilization", "medicare_hha_stats",
+    "home_infusion_therapy",
   ],
   hospice: [
-    "hospice_general_info", "hospice_enrollments", "hospice_provider_data",
-    "hospice_provider_measures", "hospice_national_measures",
-    "hospice_state_measures", "hospice_zip_data",
+    "hospice_general_info", "hospice_enrollments", "hospice_all_owners",
+    "hospice_provider_data", "hospice_provider_measures",
+    "hospice_national_measures", "hospice_state_measures", "hospice_zip_data",
     "medicare_hospice_utilization",
   ],
   snf: [
@@ -29,6 +37,23 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "nursing_home_deficiencies", "nursing_home_mds_quality",
     "nursing_home_penalties", "nursing_home_claims_quality",
     "medicare_snf_utilization", "medicare_snf_stats",
+  ],
+  dialysis: [
+    "dialysis_patient_survey", "dialysis_facility_listing",
+    "dialysis_state_averages", "dialysis_national_averages",
+    "medicare_dialysis_facilities",
+  ],
+  irf: [
+    "inpatient_rehab_general_info", "inpatient_rehab_provider_data",
+    "medicare_irf_utilization",
+  ],
+  ltch: [
+    "long_term_care_general_info", "long_term_care_provider_data",
+    "medicare_ltch_utilization",
+  ],
+  dme: [
+    "medical_equipment_suppliers", "medicare_dme_by_supplier",
+    "medicare_dme_by_referring",
   ],
 };
 
@@ -110,64 +135,86 @@ export async function handleGetFacilityDetail(params: any) {
   };
 }
 
+const CLINICIAN_TYPES = [
+  'clinician_mips_performance', 'clinician_mips_measures',
+  'clinician_national_file', 'clinician_group_measures', 'clinician_group_experience',
+];
+const PROVIDER_UTILIZATION_TYPES = [
+  'medicare_physician_by_provider', 'medicare_part_d_prescribers',
+  'medicare_dme_by_referring', 'medicare_dme_by_supplier',
+  'medicare_spending_by_drug_b', 'medicare_spending_by_drug_d',
+];
+const ALL_PROVIDER_CMS_TYPES = [...CLINICIAN_TYPES, ...PROVIDER_UTILIZATION_TYPES];
+
 export async function handleGetProviderCMSData(params: any) {
   const { npi } = params;
   if (!npi) return { error: "npi is required" };
 
-  const mipsRows = await db.select()
+  const allRows = await db.select()
     .from(medicareFacilities)
-    .where(and(
-      eq(medicareFacilities.provider_id, npi),
-      sql`${medicareFacilities.facility_type} IN ('clinician_mips_performance', 'clinician_mips_measures')`
-    ))
+    .where(eq(medicareFacilities.provider_id, npi))
     .orderBy(desc(medicareFacilities.data_year))
-    .limit(100);
-
-  const facilityRows = await db.select({
-    provider_id: medicareFacilities.provider_id,
-    facility_name: medicareFacilities.facility_name,
-    facility_type: medicareFacilities.facility_type,
-    city: medicareFacilities.city,
-    state: medicareFacilities.state,
-    quality_rating: medicareFacilities.quality_rating,
-    data_year: medicareFacilities.data_year,
-  })
-    .from(medicareFacilities)
-    .where(and(
-      eq(medicareFacilities.provider_id, npi),
-      sql`${medicareFacilities.facility_type} NOT IN ('clinician_mips_performance', 'clinician_mips_measures')`
-    ))
-    .orderBy(desc(medicareFacilities.data_year))
-    .limit(50);
+    .limit(500);
 
   const mipsByYear: Record<string, any> = {};
-  for (const row of mipsRows) {
-    const year = row.data_year || "unknown";
-    if (!mipsByYear[year]) mipsByYear[year] = { year, performance: [], measures: [] };
-    if (row.facility_type === "clinician_mips_performance") {
-      mipsByYear[year].performance.push(row);
+  const clinicianData: Record<string, any[]> = {};
+  const providerUtilData: Record<string, any[]> = {};
+  const linkedFacilities: Record<string, any> = {};
+
+  for (const row of allRows) {
+    const ft = row.facility_type || "unknown";
+
+    if (ft === 'clinician_mips_performance' || ft === 'clinician_mips_measures') {
+      const year = row.data_year || "unknown";
+      if (!mipsByYear[year]) mipsByYear[year] = { year, performance: [], measures: [] };
+      if (ft === 'clinician_mips_performance') {
+        mipsByYear[year].performance.push(row);
+      } else {
+        mipsByYear[year].measures.push(row);
+      }
+    } else if (CLINICIAN_TYPES.includes(ft)) {
+      if (!clinicianData[ft]) clinicianData[ft] = [];
+      clinicianData[ft].push(row);
+    } else if (PROVIDER_UTILIZATION_TYPES.includes(ft)) {
+      if (!providerUtilData[ft]) providerUtilData[ft] = [];
+      providerUtilData[ft].push(row);
     } else {
-      mipsByYear[year].measures.push(row);
+      const key = `${row.provider_id}_${ft}`;
+      if (!linkedFacilities[key] || (row.data_year || 0) > (linkedFacilities[key].data_year || 0)) {
+        linkedFacilities[key] = {
+          provider_id: row.provider_id,
+          facility_name: row.facility_name,
+          facility_type: ft,
+          city: row.city,
+          state: row.state,
+          quality_rating: row.quality_rating,
+          data_year: row.data_year,
+        };
+      }
     }
   }
 
-  const linkedFacilities: Record<string, any> = {};
-  for (const row of facilityRows) {
-    const key = `${row.provider_id}_${row.facility_type}`;
-    if (!linkedFacilities[key] || (row.data_year || 0) > (linkedFacilities[key].data_year || 0)) {
-      linkedFacilities[key] = row;
-    }
-  }
+  const hasMips = Object.keys(mipsByYear).length > 0;
+  const mipsRecords = hasMips ? Object.values(mipsByYear).reduce((sum: number, y: any) =>
+    sum + (y.performance?.length || 0) + (y.measures?.length || 0), 0) : 0;
 
   return {
     npi,
     mips: {
-      has_data: mipsRows.length > 0,
-      total_records: mipsRows.length,
+      has_data: hasMips,
+      total_records: mipsRecords,
       by_year: mipsByYear,
     },
+    clinician: {
+      has_data: Object.keys(clinicianData).length > 0,
+      by_type: clinicianData,
+    },
+    utilization_cms: {
+      has_data: Object.keys(providerUtilData).length > 0,
+      by_type: providerUtilData,
+    },
     linked_facilities: Object.values(linkedFacilities),
-    total_facility_records: facilityRows.length,
+    total_records: allRows.length,
   };
 }
 

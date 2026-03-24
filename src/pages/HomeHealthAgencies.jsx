@@ -8,7 +8,7 @@ export default function HomeHealthAgencies() {
       facilityGroup="home_health"
       title="Home Health Agencies"
       icon={Heart}
-      color="green"
+      iconCls="text-green-400"
       detailPage="FacilityDetail"
     />
   );

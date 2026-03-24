@@ -20,7 +20,8 @@ function formatCurrency(val) {
   return `$${num.toLocaleString()}`;
 }
 
-export default function FacilityListPage({ facilityGroup, title, icon: Icon, color, detailPage = 'FacilityDetail' }) {
+export default function FacilityListPage({ facilityGroup, title, icon: Icon, color, iconCls, detailPage = 'FacilityDetail' }) {
+  const resolvedIconCls = iconCls || `text-${color}-400`;
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [selectedState, setSelectedState] = useState('');
@@ -57,7 +58,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="flex items-center gap-3 flex-1">
-          <Icon className={`w-6 h-6 text-${color}-400`} />
+          <Icon className={`w-6 h-6 ${resolvedIconCls}`} />
           <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{title}</h1>
           <Badge className="bg-slate-700/50 text-slate-400">{total.toLocaleString()} facilities</Badge>
         </div>
@@ -115,7 +116,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
               onClick={() => navigate(createPageUrl(detailPage) + `?id=${f.provider_id}&group=${facilityGroup}`)}
             >
               <div className="md:col-span-4 flex items-center gap-3 min-w-0">
-                <Building2 className={`w-4 h-4 text-${color}-400 flex-shrink-0`} />
+                <Building2 className={`w-4 h-4 ${resolvedIconCls} flex-shrink-0`} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{f.facility_name || f.provider_id}</p>
                   <p className="text-[10px] text-slate-400 md:hidden">{f.city}, {f.state} {f.zip}</p>

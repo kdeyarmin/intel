@@ -8,7 +8,7 @@ export default function Hospitals() {
       facilityGroup="hospital"
       title="Hospitals"
       icon={Building2}
-      color="blue"
+      iconCls="text-blue-400"
       detailPage="FacilityDetail"
     />
   );

@@ -8,7 +8,7 @@ export default function Hospices() {
       facilityGroup="hospice"
       title="Hospices"
       icon={HeartHandshake}
-      color="purple"
+      iconCls="text-purple-400"
       detailPage="FacilityDetail"
     />
   );
