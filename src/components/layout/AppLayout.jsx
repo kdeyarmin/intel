@@ -30,7 +30,6 @@ const NAV_SECTIONS = [
   {
     label: 'Sales & Outreach',
     items: [
-      { name: 'Project Management', icon: Bot, page: 'ProjectManagement', roles: ['admin', 'user'] },
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
       { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin'] },

@@ -73,7 +73,6 @@ import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard.jsx';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
 import OrganizationDetail from './pages/OrganizationDetail.jsx';
 import Organizations from './pages/Organizations.jsx';
-import ProjectManagement from './pages/ProjectManagement.jsx';
 import ProviderDetail from './pages/ProviderDetail.jsx';
 import ProviderLocationMatching from './pages/ProviderLocationMatching.jsx';
 import ProviderOutreach from './pages/ProviderOutreach.jsx';
@@ -117,7 +116,6 @@ export const PAGES = {
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
     "OrganizationDetail": OrganizationDetail,
     "Organizations": Organizations,
-    "ProjectManagement": ProjectManagement,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
     "ProviderOutreach": ProviderOutreach,

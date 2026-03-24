@@ -622,10 +622,6 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { handleAnalyzeImportedDataset } = await import("../functions/stubs");
         return res.json(await handleAnalyzeImportedDataset(req.body));
       }
-      case "aiProjectAnalysis": {
-        const { handleAiProjectAnalysis } = await import("../functions/stubs");
-        return res.json(await handleAiProjectAnalysis(req.body));
-      }
 
       case "importAgentChat": {
         const { message, history } = req.body;

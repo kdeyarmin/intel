@@ -952,6 +952,3 @@ export async function handleAnalyzeImportedDataset(payload: any) {
   return { success: true, batch_id: payload.batch_id, analysis: null, message: "Dataset analysis requires AI configuration." };
 }
 
-export async function handleAiProjectAnalysis(payload: any) {
-  return { success: true, analysis: null, message: "AI project analysis requires ANTHROPIC_API_KEY configuration." };
-}
