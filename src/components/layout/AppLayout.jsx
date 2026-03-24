@@ -6,7 +6,7 @@ import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
-  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package
+  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -80,19 +80,28 @@ const NAV_SECTIONS = [
 
 export default function AppLayout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('caremetric_sidebar');
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
   const mainRef = React.useRef(null);
 
+  const toggleSidebar = () => {
+    setSidebarOpen(prev => {
+      const next = !prev;
+      localStorage.setItem('caremetric_sidebar', String(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
-    // Scroll main container to top
     if (mainRef.current) {
       mainRef.current.scrollTop = 0;
     }
-    // Also scroll window in case of nested scrolling
     window.scrollTo(0, 0);
-    // Retry after render in case content loads async
     const t = setTimeout(() => {
       if (mainRef.current) {
         mainRef.current.scrollTop = 0;
@@ -100,15 +109,6 @@ export default function AppLayout({ children, currentPageName }) {
     }, 50);
     return () => clearTimeout(t);
   }, [currentPageName]);
-
-  // Auto-expand sidebar on large screens
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    setSidebarOpen(mq.matches);
-    const handler = (e) => setSidebarOpen(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -137,62 +137,49 @@ export default function AppLayout({ children, currentPageName }) {
       `}</style>
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={toggleSidebar} />
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.tagName === 'A') setSidebarOpen(false); }}>
+      <aside className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.tagName === 'A') setSidebarOpen(false); }}>
         {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-3">
-              <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-                alt="CareMetric AI"
-                className="w-10 h-10 rounded-xl flex-shrink-0"
-                style={{ background: 'transparent', mixBlendMode: 'screen' }}
-              />
-              <div>
-                <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></h1>
-                <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Intelligence</p>
-              </div>
-            </div>
-          ) : (
+        <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
+          <div className="flex items-center gap-3">
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
               alt="CareMetric AI"
-              className="w-10 h-10 rounded-xl mx-auto"
+              className="w-10 h-10 rounded-xl flex-shrink-0"
               style={{ background: 'transparent', mixBlendMode: 'screen' }}
             />
-          )}
+            <div>
+              <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></h1>
+              <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Intelligence</p>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={toggleSidebar}
             className="text-slate-500 hover:text-white hover:bg-slate-800/60 h-7 w-7"
           >
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <PanelLeftClose className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Search Button */}
-        <div className="px-2 py-2">
+        <div className="px-2 py-2 min-w-[14rem]">
           <button
             onClick={() => setSearchOpen(true)}
-            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors ${sidebarOpen ? '' : 'justify-center'}`}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
           >
             <Search className="w-4 h-4 shrink-0" />
-            {sidebarOpen && (
-              <>
-                <span className="flex-1 text-left">Search...</span>
-                <kbd className="text-[10px] text-slate-500 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
-              </>
-            )}
+            <span className="flex-1 text-left">Search...</span>
+            <kbd className="text-[10px] text-slate-500 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark min-w-[14rem]">
           {NAV_SECTIONS.map((section) => {
             const filteredItems = user?.role
               ? section.items.filter(item => item.roles.includes(user.role))
@@ -202,15 +189,13 @@ export default function AppLayout({ children, currentPageName }) {
 
             return (
               <div key={section.label} className="mb-1">
-                {sidebarOpen && (
-                  <button
-                    onClick={() => toggleSection(section.label)}
-                    className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    {section.label}
-                    {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
-                )}
+                <button
+                  onClick={() => toggleSection(section.label)}
+                  className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                  {section.label}
+                  {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
                 {!isCollapsed && filteredItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentPageName === item.page;
@@ -227,7 +212,7 @@ export default function AppLayout({ children, currentPageName }) {
                       }`}
                     >
                       <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} />
-                      {sidebarOpen && <span className="truncate">{item.name}</span>}
+                      <span className="truncate">{item.name}</span>
                     </Link>
                   );
                 })}
@@ -237,46 +222,44 @@ export default function AppLayout({ children, currentPageName }) {
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-slate-800/60">
-          {sidebarOpen && (
-            <div className="mb-2 px-2 flex items-center justify-between">
-              <div>
-                {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
-                {user && <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>}
-              </div>
-              <NotificationBell />
+        <div className="p-3 border-t border-slate-800/60 min-w-[14rem]">
+          <div className="mb-2 px-2 flex items-center justify-between">
+            <div>
+              {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
+              {user && <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>}
             </div>
-          )}
-          {!sidebarOpen && (
-            <div className="flex justify-center mb-2">
-              <NotificationBell />
-            </div>
-          )}
+            <NotificationBell />
+          </div>
           <Button
             variant="ghost"
             onClick={() => base44.auth.logout()}
             className="w-full text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />
-            {sidebarOpen && <span className="ml-2">Sign Out</span>}
+            <span className="ml-2">Sign Out</span>
           </Button>
         </div>
       </aside>
 
       <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
-      {/* Mobile header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-[#0b1120] border-b border-slate-800/60 px-3 py-2 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
-          <Menu className="w-5 h-5" />
-        </Button>
-        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-        <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
-        <NotificationBell />
-      </div>
+      {/* Top bar when sidebar is closed */}
+      {!sidebarOpen && (
+        <div className="fixed top-0 left-0 right-0 z-20 bg-[#0b1120] border-b border-slate-800/60 px-3 py-2 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
+            <PanelLeftOpen className="w-5 h-5" />
+          </Button>
+          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
+          <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
+          <button onClick={() => setSearchOpen(true)} className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
+            <Search className="w-4 h-4" />
+          </button>
+          <NotificationBell />
+        </div>
+      )}
 
       {/* Main content */}
-      <main ref={mainRef} className="flex-1 overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col pt-12 lg:pt-0 w-full">
+      <main ref={mainRef} className={`flex-1 overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col w-full ${!sidebarOpen ? 'pt-12' : ''}`}>
         <div className="flex-1">
           {children}
         </div>
