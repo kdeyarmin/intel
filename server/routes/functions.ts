@@ -241,6 +241,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           facilityTypesResult,
           tableEstimates,
           utilSummaryResult,
+          aggregateDatasetsResult,
         ] = await Promise.all([
           db.execute(sql`SELECT * FROM mv_cms_util_by_type ORDER BY total_payments DESC NULLS LAST LIMIT 20`),
           db.execute(sql`SELECT * FROM mv_cms_top_referrals ORDER BY referral_records DESC LIMIT 15`),
@@ -257,6 +258,18 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
               sum(total_services) AS total_services
             FROM mv_cms_util_by_type
           `),
+          db.execute(sql`
+            SELECT facility_type, count(*) AS record_count, 
+              count(DISTINCT state) AS state_count,
+              max(data_year) AS latest_year
+            FROM medicare_facilities
+            WHERE facility_type IN (
+              'market_saturation_county', 'market_saturation_cbsa',
+              'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
+              'nppes_registry', 'provider_taxonomy_crosswalk'
+            )
+            GROUP BY facility_type
+          `),
         ]);
 
         const topServices = ((topServicesResult as any).rows || topServicesResult) || [];
@@ -266,6 +279,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const estMap: any = {};
         estRows.forEach((r: any) => { estMap[r.relname] = Number(r.est || 0); });
         const utilSummary = (((utilSummaryResult as any).rows || utilSummaryResult) || [])[0] || {};
+        const aggregateDatasets = ((aggregateDatasetsResult as any).rows || aggregateDatasetsResult) || [];
 
         const cmsResult = {
           utilization: {
@@ -301,6 +315,12 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
             cms_referrals: estMap.cms_referrals || 0,
             medicare_facilities: estMap.medicare_facilities || 0,
           },
+          aggregateDatasets: aggregateDatasets.map((r: any) => ({
+            facility_type: r.facility_type,
+            record_count: Number(r.record_count || 0),
+            state_count: Number(r.state_count || 0),
+            latest_year: r.latest_year || null,
+          })),
         };
         cmsAnalyticsCache = { data: cmsResult, timestamp: Date.now() };
         return res.json(cmsResult);

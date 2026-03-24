@@ -143,6 +143,7 @@ const PROVIDER_UTILIZATION_TYPES = [
   'medicare_physician_by_provider', 'medicare_part_d_prescribers',
   'medicare_dme_by_referring', 'medicare_dme_by_supplier',
   'medicare_spending_by_drug_b', 'medicare_spending_by_drug_d',
+  'cms_order_referring', 'provider_service_utilization',
 ];
 const ALL_PROVIDER_CMS_TYPES = [...CLINICIAN_TYPES, ...PROVIDER_UTILIZATION_TYPES];
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Database, Activity, Users, DollarSign, Building2, ArrowRightLeft } from 'lucide-react';
+import { BarChart3, Database, Activity, Users, DollarSign, Building2, ArrowRightLeft, MapPin, FileText, Pill, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -43,6 +43,72 @@ function KPICard({ icon: Icon, label, value, color }) {
   );
 }
 
+const AGGREGATE_DATASET_CONFIG = {
+  market_saturation_county: { label: 'Market Saturation (County)', icon: MapPin, iconCls: 'text-emerald-400', badgeCls: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30', description: 'Provider market saturation analysis by county' },
+  market_saturation_cbsa: { label: 'Market Saturation (CBSA)', icon: Globe, iconCls: 'text-emerald-400', badgeCls: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30', description: 'Provider market saturation by core-based statistical area' },
+  medicare_fee_for_service_enrollment: { label: 'FFS Enrollment', icon: Users, iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30', description: 'Medicare fee-for-service enrollment by geography' },
+  medicare_monthly_enrollment: { label: 'Monthly Enrollment', icon: Users, iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30', description: 'Medicare monthly enrollment trends' },
+  nppes_registry: { label: 'NPPES Registry', icon: FileText, iconCls: 'text-slate-400', badgeCls: 'bg-slate-700/30 text-slate-400 border-slate-500/30', description: 'National provider registry reference data' },
+  provider_taxonomy_crosswalk: { label: 'Taxonomy Crosswalk', icon: FileText, iconCls: 'text-slate-400', badgeCls: 'bg-slate-700/30 text-slate-400 border-slate-500/30', description: 'Provider taxonomy classification reference' },
+};
+
+function AggregateDatasetSection({ datasets }) {
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Globe className="w-4 h-4 text-emerald-400" />
+          Geographic & Reference Datasets
+        </CardTitle>
+        <CardDescription>Market analysis, enrollment, and reference data imported from CMS</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {datasets.map(ds => {
+            const config = AGGREGATE_DATASET_CONFIG[ds.facility_type] || {
+              label: ds.facility_type.replace(/_/g, ' '),
+              icon: Database,
+              iconCls: 'text-slate-400',
+              badgeCls: 'bg-slate-700/30 text-slate-400 border-slate-500/30',
+              description: '',
+            };
+            const Icon = config.icon;
+            return (
+              <div key={ds.facility_type} className="p-4 rounded-lg border border-slate-700/50 bg-slate-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className={`w-4 h-4 ${config.iconCls}`} />
+                  <p className="text-sm text-slate-200 font-medium">{config.label}</p>
+                </div>
+                {config.description && (
+                  <p className="text-[10px] text-slate-400 mb-2">{config.description}</p>
+                )}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-lg font-bold text-slate-100">{formatNumber(ds.record_count)}</p>
+                    <p className="text-[10px] text-slate-400">records</p>
+                  </div>
+                  {ds.state_count > 0 && (
+                    <div className="border-l border-slate-700/50 pl-3">
+                      <p className="text-sm font-semibold text-slate-200">{ds.state_count}</p>
+                      <p className="text-[10px] text-slate-400">states</p>
+                    </div>
+                  )}
+                  {ds.latest_year && (
+                    <div className="border-l border-slate-700/50 pl-3">
+                      <p className="text-sm font-semibold text-slate-200">{ds.latest_year}</p>
+                      <p className="text-[10px] text-slate-400">latest</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CMSAnalytics() {
   const { data, isLoading } = useQuery({
     queryKey: ['cmsAnalytics'],
@@ -59,6 +125,7 @@ export default function CMSAnalytics() {
   const topServices = utilization.topServices || [];
   const topReferred = referrals.topReferred || [];
   const facilityTypes = facilities.byType || [];
+  const aggregateDatasets = analytics.aggregateDatasets || [];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
@@ -288,12 +355,16 @@ export default function CMSAnalytics() {
                         <p className="text-sm text-slate-300 font-medium">{ds.label}</p>
                       </div>
                       <p className="text-2xl font-bold text-slate-100">{formatNumber(ds.count || 0)}</p>
-                      <p className="text-xs text-slate-500 mt-1">{(ds.count || 0).toLocaleString()} records</p>
+                      <p className="text-xs text-slate-400 mt-1">{(ds.count || 0).toLocaleString()} records</p>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+
+            {aggregateDatasets.length > 0 && (
+              <AggregateDatasetSection datasets={aggregateDatasets} />
+            )}
           </div>
         </>
       )}

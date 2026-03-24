@@ -14,6 +14,8 @@ const TYPE_CONFIG = {
   medicare_dme_by_supplier: { label: 'DME Supplier Data', icon: Package, iconCls: 'text-teal-400', badgeCls: 'bg-teal-900/30 text-teal-400 border-teal-500/30' },
   medicare_spending_by_drug_b: { label: 'Drug Spending (Part B)', icon: DollarSign, iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
   medicare_spending_by_drug_d: { label: 'Drug Spending (Part D)', icon: DollarSign, iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
+  cms_order_referring: { label: 'Order & Referring', icon: Stethoscope, iconCls: 'text-sky-400', badgeCls: 'bg-sky-900/30 text-sky-400 border-sky-500/30' },
+  provider_service_utilization: { label: 'Service Utilization', icon: DollarSign, iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
 };
 
 const DEFAULT_TYPE = { label: '', icon: Database, iconCls: 'text-slate-400', badgeCls: 'bg-slate-900/30 text-slate-400 border-slate-500/30' };

@@ -161,6 +161,9 @@ export const BASE_IMPORT_TYPE_LABELS = {
   market_saturation_county: 'Market Saturation (County)',
   market_saturation_cbsa: 'Market Saturation (CBSA)',
   provider_taxonomy_crosswalk: 'Taxonomy Crosswalk',
+  cms_order_referring: 'Order & Referring',
+  provider_service_utilization: 'Service Utilization',
+  nppes_registry: 'NPPES Registry',
   ...CMS_IMPORT_TYPE_LABELS,
 };
 
