@@ -129,9 +129,9 @@ export default function CrawlerMonitoring({ status }) {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 text-sm gap-1">
-                  <Clock className="w-5 h-5 text-slate-600" />
+                  <Clock className="w-5 h-5 text-slate-500" />
                   <span>No processing data yet</span>
-                  <span className="text-xs text-slate-600">Run the crawler to generate telemetry</span>
+                  <span className="text-xs text-slate-500">Run the crawler to generate telemetry</span>
                 </div>
               )}
             </div>
@@ -169,7 +169,7 @@ export default function CrawlerMonitoring({ status }) {
                     <Zap className="w-4 h-4" />
                     No Rate Limiting
                   </div>
-                  <span className="text-xs text-slate-600">
+                  <span className="text-xs text-slate-500">
                     {metricsData.length > 0 ? 'No throttling detected across processed states' : 'Run the crawler to track rate limits'}
                   </span>
                 </div>
@@ -203,7 +203,7 @@ export default function CrawlerMonitoring({ status }) {
                     <AlertCircle className="w-4 h-4" />
                     No Errors Detected
                   </div>
-                  <span className="text-xs text-slate-600">
+                  <span className="text-xs text-slate-500">
                     {status.completed > 0 ? `${status.completed} states completed without errors` : 'No crawl errors recorded'}
                   </span>
                 </div>

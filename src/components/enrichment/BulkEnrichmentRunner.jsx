@@ -195,7 +195,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
               <p className="text-xs text-slate-400 text-center">{job.message}</p>
             )}
             {job.startedAt && (
-              <p className="text-[10px] text-slate-600 text-center">
+              <p className="text-[10px] text-slate-500 text-center">
                 Started: {new Date(job.startedAt).toLocaleTimeString()}
                 {job.lastBatchAt && ` | Last batch: ${new Date(job.lastBatchAt).toLocaleTimeString()}`}
               </p>

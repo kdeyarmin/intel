@@ -96,8 +96,8 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
                 onClick={() => onUseTemplate(template)}
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-md bg-slate-700 group-hover:bg-blue-100 transition-colors">
-                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                  <div className="p-1.5 rounded-md bg-slate-700 group-hover:bg-blue-900/30 transition-colors">
+                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Upload, Mail, Target, Shield, Bot, BarChart3 } from 'lucide-react';
-
-import { Activity } from 'lucide-react';
+import { Mail, Target, Shield, Bot, BarChart3, Activity } from 'lucide-react';
 
 const ACTIONS = [
   { label: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', color: 'text-cyan-400 bg-cyan-900/10', roles: ['admin'] },

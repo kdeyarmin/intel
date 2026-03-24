@@ -22,7 +22,6 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           providers, providerLocations, providerTaxonomies,
           cmsReferrals, providerServiceUtilization,
           importBatches, dataQualityAlerts, dataQualityScans,
-          auditEvents,
         } = await import("../db/schema");
         const { sql, desc, eq, isNotNull, and } = await import("drizzle-orm");
 
