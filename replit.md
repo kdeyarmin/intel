@@ -30,5 +30,5 @@ The application is built with a React 18 + Vite 6 frontend, styled using Tailwin
 ## External Dependencies
 - **AI:** Anthropic Claude (via `/api/integrations/ai/invoke`)
 - **Email:** SendGrid (via `/api/integrations/email/send`)
-- **Database:** PostgreSQL (with Drizzle ORM)
+- **Database:** PostgreSQL (with Drizzle ORM). Migrations are in `./drizzle/` (generated via `npm run db:generate`). The initial migration uses `IF NOT EXISTS` to be safe against existing production tables. For development, `npm run db:push` syncs schema directly. For production deployments, use `npm run db:migrate`.
 - **File Upload:** Multer (for `/api/integrations/file/upload`)
