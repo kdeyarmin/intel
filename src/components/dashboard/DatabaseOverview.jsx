@@ -89,11 +89,6 @@ export default function DatabaseOverview({ stats, loading }) {
           loading={loading}
         />
         <StatCard
-          title="Taxonomies"
-          value={formatCount(stats?.totalTaxonomies, est)}
-          loading={loading}
-        />
-        <StatCard
           title="Emails Found"
           value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
           subtitle={`${emailPct}%${stats?.emailStats?.isEstimated ? '~' : ''} coverage`}
