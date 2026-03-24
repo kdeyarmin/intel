@@ -5,7 +5,8 @@ import { base44 } from '@/api/base44Client';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain
+  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
+  Building2, Heart, HeartHandshake, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -25,6 +26,15 @@ const NAV_SECTIONS = [
       { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
       { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
+    ]
+  },
+  {
+    label: 'Facilities',
+    items: [
+      { name: 'Hospitals', icon: Building2, page: 'Hospitals', roles: ['admin', 'user'] },
+      { name: 'Home Health', icon: Heart, page: 'HomeHealthAgencies', roles: ['admin', 'user'] },
+      { name: 'Hospice', icon: HeartHandshake, page: 'Hospices', roles: ['admin', 'user'] },
+      { name: 'Nursing Homes', icon: Home, page: 'NursingHomes', roles: ['admin', 'user'] },
     ]
   },
   {

@@ -622,6 +622,18 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { handleAnalyzeImportedDataset } = await import("../functions/stubs");
         return res.json(await handleAnalyzeImportedDataset(req.body));
       }
+      case "getFacilityDetail": {
+        const { handleGetFacilityDetail } = await import("../functions/facilityDetail");
+        return res.json(await handleGetFacilityDetail(req.body));
+      }
+      case "listFacilities": {
+        const { handleListFacilities } = await import("../functions/facilityDetail");
+        return res.json(await handleListFacilities(req.body));
+      }
+      case "getProviderCMSData": {
+        const { handleGetProviderCMSData } = await import("../functions/facilityDetail");
+        return res.json(await handleGetProviderCMSData(req.body));
+      }
 
       case "importAgentChat": {
         const { message, history } = req.body;

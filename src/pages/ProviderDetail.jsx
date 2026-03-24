@@ -41,6 +41,8 @@ import ProviderImportHistory from '../components/providers/ProviderImportHistory
 import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
 import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
 import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreachCard';
+import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
+import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -114,6 +116,20 @@ export default function ProviderDetail() {
     queryKey: ['providerMessages', npi],
     queryFn: () => base44.entities.OutreachMessage.filter({ npi }),
     enabled: !!npi,
+  });
+
+  const { data: cmsData } = useQuery({
+    queryKey: ['providerCMSData', npi],
+    queryFn: async () => {
+      const res = await fetch('/api/functions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ function_name: 'getProviderCMSData', npi }),
+      });
+      return res.json();
+    },
+    enabled: !!npi,
+    staleTime: 60000,
   });
 
   const queryClient = useQueryClient();
@@ -258,6 +274,9 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="clinical" className="space-y-6">
+          {cmsData?.mips?.has_data && (
+            <MIPSPerformanceCard mipsData={cmsData.mips} />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />
             <ReferralSummaryCard referrals={referrals} />
@@ -289,6 +308,9 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="network" className="space-y-6">
+          {cmsData?.linked_facilities?.length > 0 && (
+            <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                <ProviderAffiliations
@@ -335,7 +357,7 @@ export default function ProviderDetail() {
                            <div className="flex justify-between items-start mb-2">
                               <div>
                                 <h4 className="font-semibold text-sm">{msg.subject || 'No Subject'}</h4>
-                                <p className="text-xs text-slate-500">Sent: {new Date(msg.created_date).toLocaleDateString()}</p>
+                                <p className="text-xs text-slate-400">Sent: {new Date(msg.created_date).toLocaleDateString()}</p>
                               </div>
                               <Badge variant="outline">{msg.status}</Badge>
                            </div>

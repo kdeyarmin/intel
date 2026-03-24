@@ -59,7 +59,11 @@ import Dashboard from './pages/Dashboard.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import DataQuality from './pages/DataQuality.jsx';
 import ProviderIntelligence from './pages/ProviderIntelligence.jsx';
+import FacilityDetail from './pages/FacilityDetail.jsx';
 import Help from './pages/Help.jsx';
+import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
+import Hospices from './pages/Hospices.jsx';
+import Hospitals from './pages/Hospitals.jsx';
 import ImportAnalytics from './pages/ImportAnalytics.jsx';
 import ImportMonitoring from './pages/ImportMonitoring.jsx';
 import ImportOverview from './pages/ImportOverview.jsx';
@@ -68,6 +72,7 @@ import LeadLists from './pages/LeadLists.jsx';
 import LocationDetail from './pages/LocationDetail.jsx';
 import Locations from './pages/Locations.jsx';
 import MAInpatientDashboard from './pages/MAInpatientDashboard.jsx';
+import NursingHomes from './pages/NursingHomes.jsx';
 import NPPESCrawler from './pages/NPPESCrawler.jsx';
 import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard.jsx';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
@@ -101,8 +106,12 @@ export const PAGES = {
     "DataQuality": DataQuality,
     "EmailSearchBot": ProviderIntelligence,
     "EnrichmentHub": ProviderIntelligence,
+    "FacilityDetail": FacilityDetail,
     "ProviderIntelligence": ProviderIntelligence,
     "Help": Help,
+    "HomeHealthAgencies": HomeHealthAgencies,
+    "Hospices": Hospices,
+    "Hospitals": Hospitals,
     "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
     "ImportOverview": ImportOverview,
@@ -111,6 +120,7 @@ export const PAGES = {
     "LocationDetail": LocationDetail,
     "Locations": Locations,
     "MAInpatientDashboard": MAInpatientDashboard,
+    "NursingHomes": NursingHomes,
     "NPPESCrawler": NPPESCrawler,
     "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
