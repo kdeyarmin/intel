@@ -92,7 +92,6 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   nursing_home_health_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/r5ix-sfxw/0",
   nursing_home_mds_quality: "https://data.cms.gov/provider-data/api/1/datastore/query/djen-97ju/0",
   nursing_home_claims_quality: "https://data.cms.gov/provider-data/api/1/datastore/query/ijh5-nb2v/0",
-  snf_quality_reporting: "https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0",
 };
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
@@ -184,7 +183,6 @@ const CMS_DATASET_CATALOG = [
   { id: "nursing_home_health_deficiencies", title: "Nursing Home Health Deficiencies", description: "Health inspection deficiency data for nursing homes including scope, severity, and correction status.", category: "Nursing Homes & SNF", records: "~419K", priority: "medium" },
   { id: "nursing_home_mds_quality", title: "Nursing Home MDS Quality Measures", description: "Minimum Data Set quality measures for nursing homes including falls, pressure ulcers, and ADL decline.", category: "Nursing Homes & SNF", records: "~250K", priority: "high" },
   { id: "nursing_home_claims_quality", title: "Nursing Home Medicare Claims Quality Measures", description: "Quality measures derived from Medicare claims data for nursing homes.", category: "Nursing Homes & SNF", records: "~59K", priority: "medium" },
-  { id: "snf_quality_reporting", title: "SNF Quality Reporting Program - Provider Data", description: "Skilled Nursing Facility Quality Reporting Program performance data at the provider level.", category: "Nursing Homes & SNF", records: "~15K", priority: "high" },
   { id: "medicare_snf_utilization", title: "Medicare Post-Acute Care - SNF", description: "Post-acute care utilization and spending data for skilled nursing facilities.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
 
   { id: "dialysis_facility_listing", title: "Dialysis Facility Listing", description: "Directory of all Medicare-certified dialysis facilities with addresses and key facility information.", category: "Dialysis", records: "~8K", priority: "high" },

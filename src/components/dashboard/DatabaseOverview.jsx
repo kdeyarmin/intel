@@ -55,7 +55,7 @@ export default function DatabaseOverview({ stats, loading }) {
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
         {est && <span className="text-[9px] text-slate-500">(+ means more records exist)</span>}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <StatCard
           title="Providers"
           value={formatCount(stats?.totalProviders, est)}
@@ -79,6 +79,13 @@ export default function DatabaseOverview({ stats, loading }) {
           title="Utilization"
           value={formatCount(stats?.totalUtilization, est)}
           link="Utilization"
+          loading={loading}
+        />
+        <StatCard
+          title="Facilities"
+          value={formatCount(stats?.totalFacilities, est)}
+          subtitle="Hospitals, SNF, HHA..."
+          link="CMSAnalytics"
           loading={loading}
         />
         <StatCard

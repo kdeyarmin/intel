@@ -32,7 +32,8 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_locations') AS locations,
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'cms_referrals') AS referrals,
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_service_utilization') AS utilization,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies,
+            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
         `);
         const est = (estimatedCounts as any).rows?.[0] || (estimatedCounts as any)[0] || {};
         const totalProviders = Number(est.providers || 0);
@@ -40,6 +41,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const totalReferrals = Number(est.referrals || 0);
         const totalUtilization = Number(est.utilization || 0);
         const totalTaxonomies = Number(est.taxonomies || 0);
+        const totalFacilities = Number(est.facilities || 0);
 
         const { or, inArray } = await import("drizzle-orm");
 
@@ -132,6 +134,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           totalReferrals,
           totalUtilization,
           totalTaxonomies,
+          totalFacilities,
           emailStats: {
             withEmail,
             needsEnrichment,
