@@ -715,9 +715,10 @@ export async function handleAutoImportCMSData(params: any) {
       }
 
       let response: Response;
+      const fetchTimeoutMs = offset > 500000 ? 90000 : 60000;
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
+        const timeout = setTimeout(() => controller.abort(), fetchTimeoutMs);
         response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeout);
       } catch (e: any) {
@@ -725,7 +726,7 @@ export async function handleAutoImportCMSData(params: any) {
         const errMsg = `Fetch failed at offset ${offset}: ${e.message}`;
         console.error(`[AutoImportCMS] ${errMsg}`);
         errors.push({ offset, message: errMsg });
-        if (consecutiveErrors >= 3) {
+        if (consecutiveErrors >= 5) {
           await safeImportQuery(
             () => db.update(importBatches).set({
               status: "failed",
@@ -736,7 +737,9 @@ export async function handleAutoImportCMSData(params: any) {
           );
           return;
         }
-        await new Promise(r => setTimeout(r, 3000));
+        const backoffMs = Math.min(3000 * Math.pow(2, consecutiveErrors - 1), 30000);
+        console.log(`[AutoImportCMS] Retry ${consecutiveErrors}/5 in ${backoffMs}ms for offset ${offset}`);
+        await new Promise(r => setTimeout(r, backoffMs));
         continue;
       }
 
@@ -751,7 +754,7 @@ export async function handleAutoImportCMSData(params: any) {
         const errMsg = `HTTP ${response.status} at offset ${offset}`;
         console.error(`[AutoImportCMS] ${errMsg}`);
         errors.push({ offset, message: errMsg });
-        if (consecutiveErrors >= 3) {
+        if (consecutiveErrors >= 5) {
           await safeImportQuery(
             () => db.update(importBatches).set({
               status: "failed",
@@ -762,7 +765,8 @@ export async function handleAutoImportCMSData(params: any) {
           );
           return;
         }
-        await new Promise(r => setTimeout(r, 2000));
+        const backoffMs = Math.min(2000 * Math.pow(2, consecutiveErrors - 1), 30000);
+        await new Promise(r => setTimeout(r, backoffMs));
         continue;
       }
 
