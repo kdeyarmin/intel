@@ -68,7 +68,7 @@ function pruneExpiredCache() {
   }
 }
 
-async function fetchNPPESPage(params: URLSearchParams, stats: any) {
+async function fetchNPPESPage(params: URLSearchParams, stats: any, requestTimeoutMs = 15000) {
   const apiUrl = `${NPPES_API_BASE}&${params.toString()}`;
   if (apiCache.has(apiUrl)) {
     const cached = apiCache.get(apiUrl)!;
@@ -86,7 +86,7 @@ async function fetchNPPESPage(params: URLSearchParams, stats: any) {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const controller = new AbortController();
-      const fetchTimeout = setTimeout(() => controller.abort(), 10000 + attempt * 2000);
+      const fetchTimeout = setTimeout(() => controller.abort(), requestTimeoutMs + attempt * 2000);
       let response: Response;
       try {
         response = await fetch(apiUrl, { signal: controller.signal });
@@ -430,6 +430,8 @@ async function processQueueWorker(dryRun: boolean) {
     const apiBatchSize = config.api_batch_size || 200;
     const maxRetries = config.max_retries || 3;
     const apiDelayMs = config.api_delay_ms !== undefined && config.api_delay_ms !== null ? config.api_delay_ms : 200;
+    const requestTimeoutMs = config.request_timeout_ms || 15000;
+    const configMaxSkip = config.max_skip || 1000;
     const excludedCredentialSet = buildExcludedCredentialSet(config.excluded_credentials as string[] | null);
 
     await db.execute(sql`
@@ -573,25 +575,24 @@ async function processQueueWorker(dryRun: boolean) {
           params.set("postal_code", `${task.zip_prefix}*`);
         }
         const stats: any = { valid: 0, invalid: 0, duplicate: 0, prov: { imported: 0, updated: 0, skipped: 0 }, api_calls: 1, rate_limit_hits: 0, prefix: task.zip_prefix };
-        const firstPage = await fetchNPPESPage(params, stats);
+        const firstPage = await fetchNPPESPage(params, stats, requestTimeoutMs);
         if (firstPage.error) throw new Error(firstPage.error);
         let allResults = [...firstPage.results];
         let lastPageSize = firstPage.results.length;
         let skip = apiBatchSize;
         let needSplit = false;
-        const maxSkip = 1000;
         if (lastPageSize === apiBatchSize) {
-          while (lastPageSize === apiBatchSize && skip <= maxSkip) {
+          while (lastPageSize === apiBatchSize && skip <= configMaxSkip) {
             if (Date.now() - execStartTime >= MAX_EXEC_MS - 3000) break;
             params.set("skip", String(skip));
-            const page = await fetchNPPESPage(params, stats);
+            const page = await fetchNPPESPage(params, stats, requestTimeoutMs);
             stats.api_calls++;
             if (page.error || page.results.length === 0) break;
             allResults.push(...page.results);
             lastPageSize = page.results.length;
             skip += apiBatchSize;
           }
-          if (lastPageSize === apiBatchSize && skip > maxSkip && task.zip_prefix!.length < 5) {
+          if (lastPageSize === apiBatchSize && skip > configMaxSkip && task.zip_prefix!.length < 5) {
             needSplit = true;
           }
         }
@@ -849,8 +850,16 @@ export async function handleNppesCrawler(payload: any, user: any) {
       targetStates = REGION_STATES[region] || US_STATES;
     }
     if (!targetStates || targetStates.length === 0) {
-      targetStates = US_STATES;
+      if (config.crawl_all_states === false && Array.isArray(config.selected_states) && config.selected_states.length > 0) {
+        targetStates = config.selected_states as string[];
+      } else {
+        targetStates = US_STATES;
+      }
     }
+
+    const configEntityTypes = Array.isArray(config.crawl_entity_types) && config.crawl_entity_types.length > 0
+      ? config.crawl_entity_types as string[]
+      : ["NPI-1", "NPI-2"];
 
     let queued = 0, skipped = 0;
     let processingCount = 0;
@@ -885,7 +894,11 @@ export async function handleNppesCrawler(payload: any, user: any) {
       const queuePrefixes = normalizedPostalCode ? [normalizedPostalCode] : knownPrefixes;
 
       const retryParams: Record<string, any> = { total_queue_items: queuePrefixes.length };
-      if (entity_type) retryParams.entity_type = entity_type;
+      if (entity_type) {
+        retryParams.entity_type = entity_type;
+      } else if (configEntityTypes.length === 1) {
+        retryParams.entity_type = configEntityTypes[0];
+      }
       if (taxonomy_description) retryParams.taxonomy_description = taxonomy_description;
       if (city) retryParams.city = city;
       if (normalizedPostalCode) retryParams.postal_code = normalizedPostalCode;
