@@ -51,7 +51,6 @@ import AIAssistant from './pages/AIAssistant.jsx';
 import APIConnectors from './pages/APIConnectors.jsx';
 import AdminSettings from './pages/AdminSettings.jsx';
 import AdvancedAnalytics from './pages/AdvancedAnalytics.jsx';
-import AuditLog from './pages/AuditLog.jsx';
 import CMSAnalytics from './pages/CMSAnalytics.jsx';
 import CMSDataSources from './pages/CMSDataSources.jsx';
 import Campaigns from './pages/Campaigns.jsx';
@@ -94,7 +93,6 @@ export const PAGES = {
     "APIConnectors": APIConnectors,
     "AdminSettings": AdminSettings,
     "AdvancedAnalytics": AdvancedAnalytics,
-    "AuditLog": AuditLog,
     "CMSAnalytics": CMSAnalytics,
     "CMSDataSources": CMSDataSources,
     "Campaigns": Campaigns,

@@ -58,7 +58,6 @@ const NAV_SECTIONS = [
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Audit Log', icon: Wrench, page: 'AuditLog', roles: ['admin'] },
       { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
       { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
       { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
