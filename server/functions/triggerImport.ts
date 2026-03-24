@@ -92,6 +92,23 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   nursing_home_health_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/r5ix-sfxw/0",
   nursing_home_mds_quality: "https://data.cms.gov/provider-data/api/1/datastore/query/djen-97ju/0",
   nursing_home_claims_quality: "https://data.cms.gov/provider-data/api/1/datastore/query/ijh5-nb2v/0",
+  facility_affiliation: "https://data.cms.gov/provider-data/api/1/datastore/query/27ea-46a8/0",
+  home_health_vbp: "https://data.cms.gov/provider-data/api/1/datastore/query/56d7-4994/0",
+  snf_vbp_facility: "https://data.cms.gov/provider-data/api/1/datastore/query/284v-j9fz/0",
+  rural_health_clinic_enrollments: "https://data.cms.gov/data-api/v1/dataset/3b7e7659-067e-41ea-8e36-f9ee2036e1f6/data",
+  rural_health_clinic_all_owners: "https://data.cms.gov/data-api/v1/dataset/ab03c9bc-0c22-4ca4-b032-21dd3408210d/data",
+  nursing_home_chain_performance: "https://data.cms.gov/data-api/v1/dataset/97ecfad1-d3f1-4d42-b774-d74661d830bc/data",
+  medicare_geographic_variation: "https://data.cms.gov/data-api/v1/dataset/8e989bc0-2260-49a7-9c6d-8e9e10af7cea/data",
+  pbj_daily_nurse_staffing: "https://data.cms.gov/data-api/v1/dataset/7e0d53ba-8f02-4c66-98a5-14a1c997c50d/data",
+  pbj_daily_nonnurse_staffing: "https://data.cms.gov/data-api/v1/dataset/b497431a-5b57-42c0-9016-90105b51841e/data",
+  snf_enrollments: "https://data.cms.gov/data-api/v1/dataset/5f2c306f-3b1c-42cd-b037-187b2ce22126/data",
+  snf_all_owners: "https://data.cms.gov/data-api/v1/dataset/afe44b85-cc6d-40d7-b5df-00ae8910d1d2/data",
+  snf_cost_report: "https://data.cms.gov/data-api/v1/dataset/a69d3df7-3f66-4a0d-b5b8-0d66049bd565/data",
+  fqhc_all_owners: "https://data.cms.gov/data-api/v1/dataset/ed289c89-0bb8-4221-a20a-85776066381b/data",
+  aco_participants: "https://data.cms.gov/data-api/v1/dataset/9767cb68-8ea9-4f0b-8179-9431abc89f11/data",
+  aco_organizations: "https://data.cms.gov/data-api/v1/dataset/69ec2609-5ce5-4ce1-b14c-1f8809fda2c2/data",
+  aco_financial_results: "https://data.cms.gov/data-api/v1/dataset/73b2ce14-351d-40ac-90ba-ec9e1f5ba80c/data",
+  medicare_telehealth_trends: "https://data.cms.gov/data-api/v1/dataset/939226be-b107-476e-8777-f199a840138a/data",
 };
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
@@ -207,6 +224,29 @@ const CMS_DATASET_CATALOG = [
   { id: "market_saturation_cbsa", title: "Market Saturation & Utilization - CBSA", description: "Healthcare market saturation data at the Core-Based Statistical Area level.", category: "Medicare Programs", records: "~1K", priority: "low" },
   { id: "medicare_spending_by_drug_d", title: "Medicare Part D Spending by Drug", description: "Medicare Part D drug spending data including total spending, claims, and beneficiary counts.", category: "Medicare Programs", records: "~14.3K", priority: "low" },
   { id: "medicare_spending_by_drug_b", title: "Medicare Part B Spending by Drug", description: "Medicare Part B drug spending and utilization data.", category: "Medicare Programs", records: "~734", priority: "low" },
+  { id: "medicare_telehealth_trends", title: "Medicare Telehealth Trends", description: "Telehealth utilization trends including visit counts, provider adoption, and specialty breakdown across Medicare.", category: "Medicare Programs", records: "~50K", priority: "medium" },
+  { id: "medicare_geographic_variation", title: "Medicare Geographic Variation", description: "Medicare spending and utilization variation data at the national and state level including per-capita costs.", category: "Medicare Programs", records: "~60", priority: "medium" },
+
+  { id: "facility_affiliation", title: "Facility Affiliation Data", description: "Links between individual clinicians and the facilities or group practices where they provide services.", category: "Doctors & Clinicians", records: "~3M", priority: "high" },
+
+  { id: "home_health_vbp", title: "Home Health Value-Based Purchasing (HHVBP)", description: "Home health agency performance under the Expanded HHVBP Model including quality scores and payment adjustments.", category: "Home Health", records: "~8K", priority: "medium" },
+
+  { id: "nursing_home_chain_performance", title: "Nursing Home Chain Performance Measures", description: "Quality performance metrics aggregated at the nursing home chain/organization level.", category: "Nursing Homes & SNF", records: "~1K", priority: "medium" },
+  { id: "snf_enrollments", title: "Skilled Nursing Facility Enrollments", description: "CMS enrollment data for SNFs including NPI, CCN, organization name, address, and enrollment status.", category: "Nursing Homes & SNF", records: "~15K", priority: "high" },
+  { id: "snf_all_owners", title: "Skilled Nursing Facility All Owners", description: "Ownership information for all Medicare-certified skilled nursing facilities.", category: "Nursing Homes & SNF", records: "~60K", priority: "medium" },
+  { id: "snf_cost_report", title: "Skilled Nursing Facility Cost Report", description: "Financial cost report data for SNFs including revenue, expenses, bed counts, and utilization.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
+  { id: "snf_vbp_facility", title: "SNF Value-Based Purchasing - Facility", description: "Facility-level SNF Value-Based Purchasing program scores including readmission measures and incentive payments.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
+
+  { id: "pbj_daily_nurse_staffing", title: "Payroll Based Journal - Daily Nurse Staffing", description: "Actual daily nurse staffing hours reported by nursing homes including RN, LPN, and CNA hours per resident day.", category: "Nursing Homes & SNF", records: "~6M", priority: "high" },
+  { id: "pbj_daily_nonnurse_staffing", title: "Payroll Based Journal - Daily Non-Nurse Staffing", description: "Daily non-nurse staffing hours for nursing homes including physical therapy, dietary, and administrative staff.", category: "Nursing Homes & SNF", records: "~6M", priority: "medium" },
+
+  { id: "rural_health_clinic_enrollments", title: "Rural Health Clinic Enrollments", description: "CMS enrollment data for rural health clinics including NPI, organization name, address, and enrollment status.", category: "Other Facilities", records: "~5K", priority: "high" },
+  { id: "rural_health_clinic_all_owners", title: "Rural Health Clinic All Owners", description: "Ownership information for all Medicare-certified rural health clinics.", category: "Other Facilities", records: "~15K", priority: "medium" },
+  { id: "fqhc_all_owners", title: "Federally Qualified Health Center All Owners", description: "Ownership information for all Medicare-certified FQHCs.", category: "Other Facilities", records: "~50K", priority: "medium" },
+
+  { id: "aco_participants", title: "ACO Participants", description: "Complete list of providers participating in Medicare Accountable Care Organizations with TINs and NPIs.", category: "ACO & Networks", records: "~500K", priority: "high" },
+  { id: "aco_organizations", title: "Accountable Care Organizations", description: "Profiles of Medicare Shared Savings Program ACOs including name, start date, track, and agreement details.", category: "ACO & Networks", records: "~500", priority: "high" },
+  { id: "aco_financial_results", title: "ACO Financial & Quality Results", description: "Annual financial performance and quality measure results for ACOs in the Medicare Shared Savings Program.", category: "ACO & Networks", records: "~500", priority: "medium" },
 ];
 
 export function getCMSDatasetCatalog() {
@@ -446,6 +486,34 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = row.federal_provider_number || row.provider_id || row.provnum || null;
   } else if (importType === "inpatient_rehab_general_info" || importType === "inpatient_rehab_provider_data" || importType === "long_term_care_general_info" || importType === "long_term_care_provider_data") {
     id = row.cms_certification_number_ccn || row.ccn || null;
+  } else if (importType === "facility_affiliation") {
+    id = [row.npi || row.NPI, row.facility_ccn || row.pac_id_of_organizational_healthcare_provider].filter(Boolean).join("_") || null;
+  } else if (importType === "home_health_vbp") {
+    id = row.cms_certification_number_ccn || row.ccn || row.provider_id || null;
+  } else if (importType === "snf_vbp_facility") {
+    id = row.cms_certification_number_ccn || row.ccn || row.provider_id || null;
+  } else if (importType === "rural_health_clinic_enrollments" || importType === "rural_health_clinic_all_owners") {
+    id = row.NPI || row.npi || row.ENROLLMENT_ID || null;
+  } else if (importType === "nursing_home_chain_performance") {
+    id = row.organization_id || row.chain_id || null;
+  } else if (importType === "medicare_geographic_variation") {
+    id = [row.YEAR, row.BENE_GEO_LVL, row.BENE_GEO_CD].filter(Boolean).join("_") || null;
+  } else if (importType === "pbj_daily_nurse_staffing" || importType === "pbj_daily_nonnurse_staffing") {
+    id = [row.PROVNUM || row.provnum, row.WorkDate || row.WORKDATE].filter(Boolean).join("_") || null;
+  } else if (importType === "snf_enrollments") {
+    id = row.NPI || row.npi || row.ENROLLMENT_ID || null;
+  } else if (importType === "snf_all_owners" || importType === "fqhc_all_owners") {
+    id = [row.NPI || row.npi, row.ASSOCIATE_ID || row.associate_id].filter(Boolean).join("_") || null;
+  } else if (importType === "snf_cost_report") {
+    id = row.PRVDR_NUM || row.prvdr_num || row.RPT_REC_NUM || null;
+  } else if (importType === "aco_participants") {
+    id = [row.ACO_ID, row.NPI || row.TIN].filter(Boolean).join("_") || null;
+  } else if (importType === "aco_organizations") {
+    id = row.ACO_ID || row.aco_id || null;
+  } else if (importType === "aco_financial_results") {
+    id = [row.ACO_ID, row.PY || row.PERFORMANCE_YEAR].filter(Boolean).join("_") || null;
+  } else if (importType === "medicare_telehealth_trends") {
+    id = [row.YEAR, row.BENE_STATE_ABRVTN || row.STATE, row.HCPCS_CD].filter(Boolean).join("_") || null;
   }
   return id ? id.substring(0, 50) : null;
 }
@@ -519,6 +587,45 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   }
   if (importType === "long_term_care_general_info" || importType === "long_term_care_provider_data") {
     return row.provider_name || row.facility_name || null;
+  }
+  if (importType === "facility_affiliation") {
+    return [row.clinician_last_name || row.provider_last_name, row.clinician_first_name || row.provider_first_name].filter(Boolean).join(", ") || row.facility_name || null;
+  }
+  if (importType === "home_health_vbp" || importType === "snf_vbp_facility") {
+    return row.provider_name || row.facility_name || null;
+  }
+  if (importType === "rural_health_clinic_enrollments" || importType === "rural_health_clinic_all_owners") {
+    return row["ORGANIZATION NAME"] || row.organization_name || row.FIRST_NAME || null;
+  }
+  if (importType === "nursing_home_chain_performance") {
+    return row.organization_name || row.chain_name || null;
+  }
+  if (importType === "medicare_geographic_variation") {
+    return [row.BENE_GEO_DESC, row.YEAR].filter(Boolean).join(" ") || null;
+  }
+  if (importType === "pbj_daily_nurse_staffing" || importType === "pbj_daily_nonnurse_staffing") {
+    return row.PROVNAME || row.provname || null;
+  }
+  if (importType === "snf_enrollments") {
+    return row["ORGANIZATION NAME"] || row.organization_name || null;
+  }
+  if (importType === "snf_all_owners" || importType === "fqhc_all_owners") {
+    return row["ORGANIZATION NAME"] || row.organization_name || row.FIRST_NAME || null;
+  }
+  if (importType === "snf_cost_report") {
+    return row.PRVDR_NAME || row.HOSPITAL_NAME || null;
+  }
+  if (importType === "aco_participants") {
+    return row.ACO_NAME || row.PROVIDER_NAME || null;
+  }
+  if (importType === "aco_organizations") {
+    return row.ACO_NAME || row.ACO_Legal_Name || null;
+  }
+  if (importType === "aco_financial_results") {
+    return row.ACO_NAME || row.ACO_Legal_Name || null;
+  }
+  if (importType === "medicare_telehealth_trends") {
+    return [row.HCPCS_DESC, row.BENE_STATE_DESC || row.STATE].filter(Boolean).join(" — ") || null;
   }
   return null;
 }
