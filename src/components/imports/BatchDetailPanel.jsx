@@ -210,10 +210,11 @@ export default function BatchDetailPanel({ batch }) {
         <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
           <ArrowUpDown className="w-4 h-4 text-cyan-400" /> Row Statistics
         </h4>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-2">
           <StatBox label="Total" value={batch.total_rows?.toLocaleString() || 0} />
           <StatBox label="Valid" value={batch.valid_rows?.toLocaleString() || 0} color="text-emerald-400" />
           <StatBox label="Invalid" value={batch.invalid_rows?.toLocaleString() || 0} color="text-red-400" />
+          <StatBox label="Excluded" value={batch.excluded_rows?.toLocaleString() || 0} color="text-orange-400" />
           <StatBox label="Duplicates" value={batch.duplicate_rows?.toLocaleString() || 0} color="text-amber-400" />
           <StatBox label="Imported" value={batch.imported_rows?.toLocaleString() || 0} color="text-blue-400" />
           <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />

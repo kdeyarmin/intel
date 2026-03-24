@@ -141,6 +141,7 @@ export const importBatches = pgTable("import_batches", {
   skipped_rows: integer("skipped_rows"),
   valid_rows: integer("valid_rows"),
   invalid_rows: integer("invalid_rows"),
+  excluded_rows: integer("excluded_rows"),
   error_count: integer("error_count"),
   api_requests_count: integer("api_requests_count"),
   rate_limit_count: integer("rate_limit_count"),
@@ -466,6 +467,7 @@ export const nppesCrawlerConfigs = pgTable("nppes_crawler_configs", {
   concurrency: integer("concurrency").default(4),
   max_workers: integer("max_workers").default(3),
   crawler_stopped: boolean("crawler_stopped").default(false),
+  excluded_credentials: jsonb("excluded_credentials"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
 });

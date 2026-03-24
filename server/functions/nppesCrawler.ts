@@ -126,11 +126,36 @@ async function fetchNPPESPage(params: URLSearchParams, stats: any) {
   throw new Error("All NPPES API retry attempts exhausted");
 }
 
-function transformResults(allResults: any[]) {
-  let validRows = 0, invalidRows = 0, duplicateRows = 0;
+function normalizeCredential(cred: string): string {
+  return cred.replace(/\./g, "").trim().toUpperCase();
+}
+
+function buildExcludedCredentialSet(excludedList: string[] | null | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!excludedList || !Array.isArray(excludedList)) return set;
+  for (const c of excludedList) {
+    if (c && typeof c === "string") set.add(normalizeCredential(c));
+  }
+  return set;
+}
+
+function isCredentialExcluded(credential: string, excludedSet: Set<string>): boolean {
+  if (excludedSet.size === 0 || !credential) return false;
+  const normalized = normalizeCredential(credential);
+  if (excludedSet.has(normalized)) return true;
+  const parts = normalized.split(/[,;\/\s]+/).map(p => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (excludedSet.has(part)) return true;
+  }
+  return false;
+}
+
+function transformResults(allResults: any[], excludedCredentials?: Set<string>) {
+  let validRows = 0, invalidRows = 0, duplicateRows = 0, excludedRows = 0;
   const seenNPIs = new Set<string>();
   const providerList: any[] = [], locationList: any[] = [], taxonomyList: any[] = [];
   const errors: any[] = [];
+  const excludedSet = excludedCredentials || new Set<string>();
   for (const result of allResults) {
     const npi = String(result.number || "");
     if (!npi || npi.length !== 10) { invalidRows++; continue; }
@@ -140,6 +165,13 @@ function transformResults(allResults: any[]) {
     const isIndividual = result.enumeration_type === "NPI-1";
     const status = basic.status === "A" ? "Active" : "Deactivated";
     if (status === "Active" && !basic.enumeration_date && !basic.last_updated) { invalidRows++; continue; }
+    if (isIndividual && excludedSet.size > 0) {
+      const credential = (basic.credential || "").trim();
+      if (credential && isCredentialExcluded(credential, excludedSet)) {
+        excludedRows++;
+        continue;
+      }
+    }
     validRows++;
     const provider: any = { npi, entity_type: isIndividual ? "Individual" : "Organization", status };
     if (isIndividual) {
@@ -179,7 +211,7 @@ function transformResults(allResults: any[]) {
       });
     }
   }
-  return { providers: providerList, locations: locationList, taxonomies: taxonomyList, validRows, invalidRows, duplicateRows, errors };
+  return { providers: providerList, locations: locationList, taxonomies: taxonomyList, validRows, invalidRows, duplicateRows, excludedRows, errors };
 }
 
 async function upsertProviders(records: any[]) {
@@ -317,6 +349,7 @@ async function updateBatchStats(batchId: number, stats: any) {
     const importedInc = stats.prov?.imported || 0;
     const updatedInc = stats.prov?.updated || 0;
     const skippedInc = stats.prov?.skipped || 0;
+    const excludedInc = stats.excluded || 0;
     const apiInc = stats.api_calls || 0;
     const rlInc = stats.rate_limit_hits || 0;
     const timeMs = stats.time_ms || 0;
@@ -325,10 +358,11 @@ async function updateBatchStats(batchId: number, stats: any) {
       UPDATE import_batches SET
         valid_rows = COALESCE(valid_rows, 0) + ${validInc},
         invalid_rows = COALESCE(invalid_rows, 0) + ${invalidInc},
+        excluded_rows = COALESCE(excluded_rows, 0) + ${excludedInc},
         imported_rows = COALESCE(imported_rows, 0) + ${importedInc},
         updated_rows = COALESCE(updated_rows, 0) + ${updatedInc},
         skipped_rows = COALESCE(skipped_rows, 0) + ${skippedInc},
-        total_rows = COALESCE(imported_rows, 0) + ${importedInc} + COALESCE(updated_rows, 0) + ${updatedInc} + COALESCE(skipped_rows, 0) + ${skippedInc} + COALESCE(invalid_rows, 0) + ${invalidInc},
+        total_rows = COALESCE(imported_rows, 0) + ${importedInc} + COALESCE(updated_rows, 0) + ${updatedInc} + COALESCE(skipped_rows, 0) + ${skippedInc} + COALESCE(invalid_rows, 0) + ${invalidInc} + COALESCE(excluded_rows, 0) + ${excludedInc},
         api_requests_count = COALESCE(api_requests_count, 0) + ${apiInc},
         rate_limit_count = COALESCE(rate_limit_count, 0) + ${rlInc},
         retry_params = jsonb_set(
@@ -401,6 +435,7 @@ async function processQueueWorker(dryRun: boolean) {
     const apiBatchSize = config.api_batch_size || 200;
     const maxRetries = config.max_retries || 3;
     const apiDelayMs = config.api_delay_ms !== undefined && config.api_delay_ms !== null ? config.api_delay_ms : 200;
+    const excludedCredentialSet = buildExcludedCredentialSet(config.excluded_credentials as string[] | null);
 
     await db.execute(sql`
       UPDATE nppes_queue_items SET status = 'pending', retry_count = retry_count + 1, updated_date = NOW()
@@ -567,9 +602,10 @@ async function processQueueWorker(dryRun: boolean) {
         }
         if (needSplit) {
           if (allResults.length > 0) {
-            const transformed = transformResults(allResults);
+            const transformed = transformResults(allResults, excludedCredentialSet);
             stats.valid += transformed.validRows;
             stats.invalid += transformed.invalidRows;
+            stats.excluded = (stats.excluded || 0) + transformed.excludedRows;
             if (!effectiveDryRun) {
               const [provRes] = await Promise.all([
                 upsertProviders(transformed.providers),
@@ -589,9 +625,10 @@ async function processQueueWorker(dryRun: boolean) {
           await db.update(nppesQueueItems).set({ status: "completed", updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
           await updateBatchStats(task.batch_id!, stats);
         } else if (allResults.length > 0) {
-          const transformed = transformResults(allResults);
+          const transformed = transformResults(allResults, excludedCredentialSet);
           stats.valid += transformed.validRows;
           stats.invalid += transformed.invalidRows;
+          stats.excluded = (stats.excluded || 0) + transformed.excludedRows;
           if (!effectiveDryRun) {
             const [provRes] = await Promise.all([
               upsertProviders(transformed.providers),

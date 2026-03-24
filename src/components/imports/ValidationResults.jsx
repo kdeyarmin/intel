@@ -72,7 +72,7 @@ export default function ValidationResults({ batch }) {
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              Import completed: {batch.imported_rows || 0} new records, {batch.updated_rows || 0} updated{batch.skipped_rows > 0 ? `, ${batch.skipped_rows} skipped (unchanged)` : ''}.
+              Import completed: {batch.imported_rows || 0} new records, {batch.updated_rows || 0} updated{batch.excluded_rows > 0 ? `, ${batch.excluded_rows} excluded by credential` : ''}{batch.skipped_rows > 0 ? `, ${batch.skipped_rows} skipped (unchanged)` : ''}.
             </AlertDescription>
           </Alert>
         )}

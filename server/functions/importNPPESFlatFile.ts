@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { importBatches, providers } from "../db/schema";
+import { importBatches, providers, nppesCrawlerConfigs } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 const MAX_EXEC_MS = 50000;
@@ -73,6 +73,7 @@ export async function handleImportNPPESFlatFile(payload: any) {
     let isFirstLine = byte_offset === 0;
     let currentHeaders = headers;
     let recordsProcessed = 0;
+    let totalExcluded = 0;
     let currentByteOffset = byte_offset;
     let rowsAccumulator: any[] = [];
     let done = false;
@@ -113,7 +114,8 @@ export async function handleImportNPPESFlatFile(payload: any) {
         recordsProcessed++;
 
         if (rowsAccumulator.length >= BULK_INSERT_SIZE) {
-          await processBulkRows(rowsAccumulator, batch.dry_run || false);
+          const { excludedCount } = await processBulkRows(rowsAccumulator, batch.dry_run || false);
+          totalExcluded += excludedCount;
           rowsAccumulator = [];
           bulkInsertCount++;
 
@@ -127,7 +129,8 @@ export async function handleImportNPPESFlatFile(payload: any) {
               try { reader.cancel(); } catch (_) {}
               await safeFlatFileQuery(
                 () => db.update(importBatches).set({
-                  imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+                  imported_rows: (batch.imported_rows || 0) + recordsProcessed - totalExcluded,
+                  excluded_rows: (batch.excluded_rows || 0) + totalExcluded,
                   retry_params: { file_url, byte_offset: currentByteOffset, headers: currentHeaders, total_rows: total_rows + recordsProcessed },
                   updated_date: new Date(),
                 }).where(eq(importBatches.id, batch_id)),
@@ -138,7 +141,8 @@ export async function handleImportNPPESFlatFile(payload: any) {
 
             await safeFlatFileQuery(
               () => db.update(importBatches).set({
-                imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+                imported_rows: (batch.imported_rows || 0) + recordsProcessed - totalExcluded,
+                excluded_rows: (batch.excluded_rows || 0) + totalExcluded,
                 updated_date: new Date(),
               }).where(eq(importBatches.id, batch_id)),
               undefined, "update progress"
@@ -163,12 +167,14 @@ export async function handleImportNPPESFlatFile(payload: any) {
     }
 
     if (rowsAccumulator.length > 0) {
-      await processBulkRows(rowsAccumulator, batch.dry_run || false);
+      const { excludedCount } = await processBulkRows(rowsAccumulator, batch.dry_run || false);
+      totalExcluded += excludedCount;
     }
 
     await safeFlatFileQuery(
       () => db.update(importBatches).set({
-        imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+        imported_rows: (batch.imported_rows || 0) + recordsProcessed - totalExcluded,
+        excluded_rows: (batch.excluded_rows || 0) + totalExcluded,
         status: "completed",
         completed_at: new Date(),
         cancel_reason: "",
@@ -192,17 +198,64 @@ export async function handleImportNPPESFlatFile(payload: any) {
   }
 }
 
-async function processBulkRows(rows: any[], dryRun: boolean) {
-  if (dryRun) return;
+function normalizeCredential(cred: string): string {
+  return cred.replace(/\./g, "").trim().toUpperCase();
+}
 
+function isCredentialExcluded(credential: string, excludedSet: Set<string>): boolean {
+  if (excludedSet.size === 0 || !credential) return false;
+  const normalized = normalizeCredential(credential);
+  if (excludedSet.has(normalized)) return true;
+  const parts = normalized.split(/[,;\/\s]+/).map(p => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (excludedSet.has(part)) return true;
+  }
+  return false;
+}
+
+let _excludedCredentialCache: { set: Set<string>; fetchedAt: number } | null = null;
+
+async function getExcludedCredentials(): Promise<Set<string>> {
+  if (_excludedCredentialCache && Date.now() - _excludedCredentialCache.fetchedAt < 60000) {
+    return _excludedCredentialCache.set;
+  }
+  try {
+    const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
+    const config = configs[0];
+    const list = (config?.excluded_credentials as string[] | null) || [];
+    const set = new Set<string>();
+    for (const c of list) {
+      if (c && typeof c === "string") set.add(normalizeCredential(c));
+    }
+    _excludedCredentialCache = { set, fetchedAt: Date.now() };
+    return set;
+  } catch {
+    return new Set<string>();
+  }
+}
+
+async function processBulkRows(rows: any[], dryRun: boolean): Promise<{ excludedCount: number }> {
+  if (dryRun) return { excludedCount: 0 };
+
+  const excludedSet = await getExcludedCredentials();
   const providerRows: any[] = [];
+  let excludedCount = 0;
   for (const row of rows) {
     const npi = row["NPI"] || row["npi"];
     if (!npi) continue;
 
+    const isIndividual = row["Entity Type Code"] === "1";
+    if (isIndividual && excludedSet.size > 0) {
+      const credential = (row["Provider Credential Text"] || row["Credentials"] || row["provider_credential"] || "").trim();
+      if (credential && isCredentialExcluded(credential, excludedSet)) {
+        excludedCount++;
+        continue;
+      }
+    }
+
     providerRows.push({
       npi,
-      entity_type: row["Entity Type Code"] === "1" ? "Individual" : "Organization",
+      entity_type: isIndividual ? "Individual" : "Organization",
       first_name: row["Provider First Name"] || row["provider_first_name"] || "",
       last_name: row["Provider Last Name (Legal Name)"] || row["provider_last_name"] || "",
       organization_name: row["Provider Organization Name (Legal Business Name)"] || row["provider_organization_name"] || "",
@@ -228,4 +281,5 @@ async function processBulkRows(rows: any[], dryRun: boolean) {
       console.log(`[importNPPESFlatFile] Individual fallback: ${ok} created, ${fail} skipped`);
     }
   }
+  return { excludedCount };
 }

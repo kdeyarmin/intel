@@ -44,7 +44,7 @@ function getProgressValue(batch) {
     if (batch.status === 'processing') return 10;
     return 0;
   }
-  const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
+  const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0) + (batch.excluded_rows || 0);
   if (batch.status === 'validating') {
     const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
     return Math.min(Math.round((validated / total) * 50), 49);
@@ -154,6 +154,11 @@ export default function LiveProgressCard({ activeBatches }) {
                           <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-500" />
                         )}
                       </>
+                    )}
+                    {(batch.excluded_rows || 0) > 0 && (
+                      <div className="flex items-center gap-1 text-[10px] text-orange-400">
+                        <XCircle className="w-3 h-3" /> {batch.excluded_rows.toLocaleString()} excluded by credential
+                      </div>
                     )}
                     {(batch.invalid_rows || 0) > 0 && (
                       <div className="flex items-center gap-1 text-[10px] text-red-400">

@@ -385,7 +385,7 @@ export default function ImportMonitoring() {
       return Math.min(Math.round((validated / total) * 50), 49);
     }
     // processing or paused
-    const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
+    const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0) + (batch.excluded_rows || 0);
     return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
 
@@ -961,6 +961,7 @@ export default function ImportMonitoring() {
                         {batch.valid_rows > 0 && <div><span className="text-slate-400">Validated: </span><span className="font-semibold text-emerald-400">{batch.valid_rows.toLocaleString()}</span></div>}
                         {batch.imported_rows > 0 && <div><span className="text-slate-400">New: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
                         {batch.updated_rows > 0 && <div><span className="text-slate-400">Updated: </span><span className="font-semibold text-violet-400">{batch.updated_rows.toLocaleString()}</span></div>}
+                        {batch.excluded_rows > 0 && <div title="Providers excluded by credential filter"><span className="text-slate-400">Excluded: </span><span className="font-semibold text-orange-400">{batch.excluded_rows.toLocaleString()}</span></div>}
                         {batch.skipped_rows > 0 && <div title="Duplicates or rows missing required fields"><span className="text-slate-400">Duplicates: </span><span className="font-semibold text-amber-400">{batch.skipped_rows.toLocaleString()}</span></div>}
                         {batch.invalid_rows > 0 && <div><span className="text-slate-400">Invalid: </span><span className="font-semibold text-red-400">{batch.invalid_rows.toLocaleString()}</span></div>}
                         {batch.status === 'failed' && batch.valid_rows > 0 && !batch.imported_rows && (
