@@ -74,7 +74,7 @@
     "html2canvas": "latest",
     "input-otp": "latest",
     "jsonwebtoken": "^9.0.3",
-    "jspdf": "latest",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lodash": "latest",
     "lucide-react": "latest",
@@ -100,6 +100,13 @@
     "tsx": "^4.21.0",
     "vaul": "latest",
     "zod": "latest"
+  },
+  "overrides": {
+    "@remix-run/router": ">=1.23.2",
+    "axios": ">=1.13.5",
+    "flatted": ">=3.4.2",
+    "glob": ">=10.5.0",
+    "rollup": ">=4.59.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
