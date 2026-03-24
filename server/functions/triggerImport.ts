@@ -716,7 +716,7 @@ export async function handleAutoImportCMSData(params: any) {
       }
 
       let response: Response;
-      const fetchTimeoutMs = offset > 1000000 ? 180000 : offset > 500000 ? 120000 : offset > 200000 ? 90000 : 60000;
+      const fetchTimeoutMs = offset > 1000000 ? 300000 : offset > 500000 ? 240000 : offset > 200000 ? 180000 : offset > 50000 ? 120000 : 60000;
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), fetchTimeoutMs);
