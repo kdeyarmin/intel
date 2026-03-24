@@ -213,4 +213,27 @@ app.listen(PORT, "0.0.0.0", async () => {
   }
 });
 
+async function gracefulShutdown(signal: string) {
+  console.log(`[CareMetric API] ${signal} received — saving in-progress import state`);
+  try {
+    const activeBatches = await db.select({ id: importBatches.id, import_type: importBatches.import_type })
+      .from(importBatches)
+      .where(eq(importBatches.status, "in_progress"))
+      .limit(20);
+
+    for (const batch of activeBatches) {
+      await db.update(importBatches).set({
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch.id));
+      console.log(`  - Marked batch ${batch.id} (${batch.import_type}) for recovery`);
+    }
+  } catch (e: any) {
+    console.error(`[CareMetric API] Shutdown save failed:`, e.message);
+  }
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 export default app;
