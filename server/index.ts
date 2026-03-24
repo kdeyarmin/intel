@@ -208,6 +208,66 @@ app.listen(PORT, "0.0.0.0", async () => {
     } catch (e: any) {
       console.error(`[CareMetric API] Background task cleanup error:`, e.message);
     }
+
+    (async () => {
+      try {
+        const { pool: dbPool } = await import("./db");
+        const existingIdx = await dbPool.query(`
+          SELECT c2.relname as indexname, i.indisvalid
+          FROM pg_index i
+          JOIN pg_class c ON c.oid = i.indrelid
+          JOIN pg_class c2 ON c2.oid = i.indexrelid
+          WHERE c.relname = 'medicare_facilities' AND c2.relname != 'medicare_facilities_pkey'
+        `).catch(() => ({ rows: [] }));
+        
+        for (const idx of existingIdx.rows) {
+          if (!idx.indisvalid) {
+            console.log(`[DB Index] Dropping invalid index ${idx.indexname}`);
+            const dropClient = await dbPool.connect();
+            try {
+              await dropClient.query("SET statement_timeout = '120000'");
+              await dropClient.query(`DROP INDEX IF EXISTS ${idx.indexname}`);
+              console.log(`[DB Index] Dropped ${idx.indexname}`);
+            } catch (e: any) {
+              console.warn(`[DB Index] Drop ${idx.indexname} failed:`, e.message?.substring(0, 80));
+            } finally {
+              dropClient.release();
+            }
+          } else {
+            console.log(`[DB Index] ${idx.indexname} is valid`);
+          }
+        }
+
+        const indexes = [
+          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)",
+          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)",
+          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_state ON medicare_facilities (facility_type, state)",
+        ];
+        for (const ddl of indexes) {
+          const idxName = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || "unknown";
+          try {
+            const client = await dbPool.connect();
+            try {
+              await client.query("SET statement_timeout = '0'");
+              console.log(`[DB Index] Building ${idxName}...`);
+              await client.query(ddl);
+              console.log(`[DB Index] Created ${idxName}`);
+            } finally {
+              client.release();
+            }
+          } catch (e: any) {
+            if (e.message?.includes("already exists")) {
+              console.log(`[DB Index] ${idxName} already exists`);
+            } else {
+              console.warn(`[DB Index] ${idxName} failed:`, e.message?.substring(0, 200));
+            }
+          }
+        }
+        console.log(`[DB Index] Background index creation complete`);
+      } catch (e: any) {
+        console.warn(`[DB Index] Background index creation failed:`, e.message?.substring(0, 100));
+      }
+    })();
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);
   }

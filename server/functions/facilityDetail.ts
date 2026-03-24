@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db, pool } from "../db";
 import { medicareFacilities, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
@@ -55,6 +55,17 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "medical_equipment_suppliers", "medicare_dme_by_supplier",
     "medicare_dme_by_referring",
   ],
+};
+
+const LISTING_PRIMARY_TYPES: Record<string, string> = {
+  hospital: "hospital_general_info",
+  home_health: "home_health_agencies",
+  hospice: "hospice_general_info",
+  snf: "nursing_home_providers",
+  dialysis: "dialysis_facility_listing",
+  irf: "inpatient_rehab_general_info",
+  ltch: "long_term_care_general_info",
+  dme: "medical_equipment_suppliers",
 };
 
 export function getFacilityTypeGroup(facilityType: string): string | null {
@@ -222,6 +233,21 @@ export async function handleGetProviderCMSData(params: any) {
 const statesCache: Record<string, { data: any[]; timestamp: number }> = {};
 const STATES_CACHE_TTL = 10 * 60 * 1000;
 
+const listingCache: Record<string, { data: any; timestamp: number }> = {};
+const LISTING_CACHE_TTL = 10 * 60 * 1000;
+
+async function paramQuery(sqlText: string, values: any[], timeoutMs: number = 30000): Promise<any[]> {
+  const client = await pool.connect();
+  try {
+    await client.query(`SET statement_timeout = '${Math.max(1000, Math.min(timeoutMs, 120000))}'`);
+    const result = await client.query(sqlText, values);
+    return result.rows || [];
+  } finally {
+    await client.query(`SET statement_timeout = '0'`).catch(() => {});
+    client.release();
+  }
+}
+
 export async function handleListFacilities(params: any) {
   const { facility_group, state, search, page = 1, limit = 50 } = params;
   if (!facility_group) return { error: "facility_group is required" };
@@ -229,32 +255,50 @@ export async function handleListFacilities(params: any) {
   const groupTypes = FACILITY_TYPE_GROUPS[facility_group];
   if (!groupTypes) return { error: `Unknown facility_group: ${facility_group}` };
 
-  const offset = (page - 1) * limit;
+  const primaryType = LISTING_PRIMARY_TYPES[facility_group] || groupTypes[0];
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
+  const safePage = Math.max(1, Number(page) || 1);
+  const offset = (safePage - 1) * safeLimit;
 
-  const typeCondition = groupTypes.length === 1
-    ? eq(medicareFacilities.facility_type, groupTypes[0])
-    : inArray(medicareFacilities.facility_type, groupTypes);
-  const conditions = [typeCondition];
-  if (state) conditions.push(eq(medicareFacilities.state, state.toUpperCase()));
-  if (search) conditions.push(ilike(medicareFacilities.facility_name, `%${search}%`));
+  let whereClauses = [`facility_type = $1`];
+  const queryValues: any[] = [primaryType];
+  let paramIdx = 2;
 
-  const rows = await db.select({
-    provider_id: medicareFacilities.provider_id,
-    facility_name: medicareFacilities.facility_name,
-    city: medicareFacilities.city,
-    state: medicareFacilities.state,
-    zip: medicareFacilities.zip,
-    quality_rating: medicareFacilities.quality_rating,
-    total_discharges: medicareFacilities.total_discharges,
-    total_payments: medicareFacilities.total_payments,
-    facility_type: medicareFacilities.facility_type,
-    data_year: medicareFacilities.data_year,
-  })
-    .from(medicareFacilities)
-    .where(and(...conditions))
-    .orderBy(asc(medicareFacilities.facility_name))
-    .limit(limit)
-    .offset(offset);
+  if (state) {
+    whereClauses.push(`state = $${paramIdx}`);
+    queryValues.push(state.toUpperCase());
+    paramIdx++;
+  }
+  if (search) {
+    whereClauses.push(`facility_name ILIKE $${paramIdx}`);
+    queryValues.push(`%${search}%`);
+    paramIdx++;
+  }
+  const whereSQL = whereClauses.join(" AND ");
+
+  let rows: any[] = [];
+  try {
+    rows = await paramQuery(
+      `SELECT provider_id, facility_name, city, state, zip, quality_rating, total_discharges, total_payments, facility_type, data_year
+       FROM medicare_facilities WHERE ${whereSQL}
+       ORDER BY facility_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      [...queryValues, safeLimit, offset],
+      60000
+    );
+  } catch (e: any) {
+    console.warn(`[facilityDetail] Ordered query timed out for ${facility_group}, falling back to unordered`);
+    try {
+      rows = await paramQuery(
+        `SELECT provider_id, facility_name, city, state, zip, quality_rating, total_discharges, total_payments, facility_type, data_year
+         FROM medicare_facilities WHERE ${whereSQL}
+         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        [...queryValues, safeLimit, offset],
+        60000
+      );
+    } catch (e2: any) {
+      console.error(`[facilityDetail] Both queries failed for ${facility_group}:`, e2.message?.substring(0, 200));
+    }
+  }
 
   const seen = new Map<string, any>();
   for (const row of rows) {
@@ -271,27 +315,40 @@ export async function handleListFacilities(params: any) {
     availableStates = statesCache[cacheKey].data;
   } else {
     try {
-      const states = await db.select({
-        state: medicareFacilities.state,
-        count: sql<number>`count(*)`,
-      })
-        .from(medicareFacilities)
-        .where(typeCondition)
-        .groupBy(medicareFacilities.state)
-        .orderBy(desc(sql`count(*)`))
-        .limit(60);
-      availableStates = states.filter(s => s.state).map(s => ({ state: s.state, count: Number(s.count) }));
+      const states = await paramQuery(
+        `SELECT state, count(*) as count FROM medicare_facilities WHERE facility_type = $1 GROUP BY state ORDER BY count(*) DESC LIMIT 60`,
+        [primaryType],
+        45000
+      );
+      availableStates = states.filter((s: any) => s.state).map((s: any) => ({ state: s.state, count: Number(s.count) }));
       statesCache[cacheKey] = { data: availableStates, timestamp: Date.now() };
     } catch (e) {
-      console.warn(`[facilityDetail] States query failed for ${facility_group}:`, (e as any).message);
+      console.warn(`[facilityDetail] States query failed for ${facility_group}:`, (e as any).message?.substring(0, 200));
+    }
+  }
+
+  let totalCount = seen.size < safeLimit ? offset + seen.size : offset + safeLimit + 1;
+  const totalCacheKey = `total_${facility_group}_${state || 'all'}_${search || ''}`;
+  if (listingCache[totalCacheKey] && Date.now() - listingCache[totalCacheKey].timestamp < LISTING_CACHE_TTL) {
+    totalCount = listingCache[totalCacheKey].data;
+  } else {
+    try {
+      const countRows = await paramQuery(
+        `SELECT count(DISTINCT provider_id) as count FROM medicare_facilities WHERE ${whereSQL}`,
+        queryValues,
+        30000
+      );
+      totalCount = Number(countRows[0]?.count || totalCount);
+      listingCache[totalCacheKey] = { data: totalCount, timestamp: Date.now() };
+    } catch (e) {
     }
   }
 
   return {
     facilities: Array.from(seen.values()),
-    total: seen.size < limit ? offset + seen.size : offset + limit + 1,
-    page,
-    limit,
+    total: totalCount,
+    page: safePage,
+    limit: safeLimit,
     available_states: availableStates,
   };
 }
