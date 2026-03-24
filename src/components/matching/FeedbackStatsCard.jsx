@@ -24,7 +24,7 @@ export default function FeedbackStatsCard({ matches }) {
     <Card className="mb-6 bg-slate-700/40 border-slate-700/50">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Brain className="w-4 h-4 text-purple-600" />
+          <Brain className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-semibold text-slate-200">AI Learning Feedback</span>
           <Badge className="bg-purple-900/30 text-purple-400 text-xs">{decided.length} decisions</Badge>
         </div>

@@ -11,12 +11,12 @@ function StatCard({ title, value, subtitle, link, loading, badge }) {
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">{title}</p>
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{title}</p>
             {loading ? (
               <Skeleton className="h-7 w-20 mt-1.5 bg-slate-700/50" />
             ) : (
               <>
-                <p className="text-2xl font-bold text-white mt-1 tracking-tight group-hover:text-cyan-400 transition-colors">{value}</p>
+                <p className="text-xl sm:text-2xl font-bold text-white mt-1 tracking-tight whitespace-nowrap group-hover:text-cyan-400 transition-colors">{value}</p>
                 {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
               </>
             )}
@@ -55,7 +55,7 @@ export default function DatabaseOverview({ stats, loading }) {
         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
         {est && <span className="text-[9px] text-slate-500">(+ means more records exist)</span>}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3">
         <StatCard
           title="Providers"
           value={formatCount(stats?.totalProviders, est)}

@@ -54,8 +54,8 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         value={metrics.totalProcessed.toLocaleString()}
         icon={Database}
         trend={`${metrics.totalBatches} batches processed`}
-        color="text-blue-600"
-        bgColor="bg-blue-900/15"
+        color="text-blue-400"
+        bgColor="bg-blue-900/30"
       />
       <KPICard
         title="Avg Processing Time"
@@ -63,24 +63,24 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
         subValue={metrics.completedCount > 0 ? "per state" : "no data yet"}
         icon={Clock}
         trend={`${metrics.completedCount} completed batches`}
-        color="text-amber-600"
-        bgColor="bg-amber-900/15"
+        color="text-amber-400"
+        bgColor="bg-amber-900/30"
       />
       <KPICard 
         title="Success Rate" 
         value={`${metrics.successRate}%`} 
         icon={Activity}
         trend={`${metrics.totalBatches} total batches`}
-        color="text-emerald-600"
-        bgColor="bg-emerald-900/15"
+        color="text-emerald-400"
+        bgColor="bg-emerald-900/30"
       />
       <KPICard 
         title="Newly Imported" 
         value={metrics.totalImported.toLocaleString()} 
         icon={Server}
         trend="New records added"
-        color="text-purple-600"
-        bgColor="bg-purple-900/15"
+        color="text-purple-400"
+        bgColor="bg-purple-900/30"
       />
     </div>
   );
@@ -97,7 +97,7 @@ function KPICard({ title, value, subValue, icon: Icon, trend, trendUp, color, bg
           </div>
         </div>
         <div className="flex items-baseline gap-1">
-          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">{value}</div>
           {subValue && <div className="text-xs text-muted-foreground">{subValue}</div>}
         </div>
         {trend && (

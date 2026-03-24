@@ -11,7 +11,7 @@ export default function KPICard({ title, value, subtitle, icon: Icon, iconColor,
             <Skeleton className="h-8 w-24 mt-2 bg-slate-700/50" />
           ) : (
             <>
-              <p className="text-3xl font-bold text-white mt-1.5 tracking-tight">{value}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white mt-1.5 tracking-tight whitespace-nowrap">{value}</p>
               {subtitle && <p className="text-sm text-slate-300 mt-0.5">{subtitle}</p>}
               {trend && (
                 <div className={`inline-flex items-center gap-1 mt-1.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
