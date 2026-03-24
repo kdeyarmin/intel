@@ -5,13 +5,13 @@ import { Users, DollarSign, Activity, GitBranch, MapPin, Stethoscope } from 'luc
 function KPI({ title, value, icon: Icon, color, bgColor }) {
   return (
     <Card>
-      <CardContent className="p-3 flex items-center gap-3">
+      <CardContent className="p-4 flex items-center gap-3">
         <div className={`p-2 rounded-lg ${bgColor}`}>
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
         <div>
           <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{title}</p>
-          <p className="text-lg font-bold text-white">{value}</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{value}</p>
         </div>
       </CardContent>
     </Card>

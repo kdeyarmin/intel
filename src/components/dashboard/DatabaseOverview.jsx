@@ -8,16 +8,16 @@ import { createPageUrl } from '@/utils';
 function StatCard({ title, value, subtitle, link, loading, badge }) {
   const content = (
     <Card className="bg-[#141d30] border-slate-700/50 hover:border-cyan-500/30 transition-all cursor-pointer group">
-      <CardContent className="p-4">
+      <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{title}</p>
             {loading ? (
-              <Skeleton className="h-7 w-20 mt-1.5 bg-slate-700/50" />
+              <Skeleton className="h-8 w-28 mt-2 bg-slate-700/50" />
             ) : (
               <>
-                <p className="text-xl sm:text-2xl font-bold text-white mt-1 tracking-tight whitespace-nowrap group-hover:text-cyan-400 transition-colors">{value}</p>
-                {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
+                <p className="text-2xl lg:text-3xl font-bold text-white mt-1.5 tracking-tight group-hover:text-cyan-400 transition-colors">{value}</p>
+                {subtitle && <p className="text-[11px] text-slate-400 mt-1">{subtitle}</p>}
               </>
             )}
           </div>
@@ -37,9 +37,9 @@ function StatCard({ title, value, subtitle, link, loading, badge }) {
   return content;
 }
 
-function formatCount(value, isTruncated) {
+function formatCount(value) {
   if (!value && value !== 0) return '0';
-  return value.toLocaleString() + (isTruncated ? '+' : '');
+  return value.toLocaleString();
 }
 
 export default function DatabaseOverview({ stats, loading }) {
@@ -47,45 +47,40 @@ export default function DatabaseOverview({ stats, loading }) {
     ? Math.round((stats.emailStats.withEmail / stats.totalProviders) * 100)
     : 0;
 
-  const est = stats?.isEstimatedCounts;
-
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
-        {est && <span className="text-[9px] text-slate-500">(+ means more records exist)</span>}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3">
+      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard
           title="Providers"
-          value={formatCount(stats?.totalProviders, est)}
+          value={formatCount(stats?.totalProviders)}
           subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} need enrichment` : null}
           link="Providers"
           loading={loading}
         />
         <StatCard
           title="Referrals"
-          value={formatCount(stats?.totalReferrals, est)}
+          value={formatCount(stats?.totalReferrals)}
           link="Referrals"
           loading={loading}
         />
         <StatCard
           title="Utilization"
-          value={formatCount(stats?.totalUtilization, est)}
+          value={formatCount(stats?.totalUtilization)}
           link="Utilization"
           loading={loading}
         />
         <StatCard
           title="Facilities"
-          value={formatCount(stats?.totalFacilities, est)}
-          subtitle="Hospitals, SNF, HHA..."
+          value={formatCount(stats?.totalFacilities)}
+          subtitle="Hospitals, SNF, HHA & more"
           link="CMSAnalytics"
           loading={loading}
         />
         <StatCard
           title="Emails Found"
-          value={formatCount(stats?.emailStats?.withEmail, stats?.emailStats?.isEstimated)}
-          subtitle={`${emailPct}%${stats?.emailStats?.isEstimated ? '~' : ''} coverage`}
+          value={formatCount(stats?.emailStats?.withEmail)}
+          subtitle={`${emailPct}% coverage`}
           link="ProviderIntelligence"
           loading={loading}
         />

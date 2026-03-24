@@ -12,8 +12,8 @@ function KPI({ title, value, icon: Icon, color, bgColor, loading }) {
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <div>
-          <p className="text-xs text-slate-500 font-medium">{title}</p>
-          <p className="text-lg font-bold text-white">{value}</p>
+          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{title}</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{value}</p>
         </div>
       </CardContent>
     </Card>

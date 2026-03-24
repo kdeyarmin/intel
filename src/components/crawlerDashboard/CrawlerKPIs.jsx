@@ -96,8 +96,8 @@ function KPICard({ title, value, subValue, icon: Icon, trend, trendUp, color, bg
             <Icon className={`h-4 w-4 ${color}`} />
           </div>
         </div>
-        <div className="flex items-baseline gap-1">
-          <div className="text-xl sm:text-2xl font-bold whitespace-nowrap">{value}</div>
+        <div className="flex items-baseline gap-1.5">
+          <div className="text-2xl lg:text-3xl font-bold">{value}</div>
           {subValue && <div className="text-xs text-muted-foreground">{subValue}</div>}
         </div>
         {trend && (

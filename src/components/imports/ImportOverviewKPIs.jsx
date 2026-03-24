@@ -14,7 +14,7 @@ function KPICard({ label, value, icon: Icon, iconColor, trend, trendLabel, onCli
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
-            <p className="text-xl sm:text-2xl font-bold text-white mt-0.5 whitespace-nowrap">{value}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-white mt-0.5">{value}</p>
             {trend !== undefined && (
               <div className="flex items-center gap-1 mt-1">
                 {trend >= 0 ? (

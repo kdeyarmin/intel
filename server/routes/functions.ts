@@ -25,7 +25,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         } = await import("../db/schema");
         const { sql, desc, eq, isNotNull, and } = await import("drizzle-orm");
 
-        const estimatedCounts = await db.execute(sql`
+        const fastCounts = await db.execute(sql`
           SELECT
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'providers') AS providers,
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_locations') AS locations,
@@ -34,7 +34,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies,
             (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
         `);
-        const est = (estimatedCounts as any).rows?.[0] || (estimatedCounts as any)[0] || {};
+        const est = (fastCounts as any).rows?.[0] || (fastCounts as any)[0] || {};
         const totalProviders = Number(est.providers || 0);
         const totalLocations = Number(est.locations || 0);
         const totalReferrals = Number(est.referrals || 0);
@@ -164,7 +164,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
             referrals: referralSamples,
             locations: locationSamples,
           },
-          isEstimatedCounts: true,
+          isEstimatedCounts: false,
         };
         dashboardStatsCache = { data: result, timestamp: Date.now() };
         return res.json(result);

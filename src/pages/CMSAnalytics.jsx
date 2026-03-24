@@ -36,7 +36,7 @@ function KPICard({ icon: Icon, label, value, color }) {
         </div>
         <div>
           <p className="text-xs text-slate-400">{label}</p>
-          <p className="text-lg font-bold text-slate-100 whitespace-nowrap">{value}</p>
+          <p className="text-xl lg:text-2xl font-bold text-slate-100">{value}</p>
         </div>
       </CardContent>
     </Card>
