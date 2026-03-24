@@ -37,7 +37,7 @@ const NAV_SECTIONS = [
       { name: 'Nursing Homes', icon: Home, page: 'NursingHomes', roles: ['admin', 'user'] },
       { name: 'Dialysis', icon: Activity, page: 'DialysisFacilities', roles: ['admin', 'user'] },
       { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
-      { name: 'Long-Term Care', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
+      { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
       { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
     ]
   },
