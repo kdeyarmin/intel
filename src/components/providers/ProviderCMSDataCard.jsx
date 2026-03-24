@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Database, ChevronDown, ChevronUp, Pill, DollarSign, Stethoscope, Package } from 'lucide-react';
+import { Database, ChevronDown, ChevronUp, Pill, DollarSign, Stethoscope, Package, Network, Building2, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const TYPE_CONFIG = {
   clinician_national_file: { label: 'Clinician Profile', icon: Stethoscope, iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
   clinician_group_measures: { label: 'Group Practice Measures', icon: Stethoscope, iconCls: 'text-violet-400', badgeCls: 'bg-violet-900/30 text-violet-400 border-violet-500/30' },
   clinician_group_experience: { label: 'Group Practice Experience', icon: Stethoscope, iconCls: 'text-violet-400', badgeCls: 'bg-violet-900/30 text-violet-400 border-violet-500/30' },
+  facility_affiliation: { label: 'Facility Affiliations', icon: Building2, iconCls: 'text-indigo-400', badgeCls: 'bg-indigo-900/30 text-indigo-400 border-indigo-500/30' },
   medicare_physician_by_provider: { label: 'Medicare Physician Utilization', icon: DollarSign, iconCls: 'text-emerald-400', badgeCls: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' },
   medicare_part_d_prescribers: { label: 'Part D Prescribing', icon: Pill, iconCls: 'text-amber-400', badgeCls: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
   medicare_dme_by_referring: { label: 'DME Referrals', icon: Package, iconCls: 'text-teal-400', badgeCls: 'bg-teal-900/30 text-teal-400 border-teal-500/30' },
@@ -16,6 +17,10 @@ const TYPE_CONFIG = {
   medicare_spending_by_drug_d: { label: 'Drug Spending (Part D)', icon: DollarSign, iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
   cms_order_referring: { label: 'Order & Referring', icon: Stethoscope, iconCls: 'text-sky-400', badgeCls: 'bg-sky-900/30 text-sky-400 border-sky-500/30' },
   provider_service_utilization: { label: 'Service Utilization', icon: DollarSign, iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
+  medicare_telehealth_trends: { label: 'Telehealth Trends', icon: Video, iconCls: 'text-purple-400', badgeCls: 'bg-purple-900/30 text-purple-400 border-purple-500/30' },
+  aco_participants: { label: 'ACO Participation', icon: Network, iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
+  aco_organizations: { label: 'ACO Organizations', icon: Network, iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
+  aco_financial_results: { label: 'ACO Financial Results', icon: DollarSign, iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
 };
 
 const DEFAULT_TYPE = { label: '', icon: Database, iconCls: 'text-slate-400', badgeCls: 'bg-slate-900/30 text-slate-400 border-slate-500/30' };
@@ -90,15 +95,17 @@ function DataTypeSection({ typeName, rows }) {
   );
 }
 
-export default function ProviderCMSDataCard({ clinicianData, utilizationCmsData }) {
+export default function ProviderCMSDataCard({ clinicianData, utilizationCmsData, networkData }) {
   const hasClinicianData = clinicianData?.has_data;
   const hasUtilData = utilizationCmsData?.has_data;
+  const hasNetworkData = networkData?.has_data;
 
-  if (!hasClinicianData && !hasUtilData) return null;
+  if (!hasClinicianData && !hasUtilData && !hasNetworkData) return null;
 
   const allTypes = [
     ...(hasClinicianData ? Object.entries(clinicianData.by_type) : []),
     ...(hasUtilData ? Object.entries(utilizationCmsData.by_type) : []),
+    ...(hasNetworkData ? Object.entries(networkData.by_type) : []),
   ];
 
   return (

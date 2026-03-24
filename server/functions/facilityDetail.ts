@@ -23,6 +23,8 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "home_health_zip_data",
     "medicare_hha_utilization", "medicare_hha_stats",
     "home_infusion_therapy",
+    "home_health_vbp",
+    "hha_utilization_geo_casemix",
   ],
   hospice: [
     "hospice_general_info", "hospice_enrollments", "hospice_all_owners",
@@ -37,6 +39,12 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "nursing_home_deficiencies", "nursing_home_mds_quality",
     "nursing_home_penalties", "nursing_home_claims_quality",
     "medicare_snf_utilization", "medicare_snf_stats",
+    "snf_enrollments", "snf_all_owners", "snf_cost_report",
+    "snf_vbp_facility",
+    "nursing_home_chain_performance",
+    "pbj_daily_nurse_staffing", "pbj_daily_nonnurse_staffing",
+    "ltc_facility_characteristics", "mds_frequency",
+    "snf_utilization_geo_casemix",
   ],
   dialysis: [
     "dialysis_patient_survey", "dialysis_facility_listing",
@@ -55,6 +63,12 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "medical_equipment_suppliers", "medicare_dme_by_supplier",
     "medicare_dme_by_referring",
   ],
+  fqhc: [
+    "fqhc_enrollments", "fqhc_all_owners",
+  ],
+  rhc: [
+    "rural_health_clinic_enrollments", "rural_health_clinic_all_owners",
+  ],
 };
 
 const LISTING_PRIMARY_TYPES: Record<string, string> = {
@@ -66,6 +80,8 @@ const LISTING_PRIMARY_TYPES: Record<string, string> = {
   irf: "inpatient_rehab_general_info",
   ltch: "long_term_care_general_info",
   dme: "medical_equipment_suppliers",
+  fqhc: "fqhc_enrollments",
+  rhc: "rural_health_clinic_enrollments",
 };
 
 export function getFacilityTypeGroup(facilityType: string): string | null {
@@ -149,14 +165,19 @@ export async function handleGetFacilityDetail(params: any) {
 const CLINICIAN_TYPES = [
   'clinician_mips_performance', 'clinician_mips_measures',
   'clinician_national_file', 'clinician_group_measures', 'clinician_group_experience',
+  'facility_affiliation',
 ];
 const PROVIDER_UTILIZATION_TYPES = [
   'medicare_physician_by_provider', 'medicare_part_d_prescribers',
   'medicare_dme_by_referring', 'medicare_dme_by_supplier',
   'medicare_spending_by_drug_b', 'medicare_spending_by_drug_d',
   'cms_order_referring', 'provider_service_utilization',
+  'medicare_telehealth_trends',
 ];
-const ALL_PROVIDER_CMS_TYPES = [...CLINICIAN_TYPES, ...PROVIDER_UTILIZATION_TYPES];
+const PROVIDER_NETWORK_TYPES = [
+  'aco_participants', 'aco_organizations', 'aco_financial_results',
+];
+const ALL_PROVIDER_CMS_TYPES = [...CLINICIAN_TYPES, ...PROVIDER_UTILIZATION_TYPES, ...PROVIDER_NETWORK_TYPES];
 
 export async function handleGetProviderCMSData(params: any) {
   const { npi } = params;
@@ -171,6 +192,7 @@ export async function handleGetProviderCMSData(params: any) {
   const mipsByYear: Record<string, any> = {};
   const clinicianData: Record<string, any[]> = {};
   const providerUtilData: Record<string, any[]> = {};
+  const networkData: Record<string, any[]> = {};
   const linkedFacilities: Record<string, any> = {};
 
   for (const row of allRows) {
@@ -190,6 +212,9 @@ export async function handleGetProviderCMSData(params: any) {
     } else if (PROVIDER_UTILIZATION_TYPES.includes(ft)) {
       if (!providerUtilData[ft]) providerUtilData[ft] = [];
       providerUtilData[ft].push(row);
+    } else if (PROVIDER_NETWORK_TYPES.includes(ft)) {
+      if (!networkData[ft]) networkData[ft] = [];
+      networkData[ft].push(row);
     } else {
       const key = `${row.provider_id}_${ft}`;
       if (!linkedFacilities[key] || (row.data_year || 0) > (linkedFacilities[key].data_year || 0)) {
@@ -224,6 +249,10 @@ export async function handleGetProviderCMSData(params: any) {
     utilization_cms: {
       has_data: Object.keys(providerUtilData).length > 0,
       by_type: providerUtilData,
+    },
+    network: {
+      has_data: Object.keys(networkData).length > 0,
+      by_type: networkData,
     },
     linked_facilities: Object.values(linkedFacilities),
     total_records: allRows.length,

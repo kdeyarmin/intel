@@ -6,7 +6,8 @@ import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
-  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen
+  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
+  Building, Trees
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -39,6 +40,8 @@ const NAV_SECTIONS = [
       { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
       { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
       { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
+      { name: 'FQHCs', icon: Building, page: 'FQHCs', roles: ['admin', 'user'] },
+      { name: 'Rural Health Clinics', icon: Trees, page: 'RuralHealthClinics', roles: ['admin', 'user'] },
     ]
   },
   {

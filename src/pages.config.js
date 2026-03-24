@@ -61,6 +61,7 @@ import DataQuality from './pages/DataQuality.jsx';
 import DialysisFacilities from './pages/DialysisFacilities.jsx';
 import DMESuppliers from './pages/DMESuppliers.jsx';
 import ProviderIntelligence from './pages/ProviderIntelligence.jsx';
+import FQHCs from './pages/FQHCs.jsx';
 import FacilityDetail from './pages/FacilityDetail.jsx';
 import Help from './pages/Help.jsx';
 import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
@@ -88,6 +89,7 @@ import ProviderOutreach from './pages/ProviderOutreach.jsx';
 import Providers from './pages/Providers.jsx';
 import ReconciliationDashboard from './pages/ReconciliationDashboard.jsx';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence.jsx';
+import RuralHealthClinics from './pages/RuralHealthClinics.jsx';
 import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis.jsx';
 import ScoringRules from './pages/ScoringRules.jsx';
 import SecurityAudit from './pages/SecurityAudit.jsx';
@@ -112,6 +114,7 @@ export const PAGES = {
     "DMESuppliers": DMESuppliers,
     "EmailSearchBot": ProviderIntelligence,
     "EnrichmentHub": ProviderIntelligence,
+    "FQHCs": FQHCs,
     "FacilityDetail": FacilityDetail,
     "ProviderIntelligence": ProviderIntelligence,
     "Help": Help,
@@ -140,6 +143,7 @@ export const PAGES = {
     "Providers": Providers,
     "ReconciliationDashboard": ReconciliationDashboard,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
+    "RuralHealthClinics": RuralHealthClinics,
     "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "SecurityAudit": SecurityAudit,
