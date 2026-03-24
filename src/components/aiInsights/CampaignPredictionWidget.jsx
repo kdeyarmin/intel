@@ -60,7 +60,7 @@ Provide:
     setLoading(false);
   };
 
-  const trendColors = { improving: 'bg-emerald-100 text-emerald-400', stable: 'bg-blue-100 text-blue-400', declining: 'bg-red-100 text-red-400' };
+  const trendColors = { improving: 'bg-emerald-900/30 text-emerald-400', stable: 'bg-blue-900/30 text-blue-400', declining: 'bg-red-900/30 text-red-400' };
 
   return (
     <Card className="h-full">
@@ -104,12 +104,12 @@ Provide:
                   <Badge variant="outline" className="text-[10px]">Next open: ~{results.predicted_next_open_rate}%</Badge>
                   <Badge variant="outline" className="text-[10px]">Next response: ~{results.predicted_next_response_rate}%</Badge>
                 </div>
-                <p className="text-xs text-slate-400 bg-violet-900/20 rounded-lg px-3 py-2 leading-relaxed border border-violet-100">{results.health_assessment}</p>
+                <p className="text-xs text-slate-400 bg-violet-900/20 rounded-lg px-3 py-2 leading-relaxed border border-violet-500/30">{results.health_assessment}</p>
                 {results.best_pattern && (
                   <p className="text-[10px] text-violet-600 italic">🏆 Best pattern: {results.best_pattern}</p>
                 )}
                 {results.recommendations?.length > 0 && (
-                  <div className="bg-amber-900/20 rounded-lg p-2.5 border border-amber-100">
+                  <div className="bg-amber-900/20 rounded-lg p-2.5 border border-amber-500/30">
                     <p className="text-[10px] font-medium text-amber-400 mb-1">Recommendations</p>
                     {results.recommendations.map((r, i) => <p key={i} className="text-[10px] text-amber-600">• {r}</p>)}
                   </div>

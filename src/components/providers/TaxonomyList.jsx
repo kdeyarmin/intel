@@ -30,7 +30,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
                 </div>
               </div>
               {t.primary_flag && (
-                <Badge className="bg-teal-100 text-teal-700 text-[10px] ml-2">Primary</Badge>
+                <Badge className="bg-teal-900/30 text-teal-400 text-[10px] ml-2">Primary</Badge>
               )}
             </div>
           ))}

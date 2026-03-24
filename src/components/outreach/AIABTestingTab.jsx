@@ -123,7 +123,7 @@ Generate A/B test plan with:
         <div className="space-y-2.5">
           {/* Historical Insight */}
           {results.insights_from_history && (
-            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-100">
+            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-500/30">
               <p className="text-[10px] font-medium text-blue-400 mb-0.5">📊 Historical Insight</p>
               <p className="text-[9px] text-blue-600">{results.insights_from_history}</p>
             </div>
@@ -136,7 +136,7 @@ Generate A/B test plan with:
               <div key={i} className="bg-slate-800/60 rounded-lg border p-2 mb-1.5 hover:border-violet-300 transition-colors">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
-                    <Badge className="bg-violet-100 text-violet-700 text-[8px]">{String.fromCharCode(65 + i)}</Badge>
+                    <Badge className="bg-violet-900/30 text-violet-700 text-[8px]">{String.fromCharCode(65 + i)}</Badge>
                     <span className="text-[9px] font-medium text-slate-500">{v.label}</span>
                   </div>
                   <div className="flex gap-1">
@@ -155,7 +155,7 @@ Generate A/B test plan with:
                   <Badge variant="outline" className="text-[8px]">🧠 {v.trigger}</Badge>
                   <span className="text-[8px] text-slate-400">Best for: {v.best_for}</span>
                   {v.predicted_open_lift && (
-                    <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-200">{v.predicted_open_lift}</Badge>
+                    <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-500/30">{v.predicted_open_lift}</Badge>
                   )}
                 </div>
               </div>
@@ -170,7 +170,7 @@ Generate A/B test plan with:
                 <div key={i} className="bg-slate-800/60 rounded-lg border p-2 mb-1.5">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      <Badge className="bg-emerald-100 text-emerald-400 text-[8px]">Body {String.fromCharCode(65 + i)}</Badge>
+                      <Badge className="bg-emerald-900/30 text-emerald-400 text-[8px]">Body {String.fromCharCode(65 + i)}</Badge>
                       <span className="text-[9px] font-medium text-slate-500">{v.label}</span>
                     </div>
                     <Button size="sm" variant="ghost" className="h-5 text-[9px] text-violet-600 hover:bg-violet-900/30 px-1.5"
@@ -182,7 +182,7 @@ Generate A/B test plan with:
                   <div className="flex items-center gap-2">
                     <span className="text-[8px] text-slate-400">{v.approach}</span>
                     {v.predicted_response_lift && (
-                      <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-200">{v.predicted_response_lift}</Badge>
+                      <Badge className="bg-green-900/20 text-green-600 text-[8px] border border-green-500/30">{v.predicted_response_lift}</Badge>
                     )}
                   </div>
                 </div>
@@ -192,24 +192,24 @@ Generate A/B test plan with:
 
           {/* Test Methodology */}
           {results.test_methodology && (
-            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-500/30">
               <p className="text-[10px] font-semibold text-violet-700 mb-1.5">🔬 Test Methodology</p>
               <div className="grid grid-cols-2 gap-1.5">
                 <div>
                   <p className="text-[8px] text-violet-400">Split</p>
-                  <p className="text-[9px] font-medium text-violet-800">{results.test_methodology.recommended_split}</p>
+                  <p className="text-[9px] font-medium text-violet-400">{results.test_methodology.recommended_split}</p>
                 </div>
                 <div>
                   <p className="text-[8px] text-violet-400">Min Sample</p>
-                  <p className="text-[9px] font-medium text-violet-800">{results.test_methodology.minimum_sample_size} per variant</p>
+                  <p className="text-[9px] font-medium text-violet-400">{results.test_methodology.minimum_sample_size} per variant</p>
                 </div>
                 <div>
                   <p className="text-[8px] text-violet-400">Duration</p>
-                  <p className="text-[9px] font-medium text-violet-800">{results.test_methodology.test_duration}</p>
+                  <p className="text-[9px] font-medium text-violet-400">{results.test_methodology.test_duration}</p>
                 </div>
                 <div>
                   <p className="text-[8px] text-violet-400">Primary Metric</p>
-                  <p className="text-[9px] font-medium text-violet-800">{results.test_methodology.primary_metric}</p>
+                  <p className="text-[9px] font-medium text-violet-400">{results.test_methodology.primary_metric}</p>
                 </div>
               </div>
               {results.test_methodology.success_criteria && (

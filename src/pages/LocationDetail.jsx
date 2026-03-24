@@ -107,7 +107,7 @@ export default function LocationDetail() {
 
   if (loadingLoc) {
     return (
-      <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-48" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -133,7 +133,7 @@ export default function LocationDetail() {
   const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <Button variant="ghost" className="mb-4" onClick={() => navigate(-1)}>
         <ArrowLeft className="w-4 h-4 mr-2" /> Back
       </Button>
@@ -333,7 +333,7 @@ export default function LocationDetail() {
         <Card className="mb-6">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-indigo-600" />
+              <Building2 className="w-4 h-4 text-indigo-400" />
               Providers at This Address
               <Badge variant="outline" className="ml-auto text-xs">{coProviders.length}</Badge>
             </CardTitle>

@@ -79,17 +79,17 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
             <Badge variant="outline">NPI: {provider.npi}</Badge>
             {provider.status === 'Deactivated' && <Badge variant="destructive">Deactivated</Badge>}
             {provider.needs_nppes_enrichment && (
-              <Badge className="bg-orange-100 text-orange-300 border-orange-200">Needs Enrichment</Badge>
+              <Badge className="bg-orange-900/30 text-orange-300 border-orange-500/30">Needs Enrichment</Badge>
             )}
           </div>
         </div>
 
         {primaryTaxonomy && (
-          <div className="flex items-start gap-2 p-3 bg-teal-900/20 rounded-lg border border-teal-100">
+          <div className="flex items-start gap-2 p-3 bg-teal-900/20 rounded-lg border border-teal-500/30">
             <Stethoscope className="h-5 w-5 text-teal-600 mt-0.5" />
             <div>
-              <p className="font-medium text-teal-900 text-sm">Primary Specialty</p>
-              <p className="text-sm text-teal-700">
+              <p className="font-medium text-teal-300 text-sm">Primary Specialty</p>
+              <p className="text-sm text-teal-400">
                 {primaryTaxonomy.taxonomy_description || primaryTaxonomy.taxonomy_code}
               </p>
             </div>
@@ -152,9 +152,9 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 <p className="text-sm text-slate-400 truncate">{provider.email}</p>
                 {provider.email_confidence && (
                   <Badge className={`text-[10px] h-5 px-1.5 ${
-                    provider.email_confidence === 'high' ? 'bg-green-100 text-green-300' :
-                    provider.email_confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-300'
+                    provider.email_confidence === 'high' ? 'bg-green-900/30 text-green-400' :
+                    provider.email_confidence === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                    'bg-red-900/30 text-red-400'
                   }`}>{provider.email_confidence}</Badge>
                 )}
                 <EmailValidationBadge

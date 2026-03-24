@@ -189,7 +189,7 @@ export default function FileParser({ onParsed, selectedType }) {
       )}
 
       {error && (
-        <div className="p-3 bg-red-900/20 border border-red-200 rounded-lg">
+        <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
           <p className="text-sm text-red-400">{error}</p>
         </div>
       )}

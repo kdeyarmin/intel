@@ -54,7 +54,7 @@ export default function TemplateEditor({ subject, onSubjectChange, body, onBodyC
         </div>
 
         {/* Live preview */}
-        <div className="border rounded-lg p-4 bg-slate-50">
+        <div className="border rounded-lg p-4 bg-slate-800/40">
           <p className="text-[10px] font-medium text-slate-400 uppercase mb-2">Preview (sample data)</p>
           <p className="text-sm font-medium text-slate-300 mb-2">
             {(subject || '(no subject)')

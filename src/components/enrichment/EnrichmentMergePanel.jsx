@@ -89,7 +89,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
   }
 
   return (
-    <Card className="border-amber-200 bg-amber-900/20/30">
+    <Card className="border-amber-500/30 bg-amber-900/20">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Merge className="w-5 h-5 text-amber-600" />
@@ -118,7 +118,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                 const currentVal = provider[field.key] || <span className="text-slate-400 italic">Empty</span>;
 
                 return (
-                  <TableRow key={field.key} className={selectedFields[field.key] ? "bg-blue-900/20/50" : ""}>
+                  <TableRow key={field.key} className={selectedFields[field.key] ? "bg-blue-900/20" : ""}>
                     <TableCell className="text-center">
                       <Checkbox 
                         checked={!!selectedFields[field.key]}
@@ -140,7 +140,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
           </Table>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between border-t border-amber-100 bg-amber-900/20/50 pt-4">
+      <CardFooter className="flex justify-between border-t border-amber-500/30 bg-amber-900/20 pt-4">
         <div className="text-xs text-slate-500">
           {Object.keys(selectedFields).filter(k => selectedFields[k]).length} fields selected
         </div>

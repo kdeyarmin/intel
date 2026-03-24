@@ -238,7 +238,7 @@ function MessageBubble({ message }) {
         {message.data?.actions?.length > 0 && (
           <div className="mt-2 space-y-1">
             {message.data.actions.map((a, i) => (
-              <div key={i} className="flex items-start gap-1.5 bg-blue-900/10 rounded-lg px-2.5 py-1.5 border border-blue-100">
+              <div key={i} className="flex items-start gap-1.5 bg-blue-900/10 rounded-lg px-2.5 py-1.5 border border-blue-500/30">
                 {a.auto_executable ? (
                   <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
                 ) : (
@@ -287,7 +287,7 @@ function MessageBubble({ message }) {
 
 function AutoFixSummary({ data }) {
   return (
-    <div className="mt-2 bg-emerald-900/20 border border-emerald-200 rounded-lg p-2.5">
+    <div className="mt-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-2.5">
       <div className="flex items-center gap-2 mb-1.5">
         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
         <span className="text-[11px] font-semibold text-emerald-300">Auto-Fix Results</span>

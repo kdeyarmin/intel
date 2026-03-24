@@ -214,7 +214,7 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
   };
 
   return (
-    <Card className="border-violet-500/40 bg-gradient-to-b from-violet-50/50 to-white">
+    <Card className="border-violet-500/40 bg-gradient-to-b from-violet-900/20 to-slate-900">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-violet-500" />
@@ -249,7 +249,7 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-violet-100/60 h-7 flex-wrap">
+          <TabsList className="bg-violet-900/30 h-7 flex-wrap">
             <TabsTrigger value="strategy" className="text-[10px] h-6 gap-1"><Lightbulb className="w-3 h-3" /> Strategy</TabsTrigger>
             <TabsTrigger value="naming" className="text-[10px] h-6 gap-1"><Wand2 className="w-3 h-3" /> Names</TabsTrigger>
             <TabsTrigger value="templates" className="text-[10px] h-6 gap-1"><Mail className="w-3 h-3" /> Templates</TabsTrigger>
@@ -393,7 +393,7 @@ function TemplatesTab({ loading, results, onGenerate, onApplySubject, onApplyBod
         </div>
       ))}
       {results?.tips?.length > 0 && (
-        <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+        <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
           <p className="text-[10px] font-medium text-amber-400 mb-1">💡 Tips</p>
           {results.tips.map((tip, i) => (
             <p key={i} className="text-[9px] text-amber-600">• {tip}</p>
@@ -405,8 +405,8 @@ function TemplatesTab({ loading, results, onGenerate, onApplySubject, onApplyBod
 }
 
 function PredictTab({ loading, results, onGenerate, targetConfig }) {
-  const impactColors = { positive: 'bg-green-100 text-green-400', negative: 'bg-red-100 text-red-400', neutral: 'bg-slate-700 text-slate-400' };
-  const confColors = { high: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-red-100 text-red-400' };
+  const impactColors = { positive: 'bg-green-900/30 text-green-400', negative: 'bg-red-900/30 text-red-400', neutral: 'bg-slate-700 text-slate-400' };
+  const confColors = { high: 'bg-green-900/30 text-green-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-red-900/30 text-red-400' };
 
   return (
     <div className="space-y-2">
@@ -464,7 +464,7 @@ function PredictTab({ loading, results, onGenerate, targetConfig }) {
 
           {/* Recommendations */}
           {results.recommendations?.length > 0 && (
-            <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-500/30">
               <p className="text-[10px] font-medium text-violet-700 mb-1">Recommendations</p>
               {results.recommendations.map((r, i) => (
                 <p key={i} className="text-[9px] text-violet-600">• {r}</p>

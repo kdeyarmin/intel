@@ -186,7 +186,7 @@ export default function CMSDataSources() {
 
   if (catalogLoading) {
     return (
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
         <PageHeader title="CMS Dataset Catalog" icon={Database} breadcrumbs={[{ label: 'Admin', path: '#' }, { label: 'CMS Dataset Catalog' }]} />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -196,7 +196,7 @@ export default function CMSDataSources() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <PageHeader
         title="CMS Dataset Catalog"
         icon={Database}
@@ -269,7 +269,7 @@ export default function CMSDataSources() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
         {categories.map(cat => {
           const stats = categoryStats[cat] || { total: 0, imported: 0, processing: 0 };
           const IconComp = CATEGORY_ICONS[cat] || Database;
@@ -342,7 +342,7 @@ export default function CMSDataSources() {
                       return (
                         <div
                           key={ds.id}
-                          className={`flex items-start gap-4 px-5 py-4 ${idx > 0 ? 'border-t border-slate-800/50' : ''} hover:bg-slate-800/20 transition-colors`}
+                          className={`flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 px-4 sm:px-5 py-4 ${idx > 0 ? 'border-t border-slate-800/50' : ''} hover:bg-slate-800/20 transition-colors`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -359,7 +359,7 @@ export default function CMSDataSources() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
                             {isCompleted && (
                               <div className="flex items-center gap-2 text-xs">
                                 <CheckCircle2 className="w-4 h-4 text-green-400" />

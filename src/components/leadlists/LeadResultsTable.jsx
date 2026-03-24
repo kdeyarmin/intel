@@ -11,8 +11,8 @@ export default function LeadResultsTable({ results, onStatusChange }) {
   const navigate = useNavigate();
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'bg-green-100 text-green-300';
-    if (score >= 60) return 'bg-yellow-100 text-yellow-800';
+    if (score >= 80) return 'bg-green-900/30 text-green-400';
+    if (score >= 60) return 'bg-yellow-900/30 text-yellow-400';
     return 'bg-slate-700/40 text-slate-200';
   };
 

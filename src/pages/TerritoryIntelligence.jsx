@@ -218,7 +218,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-400" />
               High-Score (70+)
             </CardTitle>
           </CardHeader>
@@ -231,7 +231,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Heart className="h-4 w-4 text-purple-600" />
+              <Heart className="h-4 w-4 text-purple-400" />
               Behavioral Health
             </CardTitle>
           </CardHeader>
@@ -244,7 +244,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 text-orange-600" />
+              <Users className="h-4 w-4 text-orange-400" />
               Geriatric-Heavy
             </CardTitle>
           </CardHeader>

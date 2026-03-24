@@ -79,7 +79,7 @@ export default function TerritoryIntelligence({ location }) {
                   <Home className="h-5 w-5 text-blue-600" />
                   <span className="font-medium">Home Health Agencies</span>
                 </div>
-                <Badge className="bg-blue-100 text-blue-300">
+                <Badge className="bg-blue-900/30 text-blue-300">
                   ~{nearbyHomeHealth} nearby
                 </Badge>
               </div>
@@ -89,7 +89,7 @@ export default function TerritoryIntelligence({ location }) {
                   <Heart className="h-5 w-5 text-purple-600" />
                   <span className="font-medium">Hospice Providers</span>
                 </div>
-                <Badge className="bg-purple-100 text-purple-300">
+                <Badge className="bg-purple-900/30 text-purple-300">
                   ~{nearbyHospice} nearby
                 </Badge>
               </div>
@@ -102,8 +102,8 @@ export default function TerritoryIntelligence({ location }) {
             </div>
           </>
         ) : (
-          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-200">
-            <p className="text-sm text-yellow-800">
+          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
+            <p className="text-sm text-yellow-400">
               Provider is located outside of Pennsylvania. Territory analysis limited to PA-focused partnerships.
             </p>
           </div>

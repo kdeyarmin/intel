@@ -47,8 +47,8 @@ export default function BulkActionsBar({ selectedCount, onBulkAction, onClearSel
           {loading === 'suggested' ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RotateCcw className="w-3 h-3 mr-1" />}
           Reset All
         </Button>
-        <div className="w-px h-6 bg-slate-800/60/30 mx-1" />
-        <Button size="sm" variant="ghost" className="text-white hover:bg-slate-800/60/20" onClick={onClearSelection}>
+        <div className="w-px h-6 bg-slate-700 mx-1" />
+        <Button size="sm" variant="ghost" className="text-white hover:bg-slate-800/40" onClick={onClearSelection}>
           Clear
         </Button>
       </div>

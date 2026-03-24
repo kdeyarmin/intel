@@ -117,7 +117,7 @@ Also provide:
 
   const impactColors = { positive: 'text-green-600', negative: 'text-red-600', neutral: 'text-slate-500' };
   const impactIcons = { positive: TrendingUp, negative: TrendingDown, neutral: Target };
-  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <div className="space-y-2">
@@ -156,13 +156,13 @@ Also provide:
           {/* Working vs Needs Improvement */}
           <div className="grid grid-cols-2 gap-2">
             {strategy.whats_working?.length > 0 && (
-              <div className="bg-green-900/20 rounded-lg p-2 border border-green-100">
+              <div className="bg-green-900/20 rounded-lg p-2 border border-green-500/30">
                 <p className="text-[10px] font-semibold text-green-400 mb-1">✓ Working Well</p>
                 {strategy.whats_working.map((w, i) => <p key={i} className="text-[9px] text-green-600 mb-0.5">• {w}</p>)}
               </div>
             )}
             {strategy.needs_improvement?.length > 0 && (
-              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
                 <p className="text-[10px] font-semibold text-amber-400 mb-1">⚡ Improve</p>
                 {strategy.needs_improvement.map((n, i) => <p key={i} className="text-[9px] text-amber-600 mb-0.5">• {n}</p>)}
               </div>
@@ -202,13 +202,13 @@ Also provide:
 
           {/* Quarterly Calendar */}
           {strategy.quarterly_calendar?.length > 0 && (
-            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-500/30">
               <p className="text-[10px] font-semibold text-violet-700 mb-1.5">📅 Quarterly Cadence</p>
               {strategy.quarterly_calendar.map((q, i) => (
                 <div key={i} className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[8px] shrink-0 w-14 justify-center">{q.month}</Badge>
                   <div>
-                    <span className="text-[9px] font-medium text-violet-800">{q.campaign_type}</span>
+                    <span className="text-[9px] font-medium text-violet-400">{q.campaign_type}</span>
                     <span className="text-[9px] text-violet-500"> — {q.focus}</span>
                   </div>
                 </div>

@@ -120,7 +120,7 @@ export default function NPPESCrawlerSettings() {
 
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-48 w-full" />
@@ -129,8 +129,8 @@ export default function NPPESCrawlerSettings() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Crawler Settings"
           subtitle="Configure NPPES crawler parameters"

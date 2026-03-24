@@ -90,7 +90,7 @@ export default function NetworkGapAnalysis() {
                   <div key={gap.specialty} className="p-4 border rounded-lg bg-orange-900/20">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-sm">{gap.specialty}</h4>
-                      <Badge variant="outline" className="bg-orange-100 text-orange-300 border-orange-300">
+                      <Badge variant="outline" className="bg-orange-900/30 text-orange-300 border-orange-300">
                         {gap.utilization_percent}% utilized
                       </Badge>
                     </div>

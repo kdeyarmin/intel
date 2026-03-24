@@ -99,12 +99,12 @@ Provide a thorough analysis including:
   };
 
   const verdictConfig = {
-    success: { color: 'bg-green-100 text-green-300 border-green-200', icon: TrendingUp, label: 'Strong Performance' },
-    moderate: { color: 'bg-amber-100 text-amber-300 border-amber-200', icon: Minus, label: 'Moderate Performance' },
-    underperforming: { color: 'bg-red-100 text-red-300 border-red-200', icon: TrendingDown, label: 'Underperforming' },
+    success: { color: 'bg-green-900/30 text-green-300 border-green-500/30', icon: TrendingUp, label: 'Strong Performance' },
+    moderate: { color: 'bg-amber-900/30 text-amber-300 border-amber-500/30', icon: Minus, label: 'Moderate Performance' },
+    underperforming: { color: 'bg-red-900/30 text-red-300 border-red-500/30', icon: TrendingDown, label: 'Underperforming' },
   };
 
-  const priorityColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+  const priorityColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <Card className="border-violet-500/40">
@@ -162,7 +162,7 @@ Provide a thorough analysis including:
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-semibold">{v.label}</span>
                     {analysis.performance_score && (
-                      <Badge className="bg-slate-800/60/50 text-[10px]">{analysis.performance_score}/100</Badge>
+                      <Badge className="bg-slate-800/60 text-[10px]">{analysis.performance_score}/100</Badge>
                     )}
                   </div>
                   <p className="text-xs leading-relaxed">{analysis.verdict_summary}</p>
@@ -173,13 +173,13 @@ Provide a thorough analysis including:
             {/* Strengths & Weaknesses */}
             <div className="grid grid-cols-2 gap-2">
               {analysis.strengths?.length > 0 && (
-                <div className="bg-green-900/20 rounded-lg p-2 border border-green-100">
+                <div className="bg-green-900/20 rounded-lg p-2 border border-green-500/30">
                   <p className="text-[10px] font-semibold text-green-400 mb-1">✓ Strengths</p>
                   {analysis.strengths.map((s, i) => <p key={i} className="text-[9px] text-green-600 mb-0.5">• {s}</p>)}
                 </div>
               )}
               {analysis.weaknesses?.length > 0 && (
-                <div className="bg-red-900/20 rounded-lg p-2 border border-red-100">
+                <div className="bg-red-900/20 rounded-lg p-2 border border-red-500/30">
                   <p className="text-[10px] font-semibold text-red-400 mb-1">✗ Weaknesses</p>
                   {analysis.weaknesses.map((w, i) => <p key={i} className="text-[9px] text-red-600 mb-0.5">• {w}</p>)}
                 </div>
@@ -216,7 +216,7 @@ Provide a thorough analysis including:
                 </p>
                 {analysis.send_time_recommendations.map((st, i) => (
                   <div key={i} className="flex items-start gap-2 mb-1">
-                    <Badge className="bg-blue-100 text-blue-400 text-[8px] shrink-0 mt-0.5">{st.time_window}</Badge>
+                    <Badge className="bg-blue-900/30 text-blue-400 text-[8px] shrink-0 mt-0.5">{st.time_window}</Badge>
                     <p className="text-[9px] text-slate-400">{st.reasoning}</p>
                   </div>
                 ))}
@@ -237,7 +237,7 @@ Provide a thorough analysis including:
 
             {/* Action Plan */}
             {analysis.action_plan?.length > 0 && (
-              <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
+              <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-500/30">
                 <p className="text-[10px] font-semibold text-violet-700 mb-1.5">Action Plan</p>
                 {analysis.action_plan.map((a, i) => (
                   <div key={i} className="flex items-start gap-2 mb-1.5">
@@ -245,7 +245,7 @@ Provide a thorough analysis including:
                       {a.priority}
                     </Badge>
                     <div>
-                      <p className="text-[10px] font-medium text-violet-800">{a.step}</p>
+                      <p className="text-[10px] font-medium text-violet-400">{a.step}</p>
                       <p className="text-[9px] text-violet-500">{a.expected_impact}</p>
                     </div>
                   </div>

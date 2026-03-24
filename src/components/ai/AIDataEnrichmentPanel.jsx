@@ -7,15 +7,15 @@ import { Sparkles, Loader2, Check, X, AlertTriangle, ChevronDown, ChevronRight }
 import { toast } from 'sonner';
 
 function GapBadge({ count }) {
-  if (count === 0) return <Badge className="bg-green-100 text-green-400 text-[9px]">Complete</Badge>;
-  return <Badge className="bg-amber-100 text-amber-400 text-[9px]">{count} missing</Badge>;
+  if (count === 0) return <Badge className="bg-green-900/30 text-green-400 text-[9px]">Complete</Badge>;
+  return <Badge className="bg-amber-900/30 text-amber-400 text-[9px]">{count} missing</Badge>;
 }
 
 function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
   const confColor = {
-    high: 'bg-green-100 text-green-400',
-    medium: 'bg-amber-100 text-amber-400',
-    low: 'bg-red-100 text-red-400',
+    high: 'bg-green-900/30 text-green-400',
+    medium: 'bg-amber-900/30 text-amber-400',
+    low: 'bg-red-900/30 text-red-400',
   };
 
   return (
@@ -27,7 +27,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
             {suggestion.confidence}
           </Badge>
           {suggestion.is_correction && (
-            <Badge className="bg-blue-100 text-blue-400 text-[9px]">Correction</Badge>
+            <Badge className="bg-blue-900/30 text-blue-400 text-[9px]">Correction</Badge>
           )}
         </div>
         {suggestion.current_value && (
@@ -341,7 +341,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-7 text-xs text-violet-700 border-violet-200 hover:bg-violet-900/20"
+                className="w-full h-7 text-xs text-violet-700 border-violet-500/30 hover:bg-violet-900/20"
                 onClick={handleAcceptAll}
               >
                 <Check className="w-3 h-3 mr-1" /> Accept All High-Confidence ({visibleSuggestions.filter(s => s.confidence === 'high').length})
@@ -390,7 +390,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
               <p className="text-xs text-slate-400 text-center py-3">All suggestions have been reviewed.</p>
             )}
 
-            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-200 rounded px-2.5 py-1.5">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-[10px] text-amber-400">AI-sourced data. Review before accepting.</p>
             </div>

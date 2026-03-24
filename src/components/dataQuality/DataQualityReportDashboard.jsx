@@ -56,9 +56,9 @@ export default function DataQualityReportDashboard() {
 
   const getSeverityColor = (severity) => {
     const colors = {
-      high: 'bg-red-100 text-red-300',
-      medium: 'bg-yellow-100 text-yellow-800',
-      low: 'bg-blue-100 text-blue-300',
+      high: 'bg-red-900/30 text-red-400',
+      medium: 'bg-yellow-900/30 text-yellow-400',
+      low: 'bg-blue-900/30 text-blue-400',
     };
     return colors[severity] || colors.low;
   };
@@ -101,11 +101,11 @@ export default function DataQualityReportDashboard() {
 
       {/* Alerts Section */}
       {alerts.length > 0 && (
-        <Card className="border-red-200 bg-red-900/20">
+        <Card className="border-red-500/30 bg-red-900/20">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-600" />
-              <CardTitle className="text-red-900">Active Quality Alerts ({alerts.length})</CardTitle>
+              <CardTitle className="text-red-400">Active Quality Alerts ({alerts.length})</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">

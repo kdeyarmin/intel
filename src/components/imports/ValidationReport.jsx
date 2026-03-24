@@ -26,7 +26,7 @@ export default function ValidationReport({ result }) {
   return (
     <div className="space-y-3">
       {/* Summary bar */}
-      <div className={`rounded-lg p-3 border ${isClean ? 'bg-green-900/20 border-green-200' : rejected > 0 ? 'bg-amber-900/20 border-amber-200' : 'bg-blue-900/20 border-blue-200'}`}>
+      <div className={`rounded-lg p-3 border ${isClean ? 'bg-green-900/20 border-green-500/30' : rejected > 0 ? 'bg-amber-900/20 border-amber-500/30' : 'bg-blue-900/20 border-blue-500/30'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium">
             {isClean ? (
@@ -41,9 +41,9 @@ export default function ValidationReport({ result }) {
             </span>
           </div>
           <div className="flex gap-2">
-            <Badge className="bg-green-100 text-green-300 text-xs">{validated.toLocaleString()} passed</Badge>
-            {rejected > 0 && <Badge className="bg-red-100 text-red-300 text-xs">{rejected.toLocaleString()} rejected</Badge>}
-            {valWarnings > 0 && <Badge className="bg-amber-100 text-amber-300 text-xs">{valWarnings} warnings</Badge>}
+            <Badge className="bg-green-900/30 text-green-400 text-xs">{validated.toLocaleString()} passed</Badge>
+            {rejected > 0 && <Badge className="bg-red-900/30 text-red-400 text-xs">{rejected.toLocaleString()} rejected</Badge>}
+            {valWarnings > 0 && <Badge className="bg-amber-900/30 text-amber-400 text-xs">{valWarnings} warnings</Badge>}
           </div>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function ValidationReport({ result }) {
           {showErrors && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
               {errorSamples.map((e, i) => (
-                <div key={i} className="bg-red-900/20 rounded px-3 py-2 text-xs border border-red-100 flex items-start gap-2">
+                <div key={i} className="bg-red-900/20 rounded px-3 py-2 text-xs border border-red-500/30 flex items-start gap-2">
                   <XCircle className="w-3 h-3 text-red-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <span className="font-medium text-red-400">[{e.rule}]</span>{' '}
@@ -107,7 +107,7 @@ export default function ValidationReport({ result }) {
           {showWarnings && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
               {warningSamples.map((w, i) => (
-                <div key={i} className="bg-amber-900/20 rounded px-3 py-2 text-xs border border-amber-100 flex items-start gap-2">
+                <div key={i} className="bg-amber-900/20 rounded px-3 py-2 text-xs border border-amber-500/30 flex items-start gap-2">
                   <AlertTriangle className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <span className="font-medium text-amber-400">[{w.rule}]</span>{' '}

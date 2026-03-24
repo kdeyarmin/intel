@@ -89,7 +89,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
     }
   };
 
-  const strengthColors = { strong: 'bg-green-100 text-green-400', moderate: 'bg-blue-100 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
+  const strengthColors = { strong: 'bg-green-900/30 text-green-400', moderate: 'bg-blue-900/30 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
 
   return (
     <Card>

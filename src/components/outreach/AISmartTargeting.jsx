@@ -134,7 +134,7 @@ For each group, explain WHY these providers should be prioritized, the suggested
   };
 
   return (
-    <Card className="border-violet-200 bg-gradient-to-b from-violet-50/30 to-white">
+    <Card className="border-violet-500/30 bg-gradient-to-b from-violet-900/20 to-slate-900">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-violet-500" />
@@ -149,7 +149,7 @@ For each group, explain WHY these providers should be prioritized, the suggested
         </Button>
 
         {suggestions?.overall_recommendation && (
-          <div className="bg-violet-900/20 rounded-lg p-2 border border-violet-100">
+          <div className="bg-violet-900/20 rounded-lg p-2 border border-violet-500/30">
             <p className="text-[10px] text-violet-600 leading-relaxed">{suggestions.overall_recommendation}</p>
           </div>
         )}
@@ -159,7 +159,7 @@ For each group, explain WHY these providers should be prioritized, the suggested
           const Icon = s.icon;
           const isSelected = selectedGroup === i;
           return (
-            <div key={i} className={`rounded-lg border p-3 transition-all cursor-pointer ${isSelected ? 'border-violet-400 bg-violet-900/20/50' : 'border-slate-700/50 hover:border-violet-300'}`}
+            <div key={i} className={`rounded-lg border p-3 transition-all cursor-pointer ${isSelected ? 'border-violet-400 bg-violet-900/20' : 'border-slate-700/50 hover:border-violet-300'}`}
               onClick={() => setSelectedGroup(isSelected ? null : i)}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">

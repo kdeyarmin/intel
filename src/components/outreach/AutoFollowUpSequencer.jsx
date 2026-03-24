@@ -144,7 +144,7 @@ Keep each under 100 words.`,
         </div>
 
         {sequence?.best_send_times && (
-          <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+          <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
             <p className="text-[10px] font-medium text-amber-400 mb-0.5">Optimal Send Time</p>
             <p className="text-[9px] text-amber-600">{sequence.best_send_times.day_of_week} at {sequence.best_send_times.time_of_day} — {sequence.best_send_times.reasoning}</p>
           </div>

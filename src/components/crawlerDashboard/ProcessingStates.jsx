@@ -54,7 +54,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
             <CardDescription>States being crawled right now</CardDescription>
           </div>
           {isActive && (
-            <Badge className="bg-blue-100 text-blue-400 gap-1">
+            <Badge className="bg-blue-900/30 text-blue-400 gap-1">
               <Loader2 className="w-3 h-3 animate-spin" />
               Active
             </Badge>
@@ -104,7 +104,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
               <div key={st} className="flex items-center gap-3 p-3 bg-blue-900/5 rounded-lg border border-blue-500/10">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                 <span className="text-sm font-medium text-slate-400">{st}</span>
-                <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600 ml-auto">queued</Badge>
+                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600 ml-auto">queued</Badge>
               </div>
             ))}
 

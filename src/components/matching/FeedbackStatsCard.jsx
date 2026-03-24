@@ -26,7 +26,7 @@ export default function FeedbackStatsCard({ matches }) {
         <div className="flex items-center gap-2 mb-3">
           <Brain className="w-4 h-4 text-purple-600" />
           <span className="text-sm font-semibold text-slate-200">AI Learning Feedback</span>
-          <Badge className="bg-purple-100 text-purple-400 text-xs">{decided.length} decisions</Badge>
+          <Badge className="bg-purple-900/30 text-purple-400 text-xs">{decided.length} decisions</Badge>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>

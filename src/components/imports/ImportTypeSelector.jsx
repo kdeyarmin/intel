@@ -70,7 +70,7 @@ export default function ImportTypeSelector({ onSelect }) {
           <Card key={type.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => onSelect(type)}>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-teal-100 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-teal-900/30 flex items-center justify-center">
                   <Icon className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>

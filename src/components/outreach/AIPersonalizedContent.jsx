@@ -83,7 +83,7 @@ Keep the email body under 150 words. Be warm but professional.`,
   };
 
   return (
-    <Card className="border-emerald-200 bg-gradient-to-b from-emerald-50/30 to-white">
+    <Card className="border-emerald-500/30 bg-gradient-to-b from-emerald-900/20 to-slate-900">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Mail className="w-4 h-4 text-emerald-500" />
@@ -102,7 +102,7 @@ Keep the email body under 150 words. Be warm but professional.`,
             {/* Primary subject */}
             <div className="bg-slate-800/60 rounded-lg border p-2.5">
               <div className="flex items-center justify-between mb-1">
-                <Badge className="bg-emerald-100 text-emerald-400 text-[9px]">Primary Subject</Badge>
+                <Badge className="bg-emerald-900/30 text-emerald-400 text-[9px]">Primary Subject</Badge>
                 <Button size="sm" variant="ghost" className="h-5 text-[9px] text-emerald-600"
                   onClick={() => { onApplySubject(result.primary_subject); toast.success('Subject applied'); }}>
                   <Check className="w-3 h-3 mr-0.5" /> Use
@@ -126,7 +126,7 @@ Keep the email body under 150 words. Be warm but professional.`,
             {/* Body */}
             <div className="bg-slate-800/60 rounded-lg border p-2.5">
               <div className="flex items-center justify-between mb-1">
-                <Badge className="bg-emerald-100 text-emerald-400 text-[9px]">Email Body</Badge>
+                <Badge className="bg-emerald-900/30 text-emerald-400 text-[9px]">Email Body</Badge>
                 <Button size="sm" variant="ghost" className="h-5 text-[9px] text-emerald-600"
                   onClick={() => { onApplyBody(result.body); toast.success('Body applied'); }}>
                   <Check className="w-3 h-3 mr-0.5" /> Use
@@ -137,7 +137,7 @@ Keep the email body under 150 words. Be warm but professional.`,
 
             {/* Personalization notes */}
             {result.personalization_notes && (
-              <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
+              <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-500/30">
                 <p className="text-[10px] font-medium text-violet-700 mb-0.5">Why this works</p>
                 <p className="text-[9px] text-violet-600">{result.personalization_notes}</p>
               </div>

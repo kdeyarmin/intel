@@ -119,10 +119,10 @@ export default function PredictiveAlerts({ metrics }) {
   }, [metrics]);
 
   const severityStyles = {
-    critical: { bg: 'bg-red-900/20 border-red-200', icon: 'text-red-600', badge: 'bg-red-100 text-red-400' },
+    critical: { bg: 'bg-red-900/20 border-red-500/30', icon: 'text-red-600', badge: 'bg-red-900/30 text-red-400' },
     warning: { bg: 'bg-yellow-900/20 border-yellow-200', icon: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-700' },
-    info: { bg: 'bg-blue-900/20 border-blue-200', icon: 'text-blue-600', badge: 'bg-blue-100 text-blue-400' },
-    positive: { bg: 'bg-green-900/20 border-green-200', icon: 'text-green-600', badge: 'bg-green-100 text-green-400' },
+    info: { bg: 'bg-blue-900/20 border-blue-500/30', icon: 'text-blue-600', badge: 'bg-blue-900/30 text-blue-400' },
+    positive: { bg: 'bg-green-900/20 border-green-500/30', icon: 'text-green-600', badge: 'bg-green-900/30 text-green-400' },
   };
 
   return (

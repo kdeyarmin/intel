@@ -17,7 +17,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Geriatric-Heavy Practice',
       icon: Users,
-      color: 'bg-blue-100 text-blue-300',
+      color: 'bg-blue-900/30 text-blue-300',
       description: 'High Medicare patient volume suggests geriatric focus',
       confidence: patientVolume >= 500 ? 'High' : 'Moderate'
     });
@@ -38,7 +38,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Behavioral Health Focus',
       icon: Brain,
-      color: 'bg-purple-100 text-purple-300',
+      color: 'bg-purple-900/30 text-purple-300',
       description: 'Specialty indicates mental health/behavioral services',
       confidence: 'High'
     });
@@ -52,7 +52,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Complex Chronic Conditions',
       icon: HeartPulse,
-      color: 'bg-red-100 text-red-300',
+      color: 'bg-red-900/30 text-red-300',
       description: hasHighReferrals 
         ? 'High referral volume suggests complex patient needs'
         : 'High service intensity indicates chronic disease management',

@@ -11,10 +11,10 @@ import BulkAlertActions from './BulkAlertActions';
 import AlertAIAnalysis from './AlertAIAnalysis';
 
 const severityColors = {
-  low: 'bg-blue-100 text-blue-400',
+  low: 'bg-blue-900/30 text-blue-400',
   medium: 'bg-yellow-100 text-yellow-700',
-  high: 'bg-orange-100 text-orange-400',
-  critical: 'bg-red-100 text-red-400',
+  high: 'bg-orange-900/30 text-orange-400',
+  critical: 'bg-red-900/30 text-red-400',
 };
 
 const categoryColors = {
@@ -116,7 +116,7 @@ export default function AlertsList({ alerts = [] }) {
             <Button 
               size="sm" 
               variant="outline" 
-              className="h-8 text-xs gap-1.5 border-emerald-200 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-100"
+              className="h-8 text-xs gap-1.5 border-emerald-500/30 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/30"
               onClick={() => autoFixMutation.mutate()}
               disabled={autoFixMutation.isPending}
             >
@@ -242,12 +242,12 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
           </div>
 
           {alert.suggested_value && (
-            <div className="bg-violet-900/20 border border-violet-200 rounded-lg p-3">
+            <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Sparkles className="w-3.5 h-3.5 text-violet-600" />
                 <span className="text-xs font-semibold text-violet-700">AI Suggestion</span>
               </div>
-              <p className="text-sm font-mono text-violet-900">{alert.suggested_value}</p>
+              <p className="text-sm font-mono text-violet-400">{alert.suggested_value}</p>
               {alert.suggestion_reason && (
                 <p className="text-xs text-violet-600 mt-1">{alert.suggestion_reason}</p>
               )}

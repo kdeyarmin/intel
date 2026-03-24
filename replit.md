@@ -109,7 +109,8 @@ Provider, ProviderLocation, ProviderTaxonomy, LeadScore, ProviderAffiliation, Pr
 - **MedicareMAInpatient, InpatientDRG, MedicareHHAStats, MedicareSNFStats** tables are EMPTY — use `MedicareFacility` entity instead (14M rows with facility_type field)
 - **Empty tables (0 rows)**: lead_lists, lead_scores, campaigns, outreach_campaigns, scoring_rules, cms_utilization, inpatient_drg, medicare_hha_stats, medicare_snf_stats, custom_reports, provider_location_matches
 - **Database indexes**: idx_psu_data_year (DESC), psu_npi_idx, idx_medfac_created, idx_medicare_facilities_type — critical for sorting queries on large tables
-- **Dark theme**: Always use text-slate-300/400, bg-slate-800/900; NEVER use text-slate-600/700/800, bg-white, bg-slate-50
+- **Dark theme**: Always use text-slate-300/400, bg-slate-800/900; NEVER use text-slate-600/700/800, bg-white, bg-slate-50. Badge/accent colors: bg-*-900/30 text-*-400 border-*-500/30 (never bg-*-100, border-*-100/200, text-*-800/900). No double-opacity tokens (e.g. bg-red-900/20/50 is invalid).
+- **Responsive**: All page wrappers use `p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto`; grids collapse at sm/md; tables need `overflow-x-auto`; Select triggers use `w-full sm:w-[Xpx]`
 
 ## Migration Status
 - Fully migrated from Base44 SDK to self-hosted PostgreSQL + Express.js + Drizzle ORM

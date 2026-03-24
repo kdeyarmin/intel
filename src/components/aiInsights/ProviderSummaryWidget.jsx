@@ -182,7 +182,7 @@ Provide:
             {results && (
               <div className="space-y-3 border-t pt-3">
                 {/* Executive summary */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
+                <div className="bg-gradient-to-r from-blue-900/20 to-indigo-900/20 rounded-lg p-3 border border-blue-500/30">
                   <p className="text-xs font-medium text-blue-300 mb-1">Executive Summary</p>
                   <p className="text-xs text-slate-300 leading-relaxed">{results.executive_summary}</p>
                 </div>
@@ -192,7 +192,7 @@ Provide:
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-medium text-emerald-600 uppercase tracking-wide">Strengths</p>
                     {results.strengths?.map((s, i) => (
-                      <div key={i} className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-100">
+                      <div key={i} className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-500/30">
                         <p className="text-[11px] font-semibold text-emerald-300">{s.title}</p>
                         <p className="text-[10px] text-emerald-600">{s.detail}</p>
                       </div>
@@ -201,7 +201,7 @@ Provide:
                   <div className="space-y-1.5">
                     <p className="text-[10px] font-medium text-red-600 uppercase tracking-wide">Gaps</p>
                     {results.gaps?.map((g, i) => (
-                      <div key={i} className="bg-red-900/20 rounded-lg p-2 border border-red-100">
+                      <div key={i} className="bg-red-900/20 rounded-lg p-2 border border-red-500/30">
                         <p className="text-[11px] font-semibold text-red-300">{g.title}</p>
                         <p className="text-[10px] text-red-600">{g.detail}</p>
                       </div>
@@ -227,7 +227,7 @@ Provide:
                       <div key={i} className="border rounded-lg p-2.5">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="text-[11px] font-semibold text-slate-300">{r.recommendation}</span>
-                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-100 text-red-400' : r.priority === 'medium' ? 'bg-amber-100 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>{r.priority}</Badge>
+                          <Badge className={`text-[8px] ${r.priority === 'high' ? 'bg-red-900/30 text-red-400' : r.priority === 'medium' ? 'bg-amber-900/30 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>{r.priority}</Badge>
                         </div>
                         <p className="text-[10px] text-slate-500">{r.rationale}</p>
                       </div>

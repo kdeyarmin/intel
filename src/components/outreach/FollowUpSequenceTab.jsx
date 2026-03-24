@@ -147,11 +147,11 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
       {results && (
         <div className="space-y-2">
           {/* Strategy */}
-          <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-100">
-            <p className="text-[10px] font-semibold text-violet-800">{results.sequence_name}</p>
+          <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-500/30">
+            <p className="text-[10px] font-semibold text-violet-400">{results.sequence_name}</p>
             <p className="text-[9px] text-violet-600 mt-0.5 leading-relaxed">{results.strategy}</p>
             {results.expected_cumulative_response_rate && (
-              <Badge className="bg-violet-200 text-violet-800 text-[8px] mt-1">
+              <Badge className="bg-violet-900/30 text-violet-400 text-[8px] mt-1">
                 Expected response: {results.expected_cumulative_response_rate}
               </Badge>
             )}
@@ -159,7 +159,7 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
           {/* Timeline */}
           <div className="relative pl-4">
-            <div className="absolute left-1.5 top-0 bottom-0 w-px bg-violet-200" />
+            <div className="absolute left-1.5 top-0 bottom-0 w-px bg-violet-900/30" />
             {results.emails?.map((email, i) => {
               const isExpanded = expandedEmail === i;
               return (
@@ -218,7 +218,7 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
           {/* Stop conditions */}
           {results.stop_conditions?.length > 0 && (
-            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
               <p className="text-[10px] font-medium text-amber-400 mb-1">Stop Sequence When:</p>
               {results.stop_conditions.map((c, i) => (
                 <p key={i} className="text-[9px] text-amber-600">• {c}</p>

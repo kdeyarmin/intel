@@ -197,7 +197,7 @@ Provide:
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-2 bg-emerald-900/20 rounded-lg p-2 border border-emerald-100">
+                <div className="mt-2 bg-emerald-900/20 rounded-lg p-2 border border-emerald-500/30">
                   <p className="text-[10px] text-emerald-400"><span className="font-medium">Best:</span> {prediction.optimal_send_time?.best_day} {prediction.optimal_send_time?.best_hour}</p>
                   <p className="text-[10px] text-red-600"><span className="font-medium">Avoid:</span> {prediction.optimal_send_time?.worst_day}</p>
                   <p className="text-[9px] text-slate-500 mt-0.5">{prediction.optimal_send_time?.reasoning}</p>
@@ -215,7 +215,7 @@ Provide:
                   <div key={i} className="border rounded-lg p-2.5">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-slate-300">{seg.name}</p>
-                      <Badge className="bg-emerald-100 text-emerald-400 text-[9px]">{seg.expected_lift}</Badge>
+                      <Badge className="bg-emerald-900/30 text-emerald-400 text-[9px]">{seg.expected_lift}</Badge>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5">{seg.description}</p>
                   </div>

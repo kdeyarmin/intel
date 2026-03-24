@@ -14,9 +14,9 @@ export default function ProviderMapPopup({ item }) {
     : `${provider.first_name || ''} ${provider.last_name || ''}`.trim();
 
   const getScoreColor = (s) => {
-    if (s >= 80) return 'bg-green-100 text-green-300';
-    if (s >= 60) return 'bg-teal-100 text-teal-800';
-    if (s >= 40) return 'bg-yellow-100 text-yellow-800';
+    if (s >= 80) return 'bg-green-900/30 text-green-400';
+    if (s >= 60) return 'bg-teal-900/30 text-teal-400';
+    if (s >= 40) return 'bg-yellow-900/30 text-yellow-400';
     return 'bg-slate-700 text-slate-300';
   };
 

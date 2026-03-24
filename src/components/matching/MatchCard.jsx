@@ -7,10 +7,10 @@ import { Check, X, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import MatchScoreBars from './MatchScoreBars';
 
 const STATUS_STYLES = {
-  suggested: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-300',
-  rejected: 'bg-red-100 text-red-300',
-  override: 'bg-blue-100 text-blue-300',
+  suggested: 'bg-yellow-900/30 text-yellow-400',
+  approved: 'bg-green-900/30 text-green-400',
+  rejected: 'bg-red-900/30 text-red-400',
+  override: 'bg-blue-900/30 text-blue-400',
 };
 
 export default function MatchCard({ match, onUpdateStatus, selected, onToggleSelect }) {

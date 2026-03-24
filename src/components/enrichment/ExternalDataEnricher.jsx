@@ -187,7 +187,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
 
       {/* NPI Validation */}
       {enrichments.npi_validation && (
-        <Card className={`${enrichments.npi_validation.is_valid ? 'bg-green-900/20 border-green-200' : 'bg-amber-900/20 border-amber-200'}`}>
+        <Card className={`${enrichments.npi_validation.is_valid ? 'bg-green-900/20 border-green-500/30' : 'bg-amber-900/20 border-amber-500/30'}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
             <p><span className="font-medium">Status:</span> {enrichments.npi_validation.status}</p>
             {enrichments.npi_validation.discrepancies?.length > 0 && (
               <div className="mt-2 p-2 bg-slate-800/60 rounded border border-amber-600/50">
-                <p className="font-medium text-xs text-amber-900">Discrepancies:</p>
+                <p className="font-medium text-xs text-amber-400">Discrepancies:</p>
                 {enrichments.npi_validation.discrepancies.map((d, i) => (
                   <p key={i} className="text-xs text-amber-400 mt-1">• {d}</p>
                 ))}
@@ -217,7 +217,7 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
 
       {/* DEA Data */}
       {enrichments.dea && (
-        <Card className={`${enrichments.dea.is_dea_registered ? 'bg-emerald-900/20 border-emerald-200' : 'bg-slate-800/40'}`}>
+        <Card className={`${enrichments.dea.is_dea_registered ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-slate-800/40'}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -265,8 +265,8 @@ export default function ExternalDataEnricher({ npi, onEnrichmentComplete }) {
               </>
             )}
             {enrichments.dea.restrictions?.length > 0 && (
-              <div className="p-2 rounded bg-amber-100 border border-amber-600/50">
-                <p className="text-xs font-medium text-amber-900">Restrictions:</p>
+              <div className="p-2 rounded bg-amber-900/30 border border-amber-600/50">
+                <p className="text-xs font-medium text-amber-400">Restrictions:</p>
                 {enrichments.dea.restrictions.map((r, i) => (
                   <p key={i} className="text-xs text-amber-400 mt-1">• {r}</p>
                 ))}

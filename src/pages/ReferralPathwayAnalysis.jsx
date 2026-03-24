@@ -81,9 +81,9 @@ export default function ReferralPathwayAnalysis() {
     : `${selectedProvider?.first_name || ''} ${selectedProvider?.last_name || ''}`.trim();
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white">AI Referral Pathway Analysis</h1>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Referral Pathway Analysis</h1>
         <p className="text-slate-400 mt-1">
           AI-powered analysis of referral patterns, predictions, and network leakage detection
         </p>
@@ -146,14 +146,14 @@ export default function ReferralPathwayAnalysis() {
           {/* Provider Header */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle>{providerName || `Provider ${selectedNPI}`}</CardTitle>
                   <p className="text-sm text-slate-400 mt-1">
                     NPI: {selectedNPI} • Analysis: {new Date(selectedAnalysis.analysis_date).toLocaleDateString()}
                   </p>
                 </div>
-                <Badge className={selectedAnalysis.leakage_detected ? 'bg-red-900/100/20 text-red-400' : 'bg-green-900/20 text-green-400'}>
+                <Badge className={selectedAnalysis.leakage_detected ? 'bg-red-900/20 text-red-400' : 'bg-green-900/20 text-green-400'}>
                   {selectedAnalysis.leakage_detected ? 'Leakage Detected' : 'Network Aligned'}
                 </Badge>
               </div>
@@ -162,7 +162,7 @@ export default function ReferralPathwayAnalysis() {
 
           {/* Leakage Alert */}
           {selectedAnalysis.leakage_detected && (
-            <Alert className="border-red-500/30 bg-red-900/100/10">
+            <Alert className="border-red-500/30 bg-red-900/10">
               <AlertTriangle className="h-4 w-4 text-red-400" />
               <AlertDescription className="text-red-300">
                 <strong>Network Leakage Detected:</strong>{' '}
@@ -187,7 +187,7 @@ export default function ReferralPathwayAnalysis() {
                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                          dest.in_network ? 'bg-green-900/20 text-green-400' : 'bg-red-900/100/20 text-red-400'
+                          dest.in_network ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'
                         }`}>
                           {idx + 1}
                         </div>
@@ -299,7 +299,7 @@ export default function ReferralPathwayAnalysis() {
 
           {/* Leakage Details */}
           {selectedAnalysis.leakage_detected && selectedAnalysis.leakage_details?.top_leakage_destinations?.length > 0 && (
-            <Card className="border-red-200">
+            <Card className="border-red-500/30">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-red-400">
                   <AlertTriangle className="h-5 w-5" />
@@ -358,7 +358,7 @@ export default function ReferralPathwayAnalysis() {
                           NPI: {analysis.provider_npi} • {new Date(analysis.analysis_date).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge className={analysis.leakage_detected ? 'bg-red-900/100/20 text-red-400' : 'bg-green-900/20 text-green-400'}>
+                      <Badge className={analysis.leakage_detected ? 'bg-red-900/20 text-red-400' : 'bg-green-900/20 text-green-400'}>
                         {analysis.leakage_detected ? 'Leakage' : 'Aligned'}
                       </Badge>
                     </div>

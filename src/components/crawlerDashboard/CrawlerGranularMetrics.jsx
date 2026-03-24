@@ -46,7 +46,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
           <div className="flex flex-col items-end">
              <div className="flex items-center gap-2">
                <span className="text-sm font-medium text-slate-400">Active Workers:</span>
-               <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-200 gap-1.5 px-2.5">
+               <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-500/30 gap-1.5 px-2.5">
                  <Cpu className="w-3.5 h-3.5" />
                  {active_workers}
                </Badge>

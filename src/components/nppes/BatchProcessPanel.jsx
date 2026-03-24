@@ -305,9 +305,9 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-300 w-6">{r.state}</span>
                       {r.success ? (
-                        <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-200 text-[10px]">Success</Badge>
+                        <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-500/30 text-[10px]">Success</Badge>
                       ) : (
-                        <Badge className="bg-red-900/20 text-red-400 border-red-200 text-[10px]">Failed</Badge>
+                        <Badge className="bg-red-900/20 text-red-400 border-red-500/30 text-[10px]">Failed</Badge>
                       )}
                     </div>
                     <span className="text-slate-500">

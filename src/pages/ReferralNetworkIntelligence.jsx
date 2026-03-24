@@ -121,7 +121,7 @@ export default function ReferralNetworkIntelligence() {
   const resetFilters = () => { setSearch(''); setEntityType('all'); setStateFilter('all'); setSpecialty('all'); setMinVolume(0); };
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
       <PageHeader
         title="Referral Network Analysis"
         subtitle="Visualize referral patterns, identify hubs, geographic clustering, and care gaps"

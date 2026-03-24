@@ -28,7 +28,7 @@ export default function ContactEnrichmentStatus({ location, provider }) {
         <CardTitle className="text-base flex items-center gap-2">
           <Mail className="w-4 h-4 text-emerald-500" />
           Contact Enrichment
-          <Badge className={`text-[10px] ml-auto ${pct === 100 ? 'bg-green-100 text-green-400' : pct >= 60 ? 'bg-amber-100 text-amber-400' : 'bg-red-100 text-red-400'}`}>
+          <Badge className={`text-[10px] ml-auto ${pct === 100 ? 'bg-green-900/30 text-green-400' : pct >= 60 ? 'bg-amber-900/30 text-amber-400' : 'bg-red-900/30 text-red-400'}`}>
             {pct}% Complete
           </Badge>
         </CardTitle>

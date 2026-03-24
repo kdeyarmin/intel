@@ -13,13 +13,13 @@ export default function NPPESImportResults({ result }) {
   ];
 
   const importStats = result.dry_run ? [] : [
-    { label: 'Providers Imported', value: result.imported_providers, icon: Users, color: 'bg-blue-100 text-blue-400' },
-    { label: 'Locations Imported', value: result.imported_locations, icon: MapPin, color: 'bg-green-100 text-green-400' },
-    { label: 'Taxonomies Imported', value: result.imported_taxonomies, icon: Stethoscope, color: 'bg-purple-100 text-purple-400' },
+    { label: 'Providers Imported', value: result.imported_providers, icon: Users, color: 'bg-blue-900/30 text-blue-400' },
+    { label: 'Locations Imported', value: result.imported_locations, icon: MapPin, color: 'bg-green-900/30 text-green-400' },
+    { label: 'Taxonomies Imported', value: result.imported_taxonomies, icon: Stethoscope, color: 'bg-purple-900/30 text-purple-400' },
   ];
 
   return (
-    <Card className="border-green-200">
+    <Card className="border-green-500/30">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-green-400">
           <CheckCircle2 className="w-5 h-5" />
@@ -54,7 +54,7 @@ export default function NPPESImportResults({ result }) {
         )}
 
         {result.dry_run && (
-          <div className="flex items-start gap-2 p-3 bg-blue-900/20 rounded-lg border border-blue-200">
+          <div className="flex items-start gap-2 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
             <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-blue-300">
               This was a dry run — no data was written. Turn off "Dry Run Mode" and run again to import.

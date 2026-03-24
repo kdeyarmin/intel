@@ -144,8 +144,8 @@ export default function NPPESCrawler() {
               <CardTitle className="text-white flex items-center justify-between">
                 Crawler Configuration & Controls
                 <Badge className={
-                  isRunning ? "bg-green-100 text-green-400 hover:bg-green-100" : 
-                  isPaused ? "bg-amber-100 text-amber-400 hover:bg-amber-100" : 
+                  isRunning ? "bg-green-900/30 text-green-400 hover:bg-green-900/30" : 
+                  isPaused ? "bg-amber-900/30 text-amber-400 hover:bg-amber-900/30" : 
                   "bg-slate-700 text-slate-300 hover:bg-slate-700"
                 }>
                   {isRunning ? 'Running' : isPaused ? 'Paused' : 'Idle'}
@@ -212,7 +212,7 @@ export default function NPPESCrawler() {
                     onClick={pauseCrawler} 
                     disabled={isProcessingAction}
                     variant="outline"
-                    className="border-amber-500 text-amber-600 hover:bg-amber-900/20 gap-2 min-w-[140px]"
+                    className="border-amber-500 text-amber-400 hover:bg-amber-900/20 gap-2 min-w-[140px]"
                   >
                     {isProcessingAction ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
                     Pause Crawler

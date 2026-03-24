@@ -109,7 +109,7 @@ Provide:
     }
   };
 
-  const prioColors = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
   const valColors = { high: 'text-green-600', medium: 'text-amber-600', low: 'text-slate-400' };
 
   return (
@@ -169,7 +169,7 @@ Provide:
 
           {/* Budget Allocation Summary Bar */}
           {results.segments?.length > 0 && (
-            <div className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-100">
+            <div className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-500/30">
               <p className="text-[10px] font-semibold text-emerald-400 mb-1.5">💰 Budget Allocation</p>
               <div className="flex h-4 rounded-full overflow-hidden mb-1.5">
                 {results.segments.map((s, i) => {
@@ -217,7 +217,7 @@ Provide:
 
           {/* Cross-Segment Strategies */}
           {results.cross_segment_strategies?.length > 0 && (
-            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-100">
+            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-500/30">
               <p className="text-[10px] font-semibold text-blue-400 mb-1">🔗 Cross-Segment Strategies</p>
               {results.cross_segment_strategies.map((s, i) => (
                 <p key={i} className="text-[9px] text-blue-600 mb-0.5">• {s}</p>

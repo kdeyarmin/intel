@@ -43,7 +43,7 @@ export default function ProviderClusterList({ providers }) {
                   </div>
                 )}
               </div>
-              <Badge className="bg-teal-100 text-teal-800 shrink-0">
+              <Badge className="bg-teal-900/30 text-teal-400 shrink-0">
                 {item.score}
               </Badge>
             </div>

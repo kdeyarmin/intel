@@ -75,7 +75,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
           <CardTitle className="text-lg flex items-center gap-2">
             {connector.name}
             {connector.is_authorized ? (
-              <Badge variant="secondary" className="bg-green-100 text-green-300"><ShieldCheck className="w-3 h-3 mr-1" /> Authorized</Badge>
+              <Badge variant="secondary" className="bg-green-900/30 text-green-300"><ShieldCheck className="w-3 h-3 mr-1" /> Authorized</Badge>
             ) : (
               <Badge variant="outline" className="text-muted-foreground"><ShieldAlert className="w-3 h-3 mr-1" /> Inactive</Badge>
             )}
@@ -135,7 +135,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
                 <span>
                   {connector.last_tested_at ? formatDistanceToNow(new Date(connector.last_tested_at), { addSuffix: true }) : 'Never tested'}
                 </span>
-                {connector.test_status === 'success' && <Badge className="bg-green-100 text-green-300 hover:bg-green-100">Success</Badge>}
+                {connector.test_status === 'success' && <Badge className="bg-green-900/30 text-green-300 hover:bg-green-900/30">Success</Badge>}
                 {connector.test_status === 'failed' && <Badge variant="destructive">Failed</Badge>}
               </div>
               {connector.test_message && <p className="text-xs mt-1 text-slate-500 break-words">{connector.test_message}</p>}

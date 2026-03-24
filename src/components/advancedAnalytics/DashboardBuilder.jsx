@@ -113,7 +113,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  {db.is_default && <Badge className="text-[9px] bg-amber-100 text-amber-400 px-1 py-0">Default</Badge>}
+                  {db.is_default && <Badge className="text-[9px] bg-amber-900/30 text-amber-400 px-1 py-0">Default</Badge>}
                   <span className="text-sm font-medium text-slate-300 truncate">{db.name}</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</p>

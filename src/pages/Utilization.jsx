@@ -50,7 +50,7 @@ export default function Utilization() {
   });
 
   return (
-    <div className="max-w-[120rem] mx-auto p-6 space-y-6">
+    <div className="max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       <PageHeader 
         title="Service Utilization" 
         subtitle="View and analyze provider service utilization and Medicare payment metrics"

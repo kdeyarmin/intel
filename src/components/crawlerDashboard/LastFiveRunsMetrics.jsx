@@ -80,7 +80,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                     </TableCell>
                     <TableCell className="text-right">
                        {errorCount > 0 ? (
-                         <Badge variant="secondary" className="bg-red-900/15 text-red-400 hover:bg-red-900/20/25 border-red-500/30">
+                         <Badge variant="secondary" className="bg-red-900/15 text-red-400 hover:bg-red-900/20 border-red-500/30">
                            {errorCount}
                          </Badge>
                        ) : (

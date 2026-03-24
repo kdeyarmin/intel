@@ -153,9 +153,9 @@ For each email assign:
   };
 
   const confColors = {
-    high: 'bg-green-100 text-green-300',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-red-100 text-red-300',
+    high: 'bg-green-900/30 text-green-400',
+    medium: 'bg-yellow-900/30 text-yellow-400',
+    low: 'bg-red-900/30 text-red-400',
   };
 
   return (
@@ -234,7 +234,7 @@ For each email assign:
               <p className="text-xs text-slate-400">{results.notes}</p>
             )}
 
-            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-200 rounded-lg p-2">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg p-2">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-400">
                 These are AI-generated suggestions, not verified addresses. Always confirm before sending outreach.

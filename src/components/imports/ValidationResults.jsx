@@ -49,7 +49,7 @@ export default function ValidationResults({ batch }) {
             <p className="font-medium text-sm">Error Samples:</p>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {batch.error_samples.map((error, idx) => (
-                <div key={idx} className="p-3 bg-red-900/20 border border-red-200 rounded text-sm">
+                <div key={idx} className="p-3 bg-red-900/20 border border-red-500/30 rounded text-sm">
                   <p className="font-medium text-red-300">Row {error.row}:</p>
                   <p className="text-red-400 mt-1">{error.message}</p>
                   {error.npi && <p className="text-xs text-slate-400 mt-1">NPI: {error.npi}</p>}

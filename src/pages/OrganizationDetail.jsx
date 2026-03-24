@@ -327,7 +327,7 @@ export default function OrganizationDetail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" />
+              <Users className="w-4 h-4 text-indigo-400" />
               Affiliated Providers
               <Badge variant="outline" className="ml-auto text-xs">{affiliatedProviders.length}</Badge>
             </CardTitle>

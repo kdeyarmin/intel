@@ -37,7 +37,7 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
           </span>
           <div className="flex items-center gap-2">
             {activeCount > 0 && (
-              <Badge className="bg-teal-100 text-teal-700 text-[10px]">{activeCount} active</Badge>
+              <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">{activeCount} active</Badge>
             )}
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onReset} title="Reset">
               <RotateCcw className="w-3 h-3" />

@@ -62,7 +62,7 @@ export default function PackageSelector({ onApply }) {
           return (
             <div key={pkg.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-800/40">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-teal-900/30 flex items-center justify-center flex-shrink-0">
                   <Icon className="w-5 h-5 text-teal-600" />
                 </div>
                 <div>

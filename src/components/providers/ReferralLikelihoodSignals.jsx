@@ -97,7 +97,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400">Overall Referral Propensity</span>
-                <Badge className="bg-teal-100 text-teal-800">
+                <Badge className="bg-teal-900/30 text-teal-400">
                   {signals.filter(s => s.strength === 'Strong').length >= 2 ? 'High' : 'Moderate'}
                 </Badge>
               </div>

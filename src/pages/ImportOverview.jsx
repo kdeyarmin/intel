@@ -81,7 +81,7 @@ export default function ImportOverviewPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white">Import Overview</h1>
@@ -100,7 +100,7 @@ export default function ImportOverviewPage() {
                     />
                 </div>
                 <Select value={importTypeFilter} onValueChange={setImportTypeFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Import Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -109,7 +109,7 @@ export default function ImportOverviewPage() {
                     </SelectContent>
                 </Select>
                 <Select value={dataYearFilter} onValueChange={setDataYearFilter}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-full sm:w-[150px]">
                         <SelectValue placeholder="Data Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -118,7 +118,7 @@ export default function ImportOverviewPage() {
                     </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[150px]">
+                    <SelectTrigger className="w-full sm:w-[150px]">
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -148,7 +148,7 @@ export default function ImportOverviewPage() {
                         <CheckCircle className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{metrics.success}</div>
+                        <div className="text-2xl font-bold text-green-400">{metrics.success}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -157,7 +157,7 @@ export default function ImportOverviewPage() {
                         <XCircle className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{metrics.failed}</div>
+                        <div className="text-2xl font-bold text-red-400">{metrics.failed}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -207,9 +207,9 @@ export default function ImportOverviewPage() {
                                             <TableCell>{batch.data_year || '-'}</TableCell>
                                             <TableCell>
                                                 <Badge className={
-                                                    batch.status === 'completed' ? 'bg-green-100 text-green-300 hover:bg-green-100' :
-                                                    batch.status === 'failed' ? 'bg-red-100 text-red-300 hover:bg-red-100' :
-                                                    batch.status === 'processing' ? 'bg-blue-100 text-blue-300 hover:bg-blue-100' :
+                                                    batch.status === 'completed' ? 'bg-green-900/30 text-green-400 hover:bg-green-900/30' :
+                                                    batch.status === 'failed' ? 'bg-red-900/30 text-red-400 hover:bg-red-900/30' :
+                                                    batch.status === 'processing' ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/30' :
                                                     'bg-slate-700/40 text-slate-200 hover:bg-slate-700/40'
                                                 }>
                                                     {batch.status}
@@ -264,7 +264,7 @@ export default function ImportOverviewPage() {
                                             </TableCell>
                                             <TableCell className="capitalize">{err.phase}</TableCell>
                                             <TableCell>
-                                                <div className="font-medium text-red-600">
+                                                <div className="font-medium text-red-400">
                                                     {err.rule || err.detail?.split(':')[0] || 'Unknown'}
                                                 </div>
                                             </TableCell>
@@ -274,10 +274,10 @@ export default function ImportOverviewPage() {
                                                     {err.sheet && <span className="font-semibold mr-2">Sheet: {err.sheet}</span>}
                                                     {err.field && <span className="font-semibold mr-2">Field: {err.field}</span>}
                                                     {err.row && <span className="text-muted-foreground mr-2">Row: {err.row}</span>}
-                                                    {err.value !== undefined && <span className="text-amber-600 mr-2">Value: '{err.value}'</span>}
-                                                    {err.endpoint && <span className="text-blue-600 truncate max-w-xs block">Endpoint: {err.endpoint}</span>}
-                                                    {err.status_code && <span className="text-red-500 mr-2">Status: {err.status_code}</span>}
-                                                    <div className="text-muted-foreground mt-1 truncate max-w-md" title={err.detail}>{err.detail}</div>
+                                                    {err.value !== undefined && <span className="text-amber-400 mr-2">Value: '{err.value}'</span>}
+                                                    {err.endpoint && <span className="text-blue-400 truncate max-w-xs block">Endpoint: {err.endpoint}</span>}
+                                                    {err.status_code && <span className="text-red-400 mr-2">Status: {err.status_code}</span>}
+                                                    <div className="text-slate-400 mt-1 truncate max-w-md" title={err.detail}>{err.detail}</div>
                                                     {err.response_body && <div className="text-xs text-muted-foreground mt-1 bg-slate-700/40 p-1 rounded max-h-20 overflow-auto whitespace-pre-wrap">{err.response_body}</div>}
                                                 </div>
                                             </TableCell>

@@ -33,11 +33,11 @@ export default function DataQualityInsightsCard({ npi, provider }) {
           <Shield className="w-4 h-4 text-slate-500" />
           Data Quality
           {isClean ? (
-            <Badge className="bg-green-100 text-green-400 text-[10px] ml-auto gap-1">
+            <Badge className="bg-green-900/30 text-green-400 text-[10px] ml-auto gap-1">
               <CheckCircle className="w-3 h-3" /> Clean
             </Badge>
           ) : (
-            <Badge className="bg-amber-100 text-amber-400 text-[10px] ml-auto gap-1">
+            <Badge className="bg-amber-900/30 text-amber-400 text-[10px] ml-auto gap-1">
               <AlertTriangle className="w-3 h-3" /> {openAlerts.length + completeness.length} issue{openAlerts.length + completeness.length > 1 ? 's' : ''}
             </Badge>
           )}
@@ -63,7 +63,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
               <div key={a.id} className="flex items-center gap-2 text-xs bg-slate-800/60 rounded px-2.5 py-1.5">
                 {a.suggested_value ? <Sparkles className="w-3 h-3 text-violet-500 shrink-0" /> : <AlertTriangle className="w-3 h-3 text-slate-400 shrink-0" />}
                 <span className="flex-1 truncate text-slate-400">{a.summary}</span>
-                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-100 text-red-400' : a.severity === 'high' ? 'bg-orange-100 text-orange-400' : 'bg-slate-700 text-slate-400'}`}>
+                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-900/30 text-red-400' : a.severity === 'high' ? 'bg-orange-900/30 text-orange-400' : 'bg-slate-700 text-slate-400'}`}>
                   {a.severity}
                 </Badge>
               </div>

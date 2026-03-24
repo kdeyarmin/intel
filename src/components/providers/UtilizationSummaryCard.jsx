@@ -63,7 +63,7 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-lg bg-blue-900/20">
             <p className="text-[10px] text-blue-600 font-medium mb-0.5">Latest Payments ({summary.latest?.year})</p>
-            <p className="text-lg font-bold text-blue-900">{fmt(summary.latest?.total_medicare_payment || 0)}</p>
+            <p className="text-lg font-bold text-blue-400">{fmt(summary.latest?.total_medicare_payment || 0)}</p>
             {summary.yoyPayment && (
               <div className="flex items-center gap-1 mt-1">
                 <TrendIcon val={summary.yoyPayment} />
@@ -75,7 +75,7 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
           </div>
           <div className="p-3 rounded-lg bg-teal-900/20">
             <p className="text-[10px] text-teal-600 font-medium mb-0.5">Latest Services ({summary.latest?.year})</p>
-            <p className="text-lg font-bold text-teal-900">{fmtN(summary.latest?.total_services || 0)}</p>
+            <p className="text-lg font-bold text-teal-400">{fmtN(summary.latest?.total_services || 0)}</p>
             {summary.yoyServices && (
               <div className="flex items-center gap-1 mt-1">
                 <TrendIcon val={summary.yoyServices} />
@@ -87,11 +87,11 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
           </div>
           <div className="p-3 rounded-lg bg-emerald-900/20">
             <p className="text-[10px] text-emerald-600 font-medium mb-0.5">Cumulative Payments</p>
-            <p className="text-lg font-bold text-emerald-900">{fmt(summary.totalPayments)}</p>
+            <p className="text-lg font-bold text-emerald-400">{fmt(summary.totalPayments)}</p>
           </div>
           <div className="p-3 rounded-lg bg-violet-900/20">
             <p className="text-[10px] text-violet-600 font-medium mb-0.5">Avg $/Beneficiary</p>
-            <p className="text-lg font-bold text-violet-900">{fmt(Math.round(summary.avgPaymentPerBene))}</p>
+            <p className="text-lg font-bold text-violet-400">{fmt(Math.round(summary.avgPaymentPerBene))}</p>
           </div>
         </div>
         <div className="flex gap-1.5 mt-3 flex-wrap">

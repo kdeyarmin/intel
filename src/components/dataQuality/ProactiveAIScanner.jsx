@@ -159,20 +159,20 @@ Return up to 10 most important issues, prioritized by severity and affected coun
   };
 
   const healthColors = {
-    good: 'bg-green-100 text-green-400 border-green-200',
-    fair: 'bg-amber-100 text-amber-400 border-amber-200',
-    poor: 'bg-red-100 text-red-400 border-red-200',
+    good: 'bg-green-900/30 text-green-400 border-green-500/30',
+    fair: 'bg-amber-900/30 text-amber-400 border-amber-500/30',
+    poor: 'bg-red-900/30 text-red-400 border-red-500/30',
   };
 
   const sevColors = {
-    critical: 'bg-red-100 text-red-400',
-    high: 'bg-orange-100 text-orange-400',
+    critical: 'bg-red-900/30 text-red-400',
+    high: 'bg-orange-900/30 text-orange-400',
     medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-blue-100 text-blue-400',
+    low: 'bg-blue-900/30 text-blue-400',
   };
 
   return (
-    <Card className="border-violet-200">
+    <Card className="border-violet-500/30">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -215,7 +215,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
         {results && (
           <div className="space-y-4">
             {createdCount > 0 && (
-              <div className="bg-violet-900/20 border border-violet-200 rounded-lg p-3 flex items-center gap-2">
+              <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-violet-600 shrink-0" />
                 <p className="text-xs text-violet-700">
                   Created <strong>{createdCount}</strong> new alert{createdCount > 1 ? 's' : ''} for critical/high severity issues. View them in the Alerts tab.
@@ -227,7 +227,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
               const Icon = ENTITY_CONFIGS.find(c => c.key === finding.entity)?.icon || User;
               return (
                 <div key={finding.entity} className="border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 bg-slate-50">
+                  <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
                     <div className="flex items-center gap-2">
                       <Icon className="w-4 h-4 text-slate-400" />
                       <span className="text-sm font-semibold text-slate-300">{finding.label}</span>
@@ -241,7 +241,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                   </div>
 
                   {finding.healthSummary && (
-                    <div className="px-4 py-2 bg-blue-900/20 border-b border-blue-100 flex items-start gap-2">
+                    <div className="px-4 py-2 bg-blue-900/20 border-b border-blue-500/30 flex items-start gap-2">
                       <Lightbulb className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                       <p className="text-xs text-blue-400">{finding.healthSummary}</p>
                     </div>

@@ -129,8 +129,8 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
     setLoading(false);
   };
 
-  const riskColors = { low: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', high: 'bg-red-100 text-red-400' };
-  const prioColors = { high: 'border-red-200 bg-red-900/20', medium: 'border-amber-200 bg-amber-900/20', low: 'border-slate-700/50 bg-slate-50' };
+  const riskColors = { low: 'bg-green-900/30 text-green-400', medium: 'bg-amber-900/30 text-amber-400', high: 'bg-red-900/30 text-red-400' };
+  const prioColors = { high: 'border-red-500/30 bg-red-900/20', medium: 'border-amber-500/30 bg-amber-900/20', low: 'border-slate-700/50 bg-slate-800/40' };
 
   return (
     <Card>
@@ -170,7 +170,7 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
         {results && (
           <div className="space-y-3">
             {results.summary && (
-              <div className="bg-gradient-to-r from-violet-50 to-blue-50 rounded-lg p-3 border border-violet-100">
+              <div className="bg-gradient-to-r from-violet-900/20 to-blue-900/20 rounded-lg p-3 border border-violet-500/30">
                 <p className="text-xs text-slate-300 leading-relaxed">{results.summary}</p>
               </div>
             )}
@@ -180,13 +180,13 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
                 <div key={i} className="border rounded-lg p-3 hover:bg-slate-800/50 transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-bold">
+                      <div className="w-6 h-6 rounded-full bg-violet-900/30 text-violet-700 flex items-center justify-center text-[10px] font-bold">
                         {i + 1}
                       </div>
                       <span className="text-sm font-semibold text-slate-300">{lead.name}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Badge className="text-[10px] bg-violet-100 text-violet-700">{lead.potential_score}/100</Badge>
+                      <Badge className="text-[10px] bg-violet-900/30 text-violet-700">{lead.potential_score}/100</Badge>
                       <Badge className={`text-[8px] ${riskColors[lead.risk_level]}`}>{lead.risk_level} risk</Badge>
                       <Link to={createPageUrl(`ProviderDetail?npi=${lead.npi}`)}>
                         <ExternalLink className="w-3 h-3 text-slate-300 hover:text-blue-500" />

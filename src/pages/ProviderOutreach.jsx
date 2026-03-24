@@ -36,10 +36,10 @@ export default function ProviderOutreach() {
   const getStatusColor = (status) => {
     const colors = {
       draft: 'bg-slate-700 text-slate-300',
-      scheduled: 'bg-blue-100 text-blue-300',
-      sending: 'bg-amber-100 text-amber-300',
-      completed: 'bg-green-100 text-green-300',
-      paused: 'bg-orange-100 text-orange-300'
+      scheduled: 'bg-blue-900/30 text-blue-400',
+      sending: 'bg-amber-900/30 text-amber-400',
+      completed: 'bg-green-900/30 text-green-400',
+      paused: 'bg-orange-900/30 text-orange-400'
     };
     return colors[status] || 'bg-slate-700/40 text-slate-200';
   };

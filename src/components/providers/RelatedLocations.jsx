@@ -7,10 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Check, X, Clock, RotateCcw } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  suggested: { label: 'Suggested', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  approved: { label: 'Approved', className: 'bg-green-100 text-green-300', icon: Check },
-  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-300', icon: X },
-  override: { label: 'Override', className: 'bg-blue-100 text-blue-300', icon: RotateCcw },
+  suggested: { label: 'Suggested', className: 'bg-yellow-900/30 text-yellow-400', icon: Clock },
+  approved: { label: 'Approved', className: 'bg-green-900/30 text-green-400', icon: Check },
+  rejected: { label: 'Rejected', className: 'bg-red-900/30 text-red-400', icon: X },
+  override: { label: 'Override', className: 'bg-blue-900/30 text-blue-400', icon: RotateCcw },
 };
 
 export default function RelatedLocations({ npi }) {

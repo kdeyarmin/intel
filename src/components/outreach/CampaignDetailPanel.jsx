@@ -12,11 +12,11 @@ import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const statusColors = {
   pending: 'bg-slate-700 text-slate-400',
-  sent: 'bg-blue-100 text-blue-400',
-  opened: 'bg-emerald-100 text-emerald-400',
-  responded: 'bg-violet-100 text-violet-700',
-  bounced: 'bg-red-100 text-red-400',
-  failed: 'bg-red-100 text-red-400',
+  sent: 'bg-blue-900/30 text-blue-400',
+  opened: 'bg-emerald-900/30 text-emerald-400',
+  responded: 'bg-violet-900/30 text-violet-700',
+  bounced: 'bg-red-900/30 text-red-400',
+  failed: 'bg-red-900/30 text-red-400',
 };
 
 const PIE_COLORS = ['#94a3b8', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b'];
@@ -71,7 +71,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
             <Button 
                 variant="outline" 
                 size="sm" 
-                className="text-violet-600 border-violet-200 hover:bg-violet-900/20 text-xs h-8" 
+                className="text-violet-600 border-violet-500/30 hover:bg-violet-900/20 text-xs h-8" 
                 onClick={handleGenerateAI} 
                 disabled={generating}
             >
@@ -84,7 +84,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
       {/* Summary metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Total', value: messages.length, icon: Send, color: 'text-slate-400 bg-slate-50' },
+          { label: 'Total', value: messages.length, icon: Send, color: 'text-slate-400 bg-slate-800/40' },
           { label: 'Sent', value: statusCounts.sent || 0, icon: Send, color: 'text-blue-600 bg-blue-900/20' },
           { label: 'Opened', value: statusCounts.opened || 0, icon: Eye, color: 'text-emerald-600 bg-emerald-900/20' },
           { label: 'Responded', value: statusCounts.responded || 0, icon: MessageSquare, color: 'text-violet-600 bg-violet-900/20' },
@@ -152,7 +152,7 @@ export default function CampaignDetailPanel({ campaign, onClose }) {
                       <TableCell className="text-xs">{m.recipient_email || <span className="text-slate-300">—</span>}</TableCell>
                       <TableCell>
                           {m.body_html ? (
-                              <Badge variant="outline" className="text-[9px] border-violet-200 text-violet-600 bg-violet-900/20">
+                              <Badge variant="outline" className="text-[9px] border-violet-500/30 text-violet-600 bg-violet-900/20">
                                   Generated
                               </Badge>
                           ) : (

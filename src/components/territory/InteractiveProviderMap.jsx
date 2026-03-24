@@ -205,8 +205,8 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
             {stats && (
               <div className="flex gap-2">
                 <Badge variant="outline" className="text-[10px]">{stats.total} mapped</Badge>
-                <Badge className="bg-teal-100 text-teal-700 text-[10px]">Avg {stats.avgScore}</Badge>
-                <Badge className="bg-green-100 text-green-400 text-[10px]">{stats.high} high</Badge>
+                <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">Avg {stats.avgScore}</Badge>
+                <Badge className="bg-green-900/30 text-green-400 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
             {actions}
@@ -261,7 +261,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
 
           {/* Legend */}
           {colorByScore && mapPoints.length > 0 && (
-            <div className="absolute bottom-3 left-3 z-[1000] bg-slate-800/60/95 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
+            <div className="absolute bottom-3 left-3 z-[1000] bg-slate-800/60 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
               <div className="text-[10px] font-semibold text-slate-300 mb-1.5">Score Legend</div>
               <div className="space-y-1">
                 {[

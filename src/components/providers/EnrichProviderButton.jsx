@@ -247,7 +247,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
                         {r.fieldsUpdated?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {r.fieldsUpdated.map((f, j) => (
-                              <Badge key={j} className="bg-green-100 text-green-400 text-[8px]">{f}</Badge>
+                              <Badge key={j} className="bg-green-900/30 text-green-400 text-[8px]">{f}</Badge>
                             ))}
                           </div>
                         )}

@@ -60,7 +60,7 @@ export default function MAInpatientDashboard() {
   const uniqueTypes = new Set(filteredData.map(f => f.facility_type).filter(Boolean)).size;
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
         title="Medicare Facility Intelligence"
         subtitle="Hospital and facility data from Medicare datasets"

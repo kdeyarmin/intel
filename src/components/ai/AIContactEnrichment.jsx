@@ -72,7 +72,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const confColor = { high: 'bg-green-100 text-green-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-red-100 text-red-400' };
+  const confColor = { high: 'bg-green-900/30 text-green-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-red-900/30 text-red-400' };
 
   const ContactRow = ({ icon: Icon, label, items = [] }) => {
     if (!items.length) return null;
@@ -149,7 +149,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
               </div>
             )}
             {results.summary && <p className="text-[10px] text-slate-500 italic">{results.summary}</p>}
-            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-200 rounded px-2.5 py-1.5">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-[10px] text-amber-400">AI-generated suggestions. Verify before outreach.</p>
             </div>

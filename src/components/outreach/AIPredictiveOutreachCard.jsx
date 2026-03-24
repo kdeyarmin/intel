@@ -27,7 +27,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
   const hasScore = provider.ai_outreach_score !== undefined && provider.ai_outreach_score !== null;
 
   return (
-    <Card className="bg-gradient-to-br from-slate-50 to-white border-indigo-100">
+    <Card className="bg-gradient-to-br from-slate-800/40 to-slate-900 border-indigo-500/30">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2 text-indigo-400">
@@ -70,7 +70,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
             </div>
 
             {provider.ai_outreach_strategy && (
-              <div className="bg-indigo-900/20/50 p-3 rounded-md border border-indigo-100/50">
+              <div className="bg-indigo-900/20 p-3 rounded-md border border-indigo-500/30">
                 <p className="text-xs font-semibold text-indigo-300 mb-1 flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5" /> Optimal Strategy
                 </p>

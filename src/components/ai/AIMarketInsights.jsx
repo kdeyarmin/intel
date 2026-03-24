@@ -8,12 +8,12 @@ import { TrendingUp, Loader2, Sparkles, ShieldAlert, Target, Zap } from 'lucide-
 
 const INSIGHT_ICONS = { growth: TrendingUp, threat: ShieldAlert, opportunity: Target, action: Zap };
 const INSIGHT_COLORS = {
-  growth: 'bg-emerald-900/20 border-emerald-200 text-emerald-300',
-  threat: 'bg-red-900/20 border-red-200 text-red-300',
-  opportunity: 'bg-blue-900/20 border-blue-200 text-blue-300',
-  action: 'bg-violet-900/20 border-violet-200 text-violet-800',
+  growth: 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300',
+  threat: 'bg-red-900/20 border-red-500/30 text-red-300',
+  opportunity: 'bg-blue-900/20 border-blue-500/30 text-blue-300',
+  action: 'bg-violet-900/20 border-violet-500/30 text-violet-400',
 };
-const PRIORITY_COLORS = { high: 'bg-red-100 text-red-400', medium: 'bg-amber-100 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+const PRIORITY_COLORS = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
 export default function AIMarketInsights({ provider, location, taxonomies, utilizations = [], referrals = [], score }) {
   const [results, setResults] = useState(null);
@@ -133,11 +133,11 @@ Also provide an overall market position assessment.`,
         {results && (
           <div className="space-y-3">
             {/* Market position header */}
-            <div className="bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg p-3 border border-emerald-100">
+            <div className="bg-gradient-to-r from-slate-800/40 to-emerald-900/20 rounded-lg p-3 border border-emerald-500/30">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-medium text-slate-500 uppercase">Market Position</span>
                 {results.market_score != null && (
-                  <Badge className={`text-[10px] ${results.market_score >= 70 ? 'bg-emerald-100 text-emerald-400' : results.market_score >= 40 ? 'bg-amber-100 text-amber-400' : 'bg-red-100 text-red-400'}`}>
+                  <Badge className={`text-[10px] ${results.market_score >= 70 ? 'bg-emerald-900/30 text-emerald-400' : results.market_score >= 40 ? 'bg-amber-900/30 text-amber-400' : 'bg-red-900/30 text-red-400'}`}>
                     Score: {results.market_score}/100
                   </Badge>
                 )}
@@ -167,7 +167,7 @@ Also provide an overall market position assessment.`,
 
             {/* Competitive landscape */}
             {results.competitive_landscape && (
-              <div className="bg-red-900/20/50 rounded-lg p-3 border border-red-100">
+              <div className="bg-red-900/20 rounded-lg p-3 border border-red-500/30">
                 <p className="text-[10px] font-medium text-red-400 uppercase mb-1 flex items-center gap-1">
                   <ShieldAlert className="w-3 h-3" /> Competitive Landscape
                 </p>
@@ -177,7 +177,7 @@ Also provide an overall market position assessment.`,
 
             {/* Recommended strategy */}
             {results.recommended_strategy && (
-              <div className="bg-violet-900/20 rounded-lg p-3 border border-violet-100">
+              <div className="bg-violet-900/20 rounded-lg p-3 border border-violet-500/30">
                 <p className="text-[10px] font-medium text-violet-700 uppercase mb-1 flex items-center gap-1">
                   <Zap className="w-3 h-3" /> Recommended Strategy
                 </p>

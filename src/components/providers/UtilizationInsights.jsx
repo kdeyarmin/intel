@@ -29,16 +29,16 @@ export default function UtilizationInsights({ utilization }) {
 
   const getVolumeIndicator = () => {
     if (patientVolume === '<11') return { label: 'Low Volume', color: 'bg-slate-700/40 text-slate-200' };
-    if (patientVolume >= 1000) return { label: 'Very High', color: 'bg-purple-100 text-purple-300' };
-    if (patientVolume >= 500) return { label: 'High', color: 'bg-blue-100 text-blue-300' };
-    if (patientVolume >= 200) return { label: 'Moderate', color: 'bg-green-100 text-green-300' };
+    if (patientVolume >= 1000) return { label: 'Very High', color: 'bg-purple-900/30 text-purple-300' };
+    if (patientVolume >= 500) return { label: 'High', color: 'bg-blue-900/30 text-blue-300' };
+    if (patientVolume >= 200) return { label: 'Moderate', color: 'bg-green-900/30 text-green-300' };
     return { label: 'Low', color: 'bg-slate-700/40 text-slate-200' };
   };
 
   const getIntensityIndicator = () => {
-    if (servicesPerPatient >= 15) return { label: 'High Intensity', color: 'bg-red-100 text-red-300' };
-    if (servicesPerPatient >= 8) return { label: 'Moderate Intensity', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Standard Care', color: 'bg-green-100 text-green-300' };
+    if (servicesPerPatient >= 15) return { label: 'High Intensity', color: 'bg-red-900/30 text-red-400' };
+    if (servicesPerPatient >= 8) return { label: 'Moderate Intensity', color: 'bg-yellow-900/30 text-yellow-400' };
+    return { label: 'Standard Care', color: 'bg-green-900/30 text-green-400' };
   };
 
   const volumeIndicator = getVolumeIndicator();
@@ -59,7 +59,7 @@ export default function UtilizationInsights({ utilization }) {
               <Users className="h-4 w-4 text-blue-600" />
               <p className="text-xs text-blue-600 font-medium">Patient Volume</p>
             </div>
-            <p className="text-2xl font-bold text-blue-900">
+            <p className="text-2xl font-bold text-blue-400">
               {patientVolume === '<11' ? '<11' : patientVolume.toLocaleString()}
             </p>
             <p className="text-xs text-blue-400">Medicare beneficiaries ({utilization.year})</p>
@@ -70,8 +70,8 @@ export default function UtilizationInsights({ utilization }) {
               <Activity className="h-4 w-4 text-teal-600" />
               <p className="text-xs text-teal-600 font-medium">Service Intensity</p>
             </div>
-            <p className="text-2xl font-bold text-teal-900">{servicesPerPatient}</p>
-            <p className="text-xs text-teal-700">Services per patient</p>
+            <p className="text-2xl font-bold text-teal-400">{servicesPerPatient}</p>
+            <p className="text-xs text-teal-400">Services per patient</p>
           </div>
         </div>
 

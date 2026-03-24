@@ -197,7 +197,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
             <div>
               <p className="text-[10px] font-medium text-slate-400 uppercase mb-1">Optimal Send Times</p>
               {results.insights.optimal_send_times.map((st, i) => (
-                <div key={i} className="flex items-start gap-2 bg-emerald-900/20 rounded-lg p-2 mb-1 border border-emerald-100">
+                <div key={i} className="flex items-start gap-2 bg-emerald-900/20 rounded-lg p-2 mb-1 border border-emerald-500/30">
                   <Badge className="bg-emerald-600 text-white text-[8px] shrink-0 mt-0.5">#{i + 1}</Badge>
                   <div>
                     <p className="text-[10px] font-semibold text-emerald-300">{st.day} — {st.time}</p>
@@ -229,7 +229,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
 
           {/* Risks */}
           {results.insights.risks?.length > 0 && (
-            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
               <p className="text-[10px] font-medium text-amber-400 mb-1">⚠ Risks & Gaps</p>
               {results.insights.risks.map((r, i) => (
                 <p key={i} className="text-[9px] text-amber-600">• {r}</p>

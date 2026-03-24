@@ -88,7 +88,7 @@ Each follow-up should:
   };
 
   return (
-    <Card className="border-blue-200 bg-gradient-to-b from-blue-50/30 to-white">
+    <Card className="border-blue-500/30 bg-gradient-to-b from-blue-900/20 to-slate-900">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-sm flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-blue-500" />
@@ -130,7 +130,7 @@ Each follow-up should:
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-[9px]">{segCfg?.label || fu.segment}</Badge>
-                      <Badge className="text-[9px] bg-blue-100 text-blue-400">{count} recipients</Badge>
+                      <Badge className="text-[9px] bg-blue-900/30 text-blue-400">{count} recipients</Badge>
                     </div>
                     <Button size="sm" variant="ghost" className="h-6 text-[10px] text-blue-600 hover:bg-blue-900/20 gap-1"
                       onClick={() => {
@@ -161,7 +161,7 @@ Each follow-up should:
             )}
 
             {results.general_tips?.length > 0 && (
-              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-100">
+              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
                 <p className="text-[10px] font-medium text-amber-400 mb-1">💡 Follow-Up Tips</p>
                 {results.general_tips.map((t, i) => <p key={i} className="text-[9px] text-amber-600">• {t}</p>)}
               </div>
