@@ -663,11 +663,10 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
 export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0 } = params;
-  const MAX_EXEC_MS = 110000;
-  const execStartTime = Date.now();
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
+  const MAX_PAGES = 50000;
   const isProviderDataAPI = file_url.includes("/datastore/query/");
 
   try {
@@ -681,7 +680,9 @@ export async function handleAutoImportCMSData(params: any) {
     let pagesSincePauseCheck = 0;
     const errors: any[] = [];
 
-    while (hasMore && Date.now() - execStartTime < MAX_EXEC_MS) {
+    let pageCount = 0;
+    while (hasMore && pageCount < MAX_PAGES) {
+      pageCount++;
       pagesSincePauseCheck++;
       if (pagesSincePauseCheck >= PAUSE_CHECK_INTERVAL) {
         pagesSincePauseCheck = 0;
@@ -732,7 +733,11 @@ export async function handleAutoImportCMSData(params: any) {
           await safeImportQuery(
             () => db.update(importBatches).set({
               status: "failed",
+              imported_rows: totalInserted,
+              skipped_rows: totalSkipped,
+              total_rows: totalFetched,
               error_samples: errors.slice(-5),
+              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
             undefined, `fail on fetch error ${import_type}`
@@ -761,7 +766,11 @@ export async function handleAutoImportCMSData(params: any) {
           await safeImportQuery(
             () => db.update(importBatches).set({
               status: "failed",
+              imported_rows: totalInserted,
+              skipped_rows: totalSkipped,
+              total_rows: totalFetched,
               error_samples: errors.slice(-5),
+              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
             undefined, `fail on HTTP error ${import_type}`
@@ -818,22 +827,20 @@ export async function handleAutoImportCMSData(params: any) {
       await new Promise(r => setTimeout(r, 50));
     }
 
-    if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
-      console.log(`[AutoImportCMS] Time limit reached at offset ${offset}, inserted=${totalInserted}, scheduling immediate continuation`);
+    if (hasMore && pageCount >= MAX_PAGES) {
+      console.warn(`[AutoImportCMS] Safety limit reached at offset ${offset} after ${MAX_PAGES} pages, inserted=${totalInserted}. Marking incomplete.`);
       await safeImportQuery(
         () => db.update(importBatches).set({
+          status: "completed_with_errors",
           imported_rows: totalInserted,
           skipped_rows: totalSkipped,
           total_rows: totalFetched,
+          error_samples: [{ message: `Import stopped after ${MAX_PAGES} pages at offset ${offset}. Resume to continue.`, phase: "safety_limit" }],
           retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
           updated_date: new Date(),
         }).where(eq(importBatches.id, batch_id)),
-        undefined, `save progress before continuation ${import_type}`
+        undefined, `safety limit ${import_type}`
       );
-      setTimeout(() => {
-        handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped })
-          .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
-      }, 1000);
       return;
     }
 
@@ -856,6 +863,7 @@ export async function handleAutoImportCMSData(params: any) {
       () => db.update(importBatches).set({
         status: "failed",
         error_samples: [{ message: e.message, phase: "cms_import" }],
+        retry_params: { ...params, resume_offset: resume_offset },
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch_id)),
       undefined, `fail ${import_type}`
