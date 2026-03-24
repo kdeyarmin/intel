@@ -9,5 +9,13 @@ const pool = new pg.Pool({
   connectionTimeoutMillis: 20000,
 });
 
+pool.on("error", (err) => {
+  console.error("[DB Pool] Unexpected error on idle client:", err.message);
+});
+
+pool.on("connect", () => {
+  console.log("[DB Pool] New client connected");
+});
+
 export const db = drizzle(pool, { schema });
 export { pool };
