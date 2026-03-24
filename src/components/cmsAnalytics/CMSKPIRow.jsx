@@ -50,12 +50,12 @@ export default function CMSKPIRow({ maInpatient, hhaStats, inpatientDRG, utiliza
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <KPI title="MA Discharges" value={fmt(totalMADischarges)} icon={Building2} color="text-blue-600" bgColor="bg-blue-900/20" loading={loading} />
-      <KPI title="HHA Persons Served" value={fmt(totalHHAPersons)} icon={Heart} color="text-rose-600" bgColor="bg-rose-50" loading={loading} />
-      <KPI title="DRG Discharges" value={fmt(totalDRGDischarges)} icon={Activity} color="text-amber-600" bgColor="bg-amber-900/20" loading={loading} />
-      <KPI title="Beneficiaries" value={fmt(totalBeneficiaries)} icon={Users} color="text-emerald-600" bgColor="bg-emerald-900/20" loading={loading} />
-      <KPI title="Total Referrals" value={fmt(totalReferrals)} icon={TrendingUp} color="text-violet-600" bgColor="bg-violet-900/20" loading={loading} />
-      <KPI title="Medicare Payments" value={`$${fmt(totalPayments)}`} icon={DollarSign} color="text-sky-600" bgColor="bg-sky-50" loading={loading} />
+      <KPI title="MA Discharges" value={fmt(totalMADischarges)} icon={Building2} color="text-blue-400" bgColor="bg-blue-900/20" loading={loading} />
+      <KPI title="HHA Persons Served" value={fmt(totalHHAPersons)} icon={Heart} color="text-rose-400" bgColor="bg-rose-900/20" loading={loading} />
+      <KPI title="DRG Discharges" value={fmt(totalDRGDischarges)} icon={Activity} color="text-amber-400" bgColor="bg-amber-900/20" loading={loading} />
+      <KPI title="Beneficiaries" value={fmt(totalBeneficiaries)} icon={Users} color="text-emerald-400" bgColor="bg-emerald-900/20" loading={loading} />
+      <KPI title="Total Referrals" value={fmt(totalReferrals)} icon={TrendingUp} color="text-violet-400" bgColor="bg-violet-900/20" loading={loading} />
+      <KPI title="Medicare Payments" value={`$${fmt(totalPayments)}`} icon={DollarSign} color="text-sky-400" bgColor="bg-sky-900/20" loading={loading} />
     </div>
   );
 }

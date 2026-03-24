@@ -174,7 +174,7 @@ export default function LeadListBuilder() {
         name: listName,
         description: listDescription,
         filters: filters,
-        provider_count: filteredResults.length,
+        member_count: filteredResults.length,
       };
 
       const newList = await createListMutation.mutateAsync(listData);

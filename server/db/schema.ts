@@ -48,7 +48,7 @@ export const providers = pgTable("providers", {
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
   index("providers_npi_idx").on(table.npi),
-  index("providers_state_idx").on(table.last_name),
+  index("providers_last_name_idx").on(table.last_name),
 ]);
 
 export const providerLocations = pgTable("provider_locations", {

@@ -87,7 +87,7 @@ export default function LeadLists() {
                     <TableRow key={list.id}>
                       <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
                       <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
-                      <TableCell className="text-slate-300">{list.provider_count}</TableCell>
+                      <TableCell className="text-slate-300">{list.member_count}</TableCell>
                       <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
@@ -198,7 +198,7 @@ function ViewListDialog({ listId, listName }) {
       setLeads(prev => prev.filter(l => l.member.id !== memberId));
       const list = await base44.entities.LeadList.filter({ id: listId });
       if (list[0]) {
-        await base44.entities.LeadList.update(listId, { provider_count: Math.max((list[0].provider_count || 0) - 1, 0) });
+        await base44.entities.LeadList.update(listId, { member_count: Math.max((list[0].member_count || 0) - 1, 0) });
       }
     } catch (err) {
       console.error('Failed to remove provider:', err);

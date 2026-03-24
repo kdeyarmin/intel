@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 
 const ENTITY_CONFIGS = [
-  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-600 bg-blue-900/20' },
-  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-600 bg-emerald-900/20' },
-  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-600 bg-violet-900/20' },
+  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-400 bg-blue-900/20' },
+  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-400 bg-emerald-900/20' },
+  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-400 bg-violet-900/20' },
 ];
 
 export default function ProactiveAIScanner() {
@@ -167,7 +167,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
   const sevColors = {
     critical: 'bg-red-900/30 text-red-400',
     high: 'bg-orange-900/30 text-orange-400',
-    medium: 'bg-yellow-100 text-yellow-700',
+    medium: 'bg-yellow-900/30 text-yellow-400',
     low: 'bg-blue-900/30 text-blue-400',
   };
 
@@ -176,7 +176,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-violet-600" />
+            <ShieldAlert className="w-5 h-5 text-violet-400" />
             Proactive AI Quality Scanner
           </CardTitle>
           <Button
@@ -216,8 +216,8 @@ Return up to 10 most important issues, prioritized by severity and affected coun
           <div className="space-y-4">
             {createdCount > 0 && (
               <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-violet-600 shrink-0" />
-                <p className="text-xs text-violet-700">
+                <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0" />
+                <p className="text-xs text-violet-400">
                   Created <strong>{createdCount}</strong> new alert{createdCount > 1 ? 's' : ''} for critical/high severity issues. View them in the Alerts tab.
                 </p>
               </div>
@@ -250,7 +250,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                   {finding.issues.length === 0 ? (
                     <div className="px-4 py-4 text-center">
                       <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mb-1" />
-                      <p className="text-xs text-green-600">No significant issues found</p>
+                      <p className="text-xs text-green-400">No significant issues found</p>
                     </div>
                   ) : (
                     <div className="divide-y">

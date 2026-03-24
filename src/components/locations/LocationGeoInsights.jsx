@@ -38,14 +38,14 @@ export default function LocationGeoInsights({ location, coProviders = [], allLoc
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-sky-50 rounded-lg">
-            <p className="text-[10px] text-sky-600 font-medium">Same City</p>
-            <p className="text-lg font-bold text-sky-900">{insights.uniqueNPIsSameCity}</p>
+          <div className="p-3 bg-sky-900/20 rounded-lg">
+            <p className="text-[10px] text-sky-400 font-medium">Same City</p>
+            <p className="text-lg font-bold text-sky-300">{insights.uniqueNPIsSameCity}</p>
             <p className="text-[10px] text-sky-500">providers in {location.city}</p>
           </div>
           <div className="p-3 bg-indigo-900/20 rounded-lg">
-            <p className="text-[10px] text-indigo-600 font-medium">Same ZIP</p>
-            <p className="text-lg font-bold text-indigo-900">{insights.uniqueNPIsSameZip}</p>
+            <p className="text-[10px] text-indigo-400 font-medium">Same ZIP</p>
+            <p className="text-lg font-bold text-indigo-300">{insights.uniqueNPIsSameZip}</p>
             <p className="text-[10px] text-indigo-500">providers in {location.zip}</p>
           </div>
         </div>

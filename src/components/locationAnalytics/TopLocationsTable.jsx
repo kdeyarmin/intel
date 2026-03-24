@@ -35,7 +35,7 @@ export default function TopLocationsTable({ locations }) {
                   <TableCell>
                     <Badge className={
                       loc.providerCount >= 10 ? 'bg-green-900/30 text-green-400' :
-                      loc.providerCount >= 5 ? 'bg-yellow-100 text-yellow-700' :
+                      loc.providerCount >= 5 ? 'bg-yellow-900/30 text-yellow-400' :
                       'bg-slate-700/50 text-slate-400'
                     }>
                       {loc.providerCount >= 10 ? 'High' : loc.providerCount >= 5 ? 'Medium' : 'Low'}

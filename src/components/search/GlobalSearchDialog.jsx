@@ -198,7 +198,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
         items.push({
           type: 'Lead List',
           label: ll.name,
-          sublabel: `${ll.provider_count || 0} providers`,
+          sublabel: `${ll.member_count || 0} providers`,
           url: createPageUrl('LeadLists'),
         });
       }

@@ -133,7 +133,7 @@ export default function CampaignCreateDialog({ onCreated }) {
                     <label key={list.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer">
                       <Checkbox checked={form.lead_list_ids.includes(list.id)} onCheckedChange={() => toggleList(list.id)} />
                       <span className="text-sm text-slate-200 flex-1">{list.name}</span>
-                      <Badge variant="outline" className="text-[10px]">{list.provider_count || 0}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{list.member_count || 0}</Badge>
                     </label>
                   ))}
                 </div>

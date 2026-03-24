@@ -21,7 +21,7 @@ function formatCurrency(val) {
 }
 
 export default function FacilityListPage({ facilityGroup, title, icon: Icon, color, iconCls, detailPage = 'FacilityDetail' }) {
-  const resolvedIconCls = iconCls || `text-${color}-400`;
+  const resolvedIconCls = iconCls || "text-cyan-400";
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [selectedState, setSelectedState] = useState('');

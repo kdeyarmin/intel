@@ -113,7 +113,7 @@ export default function TargetListBuilder({
               <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a list..." /></SelectTrigger>
               <SelectContent>
                 {leadLists.map(l => (
-                  <SelectItem key={l.id} value={l.id}>{l.name} ({l.provider_count || 0})</SelectItem>
+                  <SelectItem key={l.id} value={l.id}>{l.name} ({l.member_count || 0})</SelectItem>
                 ))}
               </SelectContent>
             </Select>

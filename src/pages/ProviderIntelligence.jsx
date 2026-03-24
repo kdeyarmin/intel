@@ -479,7 +479,7 @@ export default function ProviderIntelligence() {
             )}
             {filteredProviders.length === 0 && (
               <div className="text-center py-12">
-                <Users className="w-8 h-8 text-slate-600 mx-auto mb-3" />
+                <Users className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                 <p className="text-sm text-slate-400">No providers with emails match the current filters</p>
                 <p className="text-xs text-slate-500 mt-1">Try adjusting filters or run the Email Search bot first</p>
               </div>
@@ -528,7 +528,7 @@ export default function ProviderIntelligence() {
             </div>
           ) : (
             <div className="text-center py-16">
-              <Send className="w-10 h-10 text-slate-600 mx-auto mb-4" />
+              <Send className="w-10 h-10 text-slate-500 mx-auto mb-4" />
               <p className="text-base font-medium text-slate-300 mb-2">No providers selected</p>
               <p className="text-sm text-slate-500 mb-4">
                 Go to the Providers tab, select providers with emails, then come back here to launch a campaign.

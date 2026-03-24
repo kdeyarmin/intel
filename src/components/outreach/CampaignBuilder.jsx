@@ -146,7 +146,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                   <SelectContent>
                     {leadLists.map(list => (
                       <SelectItem key={list.id} value={list.id}>
-                        {list.name} ({list.provider_count || 0} providers)
+                        {list.name} ({list.member_count || 0} providers)
                       </SelectItem>
                     ))}
                   </SelectContent>

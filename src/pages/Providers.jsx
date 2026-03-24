@@ -400,7 +400,7 @@ export default function Providers() {
     const newList = await base44.entities.LeadList.create({
       name: listName,
       filters: { search: searchTerm },
-      provider_count: filteredProviders.length,
+      member_count: filteredProviders.length,
     });
 
     const memberBatch = filteredProviders.slice(0, 50).map(provider => ({

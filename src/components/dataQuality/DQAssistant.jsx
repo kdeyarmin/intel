@@ -175,8 +175,8 @@ export default function DQAssistant() {
 
           {loading && (
             <div className="flex gap-2 items-start">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                <Bot className="w-3.5 h-3.5 text-indigo-600" />
+              <div className="w-6 h-6 rounded-full bg-indigo-900/30 flex items-center justify-center shrink-0">
+                <Bot className="w-3.5 h-3.5 text-indigo-400" />
               </div>
               <div className="space-y-1.5 flex-1">
                 <Skeleton className="h-3 w-3/4" />
@@ -215,8 +215,8 @@ function MessageBubble({ message }) {
   return (
     <div className={`flex gap-2 ${isUser ? 'justify-end' : 'items-start'}`}>
       {!isUser && (
-        <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
-          <Bot className="w-3.5 h-3.5 text-indigo-600" />
+        <div className="w-6 h-6 rounded-full bg-indigo-900/30 flex items-center justify-center shrink-0 mt-0.5">
+          <Bot className="w-3.5 h-3.5 text-indigo-400" />
         </div>
       )}
       <div className={`max-w-[85%] ${isUser ? 'order-first' : ''}`}>
@@ -361,7 +361,7 @@ function PatternResultsPanel({ result, onClose }) {
           <p className="text-[9px] font-semibold text-slate-500 uppercase">Priority Actions</p>
           {result.action_plan.slice(0, 3).map((a, i) => (
             <div key={i} className="flex items-start gap-1.5">
-              <Badge className="text-[7px] bg-indigo-100 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
+              <Badge className="text-[7px] bg-indigo-900/30 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
               <div>
                 <p className="text-[9px] font-medium text-slate-300">{a.action}</p>
                 <p className="text-[9px] text-slate-500">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>

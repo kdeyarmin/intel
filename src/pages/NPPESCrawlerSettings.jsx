@@ -555,7 +555,7 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
             value={newCred}
             onChange={(e) => setNewCred(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addCredential()}
-            className="bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-600"
+            className="bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-500"
           />
           <Button
             variant="outline"

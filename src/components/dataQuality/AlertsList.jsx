@@ -12,7 +12,7 @@ import AlertAIAnalysis from './AlertAIAnalysis';
 
 const severityColors = {
   low: 'bg-blue-900/30 text-blue-400',
-  medium: 'bg-yellow-100 text-yellow-700',
+  medium: 'bg-yellow-900/30 text-yellow-400',
   high: 'bg-orange-900/30 text-orange-400',
   critical: 'bg-red-900/30 text-red-400',
 };
