@@ -36,7 +36,7 @@ export default function ContactEnrichmentStatus({ location, provider }) {
       <CardContent className="space-y-3">
         {/* Progress bar */}
         <div className="w-full bg-slate-700 rounded-full h-2">
-          <div className={`h-2 rounded-full transition-all ${pct === 100 ? 'bg-green-900/20' : pct >= 60 ? 'bg-amber-900/20' : 'bg-red-900/20'}`} style={{ width: `${pct}%` }} />
+          <div className={`h-2 rounded-full transition-all ${pct === 100 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
         </div>
 
         <div>

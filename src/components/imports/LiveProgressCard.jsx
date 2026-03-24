@@ -145,13 +145,13 @@ export default function LiveProgressCard({ activeBatches }) {
                 {total > 0 && (
                   <div className="space-y-1.5 pt-1">
                     {batch.status === 'validating' && (
-                      <RowProgressBar label="Rows Validated" current={validated} total={total} color="bg-emerald-900/20" />
+                      <RowProgressBar label="Rows Validated" current={validated} total={total} color="bg-emerald-500" />
                     )}
                     {batch.status === 'processing' && (
                       <>
-                        <RowProgressBar label="Rows Imported" current={batch.imported_rows || 0} total={total} color="bg-blue-900/20" />
+                        <RowProgressBar label="Rows Imported" current={batch.imported_rows || 0} total={total} color="bg-blue-500" />
                         {(batch.updated_rows || 0) > 0 && (
-                          <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-900/20" />
+                          <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-500" />
                         )}
                       </>
                     )}

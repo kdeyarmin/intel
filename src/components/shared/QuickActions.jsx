@@ -32,7 +32,7 @@ export default function QuickActions() {
           <Link
             key={action.label}
             to={createPageUrl(action.page)}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-slate-700/50 bg-[#141d30] hover:border-cyan-500/30 hover:bg-cyan-900/20/5 transition-all group"
+            className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-slate-700/50 bg-[#141d30] hover:border-cyan-500/30 hover:bg-cyan-900/20 transition-all group"
           >
             <div className={`p-2 rounded-lg ${action.color} group-hover:scale-110 transition-transform`}>
               <Icon className="w-4 h-4" />

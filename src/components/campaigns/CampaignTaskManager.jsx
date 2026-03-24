@@ -94,7 +94,7 @@ export default function CampaignTaskManager({ campaignId }) {
         {/* Progress bar */}
         {tasks.length > 0 && (
           <div className="w-full h-1.5 bg-slate-700/60 rounded-full overflow-hidden mt-2">
-            <div className="h-full bg-emerald-900/20 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
           </div>
         )}
       </CardHeader>

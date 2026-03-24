@@ -70,7 +70,7 @@ export default function CurrentStateProgress({ status }) {
         <div className="space-y-1">
           <div className="w-full h-2.5 rounded-full bg-slate-700/80 overflow-hidden">
             <div
-              className="h-full rounded-full bg-teal-900/20 transition-all duration-700"
+              className="h-full rounded-full bg-teal-500 transition-all duration-700"
               style={{ width: `${Math.max(pct, 2)}%` }}
             />
           </div>
@@ -91,7 +91,7 @@ export default function CurrentStateProgress({ status }) {
                   key={prefix}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
                     done
-                      ? 'bg-teal-900/20 text-teal-400 border-teal-500/30'
+                      ? 'bg-teal-900/30 text-teal-400 border-teal-500/30'
                       : 'bg-slate-800/50 text-slate-500 border-slate-700/50'
                   }`}
                 >

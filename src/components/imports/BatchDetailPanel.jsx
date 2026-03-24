@@ -61,9 +61,9 @@ function ProgressBreakdown({ batch }) {
 
   const stages = [
     { label: 'Scanned', count: total, pct: 100, color: 'bg-slate-500' },
-    { label: 'Validated', count: validated, pct: total > 0 ? (validated / total) * 100 : 0, color: 'bg-emerald-900/20' },
-    { label: 'Imported', count: imported, pct: total > 0 ? (imported / total) * 100 : 0, color: 'bg-blue-900/20' },
-    { label: 'Updated', count: updated, pct: total > 0 ? (updated / total) * 100 : 0, color: 'bg-violet-900/20' },
+    { label: 'Validated', count: validated, pct: total > 0 ? (validated / total) * 100 : 0, color: 'bg-emerald-500' },
+    { label: 'Imported', count: imported, pct: total > 0 ? (imported / total) * 100 : 0, color: 'bg-blue-500' },
+    { label: 'Updated', count: updated, pct: total > 0 ? (updated / total) * 100 : 0, color: 'bg-violet-500' },
   ];
 
   return (

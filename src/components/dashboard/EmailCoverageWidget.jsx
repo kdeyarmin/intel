@@ -90,7 +90,7 @@ export default function EmailCoverageWidget({ providers = [] }) {
             <span>{searchedPct}% ({remaining} remaining)</span>
           </div>
           <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
-            <div className="h-full bg-violet-900/70 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
+            <div className="h-full bg-violet-500 rounded-full transition-all" style={{ width: `${searchedPct}%` }} />
           </div>
         </div>
 

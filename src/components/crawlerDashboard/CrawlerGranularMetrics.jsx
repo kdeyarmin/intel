@@ -31,7 +31,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
   };
 
   return (
-    <Card className="col-span-full overflow-hidden border-teal-500/20 shadow-md shadow-teal-500/5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800">
+    <Card className="col-span-full overflow-hidden border-teal-500/20 shadow-md shadow-teal-500/5 bg-gradient-to-br from-slate-900 to-slate-800">
       <CardHeader className="pb-3 border-b border-slate-700/50 bg-slate-800/40">
         <div className="flex items-center justify-between">
           <div>
@@ -51,7 +51,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                  {active_workers}
                </Badge>
              </div>
-             {active_workers > 0 && <span className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-teal-900/20"></span></span> Processing active</span>}
+             {active_workers > 0 && <span className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span></span> Processing active</span>}
           </div>
         </div>
       </CardHeader>
@@ -63,7 +63,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
             <p className="text-sm text-slate-400 mt-1">Start a new crawl to see real-time granular metrics.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-700/50">
             {processing_states.map(state => {
               const metrics = granular_metrics[state] || {};
               const avgTime = metrics.avg_prefix_time_ms || 0;
@@ -75,10 +75,10 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
               const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
               return (
-                <div key={state} className="p-5 hover:bg-slate-800/40/50/50 transition-colors">
+                <div key={state} className="p-5 hover:bg-slate-800/60 transition-colors">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-semibold text-slate-300 flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-md bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-bold">
+                      <span className="w-8 h-8 rounded-md bg-teal-900/30 text-teal-400 flex items-center justify-center text-sm font-bold">
                         {state}
                       </span>
                       State Progress
@@ -93,7 +93,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                            <span>Progress</span>
                            <span>{progressPct}%</span>
                          </div>
-                         <Progress value={progressPct} className="h-1.5 bg-slate-700 [&>div]:bg-teal-900/20" />
+                         <Progress value={progressPct} className="h-1.5 bg-slate-700 [&>div]:bg-teal-500" />
                       </div>
                     </div>
                   </div>
@@ -130,7 +130,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                           API Rate Limits Hit
                         </span>
                       </div>
-                      <p className={`text-lg font-semibold ${rateLimits > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      <p className={`text-lg font-semibold ${rateLimits > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
                         {rateLimits.toLocaleString()}
                       </p>
                     </div>

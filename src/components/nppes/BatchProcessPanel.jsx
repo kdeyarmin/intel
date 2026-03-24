@@ -117,10 +117,10 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
   };
 
   return (
-    <Card className="border-indigo-200 bg-slate-800/60">
+    <Card className="border-indigo-500/20 bg-slate-800/60">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Layers className="w-5 h-5 text-indigo-600" />
+          <Layers className="w-5 h-5 text-indigo-400" />
           Batch Process
         </CardTitle>
         <CardDescription>Process multiple states concurrently for faster data ingestion.</CardDescription>
@@ -270,7 +270,7 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
           <div className="border rounded-lg p-4 bg-slate-800/40 space-y-3">
             <div className="flex items-center gap-2">
               {batchResults.states_failed === 0 ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               ) : (
                 <AlertCircle className="w-5 h-5 text-amber-500" />
               )}
@@ -284,15 +284,15 @@ export default function BatchProcessPanel({ taxonomyFilter, entityType, dryRun, 
                 <p className="text-[10px] text-slate-500">Queued</p>
               </div>
               <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
-                <p className="text-lg font-bold text-emerald-600">{batchResults.states_completed ?? 0}</p>
+                <p className="text-lg font-bold text-emerald-400">{batchResults.states_completed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Completed</p>
               </div>
               <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
-                <p className="text-lg font-bold text-red-600">{batchResults.states_failed ?? 0}</p>
+                <p className="text-lg font-bold text-red-400">{batchResults.states_failed ?? 0}</p>
                 <p className="text-[10px] text-slate-500">Failed</p>
               </div>
               <div className="text-center p-2 bg-slate-800/60 rounded-lg border">
-                <p className="text-lg font-bold text-blue-600">{(batchResults.total_imported ?? 0).toLocaleString()}</p>
+                <p className="text-lg font-bold text-blue-400">{(batchResults.total_imported ?? 0).toLocaleString()}</p>
                 <p className="text-[10px] text-slate-500">Imported</p>
               </div>
             </div>
