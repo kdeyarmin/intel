@@ -9,8 +9,9 @@ export default function ResumeImportButton({ batch, onResumed }) {
 
   const isNPPES = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
 
+  const isFlatFile = batch.import_type === 'nppes_flat_file' || batch.import_type === 'nppes_registry_file';
   const canResume = (batch.status === 'paused' || batch.status === 'failed') && 
-                    (isNPPES || batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
+                    (isNPPES || isFlatFile || batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
 
   if (!canResume) return null;
 
@@ -25,6 +26,27 @@ export default function ResumeImportButton({ batch, onResumed }) {
           dry_run: batch.dry_run || false,
         });
         toast.success('NPPES crawler batch resumed');
+      } else if (isFlatFile) {
+        if (batch.status === 'failed' || batch.status === 'paused') {
+          try {
+            await base44.entities.ImportBatch.update(batch.id, {
+              status: 'processing',
+              paused_at: null,
+              cancel_reason: "",
+            });
+          } catch (__) { /* best-effort */ }
+        }
+
+        const rp = batch.retry_params || {};
+        await base44.functions.invoke('importNPPESFlatFile', {
+          batch_id: batch.id,
+          file_url: rp.file_url || batch.file_url || batch.file_name,
+          byte_offset: rp.byte_offset || 0,
+          headers: rp.headers || null,
+          total_rows: rp.total_rows || batch.imported_rows || 0,
+        });
+
+        toast.success(`Resuming flat file import from byte offset ${(rp.byte_offset || 0).toLocaleString()}`);
       } else {
         const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
 

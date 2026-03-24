@@ -610,7 +610,7 @@ async function safeImportQuery<T>(fn: () => Promise<T>, fallback: T, label: stri
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = 500;
   let inserted = 0;
   let skipped = 0;
 
@@ -666,6 +666,8 @@ export async function handleAutoImportCMSData(params: any) {
   const MAX_EXEC_MS = 110000;
   const execStartTime = Date.now();
   const PAGE_SIZE = 1000;
+  const PAUSE_CHECK_INTERVAL = 5;
+  const PROGRESS_UPDATE_INTERVAL = 5;
   const isProviderDataAPI = file_url.includes("/datastore/query/");
 
   try {
@@ -675,9 +677,34 @@ export async function handleAutoImportCMSData(params: any) {
     let totalSkipped = Number(total_skipped) || 0;
     let hasMore = true;
     let consecutiveErrors = 0;
+    let pagesSinceProgressUpdate = 0;
+    let pagesSincePauseCheck = 0;
     const errors: any[] = [];
 
     while (hasMore && Date.now() - execStartTime < MAX_EXEC_MS) {
+      pagesSincePauseCheck++;
+      if (pagesSincePauseCheck >= PAUSE_CHECK_INTERVAL) {
+        pagesSincePauseCheck = 0;
+        const [currentBatch] = await safeImportQuery(
+          () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+          [] as any[], `pause check ${import_type}`
+        );
+        if (currentBatch && (currentBatch.status === "paused" || currentBatch.status === "cancelled")) {
+          console.log(`[AutoImportCMS] Import ${import_type} ${currentBatch.status} by user at offset ${offset}`);
+          await safeImportQuery(
+            () => db.update(importBatches).set({
+              imported_rows: totalInserted,
+              skipped_rows: totalSkipped,
+              total_rows: totalFetched,
+              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch_id)),
+            undefined, `save progress on ${currentBatch.status}`
+          );
+          return;
+        }
+      }
+
       let url: string;
       if (isProviderDataAPI) {
         const separator = file_url.includes("?") ? "&" : "?";
@@ -762,6 +789,30 @@ export async function handleAutoImportCMSData(params: any) {
       totalFetched += rows.length;
       offset += rows.length;
 
+      pagesSinceProgressUpdate++;
+      if (pagesSinceProgressUpdate >= PROGRESS_UPDATE_INTERVAL || rows.length < PAGE_SIZE) {
+        pagesSinceProgressUpdate = 0;
+        await safeImportQuery(
+          () => db.update(importBatches).set({
+            imported_rows: totalInserted,
+            skipped_rows: totalSkipped,
+            total_rows: totalFetched,
+            retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+            updated_date: new Date(),
+          }).where(eq(importBatches.id, batch_id)),
+          undefined, `update progress ${import_type}`
+        );
+      }
+
+      if (rows.length < PAGE_SIZE) {
+        hasMore = false;
+      }
+
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
+      console.log(`[AutoImportCMS] Time limit reached at offset ${offset}, inserted=${totalInserted}, scheduling immediate continuation`);
       await safeImportQuery(
         () => db.update(importBatches).set({
           imported_rows: totalInserted,
@@ -770,22 +821,12 @@ export async function handleAutoImportCMSData(params: any) {
           retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
           updated_date: new Date(),
         }).where(eq(importBatches.id, batch_id)),
-        undefined, `update progress ${import_type}`
+        undefined, `save progress before continuation ${import_type}`
       );
-
-      if (rows.length < PAGE_SIZE) {
-        hasMore = false;
-      }
-
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    if (hasMore && Date.now() - execStartTime >= MAX_EXEC_MS) {
-      console.log(`[AutoImportCMS] Time limit reached at offset ${offset}, inserted=${totalInserted}, scheduling immediate continuation`);
       setTimeout(() => {
         handleAutoImportCMSData({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped })
           .catch((e) => console.error(`[AutoImportCMS] Resume failed:`, e.message));
-      }, 3000);
+      }, 1000);
       return;
     }
 

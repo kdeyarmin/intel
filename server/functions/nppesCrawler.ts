@@ -184,7 +184,7 @@ function transformResults(allResults: any[]) {
 
 async function upsertProviders(records: any[]) {
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 100;
+  const BULK_SIZE = 250;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
     try {
@@ -228,7 +228,7 @@ async function upsertProviders(records: any[]) {
 
 async function upsertLocations(records: any[]) {
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 150;
+  const BULK_SIZE = 300;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
     try {
@@ -272,7 +272,7 @@ async function upsertLocations(records: any[]) {
 
 async function upsertTaxonomies(records: any[]) {
   let imported = 0, updated = 0, skipped = 0;
-  const BULK_SIZE = 150;
+  const BULK_SIZE = 300;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
     try {
@@ -611,7 +611,7 @@ async function processQueueWorker(dryRun: boolean) {
         tasksProcessed++;
         consecutiveErrors = 0;
         if (stats.shouldSlowDown) await sleep(2000);
-        else if (apiDelayMs > 0) await sleep(Math.min(apiDelayMs, 100));
+        else if (apiDelayMs > 0) await sleep(Math.min(apiDelayMs, 50));
       } catch (e: any) {
         consecutiveErrors++;
         const newRetryCount = (task.retry_count || 0) + 1;

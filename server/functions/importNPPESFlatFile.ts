@@ -3,7 +3,8 @@ import { importBatches, providers } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 const MAX_EXEC_MS = 50000;
-const BULK_INSERT_SIZE = 500;
+const BULK_INSERT_SIZE = 1000;
+const PAUSE_CHECK_INTERVAL = 5;
 
 async function safeFlatFileQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -75,6 +76,7 @@ export async function handleImportNPPESFlatFile(payload: any) {
     let currentByteOffset = byte_offset;
     let rowsAccumulator: any[] = [];
     let done = false;
+    let bulkInsertCount = 0;
 
     while (!done) {
       const { value, done: readerDone } = await reader.read();
@@ -113,14 +115,35 @@ export async function handleImportNPPESFlatFile(payload: any) {
         if (rowsAccumulator.length >= BULK_INSERT_SIZE) {
           await processBulkRows(rowsAccumulator, batch.dry_run || false);
           rowsAccumulator = [];
+          bulkInsertCount++;
 
-          await safeFlatFileQuery(
-            () => db.update(importBatches).set({
-              imported_rows: (batch.imported_rows || 0) + recordsProcessed,
-              updated_date: new Date(),
-            }).where(eq(importBatches.id, batch_id)),
-            undefined, "update progress"
-          );
+          if (bulkInsertCount % PAUSE_CHECK_INTERVAL === 0) {
+            const [currentBatch] = await safeFlatFileQuery(
+              () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+              [] as any[], "pause check"
+            );
+            if (currentBatch && (currentBatch.status === "paused" || currentBatch.status === "cancelled")) {
+              console.log(`[importNPPESFlatFile] Import ${currentBatch.status} by user at byte offset ${currentByteOffset}`);
+              try { reader.cancel(); } catch (_) {}
+              await safeFlatFileQuery(
+                () => db.update(importBatches).set({
+                  imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+                  retry_params: { file_url, byte_offset: currentByteOffset, headers: currentHeaders, total_rows: total_rows + recordsProcessed },
+                  updated_date: new Date(),
+                }).where(eq(importBatches.id, batch_id)),
+                undefined, "save progress on pause"
+              );
+              return { success: true, message: `Import ${currentBatch.status} by user`, paused: true };
+            }
+
+            await safeFlatFileQuery(
+              () => db.update(importBatches).set({
+                imported_rows: (batch.imported_rows || 0) + recordsProcessed,
+                updated_date: new Date(),
+              }).where(eq(importBatches.id, batch_id)),
+              undefined, "update progress"
+            );
+          }
 
           if (Date.now() - execStartTime > MAX_EXEC_MS) {
             try { reader.cancel(); } catch (_) {}

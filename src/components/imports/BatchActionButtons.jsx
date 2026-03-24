@@ -34,25 +34,35 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
     }
   };
 
+  const isFlatFile = batch.import_type === 'nppes_flat_file' || batch.import_type === 'nppes_registry_file';
+
   const handleResume = async () => {
     setIsActing(true);
     try {
-      const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
-      
-      // Update status first
       await base44.entities.ImportBatch.update(batch.id, {
         status: 'processing',
         paused_at: null,
       });
 
-      // Trigger resumption
-      await base44.functions.invoke('triggerImport', {
-        import_type: batch.import_type,
-        file_url: batch.file_url,
-        batch_id: batch.id,
-        resume_offset: offset,
-        year: batch.data_year // Ensure year is passed if available
-      });
+      if (isFlatFile) {
+        const rp = batch.retry_params || {};
+        await base44.functions.invoke('importNPPESFlatFile', {
+          batch_id: batch.id,
+          file_url: rp.file_url || batch.file_url || batch.file_name,
+          byte_offset: rp.byte_offset || 0,
+          headers: rp.headers || null,
+          total_rows: rp.total_rows || batch.imported_rows || 0,
+        });
+      } else {
+        const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+        await base44.functions.invoke('triggerImport', {
+          import_type: batch.import_type,
+          file_url: batch.file_url,
+          batch_id: batch.id,
+          resume_offset: offset,
+          year: batch.data_year,
+        });
+      }
       
       onAction?.();
     } catch (error) {
