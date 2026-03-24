@@ -377,10 +377,10 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         let taxMap: Record<string, any> = {};
         let utilMap: Record<string, any> = {};
         if (npis.length > 0) {
-          const npiList = npis.map((n: string) => `'${n}'`).join(',');
+          const npiParams = sql.join(npis.map((n: string) => sql`${n}`), sql`, `);
           const [taxResult, utilResult] = await Promise.all([
-            db.execute(sql.raw(`SELECT DISTINCT ON (npi) npi, taxonomy_description, taxonomy_code FROM provider_taxonomies WHERE npi IN (${npiList}) AND is_primary = true ORDER BY npi, id`)),
-            db.execute(sql.raw(`SELECT DISTINCT ON (npi) npi, total_medicare_payment_amt, total_unique_benes, total_services, data_year FROM provider_service_utilization WHERE npi IN (${npiList}) ORDER BY npi, data_year DESC`)),
+            db.execute(sql`SELECT DISTINCT ON (npi) npi, taxonomy_description, taxonomy_code FROM provider_taxonomies WHERE npi IN (${npiParams}) AND is_primary = true ORDER BY npi, id`),
+            db.execute(sql`SELECT DISTINCT ON (npi) npi, total_medicare_payment_amt, total_unique_benes, total_services, data_year FROM provider_service_utilization WHERE npi IN (${npiParams}) ORDER BY npi, data_year DESC`),
           ]);
           ((taxResult as any).rows || taxResult || []).forEach((r: any) => { taxMap[r.npi] = r; });
           ((utilResult as any).rows || utilResult || []).forEach((r: any) => { utilMap[r.npi] = r; });
