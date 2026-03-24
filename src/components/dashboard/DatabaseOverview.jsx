@@ -64,12 +64,6 @@ export default function DatabaseOverview({ stats, loading }) {
           loading={loading}
         />
         <StatCard
-          title="Locations"
-          value={formatCount(stats?.totalLocations, est)}
-          link="Locations"
-          loading={loading}
-        />
-        <StatCard
           title="Referrals"
           value={formatCount(stats?.totalReferrals, est)}
           link="Referrals"
