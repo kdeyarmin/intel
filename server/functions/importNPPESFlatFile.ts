@@ -205,12 +205,7 @@ function normalizeCredential(cred: string): string {
 function isCredentialExcluded(credential: string, excludedSet: Set<string>): boolean {
   if (excludedSet.size === 0 || !credential) return false;
   const normalized = normalizeCredential(credential);
-  if (excludedSet.has(normalized)) return true;
-  const parts = normalized.split(/[,;\/\s]+/).map(p => p.trim()).filter(Boolean);
-  for (const part of parts) {
-    if (excludedSet.has(part)) return true;
-  }
-  return false;
+  return excludedSet.has(normalized);
 }
 
 let _excludedCredentialCache: { set: Set<string>; fetchedAt: number } | null = null;
