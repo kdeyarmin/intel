@@ -374,7 +374,7 @@ export async function handleRunDataQualityScan(payload: any) {
 
     const SAMPLE_PCT = totalProviders > 100000 ? 1 : 100;
 
-    const provSample = await db.execute(sql.raw(`
+    const provSample = await db.execute(sql`
       SELECT
         count(*)::int as sampled,
         count(*) FILTER (WHERE first_name IS NOT NULL AND first_name != '' OR organization_name IS NOT NULL AND organization_name != '')::int as has_name,
@@ -386,23 +386,23 @@ export async function handleRunDataQualityScan(payload: any) {
         count(*) FILTER (WHERE entity_type = 'Organization' AND gender IS NOT NULL AND gender != '')::int as org_with_gender,
         count(*) FILTER (WHERE LENGTH(REGEXP_REPLACE(npi, '[^0-9]', '', 'g')) != 10)::int as invalid_npi,
         count(*) FILTER (WHERE status = 'Deactivated')::int as deactivated
-      FROM providers TABLESAMPLE SYSTEM(${SAMPLE_PCT})
-    `));
+      FROM providers TABLESAMPLE SYSTEM(${sql.raw(String(SAMPLE_PCT))})
+    `);
     const pc = (Array.isArray(provSample) ? provSample[0] : (provSample as any)?.rows?.[0]) || {} as any;
     const sampled = parseInt(pc.sampled) || 1;
     const scale = totalProviders / sampled;
     const scaleVal = (v: string) => Math.round((parseInt(v) || 0) * scale);
     const individualCount = scaleVal(pc.individual_count);
 
-    const locSample = await db.execute(sql.raw(`
+    const locSample = await db.execute(sql`
       SELECT
         count(*)::int as sampled,
         count(*) FILTER (WHERE address_1 IS NULL OR address_1 = '')::int as missing_address,
         count(*) FILTER (WHERE city IS NULL OR city = '')::int as missing_city,
         count(*) FILTER (WHERE state IS NOT NULL AND state != '' AND state !~ '^[A-Z]{2}$')::int as invalid_state,
         count(*) FILTER (WHERE phone IS NOT NULL AND phone != '' AND LENGTH(REGEXP_REPLACE(phone, '[^0-9]', '', 'g')) NOT BETWEEN 10 AND 11)::int as invalid_phone
-      FROM provider_locations TABLESAMPLE SYSTEM(${SAMPLE_PCT})
-    `));
+      FROM provider_locations TABLESAMPLE SYSTEM(${sql.raw(String(SAMPLE_PCT))})
+    `);
     const lc = (Array.isArray(locSample) ? locSample[0] : (locSample as any)?.rows?.[0]) || {} as any;
     const locSampled = parseInt(lc.sampled) || 1;
     const locScale = totalLocations / locSampled;
