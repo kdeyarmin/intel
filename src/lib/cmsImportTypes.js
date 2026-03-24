@@ -92,6 +92,10 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'aco_organizations', label: 'ACO Organizations', supportsUrl: true },
   { id: 'aco_financial_results', label: 'ACO Financial Results', supportsUrl: true },
   { id: 'medicare_telehealth_trends', label: 'Telehealth Trends', supportsUrl: true },
+  { id: 'snf_utilization_geo_casemix', label: 'SNF Utilization by Geo/Case-Mix', supportsUrl: true },
+  { id: 'hha_utilization_geo_casemix', label: 'HHA Utilization by Geo/Case-Mix', supportsUrl: true },
+  { id: 'ltc_facility_characteristics', label: 'LTC Facility Characteristics', supportsUrl: true },
+  { id: 'mds_frequency', label: 'MDS Frequency', supportsUrl: true },
 ];
 
 export const CMS_IMPORT_TYPE_ALIAS_MAP = {
@@ -195,6 +199,10 @@ export const BASE_IMPORT_TYPE_LABELS = {
   aco_organizations: 'ACO Organizations',
   aco_financial_results: 'ACO Financial Results',
   medicare_telehealth_trends: 'Telehealth Trends',
+  snf_utilization_geo_casemix: 'SNF Util by Geo/Case-Mix',
+  hha_utilization_geo_casemix: 'HHA Util by Geo/Case-Mix',
+  ltc_facility_characteristics: 'LTC Facility Characteristics',
+  mds_frequency: 'MDS Frequency',
   cms_order_referring: 'Order & Referring',
   provider_service_utilization: 'Service Utilization',
   nppes_registry: 'NPPES Registry',

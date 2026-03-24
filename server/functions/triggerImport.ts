@@ -109,6 +109,10 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   aco_organizations: "https://data.cms.gov/data-api/v1/dataset/69ec2609-5ce5-4ce1-b14c-1f8809fda2c2/data",
   aco_financial_results: "https://data.cms.gov/data-api/v1/dataset/73b2ce14-351d-40ac-90ba-ec9e1f5ba80c/data",
   medicare_telehealth_trends: "https://data.cms.gov/data-api/v1/dataset/939226be-b107-476e-8777-f199a840138a/data",
+  snf_utilization_geo_casemix: "https://data.cms.gov/data-api/v1/dataset/4c2a8bf6-8560-4b00-bc56-1a0322677b7f/data",
+  hha_utilization_geo_casemix: "https://data.cms.gov/data-api/v1/dataset/6c63099b-0794-40a0-925c-51a66b9b9901/data",
+  ltc_facility_characteristics: "https://data.cms.gov/data-api/v1/dataset/129a6503-c0f1-4132-b186-4c0232c2d894/data",
+  mds_frequency: "https://data.cms.gov/data-api/v1/dataset/4b50bbe6-a496-4eda-b03b-5f835937f81b/data",
 };
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
@@ -247,6 +251,11 @@ const CMS_DATASET_CATALOG = [
   { id: "aco_participants", title: "ACO Participants", description: "Complete list of providers participating in Medicare Accountable Care Organizations with TINs and NPIs.", category: "ACO & Networks", records: "~500K", priority: "high" },
   { id: "aco_organizations", title: "Accountable Care Organizations", description: "Profiles of Medicare Shared Savings Program ACOs including name, start date, track, and agreement details.", category: "ACO & Networks", records: "~500", priority: "high" },
   { id: "aco_financial_results", title: "ACO Financial & Quality Results", description: "Annual financial performance and quality measure results for ACOs in the Medicare Shared Savings Program.", category: "ACO & Networks", records: "~500", priority: "medium" },
+
+  { id: "snf_utilization_geo_casemix", title: "SNF Utilization by Geography & Case-Mix", description: "Skilled nursing facility utilization and payment data broken down by geographic area, provider, and case-mix grouping.", category: "Nursing Homes & SNF", records: "~100K", priority: "medium" },
+  { id: "hha_utilization_geo_casemix", title: "HHA Utilization by Geography & Case-Mix", description: "Home health agency utilization data by geographic area, provider, and patient case-mix grouping.", category: "Home Health", records: "~50K", priority: "medium" },
+  { id: "ltc_facility_characteristics", title: "Long-Term Care Facility Characteristics", description: "Detailed feature data for long-term care facilities including bed counts, certification, payer mix, and resident demographics.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
+  { id: "mds_frequency", title: "Minimum Data Set Frequency", description: "MDS assessment frequency metrics for nursing homes indicating how often resident assessments are performed.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
 ];
 
 export function getCMSDatasetCatalog() {
@@ -514,6 +523,12 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = [row.ACO_ID, row.PY || row.PERFORMANCE_YEAR].filter(Boolean).join("_") || null;
   } else if (importType === "medicare_telehealth_trends") {
     id = [row.YEAR, row.BENE_STATE_ABRVTN || row.STATE, row.HCPCS_CD].filter(Boolean).join("_") || null;
+  } else if (importType === "snf_utilization_geo_casemix" || importType === "hha_utilization_geo_casemix") {
+    id = [row.PRVDR_ID || row.CCN, row.GEO_CD || row.STATE, row.CASEMIX_GRP || row.HH_PDGM_GRP].filter(Boolean).join("_") || null;
+  } else if (importType === "ltc_facility_characteristics") {
+    id = row.PROVNUM || row.provnum || row.FEDERAL_PROVIDER_NUMBER || null;
+  } else if (importType === "mds_frequency") {
+    id = [row.PROVNUM || row.provnum, row.MEASURE_CODE || row.measure_code].filter(Boolean).join("_") || null;
   }
   return id ? id.substring(0, 50) : null;
 }
@@ -626,6 +641,15 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   }
   if (importType === "medicare_telehealth_trends") {
     return [row.HCPCS_DESC, row.BENE_STATE_DESC || row.STATE].filter(Boolean).join(" — ") || null;
+  }
+  if (importType === "snf_utilization_geo_casemix" || importType === "hha_utilization_geo_casemix") {
+    return row.PRVDR_NAME || row.PROVIDER_NAME || row.GEO_DESC || null;
+  }
+  if (importType === "ltc_facility_characteristics") {
+    return row.PROVNAME || row.provname || row.FACILITY_NAME || null;
+  }
+  if (importType === "mds_frequency") {
+    return row.PROVNAME || row.provname || row.FACILITY_NAME || null;
   }
   return null;
 }
