@@ -4,6 +4,7 @@ import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle
 import Anthropic from "@anthropic-ai/sdk";
 
 const BATCH_DELAY_MS = 1500;
+const CONSECUTIVE_ERROR_LIMIT = 20;
 
 const activeTaskIds = new Set<number>();
 
@@ -16,10 +17,21 @@ export async function cleanupOrphanedEmailTasks() {
       ));
     for (const task of orphaned) {
       if (!activeTaskIds.has(task.id)) {
-        console.log(`[EmailBot] Cleaning up orphaned task ${task.id}`);
-        await db.update(backgroundTasks)
-          .set({ status: "failed", error: "Orphaned task - server restarted", completed_at: new Date(), updated_date: new Date() })
-          .where(eq(backgroundTasks.id, task.id));
+        console.log(`[EmailBot] Auto-resuming orphaned task ${task.id}`);
+        activeTaskIds.add(task.id);
+        const meta: any = task.metadata || {};
+        runBackgroundSearch(
+          task.id,
+          meta.batch_size || 5,
+          meta.skip_already_searched !== false
+        ).catch((err) => {
+          console.error(`[EmailBot] Resume of task ${task.id} failed:`, err.message);
+          activeTaskIds.delete(task.id);
+          db.update(backgroundTasks)
+            .set({ status: "failed", error: `Resume failed: ${err.message}`, completed_at: new Date(), updated_date: new Date() })
+            .where(eq(backgroundTasks.id, task.id))
+            .catch(() => {});
+        });
       }
     }
   } catch (err: any) {
@@ -294,31 +306,22 @@ export async function handleEmailSearchBot(payload: any) {
   }
 
   if (mode === "start_background") {
-    const staleThreshold = new Date(Date.now() - 2 * 60 * 1000);
-    const staleTasks = await db.select().from(backgroundTasks)
-      .where(and(
-        eq(backgroundTasks.task_type, "email_search"),
-        eq(backgroundTasks.status, "processing"),
-        lt(backgroundTasks.updated_date, staleThreshold)
-      ));
-    for (const stale of staleTasks) {
-      activeTaskIds.delete(stale.id);
-      console.log(`[EmailBot] Resetting stale task ${stale.id} (last updated ${stale.updated_date})`);
-      await db.update(backgroundTasks)
-        .set({ status: "failed", error: "Task became stale (no updates for 2+ minutes)", completed_at: new Date(), updated_date: new Date() })
-        .where(eq(backgroundTasks.id, stale.id));
-    }
-    const orphanedInMemory = await db.select().from(backgroundTasks)
+    const existingActive = await db.select().from(backgroundTasks)
       .where(and(
         eq(backgroundTasks.task_type, "email_search"),
         eq(backgroundTasks.status, "processing")
       ));
-    for (const task of orphanedInMemory) {
-      if (!activeTaskIds.has(task.id)) {
-        console.log(`[EmailBot] Cleaning orphaned in-memory task ${task.id}`);
+    const reallyActive = existingActive.filter(t => activeTaskIds.has(t.id));
+    if (reallyActive.length > 0) {
+      return { success: true, message: "Email search is already running", task_id: reallyActive[0].id };
+    }
+
+    for (const stale of existingActive) {
+      if (!activeTaskIds.has(stale.id)) {
+        console.log(`[EmailBot] Cleaning stale task ${stale.id} before new start`);
         await db.update(backgroundTasks)
-          .set({ status: "failed", error: "Orphaned task - process no longer running", completed_at: new Date(), updated_date: new Date() })
-          .where(eq(backgroundTasks.id, task.id));
+          .set({ status: "failed", error: "Replaced by new search task", completed_at: new Date(), updated_date: new Date() })
+          .where(eq(backgroundTasks.id, stale.id));
       }
     }
 
@@ -433,18 +436,36 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
   const anthropic = getAnthropicClient();
   let totalProcessed = 0;
   let totalFound = 0;
+  let totalErrors = 0;
+  let consecutiveErrors = 0;
   let batchNumber = 0;
-  const MAX_TOTAL = 10000;
 
-  while (totalProcessed < MAX_TOTAL) {
+  const [existingTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+  if (existingTask?.metadata) {
+    const meta: any = existingTask.metadata;
+    totalProcessed = meta.processed_items || 0;
+    totalFound = meta.success_count || 0;
+    batchNumber = meta.current_batch_number || 0;
+    totalErrors = meta.error_count || 0;
+  }
+
+  console.log(`[EmailBot] Background search started/resumed task ${taskId} (processed=${totalProcessed}, found=${totalFound})`);
+
+  while (true) {
     const [task] = await db
       .select()
       .from(backgroundTasks)
       .where(eq(backgroundTasks.id, taskId));
-    if (!task || task.status === "cancelled") break;
+    if (!task || task.status === "cancelled") {
+      console.log(`[EmailBot] Task ${taskId} cancelled`);
+      break;
+    }
 
     const batch = await getProvidersForSearch(batchSize, skipSearched);
-    if (batch.length === 0) break;
+    if (batch.length === 0) {
+      console.log(`[EmailBot] Task ${taskId}: No more providers to search — all done`);
+      break;
+    }
 
     batchNumber++;
     const npis = batch.map((p) => p.npi).filter(Boolean);
@@ -452,24 +473,28 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
     const taxonomyMap = new Map<string, any>();
 
     if (npis.length > 0) {
-      const locs = await db
-        .select()
-        .from(providerLocations)
-        .where(inArray(providerLocations.npi, npis as string[]));
-      for (const loc of locs) {
-        if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
-          locationMap.set(loc.npi, loc);
+      try {
+        const locs = await db
+          .select()
+          .from(providerLocations)
+          .where(inArray(providerLocations.npi, npis as string[]));
+        for (const loc of locs) {
+          if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
+            locationMap.set(loc.npi, loc);
+          }
         }
-      }
 
-      const taxs = await db
-        .select()
-        .from(providerTaxonomies)
-        .where(inArray(providerTaxonomies.npi, npis as string[]));
-      for (const tax of taxs) {
-        if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
-          taxonomyMap.set(tax.npi, tax);
+        const taxs = await db
+          .select()
+          .from(providerTaxonomies)
+          .where(inArray(providerTaxonomies.npi, npis as string[]));
+        for (const tax of taxs) {
+          if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
+            taxonomyMap.set(tax.npi, tax);
+          }
         }
+      } catch (dbErr: any) {
+        console.error(`[EmailBot] Task ${taskId}: DB error fetching context: ${dbErr.message}`);
       }
     }
 
@@ -483,14 +508,38 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       const loc = locationMap.get(prov.npi || "");
       const tax = taxonomyMap.get(prov.npi || "");
 
-      const result = await searchEmailForProvider(anthropic, prov, loc, tax);
-      await saveEmailToProvider(prov, result);
+      let result;
+      try {
+        result = await searchEmailForProvider(anthropic, prov, loc, tax);
+      } catch (searchErr: any) {
+        console.error(`[EmailBot] Task ${taskId}: Search error for ${prov.npi}: ${searchErr.message}`);
+        totalErrors++;
+        consecutiveErrors++;
+
+        if (consecutiveErrors >= CONSECUTIVE_ERROR_LIMIT) {
+          console.error(`[EmailBot] Task ${taskId}: ${CONSECUTIVE_ERROR_LIMIT} consecutive errors — pausing 60s before retry`);
+          await new Promise(r => setTimeout(r, 60000));
+          consecutiveErrors = 0;
+        } else {
+          const backoff = Math.min(BATCH_DELAY_MS * Math.pow(1.5, consecutiveErrors), 30000);
+          await new Promise(r => setTimeout(r, backoff));
+        }
+        continue;
+      }
+
+      consecutiveErrors = 0;
+
+      try {
+        await saveEmailToProvider(prov, result);
+      } catch (saveErr: any) {
+        console.error(`[EmailBot] Task ${taskId}: Save error for ${prov.npi}: ${saveErr.message}`);
+        totalErrors++;
+        await new Promise(r => setTimeout(r, 3000));
+      }
 
       totalProcessed++;
       if (result.best_email) totalFound++;
 
-      const taskMeta = (await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)))[0];
-      const prevMeta: any = taskMeta?.metadata || {};
       await db
         .update(backgroundTasks)
         .set({
@@ -498,9 +547,10 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
           metadata: {
             batch_size: batchSize,
             skip_already_searched: skipSearched,
-            total_items: prevMeta.total_items || 0,
+            total_items: 0,
             processed_items: totalProcessed,
             success_count: totalFound,
+            error_count: totalErrors,
             current_batch_number: batchNumber,
           },
           updated_date: new Date(),
@@ -508,6 +558,13 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
         .where(eq(backgroundTasks.id, taskId));
 
       await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
+
+    if (batchNumber % 10 === 0) {
+      const remaining = await db.select({ count: sql<number>`count(*)` })
+        .from(providers)
+        .where(isNull(providers.email_searched_at));
+      console.log(`[EmailBot] Task ${taskId}: Batch ${batchNumber} done — processed=${totalProcessed}, found=${totalFound}, errors=${totalErrors}, remaining=${remaining[0]?.count || '?'}`);
     }
   }
 
@@ -517,19 +574,19 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
     .where(eq(backgroundTasks.id, taskId));
 
   if (finalTask && finalTask.status !== "cancelled") {
-    const prevMeta: any = finalTask.metadata || {};
     await db
       .update(backgroundTasks)
       .set({
         status: "completed",
         progress: totalProcessed,
-        result: { total_processed: totalProcessed, total_found: totalFound, batches: batchNumber },
+        result: { total_processed: totalProcessed, total_found: totalFound, total_errors: totalErrors, batches: batchNumber },
         metadata: {
-          batch_size: prevMeta.batch_size || prevMeta.batch_size,
-          skip_already_searched: prevMeta.skip_already_searched,
-          total_items: prevMeta.total_items || 0,
+          batch_size: batchSize,
+          skip_already_searched: skipSearched,
+          total_items: 0,
           processed_items: totalProcessed,
           success_count: totalFound,
+          error_count: totalErrors,
           current_batch_number: batchNumber,
         },
         completed_at: new Date(),
@@ -539,5 +596,5 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
   }
 
   activeTaskIds.delete(taskId);
-  console.log(`[EmailBot] Background search ${finalTask?.status === "cancelled" ? "cancelled" : "completed"}: ${totalProcessed} searched, ${totalFound} found`);
+  console.log(`[EmailBot] Task ${taskId} ${finalTask?.status === "cancelled" ? "cancelled" : "completed"}: ${totalProcessed} searched, ${totalFound} found, ${totalErrors} errors`);
 }
