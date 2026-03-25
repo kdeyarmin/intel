@@ -640,7 +640,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
 
-  return {
+  const mapped: any = {
     facility_type: importType,
     provider_id:
       row.cms_certification_number_ccn ||
@@ -683,7 +683,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row.Prscrbr_City ||
       row.PRVDR_CITY ||
       null,
-    state:
+    state: (
       row.state || row.State || row.STATE ||
       row["State Code"] || row.Rndrng_Prvdr_State_Abrvtn ||
       row.Prscrbr_State_Abrvtn ||
@@ -691,18 +691,26 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
       row["ENROLLMENT STATE"] ||
       row.practicestate ||
       row.Suplr_Prvdr_State_Abrvtn || row.Rfrg_Prvdr_State_Abrvtn ||
-      null,
-    zip:
+      null
+    ),
+    zip: (
       row.zip_code || row["Zip Code"] || row.Zip_Code ||
       row["ZIP CODE"] || row.ZIP_CODE ||
       row.Rndrng_Prvdr_Zip5 ||
       row.practicezip9code ||
       row.Suplr_Prvdr_Zip5 || row.Rfrg_Prvdr_Zip5 ||
       row.PRVDR_ZIP ||
-      null,
+      null
+    ),
     raw_data: row,
     import_batch_id: String(batchId),
   };
+
+  if (mapped.state && mapped.state.length > 10) mapped.state = mapped.state.substring(0, 10);
+  if (mapped.zip && mapped.zip.length > 20) mapped.zip = mapped.zip.substring(0, 20);
+  if (mapped.provider_id && mapped.provider_id.length > 50) mapped.provider_id = mapped.provider_id.substring(0, 50);
+
+  return mapped;
 }
 
 async function safeImportQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
@@ -711,7 +719,9 @@ async function safeImportQuery<T>(fn: () => Promise<T>, fallback: T, label: stri
       return await fn();
     } catch (e: any) {
       if (attempt === 3) {
-        console.warn(`[CMS Import] ${label} failed after 3 attempts: ${e.message}`);
+        const pgCode = e.code || e.cause?.code || '';
+        const pgDetail = e.detail || e.cause?.detail || '';
+        console.warn(`[CMS Import] ${label} failed after 3 attempts: [${pgCode}] ${e.message?.slice(0, 300)}${pgDetail ? ' | detail: ' + pgDetail : ''}`);
         return fallback;
       }
       await new Promise(r => setTimeout(r, attempt * 2000));
