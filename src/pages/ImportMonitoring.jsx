@@ -209,35 +209,7 @@ export default function ImportMonitoring() {
     }
   };
   const pausedBatches = batches.filter(b => b.status === 'paused');
-  const [autoFailedIds, setAutoFailedIds] = useState(new Set());
-  const autoFailProcessed = useRef(new Set());
-
-  // Auto-mark stale jobs as failed (skip crawler batches — server handles their recovery)
   const isCrawlerBatch = (b) => b.import_type === 'nppes_registry' && b.file_name?.startsWith('crawler_');
-  useEffect(() => {
-    if (staleBatches.length === 0) return;
-    const toFail = staleBatches.filter(b => !autoFailProcessed.current.has(b.id) && !isCrawlerBatch(b));
-    if (toFail.length === 0) return;
-
-    (async () => {
-      for (const batch of toFail) {
-        autoFailProcessed.current.add(batch.id);
-        try {
-          await base44.entities.ImportBatch.update(batch.id, {
-            status: 'failed',
-            error_samples: [
-              ...(batch.error_samples || []),
-              { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
-            ]
-          });
-          setAutoFailedIds(prev => new Set([...prev, batch.id]));
-        } catch (err) {
-          console.error('Failed to auto-mark batch as failed:', batch.id, err);
-        }
-      }
-      refreshBatches();
-    })();
-  }, [staleBatches.length]);
 
   const displayBatches = useMemo(() => {
     let filtered = batches;
@@ -561,29 +533,6 @@ export default function ImportMonitoring() {
       {/* Success vs Failure Charts */}
       <SuccessVsFailureChart batches={batches} />
 
-      {/* Auto-failed notification */}
-      {autoFailedIds.size > 0 && (
-        <Card className="border-red-500/30 bg-red-900/10">
-          <CardContent className="py-3">
-            <div className="flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-400" />
-              <p className="text-sm text-red-400">
-                <span className="font-semibold">{autoFailedIds.size} stalled job{autoFailedIds.size !== 1 ? 's were' : ' was'} automatically marked as failed</span>
-                {' '}due to inactivity (no updates for 15+ minutes).
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-xs text-slate-400 hover:text-slate-200"
-                onClick={() => setAutoFailedIds(new Set())}
-              >
-                Dismiss
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Import Trend Charts */}
       <ImportTrendCharts batches={batches} />
 
@@ -611,7 +560,7 @@ export default function ImportMonitoring() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated in over 15 minutes and are likely stalled.
+              These jobs haven't updated in over 15 minutes. They may resume automatically after a server restart, or you can manually mark them as failed.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (
