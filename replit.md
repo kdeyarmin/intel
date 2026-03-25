@@ -26,6 +26,7 @@ The application is built with a React 18 + Vite 6 frontend, styled using Tailwin
 - **Email Search Bot:** An AI-powered bot (Claude-based) for email discovery, validation, and automated saving to provider records.
 - **Data Quality Scan:** Utilizes sampling for performance, runs 13 quality rules, and generates alerts with Claude AI integration for analysis and fixes.
 - **Backend Functions:** A set of 29 backend functions, including optimized dashboard statistics, data health metrics, CMS dataset catalog, CMS analytics, referral network data, and territory data.
+- **Code Cleanup (2026-03-25):** Removed 155 files (~25K lines): 62 dormant Deno edge functions (`functions/` dir), ~66 unused frontend components (aiInsights, analytics, cmsAnalytics, locationAnalytics, dataQuality, emailBot, maInpatient, plus individual orphaned components), 21 unused shadcn UI primitives (accordion, alert-dialog, aspect-ratio, avatar, breadcrumb, calendar, carousel, collapsible, command, context-menu, drawer, hover-card, input-otp, menubar, navigation-menu, pagination, popover, radio-group, resizable, slider, toggle-group), `app-params.js`, and dead entity* CRUD exports from `server/functions/helpers.ts`. Vite build passes cleanly — no broken imports.
 
 ## External Dependencies
 - **AI:** Anthropic Claude (via `/api/integrations/ai/invoke`)
