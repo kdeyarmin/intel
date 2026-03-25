@@ -242,7 +242,7 @@ const CMS_DATASET_CATALOG = [
   { id: "aco_financial_results", title: "ACO Financial & Quality Results", description: "Annual financial performance and quality measure results for ACOs in the Medicare Shared Savings Program.", category: "ACO & Networks", records: "~500", priority: "medium" },
 
   { id: "snf_utilization_geo_casemix", title: "SNF Utilization by Geography & Case-Mix", description: "Skilled nursing facility utilization and payment data broken down by geographic area, provider, and case-mix grouping.", category: "Nursing Homes & SNF", records: "~100K", priority: "medium" },
-  { id: "hha_utilization_geo_casemix", title: "HHA Utilization by Geography & Case-Mix", description: "Home health agency utilization data by geographic area, provider, and patient case-mix grouping.", category: "Home Health", records: "~50K", priority: "medium" },
+  { id: "hha_utilization_geo_casemix", title: "HHA Utilization by Geography & Case-Mix", description: "Home health agency utilization data by geographic area, provider, and patient case-mix grouping.", category: "Home Health", records: "~127K", priority: "medium" },
   { id: "ltc_facility_characteristics", title: "Long-Term Care Facility Characteristics", description: "Detailed feature data for long-term care facilities including bed counts, certification, payer mix, and resident demographics.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
   { id: "mds_frequency", title: "Minimum Data Set Frequency", description: "MDS assessment frequency metrics for nursing homes indicating how often resident assessments are performed.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
 ];

@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
+import { eq, inArray } from "drizzle-orm";
+import { db } from "./db";
+import { importBatches } from "./db/schema";
 import authRoutes from "./routes/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
@@ -51,13 +54,11 @@ app.listen(PORT, "0.0.0.0", async () => {
   }
 
   try {
-    const { db } = await import("./db");
-    const { users, importBatches } = await import("./db/schema");
-    const { eq: eqCheck } = await import("drizzle-orm");
+    const { users } = await import("./db/schema");
     const bcryptLib = await import("bcryptjs");
 
     const [existingAdmin] = await safeStartupQuery(
-      () => db.select().from(users).where(eqCheck(users.email, "kdeyarmin@comcast.net")).limit(1),
+      () => db.select().from(users).where(eq(users.email, "kdeyarmin@comcast.net")).limit(1),
       [] as any[], "check admin"
     );
     if (!existingAdmin) {
@@ -73,7 +74,7 @@ app.listen(PORT, "0.0.0.0", async () => {
       );
       console.log("[CareMetric API] Admin user seeded");
     }
-    const { eq, inArray, and } = await import("drizzle-orm");
+    const { and } = await import("drizzle-orm");
 
     const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
 
@@ -278,7 +279,7 @@ async function gracefulShutdown(signal: string) {
   try {
     const activeBatches = await db.select({ id: importBatches.id, import_type: importBatches.import_type })
       .from(importBatches)
-      .where(eq(importBatches.status, "in_progress"))
+      .where(inArray(importBatches.status, ["processing", "validating"]))
       .limit(20);
 
     for (const batch of activeBatches) {
