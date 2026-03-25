@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   Database, Search, Download, CheckCircle2, Clock, AlertCircle,
   ChevronDown, ChevronRight, Filter, ArrowUpDown, Building2, Heart,
-  Home, Stethoscope, Activity, Users, Pill, CircleDot
+  Home, Stethoscope, Activity, Users, Pill
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -19,7 +19,6 @@ const CATEGORY_ICONS = {
   "Home Health": Home,
   "Hospice": Heart,
   "Nursing Homes & SNF": Users,
-  "Dialysis": CircleDot,
   "Other Facilities": Activity,
   "Medicare Programs": Pill,
 };
@@ -30,7 +29,6 @@ const CATEGORY_COLORS = {
   "Home Health": "green",
   "Hospice": "violet",
   "Nursing Homes & SNF": "orange",
-  "Dialysis": "red",
   "Other Facilities": "yellow",
   "Medicare Programs": "light-blue",
 };

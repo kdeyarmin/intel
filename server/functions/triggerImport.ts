@@ -306,11 +306,9 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
 
   if (ZIP_FUNCTION_MAP[import_type]) {
-    return {
-      success: true,
-      message: `Import process for ${import_type} started in the background. Check Data Center for progress.`,
-      import_type,
-      note: "ZIP-based Medicare imports are not yet migrated. The batch has been queued for processing.",
+    throw {
+      status: 400,
+      message: `Import type "${import_type}" requires ZIP/Excel file processing which is not yet available on the server. Use the API-based equivalents instead (e.g. medicare_hha_utilization, medicare_snf_utilization, medicare_irf_utilization).`,
     };
   }
 
