@@ -15,14 +15,18 @@ export async function cleanupOrphanedEmailTasks() {
         eq(backgroundTasks.task_type, "email_search"),
         eq(backgroundTasks.status, "processing")
       ));
+
+    let resumed = false;
     for (const task of orphaned) {
-      if (!activeTaskIds.has(task.id)) {
+      if (activeTaskIds.has(task.id)) continue;
+      if (!resumed) {
         console.log(`[EmailBot] Auto-resuming orphaned task ${task.id}`);
         activeTaskIds.add(task.id);
         const meta: any = task.metadata || {};
+        const bs = Math.max(1, Math.min(50, meta.batch_size || 5));
         runBackgroundSearch(
           task.id,
-          meta.batch_size || 5,
+          bs,
           meta.skip_already_searched !== false
         ).catch((err) => {
           console.error(`[EmailBot] Resume of task ${task.id} failed:`, err.message);
@@ -32,8 +36,66 @@ export async function cleanupOrphanedEmailTasks() {
             .where(eq(backgroundTasks.id, task.id))
             .catch(() => {});
         });
+        resumed = true;
+      } else {
+        console.log(`[EmailBot] Marking extra orphaned task ${task.id} as failed`);
+        await db.update(backgroundTasks)
+          .set({ status: "failed", error: "Superseded by another task on restart", completed_at: new Date(), updated_date: new Date() })
+          .where(eq(backgroundTasks.id, task.id));
       }
     }
+    if (resumed) return;
+
+    if (activeTaskIds.size > 0) return;
+
+    const lastTask = await db.select().from(backgroundTasks)
+      .where(eq(backgroundTasks.task_type, "email_search"))
+      .orderBy(desc(backgroundTasks.id))
+      .limit(1);
+
+    if (lastTask.length > 0 && lastTask[0].status === "cancelled") {
+      console.log(`[EmailBot] Last email search task was cancelled — not auto-starting`);
+      return;
+    }
+
+    if (lastTask.length === 0) return;
+
+    const [unsearched] = await db.select({ count: sql<number>`count(*)` })
+      .from(providers)
+      .where(isNull(providers.email_searched_at));
+
+    const remaining = Number(unsearched?.count || 0);
+    if (remaining === 0) return;
+
+    const meta: any = lastTask[0].metadata || {};
+    const batchSize = Math.max(1, Math.min(50, meta.batch_size || 5));
+
+    console.log(`[EmailBot] Auto-starting new email search — ${remaining} providers unsearched`);
+    const [newTask] = await db.insert(backgroundTasks).values({
+      task_type: "email_search",
+      status: "processing",
+      progress: 0,
+      metadata: {
+        batch_size: batchSize,
+        skip_already_searched: true,
+        total_items: remaining,
+        processed_items: 0,
+        success_count: 0,
+        current_batch_number: 0,
+        auto_resumed: true,
+      },
+      started_at: new Date(),
+    }).returning();
+
+    activeTaskIds.add(newTask.id);
+    runBackgroundSearch(newTask.id, batchSize, true).catch((err) => {
+      console.error(`[EmailBot] Auto-started task ${newTask.id} failed:`, err.message);
+      activeTaskIds.delete(newTask.id);
+      db.update(backgroundTasks)
+        .set({ status: "failed", error: `Auto-start failed: ${err.message}`, completed_at: new Date(), updated_date: new Date() })
+        .where(eq(backgroundTasks.id, newTask.id))
+        .catch(() => {});
+    });
   } catch (err: any) {
     console.error("[EmailBot] Orphan cleanup error:", err.message);
   }
