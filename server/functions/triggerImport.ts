@@ -37,9 +37,6 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   home_health_all_owners: "https://data.cms.gov/data-api/v1/dataset/fc009b2d-7846-44b1-b4a1-692f0c143879/data",
   home_health_cost_report: "https://data.cms.gov/data-api/v1/dataset/4999da74-1d8d-4a6f-934e-2d7ea470cc63/data",
   home_health_state_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/tee5-ixt5/0",
-  dialysis_facility_listing: "https://data.cms.gov/provider-data/api/1/datastore/query/23ew-n7w9/0",
-  dialysis_state_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2fpu-cgbb/0",
-  dialysis_national_averages: "https://data.cms.gov/provider-data/api/1/datastore/query/2rkq-ygai/0",
   nursing_home_penalties: "https://data.cms.gov/provider-data/api/1/datastore/query/g6vv-u9sr/0",
   inpatient_rehab_general_info: "https://data.cms.gov/provider-data/api/1/datastore/query/7t8x-u3ir/0",
   inpatient_rehab_provider_data: "https://data.cms.gov/provider-data/api/1/datastore/query/v9e4-nwhh/0",
@@ -51,7 +48,6 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   medicare_dme_by_supplier: "https://data.cms.gov/data-api/v1/dataset/a2d56d3f-3531-4315-9d87-e29986516b41/data",
   medicare_dme_by_referring: "https://data.cms.gov/data-api/v1/dataset/f8603e5b-9c47-4c52-9b47-a4ef92dfada4/data",
   medicare_part_d_prescribers: "https://data.cms.gov/data-api/v1/dataset/14d8e8a9-7e9b-4370-a044-bf97c46b4b44/data",
-  medicare_dialysis_facilities: "https://data.cms.gov/data-api/v1/dataset/f8610e87-ba25-43a3-a49e-927dbc8701ae/data",
   medicare_snf_utilization: "https://data.cms.gov/data-api/v1/dataset/eaed338b-847e-41b1-a4d3-a206f40dc72b/data",
   medicare_hha_utilization: "https://data.cms.gov/data-api/v1/dataset/43ef03ce-2b60-40a8-958e-146195b5fec7/data",
   medicare_hospice_utilization: "https://data.cms.gov/data-api/v1/dataset/4e73f1b5-82cb-4682-8ad2-28493f0b6840/data",
@@ -86,7 +82,6 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   home_health_patient_survey: "https://data.cms.gov/provider-data/api/1/datastore/query/ccn4-8vby/0",
   home_health_zip_data: "https://data.cms.gov/provider-data/api/1/datastore/query/m5eg-upu5/0",
   hospice_zip_data: "https://data.cms.gov/provider-data/api/1/datastore/query/95rg-2usp/0",
-  dialysis_patient_survey: "https://data.cms.gov/provider-data/api/1/datastore/query/59mq-zhts/0",
   nursing_home_ownership: "https://data.cms.gov/provider-data/api/1/datastore/query/y2hd-n93e/0",
   nursing_home_fire_safety: "https://data.cms.gov/provider-data/api/1/datastore/query/ifjz-ge4w/0",
   nursing_home_health_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/r5ix-sfxw/0",
@@ -205,12 +200,6 @@ const CMS_DATASET_CATALOG = [
   { id: "nursing_home_mds_quality", title: "Nursing Home MDS Quality Measures", description: "Minimum Data Set quality measures for nursing homes including falls, pressure ulcers, and ADL decline.", category: "Nursing Homes & SNF", records: "~250K", priority: "high" },
   { id: "nursing_home_claims_quality", title: "Nursing Home Medicare Claims Quality Measures", description: "Quality measures derived from Medicare claims data for nursing homes.", category: "Nursing Homes & SNF", records: "~59K", priority: "medium" },
   { id: "medicare_snf_utilization", title: "Medicare Post-Acute Care - SNF", description: "Post-acute care utilization and spending data for skilled nursing facilities.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
-
-  { id: "dialysis_facility_listing", title: "Dialysis Facility Listing", description: "Directory of all Medicare-certified dialysis facilities with addresses and key facility information.", category: "Dialysis", records: "~8K", priority: "high" },
-  { id: "medicare_dialysis_facilities", title: "Medicare Dialysis Facilities", description: "Medicare enrollment and utilization data for dialysis facilities.", category: "Dialysis", records: "~8K", priority: "medium" },
-  { id: "dialysis_state_averages", title: "Dialysis Facility - State Averages", description: "State-level aggregate quality measures for dialysis facilities.", category: "Dialysis", records: "~55", priority: "low" },
-  { id: "dialysis_national_averages", title: "Dialysis Facility - National Averages", description: "National-level aggregate quality measures for dialysis.", category: "Dialysis", records: "~1", priority: "low" },
-  { id: "dialysis_patient_survey", title: "Dialysis Patient Survey (ICH CAHPS) - Facility", description: "In-Center Hemodialysis CAHPS patient experience survey results at the facility level.", category: "Dialysis", records: "~6K", priority: "medium" },
 
   { id: "fqhc_enrollments", title: "Federally Qualified Health Center Enrollments", description: "CMS enrollment data for FQHCs including NPI, organization name, address, and enrollment status.", category: "Other Facilities", records: "~15K", priority: "high" },
   { id: "inpatient_rehab_general_info", title: "Inpatient Rehabilitation Facility - General Information", description: "Comprehensive profile data for inpatient rehabilitation facilities including address, phone, ownership, and quality ratings.", category: "Other Facilities", records: "~1.2K", priority: "medium" },
@@ -489,8 +478,6 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = row.cms_certification_number_ccn || row.provider_id || null;
   } else if (importType === "hospice_zip_data") {
     id = row.cms_certification_number_ccn || row.ccn || null;
-  } else if (importType === "dialysis_patient_survey") {
-    id = row.facility_id || row.cms_certification_number_ccn || null;
   } else if (importType === "nursing_home_ownership" || importType === "nursing_home_fire_safety" || importType === "nursing_home_health_deficiencies" || importType === "nursing_home_mds_quality" || importType === "nursing_home_claims_quality" || importType === "snf_quality_reporting") {
     id = row.federal_provider_number || row.provider_id || row.provnum || null;
   } else if (importType === "inpatient_rehab_general_info" || importType === "inpatient_rehab_provider_data" || importType === "long_term_care_general_info" || importType === "long_term_care_provider_data") {
@@ -590,9 +577,6 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   }
   if (importType === "hospice_zip_data") {
     return row.provider_name || row.facility_name || null;
-  }
-  if (importType === "dialysis_patient_survey") {
-    return row.facility_name || row.provider_name || null;
   }
   if (importType === "nursing_home_ownership" || importType === "nursing_home_fire_safety" || importType === "nursing_home_health_deficiencies" || importType === "nursing_home_mds_quality" || importType === "nursing_home_claims_quality" || importType === "snf_quality_reporting") {
     return row.provider_name || row.facility_name || null;

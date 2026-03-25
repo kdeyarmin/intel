@@ -7,7 +7,7 @@ import {
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
   Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
-  Building, Trees
+  Building
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -36,12 +36,10 @@ const NAV_SECTIONS = [
       { name: 'Home Health', icon: Heart, page: 'HomeHealthAgencies', roles: ['admin', 'user'] },
       { name: 'Hospice', icon: HeartHandshake, page: 'Hospices', roles: ['admin', 'user'] },
       { name: 'Nursing Homes', icon: Home, page: 'NursingHomes', roles: ['admin', 'user'] },
-      { name: 'Dialysis', icon: Activity, page: 'DialysisFacilities', roles: ['admin', 'user'] },
       { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
       { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
       { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
-      { name: 'FQHCs', icon: Building, page: 'FQHCs', roles: ['admin', 'user'] },
-      { name: 'Rural Health Clinics', icon: Trees, page: 'RuralHealthClinics', roles: ['admin', 'user'] },
+      { name: 'Community Health', icon: Building, page: 'CommunityHealthCenters', roles: ['admin', 'user'] },
     ]
   },
   {

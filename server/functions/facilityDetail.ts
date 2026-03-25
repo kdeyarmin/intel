@@ -46,11 +46,6 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "ltc_facility_characteristics", "mds_frequency",
     "snf_utilization_geo_casemix",
   ],
-  dialysis: [
-    "dialysis_patient_survey", "dialysis_facility_listing",
-    "dialysis_state_averages", "dialysis_national_averages",
-    "medicare_dialysis_facilities",
-  ],
   irf: [
     "inpatient_rehab_general_info", "inpatient_rehab_provider_data",
     "medicare_irf_utilization",
@@ -63,10 +58,8 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
     "medical_equipment_suppliers", "medicare_dme_by_supplier",
     "medicare_dme_by_referring",
   ],
-  fqhc: [
+  community_health: [
     "fqhc_enrollments", "fqhc_all_owners",
-  ],
-  rhc: [
     "rural_health_clinic_enrollments", "rural_health_clinic_all_owners",
   ],
 };
@@ -76,12 +69,10 @@ const LISTING_PRIMARY_TYPES: Record<string, string> = {
   home_health: "home_health_agencies",
   hospice: "hospice_general_info",
   snf: "nursing_home_providers",
-  dialysis: "dialysis_facility_listing",
   irf: "inpatient_rehab_general_info",
   ltch: "long_term_care_general_info",
   dme: "medical_equipment_suppliers",
-  fqhc: "fqhc_enrollments",
-  rhc: "rural_health_clinic_enrollments",
+  community_health: "fqhc_enrollments",
 };
 
 export function getFacilityTypeGroup(facilityType: string): string | null {
@@ -285,12 +276,15 @@ export async function handleListFacilities(params: any) {
   if (!groupTypes) return { error: `Unknown facility_group: ${facility_group}` };
 
   const primaryType = LISTING_PRIMARY_TYPES[facility_group] || groupTypes[0];
+  const listingTypes = facility_group === 'community_health'
+    ? ["fqhc_enrollments", "rural_health_clinic_enrollments"]
+    : [primaryType];
   const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
   const safePage = Math.max(1, Number(page) || 1);
   const offset = (safePage - 1) * safeLimit;
 
-  let whereClauses = [`facility_type = $1`];
-  const queryValues: any[] = [primaryType];
+  let whereClauses = [`facility_type = ANY($1)`];
+  const queryValues: any[] = [listingTypes];
   let paramIdx = 2;
 
   if (state) {
@@ -345,8 +339,8 @@ export async function handleListFacilities(params: any) {
   } else {
     try {
       const states = await paramQuery(
-        `SELECT state, count(*) as count FROM medicare_facilities WHERE facility_type = $1 GROUP BY state ORDER BY count(*) DESC LIMIT 60`,
-        [primaryType],
+        `SELECT state, count(*) as count FROM medicare_facilities WHERE facility_type = ANY($1) GROUP BY state ORDER BY count(*) DESC LIMIT 60`,
+        [listingTypes],
         45000
       );
       availableStates = states.filter((s: any) => s.state).map((s: any) => ({ state: s.state, count: Number(s.count) }));

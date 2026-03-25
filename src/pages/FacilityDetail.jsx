@@ -15,12 +15,10 @@ const FACILITY_LABELS = {
   home_health: { title: 'Home Health Agency', back: 'HomeHealthAgencies', iconCls: 'text-green-400', badgeCls: 'bg-green-900/30 text-green-400 border-green-500/30' },
   hospice: { title: 'Hospice', back: 'Hospices', iconCls: 'text-purple-400', badgeCls: 'bg-purple-900/30 text-purple-400 border-purple-500/30' },
   snf: { title: 'Nursing Facility', back: 'NursingHomes', iconCls: 'text-amber-400', badgeCls: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
-  dialysis: { title: 'Dialysis Facility', back: 'DialysisFacilities', iconCls: 'text-teal-400', badgeCls: 'bg-teal-900/30 text-teal-400 border-teal-500/30' },
   irf: { title: 'Inpatient Rehab Facility', back: 'InpatientRehab', iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
   ltch: { title: 'Long-Term Care Hospital', back: 'LongTermCare', iconCls: 'text-orange-400', badgeCls: 'bg-orange-900/30 text-orange-400 border-orange-500/30' },
   dme: { title: 'DME Supplier', back: 'DMESuppliers', iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
-  fqhc: { title: 'Federally Qualified Health Center', back: 'FQHCs', iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
-  rhc: { title: 'Rural Health Clinic', back: 'RuralHealthClinics', iconCls: 'text-emerald-400', badgeCls: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' },
+  community_health: { title: 'Community Health Center', back: 'CommunityHealthCenters', iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
 };
 
 const TYPE_LABELS = {
@@ -85,11 +83,6 @@ const TYPE_LABELS = {
   home_health_state_measures: 'State Measures',
   home_health_zip_data: 'ZIP-Level Data',
   hospice_all_owners: 'Ownership',
-  dialysis_patient_survey: 'Patient Survey',
-  dialysis_facility_listing: 'Facility Listing',
-  dialysis_state_averages: 'State Averages',
-  dialysis_national_averages: 'National Averages',
-  medicare_dialysis_facilities: 'Dialysis Utilization',
   inpatient_rehab_general_info: 'General Information',
   inpatient_rehab_provider_data: 'Provider Data',
   medicare_irf_utilization: 'IRF Utilization',
