@@ -355,7 +355,7 @@ export default function CMSAnalytics() {
                         <p className="text-sm text-slate-300 font-medium">{ds.label}</p>
                       </div>
                       <p className="text-2xl font-bold text-slate-100">{formatNumber(ds.count || 0)}</p>
-                      <p className="text-xs text-slate-400 mt-1">{(ds.count || 0).toLocaleString()} records</p>
+                      <p className="text-xs text-slate-400 mt-1">records</p>
                     </div>
                   ))}
                 </div>

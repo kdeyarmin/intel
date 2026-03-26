@@ -95,7 +95,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
 
         const ps = ((providerStatsResult as any).rows || providerStatsResult)?.[0] || {};
         const withEmail = Number(ps.with_email || 0);
-        const needsEnrichment = Number(ps.without_email || 0);
+        const withoutEmail = Number(ps.without_email || 0);
 
         const tsRows = (topStatesResult as any).rows || topStatesResult;
         const topStates = (Array.isArray(tsRows) ? tsRows : []).map((r: any) => [r.state, Number(r.count)]);
@@ -136,7 +136,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           totalFacilities,
           emailStats: {
             withEmail,
-            needsEnrichment,
+            needsEnrichment: withoutEmail,
             searched: Number(ps.searched || 0),
             isEstimated: false,
             valid: Number(ps.valid || 0),
@@ -235,6 +235,11 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { db } = await import("../db");
         const { sql } = await import("drizzle-orm");
 
+        const safeMvQuery = async (queryFn: () => Promise<any>, fallback: any = []) => {
+          try { return await queryFn(); }
+          catch (e: any) { console.warn(`[getCMSAnalytics] View query failed: ${e.message?.slice(0, 150)}`); return fallback; }
+        };
+
         const [
           topServicesResult,
           topReferredResult,
@@ -243,22 +248,22 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           utilSummaryResult,
           aggregateDatasetsResult,
         ] = await Promise.all([
-          db.execute(sql`SELECT * FROM mv_cms_util_by_type ORDER BY total_payments DESC NULLS LAST LIMIT 20`),
-          db.execute(sql`SELECT * FROM mv_cms_top_referrals ORDER BY referral_records DESC LIMIT 15`),
-          db.execute(sql`SELECT * FROM mv_cms_facility_types ORDER BY record_count DESC LIMIT 15`),
-          db.execute(sql`
+          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_util_by_type ORDER BY total_payments DESC NULLS LAST LIMIT 20`)),
+          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_top_referrals ORDER BY referral_records DESC LIMIT 15`)),
+          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_facility_types ORDER BY record_count DESC LIMIT 15`)),
+          safeMvQuery(() => db.execute(sql`
             SELECT relname, reltuples::bigint AS est
             FROM pg_class
             WHERE relname IN ('provider_service_utilization','cms_referrals','medicare_facilities')
-          `),
-          db.execute(sql`
+          `)),
+          safeMvQuery(() => db.execute(sql`
             SELECT count(*) AS types,
               sum(provider_count) AS providers,
               sum(total_payments) AS total_payments,
               sum(total_services) AS total_services
             FROM mv_cms_util_by_type
-          `),
-          db.execute(sql`
+          `)),
+          safeMvQuery(() => db.execute(sql`
             SELECT facility_type, count(*) AS record_count, 
               count(DISTINCT state) AS state_count,
               max(data_year) AS latest_year
@@ -269,7 +274,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
               'nppes_registry', 'provider_taxonomy_crosswalk'
             )
             GROUP BY facility_type
-          `),
+          `)),
         ]);
 
         const topServices = ((topServicesResult as any).rows || topServicesResult) || [];

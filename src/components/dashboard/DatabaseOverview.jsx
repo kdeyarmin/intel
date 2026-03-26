@@ -54,14 +54,14 @@ export default function DatabaseOverview({ stats, loading }) {
         <StatCard
           title="Providers"
           value={formatCount(stats?.totalProviders)}
-          subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} need enrichment` : null}
+          subtitle={stats?.emailStats?.needsEnrichment > 0 ? `${stats.emailStats.needsEnrichment.toLocaleString()} without email` : null}
           link="Providers"
           loading={loading}
         />
         <StatCard
           title="Referrals"
           value={formatCount(stats?.totalReferrals)}
-          link="Referrals"
+          link="ReferralNetworkIntelligence"
           loading={loading}
         />
         <StatCard

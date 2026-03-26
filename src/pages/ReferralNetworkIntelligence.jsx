@@ -57,40 +57,26 @@ export default function ReferralNetworkIntelligence() {
     if (!networkData?.nodes) return { allNodes: [], allEdges: [] };
 
     const nodesArr = networkData.nodes.map(n => {
-      const outbound = n.referralCount || 0;
-      const inbound = n.entityType === 'Organization' ? Math.round(outbound * 0.6) : Math.round(outbound * 0.2);
-      return { npi: n.npi, label: n.label, entityType: n.entityType, state: n.state, city: n.city, specialty: n.specialty, outbound, inbound, totalVolume: outbound, connections: 0, hubScore: 0, isHub: false };
+      const volume = n.referralCount || 0;
+      return { npi: n.npi, label: n.label, entityType: n.entityType, state: n.state, city: n.city, specialty: n.specialty, totalVolume: volume, connections: 0, hubScore: 0, isHub: false };
     });
 
-    const byState = {};
-    nodesArr.forEach(n => { const st = n.state || '__none'; if (!byState[st]) byState[st] = []; byState[st].push(n); });
-    const edgesArr = [];
-    Object.values(byState).forEach(stateNodes => {
-      const sorted = [...stateNodes].sort((a, b) => b.totalVolume - a.totalVolume);
-      for (let i = 0; i < Math.min(sorted.length, 15); i++) {
-        for (let j = i + 1; j < Math.min(sorted.length, 15); j++) {
-          const vol = Math.min(sorted[i].totalVolume, sorted[j].totalVolume);
-          if (vol > 0) {
-            const weight = (sorted[i].entityType !== sorted[j].entityType) ? 1.5 : 1;
-            edgesArr.push({ source: sorted[i].npi, target: sorted[j].npi, volume: Math.round(vol * weight * 0.3) });
-          }
-        }
-      }
-    });
+    const realEdges = (networkData.edges || []).map(e => ({
+      source: e.source, target: e.target, volume: e.volume || 0,
+    }));
 
     const connCount = {};
-    edgesArr.forEach(e => { connCount[e.source] = (connCount[e.source] || 0) + 1; connCount[e.target] = (connCount[e.target] || 0) + 1; });
+    realEdges.forEach(e => { connCount[e.source] = (connCount[e.source] || 0) + 1; connCount[e.target] = (connCount[e.target] || 0) + 1; });
     nodesArr.forEach(n => { n.connections = connCount[n.npi] || 0; });
 
     const maxVol = Math.max(...nodesArr.map(n => n.totalVolume), 1);
-    const maxConn = Math.max(...nodesArr.map(n => n.connections), 1);
-    nodesArr.forEach(n => { n.hubScore = Math.round((n.totalVolume / maxVol * 60) + (n.connections / maxConn * 40)); });
+    nodesArr.forEach(n => { n.hubScore = Math.round((n.totalVolume / maxVol) * 100); });
 
     const sortedByScore = [...nodesArr].sort((a, b) => b.hubScore - a.hubScore);
     const hubCutoff = Math.floor(sortedByScore.length * (1 - HUB_THRESHOLD_PERCENTILE));
     sortedByScore.slice(0, Math.max(hubCutoff, 3)).forEach(n => { n.isHub = true; });
 
-    return { allNodes: nodesArr, allEdges: edgesArr };
+    return { allNodes: nodesArr, allEdges: realEdges };
   }, [networkData]);
 
   const { filteredNodes, filteredEdges } = useMemo(() => {
