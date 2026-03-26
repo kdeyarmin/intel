@@ -330,28 +330,62 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         const { db } = await import("../db");
         const { sql } = await import("drizzle-orm");
 
-        const enrichedResult = await db.execute(sql`
-          WITH top_refs AS (
-            SELECT referred_npi AS npi, referral_records
-            FROM mv_cms_top_referrals
-            ORDER BY referral_records DESC
-            LIMIT 500
-          )
-          SELECT t.npi, t.referral_records,
-            p.first_name, p.last_name, p.organization_name, p.entity_type,
-            pl.state, pl.city,
-            pt.taxonomy_description AS specialty
-          FROM top_refs t
-          LEFT JOIN providers p ON p.npi = t.npi
-          LEFT JOIN LATERAL (
-            SELECT pl2.state, pl2.city FROM provider_locations pl2 WHERE pl2.npi = t.npi LIMIT 1
-          ) pl ON true
-          LEFT JOIN LATERAL (
-            SELECT pt2.taxonomy_description FROM provider_taxonomies pt2 WHERE pt2.npi = t.npi AND pt2.is_primary = true LIMIT 1
-          ) pt ON true
-        `);
+        let enrichedRows: any[] = [];
+        try {
+          const mvExists = await db.execute(sql`SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_cms_top_referrals' LIMIT 1`);
+          const mvRows = (mvExists as any).rows || mvExists || [];
+          if (mvRows.length > 0) {
+            const enrichedResult = await db.execute(sql`
+              WITH top_refs AS (
+                SELECT referred_npi AS npi, referral_records
+                FROM mv_cms_top_referrals
+                ORDER BY referral_records DESC
+                LIMIT 500
+              )
+              SELECT t.npi, t.referral_records,
+                p.first_name, p.last_name, p.organization_name, p.entity_type,
+                pl.state, pl.city,
+                pt.taxonomy_description AS specialty
+              FROM top_refs t
+              LEFT JOIN providers p ON p.npi = t.npi
+              LEFT JOIN LATERAL (
+                SELECT pl2.state, pl2.city FROM provider_locations pl2 WHERE pl2.npi = t.npi LIMIT 1
+              ) pl ON true
+              LEFT JOIN LATERAL (
+                SELECT pt2.taxonomy_description FROM provider_taxonomies pt2 WHERE pt2.npi = t.npi AND pt2.is_primary = true LIMIT 1
+              ) pt ON true
+            `);
+            enrichedRows = ((enrichedResult as any).rows || enrichedResult) || [];
+          }
+        } catch (e: any) {
+          console.warn(`[ReferralNetwork] Query failed: ${e.message?.slice(0, 200)}`);
+        }
 
-        const enrichedRows = ((enrichedResult as any).rows || enrichedResult) || [];
+        if (enrichedRows.length === 0) {
+          try {
+            const fallbackResult = await db.execute(sql`
+              SELECT p.npi, p.first_name, p.last_name, p.organization_name, p.entity_type,
+                pl.state, pl.city,
+                pt.taxonomy_description AS specialty,
+                psu.total_services AS referral_records
+              FROM provider_service_utilization psu
+              JOIN providers p ON p.npi = psu.npi
+              LEFT JOIN LATERAL (
+                SELECT pl2.state, pl2.city FROM provider_locations pl2 WHERE pl2.npi = p.npi LIMIT 1
+              ) pl ON true
+              LEFT JOIN LATERAL (
+                SELECT pt2.taxonomy_description FROM provider_taxonomies pt2 WHERE pt2.npi = p.npi AND pt2.is_primary = true LIMIT 1
+              ) pt ON true
+              WHERE psu.total_services IS NOT NULL
+              ORDER BY psu.total_services DESC
+              LIMIT 500
+            `);
+            enrichedRows = ((fallbackResult as any).rows || fallbackResult) || [];
+          } catch (e2: any) {
+            console.warn(`[ReferralNetwork] Fallback query failed: ${e2.message?.slice(0, 200)}`);
+          }
+        }
+
         const totalReferrals = enrichedRows.reduce((s: number, r: any) => s + Number(r.referral_records || 0), 0);
 
         const nodes = enrichedRows.map((r: any) => ({
