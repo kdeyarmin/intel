@@ -20,10 +20,15 @@ const TYPE_LABELS = {
 };
 
 function getGroupFromType(ft) {
-  if (ft?.startsWith('hospital')) return 'hospital';
-  if (ft?.startsWith('home_health') || ft?.startsWith('medicare_hha')) return 'home_health';
-  if (ft?.startsWith('hospice') || ft?.startsWith('medicare_hospice')) return 'hospice';
-  if (ft?.startsWith('snf') || ft?.startsWith('nursing_home')) return 'snf';
+  if (!ft) return null;
+  if (ft.startsWith('hospital') || ft === 'ambulatory_surgical_center' || ft.startsWith('medicare_inpatient') || ft.startsWith('medicare_outpatient') || ft.startsWith('medicare_ma_inpatient')) return 'hospital';
+  if (ft.startsWith('home_health') || ft.startsWith('medicare_hha') || ft.startsWith('hha_') || ft === 'home_infusion_therapy') return 'home_health';
+  if (ft.startsWith('hospice') || ft.startsWith('medicare_hospice')) return 'hospice';
+  if (ft.startsWith('snf') || ft.startsWith('nursing_home') || ft.startsWith('pbj_') || ft.startsWith('ltc_') || ft.startsWith('mds_') || ft.startsWith('medicare_snf')) return 'snf';
+  if (ft.startsWith('inpatient_rehab') || ft.startsWith('medicare_irf')) return 'irf';
+  if (ft.startsWith('long_term_care') || ft.startsWith('medicare_ltch')) return 'ltch';
+  if (ft.startsWith('medical_equipment') || ft.startsWith('medicare_dme')) return 'dme';
+  if (ft.startsWith('fqhc') || ft.startsWith('rural_health')) return 'community_health';
   return null;
 }
 

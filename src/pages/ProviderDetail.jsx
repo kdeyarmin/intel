@@ -122,12 +122,8 @@ export default function ProviderDetail() {
   const { data: cmsData } = useQuery({
     queryKey: ['providerCMSData', npi],
     queryFn: async () => {
-      const res = await fetch('/api/functions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ function_name: 'getProviderCMSData', npi }),
-      });
-      return res.json();
+      const result = await base44.functions.invoke('getProviderCMSData', { npi });
+      return result?.data || result;
     },
     enabled: !!npi,
     staleTime: 60000,
@@ -257,6 +253,9 @@ export default function ProviderDetail() {
                 score={score}
                 locations={locations}
               />
+              {cmsData?.linked_facilities?.length > 0 && (
+                <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
+              )}
               <ReferralLikelihoodSignals
                 utilization={latestUtil}
                 referrals={latestRef}

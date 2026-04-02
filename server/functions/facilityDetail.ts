@@ -1,5 +1,5 @@
 import { db, pool } from "../db";
-import { medicareFacilities, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals } from "../db/schema";
+import { medicareFacilities, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -129,9 +129,12 @@ export async function handleGetFacilityDetail(params: any) {
   if (npiCandidate) {
     const [prov] = await db.select().from(providers).where(eq(providers.npi, npiCandidate)).limit(1);
     if (prov) {
-      const locs = await db.select().from(providerLocations).where(eq(providerLocations.npi, npiCandidate)).limit(10);
-      const taxons = await db.select().from(providerTaxonomies).where(eq(providerTaxonomies.npi, npiCandidate)).limit(10);
-      linkedProvider = { ...prov, locations: locs, taxonomies: taxons };
+      const [locs, taxons, scores] = await Promise.all([
+        db.select().from(providerLocations).where(eq(providerLocations.npi, npiCandidate)).limit(10),
+        db.select().from(providerTaxonomies).where(eq(providerTaxonomies.npi, npiCandidate)).limit(10),
+        db.select().from(leadScores).where(eq(leadScores.npi, npiCandidate)).orderBy(desc(leadScores.last_calculated)).limit(1),
+      ]);
+      linkedProvider = { ...prov, locations: locs, taxonomies: taxons, lead_score: scores[0] || null };
     }
   }
 

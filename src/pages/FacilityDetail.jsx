@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ArrowLeft, Building2, MapPin, Star, DollarSign, Users, Calendar, Activity, FileText, Layers, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Star, DollarSign, Users, Calendar, Activity, FileText, Layers, ExternalLink, Mail, Phone, Shield, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -126,7 +126,31 @@ function formatNumber(val) {
   return Number(val).toLocaleString();
 }
 
+function isNumericish(val) {
+  if (val == null || val === '') return false;
+  const str = String(val).replace(/[$,%]/g, '').trim();
+  return !isNaN(Number(str)) && str.length > 0 && str.length < 20;
+}
+
+function isCurrencyField(key) {
+  const k = key.toLowerCase();
+  return k.includes('payment') || k.includes('charge') || k.includes('cost') || k.includes('spend') || k.includes('revenue') || k.includes('price') || k.includes('dollar') || k.includes('_amt');
+}
+
+function formatCellValue(key, val) {
+  if (val == null || val === '') return '—';
+  if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
+  if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
+    const num = Number(String(val).replace(/[$,%]/g, ''));
+    if (Number.isInteger(num) && num > 100) return num.toLocaleString();
+  }
+  return String(val);
+}
+
 function RawDataTable({ rows, facilityType }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expanded, setExpanded] = useState(false);
+
   if (!rows || rows.length === 0) return <p className="text-sm text-slate-400">No data available</p>;
 
   const allKeys = new Set();
@@ -136,46 +160,251 @@ function RawDataTable({ rows, facilityType }) {
     }
   });
 
-  const mainCols = ['data_year', 'quality_rating', 'total_discharges', 'total_days_of_care', 'total_charges', 'total_payments', 'avg_length_of_stay'];
-  const rawKeys = [...allKeys].slice(0, 15);
+  const coreCols = [
+    { key: 'data_year', label: 'Year', align: 'left' },
+    { key: 'quality_rating', label: 'Quality Rating', align: 'right' },
+    { key: 'total_discharges', label: 'Discharges', align: 'right' },
+    { key: 'total_days_of_care', label: 'Days of Care', align: 'right' },
+    { key: 'total_charges', label: 'Total Charges', align: 'right' },
+    { key: 'total_payments', label: 'Total Payments', align: 'right' },
+    { key: 'avg_length_of_stay', label: 'Avg LOS', align: 'right' },
+  ];
+
+  const activeCols = coreCols.filter(c => rows.some(r => r[c.key] != null && r[c.key] !== ''));
+
+  const allRawKeys = [...allKeys];
+  const filteredRawKeys = searchTerm
+    ? allRawKeys.filter(k => k.toLowerCase().includes(searchTerm.toLowerCase()))
+    : allRawKeys;
+
+  const displayRawKeys = expanded ? filteredRawKeys : filteredRawKeys.slice(0, 10);
+  const hasMore = filteredRawKeys.length > 10;
+  const displayRows = rows.slice(0, 50);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-700/50">
-            <th className="text-left py-2 px-3 text-slate-400 font-medium">Year</th>
-            {mainCols.slice(1).map(col => (
-              <th key={col} className="text-right py-2 px-3 text-slate-400 font-medium whitespace-nowrap">
-                {col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </th>
-            ))}
-            {rawKeys.slice(0, 5).map(k => (
-              <th key={k} className="text-right py-2 px-3 text-slate-400 font-medium whitespace-nowrap max-w-[200px] truncate" title={k}>
-                {k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).substring(0, 30)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 20).map((row, i) => (
-            <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-              <td className="py-2 px-3 text-slate-300">{row.data_year || '—'}</td>
-              {mainCols.slice(1).map(col => (
-                <td key={col} className="text-right py-2 px-3 text-slate-300">
-                  {col.includes('payment') || col.includes('charge') ? formatCurrency(row[col]) : row[col] != null ? formatNumber(row[col]) : '—'}
-                </td>
+    <div className="space-y-3">
+      {allRawKeys.length > 5 && (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search columns..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900/50 border border-slate-700/50 rounded-md text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50"
+            />
+          </div>
+          <span className="text-[10px] text-slate-500">
+            {filteredRawKeys.length} of {allRawKeys.length} data fields
+          </span>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-slate-700/30">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-800/70">
+              {activeCols.map(col => (
+                <th key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap sticky top-0 bg-slate-800/70`}>
+                  {col.label}
+                </th>
               ))}
-              {rawKeys.slice(0, 5).map(k => (
-                <td key={k} className="text-right py-2 px-3 text-slate-400 max-w-[200px] truncate" title={String(row.raw_data?.[k] ?? '')}>
-                  {row.raw_data?.[k] != null ? String(row.raw_data[k]).substring(0, 40) : '—'}
-                </td>
+              {displayRawKeys.map(k => (
+                <th key={k} className="text-right py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap max-w-[220px] sticky top-0 bg-slate-800/70" title={k}>
+                  {k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).substring(0, 35)}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length > 20 && <p className="text-xs text-slate-400 mt-2 px-3">Showing 20 of {rows.length} records</p>}
+          </thead>
+          <tbody>
+            {displayRows.map((row, i) => (
+              <tr key={i} className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                {activeCols.map(col => (
+                  <td key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2 px-3 text-slate-300 whitespace-nowrap`}>
+                    {col.key.includes('payment') || col.key.includes('charge')
+                      ? formatCurrency(row[col.key])
+                      : row[col.key] != null ? formatNumber(row[col.key]) : '—'}
+                  </td>
+                ))}
+                {displayRawKeys.map(k => (
+                  <td key={k} className="text-right py-2 px-3 text-slate-400 max-w-[220px] truncate whitespace-nowrap" title={String(row.raw_data?.[k] ?? '')}>
+                    {formatCellValue(k, row.raw_data?.[k])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between">
+        {hasMore && !expanded && (
+          <Button variant="ghost" size="sm" className="text-xs text-cyan-400 hover:text-cyan-300 h-7" onClick={() => setExpanded(true)}>
+            <ChevronDown className="w-3.5 h-3.5 mr-1" /> Show all {filteredRawKeys.length} columns
+          </Button>
+        )}
+        {expanded && (
+          <Button variant="ghost" size="sm" className="text-xs text-cyan-400 hover:text-cyan-300 h-7" onClick={() => setExpanded(false)}>
+            <ChevronUp className="w-3.5 h-3.5 mr-1" /> Show fewer columns
+          </Button>
+        )}
+        {rows.length > 50 && (
+          <p className="text-[10px] text-slate-500">Showing 50 of {rows.length} records</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LinkedProviderCard({ linked, navigate, config }) {
+  if (!linked) return null;
+
+  const provName = linked.entity_type === 'Individual'
+    ? `${linked.first_name || ''} ${linked.last_name || ''}`.trim()
+    : linked.organization_name || 'Unknown';
+
+  const primaryLoc = linked.locations?.find(l => l.is_primary) || linked.locations?.[0];
+  const score = linked.lead_score;
+
+  return (
+    <Card className="bg-slate-800/50 border-slate-700/50">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm text-slate-300 flex items-center gap-2">
+          <Users className="w-4 h-4 text-blue-400" /> Provider Intelligence
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 min-w-0 space-y-3">
+            <div>
+              <p className="text-lg font-semibold text-slate-100">{provName}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <Badge className="bg-slate-700/50 text-slate-300 border-slate-600/50 text-[10px]">NPI: {linked.npi}</Badge>
+                <Badge className="bg-slate-700/50 text-slate-300 border-slate-600/50 text-[10px]">{linked.entity_type}</Badge>
+                <Badge className={`text-[10px] ${linked.status?.toLowerCase() === 'active' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-red-900/30 text-red-400 border-red-500/30'}`}>
+                  {linked.status || 'Unknown'}
+                </Badge>
+              </div>
+            </div>
+
+            {linked.taxonomies?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {linked.taxonomies.slice(0, 5).map((t, i) => (
+                  <Badge key={i} className="bg-blue-900/20 text-blue-400 border-blue-500/20 text-[10px]">
+                    {t.taxonomy_description || t.taxonomy_code}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {linked.email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                  <span className="text-slate-300 truncate">{linked.email}</span>
+                  {linked.email_confidence && (
+                    <Badge className={`text-[9px] flex-shrink-0 ${
+                      linked.email_confidence === 'high' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' :
+                      linked.email_confidence === 'medium' ? 'bg-amber-900/30 text-amber-400 border-amber-500/30' :
+                      'bg-slate-700/50 text-slate-400 border-slate-600/50'
+                    }`}>
+                      {linked.email_confidence}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {!linked.email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                  <span className="text-slate-500 italic">No email on file</span>
+                </div>
+              )}
+              {linked.phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                  <span className="text-slate-300">{linked.phone}</span>
+                </div>
+              )}
+              {primaryLoc && (
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                  <span className="text-slate-300 truncate">
+                    {[primaryLoc.address_1, primaryLoc.city, primaryLoc.state].filter(Boolean).join(', ')} {primaryLoc.zip?.substring(0, 5)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-2 flex-shrink-0">
+            {score && (
+              <div className="bg-slate-900/50 border border-slate-700/30 rounded-lg px-4 py-2 text-center">
+                <div className={`text-2xl font-bold ${
+                  score.score >= 70 ? 'text-emerald-400' : score.score >= 40 ? 'text-amber-400' : 'text-red-400'
+                }`}>
+                  {Math.round(score.score)}
+                </div>
+                <div className="text-[10px] text-slate-400">Fit Score</div>
+              </div>
+            )}
+            <Button
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+              onClick={() => navigate(createPageUrl('ProviderDetail') + `?npi=${linked.npi}`)}
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Full Provider Profile
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FacilitySummaryCard({ data, financials, facilityTypes, config }) {
+  const totalRecords = Object.values(data.by_type || {}).reduce((sum, arr) => sum + arr.length, 0);
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><DollarSign className="w-3 h-3" />Total Payments</div>
+          <div className="text-lg font-bold text-slate-100">{formatCurrency(financials.totalPayments)}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><DollarSign className="w-3 h-3" />Total Charges</div>
+          <div className="text-lg font-bold text-slate-100">{formatCurrency(financials.totalCharges)}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Activity className="w-3 h-3" />Discharges</div>
+          <div className="text-lg font-bold text-slate-100">{formatNumber(financials.totalDischarges)}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Calendar className="w-3 h-3" />Days of Care</div>
+          <div className="text-lg font-bold text-slate-100">{formatNumber(financials.totalDaysOfCare)}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Layers className="w-3 h-3" />Data Sources</div>
+          <div className="text-lg font-bold text-slate-100">{facilityTypes.length}</div>
+          <div className="text-[10px] text-slate-500">{totalRecords} records</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-slate-800/50 border-slate-700/50">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Calendar className="w-3 h-3" />Data Years</div>
+          <div className="text-lg font-bold text-slate-100">
+            {data.data_years?.length > 0 ? `${data.data_years[0]}–${data.data_years[data.data_years.length - 1]}` : '—'}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -207,9 +436,10 @@ export default function FacilityDetail() {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4">
         <Skeleton className="h-8 w-64 bg-slate-800" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 bg-slate-800" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-20 bg-slate-800" />)}
         </div>
+        <Skeleton className="h-32 bg-slate-800" />
         <Skeleton className="h-96 bg-slate-800" />
       </div>
     );
@@ -250,8 +480,11 @@ export default function FacilityDetail() {
             <h1 className="text-xl sm:text-2xl font-bold text-slate-100 truncate">{data.facility_name || 'Unknown Facility'}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+            {data.address && (
+              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{data.address}</span>
+            )}
             {data.city && data.state && (
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{data.city}, {data.state} {data.zip}</span>
+              <span>{data.city}, {data.state} {data.zip}</span>
             )}
             <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" />ID: {providerId}</span>
             <Badge className={config.badgeCls}>{config.title}</Badge>
@@ -268,66 +501,9 @@ export default function FacilityDetail() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1"><DollarSign className="w-3.5 h-3.5" />Total Payments</div>
-            <div className="text-lg font-bold text-slate-100">{formatCurrency(financials.totalPayments)}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1"><Activity className="w-3.5 h-3.5" />Total Discharges</div>
-            <div className="text-lg font-bold text-slate-100">{formatNumber(financials.totalDischarges)}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1"><Layers className="w-3.5 h-3.5" />Data Sources</div>
-            <div className="text-lg font-bold text-slate-100">{facilityTypes.length}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center gap-2 text-slate-400 text-xs mb-1"><Calendar className="w-3.5 h-3.5" />Data Years</div>
-            <div className="text-lg font-bold text-slate-100">
-              {data.data_years?.length > 0 ? `${data.data_years[0]}–${data.data_years[data.data_years.length - 1]}` : '—'}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <FacilitySummaryCard data={data} financials={financials} facilityTypes={facilityTypes} config={config} />
 
-      {linked && (
-        <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-300 flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-400" /> Linked Provider Record
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-slate-200 font-medium">
-                  {linked.entity_type === 'Individual'
-                    ? `${linked.first_name} ${linked.last_name}`.trim()
-                    : linked.organization_name || 'Unknown'}
-                </p>
-                <p className="text-xs text-slate-400">NPI: {linked.npi} | {linked.entity_type} | {linked.status}</p>
-                {linked.taxonomies?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {linked.taxonomies.slice(0, 3).map((t, i) => (
-                      <Badge key={i} className="bg-blue-900/30 text-blue-400 border-blue-500/30 text-[10px]">{t.taxonomy_description || t.taxonomy_code}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700" onClick={() => navigate(createPageUrl('ProviderDetail') + `?npi=${linked.npi}`)}>
-                <ExternalLink className="w-3.5 h-3.5 mr-1" /> View Provider
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <LinkedProviderCard linked={linked} navigate={navigate} config={config} />
 
       <Tabs defaultValue={facilityTypes[0] || 'overview'}>
         <TabsList className="bg-slate-800/70 border border-slate-700/50 flex-wrap h-auto gap-1 p-1">
@@ -342,7 +518,10 @@ export default function FacilityDetail() {
             <Card className="bg-slate-800/50 border-slate-700/50">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm text-slate-200">{TYPE_LABELS[ft] || ft.replace(/_/g, ' ')}</CardTitle>
+                  <CardTitle className="text-sm text-slate-200 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-cyan-400" />
+                    {TYPE_LABELS[ft] || ft.replace(/_/g, ' ')}
+                  </CardTitle>
                   <Badge className="bg-slate-800/50 text-slate-400 border-slate-500/30 text-[10px]">{byType[ft]?.length || 0} records</Badge>
                 </div>
               </CardHeader>
