@@ -3,7 +3,8 @@ import { providers, providerLocations, providerTaxonomies, enrichmentRecords, ba
 import { eq, and, isNull, sql, asc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
-const BATCH_DELAY_MS = 1000;
+const BATCH_DELAY_MS = 300;
+const PARALLEL_CONCURRENCY = 5;
 const activeTaskIds = new Set<number>();
 
 export async function cleanupOrphanedIntelTasks() {
@@ -114,7 +115,7 @@ Only return the JSON object, nothing else.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
+      max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -401,20 +402,21 @@ async function runIntelLoop(taskId: number) {
     const taxonomyMap = new Map<string, any>();
 
     if (npis.length > 0) {
-      const locs = await safeDbQuery(
-        () => db.select().from(providerLocations).where(inArray(providerLocations.npi, npis)),
-        [] as any[], "fetch locations"
-      );
+      const [locs, taxs] = await Promise.all([
+        safeDbQuery(
+          () => db.select().from(providerLocations).where(inArray(providerLocations.npi, npis)),
+          [] as any[], "fetch locations"
+        ),
+        safeDbQuery(
+          () => db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis)),
+          [] as any[], "fetch taxonomies"
+        ),
+      ]);
       for (const loc of locs) {
         if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
           locationMap.set(loc.npi, loc);
         }
       }
-
-      const taxs = await safeDbQuery(
-        () => db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis)),
-        [] as any[], "fetch taxonomies"
-      );
       for (const tax of taxs) {
         if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
           taxonomyMap.set(tax.npi, tax);
@@ -428,53 +430,70 @@ async function runIntelLoop(taskId: number) {
     let batchNoData = 0;
     let batchErrors = 0;
 
-    let cancelledMidBatch = false;
-    let cancelCheckCounter = 0;
+    let idx = 0;
+    let workersCancelled = false;
+    const provResults: { prov: any; result: any }[] = [];
 
-    for (const prov of rows) {
-      cancelCheckCounter++;
-      if (cancelCheckCounter % 5 === 0) {
-        const checkRows = await safeDbQuery(
-          () => db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)),
-          null as any, "cancel check"
-        );
-        const freshTask = checkRows?.[0];
-        if (freshTask && freshTask.status === "cancelled") {
-          cancelledMidBatch = true;
-          break;
+    async function worker() {
+      while (idx < rows.length && !workersCancelled) {
+        const myIdx = idx++;
+        if (myIdx >= rows.length) break;
+
+        if (myIdx % 10 === 0 && myIdx > 0) {
+          const checkRows = await safeDbQuery(
+            () => db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId)),
+            null as any, "cancel check"
+          );
+          if (checkRows?.[0]?.status === "cancelled") {
+            workersCancelled = true;
+            break;
+          }
+        }
+
+        const prov = rows[myIdx];
+        const loc = locationMap.get(prov.npi || "");
+        const tax = taxonomyMap.get(prov.npi || "");
+
+        try {
+          const result = await enrichAndSearchProvider(anthropic, prov, loc, tax);
+          provResults.push({ prov, result });
+        } catch (e: any) {
+          console.error(`[IntelBot] Error for NPI ${prov.npi}:`, e.message);
+          provResults.push({ prov, result: { enrichment: null, best_email: null, error: e.message } });
+        }
+        if (myIdx < rows.length - 1) {
+          await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
         }
       }
-
-      const loc = locationMap.get(prov.npi || "");
-      const tax = taxonomyMap.get(prov.npi || "");
-      const needsEmail = !prov.email_searched_at;
-
-      try {
-        const result = await enrichAndSearchProvider(anthropic, prov, loc, tax);
-
-        if (result.enrichment) {
-          const fieldCount = await saveEnrichment(prov.npi, result.enrichment);
-          if (fieldCount > 0) batchEnriched++;
-          else batchNoData++;
-        } else {
-          batchNoData++;
-        }
-
-        if (needsEmail) {
-          await saveEmail(prov, result);
-          if (result.best_email) batchEmails++;
-        }
-      } catch (e: any) {
-        console.error(`[IntelBot] Error for NPI ${prov.npi}:`, e.message);
-        batchErrors++;
-      }
-
-      await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
     }
 
-    if (cancelledMidBatch) {
+    const workers = Array.from(
+      { length: Math.min(PARALLEL_CONCURRENCY, rows.length) },
+      () => worker()
+    );
+    await Promise.all(workers);
+
+    if (workersCancelled) {
       activeTaskIds.delete(taskId);
       return;
+    }
+
+    for (const { prov, result } of provResults) {
+      if (result.error && !result.enrichment) {
+        batchErrors++;
+        continue;
+      }
+      if (result.enrichment) {
+        const fieldCount = await saveEnrichment(prov.npi, result.enrichment);
+        if (fieldCount > 0) batchEnriched++;
+        else batchNoData++;
+      } else {
+        batchNoData++;
+      }
+      if (!prov.email_searched_at) {
+        await saveEmail(prov, result);
+        if (result.best_email) batchEmails++;
+      }
     }
 
     const newMeta = {
@@ -524,7 +543,7 @@ export async function handleIntelJobStart(payload: any) {
     }).where(eq(backgroundTasks.id, existing.id));
   }
 
-  const batchSize = Math.min(payload.batch_size || 10, 50);
+  const batchSize = Math.max(1, Math.min(payload.batch_size || 10, 50));
   const [task] = await db.insert(backgroundTasks).values({
     task_type: "provider_intelligence",
     status: "processing",

@@ -3,8 +3,11 @@ import { providers, providerLocations, providerTaxonomies, backgroundTasks } fro
 import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
-const BATCH_DELAY_MS = 1500;
+const BATCH_DELAY_MS = 300;
 const CONSECUTIVE_ERROR_LIMIT = 20;
+const PARALLEL_CONCURRENCY = 5;
+const PROGRESS_UPDATE_INTERVAL = 5;
+const CANCEL_CHECK_INTERVAL = 10;
 
 const activeTaskIds = new Set<number>();
 
@@ -23,7 +26,7 @@ export async function cleanupOrphanedEmailTasks() {
         console.log(`[EmailBot] Auto-resuming orphaned task ${task.id}`);
         activeTaskIds.add(task.id);
         const meta: any = task.metadata || {};
-        const bs = Math.max(1, Math.min(50, meta.batch_size || 5));
+        const bs = Math.max(1, Math.min(50, meta.batch_size || 10));
         runBackgroundSearch(
           task.id,
           bs,
@@ -68,7 +71,7 @@ export async function cleanupOrphanedEmailTasks() {
     if (remaining === 0) return;
 
     const meta: any = lastTask[0].metadata || {};
-    const batchSize = Math.max(1, Math.min(50, meta.batch_size || 5));
+    const batchSize = Math.max(1, Math.min(50, meta.batch_size || 10));
 
     console.log(`[EmailBot] Auto-starting new email search — ${remaining} providers unsearched`);
     const [newTask] = await db.insert(backgroundTasks).values({
@@ -110,7 +113,7 @@ function getAnthropicClient() {
 async function callClaude(anthropic: Anthropic, prompt: string, schema: any): Promise<any> {
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 2048,
+    max_tokens: 1024,
     system: `You must respond with valid JSON matching this schema: ${JSON.stringify(schema)}. Do not include any text before or after the JSON.`,
     messages: [{ role: "user", content: prompt }],
   });
@@ -146,7 +149,7 @@ async function searchEmailForProvider(
     : provider.organization_name || "";
 
   try {
-    const searchPrompt = `Find likely professional email addresses for this healthcare provider. Use your knowledge to infer the most likely email patterns.
+    const combinedPrompt = `Find and validate professional email addresses for this healthcare provider.
 
 PROVIDER:
 - Name: ${name}
@@ -155,24 +158,27 @@ PROVIDER:
 - Entity Type: ${provider.entity_type}
 - Organization: ${provider.organization_name || "N/A"}
 - Specialty: ${taxonomy?.taxonomy_description || "N/A"}
-- Location: ${location ? `${location.city || ""}, ${location.state || ""}` : "N/A"}
-- Address: ${location ? `${location.address_1 || ""}, ${location.city || ""}, ${location.state || ""} ${location.zip || ""}` : "N/A"}
+- Location: ${location ? `${location.address_1 || ""}, ${location.city || ""}, ${location.state || ""} ${location.zip || ""}` : "N/A"}
 - Phone: ${location?.phone || provider.phone || "N/A"}
 - Website: ${provider.website || "N/A"}
 
-Instructions:
-1. Based on the provider's name, organization, and specialty, determine the most likely organization or practice they belong to.
-2. Infer email patterns based on common healthcare organization email formats (e.g., first.last@hospital.org, flast@clinic.com).
-3. If the provider has a website listed, use that domain for email pattern inference.
-4. For organizations, suggest common patterns like info@, admin@, contact@ using the organization's likely domain.
-5. For each email, rate confidence: "high" if based on known domain/website, "medium" if inferred from organization name, "low" if purely guessed.
-6. Return up to 3 possible emails.
-7. If the provider type is "Organization", try patterns like info@, admin@, contact@ with the organization's domain.
-8. PRACTICE EMAILS ARE ACCEPTABLE: If you cannot find a personal/direct email, return practice or office emails. Always prefer a direct provider email, but never return zero results if a practice email could exist.
+STEP 1 - FIND EMAILS:
+1. Determine the most likely organization or practice domain from name, organization, website, and location.
+2. If a website is listed, use that domain directly.
+3. Apply common healthcare email patterns: first.last@domain, flast@domain, firstl@domain, first@domain.
+4. For organizations, also try info@, admin@, contact@ with the organization domain.
+5. Return up to 3 possible emails ranked by likelihood.
+6. Practice/office emails are acceptable if no direct provider email can be found.
 
-IMPORTANT: Be honest about confidence levels. If you're uncertain, mark as "low".`;
+STEP 2 - VALIDATE EACH EMAIL:
+For each email you found, assign:
+- validation_status: "valid" (matches known real domain patterns, high deliverability), "risky" (plausible but unverified domain, role-based, or catch-all), or "invalid" (implausible domain, bad format)
+- validation_reason: brief explanation
+- confidence: "high" (based on known/verified domain or website), "medium" (inferred from org name), "low" (guessed)
 
-    const emailSchema = {
+Be strict: AI-inferred emails without verified domains should be "risky" at best.`;
+
+    const combinedSchema = {
       type: "object",
       properties: {
         emails: {
@@ -183,16 +189,17 @@ IMPORTANT: Be honest about confidence levels. If you're uncertain, mark as "low"
               email: { type: "string" },
               confidence: { type: "string", enum: ["high", "medium", "low"] },
               source: { type: "string" },
+              validation_status: { type: "string", enum: ["valid", "risky", "invalid"] },
+              validation_reason: { type: "string" },
             },
           },
         },
         organization_domain: { type: "string" },
-        notes: { type: "string" },
       },
     };
 
-    const searchResult = await callClaude(anthropic, searchPrompt, emailSchema);
-    const emails = (searchResult.emails || []).filter(
+    const result = await callClaude(anthropic, combinedPrompt, combinedSchema);
+    const emails = (result.emails || []).filter(
       (e: any) => e.email && e.email.includes("@") && e.email.includes(".")
     );
 
@@ -209,52 +216,9 @@ IMPORTANT: Be honest about confidence levels. If you're uncertain, mark as "low"
       };
     }
 
-    const validationPrompt = `You are an email deliverability expert. Validate these emails for healthcare provider "${name}" (NPI: ${provider.npi}).
-
-EMAILS:
-${emails.map((e: any, i: number) => `${i + 1}. ${e.email} (confidence: ${e.confidence}, source: ${e.source})`).join("\n")}
-
-CONTEXT: Type=${provider.entity_type}, Org=${provider.organization_name || "N/A"}, Credential=${provider.credential || "N/A"}
-
-For each email assign:
-- "valid" = high likelihood of being deliverable and correct (matches known domain patterns, proper format)
-- "risky" = might work but has concerns (role-based, catch-all, pattern mismatch, unknown domain)
-- "invalid" = likely undeliverable (bad format, implausible domain, wrong person)
-
-Be strict: most AI-inferred emails without verified domains should be "risky" at best.`;
-
-    const validationSchema = {
-      type: "object",
-      properties: {
-        validations: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              email: { type: "string" },
-              status: { type: "string", enum: ["valid", "risky", "invalid"] },
-              reason: { type: "string" },
-            },
-          },
-        },
-      },
-    };
-
-    const validationResult = await callClaude(anthropic, validationPrompt, validationSchema);
-    const validations = validationResult.validations || [];
-
-    const enrichedEmails = emails.map((e: any) => {
-      const v = validations.find((val: any) => val.email === e.email);
-      return {
-        ...e,
-        validation_status: v?.status || "unknown",
-        validation_reason: v?.reason || "",
-      };
-    });
-
     const validationRank: Record<string, number> = { valid: 3, risky: 2, unknown: 1, invalid: 0 };
     const confidenceRank: Record<string, number> = { high: 3, medium: 2, low: 1 };
-    const sorted = [...enrichedEmails].sort((a, b) => {
+    const sorted = [...emails].sort((a: any, b: any) => {
       const vDiff = (validationRank[b.validation_status] || 0) - (validationRank[a.validation_status] || 0);
       if (vDiff !== 0) return vDiff;
       return (confidenceRank[b.confidence] || 0) - (confidenceRank[a.confidence] || 0);
@@ -267,7 +231,7 @@ Be strict: most AI-inferred emails without verified domains should be "risky" at
       confidence: best.confidence,
       validation_status: best.validation_status,
       validation_reason: best.validation_reason,
-      emails_found: enrichedEmails.length,
+      emails_found: sorted.length,
       all_emails: sorted,
     };
   } catch (err: any) {
@@ -340,9 +304,69 @@ async function getProvidersForSearch(batchSize: number, skipSearched: boolean, s
     .limit(batchSize);
 }
 
+async function processProvidersConcurrently(
+  anthropic: Anthropic,
+  batch: any[],
+  locationMap: Map<string, any>,
+  taxonomyMap: Map<string, any>,
+  concurrency: number,
+  cancelCheck?: () => Promise<boolean>
+): Promise<{ results: any[]; found: number; errors: number; cancelled: boolean }> {
+  const results: any[] = [];
+  let found = 0;
+  let errors = 0;
+  let idx = 0;
+  let cancelled = false;
+
+  async function worker() {
+    while (idx < batch.length && !cancelled) {
+      const myIdx = idx++;
+      if (myIdx >= batch.length) break;
+
+      if (cancelCheck && myIdx % CANCEL_CHECK_INTERVAL === 0 && myIdx > 0) {
+        if (await cancelCheck()) {
+          cancelled = true;
+          break;
+        }
+      }
+
+      const prov = batch[myIdx];
+      const loc = locationMap.get(prov.npi || "");
+      const tax = taxonomyMap.get(prov.npi || "");
+
+      try {
+        const result = await searchEmailForProvider(anthropic, prov, loc, tax);
+        results[myIdx] = { prov, result };
+        if (result.best_email) found++;
+        if (result.error) errors++;
+      } catch (err: any) {
+        results[myIdx] = {
+          prov,
+          result: {
+            npi: prov.npi,
+            name: prov.first_name || prov.organization_name || "",
+            best_email: null, confidence: null, validation_status: null,
+            validation_reason: null, emails_found: 0, all_emails: [],
+            error: err.message,
+          }
+        };
+        errors++;
+      }
+      if (myIdx < batch.length - 1) {
+        await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, batch.length) }, () => worker());
+  await Promise.all(workers);
+
+  return { results: results.filter(Boolean), found, errors, cancelled };
+}
+
 export async function handleEmailSearchBot(payload: any) {
-  const { mode, npi, batch_size: rawBatchSize = 5, skip_already_searched = true, total_items, task_id } = payload;
-  const batch_size = Math.max(1, Math.min(50, Number(rawBatchSize) || 5));
+  const { mode, npi, batch_size: rawBatchSize = 10, skip_already_searched = true, total_items, task_id } = payload;
+  const batch_size = Math.max(1, Math.min(50, Number(rawBatchSize) || 10));
 
   if (!mode || !["single", "batch", "start_background", "stop_background"].includes(mode)) {
     return { success: false, message: `Invalid mode: ${mode}. Use single, batch, start_background, or stop_background.` };
@@ -467,30 +491,33 @@ export async function handleEmailSearchBot(payload: any) {
     }
   }
 
-  const results: any[] = [];
-  let found = 0;
-
-  for (const prov of providersToSearch) {
+  if (mode === "single") {
+    const prov = providersToSearch[0];
     const loc = locationMap.get(prov.npi || "");
     const tax = taxonomyMap.get(prov.npi || "");
-
     const result = await searchEmailForProvider(anthropic, prov, loc, tax);
-    results.push(result);
-
     await saveEmailToProvider(prov, result);
+    return {
+      success: true,
+      searched: 1,
+      found: result.best_email ? 1 : 0,
+      results: [result],
+    };
+  }
 
-    if (result.best_email) found++;
+  const { results: batchResults, found } = await processProvidersConcurrently(
+    anthropic, providersToSearch, locationMap, taxonomyMap, PARALLEL_CONCURRENCY
+  );
 
-    if (providersToSearch.indexOf(prov) < providersToSearch.length - 1) {
-      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
-    }
+  for (const { prov, result } of batchResults) {
+    await saveEmailToProvider(prov, result);
   }
 
   return {
     success: true,
-    searched: results.length,
+    searched: batchResults.length,
     found,
-    results,
+    results: batchResults.map(r => r.result),
   };
 }
 
@@ -501,6 +528,8 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
   let totalErrors = 0;
   let consecutiveErrors = 0;
   let batchNumber = 0;
+  let providersSinceLastUpdate = 0;
+  let providersSinceCancelCheck = 0;
 
   const [existingTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
   if (existingTask?.metadata) {
@@ -536,20 +565,15 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
 
     if (npis.length > 0) {
       try {
-        const locs = await db
-          .select()
-          .from(providerLocations)
-          .where(inArray(providerLocations.npi, npis as string[]));
+        const [locs, taxs] = await Promise.all([
+          db.select().from(providerLocations).where(inArray(providerLocations.npi, npis as string[])),
+          db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis as string[])),
+        ]);
         for (const loc of locs) {
           if (loc.npi && (!locationMap.has(loc.npi) || loc.location_type === "Practice")) {
             locationMap.set(loc.npi, loc);
           }
         }
-
-        const taxs = await db
-          .select()
-          .from(providerTaxonomies)
-          .where(inArray(providerTaxonomies.npi, npis as string[]));
         for (const tax of taxs) {
           if (tax.npi && (!taxonomyMap.has(tax.npi) || tax.is_primary)) {
             taxonomyMap.set(tax.npi, tax);
@@ -560,73 +584,69 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
       }
     }
 
-    for (const prov of batch) {
-      const [freshTask] = await db
-        .select()
-        .from(backgroundTasks)
-        .where(eq(backgroundTasks.id, taskId));
-      if (!freshTask || freshTask.status === "cancelled") break;
+    const cancelChecker = async () => {
+      const [t] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
+      return !t || t.status === "cancelled";
+    };
 
-      const loc = locationMap.get(prov.npi || "");
-      const tax = taxonomyMap.get(prov.npi || "");
+    const { results: batchResults, found: batchFound, errors: batchErrors, cancelled } =
+      await processProvidersConcurrently(anthropic, batch, locationMap, taxonomyMap, PARALLEL_CONCURRENCY, cancelChecker);
 
-      let result;
-      try {
-        result = await searchEmailForProvider(anthropic, prov, loc, tax);
-      } catch (searchErr: any) {
-        console.error(`[EmailBot] Task ${taskId}: Search error for ${prov.npi}: ${searchErr.message}`);
-        totalErrors++;
-        consecutiveErrors++;
-
-        if (consecutiveErrors >= CONSECUTIVE_ERROR_LIMIT) {
-          console.error(`[EmailBot] Task ${taskId}: ${CONSECUTIVE_ERROR_LIMIT} consecutive errors — pausing 60s before retry`);
-          await new Promise(r => setTimeout(r, 60000));
-          consecutiveErrors = 0;
-        } else {
-          const backoff = Math.min(BATCH_DELAY_MS * Math.pow(1.5, consecutiveErrors), 30000);
-          await new Promise(r => setTimeout(r, backoff));
-        }
-        continue;
+    if (cancelled) {
+      console.log(`[EmailBot] Task ${taskId} cancelled mid-batch`);
+      for (const { prov, result } of batchResults) {
+        try { await saveEmailToProvider(prov, result); } catch {}
       }
+      break;
+    }
 
+    if (batchErrors > 0) {
+      consecutiveErrors += batchErrors;
+      if (consecutiveErrors >= CONSECUTIVE_ERROR_LIMIT) {
+        console.error(`[EmailBot] Task ${taskId}: ${consecutiveErrors} errors — pausing 30s`);
+        await new Promise(r => setTimeout(r, 30000));
+        consecutiveErrors = 0;
+      }
+    } else {
       consecutiveErrors = 0;
+    }
 
+    for (const { prov, result } of batchResults) {
       try {
         await saveEmailToProvider(prov, result);
       } catch (saveErr: any) {
         console.error(`[EmailBot] Task ${taskId}: Save error for ${prov.npi}: ${saveErr.message}`);
         totalErrors++;
-        await new Promise(r => setTimeout(r, 3000));
       }
-
-      totalProcessed++;
-      if (result.best_email) totalFound++;
-
-      await db
-        .update(backgroundTasks)
-        .set({
-          progress: totalProcessed,
-          metadata: {
-            batch_size: batchSize,
-            skip_already_searched: skipSearched,
-            total_items: 0,
-            processed_items: totalProcessed,
-            success_count: totalFound,
-            error_count: totalErrors,
-            current_batch_number: batchNumber,
-          },
-          updated_date: new Date(),
-        })
-        .where(eq(backgroundTasks.id, taskId));
-
-      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
     }
 
-    if (batchNumber % 10 === 0) {
+    totalProcessed += batchResults.length;
+    totalFound += batchFound;
+    totalErrors += batchErrors;
+
+    await db
+      .update(backgroundTasks)
+      .set({
+        progress: totalProcessed,
+        metadata: {
+          batch_size: batchSize,
+          skip_already_searched: skipSearched,
+          total_items: 0,
+          processed_items: totalProcessed,
+          success_count: totalFound,
+          error_count: totalErrors,
+          current_batch_number: batchNumber,
+        },
+        updated_date: new Date(),
+      })
+      .where(eq(backgroundTasks.id, taskId));
+
+    if (batchNumber % 5 === 0) {
       const remaining = await db.select({ count: sql<number>`count(*)` })
         .from(providers)
         .where(isNull(providers.email_searched_at));
-      console.log(`[EmailBot] Task ${taskId}: Batch ${batchNumber} done — processed=${totalProcessed}, found=${totalFound}, errors=${totalErrors}, remaining=${remaining[0]?.count || '?'}`);
+      const rate = totalProcessed > 0 ? (totalFound / totalProcessed * 100).toFixed(1) : "0";
+      console.log(`[EmailBot] Task ${taskId}: Batch ${batchNumber} — processed=${totalProcessed}, found=${totalFound} (${rate}%), errors=${totalErrors}, remaining=${remaining[0]?.count || '?'}`);
     }
   }
 
@@ -658,5 +678,5 @@ async function runBackgroundSearch(taskId: number, batchSize: number, skipSearch
   }
 
   activeTaskIds.delete(taskId);
-  console.log(`[EmailBot] Task ${taskId} ${finalTask?.status === "cancelled" ? "cancelled" : "completed"}: ${totalProcessed} searched, ${totalFound} found, ${totalErrors} errors`);
+  console.log(`[EmailBot] Task ${taskId} finished — processed=${totalProcessed}, found=${totalFound}, errors=${totalErrors}`);
 }
