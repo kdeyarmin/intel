@@ -100,6 +100,8 @@ const DATA_DESTINATION_MAP = {
   fqhc_all_owners: { page: 'CommunityHealthCenters', label: 'Community Health' },
   rural_health_clinic_enrollments: { page: 'CommunityHealthCenters', label: 'Community Health' },
   rural_health_clinic_all_owners: { page: 'CommunityHealthCenters', label: 'Community Health' },
+  aco_snf_affiliates: { page: 'Organizations', label: 'Organizations' },
+  aco_reach_providers: { page: 'Organizations', label: 'Organizations' },
 
   clinician_national_file: { page: 'Providers', label: 'Providers' },
   clinician_mips_performance: { page: 'Providers', label: 'Providers' },

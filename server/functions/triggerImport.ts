@@ -108,6 +108,11 @@ const IMPORT_TYPE_URLS: Record<string, string> = {
   hha_utilization_geo_casemix: "https://data.cms.gov/data-api/v1/dataset/6c63099b-0794-40a0-925c-51a66b9b9901/data",
   ltc_facility_characteristics: "https://data.cms.gov/data-api/v1/dataset/129a6503-c0f1-4132-b186-4c0232c2d894/data",
   mds_frequency: "https://data.cms.gov/data-api/v1/dataset/4b50bbe6-a496-4eda-b03b-5f835937f81b/data",
+  nursing_home_chains: "https://data.cms.gov/provider-data/api/1/datastore/query/b2ux-wtdv/0",
+  snf_quality_reporting: "https://data.cms.gov/provider-data/api/1/datastore/query/dt4m-mk9z/0",
+  provider_ownership: "https://data.cms.gov/data-api/v1/dataset/6f1e6491-670f-4e3e-8bfb-7e04d678cfac/data",
+  inpatient_drg: "https://data.cms.gov/data-api/v1/dataset/a91eb19f-ac9c-49ec-8ec6-805e56dfe7f7/data",
+  home_health_pdgm: "https://data.cms.gov/data-api/v1/dataset/a2e7f535-c7e4-45ab-a743-2b7f19fc6f41/data",
 };
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
@@ -241,6 +246,11 @@ const CMS_DATASET_CATALOG = [
   { id: "aco_organizations", title: "Accountable Care Organizations", description: "Profiles of Medicare Shared Savings Program ACOs including name, start date, track, and agreement details.", category: "ACO & Networks", records: "~500", priority: "high" },
   { id: "aco_financial_results", title: "ACO Financial & Quality Results", description: "Annual financial performance and quality measure results for ACOs in the Medicare Shared Savings Program.", category: "ACO & Networks", records: "~500", priority: "medium" },
 
+  { id: "nursing_home_chains", title: "Nursing Home Chain Data", description: "Performance data aggregated at the nursing home chain level including star ratings and facility counts.", category: "Nursing Homes & SNF", records: "~1K", priority: "medium" },
+  { id: "inpatient_drg", title: "Medicare Inpatient DRG Statistics", description: "Inpatient hospital charge and payment data by DRG code including discharges and average payments.", category: "Hospitals", records: "~200K", priority: "medium" },
+  { id: "provider_ownership", title: "Provider & Supplier Ownership", description: "Ownership and control information for Medicare providers and suppliers.", category: "Medicare Programs", records: "~2M", priority: "medium" },
+  { id: "home_health_pdgm", title: "Home Health PDGM Data", description: "Patient-Driven Groupings Model data for home health agencies including case-mix and payment information.", category: "Home Health", records: "~50K", priority: "medium" },
+  { id: "snf_quality_reporting", title: "SNF Quality Reporting Program", description: "Quality measure data from the SNF Quality Reporting Program.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
   { id: "snf_utilization_geo_casemix", title: "SNF Utilization by Geography & Case-Mix", description: "Skilled nursing facility utilization and payment data broken down by geographic area, provider, and case-mix grouping.", category: "Nursing Homes & SNF", records: "~100K", priority: "medium" },
   { id: "hha_utilization_geo_casemix", title: "HHA Utilization by Geography & Case-Mix", description: "Home health agency utilization data by geographic area, provider, and patient case-mix grouping.", category: "Home Health", records: "~127K", priority: "medium" },
   { id: "ltc_facility_characteristics", title: "Long-Term Care Facility Characteristics", description: "Detailed feature data for long-term care facilities including bed counts, certification, payer mix, and resident demographics.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },

@@ -85,6 +85,9 @@ const IMPORT_CATEGORIES = [
       { id: 'home_health_pdgm', name: 'HH PDGM', description: 'Patient-Driven Groupings Model', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_hha_stats', name: 'HHA Use & Payments', description: 'Home Health Agency statistics', requiredColumns: ['Year', 'NPI', 'Total_Episodes'], downloadUrl: 'https://data.cms.gov/provider-summary-by-type-of-service/medicare-home-health-agency-providers' },
       { id: 'hha_utilization_geo_casemix', name: 'HHA Util by Geo/Case-Mix', description: 'Geographic utilization analysis', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'home_health_agencies', name: 'HH Care Agencies', description: 'Home health agency quality data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'medicare_hha_utilization', name: 'HHA Post-Acute Utilization', description: 'Post-acute care HHA utilization', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'home_infusion_therapy', name: 'Home Infusion Therapy', description: 'Home infusion therapy providers', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]
   },
   {
@@ -101,6 +104,8 @@ const IMPORT_CATEGORIES = [
       { id: 'hospice_national_measures', name: 'National Measures', description: 'National aggregate data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'hospice_state_measures', name: 'State Measures', description: 'State aggregate data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'hospice_zip_data', name: 'Hospice Zip Data', description: 'Zip-level statistics', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'hospice_general_info', name: 'Hospice General Info', description: 'Hospice facility profiles', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
+      { id: 'medicare_hospice_utilization', name: 'Hospice Post-Acute Utilization', description: 'Post-acute care hospice data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]
   },
   {
@@ -132,6 +137,7 @@ const IMPORT_CATEGORIES = [
       { id: 'snf_utilization_geo_casemix', name: 'SNF Util by Geo/Case-Mix', description: 'Geographic utilization analysis', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'ltc_facility_characteristics', name: 'LTC Facility Characteristics', description: 'Long-term care facility info', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'mds_frequency', name: 'MDS Frequency', description: 'Minimum Data Set frequency', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'medicare_snf_utilization', name: 'SNF Post-Acute Utilization', description: 'Post-acute care SNF data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]
   },
   {
@@ -148,6 +154,8 @@ const IMPORT_CATEGORIES = [
       { id: 'medical_equipment_suppliers', name: 'DME Suppliers', description: 'DMEPOS supplier directory', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'medicare_dme_by_supplier', name: 'DME by Supplier', description: 'Utilization by DME supplier', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_dme_by_referring', name: 'DME by Referring Provider', description: 'DME referred by providers', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'medicare_irf_utilization', name: 'IRF Post-Acute Utilization', description: 'Post-acute care IRF data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'medicare_ltch_utilization', name: 'LTCH Post-Acute Utilization', description: 'Post-acute care LTCH data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]
   },
   {
@@ -171,6 +179,9 @@ const IMPORT_CATEGORIES = [
       { id: 'rural_health_clinic_enrollments', name: 'RHC Enrollments', description: 'Rural health clinic enrollment', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'rural_health_clinic_all_owners', name: 'RHC Ownership', description: 'Rural health clinic ownership', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'fqhc_all_owners', name: 'FQHC Ownership', description: 'FQHC ownership data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'fqhc_enrollments', name: 'FQHC Enrollments', description: 'FQHC enrollment data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'aco_snf_affiliates', name: 'ACO SNF Affiliates', description: 'ACO-SNF affiliations', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'aco_reach_providers', name: 'ACO REACH Providers', description: 'ACO REACH model providers', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]
   },
   {
