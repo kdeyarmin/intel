@@ -751,14 +751,30 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json({ reply });
       }
 
+      case "getCountyIntelligence": {
+        const { handleGetCountyIntelligence } = await import("../functions/countyIntelligence");
+        return res.json(await handleGetCountyIntelligence(req.body));
+      }
+
+      case "getAvailableStatesCounties": {
+        const { handleGetAvailableStatesCounties } = await import("../functions/countyIntelligence");
+        return res.json(await handleGetAvailableStatesCounties(req.body));
+      }
+
+      case "getComprehensiveReport": {
+        const { handleGetComprehensiveReport } = await import("../functions/comprehensiveReport");
+        return res.json(await handleGetComprehensiveReport(req.body));
+      }
+
       default:
         return res.status(404).json({
           message: `Function '${functionName}' not found.`,
         });
     }
   } catch (e: any) {
+    const statusCode = e.status || 500;
     console.error(`[Function ${functionName} Error]`, e.message);
-    res.status(500).json({ message: e.message });
+    res.status(statusCode).json({ message: e.message });
   }
 });
 

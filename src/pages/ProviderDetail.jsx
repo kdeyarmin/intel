@@ -44,6 +44,8 @@ import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreac
 import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
 import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
 import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
+import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
+import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -197,7 +199,7 @@ export default function ProviderDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
+        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-4 sm:grid-cols-7 gap-1">
           <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span>
           </TabsTrigger>
@@ -215,6 +217,9 @@ export default function ProviderDetail() {
           </TabsTrigger>
           <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Quality</span><span className="sm:hidden">Quality</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+            <Stethoscope className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Full Report</span><span className="sm:hidden">Report</span>
           </TabsTrigger>
         </TabsList>
 
@@ -331,6 +336,7 @@ export default function ProviderDetail() {
                 location={primaryLocation}
                 taxonomies={taxonomies}
               />
+              <ReferralPartnersCard npi={npi} referrals={referrals} />
             </div>
             <div className="space-y-6">
               <AIRelatedProviders
@@ -403,6 +409,10 @@ export default function ProviderDetail() {
               <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="report" className="space-y-6">
+          <ComprehensiveReport npi={npi} />
         </TabsContent>
 
         <TabsContent value="quality" className="space-y-6">

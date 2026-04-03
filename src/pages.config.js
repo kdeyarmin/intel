@@ -54,6 +54,7 @@ import AdvancedAnalytics from './pages/AdvancedAnalytics.jsx';
 import CMSAnalytics from './pages/CMSAnalytics.jsx';
 import CMSDataSources from './pages/CMSDataSources.jsx';
 import Campaigns from './pages/Campaigns.jsx';
+import CountyIntelligence from './pages/CountyIntelligence.jsx';
 import CustomReports from './pages/CustomReports.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import DataCenter from './pages/DataCenter.jsx';
@@ -104,6 +105,7 @@ export const PAGES = {
     "CMSAnalytics": CMSAnalytics,
     "CMSDataSources": CMSDataSources,
     "Campaigns": Campaigns,
+    "CountyIntelligence": CountyIntelligence,
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
     "DataCenter": DataCenter,

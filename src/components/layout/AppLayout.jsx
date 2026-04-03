@@ -27,6 +27,7 @@ const NAV_SECTIONS = [
       { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
       { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
+      { name: 'County Intel', icon: MapPin, page: 'CountyIntelligence', roles: ['admin', 'user'] },
     ]
   },
   {

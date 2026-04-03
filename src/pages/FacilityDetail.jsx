@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import AffiliatedProvidersCard from '../components/facilities/AffiliatedProvidersCard';
+import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 const FACILITY_LABELS = {
   hospital: { title: 'Hospital', back: 'Hospitals', iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
@@ -504,6 +506,14 @@ export default function FacilityDetail() {
       <FacilitySummaryCard data={data} financials={financials} facilityTypes={facilityTypes} config={config} />
 
       <LinkedProviderCard linked={linked} navigate={navigate} config={config} />
+
+      {linked?.npi && (
+        <AffiliatedProvidersCard facilityNpi={linked.npi} providerId={providerId} facilityName={data.facility_name} />
+      )}
+
+      <div className="mt-4">
+        <ComprehensiveReport providerId={providerId} npi={linked?.npi} />
+      </div>
 
       <Tabs defaultValue={facilityTypes[0] || 'overview'}>
         <TabsList className="bg-slate-800/70 border border-slate-700/50 flex-wrap h-auto gap-1 p-1">
