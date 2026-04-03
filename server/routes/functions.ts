@@ -17,157 +17,142 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
         if (dashboardStatsCache && (Date.now() - dashboardStatsCache.timestamp < DASHBOARD_CACHE_TTL)) {
           return res.json(dashboardStatsCache.data);
         }
-        const { db } = await import("../db");
-        const {
-          providers, providerLocations, providerTaxonomies,
-          cmsReferrals, providerServiceUtilization,
-          importBatches, dataQualityAlerts, dataQualityScans,
-        } = await import("../db/schema");
-        const { sql, desc, eq, isNotNull, and } = await import("drizzle-orm");
+        const { pool: dbPool } = await import("../db");
 
-        const fastCounts = await db.execute(sql`
-          SELECT
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'providers') AS providers,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_locations') AS locations,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'cms_referrals') AS referrals,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_service_utilization') AS utilization,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies,
-            (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
-        `);
-        const est = (fastCounts as any).rows?.[0] || (fastCounts as any)[0] || {};
-        const totalProviders = Number(est.providers || 0);
-        const totalLocations = Number(est.locations || 0);
-        const totalReferrals = Number(est.referrals || 0);
-        const totalUtilization = Number(est.utilization || 0);
-        const totalTaxonomies = Number(est.taxonomies || 0);
-        const totalFacilities = Number(est.facilities || 0);
+        const client = await dbPool.connect();
+        try {
+          await client.query("SET statement_timeout = '5s'");
 
-        const { or, inArray } = await import("drizzle-orm");
-
-        const safeQuery = async (queryFn: () => Promise<any>, fallback: any = null) => {
-          try { return await queryFn(); }
-          catch (e: any) { console.warn(`[getDashboardStats] Non-critical query failed: ${e.message?.substring(0, 100)}`); return fallback; }
-        };
-
-        const [
-          providerStatsResult,
-          topStatesResult,
-          importCountsResult,
-          openAlertCountArr,
-          latestScan,
-          completedBatches,
-          locationStatsResult,
-          utilYearResult,
-        ] = await Promise.all([
-          safeQuery(() => db.execute(sql`
+          const fastCounts = await client.query(`
             SELECT
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'providers') AS providers,
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_locations') AS locations,
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'cms_referrals') AS referrals,
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_service_utilization') AS utilization,
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'provider_taxonomies') AS taxonomies,
+              (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
+          `);
+          const est = fastCounts.rows[0] || {};
+          const totalProviders = Number(est.providers || 0);
+          const totalLocations = Number(est.locations || 0);
+          const totalReferrals = Number(est.referrals || 0);
+          const totalUtilization = Number(est.utilization || 0);
+          const totalTaxonomies = Number(est.taxonomies || 0);
+          const totalFacilities = Number(est.facilities || 0);
+
+          const safeQ = async (text: string) => {
+            try { return (await client.query(text)).rows; }
+            catch (e: any) { console.warn(`[getDashboardStats] query failed: ${e.message?.substring(0, 80)}`); return []; }
+          };
+
+          const emailSample = await safeQ(`
+            SELECT count(*) AS total_sample,
               count(*) FILTER (WHERE email IS NOT NULL) AS with_email,
               count(*) FILTER (WHERE email IS NULL) AS without_email,
               count(*) FILTER (WHERE email_searched_at IS NOT NULL) AS searched,
-              count(*) FILTER (WHERE email_validation_status = 'valid') AS valid,
-              count(*) FILTER (WHERE email_validation_status = 'risky') AS risky,
-              count(*) FILTER (WHERE email_validation_status = 'invalid') AS invalid,
+              count(*) FILTER (WHERE email_validation_status = 'valid') AS valid_email,
+              count(*) FILTER (WHERE email_validation_status = 'risky') AS risky_email,
+              count(*) FILTER (WHERE email_validation_status = 'invalid') AS invalid_email,
               count(*) FILTER (WHERE (first_name IS NULL OR first_name = '') AND (organization_name IS NULL OR organization_name = '')) AS needs_enrichment,
               count(*) FILTER (WHERE status = 'Deactivated') AS deactivated
-            FROM providers
-          `), [{}]),
-          safeQuery(() => db.execute(sql`
-            SELECT state, count(*) AS count FROM provider_locations
-            WHERE state IS NOT NULL
+            FROM (SELECT email, email_searched_at, email_validation_status, first_name, organization_name, status
+              FROM providers LIMIT 2000) s
+          `);
+          const topStatesRows = await safeQ(`
+            SELECT state, count(*) AS count
+            FROM (SELECT state FROM provider_locations WHERE state IS NOT NULL LIMIT 10000) s
             GROUP BY state ORDER BY count DESC LIMIT 5
-          `), []),
-          safeQuery(() => db.execute(sql`
-            SELECT
-              count(*) FILTER (WHERE status IN ('processing','validating','pending')) AS active,
-              count(*) FILTER (WHERE status = 'completed') AS completed,
-              count(*) FILTER (WHERE status = 'failed') AS failed
-            FROM import_batches
-          `), [{}]),
-          safeQuery(() => db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(eq(dataQualityAlerts.status, "new")), [{ count: 0 }]),
-          safeQuery(() => db.select().from(dataQualityScans).orderBy(desc(dataQualityScans.created_date)).limit(1), []),
-          safeQuery(() => db.select().from(importBatches).where(eq(importBatches.status, "completed")).orderBy(desc(importBatches.created_date)).limit(1), []),
-          safeQuery(() => db.execute(sql`
-            SELECT count(*) AS count FROM provider_locations
+          `);
+          const importRows = await safeQ(`SELECT count(*) FILTER (WHERE status IN ('processing','validating','pending')) AS active,
+            count(*) FILTER (WHERE status = 'completed') AS completed,
+            count(*) FILTER (WHERE status = 'failed') AS failed FROM import_batches`);
+          const alertRows = await safeQ(`SELECT count(*) AS count FROM data_quality_alerts WHERE status = 'new'`);
+          const scanRows = await safeQ(`SELECT * FROM data_quality_scans ORDER BY created_date DESC LIMIT 1`);
+          const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
+          const phoneSample = await safeQ(`
+            SELECT count(*) AS count
+            FROM (SELECT phone FROM provider_locations LIMIT 2000) s
             WHERE phone IS NULL OR phone = ''
-          `), [{ count: 0 }]),
-          safeQuery(() => db.execute(sql`SELECT max(data_year) AS max_year FROM provider_service_utilization LIMIT 1`), [{}]),
-        ]);
+          `);
+          const utilYearRows = await safeQ(`
+            SELECT data_year FROM provider_service_utilization ORDER BY id DESC LIMIT 1
+          `);
 
-        const ps = ((providerStatsResult as any).rows || providerStatsResult)?.[0] || {};
-        const withEmail = Number(ps.with_email || 0);
-        const withoutEmail = Number(ps.without_email || 0);
+          const ps = emailSample[0] || {};
+          const sampleSize = Number(ps.total_sample || 1);
+          const scaleFactor = sampleSize > 0 ? totalProviders / sampleSize : 1;
+          const scaleUp = (v: any) => Math.round(Number(v || 0) * scaleFactor);
+          const withEmail = scaleUp(ps.with_email);
+          const withoutEmail = scaleUp(ps.without_email);
 
-        const tsRows = (topStatesResult as any).rows || topStatesResult;
-        const topStates = (Array.isArray(tsRows) ? tsRows : []).map((r: any) => [r.state, Number(r.count)]);
+          const topStates = topStatesRows.map((r: any) => [r.state, Number(r.count)]);
 
-        const icRow = ((importCountsResult as any).rows || importCountsResult)?.[0] || {};
-        const lastRefreshBatch = completedBatches.length > 0
-          ? completedBatches
-          : await db.select().from(importBatches).orderBy(desc(importBatches.created_date)).limit(1);
-        const lastRefresh = lastRefreshBatch.length > 0 ? (lastRefreshBatch[0] as any).created_date : null;
+          const icRow = importRows[0] || {};
+          const lastRefresh = batchRows.length > 0 ? batchRows[0].created_date : null;
 
-        let dataQuality = null;
-        if (latestScan.length > 0) {
-          const scan = latestScan[0] as any;
-          const summary = scan.results_summary as any;
-          let score = 0;
-          if (summary && typeof summary.score === "number") {
-            score = summary.score;
-          } else if (scan.total_records > 0) {
-            score = Math.round(((scan.total_records - (scan.issues_found || 0)) / scan.total_records) * 100);
+          let dataQuality = null;
+          if (scanRows.length > 0) {
+            const scan = scanRows[0] as any;
+            const summary = scan.results_summary as any;
+            let score = 0;
+            if (summary && typeof summary.score === "number") {
+              score = summary.score;
+            } else if (scan.total_records > 0) {
+              score = Math.round(((scan.total_records - (scan.issues_found || 0)) / scan.total_records) * 100);
+            }
+            dataQuality = { score };
           }
-          dataQuality = { score };
+
+          const phoneSampleCount = Number(phoneSample[0]?.count || 0);
+          const phoneScale = totalLocations / 5000;
+          const uyRow = utilYearRows[0] || {};
+
+          const result = {
+            totalProviders,
+            totalLocations,
+            totalReferrals,
+            totalUtilization,
+            totalTaxonomies,
+            totalFacilities,
+            emailStats: {
+              withEmail,
+              needsEnrichment: withoutEmail,
+              searched: scaleUp(ps.searched),
+              isEstimated: scaleFactor > 1.5,
+              valid: scaleUp(ps.valid_email),
+              risky: scaleUp(ps.risky_email),
+              invalid: scaleUp(ps.invalid_email),
+            },
+            topStates,
+            imports: {
+              active: Number(icRow.active || 0),
+              completed: Number(icRow.completed || 0),
+              failed: Number(icRow.failed || 0),
+            },
+            openAlerts: Number(alertRows[0]?.count || 0),
+            dataQuality,
+            lastRefresh,
+            proactiveInsights: {
+              needsEnrichment: scaleUp(ps.needs_enrichment),
+              deactivatedProviders: scaleUp(ps.deactivated),
+              noPhoneLocations: Math.round(phoneSampleCount * phoneScale),
+              latestUtilYear: Number(uyRow.data_year || 0),
+            },
+            samples: {
+              providers: [],
+              utilizations: [],
+              referrals: [],
+              locations: [],
+            },
+            isEstimatedCounts: scaleFactor > 1.5,
+          };
+
+          dashboardStatsCache = { data: result, timestamp: Date.now() };
+          return res.json(result);
+        } finally {
+          try { await client.query("RESET statement_timeout"); } catch {}
+          client.release();
         }
-
-        const npRow = ((locationStatsResult as any).rows || locationStatsResult)?.[0] || {};
-        const uyRow = ((utilYearResult as any).rows || utilYearResult)?.[0] || {};
-
-        const providerSamples: any[] = [];
-        const utilizationSamples: any[] = [];
-        const referralSamples: any[] = [];
-        const locationSamples: any[] = [];
-
-        const result = {
-          totalProviders,
-          totalLocations,
-          totalReferrals,
-          totalUtilization,
-          totalTaxonomies,
-          totalFacilities,
-          emailStats: {
-            withEmail,
-            needsEnrichment: withoutEmail,
-            searched: Number(ps.searched || 0),
-            isEstimated: false,
-            valid: Number(ps.valid || 0),
-            risky: Number(ps.risky || 0),
-            invalid: Number(ps.invalid || 0),
-          },
-          topStates,
-          imports: {
-            active: Number(icRow.active || 0),
-            completed: Number(icRow.completed || 0),
-            failed: Number(icRow.failed || 0),
-          },
-          openAlerts: Number(openAlertCountArr[0]?.count || 0),
-          dataQuality,
-          lastRefresh,
-          proactiveInsights: {
-            needsEnrichment: Number(ps.needs_enrichment || 0),
-            deactivatedProviders: Number(ps.deactivated || 0),
-            noPhoneLocations: Number(npRow.count || 0),
-            latestUtilYear: Number(uyRow.max_year || 0),
-          },
-          samples: {
-            providers: providerSamples,
-            utilizations: utilizationSamples,
-            referrals: referralSamples,
-            locations: locationSamples,
-          },
-          isEstimatedCounts: false,
-        };
-        dashboardStatsCache = { data: result, timestamp: Date.now() };
-        return res.json(result);
       }
 
       case "getDataHealthAlerts": {
