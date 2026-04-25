@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, dataQualityScans, importBatches, backgroundTasks } from "../db/schema";
 import { sql, desc, eq, and, lt, isNotNull } from "drizzle-orm";
+import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const activeEnrichmentTaskIds = new Set<number>();
 
@@ -313,7 +314,7 @@ export async function handleRunDataQualityScan(payload: any) {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const anthropic = new Anthropic();
       const resp = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514", max_tokens: 800,
+        model: CLAUDE_MODELS.SONNET, max_tokens: 800,
         messages: [{ role: "user", content: `You are CareMetric's AI Data Quality Assistant. Context: Overall quality score ${latestSummary?.scores?.overall || "N/A"}%, ${totalAlerts} total alerts (${openCount} open). Latest scan: ${latestSummary?.summary || "no scans yet"}. User question: ${question}. Respond helpfully and concisely.` }],
       });
       const answer = resp.content[0]?.type === "text" ? resp.content[0].text : "Unable to process query.";
@@ -339,7 +340,7 @@ export async function handleRunDataQualityScan(payload: any) {
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const anthropic = new Anthropic();
       const resp = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514", max_tokens: 1200,
+        model: CLAUDE_MODELS.SONNET, max_tokens: 1200,
         messages: [{ role: "user", content: `Analyze these data quality patterns and provide root-cause analysis with recommendations:\n${JSON.stringify(patternSummary, null, 2)}\n\nReturn JSON with: patterns (array of {pattern, affected_rules, root_cause, recommendation}), trend_analysis (string), action_plan (array of {priority, action, impact, effort}), predictions (array of strings), summary (string).` }],
       });
       const text = resp.content[0]?.type === "text" ? resp.content[0].text : "{}";
@@ -635,7 +636,7 @@ Return a JSON object with fields you can enrich. Only include fields where you h
 Only return the JSON object, nothing else. If you can't find data for a field, omit it.`;
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.HAIKU,
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       });
@@ -813,7 +814,7 @@ export async function handleProactiveScanServerSide(payload: any) {
         .join('\n');
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: CLAUDE_MODELS.HAIKU,
         max_tokens: 800,
         messages: [{
           role: "user",

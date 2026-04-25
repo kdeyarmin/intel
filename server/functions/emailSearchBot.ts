@@ -2,6 +2,7 @@ import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, backgroundTasks } from "../db/schema";
 import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const BATCH_DELAY_MS = 300;
 const CONSECUTIVE_ERROR_LIMIT = 20;
@@ -112,7 +113,7 @@ function getAnthropicClient() {
 
 async function callClaude(anthropic: Anthropic, prompt: string, schema: any): Promise<any> {
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: CLAUDE_MODELS.HAIKU,
     max_tokens: 1024,
     system: `You must respond with valid JSON matching this schema: ${JSON.stringify(schema)}. Do not include any text before or after the JSON.`,
     messages: [{ role: "user", content: prompt }],

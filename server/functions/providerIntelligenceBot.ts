@@ -2,6 +2,7 @@ import { db } from "../db";
 import { providers, providerLocations, providerTaxonomies, enrichmentRecords, backgroundTasks } from "../db/schema";
 import { eq, and, isNull, sql, asc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const BATCH_DELAY_MS = 300;
 const PARALLEL_CONCURRENCY = 5;
@@ -114,7 +115,7 @@ EMAIL RULES:
 Only return the JSON object, nothing else.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODELS.HAIKU,
       max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     });

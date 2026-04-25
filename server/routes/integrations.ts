@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import crypto from "crypto";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -34,7 +35,7 @@ router.post("/ai/invoke", authMiddleware, async (req: AuthRequest, res: Response
       : undefined;
 
     const message = await anthropic.messages.create({
-      model: model || "claude-sonnet-4-20250514",
+      model: model || CLAUDE_MODELS.SONNET,
       max_tokens: max_tokens || 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: prompt }],

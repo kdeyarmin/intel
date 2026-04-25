@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const router = Router();
 
@@ -722,7 +723,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
         }
 
         const response = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: CLAUDE_MODELS.SONNET,
           max_tokens: 1024,
           system: systemPrompt,
           messages: chatMessages,
