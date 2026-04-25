@@ -412,7 +412,7 @@ router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Resp
           INNER JOIN providers p ON p.npi = pl.npi
           WHERE pl.state = ${stateParam}
           ORDER BY pl.npi, pl.id
-          LIMIT ${sql.raw(String(limitParam))}
+          LIMIT ${limitParam}
         `);
         const baseRows = ((locResult as any).rows || locResult) || [];
         const npis = baseRows.map((r: any) => r.npi).filter(Boolean);

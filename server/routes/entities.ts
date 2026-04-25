@@ -6,8 +6,49 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+// Entirely off-limits to the entity router (handled via dedicated routes only).
 const BLOCKED_ENTITIES = new Set(["User"]);
 const SENSITIVE_WRITE_FIELDS = new Set(["password_hash", "role"]);
+
+// Sensitive entities that may contain credentials, secrets, audit logs, request payloads,
+// or system configuration. Only admins may read or modify these.
+const ADMIN_ONLY_ENTITIES = new Set([
+  "ReconciliationSettings",
+  "ApiInteractionLog",
+  "NPPESCrawlerConfig",
+  "CMSApiConnector",
+  "ImportScheduleConfig",
+  "AuditEvent",
+  "ErrorReport",
+  "BackgroundTask",
+  "ImportBatch",
+  "ImportValidationRule",
+  "DataCleaningRule",
+  "ColumnMappingRule",
+  "ReconciliationJob",
+  "ProviderReconciliation",
+  "NPPESQueueItem",
+]);
+
+// Entities that any authenticated user may write/modify (collaborative work product).
+// Anything not in this set requires the admin role for write/delete operations.
+const USER_WRITABLE_ENTITIES = new Set([
+  "LeadList",
+  "LeadListMember",
+  "OutreachCampaign",
+  "OutreachMessage",
+  "CampaignTemplate",
+  "CampaignSequenceStep",
+  "CampaignTask",
+  "Campaign",
+  "CustomReport",
+  "ScheduledReport",
+  "ScheduledExport",
+  "SavedFilter",
+  "ScoringRule",
+  "DataQualityAlert",
+  "AnalyticsDashboard",
+]);
 
 function getTable(entityName: string) {
   if (BLOCKED_ENTITIES.has(entityName)) {
@@ -26,6 +67,43 @@ function sanitizeWriteData(data: Record<string, any>): Record<string, any> {
     delete cleaned[field];
   }
   return cleaned;
+}
+
+function isProd() {
+  return process.env.NODE_ENV === "production";
+}
+
+function safeError(res: Response, e: any, label: string) {
+  console.error(`[entities] ${label} failed:`, e?.message || e);
+  return res.status(500).json({
+    message: isProd() ? "An internal error occurred. Please try again." : (e?.message || "Internal error"),
+  });
+}
+
+function isAdmin(req: AuthRequest): boolean {
+  return req.user?.role === "admin";
+}
+
+function requireReadAccess(req: AuthRequest, res: Response, entityName: string): boolean {
+  if (isAdmin(req)) return true;
+  if (ADMIN_ONLY_ENTITIES.has(entityName)) {
+    res.status(403).json({ message: "Forbidden", detail: "Admin access is required to view this resource." });
+    return false;
+  }
+  return true;
+}
+
+function requireWriteAccess(req: AuthRequest, res: Response, entityName: string): boolean {
+  if (isAdmin(req)) return true;
+  if (USER_WRITABLE_ENTITIES.has(entityName)) return true;
+  res.status(403).json({ message: "Forbidden", detail: "Admin access is required to modify this resource." });
+  return false;
+}
+
+function parseId(raw: string): number | null {
+  if (!/^-?\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) ? n : null;
 }
 
 function buildOrderBy(table: any, sortField?: string) {
@@ -95,8 +173,16 @@ function buildWhereClause(table: any, filters: Record<string, any>) {
     if (value === null) {
       conditions.push(isNull(col));
     } else if (typeof value === "object" && !Array.isArray(value)) {
-      if ("$in" in value) conditions.push(inArray(col, value.$in));
-      if ("$nin" in value) conditions.push(sql`${col} NOT IN (${sql.join(value.$nin.map((v: any) => sql`${v}`), sql`, `)})`);
+      if ("$in" in value) {
+        const arr = Array.isArray(value.$in) ? value.$in : [];
+        if (arr.length > 0) conditions.push(inArray(col, arr));
+      }
+      if ("$nin" in value) {
+        const arr = Array.isArray(value.$nin) ? value.$nin : [];
+        if (arr.length > 0) {
+          conditions.push(sql`${col} NOT IN (${sql.join(arr.map((v: any) => sql`${v}`), sql`, `)})`);
+        }
+      }
       if ("$gt" in value) conditions.push(gt(col, value.$gt));
       if ("$gte" in value) conditions.push(gte(col, value.$gte));
       if ("$lt" in value) conditions.push(lt(col, value.$lt));
@@ -118,6 +204,7 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireReadAccess(req, res, req.params.entity)) return;
 
     const sort = req.query.sort as string;
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 10000);
@@ -127,7 +214,7 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     const rows = await db.select().from(table).orderBy(...orderBy).limit(limit).offset(offset);
     res.json(rows);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `GET /${req.params.entity}`);
   }
 });
 
@@ -135,6 +222,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireReadAccess(req, res, req.params.entity)) return;
 
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
@@ -147,7 +235,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const rows = await (query as any).orderBy(...orderBy).limit(limit);
     res.json(rows);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `POST /${req.params.entity}/filter`);
   }
 });
 
@@ -155,12 +243,16 @@ router.get("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireReadAccess(req, res, req.params.entity)) return;
 
-    const [row] = await db.select().from(table).where(eq(table.id, parseInt(req.params.id))).limit(1);
+    const idNum = parseId(req.params.id);
+    if (idNum === null) return res.status(400).json({ message: "Invalid id" });
+
+    const [row] = await db.select().from(table).where(eq(table.id, idNum)).limit(1);
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json(row);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `GET /${req.params.entity}/${req.params.id}`);
   }
 });
 
@@ -168,6 +260,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireWriteAccess(req, res, req.params.entity)) return;
 
     const data = sanitizeWriteData(toSnakeKeys(req.body));
     delete data.id;
@@ -177,7 +270,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     const [row] = await db.insert(table).values(data).returning();
     res.status(201).json(row);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `POST /${req.params.entity}`);
   }
 });
 
@@ -185,9 +278,12 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireWriteAccess(req, res, req.params.entity)) return;
 
     const items = req.body.items || req.body;
     if (!Array.isArray(items)) return res.status(400).json({ message: "Expected array of items" });
+    if (items.length === 0) return res.status(400).json({ message: "Empty items array" });
+    if (items.length > 5000) return res.status(400).json({ message: "Too many items (max 5000)" });
 
     const cleaned = items.map((item: any) => {
       const data = sanitizeWriteData(toSnakeKeys(item));
@@ -200,7 +296,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const rows = await db.insert(table).values(cleaned).returning();
     res.status(201).json(rows);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `POST /${req.params.entity}/bulk`);
   }
 });
 
@@ -208,17 +304,21 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireWriteAccess(req, res, req.params.entity)) return;
+
+    const idNum = parseId(req.params.id);
+    if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
     const data = sanitizeWriteData(toSnakeKeys(req.body));
     delete data.id;
     delete data.created_date;
     data.updated_date = new Date();
 
-    const [row] = await db.update(table).set(data).where(eq(table.id, parseInt(req.params.id))).returning();
+    const [row] = await db.update(table).set(data).where(eq(table.id, idNum)).returning();
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json(row);
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `PUT /${req.params.entity}/${req.params.id}`);
   }
 });
 
@@ -226,12 +326,16 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
   try {
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
+    if (!requireWriteAccess(req, res, req.params.entity)) return;
 
-    const [row] = await db.delete(table).where(eq(table.id, parseInt(req.params.id))).returning();
+    const idNum = parseId(req.params.id);
+    if (idNum === null) return res.status(400).json({ message: "Invalid id" });
+
+    const [row] = await db.delete(table).where(eq(table.id, idNum)).returning();
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json({ success: true });
   } catch (e: any) {
-    res.status(500).json({ message: e.message });
+    return safeError(res, e, `DELETE /${req.params.entity}/${req.params.id}`);
   }
 });
 

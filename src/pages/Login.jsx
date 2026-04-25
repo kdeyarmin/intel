@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const { login, signup } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,8 +23,17 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      const returnUrl = searchParams.get('returnUrl') || '/';
-      window.location.href = returnUrl;
+      const returnUrlRaw = searchParams.get('returnUrl') || '/';
+      let target = '/';
+      try {
+        const u = new URL(returnUrlRaw, window.location.origin);
+        if (u.origin === window.location.origin) {
+          target = u.pathname + u.search + u.hash;
+        }
+      } catch {
+        if (returnUrlRaw.startsWith('/')) target = returnUrlRaw;
+      }
+      navigate(target, { replace: true });
     } catch (err) {
       setError(err.message || 'Authentication failed');
     } finally {

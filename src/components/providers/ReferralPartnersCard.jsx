@@ -82,7 +82,7 @@ export default function ReferralPartnersCard({ npi, referrals = [] }) {
               const maxRef = activeList[0] ? (activeList[0].total_referrals || activeList[0].totalReferrals || 1) : 1;
 
               return (
-                <div key={i} className="group">
+                <div key={partnerNpi || `${tab}-${i}`} className="group">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {partnerNpi ? (

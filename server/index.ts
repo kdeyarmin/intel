@@ -57,22 +57,33 @@ app.listen(PORT, "0.0.0.0", async () => {
     const { users } = await import("./db/schema");
     const bcryptLib = await import("bcryptjs");
 
+    const adminEmail = process.env.ADMIN_EMAIL || "kdeyarmin@comcast.net";
+    const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? null : "Baileydog1!");
+    const adminFullName = process.env.ADMIN_FULL_NAME || "K Deyarmin";
+
     const [existingAdmin] = await safeStartupQuery(
-      () => db.select().from(users).where(eq(users.email, "kdeyarmin@comcast.net")).limit(1),
+      () => db.select().from(users).where(eq(users.email, adminEmail)).limit(1),
       [] as any[], "check admin"
     );
     if (!existingAdmin) {
-      const hash = await bcryptLib.default.hash("Baileydog1!", 10);
-      await safeStartupQuery(
-        () => db.insert(users).values({
-          email: "kdeyarmin@comcast.net",
-          password_hash: hash,
-          role: "admin",
-          full_name: "K Deyarmin",
-        }),
-        undefined, "seed admin"
-      );
-      console.log("[CareMetric API] Admin user seeded");
+      if (!adminPassword) {
+        console.warn(`[CareMetric API] No admin user exists and ADMIN_PASSWORD is not set in production — skipping admin seed. Set ADMIN_EMAIL and ADMIN_PASSWORD secrets to seed the first admin.`);
+      } else {
+        const hash = await bcryptLib.default.hash(adminPassword, 10);
+        await safeStartupQuery(
+          () => db.insert(users).values({
+            email: adminEmail,
+            password_hash: hash,
+            role: "admin",
+            full_name: adminFullName,
+          }),
+          undefined, "seed admin"
+        );
+        console.log(`[CareMetric API] Admin user seeded (${adminEmail})`);
+        if (!process.env.ADMIN_PASSWORD) {
+          console.warn("[CareMetric API] ADMIN_PASSWORD not set — used built-in dev default. Do not deploy without setting ADMIN_PASSWORD.");
+        }
+      }
     }
     const { and } = await import("drizzle-orm");
 
