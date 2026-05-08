@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Lightbulb, TrendingUp, TrendingDown, Target, Clock, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AIStrategyTab({ campaigns = [], providers = [], scores = [], _referrals = [], locations = [], taxonomies = [] }) {
   const [loading, setLoading] = useState(false);
@@ -10,7 +11,7 @@ export default function AIStrategyTab({ campaigns = [], providers = [], scores =
 
   const generateStrategy = async () => {
     setLoading(true);
-
+    try {
     const historicalData = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name,
       source: c.source_criteria,
@@ -107,7 +108,12 @@ Also provide:
       }
     });
     setStrategy(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI strategy generation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const impactColors = { positive: 'text-green-600', negative: 'text-red-600', neutral: 'text-slate-500' };

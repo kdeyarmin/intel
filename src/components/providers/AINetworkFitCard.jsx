@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Network, TrendingUp, Users, Target } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AINetworkFitCard({ provider, taxonomy = [], utilization, referrals, score, locations = [] }) {
   const [loading, setLoading] = useState(false);
@@ -11,14 +12,15 @@ export default function AINetworkFitCard({ provider, taxonomy = [], utilization,
 
   const runAnalysis = async () => {
     setLoading(true);
-    const name = provider.entity_type === 'Individual'
-      ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
-      : provider.organization_name || provider.npi;
-    const primaryTax = taxonomy.find(t => t.primary_flag) || taxonomy[0];
-    const primaryLoc = locations.find(l => l.is_primary) || locations[0];
+    try {
+      const name = provider.entity_type === 'Individual'
+        ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
+        : provider.organization_name || provider.npi;
+      const primaryTax = taxonomy.find(t => t.primary_flag) || taxonomy[0];
+      const primaryLoc = locations.find(l => l.is_primary) || locations[0];
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze this healthcare provider's network fit, referral likelihood, and patient demographic alignment.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this healthcare provider's network fit, referral likelihood, and patient demographic alignment.
 
 PROVIDER: ${name}
 NPI: ${provider.npi}
@@ -38,25 +40,30 @@ Provide:
 4. Key network strengths and weaknesses
 5. Recommended engagement approach
 6. Predicted referral volume if engaged`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          network_fit_score: { type: "number" },
-          network_fit_reasons: { type: "array", items: { type: "string" } },
-          referral_likelihood_score: { type: "number" },
-          referral_likelihood_reasons: { type: "array", items: { type: "string" } },
-          demographic_alignment_score: { type: "number" },
-          demographic_factors: { type: "array", items: { type: "string" } },
-          strengths: { type: "array", items: { type: "string" } },
-          weaknesses: { type: "array", items: { type: "string" } },
-          engagement_approach: { type: "string" },
-          predicted_monthly_referrals: { type: "number" },
-          overall_priority: { type: "string", enum: ["high", "medium", "low"] }
+        response_json_schema: {
+          type: "object",
+          properties: {
+            network_fit_score: { type: "number" },
+            network_fit_reasons: { type: "array", items: { type: "string" } },
+            referral_likelihood_score: { type: "number" },
+            referral_likelihood_reasons: { type: "array", items: { type: "string" } },
+            demographic_alignment_score: { type: "number" },
+            demographic_factors: { type: "array", items: { type: "string" } },
+            strengths: { type: "array", items: { type: "string" } },
+            weaknesses: { type: "array", items: { type: "string" } },
+            engagement_approach: { type: "string" },
+            predicted_monthly_referrals: { type: "number" },
+            overall_priority: { type: "string", enum: ["high", "medium", "low"] }
+          }
         }
-      }
-    });
-    setAnalysis(res);
-    setLoading(false);
+      });
+      setAnalysis(res);
+    } catch (err) {
+      console.error('AI network fit analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const scoreColor = (s) => s >= 75 ? 'text-emerald-400' : s >= 50 ? 'text-amber-400' : 'text-red-400';

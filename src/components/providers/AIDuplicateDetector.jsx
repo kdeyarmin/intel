@@ -58,24 +58,25 @@ export default function AIDuplicateDetector({ providers = [], locations = [], ta
     setLoading(true);
     setDuplicates(null);
 
-    const sample = providers.slice(0, 100).map(p => {
-      const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
-      const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
-      return {
-        npi: p.npi,
-        name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
-        entity_type: p.entity_type,
-        credential: p.credential || '',
-        specialty: tax?.taxonomy_description || '',
-        city: loc?.city || '',
-        state: loc?.state || '',
-        phone: loc?.phone || '',
-        email: p.email || '',
-      };
-    });
+    try {
+      const sample = providers.slice(0, 100).map(p => {
+        const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+        const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+        return {
+          npi: p.npi,
+          name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
+          entity_type: p.entity_type,
+          credential: p.credential || '',
+          specialty: tax?.taxonomy_description || '',
+          city: loc?.city || '',
+          state: loc?.state || '',
+          phone: loc?.phone || '',
+          email: p.email || '',
+        };
+      });
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare data deduplication specialist. Analyze this list of ${sample.length} providers and identify POTENTIAL DUPLICATE records.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare data deduplication specialist. Analyze this list of ${sample.length} providers and identify POTENTIAL DUPLICATE records.
 
 Look for:
 1. Same person with different NPIs (name variations, typos, maiden/married names)
@@ -88,55 +89,60 @@ Provider data (first ${sample.length}):
 ${JSON.stringify(sample, null, 1)}
 
 Return groups of potential duplicates. Each group should have 2+ records that might be the same entity. Include a confidence score and clear reasoning for each group.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          duplicate_groups: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                group_id: { type: "string" },
-                confidence: { type: "string", enum: ["high", "medium", "low"] },
-                reason: { type: "string" },
-                match_type: { type: "string" },
-                records: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      npi: { type: "string" },
-                      name: { type: "string" },
-                      detail: { type: "string" }
+        response_json_schema: {
+          type: "object",
+          properties: {
+            duplicate_groups: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  group_id: { type: "string" },
+                  confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  reason: { type: "string" },
+                  match_type: { type: "string" },
+                  records: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        npi: { type: "string" },
+                        name: { type: "string" },
+                        detail: { type: "string" }
+                      }
                     }
                   }
                 }
               }
-            }
-          },
-          summary: { type: "string" },
-          total_flagged: { type: "number" }
+            },
+            summary: { type: "string" },
+            total_flagged: { type: "number" }
+          }
         }
-      }
-    });
+      });
 
-    setDuplicates(res);
-    setLoading(false);
+      setDuplicates(res);
 
-    if (res.duplicate_groups?.length > 0) {
-      for (const group of res.duplicate_groups.slice(0, 5)) {
-        await base44.entities.DataQualityAlert.create({
-          alert_type: 'new_issue_detected',
-          severity: group.confidence === 'high' ? 'high' : 'medium',
-          title: `Potential Duplicate: ${group.records.map(r => r.name).join(' / ')}`,
-          description: group.reason,
-          action_required: group.confidence === 'high',
-          status: 'new',
-        });
+      if (res.duplicate_groups?.length > 0) {
+        for (const group of res.duplicate_groups.slice(0, 5)) {
+          await base44.entities.DataQualityAlert.create({
+            alert_type: 'new_issue_detected',
+            severity: group.confidence === 'high' ? 'high' : 'medium',
+            title: `Potential Duplicate: ${group.records.map(r => r.name).join(' / ')}`,
+            description: group.reason,
+            action_required: group.confidence === 'high',
+            status: 'new',
+          });
+        }
+        toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
+      } else {
+        toast.success('No duplicates detected — your data looks clean!');
       }
-      toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
-    } else {
-      toast.success('No duplicates detected — your data looks clean!');
+    } catch (err) {
+      console.error('AI duplicate detection failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

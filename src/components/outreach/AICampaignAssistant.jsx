@@ -67,6 +67,7 @@ export default function AICampaignAssistant({
 
   const generateNames = async () => {
     setLoading(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Generate 5 creative and professional campaign names and descriptions for a healthcare provider outreach campaign.
 
@@ -95,11 +96,17 @@ Consider that this is a healthcare B2B outreach context for a company called Car
       }
     });
     setNameResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI name generation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateTemplates = async () => {
     setLoading(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Create 3 email template variations for a healthcare provider outreach campaign.
 
@@ -143,12 +150,17 @@ Keep emails concise (under 200 words per body). Make them feel personal, not mas
       }
     });
     setTemplateResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI template generation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const predictPerformance = async () => {
     setLoading(true);
-
+    try {
     const historicalData = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name,
       sent: c.sent_count,
@@ -210,7 +222,12 @@ Provide realistic predictions with reasoning. If no historical data exists, use 
       }
     });
     setPredictionResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI campaign prediction failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

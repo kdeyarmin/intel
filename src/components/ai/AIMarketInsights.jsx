@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { base44 } from '@/api/base44Client';
 import { TrendingUp, Loader2, Sparkles, ShieldAlert, Target, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 const INSIGHT_ICONS = { growth: TrendingUp, threat: ShieldAlert, opportunity: Target, action: Zap };
 const INSIGHT_COLORS = {
@@ -102,6 +103,7 @@ Also provide an overall market position assessment.`,
       setResults(res);
     } catch (err) {
       console.error('Market analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
     } finally {
       setLoading(false);
     }

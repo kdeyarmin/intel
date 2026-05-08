@@ -119,12 +119,12 @@ export default function NPPESCrawler() {
   const remainingStates = totalStates - (completedCount + failedCount);
   if (remainingStates > 0 && status?.granular_metrics) {
     const avgTimes = Object.values(status.granular_metrics).filter(m => m.avg_prefix_time_ms > 0).map(m => m.avg_prefix_time_ms);
+    const concurrencyNum = Math.max(Number(concurrency) || 1, 1);
     if (avgTimes.length > 0) {
-      const avgPrefixMs = avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length;
       const totalRemainingMs = Object.values(status.granular_metrics).reduce((sum, m) => sum + (m.estimated_remaining_ms || 0), 0);
-      estimatedMins = Math.ceil(totalRemainingMs / 60000 / Math.max(Number(concurrency), 1));
+      estimatedMins = Math.ceil(totalRemainingMs / 60000 / concurrencyNum);
     } else {
-      estimatedMins = Math.ceil((remainingStates * 2) / Number(concurrency));
+      estimatedMins = Math.ceil((remainingStates * 2) / concurrencyNum);
     }
   }
 

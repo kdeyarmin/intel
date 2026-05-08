@@ -33,21 +33,32 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
 
   const loadData = async () => {
     setLoading(true);
-    const listIds = campaign.lead_list_ids || [];
-    if (listIds.length === 0) { setLoading(false); return; }
+    try {
+      const listIds = campaign.lead_list_ids || [];
+      if (listIds.length === 0) {
+        setListsData([]);
+        setAllMembers([]);
+        return;
+      }
 
-    const lists = await base44.entities.LeadList.list('-created_date', 200);
-    const linkedLists = lists.filter(l => listIds.includes(l.id));
+      const lists = await base44.entities.LeadList.list('-created_date', 200);
+      const linkedLists = lists.filter(l => listIds.includes(l.id));
 
-    let members = [];
-    for (const lid of listIds) {
-      const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid });
-      members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
+      let members = [];
+      for (const lid of listIds) {
+        const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid });
+        members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
+      }
+
+      setListsData(linkedLists);
+      setAllMembers(members);
+    } catch (err) {
+      console.error('Failed to load campaign analytics:', err);
+      setListsData([]);
+      setAllMembers([]);
+    } finally {
+      setLoading(false);
     }
-
-    setListsData(linkedLists);
-    setAllMembers(members);
-    setLoading(false);
   };
 
   const leadStats = useMemo(() => {

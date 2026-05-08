@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, AlertTriangle, Search,
   Phone, Wifi, DollarSign, ShieldCheck, Activity, XCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const DATA_POINTS = [
   { key: 'patient_volume', label: 'Patient Volume', icon: Activity, description: 'Estimated patient panel size' },
@@ -36,7 +37,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     if (enabledPoints.size === 0) return;
     setRunning(true);
     setResults(null);
-
+    try {
     // Get NPIs already scanned via proactive discovery so we skip them
     let alreadyScannedNPIs = new Set();
     try {
@@ -47,7 +48,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     // Filter out already-scanned providers, then take batchSize
     const candidates = providers.filter(p => !alreadyScannedNPIs.has(p.npi));
     const toScan = candidates.slice(0, batchSize);
-    
+
     if (toScan.length === 0) {
       setResults({ enriched: 0, no_data: 0, errors: 0, details: [], message: 'All providers have already been scanned.' });
       setRunning(false);
@@ -153,7 +154,12 @@ Only return data you can verify. Provide specific numbers and names.`,
     }
 
     setResults(scanResults);
-    setRunning(false);
+    } catch (err) {
+      console.error('AI proactive enrichment scan failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (

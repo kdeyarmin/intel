@@ -55,15 +55,20 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       toast.error('Subject and body required to save template');
       return;
     }
-    await base44.entities.CampaignTemplate.create({
-      name: campaign.name || `Template ${new Date().toLocaleDateString()}`,
-      subject_template: campaign.subject_template,
-      body_template: campaign.body_template,
-      category: 'custom',
-      ai_generated: true,
-      use_count: 0,
-    });
-    toast.success('Template saved');
+    try {
+      await base44.entities.CampaignTemplate.create({
+        name: campaign.name || `Template ${new Date().toLocaleDateString()}`,
+        subject_template: campaign.subject_template,
+        body_template: campaign.body_template,
+        category: 'custom',
+        ai_generated: true,
+        use_count: 0,
+      });
+      toast.success('Template saved');
+    } catch (err) {
+      console.error('Template save failed:', err);
+      toast.error('Failed to save template. Please try again.');
+    }
   };
 
   const handleCreate = async () => {
@@ -72,33 +77,38 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       return;
     }
     setLoading(true);
+    try {
+      const newCampaign = await base44.entities.OutreachCampaign.create({
+        name: campaign.name,
+        subject_template: campaign.subject_template,
+        body_template: campaign.body_template,
+        status: 'draft',
+        total_recipients: eligibleProviders.length,
+        source_criteria: 'custom',
+      });
 
-    const newCampaign = await base44.entities.OutreachCampaign.create({
-      name: campaign.name,
-      subject_template: campaign.subject_template,
-      body_template: campaign.body_template,
-      status: 'draft',
-      total_recipients: eligibleProviders.length,
-      source_criteria: 'custom',
-    });
+      const messages = eligibleProviders.map(p => ({
+        campaign_id: newCampaign.id,
+        npi: p.npi,
+        recipient_email: p.email,
+        recipient_name: p.entity_type === 'Individual'
+          ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+          : p.organization_name || p.npi,
+        status: 'pending',
+      }));
 
-    const messages = eligibleProviders.map(p => ({
-      campaign_id: newCampaign.id,
-      npi: p.npi,
-      recipient_email: p.email,
-      recipient_name: p.entity_type === 'Individual'
-        ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
-        : p.organization_name || p.npi,
-      status: 'pending',
-    }));
+      if (messages.length > 0) {
+        await base44.entities.OutreachMessage.bulkCreate(messages);
+      }
 
-    if (messages.length > 0) {
-      await base44.entities.OutreachMessage.bulkCreate(messages);
+      toast.success(`Campaign "${campaign.name}" created with ${eligibleProviders.length} recipients`);
+      setStep('done');
+    } catch (err) {
+      console.error('Campaign creation failed:', err);
+      toast.error('Failed to create campaign. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    toast.success(`Campaign "${campaign.name}" created with ${eligibleProviders.length} recipients`);
-    setLoading(false);
-    setStep('done');
   };
 
   const resetForm = () => {

@@ -78,8 +78,7 @@ export default function NPPESCrawlerSettings() {
         selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existingConfig?.id, existingConfig?.updated_date]);
+  }, [existingConfig?.id, existingConfig?.updated_date, existingConfig]);
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {

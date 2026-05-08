@@ -33,7 +33,7 @@ export default function AICampaignDrafter({ providers = [], onDraftReady }) {
       return;
     }
     setGenerating(true);
-
+    try {
     // Gather context from selected providers
     const specialties = [...new Set(providers.map(p => p.credential).filter(Boolean))];
     const states = [...new Set(providers.map(p => p._location_state).filter(Boolean))];
@@ -87,8 +87,13 @@ REQUIREMENTS:
       tips: res.tips || [],
     });
 
-    setGenerating(false);
     toast.success('AI draft generated');
+    } catch (err) {
+      console.error('AI campaign drafter failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (

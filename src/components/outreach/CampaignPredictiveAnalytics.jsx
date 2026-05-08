@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, Clock, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { toast } from 'sonner';
 
 const _DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _HOURS = ['6am', '7am', '8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm'];
@@ -29,6 +30,7 @@ export default function CampaignPredictiveAnalytics({ campaigns = [], providers 
 
   const runPrediction = async () => {
     setLoading(true);
+    try {
     const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,
       bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
@@ -110,7 +112,12 @@ Provide:
       }
     });
     setPrediction(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI campaign predictive analytics failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tooltipStyle = { background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11, color: '#e2e8f0' };

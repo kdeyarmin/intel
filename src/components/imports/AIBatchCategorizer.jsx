@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 const IMPORT_TYPE_OPTIONS = [
   { id: 'nppes_monthly', label: 'NPPES Monthly', category: 'nppes' },
@@ -50,7 +51,7 @@ export default function AIBatchCategorizer({ fileName, fileHeaders, onSuggestion
     setLoading(true);
     setSuggestion(null);
     setAccepted(false);
-
+    try {
     const headersSample = (fileHeaders || []).slice(0, 30).join(', ');
 
     const result = await base44.integrations.Core.InvokeLLM({
@@ -80,7 +81,12 @@ Based on the file name and column headers, determine:
     });
 
     setSuggestion(result);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI batch categorization failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccept = () => {

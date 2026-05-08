@@ -3,9 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
 
-export default function PageNotFound({}) {
+export default function PageNotFound() {
     const location = useLocation();
-    const pageName = location.pathname.substring(1);
+    let pageName = location.pathname.substring(1);
+    try {
+      pageName = decodeURIComponent(pageName);
+    } catch {
+      // keep raw value if decoding fails
+    }
 
     const { data: authData, isFetched } = useQuery({
         queryKey: ['user'],
