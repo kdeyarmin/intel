@@ -13,7 +13,6 @@
 
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
-export const RETRY_BACKOFF_BASE_MS = 60 * 60 * 1000;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
 // Patterns that mark a failure as transient. Matches the keyword sets on the
