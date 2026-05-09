@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -120,7 +120,17 @@ function relativeFromNow(date, now) {
 
 function AutoRetryBanner({ batch, onUpdated }) {
   const [busy, setBusy] = useState(false);
-  const retryState = useMemo(() => getAutoRetryState(batch), [batch]);
+  const [now, setNow] = useState(() => new Date());
+  const retryState = getAutoRetryState(batch, now);
+
+  // Only tick the clock while the banner is in 'pending' state — that's the
+  // only state where the countdown text needs live updates.
+  useEffect(() => {
+    if (retryState?.state !== 'pending') return;
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, [retryState?.state]);
+
   if (!retryState) return null;
 
   const { state, attemptCount, lastReason, nextDueAt } = retryState;
@@ -133,7 +143,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
   const headline =
     state === 'disabled' ? 'Auto-retry disabled for this batch'
     : state === 'max_reached' ? `Max auto-retry attempts reached (${attemptCount}/${MAX_AUTO_RETRY_ATTEMPTS})`
-    : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, new Date())})`
+    : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, now)})`
     : state === 'eligible' ? `Auto-retry eligible (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS} on next worker tick)`
     : `Auto-retry will trigger if the failure is classified retryable (attempt 1/${MAX_AUTO_RETRY_ATTEMPTS})`;
 
