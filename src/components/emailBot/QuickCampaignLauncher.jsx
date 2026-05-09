@@ -77,8 +77,10 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       return;
     }
     setLoading(true);
+    // Track the campaign so we can compensate if message creation fails
+    let createdCampaign = null;
     try {
-      const newCampaign = await base44.entities.OutreachCampaign.create({
+      createdCampaign = await base44.entities.OutreachCampaign.create({
         name: campaign.name,
         subject_template: campaign.subject_template,
         body_template: campaign.body_template,
@@ -88,7 +90,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       });
 
       const messages = eligibleProviders.map(p => ({
-        campaign_id: newCampaign.id,
+        campaign_id: createdCampaign.id,
         npi: p.npi,
         recipient_email: p.email,
         recipient_name: p.entity_type === 'Individual'
@@ -105,6 +107,19 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
       setStep('done');
     } catch (err) {
       console.error('Campaign creation failed:', err);
+      // Compensating cleanup: if the campaign was created but messages failed
+      // to bulkCreate, mark the campaign as failed so a retry doesn't double up
+      // drafts and so it stops counting toward total_recipients metrics.
+      if (createdCampaign?.id) {
+        try {
+          await base44.entities.OutreachCampaign.update(createdCampaign.id, {
+            status: 'failed',
+            total_recipients: 0,
+          });
+        } catch (cleanupErr) {
+          console.warn('Cleanup of partially-created campaign failed:', cleanupErr);
+        }
+      }
       toast.error('Failed to create campaign. Please try again.');
     } finally {
       setLoading(false);
