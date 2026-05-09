@@ -186,6 +186,9 @@ Deno.serve(async (req) => {
         // a timeout (not silently dropped) and the heartbeat reliably
         // describes every expected worker.
         type MaintenanceWorkerOutcome = { worker: string; ok: boolean; error?: string };
+        // Worker error messages are capped before storing to avoid bloating the
+        // heartbeat payload with unexpectedly large error strings.
+        const MAX_ERROR_MSG_LENGTH = 200;
         const maintenanceBudgetMs = Math.max(0, MAX_EXEC_MS - (Date.now() - startTime) - 2_000);
         const maintenanceMap = new Map<string, MaintenanceWorkerOutcome>();
         for (const worker of MAINTENANCE_WORKERS) {
@@ -200,18 +203,17 @@ Deno.serve(async (req) => {
                     // Several maintenance workers return HTTP 200 with an
                     // `errors` array instead of throwing on per-batch failures.
                     // Inspect the payload so the heartbeat reflects real outcomes.
-                    const data = (res?.data ?? res) as Record<string, unknown> | undefined;
-                    const inner = data?.errors;
-                    const innerErrorCount = Array.isArray(inner) ? inner.length : 0;
-                    if (data?.error) {
-                        maintenanceMap.set(worker, { worker, ok: false, error: String(data.error).substring(0, 200) });
-                    } else if (innerErrorCount > 0) {
-                        maintenanceMap.set(worker, { worker, ok: false, error: `${innerErrorCount} inner error(s)` });
+                    const data = res?.data ?? res;
+                    const innerErrors = Array.isArray(data?.errors) ? data.errors as unknown[] : [];
+                    if (typeof data?.error === 'string' && data.error) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: data.error.substring(0, MAX_ERROR_MSG_LENGTH) });
+                    } else if (innerErrors.length > 0) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: `${innerErrors.length} inner error(s)` });
                     } else {
                         maintenanceMap.set(worker, { worker, ok: true });
                     }
                 } catch (err) {
-                    maintenanceMap.set(worker, { worker, ok: false, error: err.message?.substring(0, 200) });
+                    maintenanceMap.set(worker, { worker, ok: false, error: err.message?.substring(0, MAX_ERROR_MSG_LENGTH) });
                 }
             });
             let timeoutId: ReturnType<typeof setTimeout> | undefined;
