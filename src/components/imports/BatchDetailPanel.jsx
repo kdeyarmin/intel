@@ -150,9 +150,20 @@ function AutoRetryBanner({ batch, onUpdated }) {
   const handleToggle = async () => {
     setBusy(true);
     try {
-      const params = batch.retry_params || {};
+      // Re-fetch the row before merging to avoid a read-modify-write race:
+      // the auto-retry worker may have updated auto_retry_count /
+      // last_auto_retry_at since the dialog loaded, and we'd otherwise
+      // overwrite that bookkeeping with the stale `batch` prop snapshot.
+      let latestParams = batch.retry_params || {};
+      try {
+        const fresh = await base44.entities.ImportBatch.get(batch.id);
+        if (fresh?.retry_params) latestParams = fresh.retry_params;
+      } catch (_e) {
+        // Best-effort refresh — fall back to the prop snapshot if the read
+        // fails so the toggle still works under transient errors.
+      }
       await base44.entities.ImportBatch.update(batch.id, {
-        retry_params: { ...params, auto_retry_disabled: !disabled },
+        retry_params: { ...latestParams, auto_retry_disabled: !disabled },
       });
       onUpdated?.();
     } finally {
