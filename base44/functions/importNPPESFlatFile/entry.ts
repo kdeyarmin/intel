@@ -98,13 +98,16 @@ async function upsertProviderChunk(rows: any[], base44, dryRun: boolean): Promis
             toCreate.push(r);
             continue;
         }
-        // Only update if at least one field has changed and the incoming value is non-empty
-        let differs = false;
+        // Build a patch that contains only fields that actually changed and have a
+        // non-empty incoming value. Sending the full mapped row would otherwise blank
+        // out fields the existing record had populated (mapRow defaults missing
+        // columns to '').
+        const patch: Record<string, unknown> = {};
         for (const k of Object.keys(r)) {
             if (r[k] === null || r[k] === undefined || r[k] === '') continue;
-            if (String(ex[k] ?? '').trim() !== String(r[k]).trim()) { differs = true; break; }
+            if (String(ex[k] ?? '').trim() !== String(r[k]).trim()) patch[k] = r[k];
         }
-        if (differs) toUpdate.push({ id: ex.id, record: r });
+        if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
         else skipped++;
     }
 

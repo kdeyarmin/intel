@@ -910,11 +910,18 @@ async function partitionForUpsert(entity, records, importType: string) {
         const ex = existingMap.get(key);
         if (!ex) {
             toCreate.push(r);
-        } else if (recordsDiffer(r, ex)) {
-            toUpdate.push({ id: ex.id, record: r });
-        } else {
-            skipped++;
+            continue;
         }
+        // Build a patch with only fields that actually changed and have a non-empty
+        // incoming value, so mappers that default missing columns to '' don't blank
+        // out fields the existing DB row had populated.
+        const patch: Record<string, unknown> = {};
+        for (const k of Object.keys(r)) {
+            if (r[k] === null || r[k] === undefined || r[k] === '') continue;
+            if (String(ex[k] ?? '').trim() !== String(r[k]).trim()) patch[k] = r[k];
+        }
+        if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
+        else skipped++;
     }
     return { toCreate, toUpdate, skipped };
 }

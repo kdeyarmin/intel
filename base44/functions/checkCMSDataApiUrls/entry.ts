@@ -8,6 +8,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 // ImportScheduleConfig so the admin UI can flag broken endpoints before the next
 // scheduled run silently fails.
 
+// Mirror the alias map from triggerImport so a schedule using `cms_utilization`
+// (without an api_url override) still resolves to the canonical default URL.
+const IMPORT_TYPE_ALIASES: Record<string, string> = {
+    cms_utilization: 'provider_service_utilization',
+};
+
 const HARDCODED_URLS: Record<string, string> = {
     provider_service_utilization: 'https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data',
     cms_order_referring: 'https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data',
@@ -102,7 +108,11 @@ Deno.serve(async (req) => {
 
         for (const importType of importTypes) {
             const config = configByType.get(importType);
-            const url = config?.api_url || HARDCODED_URLS[importType];
+            // Resolve aliases (e.g. cms_utilization → provider_service_utilization) so a
+            // schedule using a legacy import_type without an api_url override still
+            // probes the canonical hardcoded default.
+            const resolvedType = IMPORT_TYPE_ALIASES[importType] || importType;
+            const url = config?.api_url || HARDCODED_URLS[resolvedType] || HARDCODED_URLS[importType];
             if (!url) {
                 results.push({ import_type: importType, healthy: false, error: 'No URL configured' });
                 continue;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bot, Activity, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ const US_STATES = [
 ];
 
 export default function NPPESCrawlerDashboard() {
+  const queryClient = useQueryClient();
   const { data: crawlStatus, isLoading: loadingStatus } = useQuery({
     queryKey: ['crawlerDashStatus'],
     queryFn: async () => {
@@ -84,6 +85,10 @@ export default function NPPESCrawlerDashboard() {
       } else {
         toast.info(`Supervisor checked ${data.checked} batch(es); nothing needed restarting`);
       }
+      // Refresh the queries that drive the supervisor banner + KPIs so the user
+      // sees the new respawn count without waiting for the 15s poll.
+      queryClient.invalidateQueries({ queryKey: ['nppesImportBatchesDash'] });
+      queryClient.invalidateQueries({ queryKey: ['crawlerDashStatus'] });
     } catch (e) {
       toast.error(`Supervisor failed: ${e.message}`);
     } finally {

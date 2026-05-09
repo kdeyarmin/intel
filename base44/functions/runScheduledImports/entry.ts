@@ -62,14 +62,23 @@ function computeNextRun(schedule, now: Date, failures: number): Date {
         next.setTime(next.getTime() + backoffHours(failures) * 60 * 60_000);
     }
 
-    // #10 — jitter to spread same-time schedules
+    // #10 — jitter to spread same-time schedules.
+    // Clamp to at least `now + minBuffer` so a negative jitter near midnight (or
+    // any case where the computed time lands close to now) can't push next_run_at
+    // into the past and cause the scheduler to immediately re-run the same job.
     next.setTime(next.getTime() + jitterMs(SCHEDULE_JITTER_MINUTES));
+    const minNext = now.getTime() + 5 * 60_000; // 5 minute buffer
+    if (next.getTime() < minNext) {
+        next.setTime(minNext);
+    }
 
     return next;
 }
 
 // #4 — check whether a schedule's `depends_on_import_type` parent has completed successfully
-// since the last run of this schedule. Returns null if dependency unmet.
+// since the last *successful* run of this schedule. Tracking the child's last successful
+// run (rather than its last_run_at) means failed children can still retry — without this
+// distinction, a single child failure would block all retries until the parent ran again.
 function dependencyBlocked(schedule, allSchedules): { blocked: boolean; reason?: string } {
     if (!schedule.depends_on_import_type) return { blocked: false };
     const parent = allSchedules.find(s => s.import_type === schedule.depends_on_import_type);
@@ -82,9 +91,14 @@ function dependencyBlocked(schedule, allSchedules): { blocked: boolean; reason?:
     if (parent.last_run_status && parent.last_run_status !== 'success') {
         return { blocked: true, reason: `Parent ${parent.label} last run was ${parent.last_run_status}` };
     }
-    // If we ran more recently than the parent, we're already up to date
-    if (schedule.last_run_at && new Date(schedule.last_run_at) > new Date(parent.last_run_at)) {
-        return { blocked: true, reason: `Already ran since parent's last completion` };
+    // Compare against this schedule's last *successful* completion, not its last_run_at.
+    // last_successful_run_at is set on success and left alone on failure, so the child can
+    // still retry against the same parent run after a transient failure.
+    const childLastSuccess = schedule.last_successful_run_at
+        ? new Date(schedule.last_successful_run_at)
+        : null;
+    if (childLastSuccess && childLastSuccess > new Date(parent.last_run_at)) {
+        return { blocked: true, reason: `Already ran successfully since parent's last completion` };
     }
     return { blocked: false };
 }
@@ -122,10 +136,14 @@ async function runOneSchedule(base44, schedule, now: Date) {
             // Resolve aliases: cms_utilization -> provider_service_utilization
             const ALIASES = { cms_utilization: 'provider_service_utilization' };
             const resolvedType = ALIASES[schedule.import_type] || schedule.import_type;
+            // Honor schedule.data_year if configured. Falling back to current year only
+            // when the schedule didn't pin one — otherwise we'd silently import the wrong
+            // year for schedules built around historical CMS publications.
+            const targetYear = schedule.data_year ?? now.getFullYear();
             const res = await base44.asServiceRole.functions.invoke('triggerImport', {
                 import_type: resolvedType,
                 file_url: schedule.api_url || undefined,
-                year: now.getFullYear(),
+                year: targetYear,
                 dry_run: false,
             });
             const data = res.data?.result || res.data || res;
@@ -205,13 +223,19 @@ Deno.serve(async (req) => {
             const newFailures = runStatus === 'failed' ? priorFailures + 1 : 0;
             const nextRunDate = computeNextRun(schedule, now, newFailures);
 
-            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, {
+            const update: Record<string, unknown> = {
                 last_run_at: now.toISOString(),
                 next_run_at: nextRunDate.toISOString(),
                 last_run_status: runStatus,
                 last_run_summary: runSummary,
                 consecutive_failures: newFailures,
-            });
+            };
+            // Only refresh last_successful_run_at on a clean success so children
+            // can re-attempt against the same parent run after a transient failure.
+            if (runStatus === 'success') {
+                update.last_successful_run_at = now.toISOString();
+            }
+            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, update);
 
             results.push({
                 import_type: schedule.import_type,
