@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+// Natural-key dedup helpers extracted to ./helpers.ts so they can be unit-tested.
+import { partitionForUpsert } from './helpers.ts';
 
 // Strict time budget: 25s to leave buffer before platform 30s timeout kills us
 const MAX_EXEC_MS = 25_000; 
@@ -817,114 +819,6 @@ function delay(ms, startTime) {
     return new Promise(r => setTimeout(r, ms));
 }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
-
-// #2 — Natural key fields per import_type. Used to detect existing rows so we update
-// instead of creating duplicates. Order matters: first field is queried with $in, the
-// rest are matched client-side. Pick the most-distinguishing field first.
-const NATURAL_KEYS: Record<string, string[]> = {
-    cms_order_referring: ['npi', 'year'],
-    opt_out_physicians: ['npi'],
-    home_health_enrollments: ['enrollment_id'],
-    hospice_enrollments: ['enrollment_id'],
-    provider_service_utilization: ['npi', 'hcpcs_code', 'data_year'],
-    medical_equipment_suppliers: ['provider_id'],
-    hospice_provider_measures: ['ccn', 'measure_code'],
-    hospice_state_measures: ['state', 'measure_code'],
-    hospice_national_measures: ['measure_code'],
-    snf_provider_measures: ['ccn', 'measure_code'],
-    nursing_home_providers: ['ccn'],
-    nursing_home_deficiencies: ['ccn', 'inspection_cycle', 'health_survey_date'],
-    home_health_national_measures: ['measure_id', 'measure_name'],
-};
-
-function makeMatchKey(record, fields: string[]): string {
-    return fields.map(f => String(record[f] ?? '').trim().toLowerCase()).join('|');
-}
-
-function recordsDiffer(incoming, existing) {
-    // Compare only fields the incoming record actually carries — never overwrite
-    // existing fields with empty values.
-    for (const k of Object.keys(incoming)) {
-        if (incoming[k] === null || incoming[k] === undefined || incoming[k] === '') continue;
-        if (String(existing[k] ?? '').trim() !== String(incoming[k]).trim()) return true;
-    }
-    return false;
-}
-
-// Per-batch caps for paginated lookup. Some import_types (provider_service_utilization
-// in particular) fan out heavily — one NPI has hundreds of HCPCS codes — so a single
-// $in query with a small limit silently misses existing rows and we end up creating
-// duplicates. Splitting the primary values into small groups bounds the per-call
-// result size and keeps the worst-case fanout under control.
-const LOOKUP_PRIMARY_BATCH_SIZE = 10;
-const LOOKUP_PER_BATCH_LIMIT = 5000;
-
-async function partitionForUpsert(entity, records, importType: string) {
-    const keyFields = NATURAL_KEYS[importType];
-    if (!keyFields || keyFields.length === 0 || records.length === 0) {
-        return { toCreate: records, toUpdate: [], skipped: 0 };
-    }
-
-    const primaryField = keyFields[0];
-    const primaryValues = [...new Set(records.map(r => r[primaryField]).filter(v => v != null && v !== ''))];
-    if (primaryValues.length === 0) {
-        return { toCreate: records, toUpdate: [], skipped: 0 };
-    }
-
-    const existing: any[] = [];
-    let lookupFailed = false;
-    for (let i = 0; i < primaryValues.length; i += LOOKUP_PRIMARY_BATCH_SIZE) {
-        const slice = primaryValues.slice(i, i + LOOKUP_PRIMARY_BATCH_SIZE);
-        try {
-            const page = await entity.filter(
-                { [primaryField]: { $in: slice } },
-                undefined,
-                LOOKUP_PER_BATCH_LIMIT,
-            );
-            if (Array.isArray(page)) existing.push(...page);
-            if (Array.isArray(page) && page.length >= LOOKUP_PER_BATCH_LIMIT) {
-                console.warn(`[partitionForUpsert] Hit per-batch limit ${LOOKUP_PER_BATCH_LIMIT} for ${importType} on ${primaryField}; some natural-key matches may be missed and could become duplicates.`);
-            }
-        } catch (e) {
-            console.warn(`[partitionForUpsert] Lookup batch failed for ${importType}: ${e.message}`);
-            lookupFailed = true;
-            break;
-        }
-    }
-    if (lookupFailed) {
-        // Fall back to create-only so the import can still make progress on this chunk.
-        return { toCreate: records, toUpdate: [], skipped: 0 };
-    }
-
-    const existingMap = new Map(existing.map(e => [makeMatchKey(e, keyFields), e]));
-    const toCreate = [];
-    const toUpdate = [];
-    let skipped = 0;
-    const seenInBatch = new Set<string>();
-    for (const r of records) {
-        const key = makeMatchKey(r, keyFields);
-        // De-duplicate within this same chunk (same natural key seen twice in this page)
-        if (seenInBatch.has(key)) { skipped++; continue; }
-        seenInBatch.add(key);
-
-        const ex = existingMap.get(key);
-        if (!ex) {
-            toCreate.push(r);
-            continue;
-        }
-        // Build a patch with only fields that actually changed and have a non-empty
-        // incoming value, so mappers that default missing columns to '' don't blank
-        // out fields the existing DB row had populated.
-        const patch: Record<string, unknown> = {};
-        for (const k of Object.keys(r)) {
-            if (r[k] === null || r[k] === undefined || r[k] === '') continue;
-            if (String(ex[k] ?? '').trim() !== String(r[k]).trim()) patch[k] = r[k];
-        }
-        if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
-        else skipped++;
-    }
-    return { toCreate, toUpdate, skipped };
-}
 
 // Bulk importer with exponential backoff + jitter for rate limit handling
 async function importChunk(base44, importType, records, startTime) {

@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
+// Pure upsert helpers in helpers.ts so they can be unit-tested from Node.
+import { hhaRecordKey, hhaPartitionForUpsert } from './helpers.ts';
 
 const MAX_EXEC_MS = 25_000;
 const CHUNK = 25;
@@ -189,62 +191,7 @@ async function bulkCreateWithRetry(entity, chunk, label) {
   return { ok: false, error: 'Max retries exceeded' };
 }
 
-// Natural key for de-duplicating Medicare HHA rows. The source spreadsheet
-// publishes one row per (table_name, category) per year — same schema each
-// publication — so this matches the row identity in CMS's data.
-const HHA_KEY_FIELDS = ['data_year', 'table_name', 'category'];
-
-function hhaRecordKey(r) {
-  return HHA_KEY_FIELDS.map(f => String(r[f] ?? '').trim().toLowerCase()).join('|');
-}
-
-// Partition a chunk into create/update/skip lists by looking up existing rows
-// in the DB by (data_year, table_name) and matching natural keys client-side.
-// Returns the full mapped record on update only when a non-empty incoming field
-// differs from what's stored — keeps existing fields intact when the incoming
-// row blanks them out (the parser fills missing columns with 0 / '').
-async function hhaPartitionForUpsert(base44, chunk, year) {
-  const tableNames = [...new Set(chunk.map(r => r.table_name).filter(Boolean))];
-  if (tableNames.length === 0) return { toCreate: chunk, toUpdate: [], skipped: 0 };
-
-  let existing = [];
-  try {
-    existing = await base44.asServiceRole.entities.MedicareHHAStats.filter(
-      { data_year: year, table_name: { $in: tableNames } },
-      undefined,
-      tableNames.length * 2000 + 100,
-    );
-  } catch (e) {
-    console.warn(`[importMedicareHHA] dedup lookup failed: ${e.message}; falling back to create-only`);
-    return { toCreate: chunk, toUpdate: [], skipped: 0 };
-  }
-
-  const map = new Map(existing.map(e => [hhaRecordKey(e), e]));
-  const toCreate = [];
-  const toUpdate = [];
-  let skipped = 0;
-  for (const r of chunk) {
-    const key = hhaRecordKey(r);
-    const ex = map.get(key);
-    if (!ex) { toCreate.push(r); continue; }
-
-    // Build a patch with only fields that have a non-empty incoming value and
-    // a different stored value. raw_data is JSON-compared.
-    const patch = {};
-    for (const k of Object.keys(r)) {
-      const v = r[k];
-      if (v === null || v === undefined || v === '') continue;
-      if (typeof v === 'object') {
-        if (JSON.stringify(v) !== JSON.stringify(ex[k] ?? null)) patch[k] = v;
-      } else if (String(ex[k] ?? '').trim() !== String(v).trim()) {
-        patch[k] = v;
-      }
-    }
-    if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
-    else skipped++;
-  }
-  return { toCreate, toUpdate, skipped };
-}
+// hhaRecordKey + hhaPartitionForUpsert moved to ./helpers.ts (see top import).
       if (isRetryable && attempt < 4) {
         const wait = jitteredBackoff(attempt);
         console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
