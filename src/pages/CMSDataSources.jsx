@@ -97,6 +97,28 @@ export default function CMSDataSources() {
     }
   };
 
+  // #7 — probe every CMS data-api URL (hardcoded defaults + per-config overrides)
+  // and record health on each schedule. Useful as a periodic admin task to catch
+  // CMS URL deprecations before the next scheduled run silently fails.
+  const [probeAllRunning, setProbeAllRunning] = useState(false);
+  const probeAllUrls = async () => {
+    setProbeAllRunning(true);
+    try {
+      const res = await base44.functions.invoke('checkCMSDataApiUrls', {});
+      const data = res.data || res;
+      if (data.broken === 0) {
+        toast.success(`All ${data.healthy} URLs healthy`);
+      } else {
+        toast.warning(`${data.broken} of ${data.total_checked} URLs are broken — see URL Status column`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['importScheduleConfigs'] });
+    } catch (e) {
+      toast.error(`Probe failed: ${e.message}`);
+    } finally {
+      setProbeAllRunning(false);
+    }
+  };
+
   const handleOpenModal = (config = null) => {
     setEditingConfig(config);
     if (config) {
@@ -149,6 +171,16 @@ export default function CMSDataSources() {
           { label: 'CMS Data Sources' }
         ]}
       >
+        <Button
+          onClick={probeAllUrls}
+          disabled={probeAllRunning}
+          variant="outline"
+          className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/30 mr-2"
+          title="Probe every CMS data-api URL and flag broken endpoints"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${probeAllRunning ? 'animate-spin' : ''}`} />
+          {probeAllRunning ? 'Probing…' : 'Probe All URLs'}
+        </Button>
         <Button onClick={() => handleOpenModal()} className="bg-cyan-600 hover:bg-cyan-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Data Source
@@ -213,6 +245,17 @@ export default function CMSDataSources() {
                         <span className="text-[10px] text-slate-500 ml-4.5">
                           Size: {Math.round((config.cms_metadata.content_length || 0) / 1024 / 1024)} MB
                         </span>
+                      )}
+                      {/* #7 — surface checkCMSDataApiUrls health probe results */}
+                      {config.url_health && (
+                        <div className={`flex items-center gap-1.5 text-xs ${config.url_health.healthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {config.url_health.healthy ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                          <span title={config.url_health.error || ''}>
+                            URL probe: {config.url_health.healthy
+                              ? `OK (${format(new Date(config.url_health.checked_at), 'MMM d, h:mm a')})`
+                              : (config.url_health.error || 'Failed')}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </TableCell>

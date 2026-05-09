@@ -1,0 +1,122 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+
+// #6 — Worker supervisor for the NPPES crawler.
+//
+// Workers are spawned via fire-and-forget invokes; if every worker for a batch
+// dies (platform restart, unhandled exception, OOM), the batch sits in
+// 'processing' with pending queue items but nobody picks them up. Existing
+// in-worker recovery only fires *while* a worker is alive, and the broader
+// cancelStalledImports only acts after 1 hour. This function bridges that gap:
+// runs on a 1–2 minute cadence, detects abandoned NPPES batches, and respawns
+// the worker pool.
+
+const STALE_QUEUE_ACTIVITY_SECONDS = 90;          // No queue updates for >90s = workers dead
+const MAX_RESPAWNS_PER_BATCH = 5;                 // Hard cap so we don't restart forever
+const RESPAWN_COOLDOWN_SECONDS = 30;              // Don't respawn faster than this
+
+Deno.serve(async (req) => {
+    try {
+        const base44 = createClientFromRequest(req);
+
+        let user = null;
+        try { user = await base44.auth.me(); } catch (e) { /* service role */ }
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+
+        const now = Date.now();
+        const activeBatches = await base44.asServiceRole.entities.ImportBatch.filter({
+            import_type: 'nppes_registry',
+            status: 'processing',
+        }, '-created_date', 50);
+
+        const decisions = [];
+        for (const batch of activeBatches) {
+            const retryParams = batch.retry_params || {};
+            const respawns = retryParams.supervisor_respawns || 0;
+            const lastRespawnAt = retryParams.supervisor_last_respawn_at
+                ? new Date(retryParams.supervisor_last_respawn_at).getTime()
+                : 0;
+
+            if (respawns >= MAX_RESPAWNS_PER_BATCH) {
+                decisions.push({ batch_id: batch.id, action: 'skipped_max_respawns', respawns });
+                continue;
+            }
+            if (now - lastRespawnAt < RESPAWN_COOLDOWN_SECONDS * 1000) {
+                decisions.push({ batch_id: batch.id, action: 'skipped_cooldown' });
+                continue;
+            }
+
+            // Get queue items for this batch and decide whether workers are alive
+            const items = await base44.asServiceRole.entities.NPPESQueueItem.filter(
+                { batch_id: batch.id },
+                '-updated_date',
+                500
+            ).catch(() => []);
+
+            if (items.length === 0) {
+                decisions.push({ batch_id: batch.id, action: 'no_items' });
+                continue;
+            }
+
+            const pending = items.filter(i => i.status === 'pending' || i.status === 'processing');
+            if (pending.length === 0) {
+                decisions.push({ batch_id: batch.id, action: 'no_runnable_items' });
+                continue;
+            }
+
+            // Newest-touched item is the best proxy for last worker activity
+            const newestActivity = items.reduce((latest, i) => {
+                const t = new Date(i.updated_date || i.created_date).getTime();
+                return t > latest ? t : latest;
+            }, 0);
+
+            const secondsSinceActivity = (now - newestActivity) / 1000;
+            if (secondsSinceActivity < STALE_QUEUE_ACTIVITY_SECONDS) {
+                decisions.push({
+                    batch_id: batch.id,
+                    action: 'workers_alive',
+                    seconds_since_activity: Math.round(secondsSinceActivity),
+                });
+                continue;
+            }
+
+            // Workers look dead. Re-spawn one. nppesCrawler's own loop will fan out.
+            try {
+                await base44.asServiceRole.functions.invoke('nppesCrawler', {
+                    action: 'process_queue',
+                    dry_run: batch.dry_run || false,
+                });
+                await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                    retry_params: {
+                        ...retryParams,
+                        supervisor_respawns: respawns + 1,
+                        supervisor_last_respawn_at: new Date().toISOString(),
+                        supervisor_last_reason: `No queue activity for ${Math.round(secondsSinceActivity)}s, ${pending.length} pending`,
+                    },
+                });
+                decisions.push({
+                    batch_id: batch.id,
+                    action: 'respawned',
+                    respawns: respawns + 1,
+                    seconds_since_activity: Math.round(secondsSinceActivity),
+                    pending_items: pending.length,
+                });
+            } catch (e) {
+                console.error(`[superviseNPPESCrawler] Failed to respawn for batch ${batch.id}: ${e.message}`);
+                decisions.push({ batch_id: batch.id, action: 'respawn_failed', error: e.message });
+            }
+        }
+
+        const respawnedCount = decisions.filter(d => d.action === 'respawned').length;
+        return Response.json({
+            success: true,
+            checked: activeBatches.length,
+            respawned: respawnedCount,
+            decisions,
+        });
+    } catch (error) {
+        return Response.json({ error: error.message }, { status: 500 });
+    }
+});

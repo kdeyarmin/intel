@@ -1,4 +1,15 @@
-// Centralized error categorization with solutions and documentation links
+// Centralized error categorization with solutions and documentation links.
+//
+// Each category carries a machine-readable `retryable` flag and `suggested_action`
+// so automated tooling (auto-retry workers, alerting) can decide what to do
+// without having to re-parse the human-readable label or description.
+//
+// `suggested_action` values:
+//   - 'retry'        — safe to auto-retry as-is; transient failure
+//   - 'retry_later'  — retry after backoff (e.g. rate limits)
+//   - 'fix_data'     — needs source-data correction; retry won't help
+//   - 'skip'         — safe to ignore; not a real error
+//   - 'manual'       — needs human review
 
 export const ERROR_CATEGORIES = {
   invalid_npi: {
@@ -17,6 +28,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://npiregistry.cms.hhs.gov/',
     docLabel: 'CMS NPI Registry Lookup',
+    retryable: false,
+    suggested_action: 'fix_data',
+    severity: 'medium',
   },
   empty_row: {
     label: 'Empty / Spacer Row',
@@ -33,6 +47,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'skip',
+    severity: 'low',
   },
   missing_required: {
     label: 'Missing Required Field',
@@ -50,6 +67,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://download.cms.gov/nppes/NPI_Files.html',
     docLabel: 'NPPES File Layout Documentation',
+    retryable: false,
+    suggested_action: 'fix_data',
+    severity: 'medium',
   },
   formatting_error: {
     label: 'Invalid Format',
@@ -67,6 +87,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'fix_data',
+    severity: 'medium',
   },
   out_of_range: {
     label: 'Out of Range',
@@ -84,6 +107,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'fix_data',
+    severity: 'medium',
   },
   duplicate_record: {
     label: 'Duplicate Record',
@@ -100,6 +126,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'skip',
+    severity: 'low',
   },
   timeout_stall: {
     label: 'Timeout / Stall',
@@ -117,6 +146,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: true,
+    suggested_action: 'retry',
+    severity: 'medium',
   },
   network_api: {
     label: 'Network / API Error',
@@ -134,6 +166,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://data.cms.gov/',
     docLabel: 'CMS Data Portal',
+    retryable: true,
+    suggested_action: 'retry_later',
+    severity: 'high',
   },
   manual_action: {
     label: 'Manual Action',
@@ -149,6 +184,9 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'manual',
+    severity: 'low',
   },
   other: {
     label: 'Other',
@@ -165,8 +203,28 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
+    retryable: false,
+    suggested_action: 'manual',
+    severity: 'low',
   },
 };
+
+// #5 — machine-readable helpers. Tooling can call these to decide whether to
+// auto-retry an error sample without re-parsing the human-readable category metadata.
+export function isErrorRetryable(message) {
+  const cat = ERROR_CATEGORIES[categorizeError(message)];
+  return Boolean(cat?.retryable);
+}
+
+export function suggestedActionFor(message) {
+  const cat = ERROR_CATEGORIES[categorizeError(message)];
+  return cat?.suggested_action || 'manual';
+}
+
+export function severityFor(message) {
+  const cat = ERROR_CATEGORIES[categorizeError(message)];
+  return cat?.severity || 'low';
+}
 
 export function categorizeError(message) {
   if (!message) return 'other';

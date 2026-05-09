@@ -818,6 +818,85 @@ function delay(ms, startTime) {
 }
 function jitteredBackoff(attempt) { return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 15000); }
 
+// #2 — Natural key fields per import_type. Used to detect existing rows so we update
+// instead of creating duplicates. Order matters: first field is queried with $in, the
+// rest are matched client-side. Pick the most-distinguishing field first.
+const NATURAL_KEYS: Record<string, string[]> = {
+    cms_order_referring: ['npi', 'year'],
+    opt_out_physicians: ['npi'],
+    home_health_enrollments: ['enrollment_id'],
+    hospice_enrollments: ['enrollment_id'],
+    provider_service_utilization: ['npi', 'hcpcs_code', 'data_year'],
+    medical_equipment_suppliers: ['provider_id'],
+    hospice_provider_measures: ['ccn', 'measure_code'],
+    hospice_state_measures: ['state', 'measure_code'],
+    hospice_national_measures: ['measure_code'],
+    snf_provider_measures: ['ccn', 'measure_code'],
+    nursing_home_providers: ['ccn'],
+    nursing_home_deficiencies: ['ccn', 'inspection_cycle', 'health_survey_date'],
+    home_health_national_measures: ['measure_id', 'measure_name'],
+};
+
+function makeMatchKey(record, fields: string[]): string {
+    return fields.map(f => String(record[f] ?? '').trim().toLowerCase()).join('|');
+}
+
+function recordsDiffer(incoming, existing) {
+    // Compare only fields the incoming record actually carries — never overwrite
+    // existing fields with empty values.
+    for (const k of Object.keys(incoming)) {
+        if (incoming[k] === null || incoming[k] === undefined || incoming[k] === '') continue;
+        if (String(existing[k] ?? '').trim() !== String(incoming[k]).trim()) return true;
+    }
+    return false;
+}
+
+async function partitionForUpsert(entity, records, importType: string) {
+    const keyFields = NATURAL_KEYS[importType];
+    if (!keyFields || keyFields.length === 0 || records.length === 0) {
+        return { toCreate: records, toUpdate: [], skipped: 0 };
+    }
+
+    const primaryField = keyFields[0];
+    const primaryValues = [...new Set(records.map(r => r[primaryField]).filter(v => v != null && v !== ''))];
+    if (primaryValues.length === 0) {
+        return { toCreate: records, toUpdate: [], skipped: 0 };
+    }
+
+    let existing = [];
+    try {
+        // Multiplier covers cases where multiple existing rows share a primary value
+        // (e.g. one NPI has many HCPCS codes in provider_service_utilization).
+        const limit = Math.max(primaryValues.length * 20, 100);
+        existing = await entity.filter({ [primaryField]: { $in: primaryValues } }, undefined, limit);
+    } catch (e) {
+        console.warn(`[partitionForUpsert] Lookup failed for ${importType}: ${e.message}; falling back to create-only`);
+        return { toCreate: records, toUpdate: [], skipped: 0 };
+    }
+
+    const existingMap = new Map(existing.map(e => [makeMatchKey(e, keyFields), e]));
+    const toCreate = [];
+    const toUpdate = [];
+    let skipped = 0;
+    const seenInBatch = new Set<string>();
+    for (const r of records) {
+        const key = makeMatchKey(r, keyFields);
+        // De-duplicate within this same chunk (same natural key seen twice in this page)
+        if (seenInBatch.has(key)) { skipped++; continue; }
+        seenInBatch.add(key);
+
+        const ex = existingMap.get(key);
+        if (!ex) {
+            toCreate.push(r);
+        } else if (recordsDiffer(r, ex)) {
+            toUpdate.push({ id: ex.id, record: r });
+        } else {
+            skipped++;
+        }
+    }
+    return { toCreate, toUpdate, skipped };
+}
+
 // Bulk importer with exponential backoff + jitter for rate limit handling
 async function importChunk(base44, importType, records, startTime) {
     let imported = 0, updated = 0, skipped = 0;
@@ -846,12 +925,36 @@ async function importChunk(base44, importType, records, startTime) {
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
         const chunk = records.slice(i, i + BULK_SIZE);
-        let success = false;
 
+        // #2 — partition into create / update / skipped against existing DB rows so we
+        // don't duplicate on re-runs. Falls back to create-only if lookup fails.
+        const { toCreate, toUpdate, skipped: chunkSkipped } = await partitionForUpsert(entity, chunk, importType);
+        skipped += chunkSkipped;
+
+        let success = false;
         for (let attempt = 0; attempt < 4; attempt++) {
             try {
-                await entity.bulkCreate(chunk);
-                imported += chunk.length;
+                if (toCreate.length > 0) {
+                    await entity.bulkCreate(toCreate);
+                    imported += toCreate.length;
+                }
+                if (toUpdate.length > 0) {
+                    // base44 doesn't expose a bulkUpdate, so chunk individual updates
+                    // in small parallel groups to bound rate-limit risk.
+                    for (let j = 0; j < toUpdate.length; j += 5) {
+                        const group = toUpdate.slice(j, j + 5);
+                        const results = await Promise.all(group.map(({ id, record }) =>
+                            entity.update(id, record)
+                                .then(() => true)
+                                .catch(err => {
+                                    chunkErrors.push({ id, error: err.message });
+                                    return false;
+                                })
+                        ));
+                        updated += results.filter(Boolean).length;
+                        if (j + 5 < toUpdate.length) await delay(150, startTime);
+                    }
+                }
                 success = true;
                 break;
             } catch (e) {
@@ -866,7 +969,7 @@ async function importChunk(base44, importType, records, startTime) {
                 } else {
                     chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
                     console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
-                    skipped += chunk.length;
+                    skipped += toCreate.length + toUpdate.length;
                     if (isRetryable) {
                         // Rate limit exhausted retries, abort the whole chunk processing
                         return { imported, updated, skipped, errors: chunkErrors, aborted: true, fatalError: true };
