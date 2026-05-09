@@ -506,6 +506,22 @@ Deno.serve(async (req) => {
 
       if (!dry_run && recordsToProcess.length > 0) {
         if (effectiveOffset === 0) {
+          // Sanity check: refuse destructive overwrite if parsed rows are <50%
+          // of the existing year's row count. CMS sometimes reformats their
+          // spreadsheets in ways the parser doesn't recognize, and silently
+          // wiping a year of MA Inpatient data is much worse than a failed import.
+          const existingCountSample = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1000);
+          if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
+            const reason = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Refusing destructive overwrite — CMS may have changed the spreadsheet format. Set dry_run=true and inspect the parse first.`;
+            console.warn(`[importMedicareMAInpatient] ${reason}`);
+            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+              status: 'failed',
+              cancel_reason: reason,
+              error_samples: [{ message: reason }],
+            });
+            return Response.json({ error: reason, sanity_check_failed: true }, { status: 400 });
+          }
+
           const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
           if (existing.length > 0) {
             console.log(`Clearing existing ${year} records...`);

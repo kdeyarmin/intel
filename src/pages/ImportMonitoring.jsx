@@ -558,11 +558,18 @@ export default function ImportMonitoring() {
                 </p>
                 <ul className="text-xs text-amber-300/80 space-y-0.5">
                   {pausedBatches.slice(0, 5).map(b => {
-                    const offset = b.retry_params?.resume_offset
-                      ?? b.retry_params?.row_offset
-                      ?? b.retry_params?.byte_offset
-                      ?? null;
-                    const isByte = b.retry_params?.byte_offset != null && offset != null;
+                    // Pick the field that actually supplied the offset so row counts
+                    // don't get labelled as bytes when both fields are present.
+                    let offset = null;
+                    let isByte = false;
+                    if (b.retry_params?.resume_offset != null) {
+                      offset = b.retry_params.resume_offset;
+                    } else if (b.retry_params?.row_offset != null) {
+                      offset = b.retry_params.row_offset;
+                    } else if (b.retry_params?.byte_offset != null) {
+                      offset = b.retry_params.byte_offset;
+                      isByte = true;
+                    }
                     return (
                       <li key={b.id}>
                         <span className="font-medium">{b.import_type}</span>

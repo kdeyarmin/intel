@@ -328,6 +328,22 @@ Deno.serve(async (req) => {
     if (!dry_run && recordsToProcess.length > 0) {
       // Only clear existing on fresh import (no offset)
       if (effectiveOffset === 0) {
+        // Sanity check before destructive delete: if the parsed-record count
+        // is suspiciously low compared to what's already there, refuse to
+        // wipe the year. CMS occasionally reformats spreadsheets and we'd
+        // otherwise replace a complete year with garbage. Threshold: 50%.
+        const existingCountSample = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1000);
+        if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
+          const reason = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Refusing destructive overwrite — CMS may have changed the spreadsheet format. Set dry_run=true and inspect the parse first.`;
+          console.warn(`[importMedicareHHA] ${reason}`);
+          await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+            status: 'failed',
+            cancel_reason: reason,
+            error_samples: [{ message: reason }],
+          });
+          return Response.json({ error: reason, sanity_check_failed: true }, { status: 400 });
+        }
+
         const existing = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1);
         if (existing.length > 0) {
           console.log(`Clearing existing ${year} records...`);

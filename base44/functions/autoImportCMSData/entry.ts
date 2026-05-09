@@ -851,6 +851,14 @@ function recordsDiffer(incoming, existing) {
     return false;
 }
 
+// Per-batch caps for paginated lookup. Some import_types (provider_service_utilization
+// in particular) fan out heavily — one NPI has hundreds of HCPCS codes — so a single
+// $in query with a small limit silently misses existing rows and we end up creating
+// duplicates. Splitting the primary values into small groups bounds the per-call
+// result size and keeps the worst-case fanout under control.
+const LOOKUP_PRIMARY_BATCH_SIZE = 10;
+const LOOKUP_PER_BATCH_LIMIT = 5000;
+
 async function partitionForUpsert(entity, records, importType: string) {
     const keyFields = NATURAL_KEYS[importType];
     if (!keyFields || keyFields.length === 0 || records.length === 0) {
@@ -863,14 +871,28 @@ async function partitionForUpsert(entity, records, importType: string) {
         return { toCreate: records, toUpdate: [], skipped: 0 };
     }
 
-    let existing = [];
-    try {
-        // Multiplier covers cases where multiple existing rows share a primary value
-        // (e.g. one NPI has many HCPCS codes in provider_service_utilization).
-        const limit = Math.max(primaryValues.length * 20, 100);
-        existing = await entity.filter({ [primaryField]: { $in: primaryValues } }, undefined, limit);
-    } catch (e) {
-        console.warn(`[partitionForUpsert] Lookup failed for ${importType}: ${e.message}; falling back to create-only`);
+    const existing: any[] = [];
+    let lookupFailed = false;
+    for (let i = 0; i < primaryValues.length; i += LOOKUP_PRIMARY_BATCH_SIZE) {
+        const slice = primaryValues.slice(i, i + LOOKUP_PRIMARY_BATCH_SIZE);
+        try {
+            const page = await entity.filter(
+                { [primaryField]: { $in: slice } },
+                undefined,
+                LOOKUP_PER_BATCH_LIMIT,
+            );
+            if (Array.isArray(page)) existing.push(...page);
+            if (Array.isArray(page) && page.length >= LOOKUP_PER_BATCH_LIMIT) {
+                console.warn(`[partitionForUpsert] Hit per-batch limit ${LOOKUP_PER_BATCH_LIMIT} for ${importType} on ${primaryField}; some natural-key matches may be missed and could become duplicates.`);
+            }
+        } catch (e) {
+            console.warn(`[partitionForUpsert] Lookup batch failed for ${importType}: ${e.message}`);
+            lookupFailed = true;
+            break;
+        }
+    }
+    if (lookupFailed) {
+        // Fall back to create-only so the import can still make progress on this chunk.
         return { toCreate: records, toUpdate: [], skipped: 0 };
     }
 
