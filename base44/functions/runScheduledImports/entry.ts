@@ -191,10 +191,18 @@ Deno.serve(async (req) => {
                     maintenance.push({ worker, ok: false, error: err.message?.substring(0, 200) });
                 }
             });
-            await Promise.race([
-                Promise.all(invocations),
-                new Promise(resolve => setTimeout(resolve, maintenanceBudgetMs)),
-            ]);
+            let timeoutId: ReturnType<typeof setTimeout> | undefined;
+            const timeoutPromise = new Promise<void>((resolve) => {
+                timeoutId = setTimeout(resolve, maintenanceBudgetMs);
+            });
+            try {
+                await Promise.race([
+                    Promise.all(invocations),
+                    timeoutPromise,
+                ]);
+            } finally {
+                if (timeoutId !== undefined) clearTimeout(timeoutId);
+            }
 
             // Persist a heartbeat so the UI can show "last maintenance run" and
             // operators can spot stalled wiring. Best-effort — failure to log
