@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 const MAX_EXEC_MS = 50000;
-const execStart = Date.now();
-function timeLeft() { return MAX_EXEC_MS - (Date.now() - execStart); }
 
 Deno.serve(async (req) => {
+  // Per-invocation start time. The previous module-level constant was set once
+  // when the function was first loaded; on warm-instance reuse `timeLeft()`
+  // returned negative immediately and the verify loop broke before doing any work.
+  const execStart = Date.now();
+  const timeLeft = () => MAX_EXEC_MS - (Date.now() - execStart);
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -15,14 +19,19 @@ Deno.serve(async (req) => {
     let toVerify = [];
 
     if (mode === 'specific_npis' && npis && npis.length > 0) {
-      // Re-verify specific providers by NPI list
+      // Re-verify specific providers by NPI list. Use $in so each chunk is a
+      // single query instead of N individual filter calls (the previous version
+      // looped per-NPI inside each chunk, defeating the chunking entirely).
       for (let i = 0; i < npis.length; i += 50) {
+        if (timeLeft() < 5000) break;
         const chunk = npis.slice(i, i + 50);
-        for (const npi of chunk) {
-          const found = await base44.asServiceRole.entities.Provider.filter({ npi }, '-created_date', 1);
-          if (found.length > 0 && found[0].email) {
-            toVerify.push(found[0]);
-          }
+        const found = await base44.asServiceRole.entities.Provider.filter(
+          { npi: { $in: chunk } },
+          '-created_date',
+          chunk.length + 10,
+        );
+        for (const provider of found) {
+          if (provider.email) toVerify.push(provider);
         }
       }
     } else {
