@@ -22,7 +22,7 @@ describe('isRetryableErrorMessage', () => {
   it('matches network/HTTP transient errors', () => {
     expect(isRetryableErrorMessage('HTTP 500 Internal Server Error')).toBe(true);
     expect(isRetryableErrorMessage('HTTP 503 Service Unavailable')).toBe(true);
-    expect(isRetryableErrorMessage('429 Too Many Requests')).toBe(true);
+    expect(isRetryableErrorMessage('HTTP 429 Too Many Requests')).toBe(true);
     expect(isRetryableErrorMessage('Rate limit exceeded')).toBe(true);
     expect(isRetryableErrorMessage('Connection refused: ECONNREFUSED')).toBe(true);
     expect(isRetryableErrorMessage('fetch failed')).toBe(true);

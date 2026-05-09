@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
                     import_type: batch.import_type,
                     file_url: batch.file_url,
                     year: batch.data_year,
-                    dry_run: false,
+                    dry_run: !!batch.dry_run,
                     retry_of: batch.id,
                     retry_count: nextAttempt,
                     retry_tags: ['auto_retry_failed'],
