@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { maRecordKey, maPartitionForUpsert } from './helpers.ts';
 
 const MAX_EXEC_MS = 25000;
 let execStart = Date.now();
@@ -12,52 +13,6 @@ const MAX_NETWORK_RETRIES = 3;
 const RETRY_BACKOFF_MS = 2000;
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// Natural key for the upsert path. (data_year, table_name, category) plus
-// `state` for MA7 (which is per-state, where category may be the demographic
-// dimension rather than the state itself).
-const MA_KEY_FIELDS = ['data_year', 'table_name', 'category'];
-function maRecordKey(r) {
-  const base = MA_KEY_FIELDS.map(f => String(r[f] ?? '').trim().toLowerCase()).join('|');
-  return r.state ? `${base}|${String(r.state).trim().toLowerCase()}` : base;
-}
-
-async function maPartitionForUpsert(base44, chunk, year) {
-  const tableNames = [...new Set(chunk.map(r => r.table_name).filter(Boolean))];
-  if (tableNames.length === 0) return { toCreate: chunk, toUpdate: [], skipped: 0 };
-  let existing = [];
-  try {
-    existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter(
-      { data_year: year, table_name: { $in: tableNames } },
-      undefined,
-      tableNames.length * 2000 + 100,
-    );
-  } catch (e) {
-    console.warn(`[importMedicareMAInpatient] dedup lookup failed: ${e.message}; falling back to create-only`);
-    return { toCreate: chunk, toUpdate: [], skipped: 0 };
-  }
-  const map = new Map(existing.map(e => [maRecordKey(e), e]));
-  const toCreate = [];
-  const toUpdate = [];
-  let skipped = 0;
-  for (const r of chunk) {
-    const ex = map.get(maRecordKey(r));
-    if (!ex) { toCreate.push(r); continue; }
-    const patch = {};
-    for (const k of Object.keys(r)) {
-      const v = r[k];
-      if (v === null || v === undefined || v === '') continue;
-      if (typeof v === 'object') {
-        if (JSON.stringify(v) !== JSON.stringify(ex[k] ?? null)) patch[k] = v;
-      } else if (String(ex[k] ?? '').trim() !== String(v).trim()) {
-        patch[k] = v;
-      }
-    }
-    if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
-    else skipped++;
-  }
-  return { toCreate, toUpdate, skipped };
-}
 
 // Fetch with automatic retry for transient network errors
 async function fetchWithRetry(url, options = {}, label = 'fetch') {
