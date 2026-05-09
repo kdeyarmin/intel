@@ -86,7 +86,7 @@ export default function NPPESCrawlerSettings() {
         selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
-  }, [existingConfig?.id, existingConfig?.updated_date]);
+  }, [existingConfig?.id, existingConfig?.updated_date, hasChanges]);
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {

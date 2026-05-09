@@ -37,8 +37,8 @@ export default function CampaignPredictiveAnalytics({ campaigns = [], providers 
       bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
     }));
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare marketing analytics expert. Analyze campaign history and predict optimal strategies.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare marketing analytics expert. Analyze campaign history and predict optimal strategies.
 
 HISTORICAL CAMPAIGNS (${historical.length}):
 ${JSON.stringify(historical, null, 2)}
@@ -52,65 +52,65 @@ Provide:
 4. Forecast for next 3 campaigns if you maintain current trajectory
 5. Key factors affecting performance and what to improve
 6. Recommended audience segments to target next`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          next_campaign_prediction: {
-            type: "object",
-            properties: {
-              predicted_open_rate: { type: "number" },
-              predicted_response_rate: { type: "number" },
-              confidence: { type: "string" },
-              reasoning: { type: "string" }
-            }
-          },
-          optimal_send_time: {
-            type: "object",
-            properties: {
-              best_day: { type: "string" },
-              best_hour: { type: "string" },
-              worst_day: { type: "string" },
-              reasoning: { type: "string" }
-            }
-          },
-          send_time_heatmap: {
-            type: "array",
-            items: {
+        response_json_schema: {
+          type: "object",
+          properties: {
+            next_campaign_prediction: {
               type: "object",
               properties: {
-                day: { type: "string" },
-                morning: { type: "number" },
-                afternoon: { type: "number" },
-                evening: { type: "number" }
-              }
-            }
-          },
-          forecast: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                campaign_number: { type: "number" },
                 predicted_open_rate: { type: "number" },
                 predicted_response_rate: { type: "number" },
-                recommendation: { type: "string" }
+                confidence: { type: "string" },
+                reasoning: { type: "string" }
               }
-            }
-          },
-          improvement_factors: { type: "array", items: { type: "string" } },
-          recommended_segments: {
-            type: "array",
-            items: {
+            },
+            optimal_send_time: {
               type: "object",
               properties: {
-                name: { type: "string" },
-                description: { type: "string" },
-                expected_lift: { type: "string" }
+                best_day: { type: "string" },
+                best_hour: { type: "string" },
+                worst_day: { type: "string" },
+                reasoning: { type: "string" }
+              }
+            },
+            send_time_heatmap: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  day: { type: "string" },
+                  morning: { type: "number" },
+                  afternoon: { type: "number" },
+                  evening: { type: "number" }
+                }
+              }
+            },
+            forecast: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  campaign_number: { type: "number" },
+                  predicted_open_rate: { type: "number" },
+                  predicted_response_rate: { type: "number" },
+                  recommendation: { type: "string" }
+                }
+              }
+            },
+            improvement_factors: { type: "array", items: { type: "string" } },
+            recommended_segments: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  expected_lift: { type: "string" }
+                }
               }
             }
           }
         }
-      }
     });
     setPrediction(res);
     } catch (err) {

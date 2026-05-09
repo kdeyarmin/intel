@@ -145,7 +145,7 @@ REQUIREMENTS:
 
       <Button
         onClick={handleGenerate}
-        disabled={generating || providers.length === 0}
+        disabled={generating || providers.length === 0 || (goal === 'custom' && !customGoal.trim())}
         size="sm"
         className="w-full bg-violet-600 hover:bg-violet-700 gap-2 text-xs"
       >

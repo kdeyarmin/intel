@@ -91,9 +91,10 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
     try {
       await base44.entities.Campaign.update(campaign.id, { status: newStatus });
       onUpdate?.({ ...campaign, status: newStatus });
+      toast.success(`Campaign status updated to "${newStatus}"`);
     } catch (err) {
       console.error('Failed to update campaign status:', err);
-      toast.error('Failed to update campaign status. Please try again.');
+      toast.error(`Failed to update status: ${err?.message || 'Unknown error'}`);
     }
   };
 
