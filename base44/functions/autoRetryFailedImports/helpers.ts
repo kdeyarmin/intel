@@ -20,14 +20,21 @@ export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 // retryable: true categories in errorCategories.jsx (timeout_stall, network_api).
 export const RETRYABLE_KEYWORDS = [
     'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
-    'http 5', '500', '503', '429', 'rate limit', 'rate-limit', 'rate_limit',
+    'http 5', 'rate limit', 'rate-limit', 'rate_limit',
     'fetch', 'network', 'connection', 'econnrefused', 'socket',
 ];
+
+// Match retryable HTTP status codes only when they appear in an HTTP/status
+// context, so unrelated numeric references like "row 500" do not trigger
+// auto-retries.
+export const RETRYABLE_STATUS_CODE_PATTERN =
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?|statusCode)\D*(?:429|500|503)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
     const lower = String(msg).toLowerCase();
-    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw));
+    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw))
+        || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
 }
 
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
