@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Users, Loader2, Sparkles, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ConnectionsWidget({ providers = [], locations = [], taxonomies = [], referrals = [], scores = [] }) {
   const [results, setResults] = useState(null);
@@ -18,7 +19,7 @@ export default function ConnectionsWidget({ providers = [], locations = [], taxo
 
   const analyze = async () => {
     setLoading(true);
-
+    try {
     const provMap = {};
     providers.forEach(p => { provMap[p.npi] = p; });
 
@@ -81,7 +82,12 @@ For each top provider, suggest 1 ideal connection type they should make (e.g., p
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Connection analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strColors = { strong: 'bg-green-100 text-green-700', moderate: 'bg-blue-100 text-blue-700', exploratory: 'bg-slate-100 text-slate-600' };

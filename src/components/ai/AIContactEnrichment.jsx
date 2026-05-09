@@ -58,7 +58,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
       });
 
       setResults(res);
-    } catch (err) {
+    } catch (_err) {
       toast.error('Enrichment failed. Please try again.');
     } finally {
       setLoading(false);

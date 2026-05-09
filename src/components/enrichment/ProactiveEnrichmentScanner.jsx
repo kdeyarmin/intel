@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, AlertTriangle, Search,
   Phone, Wifi, DollarSign, ShieldCheck, Activity, XCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const DATA_POINTS = [
   { key: 'patient_volume', label: 'Patient Volume', icon: Activity, description: 'Estimated patient panel size' },
@@ -37,7 +38,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     setProgress({ current: 0, total: 0, currentName: '' });
     setRunning(true);
     setResults(null);
-
+    try {
     // Get NPIs already scanned via proactive discovery so we skip them
     let alreadyScannedNPIs = new Set();
     try {
@@ -48,7 +49,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     // Filter out already-scanned providers, then take batchSize
     const candidates = providers.filter(p => !alreadyScannedNPIs.has(p.npi));
     const toScan = candidates.slice(0, batchSize);
-    
+
     if (toScan.length === 0) {
       setResults({ enriched: 0, no_data: 0, errors: 0, details: [], message: 'All providers have already been scanned.' });
       setRunning(false);
@@ -66,6 +67,8 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
         : p.organization_name || p.npi;
       setProgress({ current: i + 1, total: toScan.length, currentName: name });
 
+      // Per-provider try/catch so one failed provider doesn't abort the whole batch
+      // and discard partial scan results.
       try {
         const res = await base44.integrations.Core.InvokeLLM({
           prompt: `Find the following specific data about this healthcare provider:
@@ -152,15 +155,20 @@ Only return data you can verify. Provide specific numbers and names.`,
           scanResults.no_data++;
           scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
         }
-      } catch (err) {
-        console.error(`Proactive scan failed for ${p.npi} (${name}):`, err);
+      } catch (providerErr) {
+        console.error(`Scan failed for NPI ${p.npi}:`, providerErr);
         scanResults.errors++;
-        scanResults.details.push({ npi: p.npi, name, status: 'error', error: err?.message || 'Unknown error' });
+        scanResults.details.push({ npi: p.npi, name, status: 'error', error: providerErr?.message || String(providerErr) });
       }
     }
 
     setResults(scanResults);
-    setRunning(false);
+    } catch (err) {
+      console.error('AI proactive enrichment scan failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (
@@ -204,7 +212,7 @@ Only return data you can verify. Provide specific numbers and names.`,
 
         {running && (
           <div className="space-y-2">
-            <Progress value={progress.total > 0 ? (progress.current / progress.total) * 100 : 0} className="h-2" />
+            <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" />
             <p className="text-[10px] text-slate-500 text-center">
               Scanning {progress.current}/{progress.total} — {progress.currentName}
             </p>

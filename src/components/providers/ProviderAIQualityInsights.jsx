@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, AlertTriangle, CheckCircle2, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProviderAIQualityInsights({ provider, locations, utilizations, referrals, taxonomies }) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -11,11 +12,12 @@ export default function ProviderAIQualityInsights({ provider, locations, utiliza
 
   const runAnalysis = async () => {
     setAnalyzing(true);
-    const name = provider.entity_type === 'Individual'
-      ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
-      : provider.organization_name || provider.npi;
+    try {
+      const name = provider.entity_type === 'Individual'
+        ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
+        : provider.organization_name || provider.npi;
 
-    const prompt = `Analyze this healthcare provider's data quality. Identify anomalies, missing data, and inconsistencies.
+      const prompt = `Analyze this healthcare provider's data quality. Identify anomalies, missing data, and inconsistencies.
 
 Provider: ${name} (NPI: ${provider.npi}, ${provider.entity_type}, Credential: ${provider.credential || 'N/A'})
 Status: ${provider.status}, Gender: ${provider.gender || 'N/A'}
@@ -32,30 +34,35 @@ Referrals: ${(referrals || []).slice(0, 3).map(r => `Year ${r.year}: ${r.total_r
 
 Look for: volume anomalies, address conflicts, missing critical fields, utilization/referral ratio issues, data staleness.`;
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          quality_score: { type: 'number', description: '0-100' },
-          issues: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                severity: { type: 'string', enum: ['high', 'medium', 'low'] },
-                description: { type: 'string' },
-                recommendation: { type: 'string' },
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            quality_score: { type: 'number', description: '0-100' },
+            issues: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  title: { type: 'string' },
+                  severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+                  description: { type: 'string' },
+                  recommendation: { type: 'string' },
+                },
               },
             },
+            summary: { type: 'string' },
           },
-          summary: { type: 'string' },
         },
-      },
-    });
-    setResults(res);
-    setAnalyzing(false);
+      });
+      setResults(res);
+    } catch (err) {
+      console.error('AI quality analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const scoreColor = (s) => s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400';

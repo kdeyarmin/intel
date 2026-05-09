@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Target, MapPin, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AISmartTargeting({
   providers = [], referrals = [], scores = [], locations = [], taxonomies = [],
@@ -15,7 +16,7 @@ export default function AISmartTargeting({
 
   const analyze = async () => {
     setLoading(true);
-
+    try {
     // Build data snapshot for AI
     const scoreMap = {};
     scores.forEach(s => { scoreMap[s.npi] = s.score; });
@@ -118,7 +119,12 @@ For each group, explain WHY these providers should be prioritized, the suggested
     });
 
     setSuggestions({ ...res, groups: enriched });
-    setLoading(false);
+    } catch (err) {
+      console.error('AI smart targeting failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const STRATEGY_ICONS = {

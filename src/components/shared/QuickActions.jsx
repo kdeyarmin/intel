@@ -23,10 +23,20 @@ export default function QuickActions() {
     base44.auth.me().then(setUser).catch(console.error);
   }, []);
 
-  const visibleActions = ACTIONS.filter(action => user?.role ? action.roles.includes(user.role) : false);
+  const visibleActions = ACTIONS.filter(action => user?.role && action.roles.includes(user.role));
+
+  const colCount = Math.min(visibleActions.length || 1, 6);
+  const smGridCols = {
+    1: 'sm:grid-cols-1',
+    2: 'sm:grid-cols-2',
+    3: 'sm:grid-cols-3',
+    4: 'sm:grid-cols-4',
+    5: 'sm:grid-cols-5',
+    6: 'sm:grid-cols-6',
+  }[colCount];
 
   return (
-    <div className={`grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-${Math.min(visibleActions.length, 6)} gap-2`}>
+    <div className={`grid grid-cols-2 min-[400px]:grid-cols-3 ${smGridCols} gap-2`}>
       {visibleActions.map(action => {
         const Icon = action.icon;
         return (

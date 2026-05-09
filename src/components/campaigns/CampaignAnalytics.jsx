@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, UserCheck, ArrowLeft, BarChart3, ListTodo, Target, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
 import CampaignAutomationPanel from './CampaignAutomationPanel';
-import { toast } from 'sonner';
 
 const _STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
@@ -34,21 +34,35 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
 
   const loadData = async () => {
     setLoading(true);
-    const listIds = campaign.lead_list_ids || [];
-    if (listIds.length === 0) { setLoading(false); return; }
+    try {
+      const listIds = campaign.lead_list_ids || [];
+      if (listIds.length === 0) {
+        setListsData([]);
+        setAllMembers([]);
+        return;
+      }
 
-    const lists = await base44.entities.LeadList.list('-created_date', 200);
-    const linkedLists = lists.filter(l => listIds.includes(l.id));
+      const lists = await base44.entities.LeadList.list('-created_date', 200);
+      const linkedLists = lists.filter(l => listIds.includes(l.id));
 
-    let members = [];
-    for (const lid of listIds) {
-      const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid });
-      members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
+      // Parallel fan-out — sequential awaits added wall-clock latency proportional to list count.
+      const memberGroups = await Promise.all(
+        listIds.map(lid =>
+          base44.entities.LeadListMember.filter({ lead_list_id: lid })
+            .then(ms => ms.map(mm => ({ ...mm, _list_id: lid })))
+        )
+      );
+      const members = memberGroups.flat();
+
+      setListsData(linkedLists);
+      setAllMembers(members);
+    } catch (err) {
+      console.error('Failed to load campaign analytics:', err);
+      setListsData([]);
+      setAllMembers([]);
+    } finally {
+      setLoading(false);
     }
-
-    setListsData(linkedLists);
-    setAllMembers(members);
-    setLoading(false);
   };
 
   const leadStats = useMemo(() => {
