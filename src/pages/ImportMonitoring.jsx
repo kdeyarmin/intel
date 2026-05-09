@@ -25,6 +25,7 @@ import NewImportDialog from '../components/imports/NewImportDialog';
 import ValidationRulesManager from '../components/imports/ValidationRulesManager';
 import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
+import MaintenanceHealthPanel from '../components/imports/MaintenanceHealthPanel';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
@@ -542,6 +543,12 @@ export default function ImportMonitoring() {
 
       {/* System Status */}
       <SystemStatusPanel batches={batches} />
+
+      {/* Maintenance heartbeat — surfaces whether the schedule loop's fanout
+          to autoResume / autoRetry / cancelStalled / manageCrawlerRetries is
+          actually running. If this goes stale, paused/failed batches stop
+          getting picked back up. */}
+      <MaintenanceHealthPanel />
 
       {/* Live Progress for Active Jobs */}
       <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
