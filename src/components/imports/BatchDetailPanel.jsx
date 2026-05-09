@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   FileText,
-  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles, Play
+  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles, Play, Loader2
 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
 import ErrorCategoryDisplay from './ErrorCategoryDisplay';
 import ValidationRuleResults from './ValidationRuleResults';
@@ -13,6 +15,7 @@ import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
 import { pickResumeOffset, resumeProgressPct } from './resumeOffset';
+import { getAutoRetryState, MAX_AUTO_RETRY_ATTEMPTS } from './retryStatus';
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -105,6 +108,72 @@ function classifySeverity(msg) {
   return 'reject';
 }
 
+function relativeFromNow(date, now) {
+  const diffMs = date.getTime() - now.getTime();
+  const absMin = Math.round(Math.abs(diffMs) / 60_000);
+  if (absMin < 60) return diffMs >= 0 ? `in ${absMin}m` : `${absMin}m ago`;
+  const absHr = Math.round(absMin / 60);
+  if (absHr < 24) return diffMs >= 0 ? `in ${absHr}h` : `${absHr}h ago`;
+  const absDay = Math.round(absHr / 24);
+  return diffMs >= 0 ? `in ${absDay}d` : `${absDay}d ago`;
+}
+
+function AutoRetryBanner({ batch, onUpdated }) {
+  const [busy, setBusy] = useState(false);
+  const retryState = useMemo(() => getAutoRetryState(batch), [batch]);
+  if (!retryState) return null;
+
+  const { state, attemptCount, lastReason, nextDueAt } = retryState;
+  const disabled = state === 'disabled';
+  const maxReached = state === 'max_reached';
+  const tone = disabled || maxReached
+    ? { border: 'border-slate-500/30', bg: 'bg-slate-500/10', text: 'text-slate-300', sub: 'text-slate-400' }
+    : { border: 'border-blue-500/30', bg: 'bg-blue-500/10', text: 'text-blue-200', sub: 'text-blue-300/80' };
+
+  const headline =
+    state === 'disabled' ? 'Auto-retry disabled for this batch'
+    : state === 'max_reached' ? `Max auto-retry attempts reached (${attemptCount}/${MAX_AUTO_RETRY_ATTEMPTS})`
+    : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, new Date())})`
+    : state === 'eligible' ? `Auto-retry eligible (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS} on next worker tick)`
+    : `Auto-retry will trigger if the failure is classified retryable (attempt 1/${MAX_AUTO_RETRY_ATTEMPTS})`;
+
+  const handleToggle = async () => {
+    setBusy(true);
+    try {
+      const params = batch.retry_params || {};
+      await base44.entities.ImportBatch.update(batch.id, {
+        retry_params: { ...params, auto_retry_disabled: !disabled },
+      });
+      onUpdated?.();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={`rounded-lg border ${tone.border} ${tone.bg} p-3 flex items-start gap-3`}>
+      <RefreshCw className={`w-4 h-4 mt-0.5 flex-shrink-0 ${tone.text}`} />
+      <div className={`flex-1 text-xs ${tone.text}`}>
+        <p className="font-semibold mb-0.5">{headline}</p>
+        {lastReason && (
+          <p className={tone.sub}>Last failure: {lastReason}</p>
+        )}
+      </div>
+      {!maxReached && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleToggle}
+          disabled={busy}
+          className="h-7 text-xs"
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : (disabled ? 'Enable auto-retry' : 'Disable auto-retry')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function FilteredErrors({ errors, filters, batchName }) {
   const filtered = useMemo(() => {
     return errors.filter(err => {
@@ -135,7 +204,7 @@ function FilteredErrors({ errors, filters, batchName }) {
   );
 }
 
-export default function BatchDetailPanel({ batch }) {
+export default function BatchDetailPanel({ batch, onUpdated }) {
   const [errorFilters, setErrorFilters] = useState({ severity: null, category: null });
   const safeBatch = batch ?? {};
 
@@ -182,6 +251,11 @@ export default function BatchDetailPanel({ batch }) {
         </div>
         {duration && <span className="text-xs text-slate-500">Duration: {duration}</span>}
       </div>
+
+      {/* Auto-retry banner for failed batches: surfaces worker state + per-batch toggle. */}
+      {batch.status === 'failed' && (
+        <AutoRetryBanner batch={batch} onUpdated={onUpdated} />
+      )}
 
       {/* #9 — Paused/resume banner. Shows where the import stopped + when it'll auto-resume. */}
       {batch.status === 'paused' && resumeOffset != null && (
