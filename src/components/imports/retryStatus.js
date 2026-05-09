@@ -6,6 +6,10 @@
 
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
+// Mirror of RETRY_LOOKBACK_MS in the worker — the worker only acts on batches
+// that failed within this window, so the banner must agree to avoid showing
+// pending/eligible for batches the worker will never touch.
+export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
 export function backoffHoursForAttempt(attemptCount) {
   if (attemptCount <= 0) return 0;
@@ -29,6 +33,7 @@ export function nextRetryDueAt(lastAttemptIso, attemptCount) {
 // Otherwise returns a structured view with a `state`:
 //   - 'disabled'      — operator opted out via auto_retry_disabled
 //   - 'max_reached'   — hit MAX_AUTO_RETRY_ATTEMPTS
+//   - 'too_old'       — failed outside the worker's RETRY_LOOKBACK_MS window
 //   - 'pending'       — waiting for the backoff window to elapse
 //   - 'eligible'      — past the window, will retry on the next worker tick
 //   - 'never_tried'   — no auto-retry has been attempted yet
@@ -50,6 +55,16 @@ export function getAutoRetryState(batch, now = new Date()) {
   }
   if (attemptCount >= MAX_AUTO_RETRY_ATTEMPTS) {
     return { state: 'max_reached', attemptCount, lastAttempt, lastReason, nextDueAt: null };
+  }
+
+  // Worker won't touch batches older than the lookback window, so neither should
+  // the banner — otherwise we'd show 'pending' for a batch that will never retry.
+  const createdIso = batch.created_date || batch.updated_date;
+  if (createdIso) {
+    const created = new Date(createdIso);
+    if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+      return { state: 'too_old', attemptCount, lastAttempt, lastReason, nextDueAt: null };
+    }
   }
 
   const nextDueAt = nextRetryDueAt(lastAttempt, attemptCount + 1);

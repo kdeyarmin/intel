@@ -130,4 +130,17 @@ describe('getAutoRetryState', () => {
     }, now);
     expect(state.attemptCount).toBe(0);
   });
+
+  it('reports too_old for batches outside the worker lookback window', () => {
+    // Worker only acts on batches < 48h old. Banner must agree so it doesn't
+    // show 'pending'/'eligible' for batches the worker will never retry.
+    const longAgo = new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString();
+    const state = getAutoRetryState({
+      status: 'failed',
+      import_type: 'medicare_hha_stats',
+      created_date: longAgo,
+      completed_at: longAgo,
+    }, now);
+    expect(state.state).toBe('too_old');
+  });
 });
