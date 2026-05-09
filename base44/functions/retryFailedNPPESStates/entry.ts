@@ -3,7 +3,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
+
+        // Allow service role calls (from scheduled automations) or admin users.
+        let user = null;
+        try { user = await base44.auth.me(); } catch (_e) { /* service role */ }
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+
         // Fetch crawler config
         const configs = await base44.asServiceRole.entities.NPPESCrawlerConfig.filter({ config_key: 'default' });
         const config = configs[0] || {};
