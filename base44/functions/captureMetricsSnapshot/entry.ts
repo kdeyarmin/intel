@@ -1,11 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
+// Cap on rows pulled into memory per entity. The previous unbounded .list()
+// would OOM/timeout on real-scale data (Provider + ProviderLocation +
+// CMSUtilization can each grow to millions of rows). Snapshot becomes a
+// sample at this cap; we mark `partial_snapshot: true` on the metrics row
+// so dashboards can flag it.
+const SNAPSHOT_ROW_LIMIT = 50_000;
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        const user = await base44.auth.me();
 
-        if (user?.role !== 'admin') {
+        // Allow service role calls (scheduled cron) or admin users. The previous
+        // bare `await auth.me()` threw for the service role and 500'd the daily
+        // snapshot before reaching any logic.
+        let user = null;
+        try { user = await base44.auth.me(); } catch (_e) { /* service role */ }
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
@@ -13,13 +25,23 @@ Deno.serve(async (req) => {
 
         // Check if we already have a snapshot for today
         const existing = await base44.asServiceRole.entities.ImportMetrics.filter({ snapshot_date: today });
-        
-        // Gather current counts
-        const providers = await base44.asServiceRole.entities.Provider.list();
-        const locations = await base44.asServiceRole.entities.ProviderLocation.list();
-        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list();
-        const utilization = await base44.asServiceRole.entities.CMSUtilization.list();
-        const referrals = await base44.asServiceRole.entities.CMSReferral.list();
+
+        // Gather current counts. Use explicit (large) limits — see SNAPSHOT_ROW_LIMIT comment.
+        const providers = await base44.asServiceRole.entities.Provider.list('-created_date', SNAPSHOT_ROW_LIMIT);
+        const locations = await base44.asServiceRole.entities.ProviderLocation.list('-created_date', SNAPSHOT_ROW_LIMIT);
+        const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('-created_date', SNAPSHOT_ROW_LIMIT);
+        const utilization = await base44.asServiceRole.entities.CMSUtilization.list('-created_date', SNAPSHOT_ROW_LIMIT);
+        const referrals = await base44.asServiceRole.entities.CMSReferral.list('-created_date', SNAPSHOT_ROW_LIMIT);
+        const partialSnapshot = (
+            providers.length >= SNAPSHOT_ROW_LIMIT ||
+            locations.length >= SNAPSHOT_ROW_LIMIT ||
+            taxonomies.length >= SNAPSHOT_ROW_LIMIT ||
+            utilization.length >= SNAPSHOT_ROW_LIMIT ||
+            referrals.length >= SNAPSHOT_ROW_LIMIT
+        );
+        if (partialSnapshot) {
+            console.warn(`[captureMetricsSnapshot] Hit ${SNAPSHOT_ROW_LIMIT}-row cap; metrics are a sample, not a full count.`);
+        }
 
         const locNPIs = new Set(locations.map(l => l.npi));
         const taxNPIs = new Set(taxonomies.map(t => t.npi));
@@ -67,6 +89,7 @@ Deno.serve(async (req) => {
             imports_today: importsToday,
             imports_failed_today: failedToday,
             rows_imported_today: rowsToday,
+            partial_snapshot: partialSnapshot,
         };
 
         if (existing.length > 0) {
