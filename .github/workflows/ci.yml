@@ -1,8 +1,12 @@
 name: CI
 
 on:
+  # Fire on every PR regardless of base branch so stacked PRs (where the base
+  # is itself a feature branch, e.g. claude/foo -> claude/bar -> main) still
+  # get lint/typecheck/test/build verified. The previous `branches: [main]`
+  # filter meant only PRs to main ran CI, so reviewers on stacked PRs saw
+  # "no checks" and couldn't tell whether the code built or tested green.
   pull_request:
-    branches: [main]
   push:
     branches: [main]
 
