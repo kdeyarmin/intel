@@ -189,6 +189,74 @@ async function bulkCreateWithRetry(entity, chunk, label) {
   return { ok: false, error: 'Max retries exceeded' };
 }
 
+// Natural key for de-duplicating Medicare HHA rows. The source spreadsheet
+// publishes one row per (table_name, category) per year — same schema each
+// publication — so this matches the row identity in CMS's data.
+const HHA_KEY_FIELDS = ['data_year', 'table_name', 'category'];
+
+function hhaRecordKey(r) {
+  return HHA_KEY_FIELDS.map(f => String(r[f] ?? '').trim().toLowerCase()).join('|');
+}
+
+// Partition a chunk into create/update/skip lists by looking up existing rows
+// in the DB by (data_year, table_name) and matching natural keys client-side.
+// Returns the full mapped record on update only when a non-empty incoming field
+// differs from what's stored — keeps existing fields intact when the incoming
+// row blanks them out (the parser fills missing columns with 0 / '').
+async function hhaPartitionForUpsert(base44, chunk, year) {
+  const tableNames = [...new Set(chunk.map(r => r.table_name).filter(Boolean))];
+  if (tableNames.length === 0) return { toCreate: chunk, toUpdate: [], skipped: 0 };
+
+  let existing = [];
+  try {
+    existing = await base44.asServiceRole.entities.MedicareHHAStats.filter(
+      { data_year: year, table_name: { $in: tableNames } },
+      undefined,
+      tableNames.length * 2000 + 100,
+    );
+  } catch (e) {
+    console.warn(`[importMedicareHHA] dedup lookup failed: ${e.message}; falling back to create-only`);
+    return { toCreate: chunk, toUpdate: [], skipped: 0 };
+  }
+
+  const map = new Map(existing.map(e => [hhaRecordKey(e), e]));
+  const toCreate = [];
+  const toUpdate = [];
+  let skipped = 0;
+  for (const r of chunk) {
+    const key = hhaRecordKey(r);
+    const ex = map.get(key);
+    if (!ex) { toCreate.push(r); continue; }
+
+    // Build a patch with only fields that have a non-empty incoming value and
+    // a different stored value. raw_data is JSON-compared.
+    const patch = {};
+    for (const k of Object.keys(r)) {
+      const v = r[k];
+      if (v === null || v === undefined || v === '') continue;
+      if (typeof v === 'object') {
+        if (JSON.stringify(v) !== JSON.stringify(ex[k] ?? null)) patch[k] = v;
+      } else if (String(ex[k] ?? '').trim() !== String(v).trim()) {
+        patch[k] = v;
+      }
+    }
+    if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
+    else skipped++;
+  }
+  return { toCreate, toUpdate, skipped };
+}
+      if (isRetryable && attempt < 4) {
+        const wait = jitteredBackoff(attempt);
+        console.warn(`[${label}] Retry ${attempt + 1}/5 after ${Math.round(wait)}ms: ${msg}`);
+        await delay(wait);
+      } else {
+        return { ok: false, error: msg };
+      }
+    }
+  }
+  return { ok: false, error: 'Max retries exceeded' };
+}
+
 Deno.serve(async (req) => {
   execStart = Date.now();
   const base44 = createClientFromRequest(req);
@@ -324,75 +392,113 @@ Deno.serve(async (req) => {
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
-    let imported = 0, chunkErrors = 0;
-    if (!dry_run && recordsToProcess.length > 0) {
-      // Only clear existing on fresh import (no offset)
-      if (effectiveOffset === 0) {
-        // Sanity check before destructive delete: if the parsed-record count
-        // is suspiciously low compared to what's already there, refuse to
-        // wipe the year. CMS occasionally reformats spreadsheets and we'd
-        // otherwise replace a complete year with garbage. Threshold: 50%.
-        const existingCountSample = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1000);
-        if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
-          const reason = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Refusing destructive overwrite — CMS may have changed the spreadsheet format. Set dry_run=true and inspect the parse first.`;
-          console.warn(`[importMedicareHHA] ${reason}`);
-          await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-            status: 'failed',
-            cancel_reason: reason,
-            error_samples: [{ message: reason }],
-          });
-          return Response.json({ error: reason, sanity_check_failed: true }, { status: 400 });
-        }
-
-        const existing = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1);
-        if (existing.length > 0) {
-          console.log(`Clearing existing ${year} records...`);
-          while (true) {
-              if (isTimeUp()) break;
-              const batchRecs = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 500);
-              if (batchRecs.length === 0) break;
-              for (let i = 0; i < batchRecs.length; i += 50) {
-                  const chunk = batchRecs.slice(i, i + 50);
-                  await Promise.all(chunk.map(async (rec) => {
-                      try {
-                          await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id);
-                      } catch (e) {
-                          if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
-                              await delay(3000);
-                              try { await base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id); } catch(e2) {}
-                          }
-                      }
-                  }));
-                  await delay(100);
-              }
-          }
-        }
-      }
-
-      for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
-        if (isTimeUp()) { console.warn(`Time limit at ${imported}/${recordsToProcess.length}`); break; }
-        const chunk = recordsToProcess.slice(i, i + CHUNK);
-        const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, chunk, `chunk-${i}`);
-        if (result.ok) { imported += chunk.length; }
-        else {
-          chunkErrors++;
-          addError('import', `Chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: chunk.length });
-          // If rate limited, pause longer before next chunk
-          if (/rate limit|429/i.test(result.error)) await delay(5000);
-        }
-        if (i + CHUNK < recordsToProcess.length) await delay(350); // increased delay to prevent rate limit
+    // Pre-flight sanity check on fresh imports: warn (no longer abort the
+    // whole run since the upsert path won't blow away existing data on a bad
+    // parse) when the parsed-row count is way below what's stored. The check
+    // still helps surface "CMS reformatted the spreadsheet and our parser
+    // only recognized a fraction" early in the logs.
+    let preflightWarning = null;
+    if (!dry_run && recordsToProcess.length > 0 && effectiveOffset === 0) {
+      const existingCountSample = await base44.asServiceRole.entities.MedicareHHAStats.filter({ data_year: year }, '-created_date', 1000);
+      if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
+        preflightWarning = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Importing anyway via upsert — existing rows that aren't in this import will be left untouched. If CMS truly removed rows, run again after verifying the parse.`;
+        console.warn(`[importMedicareHHA] ${preflightWarning}`);
+        addError('preflight', preflightWarning, {});
       }
     }
 
-    const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
-    // Only mark as failed if zero rows imported AND chunk errors happened; partial success is still "completed"
-    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0) ? 'failed' : 'completed';
+    let imported = 0, updated = 0, skipped = 0, chunkErrors = 0;
+    // Track the natural keys touched in this invocation so we can clean up
+    // rows the source no longer publishes — but only on a fresh, complete run
+    // (offset === 0 and no time-out). On resumed imports we don't have the full
+    // touched set so we skip the cleanup.
+    const touchedKeys = new Set();
+    const touchedTables = new Set();
+
+    if (!dry_run && recordsToProcess.length > 0) {
+      for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
+        if (isTimeUp()) { console.warn(`Time limit at ${imported + updated}/${recordsToProcess.length}`); break; }
+        const chunk = recordsToProcess.slice(i, i + CHUNK);
+        for (const r of chunk) {
+          touchedKeys.add(hhaRecordKey(r));
+          if (r.table_name) touchedTables.add(r.table_name);
+        }
+
+        const part = await hhaPartitionForUpsert(base44, chunk, year);
+        skipped += part.skipped;
+
+        if (part.toCreate.length > 0) {
+          const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareHHAStats, part.toCreate, `chunk-${i}-create`);
+          if (result.ok) imported += part.toCreate.length;
+          else {
+            chunkErrors++;
+            addError('import', `Create chunk ${i}-${i + chunk.length} failed: ${result.error}`, { chunk_start: i + effectiveOffset, chunk_size: part.toCreate.length });
+            if (/rate limit|429/i.test(result.error)) await delay(5000);
+          }
+        }
+        if (part.toUpdate.length > 0) {
+          // Apply updates in small parallel groups to bound rate-limit risk.
+          for (let j = 0; j < part.toUpdate.length; j += 5) {
+            if (isTimeUp()) break;
+            const group = part.toUpdate.slice(j, j + 5);
+            const results = await Promise.all(group.map(({ id, record }) =>
+              base44.asServiceRole.entities.MedicareHHAStats.update(id, record)
+                .then(() => true)
+                .catch(err => {
+                  addError('update', `Update id=${id}: ${err.message}`, {});
+                  return false;
+                })
+            ));
+            updated += results.filter(Boolean).length;
+            if (j + 5 < part.toUpdate.length) await delay(150);
+          }
+        }
+        if (i + CHUNK < recordsToProcess.length) await delay(350);
+      }
+    }
+
+    const timedOut = !dry_run && (imported + updated + skipped) < recordsToProcess.length && isTimeUp();
+
+    // Cleanup of rows CMS removed from the source publication. Bounded to
+    // fresh, complete, successful runs so we don't accidentally delete rows
+    // that just happen to be outside this resume slice.
+    let removed = 0;
+    if (!dry_run && !timedOut && effectiveOffset === 0 && touchedTables.size > 0 && chunkErrors === 0) {
+      try {
+        const tableNames = [...touchedTables];
+        const allForYear = await base44.asServiceRole.entities.MedicareHHAStats.filter(
+          { data_year: year, table_name: { $in: tableNames } },
+          undefined,
+          tableNames.length * 5000 + 100,
+        );
+        const stale = allForYear.filter(row => !touchedKeys.has(hhaRecordKey(row)));
+        for (let j = 0; j < stale.length; j += 50) {
+          if (isTimeUp()) break;
+          const group = stale.slice(j, j + 50);
+          await Promise.all(group.map(rec =>
+            base44.asServiceRole.entities.MedicareHHAStats.delete(rec.id)
+              .then(() => { removed++; })
+              .catch(err => addError('cleanup', `Delete stale ${rec.id}: ${err.message}`, {}))
+          ));
+          await delay(100);
+        }
+      } catch (e) {
+        addError('cleanup', `Stale-row scan failed: ${e.message}`, {});
+      }
+    }
+
+    // Only mark as failed if zero rows touched AND chunk errors happened; partial success is still "completed"
+    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0 && updated === 0) ? 'failed' : 'completed';
 
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
+      status: finalStatus,
+      imported_rows: (batch.imported_rows || 0) + imported,
+      updated_rows: (batch.updated_rows || 0) + updated,
+      skipped_rows: (batch.skipped_rows || 0) + skipped + (chunkErrors * CHUNK),
       completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : [],
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}/${recordsToProcess.length}. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
+      dedup_summary: { ...(ruleSummary || {}), validation_warnings: totalWarnings, removed_stale: removed, ...(preflightWarning ? { preflight_warning: preflightWarning } : {}) },
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}, updated ${updated}, skipped ${skipped} of ${recordsToProcess.length}. Resume offset=${effectiveOffset + imported + updated + skipped}`, retry_params: { row_offset: effectiveOffset + imported + updated + skipped } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try {

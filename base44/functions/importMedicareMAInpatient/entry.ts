@@ -13,6 +13,52 @@ const RETRY_BACKOFF_MS = 2000;
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// Natural key for the upsert path. (data_year, table_name, category) plus
+// `state` for MA7 (which is per-state, where category may be the demographic
+// dimension rather than the state itself).
+const MA_KEY_FIELDS = ['data_year', 'table_name', 'category'];
+function maRecordKey(r) {
+  const base = MA_KEY_FIELDS.map(f => String(r[f] ?? '').trim().toLowerCase()).join('|');
+  return r.state ? `${base}|${String(r.state).trim().toLowerCase()}` : base;
+}
+
+async function maPartitionForUpsert(base44, chunk, year) {
+  const tableNames = [...new Set(chunk.map(r => r.table_name).filter(Boolean))];
+  if (tableNames.length === 0) return { toCreate: chunk, toUpdate: [], skipped: 0 };
+  let existing = [];
+  try {
+    existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter(
+      { data_year: year, table_name: { $in: tableNames } },
+      undefined,
+      tableNames.length * 2000 + 100,
+    );
+  } catch (e) {
+    console.warn(`[importMedicareMAInpatient] dedup lookup failed: ${e.message}; falling back to create-only`);
+    return { toCreate: chunk, toUpdate: [], skipped: 0 };
+  }
+  const map = new Map(existing.map(e => [maRecordKey(e), e]));
+  const toCreate = [];
+  const toUpdate = [];
+  let skipped = 0;
+  for (const r of chunk) {
+    const ex = map.get(maRecordKey(r));
+    if (!ex) { toCreate.push(r); continue; }
+    const patch = {};
+    for (const k of Object.keys(r)) {
+      const v = r[k];
+      if (v === null || v === undefined || v === '') continue;
+      if (typeof v === 'object') {
+        if (JSON.stringify(v) !== JSON.stringify(ex[k] ?? null)) patch[k] = v;
+      } else if (String(ex[k] ?? '').trim() !== String(v).trim()) {
+        patch[k] = v;
+      }
+    }
+    if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
+    else skipped++;
+  }
+  return { toCreate, toUpdate, skipped };
+}
+
 // Fetch with automatic retry for transient network errors
 async function fetchWithRetry(url, options = {}, label = 'fetch') {
   let lastError;
@@ -504,87 +550,86 @@ Deno.serve(async (req) => {
       let fatalRateLimit = false;
       const CHUNK = 30;
 
-      if (!dry_run && recordsToProcess.length > 0) {
-        if (effectiveOffset === 0) {
-          // Sanity check: refuse destructive overwrite if parsed rows are <50%
-          // of the existing year's row count. CMS sometimes reformats their
-          // spreadsheets in ways the parser doesn't recognize, and silently
-          // wiping a year of MA Inpatient data is much worse than a failed import.
-          const existingCountSample = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1000);
-          if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
-            const reason = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Refusing destructive overwrite — CMS may have changed the spreadsheet format. Set dry_run=true and inspect the parse first.`;
-            console.warn(`[importMedicareMAInpatient] ${reason}`);
-            await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-              status: 'failed',
-              cancel_reason: reason,
-              error_samples: [{ message: reason }],
-            });
-            return Response.json({ error: reason, sanity_check_failed: true }, { status: 400 });
-          }
-
-          const existing = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1);
-          if (existing.length > 0) {
-            console.log(`Clearing existing ${year} records...`);
-            while (true) {
-                if (isTimeUp()) break;
-                const batchRecs = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 500);
-                if (batchRecs.length === 0) break;
-                
-                for (let i = 0; i < batchRecs.length; i += 50) {
-                    const chunk = batchRecs.slice(i, i + 50);
-                    await Promise.all(chunk.map(async (rec) => {
-                        try {
-                            await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id);
-                        } catch (e) {
-                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
-                                await delay(3000);
-                                try { await base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id); } catch(e2) {}
-                            }
-                        }
-                    }));
-                    await delay(100);
-                }
-            }
-          }
+      // Pre-flight warning when parsed-row count is way below what's stored.
+      // Upsert path no longer destroys data on bad parse, so this is just a flag.
+      let preflightWarning = null;
+      if (!dry_run && recordsToProcess.length > 0 && effectiveOffset === 0) {
+        const existingCountSample = await base44.asServiceRole.entities.MedicareMAInpatient.filter({ data_year: year }, '-created_date', 1000);
+        if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
+          preflightWarning = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Importing anyway via upsert.`;
+          console.warn(`[importMedicareMAInpatient] ${preflightWarning}`);
+          addError('preflight', preflightWarning, {});
         }
+      }
 
+      let updated = 0, skipped = 0;
+      const touchedKeys = new Set();
+      const touchedTables = new Set();
+
+      if (!dry_run && recordsToProcess.length > 0) {
         for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
           if (isTimeUp()) {
-            console.warn(`[import] Time limit reached at ${imported}/${recordsToProcess.length} (${elapsed()}ms)`);
+            console.warn(`[import] Time limit reached at ${imported + updated}/${recordsToProcess.length} (${elapsed()}ms)`);
             break;
           }
           const chunk = recordsToProcess.slice(i, i + CHUNK);
+          for (const r of chunk) {
+            touchedKeys.add(maRecordKey(r));
+            if (r.table_name) touchedTables.add(r.table_name);
+          }
+
+          const part = await maPartitionForUpsert(base44, chunk, year);
+          skipped += part.skipped;
+
           let chunkImported = false;
 
-          for (let attempt = 1; attempt <= 6; attempt++) {
-            try {
-              await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(chunk);
-              imported += chunk.length;
-              chunkImported = true;
-              break;
-            } catch (e) {
-              const isRateLimit = e.message?.includes('Rate limit');
-              if (isRateLimit && attempt < 6) {
-                const waitMs = attempt * 10000 + Math.random() * 5000; // Exponentially longer wait
-                console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
-                await delay(waitMs);
-              } else if (attempt < 6 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
-                console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/6): ${e.message}`);
-                await delay(attempt * 2000);
-              } else {
-                addError('import', `Chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
-                  chunk_start: i + effectiveOffset,
-                  chunk_size: chunk.length,
-                  attempts: attempt,
-                  first_record_category: chunk[0]?.category,
-                  first_record_table: chunk[0]?.table_name,
-                });
-                chunkErrors++;
-                if (isRateLimit || e.message?.includes('timeout') || e.message?.includes('network')) {
-                  fatalRateLimit = true;
-                }
+          if (part.toCreate.length > 0) {
+            for (let attempt = 1; attempt <= 6; attempt++) {
+              try {
+                await base44.asServiceRole.entities.MedicareMAInpatient.bulkCreate(part.toCreate);
+                imported += part.toCreate.length;
+                chunkImported = true;
                 break;
+              } catch (e) {
+                const isRateLimit = e.message?.includes('Rate limit');
+                if (isRateLimit && attempt < 6) {
+                  const waitMs = attempt * 10000 + Math.random() * 5000;
+                  console.warn(`[import] Rate limited at chunk ${i}, waiting ${Math.round(waitMs)}ms...`);
+                  await delay(waitMs);
+                } else if (attempt < 6 && (e.message?.includes('timeout') || e.message?.includes('network'))) {
+                  console.warn(`[import] Network error at chunk ${i}, retrying (${attempt}/6): ${e.message}`);
+                  await delay(attempt * 2000);
+                } else {
+                  addError('import', `Create chunk ${i}-${i + chunk.length} failed: ${e.message}`, {
+                    chunk_start: i + effectiveOffset,
+                    chunk_size: part.toCreate.length,
+                    attempts: attempt,
+                    first_record_category: part.toCreate[0]?.category,
+                    first_record_table: part.toCreate[0]?.table_name,
+                  });
+                  chunkErrors++;
+                  if (isRateLimit || e.message?.includes('timeout') || e.message?.includes('network')) {
+                    fatalRateLimit = true;
+                  }
+                  break;
+                }
               }
+            }
+          } else {
+            chunkImported = true;
+          }
+
+          if (part.toUpdate.length > 0 && !fatalRateLimit) {
+            for (let j = 0; j < part.toUpdate.length; j += 5) {
+              if (isTimeUp()) break;
+              const group = part.toUpdate.slice(j, j + 5);
+              const results = await Promise.all(group.map(({ id, record }) =>
+                base44.asServiceRole.entities.MedicareMAInpatient.update(id, record)
+                  .then(() => true)
+                  .catch(err => { addError('update', `Update id=${id}: ${err.message}`, {}); return false; })
+              ));
+              updated += results.filter(Boolean).length;
+              if (j + 5 < part.toUpdate.length) await delay(150);
             }
           }
 
@@ -600,23 +645,53 @@ Deno.serve(async (req) => {
         }
       }
 
-      const timedOut = !dry_run && imported < recordsToProcess.length && (isTimeUp() || fatalRateLimit);
+      const timedOut = !dry_run && (imported + updated + skipped) < recordsToProcess.length && (isTimeUp() || fatalRateLimit);
+
+      // Cleanup of rows CMS removed from the source publication, only on a fresh
+      // complete error-free run.
+      let removed = 0;
+      if (!dry_run && !timedOut && effectiveOffset === 0 && touchedTables.size > 0 && chunkErrors === 0) {
+        try {
+          const tableNames = [...touchedTables];
+          const allForYear = await base44.asServiceRole.entities.MedicareMAInpatient.filter(
+            { data_year: year, table_name: { $in: tableNames } },
+            undefined,
+            tableNames.length * 5000 + 100,
+          );
+          const stale = allForYear.filter(row => !touchedKeys.has(maRecordKey(row)));
+          for (let j = 0; j < stale.length; j += 50) {
+            if (isTimeUp()) break;
+            const group = stale.slice(j, j + 50);
+            await Promise.all(group.map(rec =>
+              base44.asServiceRole.entities.MedicareMAInpatient.delete(rec.id)
+                .then(() => { removed++; })
+                .catch(err => addError('cleanup', `Delete stale ${rec.id}: ${err.message}`, {}))
+            ));
+            await delay(100);
+          }
+        } catch (e) {
+          addError('cleanup', `Stale-row scan failed: ${e.message}`, {});
+        }
+      }
+
       const finalStatus = dry_run ? 'completed'
         : timedOut ? 'paused'
-        : chunkErrors > 0 && imported === 0 ? 'failed'
+        : chunkErrors > 0 && imported === 0 && updated === 0 ? 'failed'
         : chunkErrors > 0 ? 'completed'
         : 'completed';
 
       await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
         status: finalStatus,
         imported_rows: (batch.imported_rows || 0) + imported,
-        skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK),
+        updated_rows: (batch.updated_rows || 0) + updated,
+        skipped_rows: (batch.skipped_rows || 0) + skipped + (chunkErrors * CHUNK),
         completed_at: new Date().toISOString(),
         error_samples: errorSamples.length > 0 ? errorSamples : [],
+        dedup_summary: { removed_stale: removed, ...(preflightWarning ? { preflight_warning: preflightWarning } : {}) },
         ...(timedOut ? {
           paused_at: new Date().toISOString(),
-          cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported}.`,
-          retry_params: { row_offset: effectiveOffset + imported }
+          cancel_reason: `${fatalRateLimit ? 'Rate limit or network error' : 'Time limit'} reached. Imported ${imported}, updated ${updated}, skipped ${skipped} of ${recordsToProcess.length}. Resume from offset ${effectiveOffset + imported + updated + skipped}.`,
+          retry_params: { row_offset: effectiveOffset + imported + updated + skipped }
         } : {
           cancel_reason: "",
           paused_at: ""
