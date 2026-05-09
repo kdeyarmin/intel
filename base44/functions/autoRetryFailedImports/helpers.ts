@@ -38,7 +38,10 @@ export function isRetryableErrorMessage(msg: string | null | undefined): boolean
 
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
-// back to the most recent error_samples entry's `detail`.
+// back to the most recent error_samples entry. Different importers persist the
+// error string under different keys (`detail` in Medicare imports,
+// `message` in autoImportCMSData) — accept either so the worker doesn't miss
+// transient failures whose error lives in the "wrong" field.
 export function extractErrorMessage(batch: Record<string, unknown>): string {
     if (typeof batch.cancel_reason === 'string' && batch.cancel_reason.length > 0) {
         return batch.cancel_reason;
@@ -46,7 +49,10 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
     const samples = batch.error_samples;
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
-        if (last && typeof last.detail === 'string') return last.detail;
+        if (last) {
+            if (typeof last.detail === 'string' && last.detail.length > 0) return last.detail;
+            if (typeof last.message === 'string' && last.message.length > 0) return last.message;
+        }
     }
     return '';
 }

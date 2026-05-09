@@ -98,6 +98,20 @@ describe('extractErrorMessage', () => {
     })).toBe('most recent error');
   });
 
+  it('also reads error_samples[*].message for importers that use it', () => {
+    // autoImportCMSData writes { message: error.message } on fatal failure.
+    // Worker must see those, not just `detail`-style entries.
+    expect(extractErrorMessage({
+      error_samples: [{ message: 'fetch timeout' }],
+    })).toBe('fetch timeout');
+  });
+
+  it('prefers detail over message when both exist on the same entry', () => {
+    expect(extractErrorMessage({
+      error_samples: [{ detail: 'detail value', message: 'message value' }],
+    })).toBe('detail value');
+  });
+
   it('returns empty string when no error info present', () => {
     expect(extractErrorMessage({})).toBe('');
     expect(extractErrorMessage({ cancel_reason: '' })).toBe('');
