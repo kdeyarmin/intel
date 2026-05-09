@@ -10,7 +10,7 @@ import {
   nextRetryDueAt,
   shouldRetryBatch,
 } from '../base44/functions/autoRetryFailedImports/helpers';
-import { ERROR_CATEGORIES, isErrorRetryable } from '../src/components/imports/errorCategories.jsx';
+import { isErrorRetryable } from '../src/components/imports/errorCategories.jsx';
 
 describe('isRetryableErrorMessage', () => {
   it('returns false for empty/missing messages', () => {
