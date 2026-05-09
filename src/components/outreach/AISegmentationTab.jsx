@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, PieChart, DollarSign } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AISegmentationTab({ campaigns = [], providers = [], scores = [], referrals = [], locations = [], taxonomies = [] }) {
   const [loading, setLoading] = useState(false);
@@ -10,7 +11,7 @@ export default function AISegmentationTab({ campaigns = [], providers = [], scor
 
   const generateSegmentation = async () => {
     setLoading(true);
-
+    try {
     const providerSample = providers.slice(0, 100).map(p => ({
       npi: p.npi,
       type: p.entity_type,
@@ -101,7 +102,12 @@ Provide:
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI segmentation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const prioColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };

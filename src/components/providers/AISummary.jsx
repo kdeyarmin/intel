@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 export default function AISummary({ provider, taxonomies, utilization, referral, locations, score }) {
   const [summary, setSummary] = useState(null);
@@ -11,6 +12,7 @@ export default function AISummary({ provider, taxonomies, utilization, referral,
 
   const generate = async () => {
     setLoading(true);
+    try {
     const name = provider.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider.organization_name || provider.npi;
@@ -46,7 +48,12 @@ Summarize who this provider is, their practice characteristics, notable utilizat
 
     const result = await base44.integrations.Core.InvokeLLM({ prompt });
     setSummary(result);
-    setLoading(false);
+    } catch (err) {
+      console.error('Summary generation failed:', err);
+      toast.error('Failed to generate summary. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

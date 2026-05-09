@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ShieldAlert, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
+import { toast } from 'sonner';
 
 const SEVERITY_STYLES = {
   critical: 'bg-red-500/15 text-red-400 border-red-500/30',
@@ -37,7 +38,7 @@ export default function ProactiveDQAlerts() {
 
   const runPrediction = async () => {
     setLoading(true);
-
+    try {
     const scanHistory = scans.slice(0, 10).map(s => ({
       date: s.created_date,
       scores: s.scores,
@@ -117,7 +118,12 @@ Be specific and actionable. Reference actual numbers from the data.`,
     });
 
     setPredictions(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Prediction failed:', err);
+      toast.error('Failed to generate predictions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const RISK_COLORS = { low: 'text-emerald-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-red-400' };

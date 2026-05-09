@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Megaphone, TrendingUp, Users, Wifi, ShieldCheck, Activity } from 'lucide-react';
 import { createPageUrl } from '../../utils';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function EnrichmentActionability() {
   const [loading, setLoading] = useState(false);
@@ -20,36 +21,36 @@ export default function EnrichmentActionability() {
 
   const analyze = async () => {
     setLoading(true);
+    try {
+      // Aggregate enriched data
+      const byNPI = {};
+      records.forEach(r => {
+        if (!byNPI[r.npi]) byNPI[r.npi] = { npi: r.npi, name: r.provider_name, details: {} };
+        if (r.enrichment_details) {
+          Object.assign(byNPI[r.npi].details, r.enrichment_details);
+        }
+      });
 
-    // Aggregate enriched data
-    const byNPI = {};
-    records.forEach(r => {
-      if (!byNPI[r.npi]) byNPI[r.npi] = { npi: r.npi, name: r.provider_name, details: {} };
-      if (r.enrichment_details) {
-        Object.assign(byNPI[r.npi].details, r.enrichment_details);
-      }
-    });
+      const enrichedProviders = Object.values(byNPI);
+      const withTelehealth = enrichedProviders.filter(p => p.details.telehealth_available);
+      const withInsurance = enrichedProviders.filter(p => p.details.insurance_accepted?.length > 0);
+      const withVolume = enrichedProviders.filter(p => p.details.estimated_patient_volume);
+      const withAffiliations = enrichedProviders.filter(p => p.details.hospital_affiliations?.length > 0);
+      const highReviews = enrichedProviders.filter(p => p.details.review_score >= 4);
 
-    const enrichedProviders = Object.values(byNPI);
-    const withTelehealth = enrichedProviders.filter(p => p.details.telehealth_available);
-    const withInsurance = enrichedProviders.filter(p => p.details.insurance_accepted?.length > 0);
-    const withVolume = enrichedProviders.filter(p => p.details.estimated_patient_volume);
-    const withAffiliations = enrichedProviders.filter(p => p.details.hospital_affiliations?.length > 0);
-    const highReviews = enrichedProviders.filter(p => p.details.review_score >= 4);
+      const snapshot = {
+        total: enrichedProviders.length,
+        withTelehealth: withTelehealth.length,
+        withInsurance: withInsurance.length,
+        withVolume: withVolume.length,
+        withAffiliations: withAffiliations.length,
+        highReviews: highReviews.length,
+        sampleInsurance: [...new Set(withInsurance.flatMap(p => p.details.insurance_accepted || []))].slice(0, 10),
+        sampleAffiliations: [...new Set(withAffiliations.flatMap(p => p.details.hospital_affiliations || []))].slice(0, 8),
+      };
 
-    const snapshot = {
-      total: enrichedProviders.length,
-      withTelehealth: withTelehealth.length,
-      withInsurance: withInsurance.length,
-      withVolume: withVolume.length,
-      withAffiliations: withAffiliations.length,
-      highReviews: highReviews.length,
-      sampleInsurance: [...new Set(withInsurance.flatMap(p => p.details.insurance_accepted || []))].slice(0, 10),
-      sampleAffiliations: [...new Set(withAffiliations.flatMap(p => p.details.hospital_affiliations || []))].slice(0, 8),
-    };
-
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Based on enriched provider data, suggest actionable outreach and engagement strategies.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Based on enriched provider data, suggest actionable outreach and engagement strategies.
 
 ENRICHED DATA SUMMARY:
 - ${snapshot.total} providers enriched total
@@ -65,29 +66,34 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
 - Identify which enriched data point makes it possible
 - Estimate potential impact
 - Suggest targeting criteria`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          actions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-                strategy: { type: "string" },
-                data_driver: { type: "string" },
-                impact: { type: "string" },
-                target_count: { type: "number" },
-                icon_type: { type: "string", enum: ["telehealth", "insurance", "volume", "affiliation", "reviews"] }
+        response_json_schema: {
+          type: "object",
+          properties: {
+            actions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  strategy: { type: "string" },
+                  data_driver: { type: "string" },
+                  impact: { type: "string" },
+                  target_count: { type: "number" },
+                  icon_type: { type: "string", enum: ["telehealth", "insurance", "volume", "affiliation", "reviews"] }
+                }
               }
-            }
-          },
-          summary: { type: "string" }
+            },
+            summary: { type: "string" }
+          }
         }
-      }
-    });
-    setSuggestions(res);
-    setLoading(false);
+      });
+      setSuggestions(res);
+    } catch (err) {
+      console.error('AI enrichment actionability failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const ICONS = {

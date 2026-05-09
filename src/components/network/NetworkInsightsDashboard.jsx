@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, Crown, AlertTriangle, TrendingUp, Network } from 'lucide-react';
+import { toast } from 'sonner';
 import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
 import StrategicPartnerFinder from './StrategicPartnerFinder';
 
@@ -121,6 +122,7 @@ export default function NetworkInsightsDashboard({ nodes = [], edges = [], locat
 
   const handleAIAnalysis = async () => {
     setLoadingAI(true);
+    try {
     const hubSummary = topHubs.slice(0, 5).map(h => `${h.label} (${h.entityType}, ${h.state || '?'}, vol=${h.totalVolume}, score=${h.hubScore})`).join('\n');
     const gapSummary = careGaps.map(g => `${g.state}: ${g.description}`).join('\n');
 
@@ -158,7 +160,12 @@ Provide:
     });
 
     setAiInsights(res);
-    setLoadingAI(false);
+    } catch (err) {
+      console.error('AI network analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoadingAI(false);
+    }
   };
 
   if (nodes.length === 0) return null;

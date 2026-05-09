@@ -54,8 +54,16 @@ export default function NPPESCrawlerSettings() {
 
   const existingConfig = configs[0];
 
+  // Depend on stable scalar identity (id + updated_date) rather than the full
+  // existingConfig object reference. React Query swaps in a new object on every
+  // refetch even when nothing changed, and including the object here causes the
+  // form to clobber unsaved edits whenever the cache invalidates.
+  //
+  // Belt-and-suspenders: also skip rehydration when hasChanges is true so a real
+  // upstream change (someone else saves and updated_date bumps) doesn't blow
+  // away an edit-in-progress. The user keeps their draft until they save or reset.
   useEffect(() => {
-    if (existingConfig) {
+    if (existingConfig && !hasChanges) {
       setForm({
         ...createDefaultForm(),
         config_key: 'default',
@@ -78,7 +86,6 @@ export default function NPPESCrawlerSettings() {
         selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingConfig?.id, existingConfig?.updated_date]);
 
   const saveMutation = useMutation({

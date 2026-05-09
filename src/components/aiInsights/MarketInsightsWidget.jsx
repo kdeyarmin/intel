@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { base44 } from '@/api/base44Client';
 import { TrendingUp, Loader2, Sparkles, ShieldAlert, Target, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 const TYPE_CFG = {
   growth: { icon: TrendingUp, bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
@@ -20,6 +21,7 @@ export default function MarketInsightsWidget({ providers = [], locations = [], t
 
   const analyze = async () => {
     setLoading(true);
+    try {
     const topStates = {};
     locations.forEach(l => { if (l.state) topStates[l.state] = (topStates[l.state] || 0) + 1; });
     const stateList = Object.entries(topStates).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, c]) => `${s}: ${c} locations`).join(', ');
@@ -66,7 +68,12 @@ Provide 6 strategic insights covering growth opportunities, competitive threats,
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Market analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

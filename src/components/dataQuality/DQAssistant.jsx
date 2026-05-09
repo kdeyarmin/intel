@@ -41,60 +41,75 @@ export default function DQAssistant() {
     addMessage('user', question);
     setInput('');
     setLoading(true);
-
-    const res = await base44.functions.invoke('runDataQualityScan', {
-      action: 'assistant_query',
-      question,
-    });
-
-    const data = res.data;
-    if (data.success && data.response) {
-      addMessage('assistant', data.response.answer, {
-        actions: data.response.suggested_actions,
-        stats: data.response.related_stats,
+    try {
+      const res = await base44.functions.invoke('runDataQualityScan', {
+        action: 'assistant_query',
+        question,
       });
-    } else {
-      addMessage('assistant', data.error || 'Sorry, I could not process that request.');
+
+      const data = res.data;
+      if (data.success && data.response) {
+        addMessage('assistant', data.response.answer, {
+          actions: data.response.suggested_actions,
+          stats: data.response.related_stats,
+        });
+      } else {
+        addMessage('assistant', data.error || 'Sorry, I could not process that request.');
+      }
+    } catch (err) {
+      console.error('DQ assistant query failed:', err);
+      addMessage('assistant', 'Sorry, the request failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleAutoFix = async () => {
     addMessage('user', '🔧 Run auto-fix on eligible alerts');
     setLoading(true);
     setAutoFixResult(null);
+    try {
+      const res = await base44.functions.invoke('runDataQualityScan', {
+        action: 'auto_fix_eligible',
+      });
 
-    const res = await base44.functions.invoke('runDataQualityScan', {
-      action: 'auto_fix_eligible',
-    });
-
-    const data = res.data;
-    setAutoFixResult(data);
-    addMessage('assistant', data.message || `Auto-fix complete: ${data.fixed || 0} fixed, ${data.skipped || 0} skipped.`, {
-      autoFix: data,
-    });
-    setLoading(false);
+      const data = res.data;
+      setAutoFixResult(data);
+      addMessage('assistant', data.message || `Auto-fix complete: ${data.fixed || 0} fixed, ${data.skipped || 0} skipped.`, {
+        autoFix: data,
+      });
+    } catch (err) {
+      console.error('Auto-fix failed:', err);
+      addMessage('assistant', 'Auto-fix failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePatternAnalysis = async () => {
     addMessage('user', '📊 Analyze recurring data quality patterns');
     setLoading(true);
     setPatternResult(null);
-
-    const res = await base44.functions.invoke('runDataQualityScan', {
-      action: 'analyze_patterns',
-    });
-
-    const data = res.data;
-    if (data.success && data.analysis) {
-      setPatternResult(data.analysis);
-      addMessage('assistant', data.analysis.summary || 'Pattern analysis complete.', {
-        patterns: data.analysis,
+    try {
+      const res = await base44.functions.invoke('runDataQualityScan', {
+        action: 'analyze_patterns',
       });
-    } else {
+
+      const data = res.data;
+      if (data.success && data.analysis) {
+        setPatternResult(data.analysis);
+        addMessage('assistant', data.analysis.summary || 'Pattern analysis complete.', {
+          patterns: data.analysis,
+        });
+      } else {
+        addMessage('assistant', 'Pattern analysis failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Pattern analysis failed:', err);
       addMessage('assistant', 'Pattern analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleQuickAction = (qa) => {

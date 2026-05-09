@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, AlertTriangle, Search,
   Phone, Wifi, DollarSign, ShieldCheck, Activity, XCircle
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const DATA_POINTS = [
   { key: 'patient_volume', label: 'Patient Volume', icon: Activity, description: 'Estimated patient panel size' },
@@ -36,7 +37,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     if (enabledPoints.size === 0) return;
     setRunning(true);
     setResults(null);
-
+    try {
     // Get NPIs already scanned via proactive discovery so we skip them
     let alreadyScannedNPIs = new Set();
     try {
@@ -47,7 +48,7 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
     // Filter out already-scanned providers, then take batchSize
     const candidates = providers.filter(p => !alreadyScannedNPIs.has(p.npi));
     const toScan = candidates.slice(0, batchSize);
-    
+
     if (toScan.length === 0) {
       setResults({ enriched: 0, no_data: 0, errors: 0, details: [], message: 'All providers have already been scanned.' });
       setRunning(false);
@@ -65,8 +66,11 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
         : p.organization_name || p.npi;
       setProgress({ current: i + 1, total: toScan.length, currentName: name });
 
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `Find the following specific data about this healthcare provider:
+      // Per-provider try/catch so one failed provider doesn't abort the whole batch
+      // and discard partial scan results.
+      try {
+        const res = await base44.integrations.Core.InvokeLLM({
+          prompt: `Find the following specific data about this healthcare provider:
 
 Provider: ${name}
 NPI: ${p.npi}
@@ -76,84 +80,94 @@ Data points to find:
 ${enabledList.map(k => `- ${DATA_POINTS.find(d => d.key === k)?.description || k}`).join('\n')}
 
 Only return data you can verify. Provide specific numbers and names.`,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            estimated_patient_volume: { type: ["string", "null"] },
-            insurance_accepted: { type: "array", items: { type: "string" } },
-            telehealth_available: { type: ["boolean", "null"] },
-            office_hours: { type: ["string", "null"] },
-            cash_pay_info: { type: ["string", "null"] },
-            data_found: { type: "boolean" },
-            confidence: { type: "string", enum: ["high", "medium", "low"] },
-            ai_explanation: { type: "string", description: "Explain where and how you found this data" }
+          add_context_from_internet: true,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              estimated_patient_volume: { type: ["string", "null"] },
+              insurance_accepted: { type: "array", items: { type: "string" } },
+              telehealth_available: { type: ["boolean", "null"] },
+              office_hours: { type: ["string", "null"] },
+              cash_pay_info: { type: ["string", "null"] },
+              data_found: { type: "boolean" },
+              confidence: { type: "string", enum: ["high", "medium", "low"] },
+              ai_explanation: { type: "string", description: "Explain where and how you found this data" }
+            }
           }
+        });
+
+        if (!res.data_found) {
+          scanResults.no_data++;
+          scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
+          // Record no_data so this NPI is skipped on future scans
+          await base44.entities.EnrichmentRecord.create({
+            npi: p.npi,
+            provider_name: name,
+            source: 'ai_web_search',
+            enrichment_type: 'multi_field',
+            field_name: 'proactive_scan',
+            new_value: 'No data found',
+            confidence: 'low',
+            status: 'rejected',
+            batch_id: `proactive_${Date.now()}`,
+          });
+          continue;
         }
-      });
 
-      if (!res.data_found) {
-        scanResults.no_data++;
-        scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
-        // Record no_data so this NPI is skipped on future scans
-        await base44.entities.EnrichmentRecord.create({
-          npi: p.npi,
-          provider_name: name,
-          source: 'ai_web_search',
-          enrichment_type: 'multi_field',
-          field_name: 'proactive_scan',
-          new_value: 'No data found',
-          confidence: 'low',
-          status: 'rejected',
-          batch_id: `proactive_${Date.now()}`,
-        });
-        continue;
-      }
+        const details = {};
+        const summaryParts = [];
+        if (res.estimated_patient_volume) {
+          details.estimated_patient_volume = res.estimated_patient_volume;
+          summaryParts.push(`Patient Vol: ${res.estimated_patient_volume}`);
+        }
+        if (res.insurance_accepted?.length > 0) {
+          details.insurance_accepted = res.insurance_accepted;
+          summaryParts.push(`Insurance: ${res.insurance_accepted.slice(0, 3).join(', ')}`);
+        }
+        if (res.telehealth_available !== null && res.telehealth_available !== undefined) {
+          details.telehealth_available = res.telehealth_available;
+          summaryParts.push(`Telehealth: ${res.telehealth_available ? 'Yes' : 'No'}`);
+        }
+        if (res.office_hours) {
+          details.office_hours = res.office_hours;
+          summaryParts.push(`Hours: ${res.office_hours}`);
+        }
+        if (res.cash_pay_info) details.cash_pay_info = res.cash_pay_info;
+        if (res.ai_explanation) details.ai_explanation = res.ai_explanation;
 
-      const details = {};
-      const summaryParts = [];
-      if (res.estimated_patient_volume) {
-        details.estimated_patient_volume = res.estimated_patient_volume;
-        summaryParts.push(`Patient Vol: ${res.estimated_patient_volume}`);
-      }
-      if (res.insurance_accepted?.length > 0) {
-        details.insurance_accepted = res.insurance_accepted;
-        summaryParts.push(`Insurance: ${res.insurance_accepted.slice(0, 3).join(', ')}`);
-      }
-      if (res.telehealth_available !== null && res.telehealth_available !== undefined) {
-        details.telehealth_available = res.telehealth_available;
-        summaryParts.push(`Telehealth: ${res.telehealth_available ? 'Yes' : 'No'}`);
-      }
-      if (res.office_hours) {
-        details.office_hours = res.office_hours;
-        summaryParts.push(`Hours: ${res.office_hours}`);
-      }
-      if (res.cash_pay_info) details.cash_pay_info = res.cash_pay_info;
-      if (res.ai_explanation) details.ai_explanation = res.ai_explanation;
-
-      if (summaryParts.length > 0) {
-        await base44.entities.EnrichmentRecord.create({
-          npi: p.npi,
-          provider_name: name,
-          source: 'ai_web_search',
-          enrichment_type: 'multi_field',
-          field_name: 'proactive_scan',
-          new_value: summaryParts.join(' | '),
-          confidence: res.confidence || 'medium',
-          status: 'pending_review',
-          enrichment_details: details,
-          batch_id: `proactive_${Date.now()}`,
-        });
-        scanResults.enriched++;
-        scanResults.details.push({ npi: p.npi, name, status: 'enriched', fields: summaryParts.length });
-      } else {
-        scanResults.no_data++;
-        scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
+        if (summaryParts.length > 0) {
+          await base44.entities.EnrichmentRecord.create({
+            npi: p.npi,
+            provider_name: name,
+            source: 'ai_web_search',
+            enrichment_type: 'multi_field',
+            field_name: 'proactive_scan',
+            new_value: summaryParts.join(' | '),
+            confidence: res.confidence || 'medium',
+            status: 'pending_review',
+            enrichment_details: details,
+            batch_id: `proactive_${Date.now()}`,
+          });
+          scanResults.enriched++;
+          scanResults.details.push({ npi: p.npi, name, status: 'enriched', fields: summaryParts.length });
+        } else {
+          scanResults.no_data++;
+          scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
+        }
+      } catch (providerErr) {
+        console.error(`Scan failed for NPI ${p.npi}:`, providerErr);
+        scanResults.errors++;
+        scanResults.details.push({ npi: p.npi, name, status: 'error', error: providerErr?.message || String(providerErr) });
       }
     }
 
     setResults(scanResults);
-    setRunning(false);
+    } catch (err) {
+      console.error('AI proactive enrichment scan failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (
@@ -197,7 +211,7 @@ Only return data you can verify. Provide specific numbers and names.`,
 
         {running && (
           <div className="space-y-2">
-            <Progress value={(progress.current / progress.total) * 100} className="h-2" />
+            <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" />
             <p className="text-[10px] text-slate-500 text-center">
               Scanning {progress.current}/{progress.total} — {progress.currentName}
             </p>

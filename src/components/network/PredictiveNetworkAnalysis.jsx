@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, Users, MapPin, Handshake, AlertTriangle, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
 
 export default function PredictiveNetworkAnalysis({ nodes = [], edges = [], locations = [] }) {
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ export default function PredictiveNetworkAnalysis({ nodes = [], edges = [], loca
 
   const runAnalysis = async () => {
     setLoading(true);
-
+    try {
     const statesSummary = Object.entries(networkSnapshot.stateSpecs)
       .sort((a, b) => b[1].providers - a[1].providers)
       .slice(0, 15)
@@ -157,7 +158,12 @@ Provide data-driven predictions with confidence levels.`,
     });
 
     setAnalysis(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI predictive network analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const SEVERITY_COLORS = { critical: 'bg-red-500/15 text-red-400', high: 'bg-amber-500/15 text-amber-400', moderate: 'bg-blue-500/15 text-blue-400', medium: 'bg-amber-500/15 text-amber-400', low: 'bg-slate-700/50 text-slate-400' };

@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { base44 } from '@/api/base44Client';
 import { BarChart3, Loader2, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { toast } from 'sonner';
 
 export default function CampaignPredictionWidget({ campaigns = [] }) {
   const [results, setResults] = useState(null);
@@ -22,6 +23,8 @@ export default function CampaignPredictionWidget({ campaigns = [] }) {
 
   const predict = async () => {
     setLoading(true);
+    setResults(null); // clear stale predictions so a failed re-run doesn't leave previous output visible
+    try {
     const historical = activeCampaigns.map(c => ({
       name: c.name,
       sent: c.sent_count,
@@ -57,7 +60,12 @@ Provide:
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Prediction failed:', err);
+      toast.error('Prediction failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const trendColors = { improving: 'bg-emerald-100 text-emerald-700', stable: 'bg-blue-100 text-blue-700', declining: 'bg-red-100 text-red-700' };

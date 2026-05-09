@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { base44 } from '@/api/base44Client';
 import { Loader2, Sparkles, TrendingUp, Users, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AILocationInsights({ location, coProviders = [], associatedProvider, taxonomies = [], utilizations = [], referrals = [] }) {
   const [results, setResults] = useState(null);
@@ -12,7 +13,7 @@ export default function AILocationInsights({ location, coProviders = [], associa
 
   const analyze = async () => {
     setLoading(true);
-
+    try {
     const providerList = coProviders.slice(0, 10).map(p =>
       `${p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}` : p.organization_name} (${p.entity_type}, ${p.credential || 'N/A'})`
     ).join('\n');
@@ -94,7 +95,12 @@ Provide:
     });
 
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Location analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const strColors = { strong: 'bg-green-100 text-green-700', moderate: 'bg-blue-100 text-blue-700', exploratory: 'bg-slate-100 text-slate-600' };

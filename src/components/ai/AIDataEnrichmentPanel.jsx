@@ -179,7 +179,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         summary: res.summary,
         completeness: res.data_completeness_score,
       });
-    } catch (err) {
+    } catch (_err) {
       toast.error('Enrichment analysis failed. Please try again.');
     } finally {
       setLoading(false);
@@ -227,7 +227,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
       setAccepted(prev => new Set([...prev, sug.id]));
       toast.success(`Updated ${sug.field_label}`);
       if (onDataUpdated) onDataUpdated();
-    } catch (err) {
+    } catch (_err) {
       toast.error(`Failed to update ${sug.field_label}`);
     } finally {
       setAcceptingId(null);
