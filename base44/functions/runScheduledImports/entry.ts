@@ -180,15 +180,37 @@ Deno.serve(async (req) => {
         // hard time budget so a slow worker can't push the schedule loop past
         // its execution limit; any worker still in flight when we time out
         // will continue running on the platform side, just unobserved here.
+        //
+        // We pre-populate the worker map with `ok: false, error: 'timeout'`
+        // so a worker that doesn't return inside the budget is recorded as
+        // a timeout (not silently dropped) and the heartbeat reliably
+        // describes every expected worker.
         const maintenanceBudgetMs = Math.max(0, MAX_EXEC_MS - (Date.now() - startTime) - 2_000);
-        const maintenance: Array<{ worker: string; ok: boolean; error?: string }> = [];
+        const maintenanceMap = new Map<string, { worker: string; ok: boolean; error?: string }>();
+        for (const worker of MAINTENANCE_WORKERS) {
+            maintenanceMap.set(worker, { worker, ok: false, error: 'timeout' });
+        }
+        let maintenanceSkipped: string | null = null;
+
         if (maintenanceBudgetMs > 1_000) {
             const invocations = MAINTENANCE_WORKERS.map(async (worker) => {
                 try {
-                    await base44.asServiceRole.functions.invoke(worker, {});
-                    maintenance.push({ worker, ok: true });
+                    const res = await base44.asServiceRole.functions.invoke(worker, {});
+                    // Several maintenance workers return HTTP 200 with an
+                    // `errors` array instead of throwing on per-batch failures.
+                    // Inspect the payload so the heartbeat reflects real outcomes.
+                    const data = (res?.data ?? res) as Record<string, unknown> | undefined;
+                    const inner = data?.errors;
+                    const innerErrorCount = Array.isArray(inner) ? inner.length : 0;
+                    if (data?.error) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: String(data.error).substring(0, 200) });
+                    } else if (innerErrorCount > 0) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: `${innerErrorCount} inner error(s)` });
+                    } else {
+                        maintenanceMap.set(worker, { worker, ok: true });
+                    }
                 } catch (err) {
-                    maintenance.push({ worker, ok: false, error: err.message?.substring(0, 200) });
+                    maintenanceMap.set(worker, { worker, ok: false, error: err.message?.substring(0, 200) });
                 }
             });
             let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -203,23 +225,30 @@ Deno.serve(async (req) => {
             } finally {
                 if (timeoutId !== undefined) clearTimeout(timeoutId);
             }
-
-            // Persist a heartbeat so the UI can show "last maintenance run" and
-            // operators can spot stalled wiring. Best-effort — failure to log
-            // shouldn't break the scheduling response.
-            try {
-                await base44.asServiceRole.entities.AuditEvent.create({
-                    event_type: 'maintenance_fanout',
-                    user_email: 'system',
-                    details: {
-                        workers: maintenance,
-                        succeeded: maintenance.filter(m => m.ok).length,
-                        failed: maintenance.filter(m => !m.ok).length,
-                    },
-                    timestamp: new Date().toISOString(),
-                });
-            } catch (_e) { /* heartbeat is best-effort */ }
+        } else {
+            maintenanceSkipped = `budget_exhausted (${maintenanceBudgetMs}ms remaining)`;
         }
+
+        const maintenance = Array.from(maintenanceMap.values());
+
+        // Always persist a heartbeat — even when maintenance was skipped due to
+        // budget pressure — so the UI can distinguish "cron stopped" from
+        // "schedule loop ran but maintenance got squeezed out." Best-effort:
+        // a failure here shouldn't break the schedule response.
+        try {
+            await base44.asServiceRole.entities.AuditEvent.create({
+                event_type: 'maintenance_fanout',
+                user_email: 'system',
+                details: {
+                    workers: maintenance,
+                    succeeded: maintenance.filter(m => m.ok).length,
+                    failed: maintenance.filter(m => !m.ok).length,
+                    skipped_reason: maintenanceSkipped,
+                    budget_ms: maintenanceBudgetMs,
+                },
+                timestamp: new Date().toISOString(),
+            });
+        } catch (_e) { /* heartbeat is best-effort */ }
 
         return Response.json({
             success: true,
