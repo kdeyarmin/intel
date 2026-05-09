@@ -96,8 +96,12 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
       }
     });
     setAnalysis(result);
-    // auto-expand the first critical/high group
-    const firstImportant = result.groups?.findIndex(g => g.priority === 'critical' || g.priority === 'high');
+    // auto-expand the first critical/high group — index must come from the sorted view
+    // since the rendered list uses sortedGroups, not result.groups directly.
+    const sorted = [...(result.groups || [])].sort((a, b) =>
+      (PRIORITY_CONFIG[a.priority]?.sort ?? 9) - (PRIORITY_CONFIG[b.priority]?.sort ?? 9)
+    );
+    const firstImportant = sorted.findIndex(g => g.priority === 'critical' || g.priority === 'high');
     if (firstImportant >= 0) setExpandedGroups(new Set([firstImportant]));
     } catch (err) {
       console.error('AI error triage failed:', err);

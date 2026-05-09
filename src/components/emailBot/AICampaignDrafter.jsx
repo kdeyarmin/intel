@@ -32,6 +32,12 @@ export default function AICampaignDrafter({ providers = [], onDraftReady }) {
       toast.error('No providers selected');
       return;
     }
+    // Avoid burning an LLM call on an empty custom goal — the prompt would
+    // otherwise carry "CAMPAIGN GOAL: " with no description and yield a low-quality draft.
+    if (goal === 'custom' && !customGoal.trim()) {
+      toast.error('Please describe your campaign goal');
+      return;
+    }
     setGenerating(true);
     try {
     // Gather context from selected providers

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, UserCheck, ArrowLeft, BarChart3, ListTodo, Target, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
@@ -44,11 +45,14 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
       const lists = await base44.entities.LeadList.list('-created_date', 200);
       const linkedLists = lists.filter(l => listIds.includes(l.id));
 
-      let members = [];
-      for (const lid of listIds) {
-        const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid });
-        members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
-      }
+      // Parallel fan-out — sequential awaits added wall-clock latency proportional to list count.
+      const memberGroups = await Promise.all(
+        listIds.map(lid =>
+          base44.entities.LeadListMember.filter({ lead_list_id: lid })
+            .then(ms => ms.map(mm => ({ ...mm, _list_id: lid })))
+        )
+      );
+      const members = memberGroups.flat();
 
       setListsData(linkedLists);
       setAllMembers(members);
@@ -84,8 +88,13 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
   }, [listsData, allMembers]);
 
   const handleStatusChange = async (newStatus) => {
-    await base44.entities.Campaign.update(campaign.id, { status: newStatus });
-    onUpdate?.({ ...campaign, status: newStatus });
+    try {
+      await base44.entities.Campaign.update(campaign.id, { status: newStatus });
+      onUpdate?.({ ...campaign, status: newStatus });
+    } catch (err) {
+      console.error('Failed to update campaign status:', err);
+      toast.error('Failed to update campaign status. Please try again.');
+    }
   };
 
   if (loading) return <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}</div>;

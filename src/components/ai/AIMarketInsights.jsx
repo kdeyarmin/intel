@@ -26,23 +26,28 @@ export default function AIMarketInsights({ provider, location, taxonomies, utili
 
   const analyze = async () => {
     setLoading(true);
-
-    const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
-    const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-    const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-
-    // Calculate YoY trends
-    const sortedUtil = [...utilizations].sort((a, b) => a.year - b.year);
-    const utilTrend = sortedUtil.length >= 2
-      ? `Beneficiaries changed from ${sortedUtil[sortedUtil.length - 2]?.total_medicare_beneficiaries || 0} to ${sortedUtil[sortedUtil.length - 1]?.total_medicare_beneficiaries || 0}`
-      : 'Insufficient trend data';
-
-    const sortedRef = [...referrals].sort((a, b) => a.year - b.year);
-    const refTrend = sortedRef.length >= 2
-      ? `Referrals changed from ${sortedRef[sortedRef.length - 2]?.total_referrals || 0} to ${sortedRef[sortedRef.length - 1]?.total_referrals || 0}`
-      : 'Insufficient trend data';
-
     try {
+      // Defensive — non-array inputs would otherwise throw before the await and the
+      // finally below wouldn't run, leaving the spinner stuck.
+      const safeTaxonomies = Array.isArray(taxonomies) ? taxonomies : [];
+      const safeUtilizations = Array.isArray(utilizations) ? utilizations : [];
+      const safeReferrals = Array.isArray(referrals) ? referrals : [];
+
+      const specialty = safeTaxonomies.map(t => t.taxonomy_description).filter(Boolean).join(', ');
+      const latestUtil = [...safeUtilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+      const latestRef = [...safeReferrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+
+      // Calculate YoY trends
+      const sortedUtil = [...safeUtilizations].sort((a, b) => a.year - b.year);
+      const utilTrend = sortedUtil.length >= 2
+        ? `Beneficiaries changed from ${sortedUtil[sortedUtil.length - 2]?.total_medicare_beneficiaries || 0} to ${sortedUtil[sortedUtil.length - 1]?.total_medicare_beneficiaries || 0}`
+        : 'Insufficient trend data';
+
+      const sortedRef = [...safeReferrals].sort((a, b) => a.year - b.year);
+      const refTrend = sortedRef.length >= 2
+        ? `Referrals changed from ${sortedRef[sortedRef.length - 2]?.total_referrals || 0} to ${sortedRef[sortedRef.length - 1]?.total_referrals || 0}`
+        : 'Insufficient trend data';
+
       const res = await base44.integrations.Core.InvokeLLM({
         prompt: `Provide strategic market intelligence for this healthcare provider. Think like a healthcare market analyst.
 

@@ -124,17 +124,65 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
       setDuplicates(res);
 
       if (res.duplicate_groups?.length > 0) {
-        for (const group of res.duplicate_groups.slice(0, 5)) {
-          await base44.entities.DataQualityAlert.create({
-            alert_type: 'new_issue_detected',
-            severity: group.confidence === 'high' ? 'high' : 'medium',
-            title: `Potential Duplicate: ${group.records.map(r => r.name).join(' / ')}`,
-            description: group.reason,
-            action_required: group.confidence === 'high',
-            status: 'new',
-          });
+        // Alert creation is best-effort and isolated from the scan-result path:
+        // a failure here shouldn't override the success toast for the scan, and
+        // we de-dup against existing alerts so re-scans don't pile up records
+        // for the same set of NPIs.
+        let createdAlerts = 0;
+        let skippedDuplicateAlerts = 0;
+        let alertCreateErrors = 0;
+        try {
+          // Pull recent open alerts of this type once so we can match against
+          // their identity key client-side — avoids one query per group.
+          const recentAlerts = await base44.entities.DataQualityAlert
+            .filter({ alert_type: 'new_issue_detected', status: 'new' }, '-created_date', 200)
+            .catch(() => []);
+          const existingKeys = new Set(
+            (Array.isArray(recentAlerts) ? recentAlerts : [])
+              .map(a => a?.dedup_key)
+              .filter(Boolean)
+          );
+
+          for (const group of res.duplicate_groups.slice(0, 5)) {
+            const records = Array.isArray(group?.records) ? group.records : [];
+            const npiKey = records
+              .map(r => String(r?.npi ?? '').trim())
+              .filter(Boolean)
+              .sort()
+              .join(',');
+            // dedup_key is a stable identifier for the same set of NPIs across re-scans.
+            const dedupKey = `dup:${npiKey || group?.group_id || records.map(r => r?.name).join('/')}`;
+            if (existingKeys.has(dedupKey)) {
+              skippedDuplicateAlerts++;
+              continue;
+            }
+            try {
+              await base44.entities.DataQualityAlert.create({
+                alert_type: 'new_issue_detected',
+                severity: group.confidence === 'high' ? 'high' : 'medium',
+                title: `Potential Duplicate: ${records.map(r => r?.name).filter(Boolean).join(' / ') || 'Unnamed group'}`,
+                description: group.reason,
+                action_required: group.confidence === 'high',
+                status: 'new',
+                dedup_key: dedupKey,
+              });
+              existingKeys.add(dedupKey);
+              createdAlerts++;
+            } catch (createErr) {
+              alertCreateErrors++;
+              console.warn('Duplicate alert create failed:', createErr);
+            }
+          }
+        } catch (alertErr) {
+          // Don't surface this as a scan failure — the user already has the results above.
+          console.warn('Duplicate alert sync failed:', alertErr);
         }
-        toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
+
+        const summaryBits = [`Found ${res.duplicate_groups.length} potential duplicate groups`];
+        if (createdAlerts > 0) summaryBits.push(`${createdAlerts} new alert${createdAlerts !== 1 ? 's' : ''} created`);
+        if (skippedDuplicateAlerts > 0) summaryBits.push(`${skippedDuplicateAlerts} already tracked`);
+        if (alertCreateErrors > 0) summaryBits.push(`${alertCreateErrors} alert create error${alertCreateErrors !== 1 ? 's' : ''}`);
+        toast.success(summaryBits.join(' — '));
       } else {
         toast.success('No duplicates detected — your data looks clean!');
       }

@@ -15,8 +15,15 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
 
   const bulkAction = async (action) => {
     setProcessing(true);
+    // apply_fix should only resolve alerts that actually have a suggested fix.
+    // The button is already conditionally rendered, but defensive scoping avoids
+    // accidentally marking unrelated alerts resolved if the selection includes
+    // items without a suggested_value.
+    const idsToProcess = action === 'apply_fix'
+      ? withSuggestions.map(a => a.id)
+      : selectedIds;
     try {
-      for (const id of selectedIds) {
+      for (const id of idsToProcess) {
         const alert = alerts.find(a => a.id === id);
         if (!alert) continue;
         const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };

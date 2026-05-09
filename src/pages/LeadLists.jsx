@@ -10,6 +10,7 @@ import { Plus, Trash2, Eye, BarChart3 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { toast } from 'sonner';
 import LeadListTable from '../components/leadlists/LeadListTable';
 import AddProviderDialog from '../components/leadlists/AddProviderDialog';
 import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
@@ -143,6 +144,14 @@ function ViewListDialog({ listId, listName }) {
       if (memberArr.length === 0) { setLeads([]); return; }
 
       const npis = memberArr.map(m => m.npi).filter(Boolean);
+      // Skip the six fan-out queries when no NPIs are present — passing an empty $in
+      // can either hit the backend with a useless query or (depending on semantics)
+      // match unexpectedly broadly.
+      if (npis.length === 0) {
+        setLeads(memberArr.map(member => ({ member })));
+        return;
+      }
+
       const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
         base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
         base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
@@ -166,6 +175,7 @@ function ViewListDialog({ listId, listName }) {
     } catch (err) {
       console.error('Failed to load leads:', err);
       setLeads([]);
+      toast.error('Failed to load lead list members. Please try again.');
     } finally {
       setLoading(false);
     }

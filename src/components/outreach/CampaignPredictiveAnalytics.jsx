@@ -30,6 +30,7 @@ export default function CampaignPredictiveAnalytics({ campaigns = [], providers 
 
   const runPrediction = async () => {
     setLoading(true);
+    setPrediction(null); // avoid showing previous prediction if a new run fails
     try {
     const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,

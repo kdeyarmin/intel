@@ -23,6 +23,7 @@ export default function CampaignPredictionWidget({ campaigns = [] }) {
 
   const predict = async () => {
     setLoading(true);
+    setResults(null); // clear stale predictions so a failed re-run doesn't leave previous output visible
     try {
     const historical = activeCampaigns.map(c => ({
       name: c.name,

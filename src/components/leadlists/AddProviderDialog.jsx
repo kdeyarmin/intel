@@ -55,7 +55,8 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
         status: 'New',
       });
       setAdded(prev => new Set([...prev, npi]));
-      onAdded?.();
+      // Await in case onAdded is async — otherwise its rejection escapes this try/catch.
+      await onAdded?.();
     } catch (err) {
       console.error('Failed to add provider:', err);
       toast.error('Failed to add provider. Please try again.');

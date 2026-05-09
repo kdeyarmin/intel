@@ -118,9 +118,9 @@ export default function NPPESCrawler() {
   let estimatedMins = 0;
   const remainingStates = totalStates - (completedCount + failedCount);
   if (remainingStates > 0 && status?.granular_metrics) {
-    const avgTimes = Object.values(status.granular_metrics).filter(m => m.avg_prefix_time_ms > 0).map(m => m.avg_prefix_time_ms);
     const concurrencyNum = Math.max(Number(concurrency) || 1, 1);
-    if (avgTimes.length > 0) {
+    const haveTimings = Object.values(status.granular_metrics).some(m => m.avg_prefix_time_ms > 0);
+    if (haveTimings) {
       const totalRemainingMs = Object.values(status.granular_metrics).reduce((sum, m) => sum + (m.estimated_remaining_ms || 0), 0);
       estimatedMins = Math.ceil(totalRemainingMs / 60000 / concurrencyNum);
     } else {

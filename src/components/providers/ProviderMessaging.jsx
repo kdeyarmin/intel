@@ -71,7 +71,15 @@ Purpose: Initial introduction or follow-up regarding potential collaboration.
 Keep it under 80 words, warm but professional, and include a clear call to action (e.g., scheduling a call).
 Do NOT include subject line, just the body.`,
       });
-      setNewMessage(res);
+      // InvokeLLM can return a plain string or an object depending on whether
+      // a response_json_schema was provided. Normalize before storing so we
+      // never put [object Object] in the textarea or hit a TypeError on .trim().
+      let draft = '';
+      if (typeof res === 'string') draft = res;
+      else if (res && typeof res.text === 'string') draft = res.text;
+      else if (res && typeof res.body === 'string') draft = res.body;
+      setNewMessage(draft);
+      if (!draft) toast.warning('Draft was empty — try again.');
     } catch (err) {
       console.error('Draft generation failed:', err);
       toast.error('Failed to generate draft. Please try again.');

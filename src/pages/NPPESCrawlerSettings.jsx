@@ -54,6 +54,10 @@ export default function NPPESCrawlerSettings() {
 
   const existingConfig = configs[0];
 
+  // Depend on stable scalar identity (id + updated_date) rather than the full
+  // existingConfig object reference. React Query swaps in a new object on every
+  // refetch even when nothing changed, and including the object here causes the
+  // form to clobber unsaved edits whenever the cache invalidates.
   useEffect(() => {
     if (existingConfig) {
       setForm({
@@ -78,7 +82,7 @@ export default function NPPESCrawlerSettings() {
         selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
       });
     }
-  }, [existingConfig?.id, existingConfig?.updated_date, existingConfig]);
+  }, [existingConfig?.id, existingConfig?.updated_date]);
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {

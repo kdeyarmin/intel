@@ -163,8 +163,10 @@ Only return information you find with reasonable confidence from public sources.
         }
       });
 
-      setResults(res);
-      const enriched = (res.profiles || []).filter(p => p.website || p.affiliations?.length || p.board_certifications?.length || p.education || p.languages?.length);
+      // Normalize before storing so downstream renders never crash on a malformed payload.
+      const profiles = Array.isArray(res?.profiles) ? res.profiles : [];
+      setResults({ ...res, profiles });
+      const enriched = profiles.filter(p => p.website || p.affiliations?.length || p.board_certifications?.length || p.education || p.languages?.length);
       toast.success(`Found enrichment data for ${enriched.length} of ${batch.length} providers`);
     } catch (err) {
       console.error('AI profile augmentation failed:', err);
