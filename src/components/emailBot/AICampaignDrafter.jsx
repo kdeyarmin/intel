@@ -32,6 +32,10 @@ export default function AICampaignDrafter({ providers = [], onDraftReady }) {
       toast.error('No providers selected');
       return;
     }
+    if (goal === 'custom' && !customGoal.trim()) {
+      toast.error('Please describe your custom campaign goal');
+      return;
+    }
     setGenerating(true);
 
     // Gather context from selected providers
@@ -134,7 +138,7 @@ REQUIREMENTS:
 
       <Button
         onClick={handleGenerate}
-        disabled={generating || providers.length === 0}
+        disabled={generating || providers.length === 0 || (goal === 'custom' && !customGoal.trim())}
         size="sm"
         className="w-full bg-violet-600 hover:bg-violet-700 gap-2 text-xs"
       >

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, TrendingUp, Clock, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { toast } from 'sonner';
 
 const _DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _HOURS = ['6am', '7am', '8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm'];
@@ -29,13 +30,15 @@ export default function CampaignPredictiveAnalytics({ campaigns = [], providers 
 
   const runPrediction = async () => {
     setLoading(true);
-    const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
-      name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,
-      bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
-    }));
+    setPrediction(null);
+    try {
+      const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
+        name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,
+        bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
+      }));
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare marketing analytics expert. Analyze campaign history and predict optimal strategies.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare marketing analytics expert. Analyze campaign history and predict optimal strategies.
 
 HISTORICAL CAMPAIGNS (${historical.length}):
 ${JSON.stringify(historical, null, 2)}
@@ -49,68 +52,73 @@ Provide:
 4. Forecast for next 3 campaigns if you maintain current trajectory
 5. Key factors affecting performance and what to improve
 6. Recommended audience segments to target next`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          next_campaign_prediction: {
-            type: "object",
-            properties: {
-              predicted_open_rate: { type: "number" },
-              predicted_response_rate: { type: "number" },
-              confidence: { type: "string" },
-              reasoning: { type: "string" }
-            }
-          },
-          optimal_send_time: {
-            type: "object",
-            properties: {
-              best_day: { type: "string" },
-              best_hour: { type: "string" },
-              worst_day: { type: "string" },
-              reasoning: { type: "string" }
-            }
-          },
-          send_time_heatmap: {
-            type: "array",
-            items: {
+        response_json_schema: {
+          type: "object",
+          properties: {
+            next_campaign_prediction: {
               type: "object",
               properties: {
-                day: { type: "string" },
-                morning: { type: "number" },
-                afternoon: { type: "number" },
-                evening: { type: "number" }
-              }
-            }
-          },
-          forecast: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                campaign_number: { type: "number" },
                 predicted_open_rate: { type: "number" },
                 predicted_response_rate: { type: "number" },
-                recommendation: { type: "string" }
+                confidence: { type: "string" },
+                reasoning: { type: "string" }
               }
-            }
-          },
-          improvement_factors: { type: "array", items: { type: "string" } },
-          recommended_segments: {
-            type: "array",
-            items: {
+            },
+            optimal_send_time: {
               type: "object",
               properties: {
-                name: { type: "string" },
-                description: { type: "string" },
-                expected_lift: { type: "string" }
+                best_day: { type: "string" },
+                best_hour: { type: "string" },
+                worst_day: { type: "string" },
+                reasoning: { type: "string" }
+              }
+            },
+            send_time_heatmap: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  day: { type: "string" },
+                  morning: { type: "number" },
+                  afternoon: { type: "number" },
+                  evening: { type: "number" }
+                }
+              }
+            },
+            forecast: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  campaign_number: { type: "number" },
+                  predicted_open_rate: { type: "number" },
+                  predicted_response_rate: { type: "number" },
+                  recommendation: { type: "string" }
+                }
+              }
+            },
+            improvement_factors: { type: "array", items: { type: "string" } },
+            recommended_segments: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  expected_lift: { type: "string" }
+                }
               }
             }
           }
         }
-      }
-    });
-    setPrediction(res);
-    setLoading(false);
+      });
+      setPrediction(res);
+    } catch (err) {
+      console.error('Predictive analysis failed:', err);
+      toast.error(`Predictive analysis failed: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tooltipStyle = { background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11, color: '#e2e8f0' };

@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import CampaignPerformancePanel from './CampaignPerformancePanel';
 import CampaignTaskManager from './CampaignTaskManager';
 import CampaignAutomationPanel from './CampaignAutomationPanel';
+import { toast } from 'sonner';
 
 const _STATUS_COLORS = { 'New': '#3b82f6', 'Contacted': '#eab308', 'Qualified': '#22c55e', 'Not a fit': '#6b7280' };
 const STATUS_STYLES = {
@@ -73,8 +74,14 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
   }, [listsData, allMembers]);
 
   const handleStatusChange = async (newStatus) => {
-    await base44.entities.Campaign.update(campaign.id, { status: newStatus });
-    onUpdate?.({ ...campaign, status: newStatus });
+    try {
+      await base44.entities.Campaign.update(campaign.id, { status: newStatus });
+      onUpdate?.({ ...campaign, status: newStatus });
+      toast.success(`Campaign status updated to "${newStatus}"`);
+    } catch (err) {
+      console.error('Failed to update campaign status:', err);
+      toast.error(`Failed to update status: ${err?.message || 'Unknown error'}`);
+    }
   };
 
   if (loading) return <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}</div>;
