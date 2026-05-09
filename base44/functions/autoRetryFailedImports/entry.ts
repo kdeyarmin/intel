@@ -19,10 +19,30 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
+        const serviceSecret = Deno.env.get('AUTO_RETRY_FAILED_IMPORTS_SECRET');
+        const providedServiceSecret = req.headers.get('x-auto-retry-secret');
+
         let user = null;
-        try { user = await base44.auth.me(); } catch (_e) { /* service role */ }
-        const isService = user && user.email && user.email.includes('service+');
-        if (user && user.role !== 'admin' && !isService) {
+        try {
+            user = await base44.auth.me();
+        } catch (_e) {
+            user = null;
+        }
+
+        const isAdmin = user?.role === 'admin';
+        const hasValidServiceCredential =
+            !!serviceSecret &&
+            !!providedServiceSecret &&
+            providedServiceSecret === serviceSecret;
+
+        if (!user && !hasValidServiceCredential) {
+            return Response.json(
+                { error: 'Unauthorized: Admin authentication or valid service credential required' },
+                { status: 401 },
+            );
+        }
+
+        if (user && !isAdmin && !hasValidServiceCredential) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
