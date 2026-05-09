@@ -12,6 +12,7 @@ import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
+import { pickResumeOffset, resumeProgressPct } from './resumeOffset';
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -163,24 +164,8 @@ export default function BatchDetailPanel({ batch }) {
 
   if (!batch) return null;
 
-  // #9 — surface resume offset for paused imports so users can see where they paused.
-  // Pick the field that actually supplied the offset; row_offset wins when both are
-  // present (the NPPES flat-file path persists both because Range resumes need bytes
-  // but progress is more meaningful as rows).
-  let resumeOffset = null;
-  let resumeIsByteOffset = false;
-  if (safeBatch.retry_params?.resume_offset != null) {
-    resumeOffset = safeBatch.retry_params.resume_offset;
-  } else if (safeBatch.retry_params?.row_offset != null) {
-    resumeOffset = safeBatch.retry_params.row_offset;
-  } else if (safeBatch.retry_params?.byte_offset != null) {
-    resumeOffset = safeBatch.retry_params.byte_offset;
-    resumeIsByteOffset = true;
-  }
-  const totalKnown = safeBatch.total_rows && safeBatch.total_rows > 0;
-  const resumePct = (totalKnown && !resumeIsByteOffset && typeof resumeOffset === 'number')
-    ? Math.min(100, Math.round((resumeOffset / safeBatch.total_rows) * 100))
-    : null;
+  const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
+  const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
 
   return (
     <div className="space-y-5 mt-2">

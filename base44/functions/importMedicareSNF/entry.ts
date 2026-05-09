@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
+import { snfRecordKey, snfPartitionForUpsert } from './helpers.ts';
 
 const MAX_EXEC_MS = 25_000;
 const CHUNK = 30;
@@ -173,48 +174,6 @@ async function bulkCreateWithRetry(entity, chunk, label) {
     }
   }
   return { ok: false, error: 'Max retries exceeded' };
-}
-
-const SNF_KEY_FIELDS = ['data_year', 'table_name', 'category'];
-function snfRecordKey(r) {
-  return SNF_KEY_FIELDS.map(f => String(r[f] ?? '').trim().toLowerCase()).join('|');
-}
-
-async function snfPartitionForUpsert(base44, chunk, year) {
-  const tableNames = [...new Set(chunk.map(r => r.table_name).filter(Boolean))];
-  if (tableNames.length === 0) return { toCreate: chunk, toUpdate: [], skipped: 0 };
-  let existing = [];
-  try {
-    existing = await base44.asServiceRole.entities.MedicareSNFStats.filter(
-      { data_year: year, table_name: { $in: tableNames } },
-      undefined,
-      tableNames.length * 2000 + 100,
-    );
-  } catch (e) {
-    console.warn(`[importMedicareSNF] dedup lookup failed: ${e.message}; falling back to create-only`);
-    return { toCreate: chunk, toUpdate: [], skipped: 0 };
-  }
-  const map = new Map(existing.map(e => [snfRecordKey(e), e]));
-  const toCreate = [];
-  const toUpdate = [];
-  let skipped = 0;
-  for (const r of chunk) {
-    const ex = map.get(snfRecordKey(r));
-    if (!ex) { toCreate.push(r); continue; }
-    const patch = {};
-    for (const k of Object.keys(r)) {
-      const v = r[k];
-      if (v === null || v === undefined || v === '') continue;
-      if (typeof v === 'object') {
-        if (JSON.stringify(v) !== JSON.stringify(ex[k] ?? null)) patch[k] = v;
-      } else if (String(ex[k] ?? '').trim() !== String(v).trim()) {
-        patch[k] = v;
-      }
-    }
-    if (Object.keys(patch).length > 0) toUpdate.push({ id: ex.id, record: patch });
-    else skipped++;
-  }
-  return { toCreate, toUpdate, skipped };
 }
 
 Deno.serve(async (req) => {

@@ -1,107 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+// Pure scheduling helpers live in helpers.ts so they can be unit-tested from
+// Node without booting the Deno serve handler.
+import {
+    MAX_SCHEDULES_PER_INVOCATION,
+    getImportFamily,
+    computeNextRun,
+    dependencyBlocked,
+} from './helpers.ts';
 
 const MAX_EXEC_MS = 45_000;
-
-// #4 — process multiple schedules per invocation when they don't conflict
-const MAX_SCHEDULES_PER_INVOCATION = 5;
-
-// #8 — exponential backoff cap (consecutive failures): 1h, 2h, 4h, 8h, capped at 24h
-const FAILURE_BACKOFF_CAP_HOURS = 24;
-
-// #10 — schedule jitter: spread schedules within ±N minutes to avoid thundering herd
-const SCHEDULE_JITTER_MINUTES = 15;
 
 const US_STATES = [
     'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
     'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
-
-// Non-conflicting import_type families. Schedules from the same family run sequentially,
-// schedules from different families can run in parallel within one invocation.
-function getImportFamily(importType: string): string {
-    if (!importType) return 'unknown';
-    if (importType === 'nppes_registry') return 'nppes';
-    if (importType.startsWith('medicare_')) return 'medicare';
-    if (importType.startsWith('hospice_')) return 'hospice';
-    if (importType.startsWith('snf_') || importType.startsWith('nursing_home_')) return 'snf';
-    if (importType.startsWith('home_health_')) return 'hha';
-    return 'cms_other';
-}
-
-function jitterMs(maxMinutes: number): number {
-    // Symmetric jitter in ±maxMinutes range
-    const range = maxMinutes * 60_000;
-    return Math.floor((Math.random() - 0.5) * 2 * range);
-}
-
-function backoffHours(consecutiveFailures: number): number {
-    if (consecutiveFailures <= 0) return 0;
-    return Math.min(Math.pow(2, consecutiveFailures - 1), FAILURE_BACKOFF_CAP_HOURS);
-}
-
-function computeNextRun(schedule, now: Date, failures: number): Date {
-    const next = new Date(now);
-    const [hours, minutes] = (schedule.schedule_time || '02:00').split(':').map(Number);
-
-    if (schedule.schedule_frequency === 'daily') {
-        next.setDate(next.getDate() + 1);
-    } else if (schedule.schedule_frequency === 'weekly') {
-        next.setDate(next.getDate() + 7);
-    } else if (schedule.schedule_frequency === 'monthly') {
-        next.setMonth(next.getMonth() + 1);
-    } else if (schedule.schedule_frequency === 'on_completion') {
-        // No regular cadence — the dependency check handles it. Set to a sentinel ~1h out.
-        next.setHours(next.getHours() + 1);
-        return next;
-    }
-    next.setHours(hours, minutes, 0, 0);
-
-    // #8 — push out further on consecutive failures
-    if (failures > 0) {
-        next.setTime(next.getTime() + backoffHours(failures) * 60 * 60_000);
-    }
-
-    // #10 — jitter to spread same-time schedules.
-    // Clamp to at least `now + minBuffer` so a negative jitter near midnight (or
-    // any case where the computed time lands close to now) can't push next_run_at
-    // into the past and cause the scheduler to immediately re-run the same job.
-    next.setTime(next.getTime() + jitterMs(SCHEDULE_JITTER_MINUTES));
-    const minNext = now.getTime() + 5 * 60_000; // 5 minute buffer
-    if (next.getTime() < minNext) {
-        next.setTime(minNext);
-    }
-
-    return next;
-}
-
-// #4 — check whether a schedule's `depends_on_import_type` parent has completed successfully
-// since the last *successful* run of this schedule. Tracking the child's last successful
-// run (rather than its last_run_at) means failed children can still retry — without this
-// distinction, a single child failure would block all retries until the parent ran again.
-function dependencyBlocked(schedule, allSchedules): { blocked: boolean; reason?: string } {
-    if (!schedule.depends_on_import_type) return { blocked: false };
-    const parent = allSchedules.find(s => s.import_type === schedule.depends_on_import_type);
-    if (!parent) {
-        return { blocked: true, reason: `Dependency import_type=${schedule.depends_on_import_type} not configured` };
-    }
-    if (!parent.last_run_at) {
-        return { blocked: true, reason: `Waiting for parent ${parent.label} to run at least once` };
-    }
-    if (parent.last_run_status && parent.last_run_status !== 'success') {
-        return { blocked: true, reason: `Parent ${parent.label} last run was ${parent.last_run_status}` };
-    }
-    // Compare against this schedule's last *successful* completion, not its last_run_at.
-    // last_successful_run_at is set on success and left alone on failure, so the child can
-    // still retry against the same parent run after a transient failure.
-    const childLastSuccess = schedule.last_successful_run_at
-        ? new Date(schedule.last_successful_run_at)
-        : null;
-    if (childLastSuccess && childLastSuccess > new Date(parent.last_run_at)) {
-        return { blocked: true, reason: `Already ran successfully since parent's last completion` };
-    }
-    return { blocked: false };
-}
 
 async function runOneSchedule(base44, schedule, now: Date) {
     let runStatus = 'success';
