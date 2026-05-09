@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 import * as XLSX from 'npm:xlsx@0.18.5';
 import JSZip from 'npm:jszip@3.10.1';
+import { snfRecordKey, snfPartitionForUpsert } from './helpers.ts';
 
 const MAX_EXEC_MS = 25_000;
 const CHUNK = 30;
@@ -295,48 +296,93 @@ Deno.serve(async (req) => {
       dedup_summary: { validation_rule_summary: ruleSummary, validation_warnings: totalWarnings },
     });
 
-    let imported = 0, chunkErrors = 0;
-    if (!dry_run && recordsToProcess.length > 0) {
-      if (effectiveOffset === 0) {
-        const existing = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1);
-        if (existing.length > 0) {
-            console.log(`Clearing existing ${year} records...`);
-            while (true) {
-                if (isTimeUp()) break;
-                const batchRecs = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 500);
-                if (batchRecs.length === 0) break;
-                for (let i = 0; i < batchRecs.length; i += 50) {
-                    const chunk = batchRecs.slice(i, i + 50);
-                    await Promise.all(chunk.map(async (rec) => {
-                        try {
-                            await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id);
-                        } catch (e) {
-                            if (e.message?.includes('Rate limit') || e.message?.includes('429')) {
-                                await delay(3000);
-                                try { await base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id); } catch(e2) {}
-                            }
-                        }
-                    }));
-                    await delay(100);
-                }
-            }
-        }
+    // Pre-flight warning when parsed-row count is way below what's stored.
+    // No longer aborts — upsert path can't blow away existing data on bad parse.
+    let preflightWarning = null;
+    if (!dry_run && recordsToProcess.length > 0 && effectiveOffset === 0) {
+      const existingCountSample = await base44.asServiceRole.entities.MedicareSNFStats.filter({ data_year: year }, '-created_date', 1000);
+      if (existingCountSample.length >= 50 && recordsToProcess.length < existingCountSample.length * 0.5) {
+        preflightWarning = `Parsed only ${recordsToProcess.length} rows but year ${year} has ${existingCountSample.length}+ existing rows. Importing anyway via upsert.`;
+        console.warn(`[importMedicareSNF] ${preflightWarning}`);
+        addError('preflight', preflightWarning, {});
       }
+    }
+
+    let imported = 0, updated = 0, skipped = 0, chunkErrors = 0;
+    const touchedKeys = new Set();
+    const touchedTables = new Set();
+
+    if (!dry_run && recordsToProcess.length > 0) {
       for (let i = 0; i < recordsToProcess.length; i += CHUNK) {
         if (isTimeUp()) break;
         const chunk = recordsToProcess.slice(i, i + CHUNK);
-        const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, chunk, `chunk-${i}`);
-        if (result.ok) imported += chunk.length; else { chunkErrors++; addError('import', `Chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
+        for (const r of chunk) {
+          touchedKeys.add(snfRecordKey(r));
+          if (r.table_name) touchedTables.add(r.table_name);
+        }
+
+        const part = await snfPartitionForUpsert(base44, chunk, year);
+        skipped += part.skipped;
+
+        if (part.toCreate.length > 0) {
+          const result = await bulkCreateWithRetry(base44.asServiceRole.entities.MedicareSNFStats, part.toCreate, `chunk-${i}-create`);
+          if (result.ok) imported += part.toCreate.length;
+          else { chunkErrors++; addError('import', `Create chunk ${i} failed: ${result.error}`, { chunk_start: i + effectiveOffset }); }
+        }
+        if (part.toUpdate.length > 0) {
+          for (let j = 0; j < part.toUpdate.length; j += 5) {
+            if (isTimeUp()) break;
+            const group = part.toUpdate.slice(j, j + 5);
+            const results = await Promise.all(group.map(({ id, record }) =>
+              base44.asServiceRole.entities.MedicareSNFStats.update(id, record)
+                .then(() => true)
+                .catch(err => { addError('update', `Update id=${id}: ${err.message}`, {}); return false; })
+            ));
+            updated += results.filter(Boolean).length;
+            if (j + 5 < part.toUpdate.length) await delay(150);
+          }
+        }
         if (i + CHUNK < recordsToProcess.length) await delay(350);
       }
     }
 
-    const timedOut = !dry_run && imported < recordsToProcess.length && isTimeUp();
-    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : chunkErrors > 0 && imported === 0 ? 'failed' : 'completed';
+    const timedOut = !dry_run && (imported + updated + skipped) < recordsToProcess.length && isTimeUp();
+
+    let removed = 0;
+    if (!dry_run && !timedOut && effectiveOffset === 0 && touchedTables.size > 0 && chunkErrors === 0) {
+      try {
+        const tableNames = [...touchedTables];
+        const allForYear = await base44.asServiceRole.entities.MedicareSNFStats.filter(
+          { data_year: year, table_name: { $in: tableNames } },
+          undefined,
+          tableNames.length * 5000 + 100,
+        );
+        const stale = allForYear.filter(row => !touchedKeys.has(snfRecordKey(row)));
+        for (let j = 0; j < stale.length; j += 50) {
+          if (isTimeUp()) break;
+          const group = stale.slice(j, j + 50);
+          await Promise.all(group.map(rec =>
+            base44.asServiceRole.entities.MedicareSNFStats.delete(rec.id)
+              .then(() => { removed++; })
+              .catch(err => addError('cleanup', `Delete stale ${rec.id}: ${err.message}`, {}))
+          ));
+          await delay(100);
+        }
+      } catch (e) {
+        addError('cleanup', `Stale-row scan failed: ${e.message}`, {});
+      }
+    }
+
+    const finalStatus = dry_run ? 'completed' : timedOut ? 'paused' : (chunkErrors > 0 && imported === 0 && updated === 0) ? 'failed' : 'completed';
     await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
-      status: finalStatus, imported_rows: (batch.imported_rows || 0) + imported, skipped_rows: (batch.skipped_rows || 0) + (chunkErrors * CHUNK), completed_at: new Date().toISOString(),
+      status: finalStatus,
+      imported_rows: (batch.imported_rows || 0) + imported,
+      updated_rows: (batch.updated_rows || 0) + updated,
+      skipped_rows: (batch.skipped_rows || 0) + skipped + (chunkErrors * CHUNK),
+      completed_at: new Date().toISOString(),
       error_samples: errorSamples.length > 0 ? errorSamples : [],
-      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Resume offset=${effectiveOffset + imported}`, retry_params: { row_offset: effectiveOffset + imported } } : { cancel_reason: "", paused_at: "" }),
+      dedup_summary: { ...(ruleSummary || {}), validation_warnings: totalWarnings, removed_stale: removed, ...(preflightWarning ? { preflight_warning: preflightWarning } : {}) },
+      ...(timedOut ? { paused_at: new Date().toISOString(), cancel_reason: `Time limit. Imported ${imported}, updated ${updated}, skipped ${skipped} of ${recordsToProcess.length}. Resume offset=${effectiveOffset + imported + updated + skipped}`, retry_params: { row_offset: effectiveOffset + imported + updated + skipped } } : { cancel_reason: "", paused_at: "" }),
     });
 
     try { const configs = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ import_type: 'medicare_snf_stats' }); if (configs.length > 0) await base44.asServiceRole.entities.ImportScheduleConfig.update(configs[0].id, { last_run_at: new Date().toISOString(), last_run_status: finalStatus === 'failed' ? 'failed' : finalStatus === 'paused' ? 'partial' : 'success', last_run_summary: `${imported} records, ${sheetSummaries.length} sheets, year ${year}` }); } catch (_) {}

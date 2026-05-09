@@ -35,20 +35,32 @@ Deno.serve(async (req) => {
       const listMembers = await base44.asServiceRole.entities.LeadListMember.filter(
         { lead_list_id: campaign.lead_list_id }
       );
-      const npis = listMembers.map(m => m.npi);
-      
+      const npis = listMembers.map(m => m.npi).filter(Boolean);
+
       if (npis.length > 0) {
         targetProviders = await base44.asServiceRole.entities.Provider.filter(
-          { npi: { $in: npis } }
+          { npi: { $in: npis } },
+          undefined,
+          npis.length + 100,
         );
       }
     }
 
-    // Fetch enrichment data
-    const providers = await base44.asServiceRole.entities.Provider.list('', 500);
-    const locations = await base44.asServiceRole.entities.ProviderLocation.list('', 500);
-    const taxonomies = await base44.asServiceRole.entities.ProviderTaxonomy.list('', 500);
-    const scores = await base44.asServiceRole.entities.LeadScore.list('', 500);
+    // Fetch enrichment data scoped to the providers we actually care about.
+    // The previous version called .list('', 500) which (a) ignored the targets
+    // and (b) silently dropped enrichment for any provider whose row wasn't in
+    // the global first 500 — leading to messages with no specialty/location/score.
+    const targetNpis = targetProviders.map(p => p.npi).filter(Boolean);
+    let locations = [];
+    let taxonomies = [];
+    let scores = [];
+    if (targetNpis.length > 0) {
+      [locations, taxonomies, scores] = await Promise.all([
+        base44.asServiceRole.entities.ProviderLocation.filter({ npi: { $in: targetNpis } }, undefined, targetNpis.length * 5 + 100),
+        base44.asServiceRole.entities.ProviderTaxonomy.filter({ npi: { $in: targetNpis } }, undefined, targetNpis.length * 5 + 100),
+        base44.asServiceRole.entities.LeadScore.filter({ npi: { $in: targetNpis } }, undefined, targetNpis.length + 100),
+      ]);
+    }
 
     const results = {
       campaign_id,

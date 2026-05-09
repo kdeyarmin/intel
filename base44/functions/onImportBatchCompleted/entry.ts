@@ -103,11 +103,25 @@ Deno.serve(async (req) => {
                 runSummary = `Error: ${err.message}`;
             }
 
-            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, {
+            // Mirror the field bookkeeping runScheduledImports does so the
+            // dependency-blocked check stays consistent regardless of which
+            // path triggered the run (cron loop vs. on-completion event):
+            //   - last_successful_run_at is the dependency check's anchor
+            //     for "child has caught up to parent's last good run"
+            //   - consecutive_failures resets on success so exponential
+            //     backoff in the cron loop doesn't carry over stale counts
+            const update: Record<string, unknown> = {
                 last_run_at: now.toISOString(),
                 last_run_status: runStatus,
                 last_run_summary: runSummary,
-            });
+            };
+            if (runStatus === 'success') {
+                update.last_successful_run_at = now.toISOString();
+                update.consecutive_failures = 0;
+            } else if (runStatus === 'failed') {
+                update.consecutive_failures = (schedule.consecutive_failures || 0) + 1;
+            }
+            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, update);
 
             results.push({ import_type: schedule.import_type, status: runStatus, summary: runSummary });
         }

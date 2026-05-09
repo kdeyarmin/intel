@@ -10,7 +10,16 @@ const getTimestamp = (value) => (value ? new Date(value).getTime() : 0);
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
+
+        // Allow service role calls (from scheduled automations) or admin users.
+        // Other functions in this folder use the same pattern.
+        let user = null;
+        try { user = await base44.auth.me(); } catch (_e) { /* service role call */ }
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+        }
+
         // Check for active batch signals
         const signals = await base44.asServiceRole.entities.ImportBatch.filter({
             import_type: 'nppes_registry',
@@ -101,11 +110,16 @@ Deno.serve(async (req) => {
         console.log(`[AutoBatch] Triggering state: ${nextState}`);
         
         try {
-            const result = await base44.asServiceRole.functions.invoke('nppesStateCrawler', {
-                action: 'start',
-                target_state: nextState
+            // The crawler is invoked via `nppesCrawler` with action=batch_start; the
+            // previous `nppesStateCrawler` name doesn't exist in this codebase and
+            // every trigger silently failed.
+            const result = await base44.asServiceRole.functions.invoke('nppesCrawler', {
+                action: 'batch_start',
+                states: [nextState],
+                skip_completed,
+                dry_run: false,
             });
-            
+
             console.log(`[AutoBatch] ${nextState} completed:`, result.data);
 
             // Update signal with progress

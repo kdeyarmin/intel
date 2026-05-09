@@ -1,4 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+// Pure scheduling helpers live in helpers.ts so they can be unit-tested from
+// Node without booting the Deno serve handler.
+import {
+    MAX_SCHEDULES_PER_INVOCATION,
+    getImportFamily,
+    computeNextRun,
+    dependencyBlocked,
+} from './helpers.ts';
 
 const MAX_EXEC_MS = 45_000;
 
@@ -8,12 +16,73 @@ const US_STATES = [
     'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'
 ];
 
+async function runOneSchedule(base44, schedule, now: Date) {
+    let runStatus = 'success';
+    let runSummary = '';
+
+    try {
+        if (schedule.import_type === 'nppes_registry') {
+            const config = schedule.nppes_config || {};
+            const crawlerPayload: any = {
+                action: 'batch_start',
+                dry_run: false,
+                skip_completed: false,
+                taxonomy_description: config.taxonomy_description || '',
+                entity_type: config.entity_type || '',
+            };
+
+            if (!config.crawl_all_states) {
+                if (!config.state) {
+                    throw new Error('Scheduled NPPES crawler runs require a state when crawl_all_states is disabled');
+                }
+                crawlerPayload.states = [config.state];
+            }
+            if (config.city) crawlerPayload.city = config.city;
+            if (config.postal_code) crawlerPayload.postal_code = config.postal_code;
+
+            const res = await base44.asServiceRole.functions.invoke('nppesCrawler', crawlerPayload);
+            const data = res.data || res;
+            runSummary = data.message || `Queued ${data.states_queued || 0} state(s) for crawling`;
+            runStatus = data.error ? 'failed' : 'success';
+        } else {
+            // CMS data import — use triggerImport which has built-in URLs
+            // Resolve aliases: cms_utilization -> provider_service_utilization
+            const ALIASES = { cms_utilization: 'provider_service_utilization' };
+            const resolvedType = ALIASES[schedule.import_type] || schedule.import_type;
+            // Honor schedule.data_year if configured. Falling back to current year only
+            // when the schedule didn't pin one — otherwise we'd silently import the wrong
+            // year for schedules built around historical CMS publications.
+            const targetYear = schedule.data_year ?? now.getFullYear();
+            const res = await base44.asServiceRole.functions.invoke('triggerImport', {
+                import_type: resolvedType,
+                file_url: schedule.api_url || undefined,
+                year: targetYear,
+                dry_run: false,
+            });
+            const data = res.data?.result || res.data || res;
+            if (data.partial) {
+                runSummary = `Partial: imported ${data.imported_rows || 0} rows, paused at offset ${data.next_offset}. Will resume on next run.`;
+                runStatus = 'partial';
+            } else {
+                runSummary = `Imported ${data.imported_rows || 0} rows, updated ${data.updated_rows || 0}`;
+                runStatus = 'success';
+            }
+        }
+    } catch (err) {
+        console.error(`Failed import ${schedule.import_type}:`, err.message);
+        runStatus = 'failed';
+        runSummary = `Error: ${err.message}`;
+    }
+
+    return { runStatus, runSummary };
+}
+
 Deno.serve(async (req) => {
     const startTime = Date.now();
-    
+
     try {
         const base44 = createClientFromRequest(req);
-        
+
         // Allow service role calls (from scheduled automations) or admin users
         let user = null;
         try { user = await base44.auth.me(); } catch (e) { /* service role call */ }
@@ -25,99 +94,79 @@ Deno.serve(async (req) => {
         const schedules = await base44.asServiceRole.entities.ImportScheduleConfig.filter({ is_active: true });
         const now = new Date();
         const results = [];
+        const skipped = [];
 
-        // Process ONE schedule per invocation to avoid timeout cascades
-        let processedOne = false;
-
+        // Bucket due schedules by family to avoid running two same-family imports in parallel
+        const dueByFamily = new Map<string, any[]>();
         for (const schedule of schedules) {
-            if (processedOne) break;
-            if (Date.now() - startTime > MAX_EXEC_MS) break;
-
             const nextRun = schedule.next_run_at ? new Date(schedule.next_run_at) : null;
             if (nextRun && nextRun > now) continue;
 
-            processedOne = true;
+            const dep = dependencyBlocked(schedule, schedules);
+            if (dep.blocked) {
+                skipped.push({ id: schedule.id, label: schedule.label, reason: dep.reason });
+                continue;
+            }
+
+            const family = getImportFamily(schedule.import_type);
+            if (!dueByFamily.has(family)) dueByFamily.set(family, []);
+            dueByFamily.get(family)!.push(schedule);
+        }
+
+        // Run one schedule per family per invocation (sequentially — invocations are short).
+        // This lets cross-family schedules progress in the same invocation without conflicts.
+        let processed = 0;
+        for (const familySchedules of dueByFamily.values()) {
+            if (processed >= MAX_SCHEDULES_PER_INVOCATION) break;
+            if (Date.now() - startTime > MAX_EXEC_MS) break;
+
+            // Pick the most overdue schedule in this family
+            familySchedules.sort((a, b) => {
+                const aT = a.next_run_at ? new Date(a.next_run_at).getTime() : 0;
+                const bT = b.next_run_at ? new Date(b.next_run_at).getTime() : 0;
+                return aT - bT;
+            });
+            const schedule = familySchedules[0];
+
             console.log(`Running scheduled import: ${schedule.label} (${schedule.import_type})`);
+            const { runStatus, runSummary } = await runOneSchedule(base44, schedule, now);
 
-            let runStatus = 'success';
-            let runSummary = '';
+            // #8 — track consecutive failures for exponential backoff
+            const priorFailures = schedule.consecutive_failures || 0;
+            const newFailures = runStatus === 'failed' ? priorFailures + 1 : 0;
+            const nextRunDate = computeNextRun(schedule, now, newFailures);
 
-            try {
-                if (schedule.import_type === 'nppes_registry') {
-                    const config = schedule.nppes_config || {};
-                    const crawlerPayload: any = {
-                        action: 'batch_start',
-                        dry_run: false,
-                        skip_completed: false,
-                        taxonomy_description: config.taxonomy_description || '',
-                        entity_type: config.entity_type || '',
-                    };
-
-                    if (!config.crawl_all_states) {
-                        if (!config.state) {
-                            throw new Error('Scheduled NPPES crawler runs require a state when crawl_all_states is disabled');
-                        }
-                        crawlerPayload.states = [config.state];
-                    }
-                    if (config.city) crawlerPayload.city = config.city;
-                    if (config.postal_code) crawlerPayload.postal_code = config.postal_code;
-
-                    const res = await base44.asServiceRole.functions.invoke('nppesCrawler', crawlerPayload);
-                    const data = res.data || res;
-                    runSummary = data.message || `Queued ${data.states_queued || 0} state(s) for crawling`;
-                    runStatus = data.error ? 'failed' : 'success';
-                } else {
-                    // CMS data import — use triggerImport which has built-in URLs
-                    // Resolve aliases: cms_utilization -> provider_service_utilization
-                    const ALIASES = { cms_utilization: 'provider_service_utilization' };
-                    const resolvedType = ALIASES[schedule.import_type] || schedule.import_type;
-                    const res = await base44.asServiceRole.functions.invoke('triggerImport', {
-                        import_type: resolvedType,
-                        file_url: schedule.api_url || undefined,
-                        year: now.getFullYear(),
-                        dry_run: false,
-                    });
-                    const data = res.data?.result || res.data || res;
-                    if (data.partial) {
-                        runSummary = `Partial: imported ${data.imported_rows || 0} rows, paused at offset ${data.next_offset}. Will resume on next run.`;
-                        runStatus = 'partial';
-                    } else {
-                        runSummary = `Imported ${data.imported_rows || 0} rows, updated ${data.updated_rows || 0}`;
-                        runStatus = 'success';
-                    }
-                }
-            } catch (err) {
-                console.error(`Failed import ${schedule.import_type}:`, err.message);
-                runStatus = 'failed';
-                runSummary = `Error: ${err.message}`;
-            }
-
-            // Calculate next run
-            const nextRunDate = new Date(now);
-            const [hours, minutes] = (schedule.schedule_time || '02:00').split(':').map(Number);
-
-            if (schedule.schedule_frequency === 'daily') {
-                nextRunDate.setDate(nextRunDate.getDate() + 1);
-            } else if (schedule.schedule_frequency === 'weekly') {
-                nextRunDate.setDate(nextRunDate.getDate() + 7);
-            } else if (schedule.schedule_frequency === 'monthly') {
-                nextRunDate.setMonth(nextRunDate.getMonth() + 1);
-            }
-            nextRunDate.setHours(hours, minutes, 0, 0);
-
-            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, {
+            const update: Record<string, unknown> = {
                 last_run_at: now.toISOString(),
                 next_run_at: nextRunDate.toISOString(),
                 last_run_status: runStatus,
                 last_run_summary: runSummary,
+                consecutive_failures: newFailures,
+            };
+            // Only refresh last_successful_run_at on a clean success so children
+            // can re-attempt against the same parent run after a transient failure.
+            if (runStatus === 'success') {
+                update.last_successful_run_at = now.toISOString();
+            }
+            await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, update);
+
+            results.push({
+                import_type: schedule.import_type,
+                status: runStatus,
+                summary: runSummary,
+                consecutive_failures: newFailures,
+                next_run_at: nextRunDate.toISOString(),
             });
-
-            // Email notifications disabled per admin request
-
-            results.push({ import_type: schedule.import_type, status: runStatus, summary: runSummary });
+            processed++;
         }
 
-        return Response.json({ success: true, results, checked: schedules.length });
+        return Response.json({
+            success: true,
+            results,
+            skipped,
+            checked: schedules.length,
+            processed,
+        });
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });
     }

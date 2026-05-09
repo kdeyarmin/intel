@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+// Natural-key dedup helpers extracted to ./helpers.ts so they can be unit-tested.
+import { partitionForUpsert } from './helpers.ts';
 
 // Strict time budget: 25s to leave buffer before platform 30s timeout kills us
 const MAX_EXEC_MS = 25_000; 
@@ -846,12 +848,36 @@ async function importChunk(base44, importType, records, startTime) {
     for (let i = 0; i < records.length; i += BULK_SIZE) {
         if (isTimeUp(startTime)) break;
         const chunk = records.slice(i, i + BULK_SIZE);
-        let success = false;
 
+        // #2 — partition into create / update / skipped against existing DB rows so we
+        // don't duplicate on re-runs. Falls back to create-only if lookup fails.
+        const { toCreate, toUpdate, skipped: chunkSkipped } = await partitionForUpsert(entity, chunk, importType);
+        skipped += chunkSkipped;
+
+        let success = false;
         for (let attempt = 0; attempt < 4; attempt++) {
             try {
-                await entity.bulkCreate(chunk);
-                imported += chunk.length;
+                if (toCreate.length > 0) {
+                    await entity.bulkCreate(toCreate);
+                    imported += toCreate.length;
+                }
+                if (toUpdate.length > 0) {
+                    // base44 doesn't expose a bulkUpdate, so chunk individual updates
+                    // in small parallel groups to bound rate-limit risk.
+                    for (let j = 0; j < toUpdate.length; j += 5) {
+                        const group = toUpdate.slice(j, j + 5);
+                        const results = await Promise.all(group.map(({ id, record }) =>
+                            entity.update(id, record)
+                                .then(() => true)
+                                .catch(err => {
+                                    chunkErrors.push({ id, error: err.message });
+                                    return false;
+                                })
+                        ));
+                        updated += results.filter(Boolean).length;
+                        if (j + 5 < toUpdate.length) await delay(150, startTime);
+                    }
+                }
                 success = true;
                 break;
             } catch (e) {
@@ -866,7 +892,7 @@ async function importChunk(base44, importType, records, startTime) {
                 } else {
                     chunkErrors.push({ chunk_start: i, chunk_size: chunk.length, error: e.message, attempts: attempt + 1 });
                     console.warn(`[importChunk] Chunk ${i} permanently failed after ${attempt + 1} attempts: ${e.message}`);
-                    skipped += chunk.length;
+                    skipped += toCreate.length + toUpdate.length;
                     if (isRetryable) {
                         // Rate limit exhausted retries, abort the whole chunk processing
                         return { imported, updated, skipped, errors: chunkErrors, aborted: true, fatalError: true };

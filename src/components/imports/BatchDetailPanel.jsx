@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   FileText,
-  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
+  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles, Play
 } from 'lucide-react';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
 import ErrorCategoryDisplay from './ErrorCategoryDisplay';
@@ -12,6 +12,7 @@ import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
+import { pickResumeOffset, resumeProgressPct } from './resumeOffset';
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -163,6 +164,9 @@ export default function BatchDetailPanel({ batch }) {
 
   if (!batch) return null;
 
+  const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
+  const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
+
   return (
     <div className="space-y-5 mt-2">
       {/* Header */}
@@ -178,6 +182,23 @@ export default function BatchDetailPanel({ batch }) {
         </div>
         {duration && <span className="text-xs text-slate-500">Duration: {duration}</span>}
       </div>
+
+      {/* #9 — Paused/resume banner. Shows where the import stopped + when it'll auto-resume. */}
+      {batch.status === 'paused' && resumeOffset != null && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex items-start gap-3">
+          <Play className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 text-xs text-amber-200">
+            <p className="font-semibold mb-0.5">
+              {resumeIsByteOffset
+                ? `Paused at byte ${resumeOffset.toLocaleString()}`
+                : `Paused at row ${resumeOffset.toLocaleString()}${resumePct != null ? ` (${resumePct}% complete)` : ''}`}
+            </p>
+            <p className="text-amber-300/80">
+              {batch.cancel_reason || 'Will auto-resume on the next scheduled run, or trigger a retry from the Data Center.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 text-sm">

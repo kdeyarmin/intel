@@ -3,11 +3,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
-        
-        // Ensure admin or service role
-        const user = await base44.auth.me();
-        if (user && user.role !== 'admin') {
-            return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+        // Allow service role calls (from scheduled automations) or admin users.
+        // base44.auth.me() throws when invoked via the service role — wrap it so
+        // scheduled callers don't 500 before reaching the actual fix logic.
+        let user = null;
+        try { user = await base44.auth.me(); } catch (_e) { /* service role */ }
+        const isService = user && user.email && user.email.includes('service+');
+        if (user && user.role !== 'admin' && !isService) {
+            return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
         const now = new Date();
@@ -132,6 +136,17 @@ Deno.serve(async (req) => {
                     });
                 } catch (err) {
                     const responseBody = err.response?.data ? JSON.stringify(err.response.data) : 'no data';
+                    // Revert the optimistic 'processing' status so the batch doesn't get
+                    // stuck pretending to run. Drop it back into 'failed' with a note —
+                    // the next pass will see the higher retry_count guard and skip it.
+                    try {
+                        await base44.asServiceRole.entities.ImportBatch.update(batch.id, {
+                            status: 'failed',
+                            cancel_reason: `Auto-fix invoke failed: ${err.message}`,
+                        });
+                    } catch (revertErr) {
+                        console.warn(`[autoFixImports] Failed to revert status for ${batch.id}:`, revertErr.message);
+                    }
                     results.push({ batch_id: batch.id, action: 'restart_failed', error: err.message, responseBody });
                 }
             } else {

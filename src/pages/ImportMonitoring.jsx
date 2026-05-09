@@ -546,6 +546,53 @@ export default function ImportMonitoring() {
       {/* Live Progress for Active Jobs */}
       <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
 
+      {/* #9 — Paused-imports summary banner so users can see resumable work at a glance */}
+      {pausedBatches.length > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="py-3">
+            <div className="flex items-start gap-2">
+              <Pause className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 text-sm">
+                <p className="text-amber-200 font-semibold mb-1">
+                  {pausedBatches.length} import{pausedBatches.length !== 1 ? 's are' : ' is'} paused mid-run
+                </p>
+                <ul className="text-xs text-amber-300/80 space-y-0.5">
+                  {pausedBatches.slice(0, 5).map(b => {
+                    // Pick the field that actually supplied the offset so row counts
+                    // don't get labelled as bytes when both fields are present.
+                    let offset = null;
+                    let isByte = false;
+                    if (b.retry_params?.resume_offset != null) {
+                      offset = b.retry_params.resume_offset;
+                    } else if (b.retry_params?.row_offset != null) {
+                      offset = b.retry_params.row_offset;
+                    } else if (b.retry_params?.byte_offset != null) {
+                      offset = b.retry_params.byte_offset;
+                      isByte = true;
+                    }
+                    return (
+                      <li key={b.id}>
+                        <span className="font-medium">{b.import_type}</span>
+                        {offset != null && (
+                          <span className="text-amber-300/60">
+                            {' '}— paused at {isByte ? 'byte' : 'row'} {Number(offset).toLocaleString()}
+                            {!isByte && b.total_rows ? ` of ${Number(b.total_rows).toLocaleString()}` : ''}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {pausedBatches.length > 5 && <li>…and {pausedBatches.length - 5} more</li>}
+                </ul>
+                <p className="text-[11px] text-amber-300/70 mt-1.5">
+                  Auto-resumes on next scheduled run. Click any paused batch below to see details.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Success vs Failure Charts */}
       <SuccessVsFailureChart batches={batches} />
 
