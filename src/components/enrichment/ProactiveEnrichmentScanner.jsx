@@ -59,6 +59,8 @@ export default function ProactiveEnrichmentScanner({ providers = [], _totalProvi
 
     const scanResults = { enriched: 0, no_data: 0, errors: 0, details: [] };
     const enabledList = [...enabledPoints];
+    // Single batch id for the entire scan run so all created records can be grouped for review/auditing.
+    const batchId = `proactive_${Date.now()}`;
 
     for (let i = 0; i < toScan.length; i++) {
       const p = toScan[i];
@@ -98,9 +100,9 @@ Only return data you can verify. Provide specific numbers and names.`,
         });
 
         if (!res.data_found) {
-          scanResults.no_data++;
-          scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
-          // Record no_data so this NPI is skipped on future scans
+          // Record no_data so this NPI is skipped on future scans.
+          // Only increment the counter after the write succeeds; if it throws
+          // the catch below will count it as an error (avoiding double-counting).
           await base44.entities.EnrichmentRecord.create({
             npi: p.npi,
             provider_name: name,
@@ -110,8 +112,10 @@ Only return data you can verify. Provide specific numbers and names.`,
             new_value: 'No data found',
             confidence: 'low',
             status: 'rejected',
-            batch_id: `proactive_${Date.now()}`,
+            batch_id: batchId,
           });
+          scanResults.no_data++;
+          scanResults.details.push({ npi: p.npi, name, status: 'no_data' });
           continue;
         }
 
@@ -147,7 +151,7 @@ Only return data you can verify. Provide specific numbers and names.`,
             confidence: res.confidence || 'medium',
             status: 'pending_review',
             enrichment_details: details,
-            batch_id: `proactive_${Date.now()}`,
+            batch_id: batchId,
           });
           scanResults.enriched++;
           scanResults.details.push({ npi: p.npi, name, status: 'enriched', fields: summaryParts.length });
