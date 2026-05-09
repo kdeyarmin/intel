@@ -43,9 +43,11 @@ export default function MaintenanceHealthPanel() {
       }
     };
 
-    fetchHeartbeat();
-    // Poll so a long-lived dashboard tab doesn't go stale on the first event.
-    intervalId = setInterval(fetchHeartbeat, POLL_INTERVAL_MS);
+    fetchHeartbeat().finally(() => {
+      // Start polling only after the initial fetch, so a slow first response
+      // doesn't race with the second tick.
+      if (!cancelled) intervalId = setInterval(fetchHeartbeat, POLL_INTERVAL_MS);
+    });
 
     return () => {
       cancelled = true;

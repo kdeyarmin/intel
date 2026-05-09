@@ -185,8 +185,9 @@ Deno.serve(async (req) => {
         // so a worker that doesn't return inside the budget is recorded as
         // a timeout (not silently dropped) and the heartbeat reliably
         // describes every expected worker.
+        type MaintenanceWorkerOutcome = { worker: string; ok: boolean; error?: string };
         const maintenanceBudgetMs = Math.max(0, MAX_EXEC_MS - (Date.now() - startTime) - 2_000);
-        const maintenanceMap = new Map<string, { worker: string; ok: boolean; error?: string }>();
+        const maintenanceMap = new Map<string, MaintenanceWorkerOutcome>();
         for (const worker of MAINTENANCE_WORKERS) {
             maintenanceMap.set(worker, { worker, ok: false, error: 'timeout' });
         }
