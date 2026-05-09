@@ -51,10 +51,6 @@ export default function ProviderLocationMatching() {
     });
   }, []);
 
-  const _handleSelectAll = useCallback(() => {
-    setSelectedIds(new Set(filtered.map(m => m.id)));
-  }, [filtered]);
-
   const handleBulkAction = async (status) => {
     const ids = [...selectedIds];
     try {

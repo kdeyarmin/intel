@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { UserPlus, Search, Loader2, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export default function AddProviderDialog({ listId, existingNpis = [], onAdded }) {
   const [open, setOpen] = useState(false);
@@ -17,37 +18,51 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
   const handleSearch = async () => {
     if (!search.trim()) return;
     setSearching(true);
-    const query = search.trim();
+    try {
+      const query = search.trim();
 
-    // Search by NPI or name
-    let providers = [];
-    if (/^\d+$/.test(query)) {
-      providers = await base44.entities.Provider.filter({ npi: query }, undefined, 20);
-    } else {
-      const all = await base44.entities.Provider.list('-created_date', 200);
-      const q = query.toLowerCase();
-      providers = all.filter(p => {
-        const name = p.entity_type === 'Individual'
-          ? `${p.first_name} ${p.last_name}`.toLowerCase()
-          : (p.organization_name || '').toLowerCase();
-        return name.includes(q) || (p.npi || '').includes(q);
-      }).slice(0, 20);
+      // Search by NPI or name
+      let providers = [];
+      if (/^\d+$/.test(query)) {
+        providers = await base44.entities.Provider.filter({ npi: query }, undefined, 20);
+      } else {
+        const all = await base44.entities.Provider.list('-created_date', 200);
+        const q = query.toLowerCase();
+        providers = all.filter(p => {
+          const name = p.entity_type === 'Individual'
+            ? `${p.first_name} ${p.last_name}`.toLowerCase()
+            : (p.organization_name || '').toLowerCase();
+          return name.includes(q) || (p.npi || '').includes(q);
+        }).slice(0, 20);
+      }
+
+      setResults(providers);
+    } catch (err) {
+      console.error('Provider search failed:', err);
+      toast.error('Search failed. Please try again.');
+      setResults([]);
+    } finally {
+      setSearching(false);
     }
-
-    setResults(providers);
-    setSearching(false);
   };
 
   const handleAdd = async (npi) => {
     setAdding(npi);
-    await base44.entities.LeadListMember.create({
-      lead_list_id: listId,
-      npi,
-      status: 'New',
-    });
-    setAdded(prev => new Set([...prev, npi]));
-    setAdding(null);
-    onAdded?.();
+    try {
+      await base44.entities.LeadListMember.create({
+        lead_list_id: listId,
+        npi,
+        status: 'New',
+      });
+      setAdded(prev => new Set([...prev, npi]));
+      // Await in case onAdded is async — otherwise its rejection escapes this try/catch.
+      await onAdded?.();
+    } catch (err) {
+      console.error('Failed to add provider:', err);
+      toast.error('Failed to add provider. Please try again.');
+    } finally {
+      setAdding(null);
+    }
   };
 
   const alreadyIn = new Set([...existingNpis, ...added]);

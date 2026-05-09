@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Handshake, Building2, MapPin, Megaphone, Users, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../../utils';
+import { toast } from 'sonner';
 
 const PRIORITY_STYLES = {
   critical: 'bg-red-500/15 text-red-400 border-red-500/30',
@@ -28,7 +29,7 @@ export default function StrategicPartnerFinder({ nodes = [], edges = [], locatio
 
   const findPartners = async () => {
     setLoading(true);
-
+    try {
     // Build network snapshot
     const npiState = {};
     locations.forEach(l => { if (l.npi && l.state) npiState[l.npi] = l.state; });
@@ -115,7 +116,12 @@ Be very specific about locations, specialties, and organizational types.`,
     });
 
     setPartners(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI strategic partner finder failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (nodes.length === 0) return null;

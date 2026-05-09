@@ -58,24 +58,25 @@ export default function AIDuplicateDetector({ providers = [], locations = [], ta
     setLoading(true);
     setDuplicates(null);
 
-    const sample = providers.slice(0, 100).map(p => {
-      const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
-      const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
-      return {
-        npi: p.npi,
-        name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
-        entity_type: p.entity_type,
-        credential: p.credential || '',
-        specialty: tax?.taxonomy_description || '',
-        city: loc?.city || '',
-        state: loc?.state || '',
-        phone: loc?.phone || '',
-        email: p.email || '',
-      };
-    });
+    try {
+      const sample = providers.slice(0, 100).map(p => {
+        const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+        const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+        return {
+          npi: p.npi,
+          name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
+          entity_type: p.entity_type,
+          credential: p.credential || '',
+          specialty: tax?.taxonomy_description || '',
+          city: loc?.city || '',
+          state: loc?.state || '',
+          phone: loc?.phone || '',
+          email: p.email || '',
+        };
+      });
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare data deduplication specialist. Analyze this list of ${sample.length} providers and identify POTENTIAL DUPLICATE records.
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare data deduplication specialist. Analyze this list of ${sample.length} providers and identify POTENTIAL DUPLICATE records.
 
 Look for:
 1. Same person with different NPIs (name variations, typos, maiden/married names)
@@ -88,55 +89,108 @@ Provider data (first ${sample.length}):
 ${JSON.stringify(sample, null, 1)}
 
 Return groups of potential duplicates. Each group should have 2+ records that might be the same entity. Include a confidence score and clear reasoning for each group.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          duplicate_groups: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                group_id: { type: "string" },
-                confidence: { type: "string", enum: ["high", "medium", "low"] },
-                reason: { type: "string" },
-                match_type: { type: "string" },
-                records: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      npi: { type: "string" },
-                      name: { type: "string" },
-                      detail: { type: "string" }
+        response_json_schema: {
+          type: "object",
+          properties: {
+            duplicate_groups: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  group_id: { type: "string" },
+                  confidence: { type: "string", enum: ["high", "medium", "low"] },
+                  reason: { type: "string" },
+                  match_type: { type: "string" },
+                  records: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        npi: { type: "string" },
+                        name: { type: "string" },
+                        detail: { type: "string" }
+                      }
                     }
                   }
                 }
               }
-            }
-          },
-          summary: { type: "string" },
-          total_flagged: { type: "number" }
+            },
+            summary: { type: "string" },
+            total_flagged: { type: "number" }
+          }
         }
-      }
-    });
+      });
 
-    setDuplicates(res);
-    setLoading(false);
+      setDuplicates(res);
 
-    if (res.duplicate_groups?.length > 0) {
-      for (const group of res.duplicate_groups.slice(0, 5)) {
-        await base44.entities.DataQualityAlert.create({
-          alert_type: 'new_issue_detected',
-          severity: group.confidence === 'high' ? 'high' : 'medium',
-          title: `Potential Duplicate: ${group.records.map(r => r.name).join(' / ')}`,
-          description: group.reason,
-          action_required: group.confidence === 'high',
-          status: 'new',
-        });
+      if (res.duplicate_groups?.length > 0) {
+        // Alert creation is best-effort and isolated from the scan-result path:
+        // a failure here shouldn't override the success toast for the scan, and
+        // we de-dup against existing alerts so re-scans don't pile up records
+        // for the same set of NPIs.
+        let createdAlerts = 0;
+        let skippedDuplicateAlerts = 0;
+        let alertCreateErrors = 0;
+        try {
+          // Pull recent open alerts of this type once so we can match against
+          // their identity key client-side — avoids one query per group.
+          const recentAlerts = await base44.entities.DataQualityAlert
+            .filter({ alert_type: 'new_issue_detected', status: 'new' }, '-created_date', 200)
+            .catch(() => []);
+          const existingKeys = new Set(
+            (Array.isArray(recentAlerts) ? recentAlerts : [])
+              .map(a => a?.dedup_key)
+              .filter(Boolean)
+          );
+
+          for (const group of res.duplicate_groups.slice(0, 5)) {
+            const records = Array.isArray(group?.records) ? group.records : [];
+            const npiKey = records
+              .map(r => String(r?.npi ?? '').trim())
+              .filter(Boolean)
+              .sort()
+              .join(',');
+            // dedup_key is a stable identifier for the same set of NPIs across re-scans.
+            const dedupKey = `dup:${npiKey || group?.group_id || records.map(r => r?.name).join('/')}`;
+            if (existingKeys.has(dedupKey)) {
+              skippedDuplicateAlerts++;
+              continue;
+            }
+            try {
+              await base44.entities.DataQualityAlert.create({
+                alert_type: 'new_issue_detected',
+                severity: group.confidence === 'high' ? 'high' : 'medium',
+                title: `Potential Duplicate: ${records.map(r => r?.name).filter(Boolean).join(' / ') || 'Unnamed group'}`,
+                description: group.reason,
+                action_required: group.confidence === 'high',
+                status: 'new',
+                dedup_key: dedupKey,
+              });
+              existingKeys.add(dedupKey);
+              createdAlerts++;
+            } catch (createErr) {
+              alertCreateErrors++;
+              console.warn('Duplicate alert create failed:', createErr);
+            }
+          }
+        } catch (alertErr) {
+          // Don't surface this as a scan failure — the user already has the results above.
+          console.warn('Duplicate alert sync failed:', alertErr);
+        }
+
+        const summaryBits = [`Found ${res.duplicate_groups.length} potential duplicate groups`];
+        if (createdAlerts > 0) summaryBits.push(`${createdAlerts} new alert${createdAlerts !== 1 ? 's' : ''} created`);
+        if (skippedDuplicateAlerts > 0) summaryBits.push(`${skippedDuplicateAlerts} already tracked`);
+        if (alertCreateErrors > 0) summaryBits.push(`${alertCreateErrors} alert create error${alertCreateErrors !== 1 ? 's' : ''}`);
+        toast.success(summaryBits.join(' — '));
+      } else {
+        toast.success('No duplicates detected — your data looks clean!');
       }
-      toast.success(`Found ${res.duplicate_groups.length} potential duplicate groups — alerts created`);
-    } else {
-      toast.success('No duplicates detected — your data looks clean!');
+    } catch (err) {
+      console.error('AI duplicate detection failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -27,7 +27,7 @@ export default function AIFollowUpGenerator({ campaign, messages = [], onApplyFo
 
   const generate = async () => {
     setLoading(true);
-
+    try {
     const segmentSummary = Object.entries(segments)
       .map(([k, v]) => `${SEGMENT_LABELS[k]?.label}: ${v.length} recipients`)
       .join('\n');
@@ -84,7 +84,12 @@ Each follow-up should:
     });
 
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI follow-up generator failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

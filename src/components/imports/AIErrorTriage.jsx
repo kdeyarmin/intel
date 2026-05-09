@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronRight, RotateCcw, SkipForward, Zap, Shield, Clock
 } from 'lucide-react';
 import { categorizeError, ERROR_CATEGORIES, getErrorMessage } from './errorCategories';
+import { toast } from 'sonner';
 
 const PRIORITY_CONFIG = {
   critical: { label: 'Critical', color: 'bg-red-500/15 text-red-400 border-red-500/20', icon: AlertTriangle, sort: 0 },
@@ -41,6 +42,7 @@ export default function AIErrorTriage({ errors, batch, onBulkAction }) {
   const runAnalysis = async () => {
     if (!errors?.length) return;
     setIsAnalyzing(true);
+    try {
     const summaryForAI = Object.entries(errorSummary).map(([cat, info]) => ({
       category: ERROR_CATEGORIES[cat]?.label || cat,
       count: info.count,
@@ -94,10 +96,19 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
       }
     });
     setAnalysis(result);
-    setIsAnalyzing(false);
-    // auto-expand the first critical/high group
-    const firstImportant = result.groups?.findIndex(g => g.priority === 'critical' || g.priority === 'high');
+    // auto-expand the first critical/high group — index must come from the sorted view
+    // since the rendered list uses sortedGroups, not result.groups directly.
+    const sorted = [...(result.groups || [])].sort((a, b) =>
+      (PRIORITY_CONFIG[a.priority]?.sort ?? 9) - (PRIORITY_CONFIG[b.priority]?.sort ?? 9)
+    );
+    const firstImportant = sorted.findIndex(g => g.priority === 'critical' || g.priority === 'high');
     if (firstImportant >= 0) setExpandedGroups(new Set([firstImportant]));
+    } catch (err) {
+      console.error('AI error triage failed:', err);
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const toggleGroup = (idx) => {

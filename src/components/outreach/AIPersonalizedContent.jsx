@@ -18,7 +18,7 @@ export default function AIPersonalizedContent({
 
   const generate = async () => {
     setLoading(true);
-
+    try {
     // Build representative provider profiles
     const provMap = {};
     providers.forEach(p => { provMap[p.npi] = p; });
@@ -79,7 +79,12 @@ Keep the email body under 150 words. Be warm but professional.`,
     });
 
     setResult(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI personalized content failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, TrendingUp, TrendingDown, Minus, Target, Clock, Mail, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function CampaignPerformanceAnalysis({ campaign, messages = [], onClose }) {
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function CampaignPerformanceAnalysis({ campaign, messages = [], o
 
   const runAnalysis = async () => {
     setLoading(true);
-
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Analyze the performance of this completed healthcare provider outreach campaign and provide actionable insights.
 
@@ -95,7 +96,12 @@ Provide a thorough analysis including:
     });
 
     setAnalysis(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI campaign performance analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const verdictConfig = {

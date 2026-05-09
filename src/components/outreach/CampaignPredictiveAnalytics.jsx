@@ -30,12 +30,12 @@ export default function CampaignPredictiveAnalytics({ campaigns = [], providers 
 
   const runPrediction = async () => {
     setLoading(true);
-    setPrediction(null);
+    setPrediction(null); // avoid showing previous prediction if a new run fails
     try {
-      const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
-        name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,
-        bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
-      }));
+    const historical = campaigns.filter(c => c.sent_count > 0).map(c => ({
+      name: c.name, sent: c.sent_count, opened: c.opened_count, responded: c.responded_count,
+      bounced: c.bounced_count, source: c.source_criteria, date: c.created_date,
+    }));
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt: `You are a healthcare marketing analytics expert. Analyze campaign history and predict optimal strategies.
@@ -111,11 +111,11 @@ Provide:
             }
           }
         }
-      });
-      setPrediction(res);
+    });
+    setPrediction(res);
     } catch (err) {
-      console.error('Predictive analysis failed:', err);
-      toast.error(`Predictive analysis failed: ${err?.message || 'Unknown error'}`);
+      console.error('AI campaign predictive analytics failed:', err);
+      toast.error('Operation failed. Please try again.');
     } finally {
       setLoading(false);
     }

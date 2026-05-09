@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Users } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AudienceAnalysisTab({
   loading: externalLoading,
@@ -70,6 +71,7 @@ export default function AudienceAnalysisTab({
       return;
     }
 
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Analyze this healthcare provider target audience and provide strategic recommendations for email outreach.
 
@@ -136,7 +138,12 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
     });
 
     setResults({ profile, insights: res });
-    setLoading(false);
+    } catch (err) {
+      console.error('AI audience analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isLoading = loading || externalLoading;

@@ -38,7 +38,7 @@ export default function FollowUpSequenceTab({
 
   const generate = async () => {
     setLoading(true);
-
+    try {
     const seqConfig = SEQUENCE_TYPES.find(s => s.value === sequenceType);
     const emailCount = sequenceType === 'custom' ? numEmails : 
       sequenceType === 'aggressive' ? 5 :
@@ -100,7 +100,12 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
     setResults(res);
     setExpandedEmail(0);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI follow-up sequence generation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isLoading = loading || externalLoading;

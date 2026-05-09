@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import {
   Menu, X, LayoutDashboard, Upload, Users, ListCheck, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
@@ -69,7 +69,7 @@ const NAV_SECTIONS = [
 ];
 
 export default function AppLayout({ children, currentPageName }) {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
@@ -100,18 +100,6 @@ export default function AppLayout({ children, currentPageName }) {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const currentUser = await base44.auth.me();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Failed to load user', error);
-      }
-    };
-    loadUser();
-  }, []);
-
   const toggleSection = (label) => {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
   };
@@ -131,7 +119,7 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.tagName === 'A') setSidebarOpen(false); }}>
+      <aside className={`${sidebarOpen ? 'w-52 fixed lg:relative z-40' : 'w-0 lg:w-14 overflow-hidden lg:overflow-visible'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.closest('a')) setSidebarOpen(false); }}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
           {sidebarOpen ? (
@@ -249,7 +237,7 @@ export default function AppLayout({ children, currentPageName }) {
           )}
           <Button
             variant="ghost"
-            onClick={() => base44.auth.logout()}
+            onClick={() => logout()}
             className="w-full text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />

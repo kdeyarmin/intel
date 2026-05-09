@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 const ICON_MAP = {
   opportunity: TrendingUp,
@@ -23,8 +24,9 @@ export default function LocationInsightsPanel({ summaryData }) {
 
   const generateInsights = async () => {
     setLoading(true);
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare market analyst. Analyze these aggregated provider-location metrics and provide actionable insights.
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare market analyst. Analyze these aggregated provider-location metrics and provide actionable insights.
 
 DATA SUMMARY:
 ${JSON.stringify(summaryData, null, 2)}
@@ -34,25 +36,30 @@ Provide 4-6 insights. Each insight should have a type (opportunity, risk, or ins
 - Locations with declining provider counts (risk)
 - Geographic areas with high referral potential
 - Underserved areas that could benefit from expansion`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          insights: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                type: { type: "string", enum: ["opportunity", "risk", "insight"] },
-                title: { type: "string" },
-                description: { type: "string" },
+        response_json_schema: {
+          type: "object",
+          properties: {
+            insights: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string", enum: ["opportunity", "risk", "insight"] },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                }
               }
             }
           }
         }
-      }
-    });
-    setInsights(result.insights || []);
-    setLoading(false);
+      });
+      setInsights(result.insights || []);
+    } catch (err) {
+      console.error('AI location insights failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

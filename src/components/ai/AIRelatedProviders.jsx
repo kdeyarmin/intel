@@ -7,6 +7,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Users, Loader2, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AIRelatedProviders({ provider, location, taxonomies, referrals, allProviders = [], allLocations = [], allTaxonomies = [] }) {
   const [results, setResults] = useState(null);
@@ -84,6 +85,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
       setResults(res);
     } catch (err) {
       console.error('Analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
     } finally {
       setLoading(false);
     }

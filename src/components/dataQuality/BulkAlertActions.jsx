@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { XCircle, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function BulkAlertActions({ selectedIds = [], alerts = [], onClear }) {
   const queryClient = useQueryClient();
@@ -14,19 +15,32 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
 
   const bulkAction = async (action) => {
     setProcessing(true);
-    for (const id of selectedIds) {
-      const alert = alerts.find(a => a.id === id);
-      if (!alert) continue;
-      const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
-      if (action === 'dismiss') {
-        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'closed' });
-      } else if (action === 'apply_fix') {
-        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'resolved', resolved_at: new Date().toISOString() });
+    // apply_fix should only resolve alerts that actually have a suggested fix.
+    // The button is already conditionally rendered, but defensive scoping avoids
+    // accidentally marking unrelated alerts resolved if the selection includes
+    // items without a suggested_value.
+    const idsToProcess = action === 'apply_fix'
+      ? withSuggestions.map(a => a.id)
+      : selectedIds;
+    try {
+      for (const id of idsToProcess) {
+        const alert = alerts.find(a => a.id === id);
+        if (!alert) continue;
+        const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
+        if (action === 'dismiss') {
+          await base44.entities.DataQualityAlert.update(id, { ...base, status: 'closed' });
+        } else if (action === 'apply_fix') {
+          await base44.entities.DataQualityAlert.update(id, { ...base, status: 'resolved', resolved_at: new Date().toISOString() });
+        }
       }
+      queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
+      onClear();
+    } catch (err) {
+      console.error('Bulk action failed:', err);
+      toast.error('Bulk action failed. Some items may not have been updated.');
+    } finally {
+      setProcessing(false);
     }
-    queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
-    setProcessing(false);
-    onClear();
   };
 
   if (selectedIds.length === 0) return null;

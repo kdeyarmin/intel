@@ -107,22 +107,23 @@ export default function AIProfileAugmenter({ providers = [], locations = [], tax
     setResults(null);
     setApplied(new Set());
 
-    const batch = providers.slice(0, 15).map(p => {
-      const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
-      const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
-      return {
-        npi: p.npi,
-        name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
-        entity_type: p.entity_type,
-        credential: p.credential || '',
-        specialty: tax?.taxonomy_description || '',
-        city: loc?.city || '',
-        state: loc?.state || '',
-      };
-    });
+    try {
+      const batch = providers.slice(0, 15).map(p => {
+        const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+        const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+        return {
+          npi: p.npi,
+          name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',
+          entity_type: p.entity_type,
+          credential: p.credential || '',
+          specialty: tax?.taxonomy_description || '',
+          city: loc?.city || '',
+          state: loc?.state || '',
+        };
+      });
 
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a healthcare provider research specialist. For each provider below, find additional publicly available information:
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a healthcare provider research specialist. For each provider below, find additional publicly available information:
 
 1. Practice website URL
 2. Hospital/system affiliations
@@ -135,37 +136,44 @@ Providers:
 ${JSON.stringify(batch, null, 1)}
 
 Only return information you find with reasonable confidence from public sources. Do not fabricate data.`,
-      add_context_from_internet: true,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          profiles: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                npi: { type: "string" },
-                name: { type: "string" },
-                website: { type: "string" },
-                affiliations: { type: "array", items: { type: "string" } },
-                board_certifications: { type: "array", items: { type: "string" } },
-                education: { type: "string" },
-                languages: { type: "array", items: { type: "string" } },
-                accepting_patients: { type: "string" },
-                confidence: { type: "string" },
-                notes: { type: "string" }
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            profiles: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  npi: { type: "string" },
+                  name: { type: "string" },
+                  website: { type: "string" },
+                  affiliations: { type: "array", items: { type: "string" } },
+                  board_certifications: { type: "array", items: { type: "string" } },
+                  education: { type: "string" },
+                  languages: { type: "array", items: { type: "string" } },
+                  accepting_patients: { type: "string" },
+                  confidence: { type: "string" },
+                  notes: { type: "string" }
+                }
               }
-            }
-          },
-          summary: { type: "string" }
+            },
+            summary: { type: "string" }
+          }
         }
-      }
-    });
+      });
 
-    setResults(res);
-    setLoading(false);
-    const enriched = (res.profiles || []).filter(p => p.website || p.affiliations?.length || p.board_certifications?.length || p.education || p.languages?.length);
-    toast.success(`Found enrichment data for ${enriched.length} of ${batch.length} providers`);
+      // Normalize before storing so downstream renders never crash on a malformed payload.
+      const profiles = Array.isArray(res?.profiles) ? res.profiles : [];
+      setResults({ ...res, profiles });
+      const enriched = profiles.filter(p => p.website || p.affiliations?.length || p.board_certifications?.length || p.education || p.languages?.length);
+      toast.success(`Found enrichment data for ${enriched.length} of ${batch.length} providers`);
+    } catch (err) {
+      console.error('AI profile augmentation failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApply = async (profile) => {

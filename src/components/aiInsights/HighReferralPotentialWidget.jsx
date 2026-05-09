@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { GitBranch, Loader2, Sparkles, ExternalLink, TrendingUp, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
 
 export default function HighReferralPotentialWidget({ providers = [], referrals = [], utilizations = [], locations = [], taxonomies = [], scores = [] }) {
   const [results, setResults] = useState(null);
@@ -75,6 +76,7 @@ export default function HighReferralPotentialWidget({ providers = [], referrals 
 
   const analyze = async () => {
     setLoading(true);
+    try {
     const topData = candidates.slice(0, 10).map(c =>
       `${c.name} (NPI:${c.npi}) — Referrals:${c.totalRef}, HH:${c.hhRef}, Hospice:${c.hospRef}, Beneficiaries:${c.benef}, Payment:$${Math.round(c.payment/1000)}K, Specialty:${c.specialty}, ${c.city} ${c.state}, Score:${c.score}`
     ).join('\n');
@@ -126,7 +128,12 @@ Rank the top 5 providers by referral potential and explain WHY. Also provide 3 o
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('Analysis failed:', err);
+      toast.error('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const riskColors = { low: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', high: 'bg-red-100 text-red-700' };
