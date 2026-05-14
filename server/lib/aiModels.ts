@@ -2,7 +2,7 @@
  * Centralized Claude model selection.
  *
  * As of April 2026 the current generation Anthropic models are:
- *   - claude-opus-4-5-20251101     (most capable, expensive — released Nov 2025)
+ *   - claude-opus-4-7              (most capable, expensive — heaviest reasoning)
  *   - claude-sonnet-4-6            (balanced flagship — analysis, conversation, structured output)
  *   - claude-haiku-4-5-20251001    (fast & cheap — bulk lookups, high-volume structured tasks)
  *
@@ -17,7 +17,7 @@
 export const CLAUDE_MODELS = {
   SONNET: process.env.CLAUDE_MODEL_SONNET || "claude-sonnet-4-6",
   HAIKU: process.env.CLAUDE_MODEL_HAIKU || "claude-haiku-4-5-20251001",
-  OPUS: process.env.CLAUDE_MODEL_OPUS || "claude-opus-4-5-20251101",
+  OPUS: process.env.CLAUDE_MODEL_OPUS || "claude-opus-4-7",
 } as const;
 
 export type ClaudeModelName = typeof CLAUDE_MODELS[keyof typeof CLAUDE_MODELS];
