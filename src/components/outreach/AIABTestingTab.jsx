@@ -16,7 +16,7 @@ export default function AIABTestingTab({ onApplySubject, onApplyBody, campaigns 
 
   const generateVariations = async () => {
     setLoading(true);
-
+    try {
     const pastSubjects = campaigns.filter(c => c.sent_count > 0).map(c => ({
       subject: c.subject_template,
       openRate: c.sent_count > 0 ? Math.round((c.opened_count / c.sent_count) * 100) : 0,
@@ -87,7 +87,12 @@ Generate A/B test plan with:
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI A/B testing variations failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopy = (text, idx) => {

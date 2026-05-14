@@ -32,8 +32,14 @@ export default function AICampaignDrafter({ providers = [], onDraftReady }) {
       toast.error('No providers selected');
       return;
     }
+    // Avoid burning an LLM call on an empty custom goal — the prompt would
+    // otherwise carry "CAMPAIGN GOAL: " with no description and yield a low-quality draft.
+    if (goal === 'custom' && !customGoal.trim()) {
+      toast.error('Please describe your campaign goal');
+      return;
+    }
     setGenerating(true);
-
+    try {
     // Gather context from selected providers
     const specialties = [...new Set(providers.map(p => p.credential).filter(Boolean))];
     const states = [...new Set(providers.map(p => p._location_state).filter(Boolean))];
@@ -87,8 +93,13 @@ REQUIREMENTS:
       tips: res.tips || [],
     });
 
-    setGenerating(false);
     toast.success('AI draft generated');
+    } catch (err) {
+      console.error('AI campaign drafter failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -134,7 +145,7 @@ REQUIREMENTS:
 
       <Button
         onClick={handleGenerate}
-        disabled={generating || providers.length === 0}
+        disabled={generating || providers.length === 0 || (goal === 'custom' && !customGoal.trim())}
         size="sm"
         className="w-full bg-violet-600 hover:bg-violet-700 gap-2 text-xs"
       >

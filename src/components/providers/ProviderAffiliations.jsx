@@ -11,6 +11,7 @@ import {
   Star, Pencil, Trash2, Bot
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 const TYPE_LABELS = {
   hospital: 'Hospital',
@@ -77,6 +78,7 @@ export default function ProviderAffiliations({ npi, provider, location, taxonomi
 
   const handleAISuggest = async () => {
     setSuggesting(true);
+    try {
     const provName = provider?.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider?.organization_name || npi;
@@ -140,7 +142,12 @@ Only return affiliations you can verify. Be specific with names.`,
     }
 
     queryClient.invalidateQueries({ queryKey: ['providerAffiliations', npi] });
-    setSuggesting(false);
+    } catch (err) {
+      console.error('AI affiliation suggestion failed:', err);
+      toast.error('Suggestion failed. Please try again.');
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const confirmed = affiliations.filter(a => a.status === 'confirmed');

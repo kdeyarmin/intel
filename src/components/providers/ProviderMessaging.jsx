@@ -45,27 +45,47 @@ export default function ProviderMessaging({ provider, locations = [] }) {
     const msg = { content: newMessage, timestamp: new Date().toISOString(), direction: 'outbound', status: 'sent' };
     setMessages(prev => [...prev, msg]);
 
-    await base44.integrations.Core.SendEmail({
-      to: providerEmail,
-      subject: `Message from CareMetric regarding ${providerName}`,
-      body: newMessage,
-    });
-
-    setNewMessage('');
-    setSending(false);
-    toast.success('Message sent');
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: providerEmail,
+        subject: `Message from CareMetric regarding ${providerName}`,
+        body: newMessage,
+      });
+      setNewMessage('');
+      toast.success('Message sent');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setMessages(prev => prev.filter(m => m !== msg));
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const generateDraft = async () => {
     setGeneratingDraft(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Draft a brief, professional outreach email to ${providerName}, a healthcare provider${primaryLoc ? ` in ${primaryLoc.city || ''}, ${primaryLoc.state || ''}` : ''}. 
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Draft a brief, professional outreach email to ${providerName}, a healthcare provider${primaryLoc ? ` in ${primaryLoc.city || ''}, ${primaryLoc.state || ''}` : ''}.
 Purpose: Initial introduction or follow-up regarding potential collaboration.
 Keep it under 80 words, warm but professional, and include a clear call to action (e.g., scheduling a call).
 Do NOT include subject line, just the body.`,
-    });
-    setNewMessage(res);
-    setGeneratingDraft(false);
+      });
+      // InvokeLLM can return a plain string or an object depending on whether
+      // a response_json_schema was provided. Normalize before storing so we
+      // never put [object Object] in the textarea or hit a TypeError on .trim().
+      let draft = '';
+      if (typeof res === 'string') draft = res;
+      else if (res && typeof res.text === 'string') draft = res.text;
+      else if (res && typeof res.body === 'string') draft = res.body;
+      setNewMessage(draft);
+      if (!draft) toast.warning('Draft was empty — try again.');
+    } catch (err) {
+      console.error('Draft generation failed:', err);
+      toast.error('Failed to generate draft. Please try again.');
+    } finally {
+      setGeneratingDraft(false);
+    }
   };
 
   const addEvent = () => {

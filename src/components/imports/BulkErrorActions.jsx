@@ -42,20 +42,16 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
     return count;
   }, [selectedCategories, grouped]);
 
-  // Determine which categories contain retryable errors
+  // #5 — Use the structured taxonomy on each category instead of regex-matching
+  // error messages. Categories carry a `retryable` flag that stays in sync with
+  // their solutions, so this stops drifting whenever a new error string shows up.
   const retryableCategories = useMemo(() => {
     const retryable = new Set();
-    const retryableKeywords = ['rate limit', '429', 'timeout', 'timed out', 'network', 'fetch', 'connection', 'chunk', 'bulk', 'stall'];
     for (const cat of sortedCategories) {
-      const catErrors = grouped[cat] || [];
-      const hasRetryable = catErrors.some(e => {
-        const msg = getErrorMessage(e).toLowerCase();
-        return retryableKeywords.some(kw => msg.includes(kw));
-      });
-      if (hasRetryable) retryable.add(cat);
+      if (ERROR_CATEGORIES[cat]?.retryable) retryable.add(cat);
     }
     return retryable;
-  }, [grouped, sortedCategories]);
+  }, [sortedCategories]);
 
   const handleBulkRetry = async () => {
     if (!batch || selectedCategories.size === 0) return;

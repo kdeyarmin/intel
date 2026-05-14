@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, AlertTriangle, CheckCircle2, Eye, Users, MapPin, Activity } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ANOMALY_ICONS = {
   volume: Activity,
@@ -91,7 +92,7 @@ export default function AIImportQualityAnalysis() {
   const runAnalysis = async () => {
     setAnalyzing(true);
     setResults(null);
-
+    try {
     // Build a summary snapshot for the AI
     const providerSummary = providers.slice(0, 50).map(p => ({
       npi: p.npi,
@@ -209,7 +210,12 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
     });
 
     setResults(res);
-    setAnalyzing(false);
+    } catch (err) {
+      console.error('AI import quality analysis failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const scoreColor = (score) => {

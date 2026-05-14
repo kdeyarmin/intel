@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Lightbulb, AlertTriangle, Wrench } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AlertAIAnalysis({ alert }) {
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,7 @@ export default function AlertAIAnalysis({ alert }) {
 
   const runAnalysis = async () => {
     setLoading(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a healthcare data quality expert. Analyze this data quality alert and provide root cause analysis and actionable solutions.
 
@@ -56,7 +58,12 @@ Provide:
       ai_analyzed_at: new Date().toISOString(),
     });
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
-    setLoading(false);
+    } catch (err) {
+      console.error('AI analysis failed:', err);
+      toast.error('AI analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!analysis) {
