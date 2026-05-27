@@ -295,6 +295,26 @@ app.listen(PORT, "0.0.0.0", async () => {
           }
         }
 
+        // Obsolete unique indexes whose natural key changed and must be rebuilt
+        // under a new name. cms_referrals moved from a one-row-per-(npi, year)
+        // eligibility model to provider-pair shared-patient rows, so its
+        // uniqueness must include referred_to_npi. The invalid-index sweep above
+        // only drops INvalid indexes, so drop the old (still-valid) one here.
+        const OBSOLETE_INDEXES = ["uq_cms_referrals_npi_year"];
+        for (const idxName of OBSOLETE_INDEXES) {
+          const dropClient = await dbPool.connect();
+          try {
+            await dropClient.query("SET statement_timeout = '120000'");
+            await dropClient.query(`DROP INDEX IF EXISTS ${idxName}`);
+            console.log(`[DB Index] Dropped obsolete ${idxName}`);
+          } catch (e: any) {
+            console.warn(`[DB Index] Drop obsolete ${idxName} failed:`, e.message?.substring(0, 80));
+          } finally {
+            await dropClient.query("RESET statement_timeout").catch(() => {});
+            dropClient.release();
+          }
+        }
+
         const indexes = [
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)",
@@ -307,7 +327,10 @@ app.listen(PORT, "0.0.0.0", async () => {
           // capped (20k) in-app dedup lookup can leave open.
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_provider ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year ON cms_referrals (npi, data_year)",
+          // Provider-pair shared-patient rows (Physician Shared Patient Patterns)
+          // need uniqueness on (npi, referred_to_npi, data_year). The old
+          // (npi, data_year) index is dropped above as obsolete.
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_referred_year ON cms_referrals (npi, COALESCE(referred_to_npi, ''), data_year)",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year)",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, COALESCE(location_type,''), left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, COALESCE(taxonomy_code,''))",

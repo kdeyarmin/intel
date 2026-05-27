@@ -140,6 +140,7 @@ function isAllowedUrl(url: string): boolean {
 
 const CMS_DATASET_CATALOG = [
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
+  { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
   { id: "medicare_dme_by_supplier", title: "DME Suppliers - by Supplier", description: "Medicare Durable Medical Equipment, Devices & Supplies payment and utilization data by supplier.", category: "Physicians & Clinicians", records: "~70K", priority: "medium" },
@@ -431,10 +432,28 @@ function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
   };
 }
 
-export function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
-  const avgPayment = row.Avg_Mdcr_Pymt_Amt || row.avg_mdcr_pymt_amt || null;
-  const totalServices = row.Tot_Srvcs || row.tot_srvcs || null;
-  
+/**
+ * Map a raw CMS provider service utilization record into the normalized provider-service utilization shape used by the importer.
+ *
+ * @param row - Raw input row from a CMS utilization dataset; accepts variant header names (e.g., `Rndrng_NPI`, `npi`, `Tot_Srvcs`, `tot_srvcs`, `Avg_Mdcr_Pymt_Amt`, etc.)
+ * @param year - Data year to assign to the resulting row (stored in `data_year`)
+ * @returns An object with the normalized fields:
+ * - `npi`: provider NPI or `null`
+ * - `service_type`: rendering provider specialty or `null`
+ * - `hcpcs_code`: HCPCS/CPT code or `null`
+ * - `hcpcs_description`: HCPCS description or `null`
+ * - `place_of_service`: place of service or `null`
+ * - `total_services`: total service count or `null`
+ * - `total_unique_benes`: total unique beneficiaries or `null`
+ * - `average_submitted_chrg_amt`: average submitted charge or `null`
+ * - `average_medicare_payment_amt`: average Medicare payment per service or `null`
+ * - `total_medicare_payment_amt`: derived total Medicare payment (average × services) or `null`
+ * - `data_year`: the provided `year` coerced to a string
+ */
+export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
+  const avgPayment = row.Avg_Mdcr_Pymt_Amt ?? row.avg_mdcr_pymt_amt ?? null;
+  const totalServices = row.Tot_Srvcs ?? row.tot_srvcs ?? null;
+
   // Derive total payment from average × services
   let totalPayment = null;
   if (avgPayment && totalServices) {
@@ -444,7 +463,7 @@ export function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
       totalPayment = (avg * count).toFixed(2);
     }
   }
-  
+
   return {
     npi: row.Rndrng_NPI || row.npi || null,
     service_type: row.Rndrng_Prvdr_Type || row.Rndrng_prvdr_type || null,
@@ -461,6 +480,92 @@ export function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
   };
 }
 
+/**
+ * Selects the first non-empty value from `row` among a list of candidate keys.
+ *
+ * @param row - The object to search for values.
+ * @param keys - Ordered candidate property names to check on `row`.
+ * @returns The first value that is not `undefined`, not `null`, and not an empty string after trimming, or `null` if none are found.
+ */
+function firstField(row: any, keys: string[]): any {
+  for (const k of keys) {
+    const v = row?.[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return null;
+}
+
+/**
+ * Parse a value into an integer, returning null when an integer cannot be derived.
+ *
+ * @param v - The input value (number, string, or other) to parse for an integer
+ * @returns The parsed integer, or `null` if no integer could be extracted
+ */
+function toIntOrNull(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  const cleaned = String(v).replace(/[^0-9-]/g, "");
+  if (cleaned === "" || cleaned === "-") return null;
+  const n = parseInt(cleaned, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+// The CMS "Physician Shared Patient Patterns" (PSPP) dataset records pairs of
+// providers who shared the same Medicare beneficiaries within a time window
+// (30/60/90/180 days) — i.e. real provider-to-provider relationships, unlike the
+// "Order & Referring" eligibility registry. Each row is a directed edge with
+// shared-patient / encounter counts; we store it in cms_referrals so the
+// Network/County/Dashboard referral features can surface true relationships.
+//
+// PSPP is distributed as headerless/variant CSV (CMS FOIA, NBER mirror) and is
+// NOT on the data.cms.gov JSON data-api, so column names vary by source. We read
+// a tolerant set of aliases per logical field and keep the full row in raw_data
+// so nothing is lost. The destination columns (referred_to_npi, total_referrals,
+/**
+ * Normalize a physician shared-patient-pattern row into the shape used for `cms_referrals`.
+ *
+ * @param row - Raw input record (CSV/JSON) which may use multiple header aliases for NPIs and counts; original row is preserved on `raw_data`.
+ * @param year - Numeric data year to populate `data_year`.
+ * @param batchId - Import batch identifier stored as `import_batch_id`.
+ * @returns An object with:
+ *  - `npi` — referring provider NPI (trimmed string or `null`),
+ *  - `referred_to_npi` — referred-to provider NPI (trimmed string or `null`),
+ *  - `referred_to_name` — always `null` (placeholder),
+ *  - `total_referrals` — referrals count if present, otherwise falls back to beneficiary count (`number` or `null`),
+ *  - `total_beneficiaries` — beneficiary count (`number` or `null`),
+ *  - `data_year` — stringified `year`,
+ *  - `raw_data` — the original input `row`,
+ *  - `import_batch_id` — stringified `batchId`.
+ */
+export function mapSharedPatientPatternRow(row: any, year: number, batchId: number) {
+  const npi = firstField(row, ["npi_1", "NPI_1", "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi", "npi", "NPI"]);
+  const referredToNpi = firstField(row, ["npi_2", "NPI_2", "to_npi", "TO_NPI", "dst_npi", "referred_npi", "paired_npi", "provider_2_npi"]);
+  const referrals = toIntOrNull(firstField(row, ["transaction_count", "TRANSACTION_COUNT", "transactions", "pair_count", "PAIR_COUNT", "shared_count", "referral_count", "count", "COUNT", "total_referrals"]));
+  const beneficiaries = toIntOrNull(firstField(row, ["bene_count", "BENE_COUNT", "beneficiary_count", "unique_bene_count", "patient_count", "shared_patient_count", "benes", "total_beneficiaries"]));
+  return {
+    npi: npi != null ? String(npi).trim().slice(0, 20) : null,
+    referred_to_npi: referredToNpi != null ? String(referredToNpi).trim().slice(0, 20) : null,
+    referred_to_name: null as string | null,
+    // Consumers order by total_referrals, so fall back to the shared-beneficiary
+    // count when a distinct encounter/transaction count isn't published.
+    total_referrals: referrals != null ? referrals : beneficiaries,
+    total_beneficiaries: beneficiaries,
+    data_year: String(year),
+    raw_data: row,
+    import_batch_id: String(batchId),
+  };
+}
+
+/**
+ * Compute a stable statistical identifier for a dataset row based on the dataset's import type.
+ *
+ * The returned identifier is derived from one or more dataset fields according to the import type
+ * and is truncated to 50 characters. If no suitable identifier can be derived, returns `null`.
+ *
+ * @param row - The raw dataset row object (provider/measure/record fields vary by dataset)
+ * @param importType - The internal import type key that determines which row fields to use
+ * @param index - Optional ordinal index of the row (may be used by some import types or as a fallback)
+ * @returns The derived identifier string truncated to 50 characters, or `null` if none could be derived
+ */
 function deriveStatisticalId(row: any, importType: string, index?: number): string | null {
   let id: string | null = null;
   if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
@@ -844,7 +949,18 @@ export async function dualWriteFacilityRows(
     });
   }
 }
-
+/**
+ * Inserts mapped CMS rows into the appropriate destination table, applying per-import-type mapping, chunked deduplication, and conflict-tolerant insertion.
+ *
+ * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → inserts/upserts into `providers`; `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
+ * @param rows - Raw CMS dataset rows to be mapped and inserted.
+ * @param year - Data year used when mapping rows and when scoping natural-key deduplication.
+ * @param batchId - Import batch identifier to attach to mapped rows.
+ * @returns An object with:
+ *   - `inserted`: number of rows successfully inserted,
+ *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
+ *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
+ */
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
@@ -863,6 +979,11 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
     mapped = mapped.filter(r => r.npi);
     table = providerServiceUtilization;
+  } else if (importType === "physician_shared_patient_patterns") {
+    // Provider-to-provider shared-patient edges -> cms_referrals.
+    mapped = rows.map(r => mapSharedPatientPatternRow(r, year, batchId));
+    mapped = mapped.filter(r => r.npi && r.referred_to_npi);
+    table = cmsReferrals;
   } else {
     mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId));
     mapped = mapped.filter(r => r.provider_id || r.facility_name);

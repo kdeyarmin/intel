@@ -12,11 +12,16 @@ import { Users } from 'lucide-react';
 export default function OrgAffiliatedProvidersCard({ npi, locations = [], allProviders = [], allLocations = [] }) {
   const affiliatedNPIs = useMemo(() => {
     if (!locations.length || !allLocations.length) return [];
-    const orgAddresses = locations.map(l => `${l.address_1}|${l.city}|${l.state}`);
+    // Skip blank addresses so an org without a usable address doesn't match
+    // every other blank-address record.
+    const orgAddresses = new Set(
+      locations.filter(l => l.address_1).map(l => `${l.address_1}|${l.city}|${l.state}`),
+    );
+    if (orgAddresses.size === 0) return [];
     const npis = new Set();
     allLocations.forEach(l => {
       const key = `${l.address_1}|${l.city}|${l.state}`;
-      if (orgAddresses.includes(key) && l.npi !== npi) npis.add(l.npi);
+      if (orgAddresses.has(key) && l.npi !== npi) npis.add(l.npi);
     });
     return [...npis];
   }, [locations, allLocations, npi]);

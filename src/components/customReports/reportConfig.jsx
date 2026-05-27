@@ -151,7 +151,7 @@ export const DATASET_CONFIG = {
   },
   outreach_metrics: {
     label: 'Outreach Metrics',
-    entity: 'Campaign',
+    entity: 'OutreachCampaign',
     metrics: [
       { key: 'emails_sent', label: 'Emails Sent' },
       { key: 'emails_opened', label: 'Emails Opened' },

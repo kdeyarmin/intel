@@ -40,7 +40,6 @@ const USER_WRITABLE_ENTITIES = new Set([
   "CampaignTemplate",
   "CampaignSequenceStep",
   "CampaignTask",
-  "Campaign",
   "CustomReport",
   "ScheduledReport",
   "ScheduledExport",

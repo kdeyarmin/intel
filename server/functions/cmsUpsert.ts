@@ -30,8 +30,23 @@ export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
     // discarding the bulk of the dataset — key on the HCPCS service instead.
     keyCols: ["npi", "hcpcs_code", "place_of_service", "data_year"],
   },
+  // Physician Shared Patient Patterns: one directed provider->provider edge per
+  // (npi, referred_to_npi, data_year). Keyed so re-imports/resumes don't
+  // multiply edges; the DB-level backstop is the unique index
+  // uq_cms_referrals_npi_referred_year (see server/index.ts).
+  physician_shared_patient_patterns: {
+    primaryCol: "npi",
+    keyCols: ["npi", "referred_to_npi", "data_year"],
+  },
 };
 
+/**
+ * Builds a stable natural key string from the specified columns of a row.
+ *
+ * @param row - The record (row) containing column values to use for the key.
+ * @param cols - Ordered list of column names to include in the key.
+ * @returns A string composed of the specified column values joined by `|` after trimming and lowercasing; missing or null values produce empty segments.
+ */
 export function makeKey(row: Record<string, unknown>, cols: string[]): string {
   return cols.map((c) => String(row[c] ?? "").trim().toLowerCase()).join("|");
 }
