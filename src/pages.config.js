@@ -86,7 +86,6 @@ import ProviderOutreach from './pages/ProviderOutreach.jsx';
 import Providers from './pages/Providers.jsx';
 import ReconciliationDashboard from './pages/ReconciliationDashboard.jsx';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence.jsx';
-import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis.jsx';
 import ScoringRules from './pages/ScoringRules.jsx';
 import SecurityAudit from './pages/SecurityAudit.jsx';
 import TerritoryIntelligence from './pages/TerritoryIntelligence.jsx';
@@ -136,7 +135,6 @@ export const PAGES = {
     "Providers": Providers,
     "ReconciliationDashboard": ReconciliationDashboard,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
-    "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
     "ScoringRules": ScoringRules,
     "SecurityAudit": SecurityAudit,
     "TerritoryIntelligence": TerritoryIntelligence,
