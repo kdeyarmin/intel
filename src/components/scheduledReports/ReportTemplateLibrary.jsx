@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2, Pill } from 'lucide-react';
+import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2 } from 'lucide-react';
 
 const TEMPLATES = [
   {
@@ -74,20 +74,6 @@ const TEMPLATES = [
     filters: {},
     category: 'Inpatient',
   },
-  {
-    id: 'monthly_part_d',
-    name: 'Monthly Part D Overview',
-    description: 'Part D drug cost and utilization by plan type',
-    icon: Pill,
-    dataset: 'part_d_stats',
-    metrics: ['total_enrollees', 'avg_annual_gross_cost', 'generic_dispensing_rate'],
-    group_by: 'plan_type',
-    chart_type: 'bar',
-    frequency: 'monthly',
-    schedule_day: '1',
-    filters: {},
-    category: 'Pharmacy',
-  },
 ];
 
 export default function ReportTemplateLibrary({ onUseTemplate }) {
@@ -106,16 +92,16 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
             return (
               <div
                 key={template.id}
-                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-900/20 transition-all cursor-pointer group"
                 onClick={() => onUseTemplate(template)}
               >
                 <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-md bg-slate-100 group-hover:bg-blue-100 transition-colors">
-                    <Icon className="w-4 h-4 text-slate-600 group-hover:text-blue-600" />
+                  <div className="p-1.5 rounded-md bg-slate-700 group-hover:bg-blue-900/30 transition-colors">
+                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-semibold text-slate-800 truncate">{template.name}</h4>
+                      <h4 className="text-xs font-semibold text-slate-300 truncate">{template.name}</h4>
                       <Badge variant="outline" className="text-[9px] shrink-0">{template.frequency}</Badge>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{template.description}</p>

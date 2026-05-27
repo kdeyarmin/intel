@@ -121,7 +121,7 @@ export default function FilterBuilder({ filters, onChange }) {
         <div className="flex items-center justify-between">
           <div>
             <Label>Medicare Active Only</Label>
-            <p className="text-sm text-gray-500">Exclude deactivated providers</p>
+            <p className="text-sm text-slate-400">Exclude deactivated providers</p>
           </div>
           <Switch
             checked={filters.medicare_active || false}

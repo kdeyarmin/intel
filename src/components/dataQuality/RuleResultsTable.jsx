@@ -5,11 +5,11 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const categoryColors = {
-  completeness: 'bg-blue-100 text-blue-700',
-  accuracy: 'bg-purple-100 text-purple-700',
-  timeliness: 'bg-amber-100 text-amber-700',
-  consistency: 'bg-teal-100 text-teal-700',
-  duplicate: 'bg-pink-100 text-pink-700',
+  completeness: 'bg-blue-900/20 text-blue-400',
+  accuracy: 'bg-purple-900/20 text-purple-400',
+  timeliness: 'bg-amber-900/20 text-amber-400',
+  consistency: 'bg-teal-900/20 text-teal-400',
+  duplicate: 'bg-pink-900/20 text-pink-400',
 };
 
 export default function RuleResultsTable({ results = [] }) {
@@ -47,7 +47,7 @@ export default function RuleResultsTable({ results = [] }) {
               <TableCell>
                 <Progress value={r.pct} className="h-2" />
               </TableCell>
-              <TableCell className="text-right text-sm text-red-600 font-medium">
+              <TableCell className="text-right text-sm text-red-400 font-medium">
                 {r.failing > 0 ? r.failing.toLocaleString() : '—'}
               </TableCell>
             </TableRow>

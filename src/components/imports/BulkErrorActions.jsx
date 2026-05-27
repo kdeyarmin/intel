@@ -189,7 +189,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
         <span className="text-xs font-semibold text-slate-300">Bulk Error Actions</span>
         <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">{totalErrors} errors</Badge>
         {selectedCategories.size > 0 && (
-          <Badge className="bg-cyan-500/15 text-cyan-400 text-[9px]">{selectedErrorCount} selected</Badge>
+          <Badge className="bg-cyan-900/15 text-cyan-400 text-[9px]">{selectedErrorCount} selected</Badge>
         )}
         <div className="ml-auto">
           {showPanel ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
@@ -235,7 +235,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs bg-transparent border-amber-500/30 text-amber-400 hover:bg-amber-500/10 gap-1"
+                    className="h-7 text-xs bg-transparent border-amber-500/30 text-amber-400 hover:bg-amber-900/10 gap-1"
                     onClick={handleBulkSkip}
                     disabled={!!actionInProgress}
                   >
@@ -281,7 +281,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                       key={cat}
                       className={`flex items-center gap-2.5 p-2 rounded-lg border transition-colors cursor-pointer ${
                         isSelected
-                          ? 'bg-cyan-500/5 border-cyan-500/30'
+                          ? 'bg-cyan-900/5 border-cyan-500/30'
                           : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
                       }`}
                       onClick={() => toggleCategory(cat)}
@@ -295,10 +295,10 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                         <Badge className={`${config.badgeColor} text-[9px]`}>{config.label}</Badge>
                         <span className="text-xs text-slate-400">{count} error{count !== 1 ? 's' : ''}</span>
                         {isRetryable && (
-                          <Badge className="bg-cyan-500/10 text-cyan-400 text-[8px]">Retryable</Badge>
+                          <Badge className="bg-cyan-900/10 text-cyan-400 text-[8px]">Retryable</Badge>
                         )}
                         {actionedCount > 0 && (
-                          <Badge className="bg-emerald-500/10 text-emerald-400 text-[8px]">
+                          <Badge className="bg-emerald-900/10 text-emerald-400 text-[8px]">
                             {actionedCount} resolved
                           </Badge>
                         )}

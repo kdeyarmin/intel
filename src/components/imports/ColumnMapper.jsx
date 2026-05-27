@@ -126,11 +126,11 @@ export default function ColumnMapper({
               <span className="text-slate-400">Avg confidence: <span className="text-slate-200 font-medium">{avgScore}%</span></span>
             </div>
           )}
-          <span className="text-slate-600">•</span>
+          <span className="text-slate-400">•</span>
           <span className="text-slate-400">{allMapped.length} mapped</span>
           {learnedCount > 0 && (
             <>
-              <span className="text-slate-600">•</span>
+              <span className="text-slate-400">•</span>
               <span className="text-purple-400 flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> {learnedCount} from learned corrections
               </span>

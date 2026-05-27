@@ -27,22 +27,21 @@ export default function ScoringRules() {
   const { data: rules = [] } = useQuery({
     queryKey: ['scoringRules'],
     queryFn: async () => {
-      const existing = await base44.entities.ScoringRule.list();
+      const existing = await base44.entities.ScoringRule.list('-created_date', 200);
       
-      // Initialize default rules if none exist
       if (existing.length === 0) {
         const defaultRules = [
           { rule_name: 'Specialty Match', category: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
           { rule_name: 'Medicare Participation', category: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
           { rule_name: 'Patient Volume', category: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
-          { rule_name: 'Part D Prescribing Signals', category: 'part_d_signals', weight: 15, description: 'Geriatric/complex care medication indicators' },
+          { rule_name: 'Service Intensity', category: 'service_intensity', weight: 15, description: 'Service-per-patient intensity indicators' },
           { rule_name: 'Geographic Priority', category: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
           { rule_name: 'Practice Type', category: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
           { rule_name: 'Behavioral Health Potential', category: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' }
         ];
         
         await Promise.all(defaultRules.map(rule => base44.entities.ScoringRule.create(rule)));
-        return await base44.entities.ScoringRule.list();
+        return await base44.entities.ScoringRule.list('-created_date', 200);
       }
       
       return existing;
@@ -66,10 +65,11 @@ export default function ScoringRules() {
     
     setCalculating(true);
     try {
-      const providers = await base44.entities.Provider.list();
-      const utilizations = await base44.entities.CMSUtilization.list();
-      const locations = await base44.entities.ProviderLocation.list();
-      const taxonomies = await base44.entities.ProviderTaxonomy.list();
+      const providers = await base44.entities.Provider.list('-created_date', 5000);
+      const rawUtil = await base44.entities.ProviderServiceUtilization.list('-data_year', 5000);
+      const utilizations = rawUtil.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+      const locations = await base44.entities.ProviderLocation.list('-created_date', 5000);
+      const taxonomies = await base44.entities.ProviderTaxonomy.list('-created_date', 5000);
       const currentRules = rules.filter(r => r.enabled !== false);
 
       // Validate total weight
@@ -104,9 +104,9 @@ export default function ScoringRules() {
         scores.patient_volume = volume >= 500 ? 100 : volume >= 200 ? 75 : volume >= 50 ? 50 : volume > 0 ? 25 : 0;
         if (volume > 0) reasons.push(`${volume} Medicare beneficiaries`);
 
-        // 4. Part D Signals
+        // 4. Service Intensity
         const intensity = volume > 0 ? (util?.total_services || 0) / volume : 0;
-        scores.part_d_signals = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
+        scores.service_intensity = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
         if (intensity >= 8) reasons.push('High service intensity');
 
         // 5. Geographic Priority
@@ -225,7 +225,7 @@ export default function ScoringRules() {
         </Button>
       </div>
 
-      <Card className="mb-6 bg-cyan-500/10 border-cyan-500/20">
+      <Card className="mb-6 bg-cyan-900/10 border-cyan-500/20">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>

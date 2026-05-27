@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +26,6 @@ const REQUIRED_COLUMNS = {
   nppes_monthly: ['NPI'],
   nppes_registry: ['NPI'],
   cms_utilization: ['NPI'],
-  cms_part_d: ['NPI'],
   cms_order_referring: ['NPI'],
   provider_service_utilization: ['NPI'],
 };
@@ -39,9 +38,7 @@ const IMPORT_TYPE_ICON_MAP = {
   home_health_enrollments: Database,
   medicare_hha_stats: Activity,
   medicare_ma_inpatient: Activity,
-  medicare_part_d_stats: Activity,
   medicare_snf_stats: Activity,
-  opt_out_physicians: Database,
   medical_equipment_suppliers: Database,
   hospice_provider_measures: Activity,
   hospice_state_measures: Activity,
@@ -60,9 +57,7 @@ const IMPORT_TYPE_DESCRIPTION_MAP = {
   home_health_enrollments: 'CMS home health enrollment',
   medicare_hha_stats: 'Home health aggregate',
   medicare_ma_inpatient: 'MA inpatient stats',
-  medicare_part_d_stats: 'Part D aggregate',
   medicare_snf_stats: 'SNF aggregate',
-  opt_out_physicians: 'CMS Opt-Out',
   medical_equipment_suppliers: 'DMEPOS suppliers',
   hospice_provider_measures: 'Hospice quality',
   hospice_state_measures: 'Hospice state aggregate',
@@ -87,7 +82,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [typeSearch, setTypeSearch] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [_isUploading, _setIsUploading] = useState(false);
 
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
@@ -103,7 +97,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const _fileInputRef = useRef(null);
+
 
   // Mapping states
   const [csvHeaders, setCsvHeaders] = useState([]);
@@ -205,8 +199,13 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       setResult({ success: true, data: response.data });
       setStep(4);
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || 'Import trigger failed';
-      setError(msg);
+      const isConflict = e?.status === 409 || e?.data?.conflict || (e?.data?.message || '').includes('already');
+      if (isConflict) {
+        setError('This import is already running. Check Import Monitoring for its progress.');
+      } else {
+        const msg = e?.data?.message || e?.data?.error || e?.message || 'Import trigger failed';
+        setError(msg);
+      }
       setStep(4);
     }
     setIsSubmitting(false);
@@ -235,7 +234,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 value={typeSearch}
                 onChange={(e) => setTypeSearch(e.target.value)}
                 placeholder="Search import types..."
-                className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
               />
             </div>
             <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0 pr-1">
@@ -252,7 +251,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800/40 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-9 h-9 rounded-lg bg-cyan-900/10 flex items-center justify-center flex-shrink-0">
                       <Icon className="w-4 h-4 text-cyan-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -305,7 +304,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     value={!uploadedFile ? fileUrl : ''}
                     onChange={(e) => { setFileUrl(e.target.value); setUploadedFile(null); }}
                     placeholder="https://data.cms.gov/..."
-                    className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                    className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                     disabled={!!uploadedFile}
                   />
                   {selectedType.hasUrl && (
@@ -352,7 +351,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                   placeholder="Add a tag..."
-                  className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600 flex-1"
+                  className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400 flex-1"
                 />
                 <Button variant="outline" size="sm" className="h-8 text-xs bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400" onClick={addTag}>
                   <Plus className="w-3 h-3" />
@@ -411,7 +410,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         onChange={(e) => setRowOffset(e.target.value)}
                         min={0}
                         placeholder="0 (start)"
-                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
                       <p className="text-[10px] text-slate-500">Skip N rows from the start</p>
                     </div>
@@ -423,7 +422,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         onChange={(e) => setRowLimit(e.target.value)}
                         min={1}
                         placeholder="All rows"
-                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
                       <p className="text-[10px] text-slate-500">Max rows to process</p>
                     </div>
@@ -435,7 +434,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         value={npiFilter}
                         onChange={(e) => setNpiFilter(e.target.value)}
                         placeholder="1234567890, 0987654321"
-                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
                       <p className="text-[10px] text-slate-500">Comma-separated NPIs</p>
                     </div>
@@ -446,7 +445,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
                         placeholder="NY"
                         maxLength={2}
-                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                        className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
                       <p className="text-[10px] text-slate-500">2-letter state code</p>
                     </div>
@@ -457,7 +456,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       value={sheetFilter}
                       onChange={(e) => setSheetFilter(e.target.value)}
                       placeholder="e.g. MA4, Sheet1"
-                      className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                      className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                     />
                     <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
                   </div>
@@ -494,7 +493,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
           <div className="flex-1 flex flex-col items-center justify-center py-8 space-y-4">
             {result?.success ? (
               <>
-                <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-900/10 flex items-center justify-center">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </div>
                 <div className="text-center">
@@ -502,18 +501,28 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   <p className="text-sm text-slate-400 mt-1">
                    {selectedType?.name} import has been queued and is now processing.
                   </p>
-                  {dryRun && <Badge className="bg-violet-500/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
+                  {dryRun && <Badge className="bg-violet-900/15 text-violet-400 mt-2">Dry Run Mode</Badge>}
+                </div>
+              </>
+            ) : error?.includes('already running') ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-900/20 flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-amber-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-slate-200">Import Already Running</p>
+                  <p className="text-sm text-amber-400 mt-1 max-w-sm">{error}</p>
                 </div>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-red-900/20 flex items-center justify-center">
                   <AlertCircle className="w-8 h-8 text-red-400" />
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-semibold text-slate-200">Import Failed to Start</p>
                   <p className="text-sm text-red-400 mt-1 max-w-sm">{error}</p>
-                  <p className="text-xs text-slate-400 mt-2">The batch record was created — check Import Monitoring for details.</p>
+                  <p className="text-xs text-slate-400 mt-2">Check Import Monitoring for details.</p>
                 </div>
               </>
             )}

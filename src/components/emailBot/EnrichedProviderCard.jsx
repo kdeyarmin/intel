@@ -45,7 +45,7 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-medium text-slate-200 truncate">{name}</span>
               {provider.credential && (
-                <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[9px]">{provider.credential}</Badge>
+                <Badge className="bg-violet-900/15 text-violet-400 border border-violet-500/20 text-[9px]">{provider.credential}</Badge>
               )}
             </div>
             <div className="text-xs text-slate-400 font-mono mb-2">{provider.npi}</div>
@@ -81,13 +81,13 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs text-slate-300">{provider.email}</span>
                 {provider.email_validation_status && provider.email_validation_status !== '' && (
-                  <EmailValidationBadge status={provider.email_validation_status} reason={provider.email_validation_reason} size="sm" />
+                  <EmailValidationBadge status={provider.email_validation_status} reason={provider.email_validation_reason} source={provider.email_source} size="sm" />
                 )}
                 {provider.email_confidence && (
                   <Badge className={`text-[9px] ${
-                    provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                    provider.email_confidence === 'medium' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                    'bg-red-500/15 text-red-400 border-red-500/20'
+                    provider.email_confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20' :
+                    provider.email_confidence === 'medium' ? 'bg-amber-900/15 text-amber-400 border-amber-500/20' :
+                    'bg-red-900/15 text-red-400 border-red-500/20'
                   } border`}>{provider.email_confidence}</Badge>
                 )}
               </div>
@@ -97,7 +97,7 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
           {/* Enrichment button */}
           <div className="shrink-0">
             {enrichmentStatus === 'enriched' ? (
-              <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 text-[9px]">
+              <Badge className="bg-emerald-900/15 text-emerald-400 border border-emerald-500/20 text-[9px]">
                 Enriched
               </Badge>
             ) : (

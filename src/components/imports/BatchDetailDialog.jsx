@@ -48,7 +48,7 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
            <div className="space-y-1 text-sm">
              <p><span className="font-medium text-slate-300">Import Type:</span> <span className="text-slate-400">{batch.import_type}</span></p>
              <p><span className="font-medium text-slate-300">File:</span> <span className="text-slate-400">{batch.file_name}</span></p>
-             {batch.dry_run && <Badge variant="outline" className="mt-1 bg-violet-500/15 text-violet-400 border-violet-500/20">Dry Run</Badge>}
+             {batch.dry_run && <Badge variant="outline" className="mt-1 bg-violet-900/15 text-violet-400 border-violet-500/20">Dry Run</Badge>}
              {batch.completed_at && (
                <p><span className="font-medium text-slate-300">Completed:</span> <span className="text-slate-400">{new Date(batch.completed_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET</span></p>
              )}
@@ -103,7 +103,7 @@ export default function BatchDetailDialog({ batch, open, onOpenChange }) {
               </h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {batch.error_samples.map((err, idx) => (
-                  <div key={idx} className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm">
+                  <div key={idx} className="bg-red-900/10 border border-red-500/30 rounded-lg p-3 text-sm">
                     {err.row && <p className="text-xs text-red-400 mb-1">Row {err.row}</p>}
                     {err.npi && <p className="text-xs text-slate-400">NPI: {err.npi}</p>}
                     <p className="text-red-400">{err.message}</p>

@@ -38,7 +38,7 @@ export default function FollowUpSequenceTab({
 
   const generate = async () => {
     setLoading(true);
-
+    try {
     const seqConfig = SEQUENCE_TYPES.find(s => s.value === sequenceType);
     const emailCount = sequenceType === 'custom' ? numEmails : 
       sequenceType === 'aggressive' ? 5 :
@@ -100,7 +100,11 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
     setResults(res);
     setExpandedEmail(0);
-    setLoading(false);
+    } catch (e) {
+      toast.error('Failed to generate sequence');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isLoading = loading || externalLoading;
@@ -143,11 +147,11 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
       {results && (
         <div className="space-y-2">
           {/* Strategy */}
-          <div className="bg-violet-50 rounded-lg p-2 border border-violet-100">
-            <p className="text-[10px] font-semibold text-violet-800">{results.sequence_name}</p>
+          <div className="bg-violet-900/30 rounded-lg p-2 border border-violet-500/30">
+            <p className="text-[10px] font-semibold text-violet-400">{results.sequence_name}</p>
             <p className="text-[9px] text-violet-600 mt-0.5 leading-relaxed">{results.strategy}</p>
             {results.expected_cumulative_response_rate && (
-              <Badge className="bg-violet-200 text-violet-800 text-[8px] mt-1">
+              <Badge className="bg-violet-900/30 text-violet-400 text-[8px] mt-1">
                 Expected response: {results.expected_cumulative_response_rate}
               </Badge>
             )}
@@ -155,27 +159,27 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
           {/* Timeline */}
           <div className="relative pl-4">
-            <div className="absolute left-1.5 top-0 bottom-0 w-px bg-violet-200" />
+            <div className="absolute left-1.5 top-0 bottom-0 w-px bg-violet-900/30" />
             {results.emails?.map((email, i) => {
               const isExpanded = expandedEmail === i;
               return (
                 <div key={i} className="relative mb-2">
-                  <div className="absolute -left-[14px] top-1 w-3 h-3 rounded-full bg-violet-500 border-2 border-white" />
+                  <div className="absolute -left-[14px] top-1 w-3 h-3 rounded-full bg-violet-900/300 border-2 border-white" />
                   <div
-                    className="bg-white border rounded-lg p-2 cursor-pointer hover:border-violet-300 transition-colors"
+                    className="bg-slate-800/60 border rounded-lg p-2 cursor-pointer hover:border-violet-300 transition-colors"
                     onClick={() => setExpandedEmail(isExpanded ? null : i)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-slate-100 text-slate-600 text-[8px]">
+                        <Badge className="bg-slate-700 text-slate-400 text-[8px]">
                           <Clock className="w-2.5 h-2.5 mr-0.5" />{email.send_day}
                         </Badge>
-                        <p className="text-[10px] font-medium text-slate-800">Email {email.email_number}</p>
+                        <p className="text-[10px] font-medium text-slate-300">Email {email.email_number}</p>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
                           size="sm" variant="ghost"
-                          className="h-5 text-[9px] text-violet-600 hover:bg-violet-50 px-1.5"
+                          className="h-5 text-[9px] text-violet-600 hover:bg-violet-900/30 px-1.5"
                           onClick={(e) => { e.stopPropagation(); onApplySubject(email.subject); onApplyBody(email.body); toast.success(`Email ${email.email_number} applied`); }}
                         >
                           Use
@@ -190,17 +194,17 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
                       <div className="mt-2 space-y-1.5">
                         <div>
                           <p className="text-[9px] text-slate-400 font-medium">Subject:</p>
-                          <p className="text-[10px] text-slate-700 font-medium">{email.subject}</p>
+                          <p className="text-[10px] text-slate-300 font-medium">{email.subject}</p>
                         </div>
                         {email.subject_alt && (
                           <div>
                             <p className="text-[9px] text-slate-400 font-medium">A/B Alt:</p>
-                            <p className="text-[10px] text-slate-600 italic">{email.subject_alt}</p>
+                            <p className="text-[10px] text-slate-400 italic">{email.subject_alt}</p>
                           </div>
                         )}
                         <div>
                           <p className="text-[9px] text-slate-400 font-medium">Body:</p>
-                          <p className="text-[10px] text-slate-600 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                          <p className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
                             {email.body}
                           </p>
                         </div>
@@ -214,8 +218,8 @@ Context: CareMetric is a healthcare analytics company. Emails should feel authen
 
           {/* Stop conditions */}
           {results.stop_conditions?.length > 0 && (
-            <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-              <p className="text-[10px] font-medium text-amber-700 mb-1">Stop Sequence When:</p>
+            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
+              <p className="text-[10px] font-medium text-amber-400 mb-1">Stop Sequence When:</p>
               {results.stop_conditions.map((c, i) => (
                 <p key={i} className="text-[9px] text-amber-600">• {c}</p>
               ))}

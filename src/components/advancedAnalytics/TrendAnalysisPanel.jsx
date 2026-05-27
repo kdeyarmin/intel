@@ -107,7 +107,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
               className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                 selectedMetrics.includes(m.key)
                   ? 'text-white border-transparent'
-                  : 'text-slate-500 border-slate-200 hover:bg-slate-50'
+                  : 'text-slate-400 border-slate-700/50 hover:bg-slate-700/50'
               }`}
               style={selectedMetrics.includes(m.key) ? { backgroundColor: COLORS[selectedMetrics.indexOf(m.key)] } : {}}
             >
@@ -121,9 +121,9 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
         {growthStats.length > 0 && (
           <div className="flex gap-3 mb-4 flex-wrap">
             {growthStats.map(g => (
-              <div key={g.key} className="flex items-center gap-1.5 text-xs bg-slate-50 rounded-lg px-3 py-1.5">
+              <div key={g.key} className="flex items-center gap-1.5 text-xs bg-slate-800/50 rounded-lg px-3 py-1.5">
                 {g.pct > 0 ? <TrendingUp className="w-3.5 h-3.5 text-green-500" /> : g.pct < 0 ? <TrendingDown className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5 text-slate-400" />}
-                <span className="text-slate-600">{g.label}:</span>
+                <span className="text-slate-400">{g.label}:</span>
                 <span className={g.pct > 0 ? 'text-green-600 font-semibold' : g.pct < 0 ? 'text-red-600 font-semibold' : 'text-slate-500'}>
                   {g.pct > 0 ? '+' : ''}{g.pct}% YoY
                 </span>

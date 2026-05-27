@@ -8,11 +8,46 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin } from 'lucide-react';
+import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin, ShieldBan, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '../components/shared/PageHeader';
 
 const ALL_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
+
+const DEFAULT_EXCLUDED_CREDENTIALS = [
+  "RN", "R.N.", "LPN", "LVN",
+  "LCSW", "LMSW", "LSW", "LICSW", "MSW",
+  "LPC", "LMHC", "LCPC", "LPCC", "LMFT", "MFT",
+  "DDS", "D.D.S.", "DMD", "D.M.D.",
+  "PharmD", "Pharm.D.", "RPh",
+  "PT", "DPT", "P.T.", "PTA",
+  "OTR/L", "OTR", "OT", "COTA",
+  "D.C.", "DC",
+  "O.D.", "OD",
+  "Ph.D.", "PhD", "Psy.D.", "PsyD",
+  "SLP", "CCC-SLP",
+  "LMT", "LMP",
+  "RBT", "BCBA",
+  "DPM", "RD", "ATC", "RDH", "CNM",
+  "MA", "BA", "MS",
+];
+
+const CREDENTIAL_CATEGORIES = {
+  "Nursing": ["RN", "R.N.", "LPN", "LVN"],
+  "Social Work": ["LCSW", "LMSW", "LSW", "LICSW", "MSW"],
+  "Mental Health": ["LPC", "LMHC", "LCPC", "LPCC", "LMFT", "MFT"],
+  "Dentistry": ["DDS", "D.D.S.", "DMD", "D.M.D."],
+  "Pharmacy": ["PharmD", "Pharm.D.", "RPh"],
+  "Physical Therapy": ["PT", "DPT", "P.T.", "PTA"],
+  "Occupational Therapy": ["OTR/L", "OTR", "OT", "COTA"],
+  "Chiropractic": ["D.C.", "DC"],
+  "Optometry": ["O.D.", "OD"],
+  "Psychology/Doctoral": ["Ph.D.", "PhD", "Psy.D.", "PsyD"],
+  "Speech-Language": ["SLP", "CCC-SLP"],
+  "Massage Therapy": ["LMT", "LMP"],
+  "Behavioral Analysis": ["RBT", "BCBA"],
+  "Other": ["DPM", "RD", "ATC", "RDH", "CNM", "MA", "BA", "MS"],
+};
 
 const DEFAULTS = {
   config_key: 'default',
@@ -33,6 +68,7 @@ const DEFAULTS = {
   concurrency: 4,
   crawl_all_states: true,
   selected_states: [],
+  excluded_credentials: [...DEFAULT_EXCLUDED_CREDENTIALS],
 };
 
 const createDefaultForm = () => ({
@@ -40,6 +76,7 @@ const createDefaultForm = () => ({
   crawl_entity_types: [...DEFAULTS.crawl_entity_types],
   escalation_tags: [...DEFAULTS.escalation_tags],
   selected_states: [...DEFAULTS.selected_states],
+  excluded_credentials: [...DEFAULTS.excluded_credentials],
 });
 
 export default function NPPESCrawlerSettings() {
@@ -76,9 +113,10 @@ export default function NPPESCrawlerSettings() {
         concurrency: existingConfig.concurrency ?? DEFAULTS.concurrency,
         crawl_all_states: existingConfig.crawl_all_states ?? DEFAULTS.crawl_all_states,
         selected_states: existingConfig.selected_states ?? DEFAULTS.selected_states,
+        excluded_credentials: existingConfig.excluded_credentials ?? DEFAULTS.excluded_credentials,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [existingConfig?.id, existingConfig?.updated_date]);
 
   const saveMutation = useMutation({
@@ -120,7 +158,7 @@ export default function NPPESCrawlerSettings() {
 
   if (isLoading) {
     return (
-      <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-48 w-full" />
@@ -129,8 +167,8 @@ export default function NPPESCrawlerSettings() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Crawler Settings"
           subtitle="Configure NPPES crawler parameters"
@@ -385,13 +423,19 @@ export default function NPPESCrawlerSettings() {
               onToggle={() => toggleEntityType('NPI-2')}
             />
             {form.crawl_entity_types?.length === 0 && (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+              <p className="text-sm text-red-400 bg-red-900/10 border border-red-500/20 p-3 rounded-lg">
                 At least one entity type must be selected for the crawler to function.
               </p>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Excluded Credentials */}
+      <ExcludedCredentialsCard
+        excluded={form.excluded_credentials || []}
+        onChange={(newList) => updateField('excluded_credentials', newList)}
+      />
 
       {/* Current Config Summary */}
       {existingConfig && (
@@ -440,6 +484,167 @@ function EntityTypeToggle({ type, label, description, icon, enabled, onToggle })
       </div>
       <Switch checked={enabled} onCheckedChange={onToggle} />
     </div>
+  );
+}
+
+function ExcludedCredentialsCard({ excluded, onChange }) {
+  const [newCred, setNewCred] = useState('');
+
+  const addCredential = () => {
+    const trimmed = newCred.trim();
+    if (!trimmed) return;
+    const entries = trimmed.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+    const newList = [...excluded];
+    for (const entry of entries) {
+      if (!newList.some(e => e.toUpperCase() === entry.toUpperCase())) {
+        newList.push(entry);
+      }
+    }
+    onChange(newList);
+    setNewCred('');
+  };
+
+  const removeCredential = (cred) => {
+    onChange(excluded.filter(c => c !== cred));
+  };
+
+  const removeCategory = (categoryName) => {
+    const categoryCredentials = CREDENTIAL_CATEGORIES[categoryName] || [];
+    const normalizedCategory = new Set(categoryCredentials.map(c => c.toUpperCase()));
+    onChange(excluded.filter(c => !normalizedCategory.has(c.toUpperCase())));
+  };
+
+  const addCategory = (categoryName) => {
+    const categoryCredentials = CREDENTIAL_CATEGORIES[categoryName] || [];
+    const newList = [...excluded];
+    for (const cred of categoryCredentials) {
+      if (!newList.some(e => e.toUpperCase() === cred.toUpperCase())) {
+        newList.push(cred);
+      }
+    }
+    onChange(newList);
+  };
+
+  const isCategoryFullyExcluded = (categoryName) => {
+    const creds = CREDENTIAL_CATEGORIES[categoryName] || [];
+    const normalizedExcluded = new Set(excluded.map(c => c.toUpperCase()));
+    return creds.every(c => normalizedExcluded.has(c.toUpperCase()));
+  };
+
+  const isCategoryPartiallyExcluded = (categoryName) => {
+    const creds = CREDENTIAL_CATEGORIES[categoryName] || [];
+    const normalizedExcluded = new Set(excluded.map(c => c.toUpperCase()));
+    return creds.some(c => normalizedExcluded.has(c.toUpperCase())) && !isCategoryFullyExcluded(categoryName);
+  };
+
+  return (
+    <Card className="bg-[#141d30] border-slate-700/50">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2 text-slate-200">
+          <ShieldBan className="w-4 h-4 text-red-500" />
+          Excluded Credentials
+        </CardTitle>
+        <CardDescription className="text-slate-400">
+          Providers with these credentials will be skipped during import. Matching is case-insensitive and ignores periods (e.g. "M.D." matches "MD").
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add credential (e.g. CRNA, CNS)"
+            value={newCred}
+            onChange={(e) => setNewCred(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addCredential()}
+            className="bg-slate-900 border-slate-700 text-slate-200 placeholder:text-slate-500"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={addCredential}
+            disabled={!newCred.trim()}
+            className="shrink-0 gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {Object.entries(CREDENTIAL_CATEGORIES).map(([category, creds]) => {
+            const fullyExcluded = isCategoryFullyExcluded(category);
+            const partiallyExcluded = isCategoryPartiallyExcluded(category);
+            const normalizedExcluded = new Set(excluded.map(c => c.toUpperCase()));
+
+            return (
+              <div key={category} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-medium text-slate-400">{category}</Label>
+                  {fullyExcluded ? (
+                    <button
+                      onClick={() => removeCategory(category)}
+                      className="text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      remove all
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => addCategory(category)}
+                      className="text-[10px] text-teal-400 hover:text-teal-300 transition-colors"
+                    >
+                      {partiallyExcluded ? 'add remaining' : 'add all'}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {creds.map(cred => {
+                    const isExcluded = normalizedExcluded.has(cred.toUpperCase());
+                    return (
+                      <Badge
+                        key={cred}
+                        variant="outline"
+                        className={`text-xs cursor-pointer transition-colors ${
+                          isExcluded
+                            ? 'bg-red-900/30 text-red-400 border-red-500/30 hover:bg-red-900/50'
+                            : 'text-slate-500 border-slate-700/50 border-dashed hover:border-slate-500 hover:text-slate-300'
+                        }`}
+                        onClick={() => {
+                          if (isExcluded) {
+                            removeCredential(cred);
+                          } else {
+                            const newList = [...excluded];
+                            if (!newList.some(e => e.toUpperCase() === cred.toUpperCase())) {
+                              newList.push(cred);
+                            }
+                            onChange(newList);
+                          }
+                        }}
+                      >
+                        {cred}
+                        {isExcluded && <X className="w-3 h-3 ml-1" />}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {excluded.length > 0 && (
+          <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+            <span className="text-xs text-slate-500">
+              {excluded.length} credential{excluded.length !== 1 ? 's' : ''} excluded
+            </span>
+            <button
+              onClick={() => onChange([])}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

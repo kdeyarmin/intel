@@ -158,15 +158,15 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
             </thead>
             <tbody>
               {comparisonData.slice(0, 10).map((g, i) => (
-                <tr key={g.name} className="border-b border-slate-50">
+                <tr key={g.name} className="border-b border-slate-800">
                   <td className="py-1.5 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="font-medium text-slate-700 truncate max-w-[150px]">{g.name}</span>
+                    <span className="font-medium text-slate-300 truncate max-w-[150px]">{g.name}</span>
                   </td>
-                  <td className="text-right text-slate-600">{g.count}</td>
-                  <td className="text-right text-slate-600">{formatVal(g.total_medicare_payment)}</td>
-                  <td className="text-right text-slate-600">{formatVal(g.total_services)}</td>
-                  <td className="text-right text-slate-600">{formatVal(g.count > 0 ? g.total_medicare_payment / g.count : 0)}</td>
+                  <td className="text-right text-slate-400">{g.count}</td>
+                  <td className="text-right text-slate-400">{formatVal(g.total_medicare_payment)}</td>
+                  <td className="text-right text-slate-400">{formatVal(g.total_services)}</td>
+                  <td className="text-right text-slate-400">{formatVal(g.count > 0 ? g.total_medicare_payment / g.count : 0)}</td>
                 </tr>
               ))}
             </tbody>

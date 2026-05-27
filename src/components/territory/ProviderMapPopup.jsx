@@ -14,20 +14,20 @@ export default function ProviderMapPopup({ item }) {
     : `${provider.first_name || ''} ${provider.last_name || ''}`.trim();
 
   const getScoreColor = (s) => {
-    if (s >= 80) return 'bg-green-100 text-green-800';
-    if (s >= 60) return 'bg-teal-100 text-teal-800';
-    if (s >= 40) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-slate-100 text-slate-700';
+    if (s >= 80) return 'bg-green-900/30 text-green-400';
+    if (s >= 60) return 'bg-teal-900/30 text-teal-400';
+    if (s >= 40) return 'bg-yellow-900/30 text-yellow-400';
+    return 'bg-slate-700 text-slate-300';
   };
 
   return (
     <div className="min-w-[220px] max-w-[280px]">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="font-semibold text-sm text-slate-900 leading-tight">{name || 'Unknown'}</div>
+        <div className="font-semibold text-sm text-white leading-tight">{name || 'Unknown'}</div>
         <Badge className={`shrink-0 text-[10px] ${getScoreColor(score)}`}>{score}</Badge>
       </div>
 
-      <div className="space-y-1 text-xs text-slate-600">
+      <div className="space-y-1 text-xs text-slate-400">
         {taxonomy?.taxonomy_description && (
           <div className="flex items-center gap-1">
             <Activity className="w-3 h-3 shrink-0" />

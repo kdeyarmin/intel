@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_CONFIG = {
-  Provider:     { icon: Users,        color: 'bg-blue-500/15 text-blue-400' },
-  Organization: { icon: Building2,    color: 'bg-indigo-500/15 text-indigo-400' },
+  Provider:     { icon: Users,        color: 'bg-blue-900/15 text-blue-400' },
+  Organization: { icon: Building2,    color: 'bg-indigo-900/15 text-indigo-400' },
   Location:     { icon: MapPin,       color: 'bg-sky-500/15 text-sky-400' },
-  Utilization:  { icon: Activity,     color: 'bg-teal-500/15 text-teal-400' },
-  Referral:     { icon: GitBranch,    color: 'bg-violet-500/15 text-violet-400' },
-  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-500/15 text-emerald-400' },
-  'Lead List':  { icon: ListChecks,   color: 'bg-amber-500/15 text-amber-400' },
+  Utilization:  { icon: Activity,     color: 'bg-teal-900/15 text-teal-400' },
+  Referral:     { icon: GitBranch,    color: 'bg-violet-900/15 text-violet-400' },
+  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-900/15 text-emerald-400' },
+  'Lead List':  { icon: ListChecks,   color: 'bg-amber-900/15 text-amber-400' },
   Page:         { icon: FileBarChart2, color: 'bg-slate-500/15 text-slate-400' },
 };
 
@@ -66,7 +66,10 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
   const { data: utilizations = [] } = useQuery({
     queryKey: ['globalUtil'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 300),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 300);
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     staleTime: 120000,
   });
 
@@ -195,7 +198,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
         items.push({
           type: 'Lead List',
           label: ll.name,
-          sublabel: `${ll.provider_count || 0} providers`,
+          sublabel: `${ll.member_count || 0} providers`,
           url: createPageUrl('LeadLists'),
         });
       }
@@ -261,7 +264,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           <div className="flex gap-1.5 px-4 py-2 border-b overflow-x-auto">
             <button
               onClick={() => setActiveCategory('all')}
-              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
             >
               All ({allResults.length})
             </button>
@@ -269,7 +272,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
               >
                 {cat} ({count})
               </button>
@@ -282,7 +285,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
             <div className="py-6 px-4 space-y-4">
               {recentSearches.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Recent Searches</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Recent Searches</p>
                   <div className="flex flex-wrap gap-1.5">
                     {recentSearches.map((s, i) => (
                       <button key={i} onClick={() => setQuery(s)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
@@ -293,7 +296,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">Quick Filters</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Quick Filters</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_FILTERS.map((qf, i) => (
                     <button key={i} onClick={() => setQuery(qf.search)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
@@ -302,7 +305,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-slate-600 text-center pt-2">Type at least 2 characters to search</p>
+              <p className="text-xs text-slate-400 text-center pt-2">Type at least 2 characters to search</p>
             </div>
           ) : filteredResults.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400">
@@ -319,7 +322,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                     key={idx}
                     onClick={() => goTo(item.url)}
                     onMouseEnter={() => setHighlightIdx(idx)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-500/10' : 'hover:bg-slate-800/50'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-900/10' : 'hover:bg-slate-800/50'}`}
                   >
                     <div className={`p-1.5 rounded-md ${config.color}`}>
                       <Icon className="w-4 h-4" />

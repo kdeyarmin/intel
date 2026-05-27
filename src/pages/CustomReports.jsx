@@ -235,7 +235,7 @@ export default function CustomReports() {
             </div>
             <div className="lg:col-span-8 space-y-4">
               {!hasRun && (
-                <div className="flex items-center justify-center h-72 border-2 border-dashed border-slate-200 rounded-xl">
+                <div className="flex items-center justify-center h-72 border-2 border-dashed border-slate-700/50 rounded-xl">
                   <div className="text-center">
                     <FileBarChart2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                     <p className="text-sm text-slate-400">Select data, pick metrics, and <strong>Run Report</strong></p>

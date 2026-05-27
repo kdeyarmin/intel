@@ -107,7 +107,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       try {
         await base44.entities.AuditEvent.create({
           event_type: 'import',
-          user_email: 'user',
+          user_email: 'system',
           details: {
             action: `Retry import: ${batch.import_type} (attempt ${currentRetryCount + 1}/${MAX_RETRIES})`,
             entity: batch.import_type,
@@ -151,7 +151,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               {batch.invalid_rows > 0 && <span className="text-red-400">Invalid: <span className="font-semibold">{batch.invalid_rows?.toLocaleString()}</span></span>}
             </div>
             {currentRetryCount > 0 && (
-              <div className={`text-xs mt-2 px-2.5 py-1.5 rounded-md ${retryLimitReached ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-amber-500/10 border border-amber-500/20 text-amber-300'}`}>
+              <div className={`text-xs mt-2 px-2.5 py-1.5 rounded-md ${retryLimitReached ? 'bg-red-900/10 border border-red-500/20 text-red-400' : 'bg-amber-900/10 border border-amber-500/20 text-amber-300'}`}>
                 Previously retried {currentRetryCount} time(s){retryLimitReached ? ` — retry limit reached (${MAX_RETRIES} max)` : ` — ${MAX_RETRIES - currentRetryCount} retries remaining`}
               </div>
             )}
@@ -159,7 +159,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
           {/* AI preset indicator */}
           {presets && (
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5 text-xs text-purple-400 flex items-start gap-2">
+            <div className="bg-purple-900/10 border border-purple-500/20 rounded-lg p-2.5 text-xs text-purple-400 flex items-start gap-2">
               <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>Settings pre-filled by AI analysis: <strong>{presets.explanation || `${presets.mode} mode recommended`}</strong></span>
             </div>
@@ -176,14 +176,14 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             </TabsList>
 
             <TabsContent value="full" className="mt-3">
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400 flex items-start gap-2">
+              <div className="bg-blue-900/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400 flex items-start gap-2">
                 <RefreshCw className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>Re-process all {batch.total_rows?.toLocaleString() || 0} rows from scratch. Use this when the original error has been fixed.</span>
               </div>
             </TabsContent>
 
             <TabsContent value="row_range" className="mt-3 space-y-3">
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400 flex items-start gap-2">
+              <div className="bg-blue-900/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-400 flex items-start gap-2">
                 <Rows3 className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>Process a specific range of rows. Useful for large datasets that timed out — break them into smaller chunks.</span>
               </div>
@@ -220,7 +220,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             </TabsContent>
 
             <TabsContent value="criteria" className="mt-3 space-y-3">
-              <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-3 text-xs text-violet-400 flex items-start gap-2">
+              <div className="bg-violet-900/10 border border-violet-500/20 rounded-lg p-3 text-xs text-violet-400 flex items-start gap-2">
                 <Filter className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>Filter the source data by NPI, state, or sheet before processing. Only matching rows will be imported.</span>
               </div>
@@ -259,7 +259,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
             <TabsContent value="failed_only" className="mt-3 space-y-3">
               {hasInvalidRows ? (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 flex items-start gap-2">
+                <div className="bg-amber-900/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 flex items-start gap-2">
                   <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                   <span>Will attempt to re-process {batch.invalid_rows?.toLocaleString()} rows that previously failed validation.</span>
                 </div>
@@ -272,7 +272,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             </TabsContent>
 
             <TabsContent value="resume" className="mt-3">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-xs text-emerald-400 flex items-start gap-2">
+              <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-lg p-3 text-xs text-emerald-400 flex items-start gap-2">
                 <RefreshCw className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                 <span>
                   Resume from where the batch stopped — row {(batch.imported_rows || 0).toLocaleString()}.

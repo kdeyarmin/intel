@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,67 +9,14 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 export default function DataHealthAlerts() {
-  const { data: leadScores = [], isLoading: lsLoading } = useQuery({
-    queryKey: ['dh_leadScores'],
-    queryFn: () => base44.entities.LeadScore.list('-score', 500),
-    staleTime: 60000,
+  const { data: alerts = [], isLoading } = useQuery({
+    queryKey: ['dh_alerts'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getDataHealthAlerts');
+      return res.data?.alerts || [];
+    },
+    staleTime: 120000,
   });
-
-  const { data: providers = [], isLoading: pLoading } = useQuery({
-    queryKey: ['dh_providers'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 1000),
-    staleTime: 60000,
-  });
-
-  const { data: locations = [], isLoading: lLoading } = useQuery({
-    queryKey: ['dh_locations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 1000),
-    staleTime: 60000,
-  });
-
-  const { data: taxonomies = [], isLoading: tLoading } = useQuery({
-    queryKey: ['dh_taxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 1000),
-    staleTime: 60000,
-  });
-
-  const isLoading = lsLoading || pLoading || lLoading || tLoading;
-
-  const alerts = useMemo(() => {
-    if (leadScores.length === 0 || providers.length === 0) return [];
-
-    const issues = [];
-    const highScoringScores = leadScores.filter(s => s.score >= 80);
-
-    highScoringScores.forEach(scoreItem => {
-      const npi = scoreItem.npi;
-      const prov = providers.find(p => p.npi === npi);
-      if (!prov) return;
-
-      const locs = locations.filter(l => l.npi === npi);
-      const tax = taxonomies.filter(t => t.npi === npi);
-
-      const hasEmail = !!prov.email;
-      const hasPhone = locs.some(l => !!l.phone) || !!prov.cell_phone;
-      const hasSpecialty = tax.some(t => !!t.taxonomy_description);
-
-      const missing = [];
-      if (!hasEmail) missing.push('Email');
-      if (!hasPhone) missing.push('Phone');
-      if (!hasSpecialty) missing.push('Specialty');
-
-      if (missing.length > 0) {
-        issues.push({
-          npi: prov.npi,
-          name: prov.entity_type === 'Individual' ? `${prov.first_name || ''} ${prov.last_name || ''}`.trim() : prov.organization_name || prov.npi,
-          score: scoreItem.score,
-          missing,
-        });
-      }
-    });
-
-    return issues.sort((a, b) => b.score - a.score);
-  }, [providers, locations, taxonomies, leadScores]);
 
   if (isLoading) {
     return (
