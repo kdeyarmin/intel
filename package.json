@@ -7,7 +7,7 @@
     "dev": "concurrently --kill-others \"tsx watch server/index.ts\" \"vite\"",
     "dev:api": "tsx watch server/index.ts",
     "dev:frontend": "vite",
-    "build": "vite build",
+    "build": "npm run db:push && vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
