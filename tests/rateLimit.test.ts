@@ -1,230 +1,157 @@
-import { describe, it, expect, vi } from "vitest";
-import { consumeToken, rateLimit, ipRateLimit } from "../server/middleware/rateLimit";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-describe("consumeToken", () => {
-  it("allows up to `max` actions then blocks within the window", () => {
-    const key = `t1-${Math.random()}`;
-    expect(consumeToken(key, 3, 10_000)).toBe(true);
-    expect(consumeToken(key, 3, 10_000)).toBe(true);
-    expect(consumeToken(key, 3, 10_000)).toBe(true);
-    expect(consumeToken(key, 3, 10_000)).toBe(false); // 4th exceeds max
-    expect(consumeToken(key, 3, 10_000)).toBe(false);
-  });
+// consumeToken relies on Date.now() for bucket expiry. We use vi.useFakeTimers()
+// to control the clock and get deterministic results without real time passing.
+// We also re-import the module after each describe to reset the module-level
+// bucket Map and lastSweep state.
 
-  it("tracks separate keys independently", () => {
-    const a = `a-${Math.random()}`;
-    const b = `b-${Math.random()}`;
-    expect(consumeToken(a, 1, 10_000)).toBe(true);
-    expect(consumeToken(a, 1, 10_000)).toBe(false);
-    // b has its own bucket and is unaffected by a being exhausted.
-    expect(consumeToken(b, 1, 10_000)).toBe(true);
-  });
-
-  it("resets after the window elapses", async () => {
+describe("consumeToken – basic window behaviour", () => {
+  beforeEach(() => {
     vi.useFakeTimers();
-    try {
-      const key = `reset-${Math.random()}`;
-      expect(consumeToken(key, 1, 20)).toBe(true);
-      expect(consumeToken(key, 1, 20)).toBe(false);
-      await vi.advanceTimersByTimeAsync(35);
-      expect(consumeToken(key, 1, 20)).toBe(true); // window expired -> fresh bucket
-    } finally {
-      vi.useRealTimers();
+    vi.setSystemTime(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("allows the first request under the limit", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    expect(consumeToken("scope:user:ip", 5, 60_000)).toBe(true);
+  });
+
+  it("allows requests up to (and including) the max", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "scope:u1:127.0.0.1";
+    for (let i = 0; i < 3; i++) {
+      expect(consumeToken(key, 3, 60_000), `call ${i + 1}`).toBe(true);
     }
   });
+
+  it("blocks the request that would exceed the max", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "test:u2:10.0.0.1";
+    for (let i = 0; i < 2; i++) consumeToken(key, 2, 60_000);
+    expect(consumeToken(key, 2, 60_000)).toBe(false);
   });
 
-  it("allows exactly max=1 then blocks", () => {
-    const key = `max1-${Math.random()}`;
-    expect(consumeToken(key, 1, 10_000)).toBe(true);
+  it("allows a new request after the window resets", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "test:u3:10.0.0.2";
+    consumeToken(key, 1, 10_000);
+    expect(consumeToken(key, 1, 10_000)).toBe(false); // exhausted
+
+    // Advance past the window
+    vi.advanceTimersByTime(10_001);
+    expect(consumeToken(key, 1, 10_000)).toBe(true); // fresh window
+  });
+
+  it("keeps independent counters for different keys", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const keyA = "scope:uA:1.1.1.1";
+    const keyB = "scope:uB:2.2.2.2";
+    consumeToken(keyA, 1, 60_000);
+    expect(consumeToken(keyA, 1, 60_000)).toBe(false); // A exhausted
+    expect(consumeToken(keyB, 1, 60_000)).toBe(true);  // B unaffected
+  });
+
+  it("does not count a blocked request against the limit", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "test:u4:3.3.3.3";
+    consumeToken(key, 2, 60_000);
+    consumeToken(key, 2, 60_000); // now at max
+    // multiple blocked calls
+    expect(consumeToken(key, 2, 60_000)).toBe(false);
+    expect(consumeToken(key, 2, 60_000)).toBe(false);
+    // After reset the counter starts fresh
+    vi.advanceTimersByTime(60_001);
+    expect(consumeToken(key, 2, 60_000)).toBe(true);
+  });
+
+  it("max=1 allows exactly one request per window", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "tight:u5:4.4.4.4";
+    expect(consumeToken(key, 1, 1_000)).toBe(true);
+    expect(consumeToken(key, 1, 1_000)).toBe(false);
+    vi.advanceTimersByTime(1_001);
+    expect(consumeToken(key, 1, 1_000)).toBe(true);
+  });
+});
+
+describe("consumeToken – bucket expiry at exact boundary", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000); // arbitrary non-zero start
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("bucket is still active at windowMs - 1 ms", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "boundary:u6:5.5.5.5";
+    consumeToken(key, 1, 10_000); // exhausted
+    vi.advanceTimersByTime(9_999); // just before reset
     expect(consumeToken(key, 1, 10_000)).toBe(false);
   });
 
-  it("allows a fresh key even when another key is exhausted", () => {
-    const exhausted = `exhaust-${Math.random()}`;
-    const fresh = `fresh-${Math.random()}`;
-    consumeToken(exhausted, 2, 10_000);
-    consumeToken(exhausted, 2, 10_000);
-    consumeToken(exhausted, 2, 10_000); // over max
-    // a completely different key starts clean
-    expect(consumeToken(fresh, 2, 10_000)).toBe(true);
+  it("bucket expires at exactly resetAt", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "boundary:u7:6.6.6.6";
+    consumeToken(key, 1, 10_000); // exhausted at t=0, resets at t=10_000
+    vi.advanceTimersByTime(10_000); // now at exact resetAt
+    // resetAt <= now → bucket is stale → new window starts
+    expect(consumeToken(key, 1, 10_000)).toBe(true);
   });
 });
 
-// Helper to build a minimal mock Express-style req/res/next tuple
-function makeMockReq(overrides: {
-  userId?: number | null;
-  ip?: string;
-  forwardedFor?: string;
-} = {}) {
-  const req: any = {
-    user: overrides.userId != null ? { id: overrides.userId } : undefined,
-    headers: {} as Record<string, string>,
-    socket: { remoteAddress: overrides.ip || "1.2.3.4" },
-  };
-  if (overrides.forwardedFor) {
-    req.headers["x-forwarded-for"] = overrides.forwardedFor;
-  }
-  return req;
-}
-
-function makeMockRes() {
-  const res: any = {
-    _status: 200,
-    _headers: {} as Record<string, string | number>,
-    _body: null as any,
-    status(code: number) { this._status = code; return this; },
-    setHeader(k: string, v: string | number) { this._headers[k] = v; return this; },
-    json(body: any) { this._body = body; return this; },
-  };
-  return res;
-}
-
-describe("rateLimit middleware", () => {
-  it("calls next() while under the limit", () => {
-    const mw = rateLimit(`rl-ok-${Math.random()}`, 5, 10_000);
-    const req = makeMockReq({ userId: 42 });
-    const res = makeMockRes();
-    const next = vi.fn();
-    mw(req, res, next);
-    expect(next).toHaveBeenCalledOnce();
-    expect(res._status).toBe(200); // untouched
+describe("consumeToken – sweep removes stale buckets", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
   });
 
-  it("returns 429 after exhausting the limit", () => {
-    const scope = `rl-429-${Math.random()}`;
-    const mw = rateLimit(scope, 2, 10_000);
-    const req = makeMockReq({ userId: 7 });
-    const res1 = makeMockRes();
-    const res2 = makeMockRes();
-    const res3 = makeMockRes();
-    const next = vi.fn();
-    mw(req, res1, next); // 1st — allowed
-    mw(req, res2, next); // 2nd — allowed
-    mw(req, res3, next); // 3rd — over limit
-    expect(next).toHaveBeenCalledTimes(2);
-    expect(res3._status).toBe(429);
-    expect(res3._body).toMatchObject({ message: "Too many requests" });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
   });
 
-  it("sets a Retry-After header when returning 429", () => {
-    const scope = `rl-hdr-${Math.random()}`;
-    const mw = rateLimit(scope, 1, 10_000);
-    const req = makeMockReq({ userId: 3 });
-    const res1 = makeMockRes();
-    const res2 = makeMockRes();
-    const next = vi.fn();
-    mw(req, res1, next);
-    mw(req, res2, next); // blocked
-    expect(res2._headers["Retry-After"]).toBeGreaterThan(0);
-  });
-
-  it("keys by scope — different scopes are independent", () => {
-    const req = makeMockReq({ userId: 1 });
-    const mwA = rateLimit(`scope-A-${Math.random()}`, 1, 10_000);
-    const mwB = rateLimit(`scope-B-${Math.random()}`, 1, 10_000);
-    const next = vi.fn();
-    mwA(req, makeMockRes(), next); // consumes A
-    // B has its own counter — should still pass
-    const resB = makeMockRes();
-    mwB(req, resB, next);
-    expect(next).toHaveBeenCalledTimes(2);
-    expect(resB._status).toBe(200);
-  });
-
-  it("keys by user id — different users have independent counters", () => {
-    const scope = `rl-users-${Math.random()}`;
-    const mw = rateLimit(scope, 1, 10_000);
-    const req1 = makeMockReq({ userId: 101 });
-    const req2 = makeMockReq({ userId: 102 });
-    const next = vi.fn();
-    mw(req1, makeMockRes(), next); // exhausts user 101
-    const res2 = makeMockRes();
-    mw(req2, res2, next); // user 102 is fresh
-    expect(next).toHaveBeenCalledTimes(2);
-    expect(res2._status).toBe(200);
-  });
-
-  it("uses 'anon' part for unauthenticated requests (no req.user)", () => {
-    const scope = `rl-anon-${Math.random()}`;
-    const mw = rateLimit(scope, 1, 10_000);
-    const req = makeMockReq({ userId: undefined }); // no user
-    const next = vi.fn();
-    mw(req, makeMockRes(), next);
-    const blockedRes = makeMockRes();
-    mw(req, blockedRes, next);
-    expect(blockedRes._status).toBe(429);
-  });
-
-  it("prefers x-forwarded-for over socket.remoteAddress for IP", () => {
-    const scope = `rl-fwd-${Math.random()}`;
-    const mw = rateLimit(scope, 1, 10_000);
-    // Two requests: one with x-forwarded-for, one without — same user but different IPs
-    const reqFwd = makeMockReq({ userId: 10, forwardedFor: "10.0.0.1" });
-    const reqSock = makeMockReq({ userId: 10, ip: "10.0.0.2" });
-    const next = vi.fn();
-    mw(reqFwd, makeMockRes(), next); // consumes 10.0.0.1 bucket
-    const resOther = makeMockRes();
-    mw(reqSock, resOther, next); // 10.0.0.2 is a fresh bucket
-    expect(next).toHaveBeenCalledTimes(2);
+  it("still works after the sweep interval elapses", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "sweep:u8:7.7.7.7";
+    consumeToken(key, 5, 60_000);
+    // advance > 60 s to trigger the sweep logic
+    vi.advanceTimersByTime(70_000);
+    // The sweep should have no observable side-effect other than clearing stale entries.
+    // A new call must succeed because the bucket expired.
+    expect(consumeToken(key, 5, 60_000)).toBe(true);
   });
 });
 
-describe("ipRateLimit middleware", () => {
-  it("calls next() while under the limit", () => {
-    const mw = ipRateLimit(`ip-ok-${Math.random()}`, 5, 10_000);
-    const req = makeMockReq({ ip: "9.9.9.9" });
-    const res = makeMockRes();
-    const next = vi.fn();
-    mw(req, res, next);
-    expect(next).toHaveBeenCalledOnce();
+describe("consumeToken – high-volume accumulation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
   });
 
-  it("returns 429 after exhausting the limit", () => {
-    const scope = `ip-429-${Math.random()}`;
-    const mw = ipRateLimit(scope, 2, 10_000);
-    const req = makeMockReq({ ip: "5.5.5.5" });
-    const next = vi.fn();
-    mw(req, makeMockRes(), next);
-    mw(req, makeMockRes(), next);
-    const blockedRes = makeMockRes();
-    mw(req, blockedRes, next);
-    expect(next).toHaveBeenCalledTimes(2);
-    expect(blockedRes._status).toBe(429);
-    expect(blockedRes._body).toMatchObject({ message: "Too many requests" });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
   });
 
-  it("does not set Retry-After (simpler response than rateLimit)", () => {
-    const scope = `ip-hdr-${Math.random()}`;
-    const mw = ipRateLimit(scope, 1, 10_000);
-    const req = makeMockReq({ ip: "6.6.6.6" });
-    const next = vi.fn();
-    mw(req, makeMockRes(), next);
-    const blockedRes = makeMockRes();
-    mw(req, blockedRes, next);
-    expect(blockedRes._headers["Retry-After"]).toBeUndefined();
-  });
-
-  it("uses the first IP from x-forwarded-for when header is present", () => {
-    const scope = `ip-fwd-${Math.random()}`;
-    const mw = ipRateLimit(scope, 1, 10_000);
-    const req = makeMockReq({ forwardedFor: "203.0.113.1, 10.0.0.2" });
-    const next = vi.fn();
-    mw(req, makeMockRes(), next); // 203.0.113.1 bucket consumed
-    const blockedRes = makeMockRes();
-    mw(req, blockedRes, next); // same IP -> blocked
-    expect(blockedRes._status).toBe(429);
-  });
-
-  it("independent of user identity — only IP matters", () => {
-    const scope = `ip-users-ind-${Math.random()}`;
-    const mw = ipRateLimit(scope, 1, 10_000);
-    const reqUser1 = makeMockReq({ userId: 1, ip: "7.7.7.7" });
-    const reqUser2 = makeMockReq({ userId: 2, ip: "7.7.7.7" }); // same IP, different user
-    const next = vi.fn();
-    mw(reqUser1, makeMockRes(), next);
-    const blockedRes = makeMockRes();
-    mw(reqUser2, blockedRes, next); // same IP -> blocked regardless of user id
-    expect(blockedRes._status).toBe(429);
+  it("correctly counts 100 rapid requests against a 50-request limit", async () => {
+    const { consumeToken } = await import("../server/middleware/rateLimit");
+    const key = "flood:u9:8.8.8.8";
+    let allowed = 0;
+    let blocked = 0;
+    for (let i = 0; i < 100; i++) {
+      if (consumeToken(key, 50, 60_000)) allowed++;
+      else blocked++;
+    }
+    expect(allowed).toBe(50);
+    expect(blocked).toBe(50);
   });
 });

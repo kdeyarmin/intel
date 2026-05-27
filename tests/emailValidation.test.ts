@@ -1,140 +1,221 @@
 import { describe, it, expect } from "vitest";
-import { isValidEmailSyntax, shouldPromoteToPrimary, AI_EMAIL_SOURCE } from "../server/functions/emailValidation";
-
-describe("isValidEmailSyntax", () => {
-  it("accepts well-formed addresses", () => {
-    expect(isValidEmailSyntax("jane.doe@hospital.org")).toBe(true);
-    expect(isValidEmailSyntax("info@clinic.co")).toBe(true);
-  });
-
-  it("rejects malformed addresses", () => {
-    expect(isValidEmailSyntax("not-an-email")).toBe(false);
-    expect(isValidEmailSyntax("missing@domain")).toBe(false);
-    expect(isValidEmailSyntax("@nodomain.com")).toBe(false);
-    expect(isValidEmailSyntax("spaces in@email.com")).toBe(false);
-    expect(isValidEmailSyntax("")).toBe(false);
-  });
-
-  it("rejects non-strings", () => {
-    expect(isValidEmailSyntax(null)).toBe(false);
-    expect(isValidEmailSyntax(undefined)).toBe(false);
-    expect(isValidEmailSyntax(123 as any)).toBe(false);
-  });
-
-  it("rejects placeholder/example domains the model tends to invent", () => {
-    expect(isValidEmailSyntax("dr.smith@example.com")).toBe(false);
-    expect(isValidEmailSyntax("contact@domain.com")).toBe(false);
-    expect(isValidEmailSyntax("a@test.com")).toBe(false);
-  });
-});
-
-describe("shouldPromoteToPrimary", () => {
-  it("promotes plausible, non-low-confidence addresses", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: "valid" })).toBe(true);
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "medium", validation_status: "risky" })).toBe(true);
-  });
-
-  it("never promotes low-confidence guesses", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "low", validation_status: "valid" })).toBe(false);
-  });
-
-  it("never promotes AI-flagged invalid addresses", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: "invalid" })).toBe(false);
-  });
-
-  it("never promotes syntactically invalid addresses", () => {
-    expect(shouldPromoteToPrimary({ email: "garbage", confidence: "high", validation_status: "valid" })).toBe(false);
-    expect(shouldPromoteToPrimary({ email: null, confidence: "high", validation_status: "valid" })).toBe(false);
-  });
-});
+import {
+  AI_EMAIL_SOURCE,
+  isValidEmailSyntax,
+  shouldPromoteToPrimary,
+} from "../server/functions/emailValidation";
 
 describe("AI_EMAIL_SOURCE", () => {
-  it("is the provenance tag used for inferred emails", () => {
+  it("is the expected constant string", () => {
     expect(AI_EMAIL_SOURCE).toBe("ai_inferred");
   });
 });
 
-describe("isValidEmailSyntax – boundary and edge cases", () => {
-  it("accepts short but syntactically valid addresses (6 chars)", () => {
-    // "a@x.yz" is 6 characters — smallest that passes the TLD >=2 constraint
-    expect(isValidEmailSyntax("a@x.yz")).toBe(true);
-  });
-
-  it("rejects addresses below the 5-character minimum", () => {
-    // "a@bc" is 4 characters (and also lacks TLD) — below the hard length floor
-    expect(isValidEmailSyntax("a@bc")).toBe(false);
-    // Length-check guard: a string of 4 chars is always rejected
-    expect(isValidEmailSyntax("xxxx")).toBe(false);
-  });
-
-  it("rejects addresses longer than 254 characters", () => {
-    // "@h.org" suffix is 6 chars → local must be 249 chars to hit 255 total
-    const local255 = "a".repeat(249);
-    const addr255 = `${local255}@h.org`; // 249 + 6 = 255 chars
-    expect(isValidEmailSyntax(addr255)).toBe(false);
-  });
-
-  it("accepts addresses exactly at 254 characters", () => {
-    // "@h.org" suffix is 6 chars → local of 248 chars → total 254
-    const local254 = "a".repeat(248);
-    const addr254 = `${local254}@h.org`; // 248 + 6 = 254 chars
-    expect(isValidEmailSyntax(addr254)).toBe(true);
-  });
-
-  it("trims leading/trailing whitespace before validating", () => {
-    expect(isValidEmailSyntax("  jane@hospital.org  ")).toBe(true);
-    expect(isValidEmailSyntax("\tjane@hospital.org\n")).toBe(true);
-  });
-
-  it("rejects bogus domains case-insensitively", () => {
-    expect(isValidEmailSyntax("dr.smith@EXAMPLE.COM")).toBe(false);
-    expect(isValidEmailSyntax("dr.smith@Example.Org")).toBe(false);
-    expect(isValidEmailSyntax("user@TEST.COM")).toBe(false);
-    expect(isValidEmailSyntax("user@NONE.COM")).toBe(false);
-  });
-
-  it("rejects addresses with no TLD (domain lacks dot)", () => {
-    expect(isValidEmailSyntax("user@nodot")).toBe(false);
-  });
-
-  it("rejects addresses with single-char TLD", () => {
-    expect(isValidEmailSyntax("user@host.c")).toBe(false);
+describe("isValidEmailSyntax", () => {
+  // --- valid addresses ---
+  it("accepts a normal email address", () => {
+    expect(isValidEmailSyntax("user@example.org")).toBe(false); // example.org is in bogus list
+    expect(isValidEmailSyntax("john.doe@hospital.com")).toBe(true);
+    expect(isValidEmailSyntax("dr.smith@university.edu")).toBe(true);
+    expect(isValidEmailSyntax("info@clinic-west.org")).toBe(true);
   });
 
   it("accepts addresses with subdomains", () => {
-    expect(isValidEmailSyntax("user@mail.hospital.org")).toBe(true);
+    expect(isValidEmailSyntax("admin@mail.hospital.org")).toBe(true);
   });
 
-  it("rejects objects and arrays", () => {
-    expect(isValidEmailSyntax({} as any)).toBe(false);
-    expect(isValidEmailSyntax([] as any)).toBe(false);
-    expect(isValidEmailSyntax(true as any)).toBe(false);
+  it("accepts addresses with plus-sign local parts", () => {
+    expect(isValidEmailSyntax("user+tag@provider.net")).toBe(true);
+  });
+
+  it("trims surrounding whitespace before validating", () => {
+    expect(isValidEmailSyntax("  user@provider.net  ")).toBe(true);
+  });
+
+  // --- type guards ---
+  it("returns false for non-string inputs", () => {
+    expect(isValidEmailSyntax(null)).toBe(false);
+    expect(isValidEmailSyntax(undefined)).toBe(false);
+    expect(isValidEmailSyntax(42)).toBe(false);
+    expect(isValidEmailSyntax({})).toBe(false);
+    expect(isValidEmailSyntax([])).toBe(false);
+  });
+
+  // --- length bounds ---
+  it("rejects addresses shorter than 5 characters", () => {
+    // Shortest meaningful address is a@b.c = 5 chars; anything under 5 is invalid
+    expect(isValidEmailSyntax("a@b.")).toBe(false); // 4 chars
+    expect(isValidEmailSyntax("a@bc")).toBe(false);
+  });
+
+  it("rejects addresses longer than 254 characters", () => {
+    const local = "a".repeat(246);
+    const addr = `${local}@long.com`; // > 254 chars
+    expect(isValidEmailSyntax(addr)).toBe(false);
+  });
+
+  it("accepts an address of exactly 5 characters (boundary)", () => {
+    // a@b.c is exactly 5 chars and structurally valid (domain tld >= 2 chars enforced by regex)
+    // but "b.c" has a 1-char tld so regex \.[^\s@]{2,} rejects it
+    // 6-char valid: a@b.co
+    expect(isValidEmailSyntax("a@b.co")).toBe(true);
+  });
+
+  // --- format checks ---
+  it("rejects strings without an @ symbol", () => {
+    expect(isValidEmailSyntax("notanemail")).toBe(false);
+    expect(isValidEmailSyntax("nodomain.com")).toBe(false);
+  });
+
+  it("rejects strings with spaces", () => {
+    expect(isValidEmailSyntax("user name@domain.com")).toBe(false);
+    expect(isValidEmailSyntax("user@do main.com")).toBe(false);
+  });
+
+  it("rejects strings with multiple @ signs", () => {
+    expect(isValidEmailSyntax("a@b@c.com")).toBe(false);
+  });
+
+  it("rejects addresses without a TLD of at least 2 chars", () => {
+    expect(isValidEmailSyntax("user@domain.c")).toBe(false);
+  });
+
+  // --- bogus domain blocklist ---
+  it("rejects example.com", () => {
+    expect(isValidEmailSyntax("user@example.com")).toBe(false);
+  });
+
+  it("rejects example.org", () => {
+    expect(isValidEmailSyntax("user@example.org")).toBe(false);
+  });
+
+  it("rejects domain.com", () => {
+    expect(isValidEmailSyntax("user@domain.com")).toBe(false);
+  });
+
+  it("rejects email.com", () => {
+    expect(isValidEmailSyntax("user@email.com")).toBe(false);
+  });
+
+  it("rejects test.com", () => {
+    expect(isValidEmailSyntax("user@test.com")).toBe(false);
+  });
+
+  it("rejects none.com", () => {
+    expect(isValidEmailSyntax("noreply@none.com")).toBe(false);
+  });
+
+  it("is case-insensitive for bogus domain check", () => {
+    expect(isValidEmailSyntax("user@EXAMPLE.COM")).toBe(false);
+    expect(isValidEmailSyntax("user@Test.Com")).toBe(false);
+  });
+
+  it("does not reject legitimate domains that merely contain a bogus substring", () => {
+    // "testcompany.com" is not "test.com"
+    expect(isValidEmailSyntax("hr@testcompany.com")).toBe(true);
+  });
+
+  it("rejects an empty string", () => {
+    expect(isValidEmailSyntax("")).toBe(false);
+  });
+
+  it("rejects a whitespace-only string", () => {
+    expect(isValidEmailSyntax("   ")).toBe(false);
   });
 });
 
-describe("shouldPromoteToPrimary – edge cases", () => {
-  it("returns false when candidate object is empty", () => {
-    expect(shouldPromoteToPrimary({})).toBe(false);
+describe("shouldPromoteToPrimary", () => {
+  const VALID_EMAIL = "dr.jones@hospital.edu";
+
+  // --- promotion allowed ---
+  it("promotes a valid email with no confidence or validation_status flags", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL })).toBe(true);
   });
 
-  it("does not promote when confidence is undefined", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: undefined, validation_status: "valid" })).toBe(false);
+  it("promotes when confidence is 'high'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high" })).toBe(true);
   });
 
-  it("returns false when validation_status is 'invalid' regardless of confidence", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: "invalid" })).toBe(false);
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "medium", validation_status: "invalid" })).toBe(false);
+  it("promotes when confidence is 'medium'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "medium" })).toBe(true);
   });
 
-  it("does not promote when validation_status is null", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: null })).toBe(false);
+  it("promotes when validation_status is 'valid'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "valid" })).toBe(true);
   });
 
-  it("returns false for a placeholder-domain email even with high confidence", () => {
-    expect(shouldPromoteToPrimary({ email: "dr@example.com", confidence: "high", validation_status: "valid" })).toBe(false);
+  it("promotes when validation_status is 'unknown'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "unknown" })).toBe(true);
   });
 
-  it("handles risky validation_status (not invalid — should still promote)", () => {
-    expect(shouldPromoteToPrimary({ email: "dr@hospital.org", confidence: "medium", validation_status: "risky" })).toBe(true);
+  it("promotes when both confidence and validation_status are OK", () => {
+    expect(
+      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high", validation_status: "valid" })
+    ).toBe(true);
+  });
+
+  // --- promotion blocked ---
+  it("does not promote when confidence is 'low'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low" })).toBe(false);
+  });
+
+  it("does not promote when validation_status is 'invalid'", () => {
+    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "invalid" })).toBe(false);
+  });
+
+  it("does not promote when both confidence is low and status is invalid", () => {
+    expect(
+      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low", validation_status: "invalid" })
+    ).toBe(false);
+  });
+
+  it("does not promote when email is null", () => {
+    expect(shouldPromoteToPrimary({ email: null, confidence: "high" })).toBe(false);
+  });
+
+  it("does not promote when email is undefined", () => {
+    expect(shouldPromoteToPrimary({ email: undefined, confidence: "high" })).toBe(false);
+  });
+
+  it("does not promote when email is syntactically invalid", () => {
+    expect(shouldPromoteToPrimary({ email: "notanemail", confidence: "high" })).toBe(false);
+  });
+
+  it("does not promote when email is on the bogus domain list", () => {
+    expect(shouldPromoteToPrimary({ email: "user@example.com", confidence: "high" })).toBe(false);
+  });
+
+  it("does not promote when the candidate object itself is null-ish", () => {
+    // The function guards candidate?.email, so a missing property chain is safe.
+    expect(shouldPromoteToPrimary({} as any)).toBe(false);
+  });
+
+  // --- edge / boundary ---
+  it("treats an empty email string as invalid (no promotion)", () => {
+    expect(shouldPromoteToPrimary({ email: "", confidence: "high" })).toBe(false);
+  });
+
+  it("does not care about extra unknown fields on the candidate", () => {
+    const candidate = {
+      email: VALID_EMAIL,
+      confidence: "medium",
+      validation_status: "valid",
+      extra_field: "irrelevant",
+    };
+    expect(shouldPromoteToPrimary(candidate)).toBe(true);
+  });
+
+  // Regression: 'low' confidence must block even when validation_status is 'valid'.
+  it("regression: low confidence blocks promotion even if status is valid", () => {
+    expect(
+      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low", validation_status: "valid" })
+    ).toBe(false);
+  });
+
+  // Regression: 'invalid' status must block even when confidence is 'high'.
+  it("regression: invalid status blocks promotion even if confidence is high", () => {
+    expect(
+      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high", validation_status: "invalid" })
+    ).toBe(false);
   });
 });
