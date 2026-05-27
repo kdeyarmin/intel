@@ -24,7 +24,11 @@ export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
   cms_order_referring: { primaryCol: "npi", keyCols: ["npi", "data_year"] },
   provider_service_utilization: {
     primaryCol: "npi",
-    keyCols: ["npi", "service_type", "data_year"],
+    // The CMS "by Provider and Service" dataset has one row per
+    // (provider, HCPCS code, place of service). Keying on service_type alone
+    // collapsed every one of a provider's service lines into a single row,
+    // discarding the bulk of the dataset — key on the HCPCS service instead.
+    keyCols: ["npi", "hcpcs_code", "place_of_service", "data_year"],
   },
 };
 
@@ -68,4 +72,19 @@ export function distinctValues(rows: Record<string, unknown>[], col: string): st
     if (v != null && String(v).trim() !== "") out.add(String(v));
   }
   return [...out];
+}
+
+// Total Medicare payment for one service line. The "by Provider and Service"
+// dataset only publishes the *average* payment per service, so the true line
+// total is average × number of services. Returns a fixed-2 numeric string, or
+// null when either input isn't a usable positive number (so the column stays
+// empty rather than storing a fabricated value).
+export function deriveLineTotal(totalServices: unknown, averageAmount: unknown): string | null {
+  const svcStr = String(totalServices ?? "").replace(/[^0-9.\-]/g, "");
+  const avgStr = String(averageAmount ?? "").replace(/[^0-9.\-]/g, "");
+  if (svcStr === "" || avgStr === "") return null;
+  const svc = Number(svcStr);
+  const avg = Number(avgStr);
+  if (!Number.isFinite(svc) || !Number.isFinite(avg) || svc <= 0) return null;
+  return (svc * avg).toFixed(2);
 }

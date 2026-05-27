@@ -2,7 +2,7 @@ import { db } from "../db";
 import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
-import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+import { CMS_NATURAL_KEYS, partition, distinctValues, deriveLineTotal } from "./cmsUpsert";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -431,14 +431,25 @@ function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
   };
 }
 
-function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
+export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
+  const totalServices = row.Tot_Srvcs ?? row.tot_srvcs ?? null;
+  const avgMedicarePayment = row.Avg_Mdcr_Pymt_Amt ?? row.avg_mdcr_pymt_amt ?? null;
   return {
     npi: row.Rndrng_NPI || row.npi || null,
+    // service_type retains the rendering provider's specialty so existing
+    // specialty rollups keep working; the actual service is in hcpcs_*.
     service_type: row.Rndrng_Prvdr_Type || row.HCPCS_Desc || null,
-    total_services: row.Tot_Srvcs || null,
-    total_unique_benes: row.Tot_Benes || null,
-    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg || null,
-    total_medicare_payment_amt: row.Avg_Mdcr_Pymt_Amt || null,
+    hcpcs_code: row.HCPCS_Cd || row.hcpcs_cd || null,
+    hcpcs_description: row.HCPCS_Desc || row.hcpcs_desc || null,
+    place_of_service: row.Place_Of_Srvc || row.place_of_srvc || null,
+    total_services: totalServices,
+    total_unique_benes: row.Tot_Benes ?? row.tot_benes ?? null,
+    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg ?? null,
+    // Source publishes per-service averages; keep the average truthfully and
+    // derive the line total (avg × services) instead of mislabeling the
+    // average as a total.
+    average_medicare_payment_amt: avgMedicarePayment,
+    total_medicare_payment_amt: deriveLineTotal(totalServices, avgMedicarePayment),
     data_year: String(year),
     raw_data: row,
   };

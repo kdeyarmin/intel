@@ -56,12 +56,12 @@ export async function handleGetComprehensiveReport(payload: any) {
       result.taxonomies = await safeQuery(client, `SELECT * FROM provider_taxonomies WHERE npi = $1`, [npi]);
 
       result.utilization = (await safeQuery(client, `
-        SELECT service_type, total_services, total_unique_benes,
+        SELECT service_type, hcpcs_description, total_services, total_unique_benes,
           total_medicare_payment_amt, average_submitted_chrg_amt, data_year
         FROM provider_service_utilization WHERE npi = $1
         ORDER BY data_year DESC LIMIT 100
       `, [npi])).map((u: any) => ({
-        serviceType: u.service_type,
+        serviceType: u.hcpcs_description || u.service_type,
         totalServices: u.total_services,
         totalBeneficiaries: u.total_unique_benes,
         totalPayment: u.total_medicare_payment_amt,
