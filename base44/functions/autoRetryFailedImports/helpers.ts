@@ -59,8 +59,15 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
 
 export function getRetryAttemptCount(batch: Record<string, unknown>): number {
     const params = batch.retry_params as Record<string, unknown> | undefined;
-    const count = params?.auto_retry_count;
-    return typeof count === 'number' && count >= 0 ? count : 0;
+    const autoRetryCount = params?.auto_retry_count;
+    const topLevelRetryCount = batch.retry_count;
+    const parsedAutoRetryCount = typeof autoRetryCount === 'number' && autoRetryCount >= 0
+        ? autoRetryCount
+        : 0;
+    const parsedTopLevelRetryCount = typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0
+        ? topLevelRetryCount
+        : 0;
+    return Math.max(parsedAutoRetryCount, parsedTopLevelRetryCount);
 }
 
 // Exponential backoff that mirrors runScheduledImports/helpers.backoffHours:
