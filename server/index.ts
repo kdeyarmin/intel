@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
 import functionRoutes from "./routes/functions";
+import maintenanceRoutes from "./routes/maintenance";
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/functions", functionRoutes);
+app.use("/api/maintenance", maintenanceRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
