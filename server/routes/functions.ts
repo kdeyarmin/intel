@@ -821,6 +821,9 @@ Be concise and helpful. Use markdown formatting for readability.`;
           );
           return res.json({ providers: result.rows });
         } finally {
+          // Reset so the 8s timeout doesn't persist on this pooled connection for
+          // the next unrelated query that reuses it.
+          await client.query("RESET statement_timeout").catch(() => {});
           client.release();
         }
       }
