@@ -7,14 +7,28 @@ const CATEGORY_COLORS = {
   accuracy: '#8b5cf6',
   timeliness: '#f59e0b',
   consistency: '#14b8a6',
-  duplicate: '#ec4899',
+  other: '#64748b',
 };
+
+const CATEGORY_RULES = {
+  completeness: ['missing_name', 'missing_credential', 'missing_enum_date', 'missing_email', 'no_location', 'no_taxonomy', 'missing_address', 'missing_city'],
+  accuracy: ['invalid_npi', 'invalid_state', 'invalid_phone'],
+  timeliness: ['stale_data'],
+  consistency: ['org_with_gender', 'deactivated_with_location'],
+};
+
+function getCategory(alertType) {
+  for (const [cat, rules] of Object.entries(CATEGORY_RULES)) {
+    if (rules.includes(alertType)) return cat;
+  }
+  return 'other';
+}
 
 export default function AlertTrendChart({ alerts = [] }) {
   const data = useMemo(() => {
     const counts = {};
     for (const a of alerts) {
-      const cat = a.category || 'other';
+      const cat = getCategory(a.alert_type);
       counts[cat] = (counts[cat] || 0) + 1;
     }
     return Object.entries(counts).map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count);

@@ -78,7 +78,9 @@ export default function NotificationBell() {
 
   const timeAgo = (ts) => {
     if (!ts) return '';
-    const diff = Date.now() - new Date(ts).getTime();
+    const date = new Date(ts);
+    if (isNaN(date.getTime())) return '';
+    const diff = Date.now() - date.getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
@@ -95,7 +97,7 @@ export default function NotificationBell() {
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-900/20 text-white text-[9px] flex items-center justify-center font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -121,7 +123,7 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-80 overflow-y-auto">
             {allNotifs.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-600">No new notifications</div>
+              <div className="py-8 text-center text-xs text-slate-400">No new notifications</div>
             ) : (
               allNotifs.map(n => {
                 const Icon = n.icon;
@@ -131,9 +133,9 @@ export default function NotificationBell() {
                     <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)} className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-slate-200">{n.title}</p>
                       {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
-                      <p className="text-[9px] text-slate-600 mt-0.5">{timeAgo(n.time)}</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
                     </Link>
-                    <button onClick={() => dismiss(n.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-slate-400">
+                    <button onClick={() => dismiss(n.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-400">
                       <X className="w-3 h-3" />
                     </button>
                   </div>

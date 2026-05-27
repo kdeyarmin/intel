@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import BatchTagManager from '../components/imports/BatchTagManager';
 import BatchCategorySelector from '../components/imports/BatchCategorySelector';
 import BatchActionButtons from '../components/imports/BatchActionButtons';
 import RetryBatchDialog from '../components/imports/RetryBatchDialog';
+import ImportSpeedView from '../components/imports/ImportSpeedView';
 import ErrorLogDialog from '../components/imports/ErrorLogDialog';
 import ValidationErrorBreakdown from '../components/imports/ValidationErrorBreakdown';
 import DateRangeFilter from '../components/imports/DateRangeFilter';
@@ -147,15 +149,16 @@ export default function ImportMonitoring() {
   }, [batches]);
 
   const STALE_THRESHOLD_MS = 15 * 60 * 1000;
+  const CRAWLER_STALE_THRESHOLD_MS = 60 * 60 * 1000;
   const isStale = (batch) => {
     if (batch.status !== 'processing' && batch.status !== 'validating') return false;
     const updated = new Date(batch.updated_date || batch.created_date);
-    return (Date.now() - updated.getTime()) > STALE_THRESHOLD_MS;
+    const threshold = batch.import_type === 'nppes_registry' ? CRAWLER_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
+    return (Date.now() - updated.getTime()) > threshold;
   };
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
   const staleBatches = batches.filter(b => isStale(b));
-  const _completedBatches = batches.filter(b => b.status === 'completed');
   const failedBatches = batches.filter(b => b.status === 'failed');
 
   const toggleSelectForRerun = (id) => {
@@ -171,61 +174,42 @@ export default function ImportMonitoring() {
   const handleBulkRetry = async () => {
     if (selectedForRerun.size === 0) return;
     setIsBulkRetrying(true);
-    const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
-    let _successCount = 0;
-    let _skipCount = 0;
-    for (const batch of toRetry) {
-      try {
-        await base44.functions.invoke('triggerImport', {
-          import_type: batch.import_type,
-          file_url: batch.file_url || undefined,
-          dry_run: false,
-          year: batch.data_year || undefined,
-          retry_of: batch.id,
-          retry_count: (batch.retry_count || 0) + 1,
-          retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
-          category: batch.category || undefined,
-        });
-        _successCount++;
-      } catch (e) {
-        console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
-        _skipCount++;
-      }
-    }
-    setSelectedForRerun(new Set());
-    setBulkRetryMode(false);
-    setIsBulkRetrying(false);
-    refreshBatches();
-  };
-  const pausedBatches = batches.filter(b => b.status === 'paused');
-  const [autoFailedIds, setAutoFailedIds] = useState(new Set());
-  const autoFailProcessed = useRef(new Set());
-
-  // Auto-mark stale jobs as failed
-  useEffect(() => {
-    if (staleBatches.length === 0) return;
-    const toFail = staleBatches.filter(b => !autoFailProcessed.current.has(b.id));
-    if (toFail.length === 0) return;
-
-    (async () => {
-      for (const batch of toFail) {
-        autoFailProcessed.current.add(batch.id);
+    try {
+      const toRetry = batches.filter(b => selectedForRerun.has(b.id) && (b.retry_count || 0) < MAX_RETRIES);
+      let successCount = 0;
+      let skipCount = 0;
+      for (const batch of toRetry) {
         try {
-          await base44.entities.ImportBatch.update(batch.id, {
-            status: 'failed',
-            error_samples: [
-              ...(batch.error_samples || []),
-              { row: 0, message: 'Job stalled due to inactivity — automatically marked as failed after 15 minutes with no progress' }
-            ]
+          await base44.functions.invoke('triggerImport', {
+            import_type: batch.import_type,
+            file_url: batch.file_url || undefined,
+            dry_run: false,
+            year: batch.data_year || undefined,
+            retry_of: batch.id,
+            retry_count: (batch.retry_count || 0) + 1,
+            retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry' && t !== 'bulk-retry'), 'retry', 'bulk-retry'])],
+            category: batch.category || undefined,
           });
-          setAutoFailedIds(prev => new Set([...prev, batch.id]));
-        } catch (err) {
-          console.error('Failed to auto-mark batch as failed:', batch.id, err);
+          successCount++;
+        } catch (e) {
+          console.warn('Bulk retry failed for', batch.import_type, ':', e.message);
+          skipCount++;
         }
       }
+      if (successCount > 0) toast.success(`Retried ${successCount} batch${successCount > 1 ? 'es' : ''} successfully`);
+      if (skipCount > 0) toast.error(`${skipCount} batch${skipCount > 1 ? 'es' : ''} failed to retry`);
+      setSelectedForRerun(new Set());
+      setBulkRetryMode(false);
       refreshBatches();
-    })();
-  }, [staleBatches.length]);
+    } catch (err) {
+      console.error('[ImportMonitoring] Bulk retry error:', err);
+      toast.error('Bulk retry failed: ' + err.message);
+    } finally {
+      setIsBulkRetrying(false);
+    }
+  };
+  const pausedBatches = batches.filter(b => b.status === 'paused');
+  const isCrawlerBatch = (b) => b.import_type === 'nppes_registry' && b.file_name?.startsWith('crawler_');
 
   const displayBatches = useMemo(() => {
     let filtered = batches;
@@ -343,18 +327,18 @@ export default function ImportMonitoring() {
       case 'paused':
         return <Pause className="w-5 h-5 text-amber-500" />;
       case 'cancelled':
-        return <XCircle className="w-5 h-5 text-gray-400" />;
+        return <XCircle className="w-5 h-5 text-slate-500" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
+        return <Clock className="w-5 h-5 text-slate-500" />;
     }
   };
 
   const statusColors = {
-    processing: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-    validating: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
-    completed: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-    failed: 'bg-red-500/15 text-red-400 border border-red-500/20',
-    paused: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+    processing: 'bg-blue-900/15 text-blue-400 border border-blue-500/20',
+    validating: 'bg-yellow-900/15 text-yellow-400 border border-yellow-500/20',
+    completed: 'bg-emerald-900/15 text-emerald-400 border border-emerald-500/20',
+    failed: 'bg-red-900/15 text-red-400 border border-red-500/20',
+    paused: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
     cancelled: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',
   };
 
@@ -373,7 +357,7 @@ export default function ImportMonitoring() {
       return Math.min(Math.round((validated / total) * 50), 49);
     }
     // processing or paused
-    const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
+    const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0) + (batch.excluded_rows || 0);
     return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
 
@@ -423,7 +407,7 @@ export default function ImportMonitoring() {
             Auto-Import
           </Button>
           <Button
-            onClick={async () => { setIsRefreshing(true); await refreshBatches(); setIsRefreshing(false); }}
+            onClick={async () => { setIsRefreshing(true); try { await refreshBatches(); } finally { setIsRefreshing(false); } }}
             variant="outline"
             disabled={isRefreshing}
             className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
@@ -546,78 +530,8 @@ export default function ImportMonitoring() {
       {/* Live Progress for Active Jobs */}
       <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
 
-      {/* #9 — Paused-imports summary banner so users can see resumable work at a glance */}
-      {pausedBatches.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/10">
-          <CardContent className="py-3">
-            <div className="flex items-start gap-2">
-              <Pause className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 text-sm">
-                <p className="text-amber-200 font-semibold mb-1">
-                  {pausedBatches.length} import{pausedBatches.length !== 1 ? 's are' : ' is'} paused mid-run
-                </p>
-                <ul className="text-xs text-amber-300/80 space-y-0.5">
-                  {pausedBatches.slice(0, 5).map(b => {
-                    // Pick the field that actually supplied the offset so row counts
-                    // don't get labelled as bytes when both fields are present.
-                    let offset = null;
-                    let isByte = false;
-                    if (b.retry_params?.resume_offset != null) {
-                      offset = b.retry_params.resume_offset;
-                    } else if (b.retry_params?.row_offset != null) {
-                      offset = b.retry_params.row_offset;
-                    } else if (b.retry_params?.byte_offset != null) {
-                      offset = b.retry_params.byte_offset;
-                      isByte = true;
-                    }
-                    return (
-                      <li key={b.id}>
-                        <span className="font-medium">{b.import_type}</span>
-                        {offset != null && (
-                          <span className="text-amber-300/60">
-                            {' '}— paused at {isByte ? 'byte' : 'row'} {Number(offset).toLocaleString()}
-                            {!isByte && b.total_rows ? ` of ${Number(b.total_rows).toLocaleString()}` : ''}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                  {pausedBatches.length > 5 && <li>…and {pausedBatches.length - 5} more</li>}
-                </ul>
-                <p className="text-[11px] text-amber-300/70 mt-1.5">
-                  Auto-resumes on next scheduled run. Click any paused batch below to see details.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Success vs Failure Charts */}
       <SuccessVsFailureChart batches={batches} />
-
-      {/* Auto-failed notification */}
-      {autoFailedIds.size > 0 && (
-        <Card className="border-red-500/30 bg-red-500/10">
-          <CardContent className="py-3">
-            <div className="flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-400" />
-              <p className="text-sm text-red-400">
-                <span className="font-semibold">{autoFailedIds.size} stalled job{autoFailedIds.size !== 1 ? 's were' : ' was'} automatically marked as failed</span>
-                {' '}due to inactivity (no updates for 15+ minutes).
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-xs text-slate-400 hover:text-slate-200"
-                onClick={() => setAutoFailedIds(new Set())}
-              >
-                Dismiss
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Import Trend Charts */}
       <ImportTrendCharts batches={batches} />
@@ -637,7 +551,7 @@ export default function ImportMonitoring() {
 
       {/* Stale Jobs Warning */}
       {staleBatches.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/10">
+        <Card className="border-amber-500/30 bg-amber-900/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2 text-amber-400">
               <AlertCircle className="w-5 h-5" />
@@ -646,7 +560,7 @@ export default function ImportMonitoring() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated in over 15 minutes and are likely stalled.
+              These jobs haven't updated in over 15 minutes. They may resume automatically after a server restart, or you can manually mark them as failed.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (
@@ -658,13 +572,17 @@ export default function ImportMonitoring() {
                   </div>
                   <Button
                     size="sm" variant="outline"
-                    className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                    className="text-red-400 border-red-500/30 hover:bg-red-900/10"
                     onClick={async () => {
-                      await base44.entities.ImportBatch.update(batch.id, {
-                        status: 'failed',
-                        error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
-                      });
-                      refreshBatches();
+                      try {
+                        await base44.entities.ImportBatch.update(batch.id, {
+                          status: 'failed',
+                          error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
+                        });
+                        refreshBatches();
+                      } catch (err) {
+                        console.error('Failed to mark batch as failed:', err);
+                      }
                     }}
                   >
                     <XCircle className="w-3 h-3 mr-1" /> Mark Failed
@@ -752,7 +670,7 @@ export default function ImportMonitoring() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                  className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
               <select
@@ -844,7 +762,7 @@ export default function ImportMonitoring() {
                 <div key={batch.id} className={`p-4 border rounded-lg hover:bg-slate-800/30 transition-colors ${
                   bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES
                     ? selectedForRerun.has(batch.id)
-                      ? 'border-cyan-500/40 bg-cyan-500/5'
+                      ? 'border-cyan-500/40 bg-cyan-900/5'
                       : 'border-slate-700/50 cursor-pointer'
                     : 'border-slate-700/50'
                 }`}
@@ -870,7 +788,7 @@ export default function ImportMonitoring() {
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                           </h3>
                           {batch.retry_of && (
-                            <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                            <Badge className="text-xs gap-1 bg-amber-900/15 text-amber-400 border border-amber-500/20">
                               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
                             </Badge>
                           )}
@@ -890,7 +808,7 @@ export default function ImportMonitoring() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                          className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                           onClick={() => setErrorReportBatch(batch)}
                         >
                           Error Report
@@ -899,7 +817,7 @@ export default function ImportMonitoring() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-500/10"
+                        className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                         disabled={deletingBatchId === batch.id}
                         onClick={() => setConfirmDeleteBatch(batch)}
                       >
@@ -948,7 +866,7 @@ export default function ImportMonitoring() {
                             <span>Validated: {((batch.valid_rows || 0) + (batch.invalid_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
                           )}
                           {batch.status === 'processing' && (
-                            <span>Imported: {((batch.imported_rows || 0) + (batch.updated_rows || 0)).toLocaleString()} / {batch.total_rows.toLocaleString()}</span>
+                            <span>New: {((batch.imported_rows || 0) + (batch.updated_rows || 0)).toLocaleString()}{(batch.skipped_rows || 0) > 0 ? ` · ${batch.skipped_rows.toLocaleString()} dupes` : ''} / {batch.total_rows.toLocaleString()} fetched</span>
                           )}
                         </div>
                       )}
@@ -988,11 +906,12 @@ export default function ImportMonitoring() {
                       </div>
                     ) : (
                       <>
-                        {batch.total_rows > 0 && <div><span className="text-slate-400">Total: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
+                        {batch.total_rows > 0 && <div><span className="text-slate-400">Fetched: </span><span className="font-semibold text-slate-200">{batch.total_rows.toLocaleString()}</span></div>}
                         {batch.valid_rows > 0 && <div><span className="text-slate-400">Validated: </span><span className="font-semibold text-emerald-400">{batch.valid_rows.toLocaleString()}</span></div>}
-                        {batch.imported_rows > 0 && <div><span className="text-slate-400">Imported: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
+                        {batch.imported_rows > 0 && <div><span className="text-slate-400">New: </span><span className="font-semibold text-blue-400">{batch.imported_rows.toLocaleString()}</span></div>}
                         {batch.updated_rows > 0 && <div><span className="text-slate-400">Updated: </span><span className="font-semibold text-violet-400">{batch.updated_rows.toLocaleString()}</span></div>}
-                        {batch.skipped_rows > 0 && <div><span className="text-slate-400">Skipped: </span><span className="font-semibold text-slate-300">{batch.skipped_rows.toLocaleString()}</span></div>}
+                        {batch.excluded_rows > 0 && <div title="Providers excluded by credential filter"><span className="text-slate-400">Excluded: </span><span className="font-semibold text-orange-400">{batch.excluded_rows.toLocaleString()}</span></div>}
+                        {batch.skipped_rows > 0 && <div title="Duplicates or rows missing required fields"><span className="text-slate-400">Duplicates: </span><span className="font-semibold text-amber-400">{batch.skipped_rows.toLocaleString()}</span></div>}
                         {batch.invalid_rows > 0 && <div><span className="text-slate-400">Invalid: </span><span className="font-semibold text-red-400">{batch.invalid_rows.toLocaleString()}</span></div>}
                         {batch.status === 'failed' && batch.valid_rows > 0 && !batch.imported_rows && (
                           <div className="text-xs text-amber-400 italic">Validated but failed during import</div>
@@ -1032,10 +951,15 @@ export default function ImportMonitoring() {
               onClick={async () => {
                 const id = confirmDeleteBatch.id;
                 setDeletingBatchId(id);
-                await base44.entities.ImportBatch.delete(id);
-                setConfirmDeleteBatch(null);
-                setDeletingBatchId(null);
-                refreshBatches();
+                try {
+                  await base44.entities.ImportBatch.delete(id);
+                  setConfirmDeleteBatch(null);
+                  refreshBatches();
+                } catch (err) {
+                  console.error('Failed to delete batch:', err);
+                } finally {
+                  setDeletingBatchId(null);
+                }
               }}
             >
               {deletingBatchId === confirmDeleteBatch?.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
@@ -1090,11 +1014,11 @@ function ImportHistoryView({ batches, formatTimestamp }) {
   });
 
   const statusColors = {
-    processing: 'bg-blue-500/15 text-blue-400',
-    validating: 'bg-yellow-500/15 text-yellow-400',
-    completed: 'bg-emerald-500/15 text-emerald-400',
-    failed: 'bg-red-500/15 text-red-400',
-    paused: 'bg-amber-500/15 text-amber-400',
+    processing: 'bg-blue-900/15 text-blue-400',
+    validating: 'bg-yellow-900/15 text-yellow-400',
+    completed: 'bg-emerald-900/15 text-emerald-400',
+    failed: 'bg-red-900/15 text-red-400',
+    paused: 'bg-amber-900/15 text-amber-400',
     cancelled: 'bg-slate-500/15 text-slate-400',
   };
 
@@ -1182,7 +1106,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   placeholder="Search..."
-                  className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+                  className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
               <select
@@ -1219,8 +1143,9 @@ function ImportHistoryView({ batches, formatTimestamp }) {
                           <p className="text-xs text-slate-500 truncate">{b.file_name}</p>
                         </div>
                         <div className="flex items-center gap-4 text-xs text-slate-500 flex-shrink-0">
-                          {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} imported</span>}
-                          {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} total</span>}
+                          {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} new</span>}
+                          {b.skipped_rows > 0 && <span className="text-amber-400">{b.skipped_rows.toLocaleString()} dupes</span>}
+                          {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} fetched</span>}
                           <span className="w-24 text-right">{formatTimestamp(b.created_date).replace(/, \d{4}/, '')}</span>
                         </div>
                         {(b.tags || []).length > 0 && (

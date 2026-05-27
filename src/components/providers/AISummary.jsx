@@ -44,13 +44,18 @@ ${score?.reasons?.length ? 'Score Reasons: ' + score.reasons.join('; ') : ''}
 
 Summarize who this provider is, their practice characteristics, notable utilization/referral patterns, and their potential value as a business lead. Highlight any standout metrics.`;
 
-    const result = await base44.integrations.Core.InvokeLLM({ prompt });
-    setSummary(result);
-    setLoading(false);
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({ prompt });
+      setSummary(result);
+    } catch (err) {
+      console.error('AI summary generation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-purple-600" />
@@ -68,7 +73,7 @@ Summarize who this provider is, their practice characteristics, notable utilizat
       </CardHeader>
       <CardContent>
         {!summary && !loading && (
-          <p className="text-sm text-gray-400 text-center py-6">
+          <p className="text-sm text-slate-500 text-center py-6">
             Click "Generate" to create an AI-powered executive summary of this provider
           </p>
         )}
@@ -79,7 +84,7 @@ Summarize who this provider is, their practice characteristics, notable utilizat
           </div>
         )}
         {summary && (
-          <div className="prose prose-sm max-w-none text-gray-700">
+          <div className="prose prose-sm max-w-none text-slate-300">
             <ReactMarkdown>{summary}</ReactMarkdown>
           </div>
         )}

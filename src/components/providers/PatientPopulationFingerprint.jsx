@@ -17,7 +17,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Geriatric-Heavy Practice',
       icon: Users,
-      color: 'bg-blue-100 text-blue-800',
+      color: 'bg-blue-900/30 text-blue-300',
       description: 'High Medicare patient volume suggests geriatric focus',
       confidence: patientVolume >= 500 ? 'High' : 'Moderate'
     });
@@ -38,7 +38,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Behavioral Health Focus',
       icon: Brain,
-      color: 'bg-purple-100 text-purple-800',
+      color: 'bg-purple-900/30 text-purple-300',
       description: 'Specialty indicates mental health/behavioral services',
       confidence: 'High'
     });
@@ -52,7 +52,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
     indicators.push({
       type: 'Complex Chronic Conditions',
       icon: HeartPulse,
-      color: 'bg-red-100 text-red-800',
+      color: 'bg-red-900/30 text-red-300',
       description: hasHighReferrals 
         ? 'High referral volume suggests complex patient needs'
         : 'High service intensity indicates chronic disease management',
@@ -70,7 +70,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
       </CardHeader>
       <CardContent className="space-y-3">
         {indicators.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-400">
             Insufficient data to generate population insights
           </p>
         ) : (
@@ -85,7 +85,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
                   </div>
                   <Badge className={indicator.color}>{indicator.confidence}</Badge>
                 </div>
-                <p className="text-sm text-gray-600 ml-7">{indicator.description}</p>
+                <p className="text-sm text-slate-400 ml-7">{indicator.description}</p>
               </div>
             );
           })
@@ -93,7 +93,7 @@ export default function PatientPopulationFingerprint({ _provider, taxonomy, util
 
         {indicators.length > 0 && (
           <div className="pt-3 border-t">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-400">
               Indicators derived from specialty classification, Medicare utilization patterns, and referral behavior
             </p>
           </div>

@@ -83,7 +83,7 @@ export default function ReportChart({ rawData, config, loading }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold text-slate-700">
+        <CardTitle className="text-sm font-semibold text-slate-300">
           {config.name || 'Report Results'} — {chartData.length} groups
         </CardTitle>
       </CardHeader>

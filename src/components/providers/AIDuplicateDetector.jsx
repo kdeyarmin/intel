@@ -10,9 +10,9 @@ import { createPageUrl } from '@/utils';
 
 function DuplicateGroupCard({ group }) {
   const confStyle = {
-    high: { bg: 'bg-red-50 border-red-200', badge: 'bg-red-100 text-red-700 border-red-200', icon: 'text-red-500' },
-    medium: { bg: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'text-amber-500' },
-    low: { bg: 'bg-slate-50 border-slate-700/50', badge: 'bg-slate-100 text-slate-600 border-slate-700/50', icon: 'text-slate-400' },
+    high: { bg: 'bg-red-900/20 border-red-500/30', badge: 'bg-red-900/30 text-red-400 border-red-500/30', icon: 'text-red-500' },
+    medium: { bg: 'bg-amber-900/20 border-amber-500/30', badge: 'bg-amber-900/30 text-amber-400 border-amber-500/30', icon: 'text-amber-500' },
+    low: { bg: 'bg-slate-800/60 border-slate-700/50', badge: 'bg-slate-700 text-slate-400 border-slate-700/50', icon: 'text-slate-400' },
   };
   const style = confStyle[group.confidence] || confStyle.low;
 
@@ -24,14 +24,14 @@ function DuplicateGroupCard({ group }) {
         {group.match_type && <Badge variant="outline" className="text-[9px]">{group.match_type}</Badge>}
         <span className="text-[10px] text-slate-400 ml-auto">{group.records?.length || 0} records</span>
       </div>
-      <p className="text-xs text-slate-600 mb-3 leading-relaxed">{group.reason}</p>
+      <p className="text-xs text-slate-400 mb-3 leading-relaxed">{group.reason}</p>
       <div className="space-y-1.5">
         {group.records?.map((rec, j) => (
-          <div key={j} className="flex items-center justify-between bg-slate-800/40/80 rounded-lg px-3 py-2 border border-slate-700/50">
+          <div key={j} className="flex items-center justify-between bg-slate-800/40 rounded-lg px-3 py-2 border border-slate-700/50">
             <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${j === 0 ? 'bg-blue-500' : 'bg-slate-300'}`} />
-              <span className="text-xs font-medium text-slate-800 truncate">{rec.name}</span>
-              <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-1.5 py-0.5 rounded shrink-0">{rec.npi}</span>
+              <div className={`w-2 h-2 rounded-full shrink-0 ${j === 0 ? 'bg-blue-900/20' : 'bg-slate-300'}`} />
+              <span className="text-xs font-medium text-slate-300 truncate">{rec.name}</span>
+              <span className="text-[10px] text-slate-400 font-mono bg-slate-700 px-1.5 py-0.5 rounded shrink-0">{rec.npi}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               {rec.detail && <span className="text-[10px] text-slate-400 hidden sm:inline">{rec.detail}</span>}
@@ -58,6 +58,7 @@ export default function AIDuplicateDetector({ providers = [], locations = [], ta
     setLoading(true);
     setDuplicates(null);
 
+    try {
     const sample = providers.slice(0, 100).map(p => {
       const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
       const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
@@ -121,7 +122,6 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
     });
 
     setDuplicates(res);
-    setLoading(false);
 
     if (res.duplicate_groups?.length > 0) {
       for (const group of res.duplicate_groups.slice(0, 5)) {
@@ -138,6 +138,12 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
     } else {
       toast.success('No duplicates detected — your data looks clean!');
     }
+    } catch (err) {
+      console.error('Duplicate scan failed:', err);
+      toast.error('Duplicate scan failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const highCount = duplicates?.duplicate_groups?.filter(g => g.confidence === 'high').length || 0;
@@ -147,12 +153,12 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
   return (
     <div className="space-y-4">
       {/* Description */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50/70 rounded-xl border border-amber-100">
-        <div className="p-2 rounded-lg bg-amber-100">
-          <Users className="w-4 h-4 text-amber-600" />
+      <div className="flex items-start gap-3 p-4 bg-amber-900/20 rounded-xl border border-amber-500/30">
+        <div className="p-2 rounded-lg bg-amber-900/30">
+          <Users className="w-4 h-4 text-amber-400" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">Detect Duplicate Providers</h3>
+          <h3 className="text-sm font-semibold text-slate-300">Detect Duplicate Providers</h3>
           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
             AI analyzes your provider records to find potential duplicates based on name similarities, 
             matching addresses, phone numbers, and email patterns. Flagged duplicates are saved as Data Quality alerts for review.
@@ -174,10 +180,10 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
 
       {/* Loading */}
       {loading && (
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-amber-500/30 bg-amber-900/20">
           <CardContent className="py-8 flex flex-col items-center gap-2">
             <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
-            <p className="text-sm font-medium text-amber-800">Analyzing {scanCount} provider records...</p>
+            <p className="text-sm font-medium text-amber-300">Analyzing {scanCount} provider records...</p>
             <p className="text-xs text-amber-600">Comparing names, addresses, phone numbers, and emails</p>
           </CardContent>
         </Card>
@@ -189,28 +195,28 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
           {/* Summary stats */}
           {duplicates.duplicate_groups?.length > 0 ? (
             <div className="grid grid-cols-3 gap-2">
-              <div className="flex items-center gap-2 p-2.5 bg-red-50 rounded-lg border border-red-100">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                <span className="text-xs text-red-700 font-medium">{highCount} High</span>
+              <div className="flex items-center gap-2 p-2.5 bg-red-900/20 rounded-lg border border-red-500/30">
+                <div className="w-2 h-2 rounded-full bg-red-900/20" />
+                <span className="text-xs text-red-400 font-medium">{highCount} High</span>
               </div>
-              <div className="flex items-center gap-2 p-2.5 bg-amber-50 rounded-lg border border-amber-100">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-xs text-amber-700 font-medium">{medCount} Medium</span>
+              <div className="flex items-center gap-2 p-2.5 bg-amber-900/20 rounded-lg border border-amber-500/30">
+                <div className="w-2 h-2 rounded-full bg-amber-900/20" />
+                <span className="text-xs text-amber-400 font-medium">{medCount} Medium</span>
               </div>
-              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-lg border border-slate-700/50">
+              <div className="flex items-center gap-2 p-2.5 bg-slate-800/60 rounded-lg border border-slate-700/50">
                 <div className="w-2 h-2 rounded-full bg-slate-400" />
-                <span className="text-xs text-slate-600 font-medium">{lowCount} Low</span>
+                <span className="text-xs text-slate-400 font-medium">{lowCount} Low</span>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center gap-2 p-3 bg-green-900/20 rounded-lg border border-green-500/30">
               <CheckCircle2 className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-green-700">No potential duplicates found</span>
+              <span className="text-sm font-medium text-green-400">No potential duplicates found</span>
             </div>
           )}
 
           {duplicates.summary && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+            <div className="flex items-start gap-2 px-3 py-2 bg-slate-800/60 rounded-lg">
               <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
               <p className="text-xs text-slate-500">{duplicates.summary}</p>
             </div>
@@ -227,9 +233,9 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
         </div>
       )}
 
-      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-900/20 border border-amber-500/30 rounded-lg">
         <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-        <p className="text-[10px] text-amber-700 leading-relaxed">
+        <p className="text-[10px] text-amber-400 leading-relaxed">
           Duplicates are flagged using AI analysis and may include false positives. Review each group before merging or deactivating records.
         </p>
       </div>

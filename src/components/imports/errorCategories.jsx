@@ -1,23 +1,12 @@
-// Centralized error categorization with solutions and documentation links.
-//
-// Each category carries a machine-readable `retryable` flag and `suggested_action`
-// so automated tooling (auto-retry workers, alerting) can decide what to do
-// without having to re-parse the human-readable label or description.
-//
-// `suggested_action` values:
-//   - 'retry'        — safe to auto-retry as-is; transient failure
-//   - 'retry_later'  — retry after backoff (e.g. rate limits)
-//   - 'fix_data'     — needs source-data correction; retry won't help
-//   - 'skip'         — safe to ignore; not a real error
-//   - 'manual'       — needs human review
+// Centralized error categorization with solutions and documentation links
 
 export const ERROR_CATEGORIES = {
   invalid_npi: {
     label: 'Invalid NPI',
     icon: 'ShieldAlert',
     color: 'text-red-400',
-    bgColor: 'bg-red-500/10 border-red-500/20',
-    badgeColor: 'bg-red-500/15 text-red-400',
+    bgColor: 'bg-red-900/10 border-red-500/20',
+    badgeColor: 'bg-red-900/15 text-red-400',
     keywords: ['npi', '10 digits', 'npi format', 'invalid npi', 'npi validation'],
     description: 'NPI numbers must be exactly 10 digits. Records with invalid NPIs are rejected.',
     solutions: [
@@ -28,9 +17,6 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://npiregistry.cms.hhs.gov/',
     docLabel: 'CMS NPI Registry Lookup',
-    retryable: false,
-    suggested_action: 'fix_data',
-    severity: 'medium',
   },
   empty_row: {
     label: 'Empty / Spacer Row',
@@ -47,16 +33,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'skip',
-    severity: 'low',
   },
   missing_required: {
     label: 'Missing Required Field',
     icon: 'FileWarning',
     color: 'text-amber-400',
-    bgColor: 'bg-amber-500/10 border-amber-500/20',
-    badgeColor: 'bg-amber-500/15 text-amber-400',
+    bgColor: 'bg-amber-900/10 border-amber-500/20',
+    badgeColor: 'bg-amber-900/15 text-amber-400',
     keywords: ['missing', 'required', 'null', 'undefined', 'blank', 'not provided', 'is required'],
     description: 'One or more required fields are missing or empty in these records.',
     solutions: [
@@ -67,16 +50,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://download.cms.gov/nppes/NPI_Files.html',
     docLabel: 'NPPES File Layout Documentation',
-    retryable: false,
-    suggested_action: 'fix_data',
-    severity: 'medium',
   },
   formatting_error: {
     label: 'Invalid Format',
     icon: 'Type',
     color: 'text-orange-400',
-    bgColor: 'bg-orange-500/10 border-orange-500/20',
-    badgeColor: 'bg-orange-500/15 text-orange-400',
+    bgColor: 'bg-orange-900/10 border-orange-500/20',
+    badgeColor: 'bg-orange-900/15 text-orange-400',
     keywords: ['format', 'malformed', 'parse', 'invalid date', 'invalid number', 'not a number', 'NaN', 'JSON', 'encoding', 'charset', 'unexpected token', 'csv', 'column count', 'invalid format', 'wrong format'],
     description: 'Data values are in the wrong format or cannot be parsed correctly (e.g., dates, numbers, encoded text).',
     solutions: [
@@ -87,16 +67,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'fix_data',
-    severity: 'medium',
   },
   out_of_range: {
     label: 'Out of Range',
     icon: 'AlertTriangle',
     color: 'text-pink-400',
-    bgColor: 'bg-pink-500/10 border-pink-500/20',
-    badgeColor: 'bg-pink-500/15 text-pink-400',
+    bgColor: 'bg-pink-900/10 border-pink-500/20',
+    badgeColor: 'bg-pink-900/15 text-pink-400',
     keywords: ['out of range', 'too large', 'too small', 'minimum', 'maximum', 'overflow', 'negative', 'range', 'below', 'above', 'boundary', 'invalid value'],
     description: 'Values are outside the acceptable range for their field (e.g., negative counts, percentages over 100, dates in the future).',
     solutions: [
@@ -107,16 +84,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'fix_data',
-    severity: 'medium',
   },
   duplicate_record: {
     label: 'Duplicate Record',
     icon: 'Copy',
     color: 'text-violet-400',
-    bgColor: 'bg-violet-500/10 border-violet-500/20',
-    badgeColor: 'bg-violet-500/15 text-violet-400',
+    bgColor: 'bg-violet-900/10 border-violet-500/20',
+    badgeColor: 'bg-violet-900/15 text-violet-400',
     keywords: ['duplicate', 'unique', 'constraint', 'conflict', 'already exists', 'duplicate key'],
     description: 'Records with the same key already exist in the database or appear multiple times in the file.',
     solutions: [
@@ -126,16 +100,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'skip',
-    severity: 'low',
   },
   timeout_stall: {
     label: 'Timeout / Stall',
     icon: 'Clock',
     color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10 border-blue-500/20',
-    badgeColor: 'bg-blue-500/15 text-blue-400',
+    bgColor: 'bg-blue-900/10 border-blue-500/20',
+    badgeColor: 'bg-blue-900/15 text-blue-400',
     keywords: ['timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity'],
     description: 'The import took too long or stalled without progress.',
     solutions: [
@@ -146,16 +117,13 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: true,
-    suggested_action: 'retry',
-    severity: 'medium',
   },
   network_api: {
     label: 'Network / API Error',
     icon: 'Wifi',
     color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10 border-cyan-500/20',
-    badgeColor: 'bg-cyan-500/15 text-cyan-400',
+    bgColor: 'bg-cyan-900/10 border-cyan-500/20',
+    badgeColor: 'bg-cyan-900/15 text-cyan-400',
     keywords: ['HTTP', 'fetch', 'network', 'connection', 'rate limit', '429', '500', '503', 'ECONNREFUSED', 'socket'],
     description: 'A network issue or API error prevented the import from completing.',
     solutions: [
@@ -166,9 +134,6 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: 'https://data.cms.gov/',
     docLabel: 'CMS Data Portal',
-    retryable: true,
-    suggested_action: 'retry_later',
-    severity: 'high',
   },
   manual_action: {
     label: 'Manual Action',
@@ -184,9 +149,6 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'manual',
-    severity: 'low',
   },
   other: {
     label: 'Other',
@@ -203,27 +165,26 @@ export const ERROR_CATEGORIES = {
     ],
     docUrl: null,
     docLabel: null,
-    retryable: false,
-    suggested_action: 'manual',
-    severity: 'low',
   },
 };
 
-// #5 — machine-readable helpers. Tooling can call these to decide whether to
-// auto-retry an error sample without re-parsing the human-readable category metadata.
-export function isErrorRetryable(message) {
-  const cat = ERROR_CATEGORIES[categorizeError(message)];
-  return Boolean(cat?.retryable);
-}
-
-export function suggestedActionFor(message) {
-  const cat = ERROR_CATEGORIES[categorizeError(message)];
-  return cat?.suggested_action || 'manual';
-}
-
-export function severityFor(message) {
-  const cat = ERROR_CATEGORIES[categorizeError(message)];
-  return cat?.severity || 'low';
+// Per-category handling metadata: whether the error is worth automatically
+// retrying, the recommended action, and a severity. Merged onto the category
+// objects above so both the UI and the helper functions below share one source.
+const CATEGORY_META = {
+  invalid_npi: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  empty_row: { retryable: false, suggested_action: 'skip', severity: 'low' },
+  missing_required: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  formatting_error: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  out_of_range: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  duplicate_record: { retryable: false, suggested_action: 'skip', severity: 'low' },
+  timeout_stall: { retryable: true, suggested_action: 'retry', severity: 'medium' },
+  network_api: { retryable: true, suggested_action: 'retry_later', severity: 'high' },
+  manual_action: { retryable: false, suggested_action: 'manual', severity: 'low' },
+  other: { retryable: false, suggested_action: 'manual', severity: 'low' },
+};
+for (const [key, meta] of Object.entries(CATEGORY_META)) {
+  if (ERROR_CATEGORIES[key]) Object.assign(ERROR_CATEGORIES[key], meta);
 }
 
 export function categorizeError(message) {
@@ -248,6 +209,21 @@ export function categorizeError(message) {
     if (config && config.keywords.some(kw => lower.includes(kw.toLowerCase()))) return key;
   }
   return 'other';
+}
+
+// Whether an error message's category is worth retrying automatically.
+export function isErrorRetryable(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.retryable === true;
+}
+
+// Recommended action for an error message: retry | retry_later | fix_data | skip | manual.
+export function suggestedActionFor(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.suggested_action || 'manual';
+}
+
+// Severity for an error message: low | medium | high.
+export function severityFor(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.severity || 'low';
 }
 
 // Extract the best message string from an error object (supports both .message and .detail)

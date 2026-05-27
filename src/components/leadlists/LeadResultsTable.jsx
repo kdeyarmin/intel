@@ -11,9 +11,9 @@ export default function LeadResultsTable({ results, onStatusChange }) {
   const navigate = useNavigate();
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'bg-green-100 text-green-800';
-    if (score >= 60) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-gray-100 text-gray-800';
+    if (score >= 80) return 'bg-green-900/30 text-green-400';
+    if (score >= 60) return 'bg-yellow-900/30 text-yellow-400';
+    return 'bg-slate-700/40 text-slate-200';
   };
 
   const getPatientFingerprint = (provider, utilization, taxonomy) => {
@@ -50,7 +50,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
         <TableBody>
           {results.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+              <TableCell colSpan={8} className="text-center text-slate-400 py-8">
                 No providers match your filters
               </TableCell>
             </TableRow>
@@ -66,7 +66,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                       : `${provider.first_name} ${provider.last_name}${provider.credential ? ', ' + provider.credential : ''}`
                     }
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  <TableCell className="text-sm text-slate-400">
                     {taxonomy?.[0]?.taxonomy_description || '-'}
                   </TableCell>
                   <TableCell className="text-sm">
@@ -75,7 +75,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                   <TableCell className="text-sm">
                     {location?.phone ? (
                       <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-gray-400" />
+                        <Phone className="h-3 w-3 text-slate-500" />
                         <span>{location.phone}</span>
                       </div>
                     ) : '-'}
@@ -85,7 +85,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                       {score?.score || 0}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  <TableCell className="text-sm text-slate-400">
                     {getPatientFingerprint(provider, utilization, taxonomy)}
                   </TableCell>
                   <TableCell>

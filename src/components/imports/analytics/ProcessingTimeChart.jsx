@@ -8,7 +8,6 @@ const TOOLTIP_STYLE = { background: '#1e293b', border: '1px solid #334155', bord
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   cms_utilization: 'CMS Util',
-  cms_part_d: 'Part D',
   cms_order_referring: 'Order/Ref',
   hospice_enrollments: 'Hospice Enr',
   home_health_enrollments: 'HH Enr',
@@ -20,7 +19,6 @@ const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   provider_ownership: 'Ownership',
   medicare_hha_stats: 'HHA Stats',
   medicare_ma_inpatient: 'MA Inp',
-  medicare_part_d_stats: 'Part D Stats',
   medicare_snf_stats: 'SNF Stats',
 });
 
