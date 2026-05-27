@@ -272,6 +272,7 @@ app.listen(PORT, "0.0.0.0", async () => {
             } catch (e: any) {
               console.warn(`[DB Index] Drop ${idx.indexname} failed:`, e.message?.substring(0, 80));
             } finally {
+              await dropClient.query("RESET statement_timeout").catch(() => {});
               dropClient.release();
             }
           } else {
@@ -294,6 +295,8 @@ app.listen(PORT, "0.0.0.0", async () => {
               await client.query(ddl);
               console.log(`[DB Index] Created ${idxName}`);
             } finally {
+              // Don't leave this pooled connection with statement_timeout disabled.
+              await client.query("RESET statement_timeout").catch(() => {});
               client.release();
             }
           } catch (e: any) {
