@@ -98,6 +98,15 @@ describe('extractErrorMessage', () => {
     })).toBe('most recent error');
   });
 
+  it('falls back to last error_samples.message when detail is absent', () => {
+    expect(extractErrorMessage({
+      error_samples: [
+        { message: 'first error' },
+        { message: 'most recent error' },
+      ],
+    })).toBe('most recent error');
+  });
+
   it('returns empty string when no error info present', () => {
     expect(extractErrorMessage({})).toBe('');
     expect(extractErrorMessage({ cancel_reason: '' })).toBe('');
@@ -121,6 +130,10 @@ describe('getRetryAttemptCount', () => {
 
   it('reads numeric auto_retry_count', () => {
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 2 } })).toBe(2);
+  });
+
+  it('falls back to top-level retry_count when retry_params count is missing', () => {
+    expect(getRetryAttemptCount({ retry_count: 2 })).toBe(2);
   });
 
   it('treats non-numeric values as 0', () => {

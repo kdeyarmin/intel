@@ -32,7 +32,7 @@ export function isRetryableErrorMessage(msg: string | null | undefined): boolean
 
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
-// back to the most recent error_samples entry's `detail`.
+// back to the most recent error_samples entry's `detail` or `message`.
 export function extractErrorMessage(batch: Record<string, unknown>): string {
     if (typeof batch.cancel_reason === 'string' && batch.cancel_reason.length > 0) {
         return batch.cancel_reason;
@@ -41,6 +41,7 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
         if (last && typeof last.detail === 'string') return last.detail;
+        if (last && typeof last.message === 'string') return last.message;
     }
     return '';
 }
@@ -48,7 +49,9 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
 export function getRetryAttemptCount(batch: Record<string, unknown>): number {
     const params = batch.retry_params as Record<string, unknown> | undefined;
     const count = params?.auto_retry_count;
-    return typeof count === 'number' && count >= 0 ? count : 0;
+    if (typeof count === 'number' && count >= 0) return count;
+    const topLevelRetryCount = batch.retry_count;
+    return typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0 ? topLevelRetryCount : 0;
 }
 
 // Exponential backoff that mirrors runScheduledImports/helpers.backoffHours:
