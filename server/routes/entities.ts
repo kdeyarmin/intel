@@ -107,11 +107,20 @@ function parseId(raw: string): number | null {
 }
 
 function buildOrderBy(table: any, sortField?: string) {
-  if (!sortField) return [desc(table.created_date)];
+  // Default to the primary key descending. On large tables (providers ~6M,
+  // medicare_facilities ~46M) ordering by created_date forces a full sort because
+  // there is no created_date index, whereas id is the always-indexed serial PK and
+  // gives an equivalent "newest first" order. We also transparently remap
+  // created_date sorts (used pervasively by the frontend) to id for the same reason.
+  const pk = (table as any).id;
+  if (!sortField) return pk ? [desc(pk)] : [desc(table.created_date)];
   const descending = sortField.startsWith("-");
   const field = descending ? sortField.slice(1) : sortField;
+  if ((field === "created_date" || field === "createdDate") && pk) {
+    return [descending ? desc(pk) : asc(pk)];
+  }
   const col = (table as any)[field] || (table as any)[camelToSnake(field)];
-  if (!col) return [desc(table.created_date)];
+  if (!col) return pk ? [desc(pk)] : [desc(table.created_date)];
   return [descending ? desc(col) : asc(col)];
 }
 

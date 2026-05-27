@@ -58,9 +58,27 @@ export default function Providers() {
 
   const queryClient = useQueryClient();
 
+  // Debounce the search term so we don't fire a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // When searching, query the full providers table server-side (the previous
+  // behavior only ever loaded the newest 100 rows and filtered client-side, so
+  // search silently missed almost everything). With no search term we still show
+  // the most recent providers as the default directory view.
   const { data: providers = [], isLoading } = useQuery({
-    queryKey: ['providersPage'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 100),
+    queryKey: ['providersPage', debouncedSearch],
+    queryFn: async () => {
+      if (debouncedSearch.length >= 2) {
+        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: 300 });
+        return res.data?.providers || [];
+      }
+      return base44.entities.Provider.list('-created_date', 100);
+    },
+    keepPreviousData: true,
   });
 
   const { data: scores = [] } = useQuery({

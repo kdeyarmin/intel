@@ -35,6 +35,7 @@ const PUBLIC_FUNCTIONS = new Set<string>([
   "getCountyIntelligence",
   "getAvailableStatesCounties",
   "getComprehensiveReport",
+  "searchProviders",
   "calculateOutreachScore",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
@@ -789,6 +790,39 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "getComprehensiveReport": {
         const { handleGetComprehensiveReport } = await import("../functions/comprehensiveReport");
         return res.json(await handleGetComprehensiveReport(req.body));
+      }
+
+      case "searchProviders": {
+        // Server-side provider search so callers don't have to load a page of
+        // rows and filter client-side (which silently searches only that slice
+        // of a ~6M-row table). Matches NPI / last / first / organization name
+        // using the existing npi + last_name indexes, with a hard row cap.
+        const { pool: dbPool } = await import("../db");
+        const rawQ = String(req.body?.q ?? "").trim();
+        const limit = Math.min(Math.max(Number(req.body?.limit) || 50, 1), 500);
+        if (rawQ.length < 2) return res.json({ providers: [] });
+        const like = `${rawQ.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+        const client = await dbPool.connect();
+        try {
+          await client.query("SET statement_timeout = '8s'");
+          const digits = rawQ.replace(/\D/g, "");
+          const result = await client.query(
+            `SELECT id, npi, entity_type, first_name, last_name, organization_name,
+                    credential, status, email, email_confidence, email_validation_status,
+                    email_source, phone, created_date
+               FROM providers
+              WHERE ($1 <> '' AND npi LIKE $2)
+                 OR last_name ILIKE $3
+                 OR first_name ILIKE $3
+                 OR organization_name ILIKE $3
+              ORDER BY id DESC
+              LIMIT $4`,
+            [digits, `${digits}%`, like, limit],
+          );
+          return res.json({ providers: result.rows });
+        } finally {
+          client.release();
+        }
       }
 
       default:
