@@ -426,7 +426,6 @@ function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
     total_referrals: null,
     total_beneficiaries: null,
     data_year: String(year),
-    raw_data: row,
     import_batch_id: String(batchId),
   };
 }
@@ -451,7 +450,6 @@ export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
     average_medicare_payment_amt: avgMedicarePayment,
     total_medicare_payment_amt: deriveLineTotal(totalServices, avgMedicarePayment),
     data_year: String(year),
-    raw_data: row,
   };
 }
 
@@ -867,9 +865,13 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
     if (chunk.length === 0) continue;
 
+    // onConflictDoNothing (no target) is valid SQL whether or not a unique index
+    // exists yet, and becomes an effective DB-level dedup backstop once the
+    // startup-built unique indexes are in place — covering rows the capped
+    // app-side lookup (LOOKUP_PRIMARY_BATCH_SIZE / 20k limit) can miss.
     const result = await safeImportQuery(
       async () => {
-        await db.insert(table).values(chunk);
+        await db.insert(table).values(chunk).onConflictDoNothing();
         return chunk.length;
       },
       -1, `bulk insert ${importType}`
@@ -879,7 +881,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     } else {
       for (const row of chunk) {
         const ok = await safeImportQuery(
-          async () => { await db.insert(table).values(row); return true; },
+          async () => { await db.insert(table).values(row).onConflictDoNothing(); return true; },
           false, `single insert ${importType}`
         );
         if (ok) inserted++;

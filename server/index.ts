@@ -284,6 +284,18 @@ app.listen(PORT, "0.0.0.0", async () => {
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_state ON medicare_facilities (facility_type, state)",
+          // Unique backstops enforcing each table's natural key. Built CONCURRENTLY
+          // and best-effort: a build FAILS (and is logged) while duplicate rows
+          // still exist, so run scripts/dedupe-existing-imports.sql once first.
+          // The importers use onConflictDoNothing(), so once these exist re-imports
+          // and resumes become idempotent at the DB level — closing the gap the
+          // capped (20k) in-app dedup lookup can leave open.
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_provider ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year ON cms_referrals (npi, data_year)",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, hcpcs_code, place_of_service, data_year)",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, location_type, left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, taxonomy_code)",
         ];
         for (const ddl of indexes) {
           const idxName = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || "unknown";

@@ -290,10 +290,10 @@ async function upsertLocations(records: any[]) {
       toCreate.push(loc);
     }
     if (toCreate.length > 0) {
-      try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
+      try { await db.insert(providerLocations).values(toCreate).onConflictDoNothing(); imported += toCreate.length; }
       catch (bulkErr: any) {
         for (const loc of toCreate) {
-          try { await db.insert(providerLocations).values(loc); imported++; }
+          try { await db.insert(providerLocations).values(loc).onConflictDoNothing(); imported++; }
           catch (err: any) { skipped++; }
         }
       }
@@ -327,10 +327,10 @@ async function upsertTaxonomies(records: any[]) {
       toCreate.push(tax);
     }
     if (toCreate.length > 0) {
-      try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
+      try { await db.insert(providerTaxonomies).values(toCreate).onConflictDoNothing(); imported += toCreate.length; }
       catch (bulkErr: any) {
         for (const tax of toCreate) {
-          try { await db.insert(providerTaxonomies).values(tax); imported++; }
+          try { await db.insert(providerTaxonomies).values(tax).onConflictDoNothing(); imported++; }
           catch (err: any) { skipped++; }
         }
       }
