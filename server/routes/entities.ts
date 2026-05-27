@@ -106,17 +106,43 @@ function parseId(raw: string): number | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
-function buildOrderBy(table: any, sortField?: string) {
+// Large tables with no created_date index where created_date is only ever the
+// default NOW() (so it is monotonic with the serial id). For these, a
+// created_date sort is remapped to id to avoid a full table sort. Other tables
+// honor created_date exactly (some may have meaningful, non-insertion-order
+// created_date values).
+const LARGE_ENTITIES_REMAP_CREATED = new Set([
+  "Provider",
+  "ProviderLocation",
+  "ProviderTaxonomy",
+  "MedicareFacility",
+  "MedicareMAInpatient",
+  "CMSHHAStats",
+  "CMSSNFStats",
+  "CMSReferral",
+  "CMSUtilization",
+  "ProviderServiceUtilization",
+]);
+
+function buildOrderBy(table: any, sortField?: string, entityName?: string) {
   // Default to the primary key descending. On large tables (providers ~6M,
   // medicare_facilities ~46M) ordering by created_date forces a full sort because
   // there is no created_date index, whereas id is the always-indexed serial PK and
-  // gives an equivalent "newest first" order. We also transparently remap
-  // created_date sorts (used pervasively by the frontend) to id for the same reason.
+  // gives an equivalent "newest first" order.
   const pk = (table as any).id;
   if (!sortField) return pk ? [desc(pk)] : [desc(table.created_date)];
   const descending = sortField.startsWith("-");
   const field = descending ? sortField.slice(1) : sortField;
-  // Only optimize id-remapping for default/unspecified sorts, not explicit created_date
+  // Remap created_date sorts to id ONLY for the large, unindexed tables where the
+  // two are equivalent. Everything else honors the requested created_date column.
+  if (
+    (field === "created_date" || field === "createdDate") &&
+    pk &&
+    entityName &&
+    LARGE_ENTITIES_REMAP_CREATED.has(entityName)
+  ) {
+    return [descending ? desc(pk) : asc(pk)];
+  }
   const col = (table as any)[field] || (table as any)[camelToSnake(field)];
   if (!col) return pk ? [desc(pk)] : [desc(table.created_date)];
   return [descending ? desc(col) : asc(col)];
@@ -217,7 +243,7 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 10000);
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const orderBy = buildOrderBy(table, sort);
+    const orderBy = buildOrderBy(table, sort, req.params.entity);
     const rows = await db.select().from(table).orderBy(...orderBy).limit(limit).offset(offset);
     res.json(rows);
   } catch (e: any) {
@@ -235,7 +261,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const limit = Math.min(reqLimit || 100, 10000);
 
     const where = buildWhereClause(table, filters);
-    const orderBy = buildOrderBy(table, sort);
+    const orderBy = buildOrderBy(table, sort, req.params.entity);
 
     let query = db.select().from(table);
     if (where) query = query.where(where) as any;
