@@ -14,7 +14,6 @@ import BasicProfile from '../components/providers/BasicProfile';
 import ProviderKPIRow from '../components/providers/ProviderKPIRow';
 import UtilizationInsights from '../components/providers/UtilizationInsights';
 import UtilizationTrendChart from '../components/providers/UtilizationTrendChart';
-import ReferralTrendChart from '../components/providers/ReferralTrendChart';
 import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoodSignals';
 import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
 import WhyThisProvider from '../components/providers/WhyThisProvider';
@@ -294,10 +293,7 @@ export default function ProviderDetail() {
             <ReferralSummaryCard referrals={referrals} />
           </div>
           <UtilizationInsights utilization={latestUtil} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UtilizationTrendChart utilizations={utilizations} />
-            <ReferralTrendChart referrals={referrals} />
-          </div>
+          <UtilizationTrendChart utilizations={utilizations} />
           <PatientPopulationFingerprint
             provider={provider}
             taxonomy={taxonomies}
