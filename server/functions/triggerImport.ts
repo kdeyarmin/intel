@@ -438,6 +438,24 @@ function mapCMSOrderReferringRowToProvider(row: any, batchId: number) {
   };
 }
 
+/**
+ * Map a raw CMS provider service utilization record into the normalized provider-service utilization shape used by the importer.
+ *
+ * @param row - Raw input row from a CMS utilization dataset; accepts variant header names (e.g., `Rndrng_NPI`, `npi`, `Tot_Srvcs`, `tot_srvcs`, `Avg_Mdcr_Pymt_Amt`, etc.)
+ * @param year - Data year to assign to the resulting row (stored in `data_year`)
+ * @returns An object with the normalized fields:
+ * - `npi`: provider NPI or `null`
+ * - `service_type`: rendering provider specialty or `null`
+ * - `hcpcs_code`: HCPCS/CPT code or `null`
+ * - `hcpcs_description`: HCPCS description or `null`
+ * - `place_of_service`: place of service or `null`
+ * - `total_services`: total service count or `null`
+ * - `total_unique_benes`: total unique beneficiaries or `null`
+ * - `average_submitted_chrg_amt`: average submitted charge or `null`
+ * - `average_medicare_payment_amt`: average Medicare payment per service or `null`
+ * - `total_medicare_payment_amt`: derived total Medicare payment (average × services) or `null`
+ * - `data_year`: the provided `year` coerced to a string
+ */
 export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
   const totalServices = row.Tot_Srvcs ?? row.tot_srvcs ?? null;
   const avgMedicarePayment = row.Avg_Mdcr_Pymt_Amt ?? row.avg_mdcr_pymt_amt ?? null;
@@ -461,7 +479,13 @@ export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
   };
 }
 
-// First non-empty value among a list of candidate keys.
+/**
+ * Selects the first non-empty value from `row` among a list of candidate keys.
+ *
+ * @param row - The object to search for values.
+ * @param keys - Ordered candidate property names to check on `row`.
+ * @returns The first value that is not `undefined`, not `null`, and not an empty string after trimming, or `null` if none are found.
+ */
 function firstField(row: any, keys: string[]): any {
   for (const k of keys) {
     const v = row?.[k];
@@ -470,6 +494,12 @@ function firstField(row: any, keys: string[]): any {
   return null;
 }
 
+/**
+ * Parse a value into an integer, returning null when an integer cannot be derived.
+ *
+ * @param v - The input value (number, string, or other) to parse for an integer
+ * @returns The parsed integer, or `null` if no integer could be extracted
+ */
 function toIntOrNull(v: any): number | null {
   if (v === null || v === undefined) return null;
   const cleaned = String(v).replace(/[^0-9-]/g, "");
@@ -489,7 +519,22 @@ function toIntOrNull(v: any): number | null {
 // NOT on the data.cms.gov JSON data-api, so column names vary by source. We read
 // a tolerant set of aliases per logical field and keep the full row in raw_data
 // so nothing is lost. The destination columns (referred_to_npi, total_referrals,
-// total_beneficiaries) are what countyIntelligence/comprehensiveReport read.
+/**
+ * Normalize a physician shared-patient-pattern row into the shape used for `cms_referrals`.
+ *
+ * @param row - Raw input record (CSV/JSON) which may use multiple header aliases for NPIs and counts; original row is preserved on `raw_data`.
+ * @param year - Numeric data year to populate `data_year`.
+ * @param batchId - Import batch identifier stored as `import_batch_id`.
+ * @returns An object with:
+ *  - `npi` — referring provider NPI (trimmed string or `null`),
+ *  - `referred_to_npi` — referred-to provider NPI (trimmed string or `null`),
+ *  - `referred_to_name` — always `null` (placeholder),
+ *  - `total_referrals` — referrals count if present, otherwise falls back to beneficiary count (`number` or `null`),
+ *  - `total_beneficiaries` — beneficiary count (`number` or `null`),
+ *  - `data_year` — stringified `year`,
+ *  - `raw_data` — the original input `row`,
+ *  - `import_batch_id` — stringified `batchId`.
+ */
 export function mapSharedPatientPatternRow(row: any, year: number, batchId: number) {
   const npi = firstField(row, ["npi_1", "NPI_1", "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi", "npi", "NPI"]);
   const referredToNpi = firstField(row, ["npi_2", "NPI_2", "to_npi", "TO_NPI", "dst_npi", "referred_npi", "paired_npi", "provider_2_npi"]);
@@ -509,6 +554,17 @@ export function mapSharedPatientPatternRow(row: any, year: number, batchId: numb
   };
 }
 
+/**
+ * Compute a stable statistical identifier for a dataset row based on the dataset's import type.
+ *
+ * The returned identifier is derived from one or more dataset fields according to the import type
+ * and is truncated to 50 characters. If no suitable identifier can be derived, returns `null`.
+ *
+ * @param row - The raw dataset row object (provider/measure/record fields vary by dataset)
+ * @param importType - The internal import type key that determines which row fields to use
+ * @param index - Optional ordinal index of the row (may be used by some import types or as a fallback)
+ * @returns The derived identifier string truncated to 50 characters, or `null` if none could be derived
+ */
 function deriveStatisticalId(row: any, importType: string, index?: number): string | null {
   let id: string | null = null;
   if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
@@ -869,6 +925,18 @@ async function dedupeFacilities(importType: string, chunk: any[]): Promise<any[]
   return toCreate;
 }
 
+/**
+ * Inserts mapped CMS rows into the appropriate destination table, applying per-import-type mapping, chunked deduplication, and conflict-tolerant insertion.
+ *
+ * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → inserts/upserts into `providers`; `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
+ * @param rows - Raw CMS dataset rows to be mapped and inserted.
+ * @param year - Data year used when mapping rows and when scoping natural-key deduplication.
+ * @param batchId - Import batch identifier to attach to mapped rows.
+ * @returns An object with:
+ *   - `inserted`: number of rows successfully inserted,
+ *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
+ *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
+ */
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 

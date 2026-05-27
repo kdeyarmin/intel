@@ -40,6 +40,13 @@ export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
   },
 };
 
+/**
+ * Builds a stable natural key string from the specified columns of a row.
+ *
+ * @param row - The record (row) containing column values to use for the key.
+ * @param cols - Ordered list of column names to include in the key.
+ * @returns A string composed of the specified column values joined by `|` after trimming and lowercasing; missing or null values produce empty segments.
+ */
 export function makeKey(row: Record<string, unknown>, cols: string[]): string {
   return cols.map((c) => String(row[c] ?? "").trim().toLowerCase()).join("|");
 }
