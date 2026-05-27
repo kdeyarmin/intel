@@ -77,7 +77,6 @@ import LongTermCare from './pages/LongTermCare.jsx';
 import NursingHomes from './pages/NursingHomes.jsx';
 import NPPESCrawler from './pages/NPPESCrawler.jsx';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
-import OrganizationDetail from './pages/OrganizationDetail.jsx';
 import Organizations from './pages/Organizations.jsx';
 import ProviderDetail from './pages/ProviderDetail.jsx';
 import ProviderLocationMatching from './pages/ProviderLocationMatching.jsx';
@@ -125,7 +124,6 @@ export const PAGES = {
     "NursingHomes": NursingHomes,
     "NPPESCrawler": NPPESCrawler,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
-    "OrganizationDetail": OrganizationDetail,
     "Organizations": Organizations,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,

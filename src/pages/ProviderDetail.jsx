@@ -45,6 +45,7 @@ import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
 import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
 import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
 import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
+import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedProvidersCard';
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 export default function ProviderDetail() {
@@ -332,6 +333,14 @@ export default function ProviderDetail() {
                 location={primaryLocation}
                 taxonomies={taxonomies}
               />
+              {provider.entity_type === 'Organization' && (
+                <OrgAffiliatedProvidersCard
+                  npi={npi}
+                  locations={locations}
+                  allProviders={allProviders}
+                  allLocations={allLocations}
+                />
+              )}
               <ReferralPartnersCard npi={npi} referrals={referrals} />
             </div>
             <div className="space-y-6">

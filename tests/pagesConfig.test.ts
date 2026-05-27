@@ -53,7 +53,6 @@ vi.mock('../src/pages/LongTermCare.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NursingHomes.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawler.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawlerSettings.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/OrganizationDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Organizations.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderLocationMatching.jsx', () => ({ default: () => null }));
@@ -102,6 +101,10 @@ describe('pages.config.js – PAGES registry', () => {
     it('does not contain ProjectManagement (file deleted)', () => {
       expect('ProjectManagement' in PAGES).toBe(false);
     });
+
+    it('does not contain OrganizationDetail (unified into ProviderDetail)', () => {
+      expect('OrganizationDetail' in PAGES).toBe(false);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -139,7 +142,6 @@ describe('pages.config.js – PAGES registry', () => {
       'NursingHomes',
       'NPPESCrawler',
       'NPPESCrawlerSettings',
-      'OrganizationDetail',
       'Organizations',
       'ProviderDetail',
       'ProviderLocationMatching',
