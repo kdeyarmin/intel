@@ -111,9 +111,15 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           const scanRows = await safeQ(`SELECT * FROM data_quality_scans ORDER BY created_date DESC LIMIT 1`);
           const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
           const phoneSample = await safeQ(`
+<<<<<<< HEAD
             SELECT count(*) AS count
             FROM (SELECT phone FROM provider_locations LIMIT 2000) s
             WHERE phone IS NULL OR phone = ''
+=======
+            SELECT count(*) FILTER (WHERE phone IS NULL OR phone = '') AS count,
+                   count(*) AS sampled
+            FROM (SELECT phone FROM provider_locations LIMIT 2000) s
+>>>>>>> refs/remotes/origin/main
           `);
           const utilYearRows = await safeQ(`
             SELECT data_year FROM provider_service_utilization ORDER BY id DESC LIMIT 1
@@ -136,7 +142,13 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
             const scan = scanRows[0] as any;
             const summary = scan.results_summary as any;
             let score = 0;
+<<<<<<< HEAD
             if (summary && typeof summary.score === "number") {
+=======
+            if (summary && typeof summary.scores?.overall === "number") {
+              score = summary.scores.overall;
+            } else if (summary && typeof summary.score === "number") {
+>>>>>>> refs/remotes/origin/main
               score = summary.score;
             } else if (scan.total_records > 0) {
               score = Math.round(((scan.total_records - (scan.issues_found || 0)) / scan.total_records) * 100);
@@ -145,7 +157,12 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           }
 
           const phoneSampleCount = Number(phoneSample[0]?.count || 0);
+<<<<<<< HEAD
           const phoneScale = totalLocations / 5000;
+=======
+          const phoneSampled = Number(phoneSample[0]?.sampled || 0);
+          const phoneScale = phoneSampled > 0 ? totalLocations / phoneSampled : 0;
+>>>>>>> refs/remotes/origin/main
           const uyRow = utilYearRows[0] || {};
 
           const result = {
@@ -464,7 +481,16 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           const npiParams = sql.join(npis.map((n: string) => sql`${n}`), sql`, `);
           const [taxResult, utilResult] = await Promise.all([
             db.execute(sql`SELECT DISTINCT ON (npi) npi, taxonomy_description, taxonomy_code FROM provider_taxonomies WHERE npi IN (${npiParams}) AND is_primary = true ORDER BY npi, id`),
+<<<<<<< HEAD
             db.execute(sql`SELECT DISTINCT ON (npi) npi, total_medicare_payment_amt, total_unique_benes, total_services, data_year FROM provider_service_utilization WHERE npi IN (${npiParams}) ORDER BY npi, data_year DESC`),
+=======
+            db.execute(sql`SELECT npi,
+              SUM(CAST(NULLIF(total_medicare_payment_amt, '') AS numeric)) AS total_medicare_payment_amt,
+              MAX(CAST(NULLIF(total_unique_benes, '') AS numeric)) AS total_unique_benes,
+              SUM(CAST(NULLIF(total_services, '') AS numeric)) AS total_services,
+              MAX(data_year) AS data_year
+              FROM provider_service_utilization WHERE npi IN (${npiParams}) GROUP BY npi`),
+>>>>>>> refs/remotes/origin/main
           ]);
           ((taxResult as any).rows || taxResult || []).forEach((r: any) => { taxMap[r.npi] = r; });
           ((utilResult as any).rows || utilResult || []).forEach((r: any) => { utilMap[r.npi] = r; });
@@ -570,6 +596,29 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         }
       }
 
+<<<<<<< HEAD
+=======
+      case "runScheduledImports": {
+        const { handleRunScheduledImports } = await import("../functions/scheduledImports");
+        return res.json(await handleRunScheduledImports(req.body, req.user));
+      }
+
+      case "autoRetryFailedImports": {
+        const { handleAutoRetryFailedImports } = await import("../functions/scheduledImports");
+        return res.json(await handleAutoRetryFailedImports());
+      }
+
+      case "autoResumePausedImports": {
+        const { handleAutoResumePausedImports } = await import("../functions/scheduledImports");
+        return res.json(await handleAutoResumePausedImports());
+      }
+
+      case "cancelStalledImports": {
+        const { handleCancelStalledImports } = await import("../functions/scheduledImports");
+        return res.json(await handleCancelStalledImports());
+      }
+
+>>>>>>> refs/remotes/origin/main
       case "validateDataQuality": {
         const { handleValidateDataQuality } = await import("../functions/stubs");
         return res.json(await handleValidateDataQuality(req.body));
@@ -678,6 +727,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleReconcileProviderData(req.body));
       }
       case "cleanupAllImports": {
+<<<<<<< HEAD
         const { consumeToken } = await import("../middleware/rateLimit");
         if (!consumeToken(`maint:cleanupAllImports:${req.user?.id ?? "anon"}`, 2, 60_000)) {
           return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
@@ -738,6 +788,16 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           succeeded: workers.filter(w => w.ok).length,
           failed: workers.filter(w => !w.ok).length,
         });
+=======
+        const { db } = await import("../db");
+        const { sql } = await import("drizzle-orm");
+        await db.execute(sql`UPDATE import_batches SET status = 'cancelled', updated_date = NOW() WHERE status IN ('processing', 'validating', 'paused', 'failed')`);
+        await db.execute(sql`DELETE FROM import_batches WHERE status = 'cancelled'`);
+        await db.execute(sql`DELETE FROM nppes_queue_items`);
+        const remaining = await db.execute(sql`SELECT status, count(*)::int as cnt FROM import_batches GROUP BY status ORDER BY status`);
+        const rows = Array.isArray(remaining) ? remaining : (remaining as any)?.rows || [];
+        return res.json({ success: true, message: "All non-completed imports and queue items deleted", remaining: rows });
+>>>>>>> refs/remotes/origin/main
       }
       case "generateHyperPersonalizedMessages": {
         const { handleGenerateHyperPersonalizedMessages } = await import("../functions/stubs");

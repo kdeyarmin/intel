@@ -6,12 +6,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MapPin, TrendingUp, Heart, Users, Building2, Map, BarChart3, Network } from 'lucide-react';
+<<<<<<< HEAD
+=======
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+>>>>>>> refs/remotes/origin/main
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import TerritoryMapFilters from '../components/territory/TerritoryMapFilters';
 import MapStatsBar from '../components/territory/MapStatsBar';
 import CountyDensityMap from '../components/territory/CountyDensityMap';
 import ProviderClusterList from '../components/territory/ProviderClusterList';
+<<<<<<< HEAD
 import NetworkGraph from '../components/referralNetwork/NetworkGraph';
+=======
+>>>>>>> refs/remotes/origin/main
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 
@@ -114,6 +122,7 @@ export default function TerritoryIntelligence() {
     [filteredProviders]
   );
 
+<<<<<<< HEAD
   const networkData = useMemo(() => {
     const nodes = filteredProviders.map(item => ({
       npi: item.provider.npi,
@@ -139,6 +148,8 @@ export default function TerritoryIntelligence() {
     return { nodes: sorted.slice(0, 50), edges: edges.slice(0, 150) };
   }, [filteredProviders]);
 
+=======
+>>>>>>> refs/remotes/origin/main
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -163,6 +174,18 @@ export default function TerritoryIntelligence() {
             <p className="text-sm text-slate-400">Interactive provider mapping, density analysis & market clusters</p>
           </div>
         </div>
+<<<<<<< HEAD
+=======
+        <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
+          <span className="text-slate-500">Related:</span>
+          <Link to={createPageUrl('CountyIntelligence')} className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
+            <MapPin className="w-3 h-3" /> County Intel (tabular breakdown)
+          </Link>
+          <Link to={createPageUrl('ReferralNetworkIntelligence')} className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
+            <Network className="w-3 h-3" /> Referral Network (real referral relationships)
+          </Link>
+        </div>
+>>>>>>> refs/remotes/origin/main
       </div>
 
       <ComplianceDisclaimer />
@@ -188,9 +211,12 @@ export default function TerritoryIntelligence() {
               <TabsTrigger value="density" className="gap-1.5 text-xs">
                 <BarChart3 className="w-3.5 h-3.5" /> City Density
               </TabsTrigger>
+<<<<<<< HEAD
               <TabsTrigger value="network" className="gap-1.5 text-xs">
                 <Network className="w-3.5 h-3.5" /> Network Graph
               </TabsTrigger>
+=======
+>>>>>>> refs/remotes/origin/main
             </TabsList>
 
             <TabsContent value="map" className="mt-0">
@@ -205,10 +231,13 @@ export default function TerritoryIntelligence() {
             <TabsContent value="density" className="mt-0">
               <CountyDensityMap countyStats={countyStats} />
             </TabsContent>
+<<<<<<< HEAD
 
             <TabsContent value="network" className="mt-0">
               <NetworkGraph nodes={networkData.nodes} edges={networkData.edges} />
             </TabsContent>
+=======
+>>>>>>> refs/remotes/origin/main
           </Tabs>
         </div>
       </div>

@@ -9,7 +9,11 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
+<<<<<<< HEAD
   Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
+=======
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, HeartPulse, CalendarClock
+>>>>>>> refs/remotes/origin/main
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -28,6 +32,10 @@ import ValidationRulesManager from '../components/imports/ValidationRulesManager
 import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import MaintenanceHealthPanel from '../components/imports/MaintenanceHealthPanel';
+<<<<<<< HEAD
+=======
+import ImportHealthView from '../components/imports/ImportHealthView';
+>>>>>>> refs/remotes/origin/main
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
@@ -42,6 +50,10 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
+<<<<<<< HEAD
+=======
+import ImportScheduleManager from '../components/imports/ImportScheduleManager';
+>>>>>>> refs/remotes/origin/main
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
 const CATEGORY_LABELS = {
@@ -484,6 +496,27 @@ export default function ImportMonitoring() {
           <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
           Performance
         </button>
+<<<<<<< HEAD
+=======
+        <button
+          onClick={() => setActiveTab('health')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'health' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <HeartPulse className="w-3.5 h-3.5 inline mr-1" />
+          Health
+        </button>
+        <button
+          onClick={() => setActiveTab('automation')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'automation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <CalendarClock className="w-3.5 h-3.5 inline mr-1" />
+          Automation
+        </button>
+>>>>>>> refs/remotes/origin/main
       </div>
 
       {activeTab === 'history' && (
@@ -518,6 +551,17 @@ export default function ImportMonitoring() {
         <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
       )}
 
+<<<<<<< HEAD
+=======
+      {activeTab === 'health' && (
+        <ImportHealthView />
+      )}
+
+      {activeTab === 'automation' && (
+        <ImportScheduleManager />
+      )}
+
+>>>>>>> refs/remotes/origin/main
       {activeTab === 'monitoring' && <>
       {/* Overview KPIs */}
       <ImportOverviewKPIs batches={batches} onFilterChange={setStatusFilter} />
@@ -529,8 +573,14 @@ export default function ImportMonitoring() {
       <SystemStatusPanel batches={batches} />
 
       {/* Maintenance heartbeat — surfaces whether the schedule loop's fanout
+<<<<<<< HEAD
           to autoResume / autoRetry / cancelStalled is actually running.
           If this goes stale, paused/failed batches stop getting picked back up. */}
+=======
+          to autoResume / autoRetry / cancelStalled / manageCrawlerRetries is
+          actually running. If this goes stale, paused/failed batches stop
+          getting picked back up. */}
+>>>>>>> refs/remotes/origin/main
       <MaintenanceHealthPanel />
 
       {/* Live Progress for Active Jobs */}

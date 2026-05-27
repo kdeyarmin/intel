@@ -194,6 +194,10 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Activity className="w-4 h-4 text-blue-500" /> Provider Utilization
                 </CardTitle>
+<<<<<<< HEAD
+=======
+                <p className="text-[11px] text-slate-500">Provider-wide totals (NPI-level) — not specific to this location</p>
+>>>>>>> refs/remotes/origin/main
               </CardHeader>
               <CardContent>
                 {latestUtil ? (
@@ -212,10 +216,13 @@ export default function LocationDetail() {
                       <p className="text-[10px] text-emerald-400 font-medium">Medicare Payment</p>
                       <p className="text-xl font-bold text-white">${(latestUtil.total_medicare_payment || 0).toLocaleString()}</p>
                     </div>
+<<<<<<< HEAD
                     <div className="p-3 bg-violet-900/10 rounded-lg border border-violet-500/20">
                       <p className="text-[10px] text-violet-400 font-medium">Drug Services</p>
                       <p className="text-xl font-bold text-white">{(latestUtil.drug_services || 0).toLocaleString()}</p>
                     </div>
+=======
+>>>>>>> refs/remotes/origin/main
                   </div>
                 ) : (
                   <p className="text-sm text-slate-400 py-4 text-center">No utilization data</p>
@@ -229,6 +236,10 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <GitBranch className="w-4 h-4 text-violet-500" /> Referral Summary
                 </CardTitle>
+<<<<<<< HEAD
+=======
+                <p className="text-[11px] text-slate-500">Provider-wide totals (NPI-level) — not specific to this location</p>
+>>>>>>> refs/remotes/origin/main
               </CardHeader>
               <CardContent>
                 {latestRef ? (

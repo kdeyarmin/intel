@@ -842,11 +842,14 @@ export default function Providers() {
                             <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
                               <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View</Button>
                             </Link>
+<<<<<<< HEAD
                             {provider.entity_type === 'Organization' && (
                               <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
                                 <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Org</Button>
                               </Link>
                             )}
+=======
+>>>>>>> refs/remotes/origin/main
                           </div>
                         </TableCell>
                       </TableRow>

@@ -15,6 +15,10 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 import CrawlerMonitoring from '../components/nppes/CrawlerMonitoring';
 import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
+<<<<<<< HEAD
+=======
+import CrawlerAnalyticsView from '../components/crawlerDashboard/CrawlerAnalyticsView';
+>>>>>>> refs/remotes/origin/main
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
 
@@ -33,6 +37,10 @@ export default function NPPESCrawler() {
   
   const [selectedState, setSelectedState] = useState(null);
   const [viewMode, setViewMode] = useState('map');
+<<<<<<< HEAD
+=======
+  const [crawlerTab, setCrawlerTab] = useState('control');
+>>>>>>> refs/remotes/origin/main
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const queryClient = useQueryClient();
 
@@ -93,6 +101,28 @@ export default function NPPESCrawler() {
     handleAction('batch_stop', 'Crawler stopped');
   };
 
+<<<<<<< HEAD
+=======
+  const handleCrawlerTabKeyDown = (event, tabId) => {
+    let nextTabId = null;
+    if (event.key === 'ArrowRight') {
+      nextTabId = tabId === 'control' ? 'analytics' : 'control';
+    } else if (event.key === 'ArrowLeft') {
+      nextTabId = tabId === 'analytics' ? 'control' : 'analytics';
+    } else if (event.key === 'Home') {
+      nextTabId = 'control';
+    } else if (event.key === 'End') {
+      nextTabId = 'analytics';
+    }
+
+    if (!nextTabId) return;
+
+    event.preventDefault();
+    setCrawlerTab(nextTabId);
+    document.getElementById(`nppes-crawler-tab-${nextTabId}`)?.focus();
+  };
+
+>>>>>>> refs/remotes/origin/main
   const completedCount = status?.completed || 0;
   const failedCount = status?.failed || 0;
   const processingCount = status?.processing || 0;
@@ -137,6 +167,46 @@ export default function NPPESCrawler() {
         breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
       />
 
+<<<<<<< HEAD
+=======
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit" role="tablist" aria-label="Switch between crawler control and analytics">
+        <button
+          type="button"
+          role="tab"
+          id="nppes-crawler-tab-control"
+          aria-selected={crawlerTab === 'control'}
+          aria-controls="nppes-crawler-panel-control"
+          tabIndex={crawlerTab === 'control' ? 0 : -1}
+          onKeyDown={(event) => handleCrawlerTabKeyDown(event, 'control')}
+          onClick={() => setCrawlerTab('control')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            crawlerTab === 'control' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 inline mr-1.5" />
+          Control
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="nppes-crawler-tab-analytics"
+          aria-selected={crawlerTab === 'analytics'}
+          aria-controls="nppes-crawler-panel-analytics"
+          tabIndex={crawlerTab === 'analytics' ? 0 : -1}
+          onKeyDown={(event) => handleCrawlerTabKeyDown(event, 'analytics')}
+          onClick={() => setCrawlerTab('analytics')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            crawlerTab === 'analytics' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 inline mr-1.5" />
+          Analytics
+        </button>
+      </div>
+
+      {crawlerTab === 'control' && (
+      <div role="tabpanel" id="nppes-crawler-panel-control" aria-labelledby="nppes-crawler-tab-control">
+>>>>>>> refs/remotes/origin/main
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-[#141d30] border-slate-700/50">
@@ -377,7 +447,11 @@ export default function NPPESCrawler() {
                   <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-300">Errors Detected</p>
+<<<<<<< HEAD
                     <p className="text-xs text-red-400/80 mt-1">{failedCount} states failed. Check Error Reports in Data Quality.</p>
+=======
+                    <p className="text-xs text-red-400/80 mt-1">{failedCount} states failed. See the crawler activity log below, or the Imports monitor for batch-level errors.</p>
+>>>>>>> refs/remotes/origin/main
                   </div>
                 </div>
               )}
@@ -389,6 +463,17 @@ export default function NPPESCrawler() {
       {isRunning && <CurrentStateProgress status={status} />}
 
       <CrawlerMonitoring status={status} />
+<<<<<<< HEAD
+=======
+      </div>
+      )}
+
+      {crawlerTab === 'analytics' && (
+        <div role="tabpanel" id="nppes-crawler-panel-analytics" aria-labelledby="nppes-crawler-tab-analytics">
+          <CrawlerAnalyticsView />
+        </div>
+      )}
+>>>>>>> refs/remotes/origin/main
 
       <DataSourcesFooter />
       

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+<<<<<<< HEAD
 import { useQuery } from '@tanstack/react-query';
+=======
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+>>>>>>> refs/remotes/origin/main
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, GitCompare, Sparkles, LayoutDashboard } from 'lucide-react';
@@ -15,6 +19,10 @@ import PageHeader from '../components/shared/PageHeader';
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeDashboardId, setActiveDashboardId] = useState(null);
+<<<<<<< HEAD
+=======
+  const queryClient = useQueryClient();
+>>>>>>> refs/remotes/origin/main
 
   // Core data
   const { data: providers = [], isLoading: lp } = useQuery({
@@ -32,7 +40,10 @@ export default function AdvancedAnalytics() {
         total_medicare_payment: r.total_medicare_payment_amt || 0,
         total_medicare_beneficiaries: r.total_unique_benes || 0,
         total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1),
+<<<<<<< HEAD
         drug_services: 0,
+=======
+>>>>>>> refs/remotes/origin/main
       }));
     },
     staleTime: 120000,
@@ -40,6 +51,7 @@ export default function AdvancedAnalytics() {
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['aaRef'],
     queryFn: async () => {
+<<<<<<< HEAD
       const rows = await base44.entities.CMSReferral.list('-created_date', 500);
       return rows.map(r => {
         const rd = r.raw_data || {};
@@ -52,6 +64,39 @@ export default function AdvancedAnalytics() {
           snf_referrals: 0,
           dme_referrals: rd.DME === 'Y' ? 1 : 0,
           imaging_referrals: 0,
+=======
+      // cms_referrals holds CMS "Order & Referring" eligibility rows whose
+      // only real volume column is total_referrals (null unless a genuine
+      // referral-counts dataset is loaded). The HHA/HOSPICE/DME raw_data
+      // values are Y/N eligibility flags, not referral counts, so they are
+      // intentionally not surfaced here as "referral" metrics.
+      const rows = await base44.entities.CMSReferral.list('-created_date', 500);
+      return rows.map(r => {
+        const rd = r.raw_data || {};
+        const referralSubtypeFields = ['home_health_referrals', 'hospice_referrals', 'snf_referrals', 'dme_referrals', 'imaging_referrals'];
+        const referralTypeCounts = Object.fromEntries(
+          referralSubtypeFields
+            .filter((field) => Object.prototype.hasOwnProperty.call(r, field))
+            .map((field) => {
+              const numericValue = Number(r[field]);
+              return [field, Number.isFinite(numericValue) ? numericValue : 0];
+            })
+        );
+        // Prefer the real total_referrals column. Fall back to a count in
+        // raw_data only if a genuine referral-counts dataset stored one
+        // there; otherwise 0 — never a fabricated default.
+        const rawCount = Number(
+          rd.total_referrals ?? rd.total_referral_count ?? rd.TOTAL_REFERRALS ?? rd.TOTAL_REFERRAL_COUNT
+        );
+        const realCount = Number(r.total_referrals);
+        return {
+          ...r,
+          ...referralTypeCounts,
+          year: r.data_year,
+          total_referrals: Number.isFinite(realCount)
+            ? realCount
+            : (Number.isFinite(rawCount) ? rawCount : 0),
+>>>>>>> refs/remotes/origin/main
         };
       });
     },
@@ -138,7 +183,11 @@ export default function AdvancedAnalytics() {
                   dashboards={dashboards}
                   activeId={activeDashboardId}
                   onSelect={setActiveDashboardId}
+<<<<<<< HEAD
                   onWidgetsChange={() => {}}
+=======
+                  onWidgetsChange={() => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] })}
+>>>>>>> refs/remotes/origin/main
                 />
               </div>
               <div className="lg:col-span-9 space-y-5">

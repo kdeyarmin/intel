@@ -3,6 +3,10 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
 import DatabaseOverview from '../components/dashboard/DatabaseOverview';
+<<<<<<< HEAD
+=======
+import SalesPipelineCard from '../components/dashboard/SalesPipelineCard';
+>>>>>>> refs/remotes/origin/main
 import SystemHealthStrip from '../components/dashboard/SystemHealthStrip';
 import EmailHealthBar from '../components/dashboard/EmailHealthBar';
 import TopStatesCard from '../components/dashboard/TopStatesCard';
@@ -73,6 +77,12 @@ export default function Dashboard() {
       {/* Database Record Counts — single source of truth, clickable to navigate */}
       <DatabaseOverview stats={stats} loading={loadingStats} />
 
+<<<<<<< HEAD
+=======
+      {/* Sales Pipeline — lead lists and campaign rollup */}
+      <SalesPipelineCard />
+
+>>>>>>> refs/remotes/origin/main
       {/* Email Health + Top States side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <EmailHealthBar emailStats={stats?.emailStats} totalProviders={stats?.totalProviders || 0} />

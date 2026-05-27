@@ -183,8 +183,40 @@ function RawDataTable({ rows, facilityType }) {
   const hasMore = filteredRawKeys.length > 10;
   const displayRows = rows.slice(0, 50);
 
+<<<<<<< HEAD
   return (
     <div className="space-y-3">
+=======
+  const latestRow = [...rows].sort((a, b) => (Number(b.data_year) || 0) - (Number(a.data_year) || 0))[0];
+  const summaryCols = activeCols.filter(c => c.key !== 'data_year');
+
+  return (
+    <div className="space-y-3">
+      {latestRow && summaryCols.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5">
+            Summary{latestRow.data_year ? ` — latest reporting year ${latestRow.data_year}` : ''}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {summaryCols.map(col => (
+              <div key={col.key} className="p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40">
+                <p className="text-[10px] text-slate-500 font-medium">{col.label}</p>
+                <p className="text-base font-bold text-slate-100">
+                  {col.key.includes('payment') || col.key.includes('charge')
+                    ? formatCurrency(latestRow[col.key])
+                    : latestRow[col.key] != null ? formatNumber(latestRow[col.key]) : '—'}
+                </p>
+              </div>
+            ))}
+            <div className="p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40">
+              <p className="text-[10px] text-slate-500 font-medium">Records</p>
+              <p className="text-base font-bold text-slate-100">{rows.length.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+>>>>>>> refs/remotes/origin/main
       {allRawKeys.length > 5 && (
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">

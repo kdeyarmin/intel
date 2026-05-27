@@ -9,6 +9,10 @@ import authRoutes from "./routes/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
 import functionRoutes from "./routes/functions";
+<<<<<<< HEAD
+=======
+import maintenanceRoutes from "./routes/maintenance";
+>>>>>>> refs/remotes/origin/main
 
 const app = express();
 
@@ -45,6 +49,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/functions", functionRoutes);
+<<<<<<< HEAD
+=======
+app.use("/api/maintenance", maintenanceRoutes);
+>>>>>>> refs/remotes/origin/main
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -258,7 +266,24 @@ app.listen(PORT, "0.0.0.0", async () => {
           FROM pg_index i
           JOIN pg_class c ON c.oid = i.indrelid
           JOIN pg_class c2 ON c2.oid = i.indexrelid
+<<<<<<< HEAD
           WHERE c.relname = 'medicare_facilities' AND c2.relname != 'medicare_facilities_pkey'
+=======
+          WHERE c.relname = ANY(ARRAY[
+            'medicare_facilities',
+            'cms_referrals',
+            'provider_service_utilization',
+            'provider_locations',
+            'provider_taxonomies'
+          ])
+          AND c2.relname NOT IN (
+            'medicare_facilities_pkey',
+            'cms_referrals_pkey',
+            'provider_service_utilization_pkey',
+            'provider_locations_pkey',
+            'provider_taxonomies_pkey'
+          )
+>>>>>>> refs/remotes/origin/main
         `).catch(() => ({ rows: [] }));
         
         for (const idx of existingIdx.rows) {
@@ -284,6 +309,21 @@ app.listen(PORT, "0.0.0.0", async () => {
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_state ON medicare_facilities (facility_type, state)",
+<<<<<<< HEAD
+=======
+          // Unique backstops enforcing each table's natural key. Built CONCURRENTLY
+          // and best-effort: a build FAILS (and is logged) while duplicate rows
+          // still exist, so run scripts/dedupe-existing-imports.sql once first.
+          // The importers use onConflictDoNothing(), so once these exist re-imports
+          // and resumes become idempotent at the DB level — closing the gap the
+          // capped (20k) in-app dedup lookup can leave open.
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_provider ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year ON cms_referrals (npi, data_year)",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year)",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, COALESCE(location_type,''), left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, COALESCE(taxonomy_code,''))",
+>>>>>>> refs/remotes/origin/main
         ];
         for (const ddl of indexes) {
           const idxName = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || "unknown";

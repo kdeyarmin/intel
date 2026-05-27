@@ -61,7 +61,11 @@ export default function ScoringRules() {
   };
 
   const handleRecalculate = async () => {
+<<<<<<< HEAD
     if (!confirm('Recalculate CareMetric Referral Propensity Scores for all providers? This may take several minutes.')) return;
+=======
+    if (!confirm('Recalculate CareMetric Referral Propensity Scores for the 100 most recently added providers? This may take a minute.')) return;
+>>>>>>> refs/remotes/origin/main
     
     setCalculating(true);
     try {
@@ -78,7 +82,12 @@ export default function ScoringRules() {
         alert(`Warning: Total weights = ${totalWeight}%. Recommended: 100%`);
       }
 
+<<<<<<< HEAD
       for (const provider of providers.slice(0, 100)) {
+=======
+      const batch = providers.slice(0, 100);
+      for (const provider of batch) {
+>>>>>>> refs/remotes/origin/main
         const util = utilizations.find(u => u.npi === provider.npi);
         const providerLocs = locations.filter(l => l.npi === provider.npi);
         const providerTax = taxonomies.filter(t => t.npi === provider.npi);
@@ -169,13 +178,22 @@ export default function ScoringRules() {
         details: {
           action: 'Recalculate Scores',
           entity: 'LeadScore',
+<<<<<<< HEAD
           row_count: providers.length,
           message: 'Scores recalculated',
+=======
+          row_count: batch.length,
+          message: 'Scores recalculated (latest 100 providers)',
+>>>>>>> refs/remotes/origin/main
         },
         timestamp: new Date().toISOString(),
       });
 
+<<<<<<< HEAD
       alert('Scoring complete!');
+=======
+      alert(`Scoring complete for ${batch.length} providers (latest 100).`);
+>>>>>>> refs/remotes/origin/main
       queryClient.invalidateQueries();
     } catch (error) {
       alert('Scoring failed: ' + error.message);
@@ -221,7 +239,11 @@ export default function ScoringRules() {
           className="bg-teal-600 hover:bg-teal-700"
         >
           <Calculator className="w-4 h-4 mr-2" />
+<<<<<<< HEAD
           {calculating ? 'Calculating...' : 'Recalculate All Scores'}
+=======
+          {calculating ? 'Calculating...' : 'Recalculate Scores (latest 100)'}
+>>>>>>> refs/remotes/origin/main
         </Button>
       </div>
 

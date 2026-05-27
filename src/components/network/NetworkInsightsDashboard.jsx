@@ -1,9 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+<<<<<<< HEAD
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, Crown, AlertTriangle, TrendingUp, Network } from 'lucide-react';
+=======
+import { Button } from '@/components/ui/button';
+import { Loader2, Sparkles, AlertTriangle, TrendingUp, Network } from 'lucide-react';
+>>>>>>> refs/remotes/origin/main
 import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
 import StrategicPartnerFinder from './StrategicPartnerFinder';
 
@@ -14,6 +19,7 @@ const KEY_SPECIALTIES = [
   'Gastroenterology', 'Nephrology', 'Urology', 'Endocrinology',
 ];
 
+<<<<<<< HEAD
 function HubCard({ hub, rank }) {
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-700/30 hover:bg-slate-800/30">
@@ -59,6 +65,8 @@ function GapCard({ gap }) {
   );
 }
 
+=======
+>>>>>>> refs/remotes/origin/main
 export default function NetworkInsightsDashboard({ nodes = [], edges = [], locations = [] }) {
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -187,6 +195,7 @@ Provide:
         </div>
       )}
 
+<<<<<<< HEAD
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Auto-detected hubs */}
         <Card className="bg-[#141d30] border-slate-700/50">
@@ -218,6 +227,10 @@ Provide:
           </CardContent>
         </Card>
       </div>
+=======
+      {/* Hub and care-gap detail live in the dedicated Hub Analysis and
+          Care Gaps tabs; this dashboard focuses on AI-driven synthesis. */}
+>>>>>>> refs/remotes/origin/main
 
       {/* AI Insights */}
       <Card className="bg-[#141d30] border-slate-700/50">

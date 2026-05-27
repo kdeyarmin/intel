@@ -15,6 +15,7 @@ const METRIC_OPTIONS = {
     { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
     { key: 'total_medicare_payment', label: 'Medicare Payments ($)' },
     { key: 'total_submitted_charges', label: 'Submitted Charges ($)' },
+<<<<<<< HEAD
     { key: 'drug_services', label: 'Drug Services' },
   ],
   referrals: [
@@ -24,6 +25,11 @@ const METRIC_OPTIONS = {
     { key: 'snf_referrals', label: 'SNF' },
     { key: 'dme_referrals', label: 'DME' },
     { key: 'imaging_referrals', label: 'Imaging' },
+=======
+  ],
+  referrals: [
+    { key: 'total_referrals', label: 'Total Referrals' },
+>>>>>>> refs/remotes/origin/main
   ],
 };
 

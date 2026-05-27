@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
+<<<<<<< HEAD
 import { makeKey, partition, distinctValues, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
+=======
+import { makeKey, partition, distinctValues, deriveLineTotal, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
+>>>>>>> refs/remotes/origin/main
 
 describe("makeKey", () => {
   it("joins normalized key columns", () => {
@@ -58,8 +62,63 @@ describe("distinctValues", () => {
 
 describe("CMS_NATURAL_KEYS", () => {
   it("includes the npi-keyed import types", () => {
+<<<<<<< HEAD
     expect(CMS_NATURAL_KEYS.cms_order_referring.keyCols).toContain("npi");
     expect(CMS_NATURAL_KEYS.provider_service_utilization.keyCols).toContain("service_type");
+=======
+    // cms_order_referring is an eligibility registry routed to the providers
+    // table via a dedicated upsert path — it no longer uses CMS_NATURAL_KEYS.
+    expect(CMS_NATURAL_KEYS.cms_order_referring).toBeUndefined();
+    expect(CMS_NATURAL_KEYS.provider_service_utilization.keyCols).toContain("npi");
+  });
+
+  it("keys utilization on the HCPCS service, not the provider specialty", () => {
+    const cfg = CMS_NATURAL_KEYS.provider_service_utilization;
+    expect(cfg.keyCols).toContain("hcpcs_code");
+    expect(cfg.keyCols).toContain("place_of_service");
+    // service_type (the provider specialty) must NOT be the dedup key, or every
+    // service line for a provider collapses into a single stored row.
+    expect(cfg.keyCols).not.toContain("service_type");
+  });
+
+  it("treats two HCPCS lines for the same provider/year as distinct rows", () => {
+    const cfg = CMS_NATURAL_KEYS.provider_service_utilization;
+    const rows = [
+      { npi: "1", service_type: "Cardiology", hcpcs_code: "99213", place_of_service: "O", data_year: "2024" },
+      { npi: "1", service_type: "Cardiology", hcpcs_code: "93000", place_of_service: "O", data_year: "2024" },
+    ];
+    const { toCreate, skipped } = partition(rows, [], cfg.keyCols);
+    expect(toCreate).toHaveLength(2);
+    expect(skipped).toBe(0);
+  });
+});
+
+describe("deriveLineTotal", () => {
+  it("multiplies average payment by service count", () => {
+    expect(deriveLineTotal("10", "5")).toBe("50.00");
+    expect(deriveLineTotal("3", "12.5")).toBe("37.50");
+  });
+
+  it("strips thousands separators before computing", () => {
+    expect(deriveLineTotal("1,000", "2")).toBe("2000.00");
+  });
+
+  it("allows a zero average once there is at least one service", () => {
+    expect(deriveLineTotal("5", "0")).toBe("0.00");
+  });
+
+  it("returns null when services is missing, zero, or negative", () => {
+    expect(deriveLineTotal("", "5")).toBeNull();
+    expect(deriveLineTotal(null, "5")).toBeNull();
+    expect(deriveLineTotal("0", "5")).toBeNull();
+    expect(deriveLineTotal("-2", "5")).toBeNull();
+  });
+
+  it("returns null when the average is missing or non-numeric", () => {
+    expect(deriveLineTotal("10", "")).toBeNull();
+    expect(deriveLineTotal("10", null)).toBeNull();
+    expect(deriveLineTotal("10", "N/A")).toBeNull();
+>>>>>>> refs/remotes/origin/main
   });
 });
 

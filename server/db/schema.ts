@@ -372,6 +372,7 @@ export const medicareFacilities = pgTable("medicare_facilities", {
   updated_date: timestamp("updated_date").defaultNow(),
 });
 
+<<<<<<< HEAD
 // Side table for medicare_facilities.raw_data — split off to keep the hot
 // medicare_facilities row narrow (the blob can be very large and was being
 // pulled in implicitly by every select *). One-to-one: the FK is also the PK,
@@ -389,6 +390,8 @@ export const medicareFacilitiesRaw = pgTable("medicare_facilities_raw", {
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+=======
+>>>>>>> refs/remotes/origin/main
 export const enrichmentRecords = pgTable("enrichment_records", {
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }),
@@ -570,9 +573,19 @@ export const providerServiceUtilization = pgTable("provider_service_utilization"
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }),
   service_type: varchar("service_type", { length: 100 }),
+<<<<<<< HEAD
   total_services: varchar("total_services", { length: 50 }),
   total_unique_benes: varchar("total_unique_benes", { length: 50 }),
   average_submitted_chrg_amt: varchar("average_submitted_chrg_amt", { length: 50 }),
+=======
+  hcpcs_code: varchar("hcpcs_code", { length: 20 }),
+  hcpcs_description: text("hcpcs_description"),
+  place_of_service: varchar("place_of_service", { length: 10 }),
+  total_services: varchar("total_services", { length: 50 }),
+  total_unique_benes: varchar("total_unique_benes", { length: 50 }),
+  average_submitted_chrg_amt: varchar("average_submitted_chrg_amt", { length: 50 }),
+  average_medicare_payment_amt: varchar("average_medicare_payment_amt", { length: 50 }),
+>>>>>>> refs/remotes/origin/main
   total_medicare_payment_amt: varchar("total_medicare_payment_amt", { length: 50 }),
   data_year: varchar("data_year", { length: 10 }),
   raw_data: jsonb("raw_data"),
@@ -721,11 +734,32 @@ export const reconciliationJobs = pgTable("reconciliation_jobs", {
 export const importScheduleConfigs = pgTable("import_schedule_configs", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
+<<<<<<< HEAD
   import_type: varchar("import_type", { length: 100 }),
   schedule: varchar("schedule", { length: 50 }),
   config: jsonb("config"),
   enabled: boolean("enabled").default(true),
   last_run: timestamp("last_run"),
+=======
+  label: varchar("label", { length: 255 }),
+  import_type: varchar("import_type", { length: 100 }),
+  schedule: varchar("schedule", { length: 50 }),
+  schedule_frequency: varchar("schedule_frequency", { length: 30 }),
+  schedule_time: varchar("schedule_time", { length: 10 }),
+  config: jsonb("config"),
+  nppes_config: jsonb("nppes_config"),
+  api_url: text("api_url"),
+  data_year: varchar("data_year", { length: 10 }),
+  enabled: boolean("enabled").default(true),
+  is_active: boolean("is_active").default(true),
+  last_run: timestamp("last_run"),
+  last_run_at: timestamp("last_run_at"),
+  last_run_status: varchar("last_run_status", { length: 30 }),
+  last_run_summary: text("last_run_summary"),
+  last_successful_run_at: timestamp("last_successful_run_at"),
+  next_run_at: timestamp("next_run_at"),
+  consecutive_failures: integer("consecutive_failures").default(0),
+>>>>>>> refs/remotes/origin/main
   depends_on_import_type: varchar("depends_on_import_type", { length: 100 }),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),

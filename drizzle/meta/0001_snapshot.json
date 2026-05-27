@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
-  "id": "0dd9bf97-92ab-4614-89a3-4dd47ac8b562",
+  "id": "efaab9e0-1653-440d-9537-89eca254fdcf",
   "prevId": "ba673c69-05fd-46b8-b3e5-d2010738d6ab",
-=======
-  "id": "45ac41ae-bc1d-4b9c-a8e2-34b7390469a3",
-  "prevId": "efaab9e0-1653-440d-9537-89eca254fdcf",
->>>>>>> refs/remotes/origin/main
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1755,15 +1750,6 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
-        "label": {
-          "name": "label",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
->>>>>>> refs/remotes/origin/main
         "import_type": {
           "name": "import_type",
           "type": "varchar(100)",
@@ -1776,48 +1762,12 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
-        "schedule_frequency": {
-          "name": "schedule_frequency",
-          "type": "varchar(30)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "schedule_time": {
-          "name": "schedule_time",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false
-        },
->>>>>>> refs/remotes/origin/main
         "config": {
           "name": "config",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
-        "nppes_config": {
-          "name": "nppes_config",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "api_url": {
-          "name": "api_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "data_year": {
-          "name": "data_year",
-          "type": "varchar(10)",
-          "primaryKey": false,
-          "notNull": false
-        },
->>>>>>> refs/remotes/origin/main
         "enabled": {
           "name": "enabled",
           "type": "boolean",
@@ -1825,62 +1775,12 @@
           "notNull": false,
           "default": true
         },
-<<<<<<< HEAD
-=======
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
->>>>>>> refs/remotes/origin/main
         "last_run": {
           "name": "last_run",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
-        "last_run_at": {
-          "name": "last_run_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_run_status": {
-          "name": "last_run_status",
-          "type": "varchar(30)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_run_summary": {
-          "name": "last_run_summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_successful_run_at": {
-          "name": "last_successful_run_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_run_at": {
-          "name": "next_run_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "consecutive_failures": {
-          "name": "consecutive_failures",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
->>>>>>> refs/remotes/origin/main
         "depends_on_import_type": {
           "name": "depends_on_import_type",
           "type": "varchar(100)",
@@ -2477,55 +2377,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
-    "public.medicare_facilities_raw": {
-      "name": "medicare_facilities_raw",
-      "schema": "",
-      "columns": {
-        "facility_id": {
-          "name": "facility_id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "raw_data": {
-          "name": "raw_data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "medicare_facilities_raw_facility_id_medicare_facilities_id_fk": {
-          "name": "medicare_facilities_raw_facility_id_medicare_facilities_id_fk",
-          "tableFrom": "medicare_facilities_raw",
-          "tableTo": "medicare_facilities",
-          "columnsFrom": [
-            "facility_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-=======
->>>>>>> refs/remotes/origin/main
     "public.medicare_hha_stats": {
       "name": "medicare_hha_stats",
       "schema": "",
@@ -4042,8 +3893,6 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
         "hcpcs_code": {
           "name": "hcpcs_code",
           "type": "varchar(20)",
@@ -4062,7 +3911,6 @@
           "primaryKey": false,
           "notNull": false
         },
->>>>>>> refs/remotes/origin/main
         "total_services": {
           "name": "total_services",
           "type": "varchar(50)",
@@ -4081,15 +3929,12 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
         "average_medicare_payment_amt": {
           "name": "average_medicare_payment_amt",
           "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
         },
->>>>>>> refs/remotes/origin/main
         "total_medicare_payment_amt": {
           "name": "total_medicare_payment_amt",
           "type": "varchar(50)",
