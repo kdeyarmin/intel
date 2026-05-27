@@ -372,6 +372,23 @@ export const medicareFacilities = pgTable("medicare_facilities", {
   updated_date: timestamp("updated_date").defaultNow(),
 });
 
+// Side table for medicare_facilities.raw_data — split off to keep the hot
+// medicare_facilities row narrow (the blob can be very large and was being
+// pulled in implicitly by every select *). One-to-one: the FK is also the PK,
+// and rows cascade-delete with their facility.
+//
+// Phase 1 (current): the table exists, writers dual-write (column + side table
+// in a transaction), and readers prefer the side table via LEFT JOIN with a
+// COALESCE fallback so the rollout is safe to soak in prod.
+// Phase 2 (later PR): once dual-write has soaked, drop medicare_facilities.raw_data.
+export const medicareFacilitiesRaw = pgTable("medicare_facilities_raw", {
+  facility_id: integer("facility_id")
+    .primaryKey()
+    .references(() => medicareFacilities.id, { onDelete: "cascade" }),
+  raw_data: jsonb("raw_data").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const enrichmentRecords = pgTable("enrichment_records", {
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }),

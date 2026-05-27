@@ -1,5 +1,5 @@
 import { db, pool } from "../db";
-import { medicareFacilities, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
+import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -88,8 +88,33 @@ export async function handleGetFacilityDetail(params: any) {
 
   const groupTypes = facility_group ? FACILITY_TYPE_GROUPS[facility_group] : null;
 
-  const facilityRows = await db.select()
+  // raw_data is moving to the medicare_facilities_raw side table (phase 1):
+  // pull every facility column explicitly and overlay raw_data via a LEFT JOIN
+  // with COALESCE, so we keep working against both the (still-present) column
+  // and the new side table during the rollout.
+  const facilityRows = await db.select({
+    id: medicareFacilities.id,
+    facility_type: medicareFacilities.facility_type,
+    provider_id: medicareFacilities.provider_id,
+    facility_name: medicareFacilities.facility_name,
+    address: medicareFacilities.address,
+    city: medicareFacilities.city,
+    state: medicareFacilities.state,
+    zip: medicareFacilities.zip,
+    total_discharges: medicareFacilities.total_discharges,
+    total_days_of_care: medicareFacilities.total_days_of_care,
+    avg_length_of_stay: medicareFacilities.avg_length_of_stay,
+    total_charges: medicareFacilities.total_charges,
+    total_payments: medicareFacilities.total_payments,
+    quality_rating: medicareFacilities.quality_rating,
+    data_year: medicareFacilities.data_year,
+    raw_data: sql<any>`COALESCE(${medicareFacilitiesRaw.raw_data}, ${medicareFacilities.raw_data})`,
+    import_batch_id: medicareFacilities.import_batch_id,
+    created_date: medicareFacilities.created_date,
+    updated_date: medicareFacilities.updated_date,
+  })
     .from(medicareFacilities)
+    .leftJoin(medicareFacilitiesRaw, eq(medicareFacilitiesRaw.facility_id, medicareFacilities.id))
     .where(
       groupTypes
         ? and(eq(medicareFacilities.provider_id, provider_id), sql`${medicareFacilities.facility_type} = ANY(${groupTypes})`)
@@ -177,8 +202,33 @@ export async function handleGetProviderCMSData(params: any) {
   const { npi } = params;
   if (!npi) return { error: "npi is required" };
 
-  const allRows = await db.select()
+  // raw_data is moving to the medicare_facilities_raw side table (phase 1):
+  // explicit projection + LEFT JOIN keeps consumers like ProviderCMSDataCard
+  // and MIPSPerformanceCard working whether the row's raw_data still lives on
+  // the column or has been migrated to the side table.
+  const allRows = await db.select({
+    id: medicareFacilities.id,
+    facility_type: medicareFacilities.facility_type,
+    provider_id: medicareFacilities.provider_id,
+    facility_name: medicareFacilities.facility_name,
+    address: medicareFacilities.address,
+    city: medicareFacilities.city,
+    state: medicareFacilities.state,
+    zip: medicareFacilities.zip,
+    total_discharges: medicareFacilities.total_discharges,
+    total_days_of_care: medicareFacilities.total_days_of_care,
+    avg_length_of_stay: medicareFacilities.avg_length_of_stay,
+    total_charges: medicareFacilities.total_charges,
+    total_payments: medicareFacilities.total_payments,
+    quality_rating: medicareFacilities.quality_rating,
+    data_year: medicareFacilities.data_year,
+    raw_data: sql<any>`COALESCE(${medicareFacilitiesRaw.raw_data}, ${medicareFacilities.raw_data})`,
+    import_batch_id: medicareFacilities.import_batch_id,
+    created_date: medicareFacilities.created_date,
+    updated_date: medicareFacilities.updated_date,
+  })
     .from(medicareFacilities)
+    .leftJoin(medicareFacilitiesRaw, eq(medicareFacilitiesRaw.facility_id, medicareFacilities.id))
     .where(eq(medicareFacilities.provider_id, npi))
     .orderBy(desc(medicareFacilities.data_year))
     .limit(500);
@@ -283,9 +333,7 @@ export async function handleListFacilities(params: any) {
   const primaryType = LISTING_PRIMARY_TYPES[facility_group] || groupTypes[0];
   const listingTypes = facility_group === 'community_health'
     ? ["fqhc_enrollments", "rural_health_clinic_enrollments"]
-    : facility_group === 'hospital'
-      ? Array.from(new Set([primaryType, "medicare_ma_inpatient"]))
-      : [primaryType];
+    : [primaryType];
   const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
   const safePage = Math.max(1, Number(page) || 1);
   const offset = (safePage - 1) * safeLimit;
