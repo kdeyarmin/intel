@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ArrowLeft, Building2, MapPin, Star, DollarSign, Users, Calendar, Activity, FileText, Layers, ExternalLink, Mail, Phone, Shield, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Star, DollarSign, Users, Calendar, Activity, FileText, Layers, ExternalLink, Mail, Phone, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

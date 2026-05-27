@@ -2,6 +2,9 @@ import { db } from "../db";
 import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
+import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+
+const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
 const IMPORT_TYPE_ALIASES: Record<string, string> = {
   cms_utilization: "provider_service_utilization",
@@ -739,6 +742,68 @@ async function safeImportQuery<T>(fn: () => Promise<T>, fallback: T, label: stri
   return fallback;
 }
 
+// Fetch existing rows matching the given primary values, in bounded batches so a
+// single query can't pull an unbounded result set. Extra scope conditions narrow
+// the lookup to the relevant import_type / data_year.
+async function fetchExistingByPrimary(
+  table: any,
+  primaryCol: string,
+  values: string[],
+  scope: Array<{ col: string; value: any }>,
+): Promise<any[]> {
+  const out: any[] = [];
+  for (let i = 0; i < values.length; i += LOOKUP_PRIMARY_BATCH_SIZE) {
+    const slice = values.slice(i, i + LOOKUP_PRIMARY_BATCH_SIZE);
+    const conds = [inArray((table as any)[primaryCol], slice)];
+    for (const s of scope) {
+      const col = (table as any)[s.col];
+      if (s.col === "data_year") {
+        conds.push(sql`TRIM(${col}) = ${String(s.value).trim()}`);
+      } else {
+        conds.push(eq(col, s.value));
+      }
+    }
+    const rows = await safeImportQuery(
+      () => db.select().from(table).where(and(...conds)).limit(20000),
+      [] as any[], `lookup existing ${primaryCol}`,
+    );
+    if (rows.length === 20000) {
+      const scopeInfo = scope.map(s => `${s.col}=${s.value}`).join(', ');
+      console.warn(`[CMS Import] fetchExistingByPrimary hit 20000-row limit for ${primaryCol}, slice [${i}..${i + slice.length}] (scope: ${scopeInfo}) — some existing rows may be missed in deduplication`);
+    }
+    out.push(...rows);
+  }
+  return out;
+}
+
+// De-duplicate a chunk of medicare_facilities rows against what's already stored.
+// Rows are identified by provider_id when present, otherwise by facility_name,
+// always scoped to the current facility_type (import_type).
+async function dedupeFacilities(importType: string, chunk: any[]): Promise<any[]> {
+  const withPid = chunk.filter((r) => r.provider_id);
+  const noPid = chunk.filter((r) => !r.provider_id && r.facility_name);
+
+  const toCreate: any[] = [];
+
+  if (withPid.length > 0) {
+    const pids = distinctValues(withPid, "provider_id");
+    const existing = await fetchExistingByPrimary(medicareFacilities, "provider_id", pids, [
+      { col: "facility_type", value: importType },
+    ]);
+    toCreate.push(...partition(withPid, existing, ["provider_id"]).toCreate);
+  }
+
+  if (noPid.length > 0) {
+    const names = distinctValues(noPid, "facility_name");
+    const existing = await fetchExistingByPrimary(medicareFacilities, "facility_name", names, [
+      { col: "facility_type", value: importType },
+    ]);
+    toCreate.push(...partition(noPid, existing, ["facility_name"]).toCreate);
+  }
+
+  return toCreate;
+}
+
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
@@ -766,9 +831,31 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: rows.length };
 
   const filteredCount = rows.length - mapped.length;
+  const keyConfig = CMS_NATURAL_KEYS[importType];
 
   for (let i = 0; i < mapped.length; i += CHUNK_SIZE) {
-    const chunk = mapped.slice(i, i + CHUNK_SIZE);
+    let chunk = mapped.slice(i, i + CHUNK_SIZE);
+
+    // Natural-key de-duplication: drop rows that already exist (from a prior
+    // import/resume) or repeat within this chunk, so re-imports don't multiply data.
+    if (table === medicareFacilities) {
+      const before = chunk.length;
+      chunk = await dedupeFacilities(importType, chunk);
+      skipped += before - chunk.length;
+    } else if (keyConfig) {
+      const before = chunk.length;
+      const primaryValues = distinctValues(chunk, keyConfig.primaryCol);
+      if (primaryValues.length > 0) {
+        const existing = await fetchExistingByPrimary(table, keyConfig.primaryCol, primaryValues, [
+          { col: "data_year", value: String(year) },
+        ]);
+        chunk = partition(chunk, existing, keyConfig.keyCols).toCreate;
+      }
+      skipped += before - chunk.length;
+    }
+
+    if (chunk.length === 0) continue;
+
     const result = await safeImportQuery(
       async () => {
         await db.insert(table).values(chunk);

@@ -49,7 +49,7 @@ describe("isValidEmailSyntax", () => {
   });
 
   it("rejects addresses longer than 254 characters", () => {
-    const local = "a".repeat(244);
+    const local = "a".repeat(246);
     const addr = `${local}@long.com`; // > 254 chars
     expect(isValidEmailSyntax(addr)).toBe(false);
   });

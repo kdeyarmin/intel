@@ -123,7 +123,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
               </div>
               <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
                 <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {p.email}</span>
-                <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} size="sm" />
+                <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} source={p.email_source} size="sm" />
               </div>
             </div>
             

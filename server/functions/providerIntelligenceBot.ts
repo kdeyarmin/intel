@@ -3,6 +3,7 @@ import { providers, providerLocations, providerTaxonomies, enrichmentRecords, ba
 import { eq, and, isNull, sql, asc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { AI_EMAIL_SOURCE, isValidEmailSyntax, shouldPromoteToPrimary } from "./emailValidation";
 
 const BATCH_DELAY_MS = 300;
 const PARALLEL_CONCURRENCY = 5;
@@ -200,6 +201,10 @@ async function saveEnrichment(npi: string, enrichment: any) {
 
   const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
 
+  // These fields are AI *inferences* (hospital affiliations, medical school,
+  // board certifications, etc.), not verified facts. Store them as reviewable
+  // "suggested" records — never "applied" — and do not silently overwrite
+  // authoritative provider columns with them.
   const inserted = await safeDbQuery(
     () => db.insert(enrichmentRecords).values({
       npi,
@@ -208,7 +213,7 @@ async function saveEnrichment(npi: string, enrichment: any) {
       old_value: null,
       new_value: JSON.stringify(enrichment),
       confidence: avgConfidence,
-      status: "applied",
+      status: "suggested",
       enrichment_details: enrichment,
     }),
     null, `save enrichment ${npi}`
@@ -224,32 +229,37 @@ async function saveEnrichment(npi: string, enrichment: any) {
         old_value: null,
         new_value: f.value,
         confidence: f.confidence,
-        status: "applied",
-        enrichment_details: { field: f.field, source: "AI inference" },
+        status: "suggested",
+        enrichment_details: { field: f.field, source: "AI inference (unverified)" },
       }),
       null, `save field ${f.field}`
     );
   }
 
-  await safeDbQuery(async () => {
-    const [provider] = await db.select().from(providers).where(eq(providers.npi, npi)).limit(1);
-    if (provider) {
-      const updates: any = {};
-      if (enrichment.gender && !provider.gender) updates.gender = enrichment.gender;
-      if (Object.keys(updates).length > 0) {
-        await db.update(providers).set({ ...updates, updated_date: new Date() }).where(eq(providers.npi, npi));
-      }
-    }
-  }, null, `update provider ${npi}`);
-
   return fieldsToSave.length;
 }
 
 async function saveEmail(provider: any, result: any) {
-  if (!result.best_email) {
+  const candidates = (result.all_emails || [])
+    .filter((e: any) => isValidEmailSyntax(e.email))
+    .map((e: any) => ({
+      email: e.email,
+      confidence: e.confidence,
+      source: AI_EMAIL_SOURCE,
+      validation_status: e.validation_status,
+    }));
+
+  const promote = shouldPromoteToPrimary({
+    email: result.best_email,
+    confidence: result.email_confidence,
+    validation_status: result.email_validation_status,
+  });
+
+  if (!promote) {
     await safeDbQuery(
       () => db.update(providers).set({
         email_searched_at: new Date(),
+        additional_emails: candidates.length > 0 ? candidates : null,
         updated_date: new Date(),
       }).where(eq(providers.id, provider.id)),
       null, `mark email searched ${provider.npi}`
@@ -261,17 +271,10 @@ async function saveEmail(provider: any, result: any) {
     () => db.update(providers).set({
       email: result.best_email,
       email_confidence: result.email_confidence,
-      email_source: result.all_emails[0]?.source || "ai_search",
+      email_source: AI_EMAIL_SOURCE,
       email_validation_status: result.email_validation_status,
       email_validation_reason: result.email_validation_reason,
-      additional_emails: result.all_emails.length > 1
-        ? result.all_emails.slice(1).map((e: any) => ({
-            email: e.email,
-            confidence: e.confidence,
-            source: e.source,
-            validation_status: e.validation_status,
-          }))
-        : null,
+      additional_emails: candidates.length > 1 ? candidates.slice(1) : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
     }).where(eq(providers.id, provider.id)),

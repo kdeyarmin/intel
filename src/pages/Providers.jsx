@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,14 +58,52 @@ export default function Providers() {
 
   const queryClient = useQueryClient();
 
+  // Debounce the search term so we don't fire a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // When searching, query the full providers table server-side (the previous
+  // behavior only ever loaded the newest 100 rows and filtered client-side, so
+  // search silently missed almost everything). With no search term we still show
+  // the most recent providers as the default directory view.
   const { data: providers = [], isLoading } = useQuery({
-    queryKey: ['providersPage'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 100),
+    queryKey: ['providersPage', debouncedSearch],
+    queryFn: async () => {
+      if (debouncedSearch.length >= 2) {
+        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: 300 });
+        return res.data?.providers || [];
+      }
+      return base44.entities.Provider.list('-created_date', 100);
+    },
+    placeholderData: keepPreviousData,
   });
 
+  // Stable key of the currently displayed NPIs so the scoped score fetch
+  // refetches when the provider list changes.
+  const npiKey = useMemo(
+    () => providers.map(p => p.npi).filter(Boolean).sort().join(','),
+    [providers],
+  );
+
+  // Fetch lead scores ONLY for the displayed providers (was: newest 5000 scores,
+  // which both over-fetched and usually didn't even include the shown providers,
+  // so their score showed blank).
   const { data: scores = [] } = useQuery({
-    queryKey: ['providersPageScores'],
-    queryFn: () => base44.entities.LeadScore.list('-created_date', 5000),
+    queryKey: ['providersPageScores', npiKey],
+    enabled: providers.length > 0,
+    staleTime: 60000,
+    queryFn: () => {
+      const npis = providers.map(p => p.npi).filter(Boolean);
+      if (npis.length === 0) return [];
+      return base44.entities.LeadScore.filter(
+        { npi: { $in: npis } },
+        '-created_date',
+        Math.max(npis.length * 2, 500),
+      );
+    },
   });
 
   const { data: locations = [] } = useQuery({
@@ -141,10 +179,17 @@ export default function Providers() {
 
   const currentFilters = { searchTerm, ...filters };
 
-  const getScore = (npi) => {
-    const match = scores.find(s => s.npi === npi);
-    return match?.score ?? null;
-  };
+  // O(1) score lookup. scores are sorted -created_date, so the first row seen per
+  // NPI is the most recent — keep that one (matches the previous find() semantics).
+  const scoreByNpi = useMemo(() => {
+    const m = new Map();
+    for (const s of scores) {
+      if (s.npi && !m.has(s.npi)) m.set(s.npi, s.score);
+    }
+    return m;
+  }, [scores]);
+
+  const getScore = (npi) => scoreByNpi.get(npi) ?? null;
 
   // Build options from data
   const credentialOptions = useMemo(() => {

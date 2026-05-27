@@ -3,6 +3,7 @@ import { providers, providerLocations, providerTaxonomies, backgroundTasks } fro
 import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { AI_EMAIL_SOURCE, isValidEmailSyntax, shouldPromoteToPrimary } from "./emailValidation";
 
 const BATCH_DELAY_MS = 300;
 const CONSECUTIVE_ERROR_LIMIT = 20;
@@ -251,11 +252,32 @@ Be strict: AI-inferred emails without verified domains should be "risky" at best
 }
 
 async function saveEmailToProvider(provider: any, result: any) {
-  if (!result.best_email) {
+  // All candidates the model returned, normalized + tagged as AI-inferred so the
+  // UI can flag them as unverified. Drop anything not even syntactically valid.
+  const candidates = (result.all_emails || [])
+    .filter((e: any) => isValidEmailSyntax(e.email))
+    .map((e: any) => ({
+      email: e.email,
+      confidence: e.confidence,
+      source: AI_EMAIL_SOURCE,
+      validation_status: e.validation_status,
+    }));
+
+  const promote = shouldPromoteToPrimary({
+    email: result.best_email,
+    confidence: result.confidence,
+    validation_status: result.validation_status,
+  }) ? result : null;
+
+  if (!promote) {
+    // Nothing trustworthy enough to be the provider's primary email. Mark as
+    // searched (so we don't re-spend tokens on it) and keep any candidates for
+    // human review, but do not overwrite a real address with a guess.
     await db
       .update(providers)
       .set({
         email_searched_at: new Date(),
+        additional_emails: candidates.length > 0 ? candidates : null,
         updated_date: new Date(),
       })
       .where(eq(providers.id, provider.id));
@@ -265,19 +287,12 @@ async function saveEmailToProvider(provider: any, result: any) {
   await db
     .update(providers)
     .set({
-      email: result.best_email,
-      email_confidence: result.confidence,
-      email_source: result.all_emails[0]?.source || "ai_search",
-      email_validation_status: result.validation_status,
-      email_validation_reason: result.validation_reason,
-      additional_emails: result.all_emails.length > 1
-        ? result.all_emails.slice(1).map((e: any) => ({
-            email: e.email,
-            confidence: e.confidence,
-            source: e.source,
-            validation_status: e.validation_status,
-          }))
-        : null,
+      email: promote.best_email,
+      email_confidence: promote.confidence,
+      email_source: AI_EMAIL_SOURCE,
+      email_validation_status: promote.validation_status,
+      email_validation_reason: promote.validation_reason,
+      additional_emails: candidates.length > 1 ? candidates.slice(1) : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
     })

@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const router = Router();
@@ -9,8 +10,47 @@ const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
 let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
 const CMS_CACHE_TTL = 10 * 60 * 1000;
 
-router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Response) => {
+// Default-deny authorization for the function dispatcher. Only the read-only /
+// analytics / status functions below are callable by any authenticated user.
+// Everything else (imports, crawler control, AI enrichment that spends tokens or
+// writes provider data, email sending, and destructive maintenance) requires the
+// admin role. Adding a new function therefore requires an explicit decision: if
+// it is safe and read-only, list it here; otherwise it is admin-only by default.
+const PUBLIC_FUNCTIONS = new Set<string>([
+  "getDashboardStats",
+  "getDataHealthAlerts",
+  "getCMSAnalytics",
+  "getReferralNetworkData",
+  "getTerritoryData",
+  "getDataHealthMetrics",
+  "getCMSDatasetCatalog",
+  "validateDataQuality",
+  "getEnrichmentCandidateCount",
+  "getIntelCandidateCount",
+  "enrichmentJobStatus",
+  "intelJobStatus",
+  "getFacilityDetail",
+  "listFacilities",
+  "getProviderCMSData",
+  "getCountyIntelligence",
+  "getAvailableStatesCounties",
+  "getComprehensiveReport",
+  "searchProviders",
+  "calculateOutreachScore",
+  "analyzeReferralPathways",
+  "analyzeProviderNetwork",
+  "trackCampaignMetrics",
+]);
+
+router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000), async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
+
+  if (!PUBLIC_FUNCTIONS.has(functionName) && req.user?.role !== "admin") {
+    return res.status(403).json({
+      message: "Forbidden",
+      detail: "Admin access is required to invoke this function.",
+    });
+  }
 
   try {
     switch (functionName) {
@@ -750,6 +790,42 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "getComprehensiveReport": {
         const { handleGetComprehensiveReport } = await import("../functions/comprehensiveReport");
         return res.json(await handleGetComprehensiveReport(req.body));
+      }
+
+      case "searchProviders": {
+        // Server-side provider search so callers don't have to load a page of
+        // rows and filter client-side (which silently searches only that slice
+        // of a ~6M-row table). Matches NPI / last / first / organization name
+        // using the existing npi + last_name indexes, with a hard row cap.
+        const { pool: dbPool } = await import("../db");
+        const rawQ = String(req.body?.q ?? "").trim();
+        const limit = Math.min(Math.max(Number(req.body?.limit) || 50, 1), 500);
+        if (rawQ.length < 2) return res.json({ providers: [] });
+        const like = `${rawQ.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+        const client = await dbPool.connect();
+        try {
+          await client.query("SET statement_timeout = '8s'");
+          const digits = rawQ.replace(/\D/g, "");
+          const result = await client.query(
+            `SELECT id, npi, entity_type, first_name, last_name, organization_name,
+                    credential, status, email, email_confidence, email_validation_status,
+                    email_source, phone, created_date
+               FROM providers
+              WHERE ($1 <> '' AND npi LIKE $2)
+                 OR last_name ILIKE $3
+                 OR first_name ILIKE $3
+                 OR organization_name ILIKE $3
+              ORDER BY id DESC
+              LIMIT $4`,
+            [digits, `${digits}%`, like, limit],
+          );
+          return res.json({ providers: result.rows });
+        } finally {
+          // Reset so the 8s timeout doesn't persist on this pooled connection for
+          // the next unrelated query that reuses it.
+          await client.query("RESET statement_timeout").catch(() => {});
+          client.release();
+        }
       }
 
       default:

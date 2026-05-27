@@ -53,6 +53,13 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 2;
 const MAX_CACHE_SIZE = 5000;
 let globalRateLimitDelay = 0;
 let lastRateLimitHit = 0;
+// Per-process state. Queue items are claimed atomically in the DB
+// (UPDATE ... WHERE status='pending' RETURNING), so running multiple instances
+// will NOT double-process work. These counters/caches (worker cap, API cache,
+// rate-limit backoff) are per-instance only — with N instances the effective
+// NPPES request rate is up to N×. For a single-instance deployment this is fine;
+// if scaled horizontally, move the rate-limit backoff to a shared store (e.g.
+// Redis) to stay polite to the NPPES API.
 let activeWorkerCount = 0;
 const MAX_CONCURRENT_WORKERS = 5;
 
@@ -253,43 +260,41 @@ async function upsertProviders(records: any[]) {
   return { imported, updated, skipped };
 }
 
+const locationKey = (l: any) =>
+  `${l.npi}|${l.location_type}|${(l.address_1 || "").trim().toLowerCase()}|${(l.zip || "").substring(0, 5)}`;
+
 async function upsertLocations(records: any[]) {
   let imported = 0, updated = 0, skipped = 0;
   const BULK_SIZE = 300;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
-    try {
-      await db.insert(providerLocations).values(chunk);
-      imported += chunk.length;
-    } catch (e: any) {
-      const npis = [...new Set(chunk.map((l: any) => l.npi))];
-      const existing = await db.select().from(providerLocations).where(inArray(providerLocations.npi, npis));
-      const existingMap: Record<string, any[]> = {};
-      for (const e of existing) {
-        if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
-        existingMap[e.npi!].push(e);
-      }
-      const toCreate: any[] = [];
-      for (const loc of chunk) {
-        const exLocs = existingMap[loc.npi] || [];
-        const match = exLocs.find((ex: any) =>
-          ex.location_type === loc.location_type &&
-          (ex.address_1 || "").trim().toLowerCase() === (loc.address_1 || "").trim().toLowerCase() &&
-          (ex.zip || "").substring(0, 5) === (loc.zip || "").substring(0, 5)
-        );
-        if (!match) {
-          toCreate.push(loc);
-        } else {
-          skipped++;
-        }
-      }
-      if (toCreate.length > 0) {
-        try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
-        catch (bulkErr: any) {
-          for (const loc of toCreate) {
-            try { await db.insert(providerLocations).values(loc); imported++; }
-            catch (err: any) { skipped++; }
-          }
+    // De-duplicate against already-stored locations for these NPIs *before*
+    // inserting. provider_locations has no unique constraint, so a bulk insert
+    // never errors on a duplicate — without this, re-crawling a state would
+    // insert a fresh copy of every address each time.
+    const npis = [...new Set(chunk.map((l: any) => l.npi).filter(Boolean))];
+    let existingKeys = new Set<string>();
+    if (npis.length > 0) {
+      const existing = await safeCrawlerQuery(
+        () => db.select().from(providerLocations).where(inArray(providerLocations.npi, npis as string[])),
+        [] as any[], "lookup existing locations",
+      );
+      existingKeys = new Set(existing.map(locationKey));
+    }
+    const seen = new Set<string>();
+    const toCreate: any[] = [];
+    for (const loc of chunk) {
+      const key = locationKey(loc);
+      if (existingKeys.has(key) || seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      toCreate.push(loc);
+    }
+    if (toCreate.length > 0) {
+      try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
+      catch (bulkErr: any) {
+        for (const loc of toCreate) {
+          try { await db.insert(providerLocations).values(loc); imported++; }
+          catch (err: any) { skipped++; }
         }
       }
     }
@@ -297,39 +302,36 @@ async function upsertLocations(records: any[]) {
   return { imported, updated, skipped };
 }
 
+const taxonomyKey = (t: any) => `${t.npi}|${(t.taxonomy_code || "").trim()}`;
+
 async function upsertTaxonomies(records: any[]) {
   let imported = 0, updated = 0, skipped = 0;
   const BULK_SIZE = 300;
   for (let i = 0; i < records.length; i += BULK_SIZE) {
     const chunk = records.slice(i, i + BULK_SIZE);
-    try {
-      await db.insert(providerTaxonomies).values(chunk);
-      imported += chunk.length;
-    } catch (e: any) {
-      const npis = [...new Set(chunk.map((t: any) => t.npi))];
-      const existing = await db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis));
-      const existingMap: Record<string, any[]> = {};
-      for (const e of existing) {
-        if (!existingMap[e.npi!]) existingMap[e.npi!] = [];
-        existingMap[e.npi!].push(e);
-      }
-      const toCreate: any[] = [];
-      for (const tax of chunk) {
-        const exTaxes = existingMap[tax.npi] || [];
-        const match = exTaxes.find((ex: any) => (ex.taxonomy_code || "").trim() === (tax.taxonomy_code || "").trim());
-        if (!match) {
-          toCreate.push(tax);
-        } else {
-          skipped++;
-        }
-      }
-      if (toCreate.length > 0) {
-        try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
-        catch (bulkErr: any) {
-          for (const tax of toCreate) {
-            try { await db.insert(providerTaxonomies).values(tax); imported++; }
-            catch (err: any) { skipped++; }
-          }
+    const npis = [...new Set(chunk.map((t: any) => t.npi).filter(Boolean))];
+    let existingKeys = new Set<string>();
+    if (npis.length > 0) {
+      const existing = await safeCrawlerQuery(
+        () => db.select().from(providerTaxonomies).where(inArray(providerTaxonomies.npi, npis as string[])),
+        [] as any[], "lookup existing taxonomies",
+      );
+      existingKeys = new Set(existing.map(taxonomyKey));
+    }
+    const seen = new Set<string>();
+    const toCreate: any[] = [];
+    for (const tax of chunk) {
+      const key = taxonomyKey(tax);
+      if (existingKeys.has(key) || seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      toCreate.push(tax);
+    }
+    if (toCreate.length > 0) {
+      try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
+      catch (bulkErr: any) {
+        for (const tax of toCreate) {
+          try { await db.insert(providerTaxonomies).values(tax); imported++; }
+          catch (err: any) { skipped++; }
         }
       }
     }

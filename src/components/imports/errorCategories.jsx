@@ -168,6 +168,25 @@ export const ERROR_CATEGORIES = {
   },
 };
 
+// Per-category handling metadata: whether the error is worth automatically
+// retrying, the recommended action, and a severity. Merged onto the category
+// objects above so both the UI and the helper functions below share one source.
+const CATEGORY_META = {
+  invalid_npi: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  empty_row: { retryable: false, suggested_action: 'skip', severity: 'low' },
+  missing_required: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  formatting_error: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  out_of_range: { retryable: false, suggested_action: 'fix_data', severity: 'medium' },
+  duplicate_record: { retryable: false, suggested_action: 'skip', severity: 'low' },
+  timeout_stall: { retryable: true, suggested_action: 'retry', severity: 'medium' },
+  network_api: { retryable: true, suggested_action: 'retry_later', severity: 'high' },
+  manual_action: { retryable: false, suggested_action: 'manual', severity: 'low' },
+  other: { retryable: false, suggested_action: 'manual', severity: 'low' },
+};
+for (const [key, meta] of Object.entries(CATEGORY_META)) {
+  if (ERROR_CATEGORIES[key]) Object.assign(ERROR_CATEGORIES[key], meta);
+}
+
 export function categorizeError(message) {
   if (!message) return 'other';
   const lower = message.toLowerCase();
@@ -190,6 +209,21 @@ export function categorizeError(message) {
     if (config && config.keywords.some(kw => lower.includes(kw.toLowerCase()))) return key;
   }
   return 'other';
+}
+
+// Whether an error message's category is worth retrying automatically.
+export function isErrorRetryable(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.retryable === true;
+}
+
+// Recommended action for an error message: retry | retry_later | fix_data | skip | manual.
+export function suggestedActionFor(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.suggested_action || 'manual';
+}
+
+// Severity for an error message: low | medium | high.
+export function severityFor(message) {
+  return ERROR_CATEGORIES[categorizeError(message)]?.severity || 'low';
 }
 
 // Extract the best message string from an error object (supports both .message and .detail)
