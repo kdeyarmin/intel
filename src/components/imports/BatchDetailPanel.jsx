@@ -257,6 +257,9 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
 
   if (!batch) return null;
 
+  const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
+  const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
+
   return (
     <div className="space-y-5 mt-2">
       {/* Header */}
