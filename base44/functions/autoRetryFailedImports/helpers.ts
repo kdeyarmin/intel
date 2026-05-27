@@ -7,10 +7,10 @@
 // ImportBatch rows, classifies the failure, and re-dispatches the import via
 // triggerImport when the error looks transient.
 //
-// Note: the keyword list here is derived from the `retryable: true` categories in
-// src/components/imports/errorCategories.jsx (network_api, timeout_stall), but is
-// intentionally stricter to avoid auto-retrying ambiguous failures. Tests assert
-// representative overlap between the worker and frontend classifications.
+// Note: the keyword list here mirrors the `retryable: true` categories in
+// src/components/imports/errorCategories.jsx (network_api, timeout_stall).
+// The two lists must stay in sync; tests assert the overlap.
+
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
@@ -19,7 +19,7 @@ export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 // retryable: true categories in errorCategories.jsx (timeout_stall, network_api).
 export const RETRYABLE_KEYWORDS = [
     'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
-    'rate limit', 'rate-limit', 'rate_limit',
+    'http 5', 'rate limit', 'rate-limit', 'rate_limit',
     'fetch', 'network', 'connection', 'econnrefused', 'socket',
 ];
 
@@ -27,7 +27,7 @@ export const RETRYABLE_KEYWORDS = [
 // context, so unrelated numeric references like "row 500" do not trigger
 // auto-retries.
 export const RETRYABLE_STATUS_CODE_PATTERN =
-    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?|statuscode)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
