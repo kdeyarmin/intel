@@ -1,17 +1,12 @@
 // @vitest-environment jsdom
 /**
- * Tests for OrgAffiliatedProvidersCard reflecting the PR change that removed
- * the blank-address guard.
+ * Tests for OrgAffiliatedProvidersCard.
  *
- * OLD behaviour (before this PR):
- *   - Org locations with a blank address_1 were filtered out of orgAddresses.
- *   - If all org locations had blank address_1, affiliatedNPIs returned [] immediately.
- *   - Matching used Set.has().
- *
- * NEW behaviour (this PR):
- *   - ALL org locations are included (no address_1 filter).
- *   - Blank org addresses DO match other providers with blank address_1.
- *   - Matching uses Array.includes().
+ * Component behavior:
+ *   - Org locations with falsy address_1 are filtered out via locations.filter(l => l.address_1).
+ *   - If all org locations have blank/null address_1, affiliatedNPIs returns [] immediately.
+ *   - Only non-blank addresses are used for matching.
+ *   - Matching uses Set.has() for performance.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -205,19 +200,17 @@ describe('OrgAffiliatedProvidersCard', () => {
     expect(screen.getByText('B, Bob')).toBeInTheDocument();
   });
 
-  // ─── NEW blank-address behaviour (PR change) ───────────────────────────────
+  // ─── blank-address behavior ────────────────────────────────────────────────
 
-  it('blank org address_1 matches a provider that also has a blank address_1 (guard removed)', () => {
-    // PR removed the filter that excluded blank addresses.
-    // A blank address on both sides now produces the key "|Boston|MA" which matches.
-    renderCard({
+  it('blank org address_1 produces no affiliates (filtered out by address_1 guard)', () => {
+    // The component filters out locations with blank address_1, so no matching occurs.
+    const { container } = renderCard({
       npi: ORG_NPI,
       locations: [makeLocation(ORG_NPI, '', 'Boston', 'MA')],
       allProviders: [makeProvider('2222222222')],
       allLocations: [makeLocation('2222222222', '', 'Boston', 'MA')],
     });
-    expect(screen.getByText('Affiliated Providers')).toBeInTheDocument();
-    expect(screen.getByText('2222222222')).toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
   });
 
   it('blank org address_1 does NOT match a provider at a real address in the same city/state', () => {
@@ -231,15 +224,15 @@ describe('OrgAffiliatedProvidersCard', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('null address_1 is treated the same as blank (both yield "null|city|state" key pattern)', () => {
-    // Both sides have null address_1, so keys are identical and they match.
-    renderCard({
+  it('null address_1 produces no affiliates (filtered out by address_1 guard)', () => {
+    // The component filters out locations with falsy address_1 (including null).
+    const { container } = renderCard({
       npi: ORG_NPI,
       locations: [makeLocation(ORG_NPI, null, 'Boston', 'MA')],
       allProviders: [makeProvider('2222222222')],
       allLocations: [makeLocation('2222222222', null, 'Boston', 'MA')],
     });
-    expect(screen.getByText('Affiliated Providers')).toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
   });
 
   it('real-address org does not match a blank-address provider', () => {
