@@ -755,7 +755,14 @@ async function fetchExistingByPrimary(
   for (let i = 0; i < values.length; i += LOOKUP_PRIMARY_BATCH_SIZE) {
     const slice = values.slice(i, i + LOOKUP_PRIMARY_BATCH_SIZE);
     const conds = [inArray((table as any)[primaryCol], slice)];
-    for (const s of scope) conds.push(eq((table as any)[s.col], s.value));
+    for (const s of scope) {
+      const col = (table as any)[s.col];
+      if (s.col === "data_year") {
+        conds.push(sql`TRIM(${col}) = ${String(s.value).trim()}`);
+      } else {
+        conds.push(eq(col, s.value));
+      }
+    }
     const rows = await safeImportQuery(
       () => db.select().from(table).where(and(...conds)).limit(20000),
       [] as any[], `lookup existing ${primaryCol}`,

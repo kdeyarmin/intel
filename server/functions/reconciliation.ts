@@ -152,8 +152,10 @@ export async function handleReconcileProviderData(payload: any) {
     const rows = sampleProviders;
     // Fewer rows than requested means we reached the end of the table — the next
     // sweep should wrap back to the beginning.
+    const lastRowId = rows[rows.length - 1]?.id;
+    const noRows = rows.length === 0;
     const reachedEnd = rows.length < batchSize;
-    const lastReconciledId = reachedEnd ? 0 : (rows[rows.length - 1]?.id ?? startCursor);
+    const lastReconciledId = reachedEnd ? 0 : (lastRowId ?? startCursor);
 
     let matched = 0;
     let discrepanciesFound = 0;
@@ -225,19 +227,23 @@ export async function handleReconcileProviderData(payload: any) {
       results: {
         last_reconciled_id: lastReconciledId,
         range_start: startCursor,
-        range_end: rows[rows.length - 1]?.id ?? startCursor,
+        range_end: lastRowId ?? startCursor,
         reached_end: reachedEnd,
       },
       completed_at: new Date(),
     }).where(eq(reconciliationJobs.id, job.id));
 
-    const coverageNote = reachedEnd
-      ? "Reached the end of the provider table; the next run wraps to the beginning."
-      : `Next run resumes after provider id ${lastReconciledId}.`;
+    const coverageNote = noRows
+      ? `No providers found after id ${startCursor}; the next run wraps to the beginning.`
+      : reachedEnd
+        ? "Reached the end of the provider table; the next run wraps to the beginning."
+        : `Next run resumes after provider id ${lastReconciledId}.`;
 
     return {
       success: true,
-      message: `Reconciliation batch done: ${totalChecked} providers checked (ids ${startCursor + 1}–${rows[rows.length - 1]?.id ?? startCursor}), ${matched} matched, ${discrepanciesFound} discrepancies. ${coverageNote}`,
+      message: noRows
+        ? `Reconciliation batch done: ${totalChecked} providers checked, ${matched} matched, ${discrepanciesFound} discrepancies. ${coverageNote}`
+        : `Reconciliation batch done: ${totalChecked} providers checked (ids ${startCursor + 1}–${lastRowId ?? startCursor}), ${matched} matched, ${discrepanciesFound} discrepancies. ${coverageNote}`,
       job_id: job.id,
       total_providers: totalChecked,
       matched,

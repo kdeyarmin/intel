@@ -23,16 +23,22 @@ function sweep(now: number) {
  * `max` actions within `windowMs`.
  */
 export function consumeToken(key: string, max: number, windowMs: number): boolean {
+  return consumeTokenState(key, max, windowMs).allowed;
+}
+
+function consumeTokenState(key: string, max: number, windowMs: number): { allowed: boolean; retryMs: number } {
   const now = Date.now();
   sweep(now);
   const existing = buckets.get(key);
   if (!existing || existing.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
+    return { allowed: true, retryMs: 0 };
   }
-  if (existing.count >= max) return false;
+  if (existing.count >= max) {
+    return { allowed: false, retryMs: Math.max(existing.resetAt - now, 0) };
+  }
   existing.count++;
-  return true;
+  return { allowed: true, retryMs: 0 };
 }
 
 function clientKey(req: AuthRequest, scope: string): string {
@@ -51,8 +57,8 @@ function clientKey(req: AuthRequest, scope: string): string {
 export function rateLimit(scope: string, max: number, windowMs: number) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     const key = clientKey(req, scope);
-    if (!consumeToken(key, max, windowMs)) {
-      const retryMs = buckets.get(key)?.resetAt ? buckets.get(key)!.resetAt - Date.now() : windowMs;
+    const { allowed, retryMs } = consumeTokenState(key, max, windowMs);
+    if (!allowed) {
       res.setHeader("Retry-After", Math.ceil(Math.max(retryMs, 0) / 1000));
       return res.status(429).json({
         message: "Too many requests",
