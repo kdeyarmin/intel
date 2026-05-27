@@ -13,6 +13,22 @@ const MAX_EXEC_MS = 45_000;
 // crashes mid-run, the schedule becomes eligible again after this long.
 const CLAIM_LEASE_MS = 10 * 60 * 1000;
 
+// Maintenance workers fanned out at the end of every schedule cycle. Each is
+// idempotent and self-throttling (its own backoff window / cap), so calling
+// them every cycle is safe and bounds maintenance latency to one cron tick.
+//
+// Why fan out from here: only a few of these are wired to platform-side cron
+// today and that wiring isn't visible in the repo, so a misconfigured cron
+// silently kills maintenance. Driving them from runScheduledImports — which
+// IS reliably scheduled — makes the wiring grep-able and means a single cron
+// outage is the only failure mode.
+const MAINTENANCE_WORKERS = [
+    'autoResumePausedImports',  // resumes paused batches with a saved offset
+    'autoRetryFailedImports',   // retries failed batches whose error is transient
+    'manageCrawlerRetries',     // NPPES per-state retry loop
+    'cancelStalledImports',     // marks long-running 'processing' batches as failed
+];
+
 const US_STATES = [
     'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
     'KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
@@ -179,12 +195,90 @@ Deno.serve(async (req) => {
             processed++;
         }
 
+        // Fan out to maintenance workers in parallel. We await them with a
+        // hard time budget so a slow worker can't push the schedule loop past
+        // its execution limit; any worker still in flight when we time out
+        // will continue running on the platform side, just unobserved here.
+        //
+        // We pre-populate the worker map with `ok: false, error: 'timeout'`
+        // so a worker that doesn't return inside the budget is recorded as
+        // a timeout (not silently dropped) and the heartbeat reliably
+        // describes every expected worker.
+        type MaintenanceWorkerOutcome = { worker: string; ok: boolean; error?: string };
+        // Worker error messages are capped before storing to avoid bloating the
+        // heartbeat payload with unexpectedly large error strings.
+        const MAX_ERROR_MSG_LENGTH = 200;
+        const maintenanceBudgetMs = Math.max(0, MAX_EXEC_MS - (Date.now() - startTime) - 2_000);
+        const maintenanceMap = new Map<string, MaintenanceWorkerOutcome>();
+        for (const worker of MAINTENANCE_WORKERS) {
+            maintenanceMap.set(worker, { worker, ok: false, error: 'timeout' });
+        }
+        let maintenanceSkipped: string | null = null;
+
+        if (maintenanceBudgetMs > 1_000) {
+            const invocations = MAINTENANCE_WORKERS.map(async (worker) => {
+                try {
+                    const res = await base44.asServiceRole.functions.invoke(worker, {});
+                    // Several maintenance workers return HTTP 200 with an
+                    // `errors` array instead of throwing on per-batch failures.
+                    // Inspect the payload so the heartbeat reflects real outcomes.
+                    const data = res?.data ?? res;
+                    const innerErrors = Array.isArray(data?.errors) ? data.errors as unknown[] : [];
+                    if (typeof data?.error === 'string' && data.error) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: data.error.substring(0, MAX_ERROR_MSG_LENGTH) });
+                    } else if (innerErrors.length > 0) {
+                        maintenanceMap.set(worker, { worker, ok: false, error: `${innerErrors.length} inner error(s)` });
+                    } else {
+                        maintenanceMap.set(worker, { worker, ok: true });
+                    }
+                } catch (err) {
+                    maintenanceMap.set(worker, { worker, ok: false, error: err.message?.substring(0, MAX_ERROR_MSG_LENGTH) });
+                }
+            });
+            let timeoutId: ReturnType<typeof setTimeout> | undefined;
+            const timeoutPromise = new Promise<void>((resolve) => {
+                timeoutId = setTimeout(resolve, maintenanceBudgetMs);
+            });
+            try {
+                await Promise.race([
+                    Promise.all(invocations),
+                    timeoutPromise,
+                ]);
+            } finally {
+                if (timeoutId !== undefined) clearTimeout(timeoutId);
+            }
+        } else {
+            maintenanceSkipped = `budget_exhausted (${maintenanceBudgetMs}ms remaining)`;
+        }
+
+        const maintenance = Array.from(maintenanceMap.values());
+
+        // Always persist a heartbeat — even when maintenance was skipped due to
+        // budget pressure — so the UI can distinguish "cron stopped" from
+        // "schedule loop ran but maintenance got squeezed out." Best-effort:
+        // a failure here shouldn't break the schedule response.
+        try {
+            await base44.asServiceRole.entities.AuditEvent.create({
+                event_type: 'maintenance_fanout',
+                user_email: 'system',
+                details: {
+                    workers: maintenance,
+                    succeeded: maintenance.filter(m => m.ok).length,
+                    failed: maintenance.filter(m => !m.ok).length,
+                    skipped_reason: maintenanceSkipped,
+                    budget_ms: maintenanceBudgetMs,
+                },
+                timestamp: new Date().toISOString(),
+            });
+        } catch (_e) { /* heartbeat is best-effort */ }
+
         return Response.json({
             success: true,
             results,
             skipped,
             checked: schedules.length,
             processed,
+            maintenance,
         });
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 });

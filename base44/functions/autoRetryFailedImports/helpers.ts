@@ -36,22 +36,30 @@ export function isRetryableErrorMessage(msg: string | null | undefined): boolean
         || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
 }
 
+function normalizeErrorText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
-// back to the most recent error_samples entry. Different importers persist the
-// error string under different keys (`detail` in Medicare imports,
-// `message` in autoImportCMSData) — accept either so the worker doesn't miss
-// transient failures whose error lives in the "wrong" field.
+// back to the most recent error_samples entry's `detail` or `message`.
+// Different importers persist the error string under different keys (`detail` in
+// Medicare imports, `message` in autoImportCMSData) — accept either so the worker
+// doesn't miss transient failures whose error lives in the "wrong" field.
 export function extractErrorMessage(batch: Record<string, unknown>): string {
-    if (typeof batch.cancel_reason === 'string' && batch.cancel_reason.length > 0) {
-        return batch.cancel_reason;
+    const cancelReason = normalizeErrorText(batch.cancel_reason);
+    if (cancelReason) {
+        return cancelReason;
     }
     const samples = batch.error_samples;
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
         if (last) {
-            if (typeof last.detail === 'string' && last.detail.length > 0) return last.detail;
-            if (typeof last.message === 'string' && last.message.length > 0) return last.message;
+            const detail = normalizeErrorText(last.detail);
+            if (detail) return detail;
+
+            const message = normalizeErrorText(last.message);
+            if (message) return message;
         }
     }
     return '';
@@ -133,11 +141,12 @@ export function shouldRetryBatch(
         }
     }
 
-    const createdIso = (batch.created_date as string | undefined)
-        ?? (batch.updated_date as string | undefined);
-    if (createdIso) {
-        const created = new Date(createdIso);
-        if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+    const failureIso = (batch.completed_at as string | undefined)
+        ?? (batch.updated_date as string | undefined)
+        ?? (batch.created_date as string | undefined);
+    if (failureIso) {
+        const failureAt = new Date(failureIso);
+        if (!isNaN(failureAt.getTime()) && now.getTime() - failureAt.getTime() > RETRY_LOOKBACK_MS) {
             return { eligible: false, reason: 'too_old' };
         }
     }
