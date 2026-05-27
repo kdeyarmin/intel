@@ -282,11 +282,10 @@ export default function ProviderDetail() {
           {cmsData?.mips?.has_data && (
             <MIPSPerformanceCard mipsData={cmsData.mips} />
           )}
-          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data || cmsData?.network?.has_data) && (
+          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data) && (
             <ProviderCMSDataCard
               clinicianData={cmsData.clinician}
               utilizationCmsData={cmsData.utilization_cms}
-              networkData={cmsData.network}
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,9 +319,6 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="network" className="space-y-6">
-          {cmsData?.linked_facilities?.length > 0 && (
-            <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
-          )}
           {cmsData?.network?.has_data && (
             <ProviderCMSDataCard
               networkData={cmsData.network}
