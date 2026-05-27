@@ -40,26 +40,27 @@ export default function AdvancedAnalytics() {
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['aaRef'],
     queryFn: async () => {
+      // cms_referrals holds CMS "Order & Referring" eligibility rows whose
+      // only real volume column is total_referrals (null unless a genuine
+      // referral-counts dataset is loaded). The HHA/HOSPICE/DME raw_data
+      // values are Y/N eligibility flags, not referral counts, so they are
+      // intentionally not surfaced here as "referral" metrics.
       const rows = await base44.entities.CMSReferral.list('-created_date', 500);
       return rows.map(r => {
         const rd = r.raw_data || {};
-        const rawTotalReferrals = Number(
-          rd.total_referrals ??
-          rd.total_referral_count ??
-          rd.TOTAL_REFERRALS ??
-          rd.TOTAL_REFERRAL_COUNT
+        // Prefer the real total_referrals column. Fall back to a count in
+        // raw_data only if a genuine referral-counts dataset stored one
+        // there; otherwise 0 — never a fabricated default.
+        const rawCount = Number(
+          rd.total_referrals ?? rd.total_referral_count ?? rd.TOTAL_REFERRALS ?? rd.TOTAL_REFERRAL_COUNT
         );
-        const fallbackTotalReferrals = Number.isFinite(rawTotalReferrals) ? rawTotalReferrals : 1;
-        const normalizedTotalReferrals = Number(r.total_referrals);
+        const realCount = Number(r.total_referrals);
         return {
           ...r,
           year: r.data_year,
-          total_referrals: r.total_referrals == null
-            ? fallbackTotalReferrals
-            : (Number.isFinite(normalizedTotalReferrals) ? normalizedTotalReferrals : fallbackTotalReferrals),
-          home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
-          hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
-          dme_referrals: rd.DME === 'Y' ? 1 : 0,
+          total_referrals: Number.isFinite(realCount)
+            ? realCount
+            : (Number.isFinite(rawCount) ? rawCount : 0),
         };
       });
     },

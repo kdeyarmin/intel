@@ -18,9 +18,6 @@ const METRIC_OPTIONS = {
   ],
   referrals: [
     { key: 'total_referrals', label: 'Total Referrals' },
-    { key: 'home_health_referrals', label: 'Home Health' },
-    { key: 'hospice_referrals', label: 'Hospice' },
-    { key: 'dme_referrals', label: 'DME' },
   ],
 };
 
