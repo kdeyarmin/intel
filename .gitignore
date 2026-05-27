@@ -46,3 +46,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Runtime upload destination (Multer writes here) — keep the dir, ignore contents.
+uploads/*
+!uploads/.gitkeep
+
+# Replit Agent chat attachments (screenshots / pasted text) — not part of the app.
+attached_assets/
