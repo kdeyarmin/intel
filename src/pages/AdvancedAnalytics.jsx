@@ -43,10 +43,20 @@ export default function AdvancedAnalytics() {
       const rows = await base44.entities.CMSReferral.list('-created_date', 500);
       return rows.map(r => {
         const rd = r.raw_data || {};
+        const rawTotalReferrals = Number(
+          rd.total_referrals ??
+          rd.total_referral_count ??
+          rd.TOTAL_REFERRALS ??
+          rd.TOTAL_REFERRAL_COUNT
+        );
+        const fallbackTotalReferrals = Number.isFinite(rawTotalReferrals) ? rawTotalReferrals : 1;
+        const normalizedTotalReferrals = Number(r.total_referrals);
         return {
           ...r,
           year: r.data_year,
-          total_referrals: r.total_referrals || 0,
+          total_referrals: r.total_referrals == null
+            ? fallbackTotalReferrals
+            : (Number.isFinite(normalizedTotalReferrals) ? normalizedTotalReferrals : fallbackTotalReferrals),
           home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
           hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
           dme_referrals: rd.DME === 'Y' ? 1 : 0,

@@ -269,15 +269,25 @@ describe('TrendAnalysisPanel – AdvancedAnalytics referral data mapping', () =>
    */
   type RawReferral = {
     data_year?: number;
-    total_referrals?: number;
+    total_referrals?: number | string | null;
     raw_data?: Record<string, string>;
   };
 
   function mapReferralRow(r: RawReferral) {
     const rd = r.raw_data || {};
+    const rawTotalReferrals = Number(
+      rd.total_referrals ??
+      rd.total_referral_count ??
+      rd.TOTAL_REFERRALS ??
+      rd.TOTAL_REFERRAL_COUNT
+    );
+    const fallbackTotalReferrals = Number.isFinite(rawTotalReferrals) ? rawTotalReferrals : 1;
+    const normalizedTotalReferrals = Number(r.total_referrals);
     return {
       year: r.data_year,
-      total_referrals: r.total_referrals || 0,
+      total_referrals: r.total_referrals == null
+        ? fallbackTotalReferrals
+        : (Number.isFinite(normalizedTotalReferrals) ? normalizedTotalReferrals : fallbackTotalReferrals),
       home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
       hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
       dme_referrals: rd.DME === 'Y' ? 1 : 0,
@@ -289,8 +299,18 @@ describe('TrendAnalysisPanel – AdvancedAnalytics referral data mapping', () =>
     expect(row.total_referrals).toBe(42);
   });
 
-  it('defaults total_referrals to 0 when absent', () => {
+  it('falls back to row count when total_referrals is absent', () => {
     const row = mapReferralRow({ data_year: 2022 });
+    expect(row.total_referrals).toBe(1);
+  });
+
+  it('uses raw_data aggregate count when total_referrals is absent', () => {
+    const row = mapReferralRow({ raw_data: { total_referral_count: '7' } });
+    expect(row.total_referrals).toBe(7);
+  });
+
+  it('preserves explicit zero total_referrals', () => {
+    const row = mapReferralRow({ data_year: 2022, total_referrals: 0 });
     expect(row.total_referrals).toBe(0);
   });
 
