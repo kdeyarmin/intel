@@ -3,6 +3,7 @@ import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacili
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+import { mapCMSUtilizationRow } from "./mapCMSUtilizationRow";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -428,19 +429,6 @@ function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
     data_year: String(year),
     raw_data: row,
     import_batch_id: String(batchId),
-  };
-}
-
-function mapCMSUtilizationRow(row: any, year: number, batchId: number) {
-  return {
-    npi: row.Rndrng_NPI || row.npi || null,
-    service_type: row.Rndrng_Prvdr_Type || row.HCPCS_Desc || null,
-    total_services: row.Tot_Srvcs || null,
-    total_unique_benes: row.Tot_Benes || null,
-    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg || null,
-    total_medicare_payment_amt: row.Avg_Mdcr_Pymt_Amt || null,
-    data_year: String(year),
-    raw_data: row,
   };
 }
 
