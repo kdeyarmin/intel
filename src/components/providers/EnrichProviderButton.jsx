@@ -138,26 +138,32 @@ Search the NPI registry and healthcare directories to find accurate data for the
     setProgress({ current: 0, total });
     const allResults = [];
 
-    for (let i = 0; i < providers.length; i++) {
-      try {
-        const result = await enrichProvider(providers[i]);
-        allResults.push(result);
-      } catch (err) {
-        allResults.push({
-          npi: providers[i].npi,
-          name: providers[i].first_name || providers[i].organization_name || providers[i].npi,
-          status: 'error',
-          message: err.message,
-        });
+    try {
+      for (let i = 0; i < providers.length; i++) {
+        try {
+          const result = await enrichProvider(providers[i]);
+          allResults.push(result);
+        } catch (err) {
+          allResults.push({
+            npi: providers[i].npi,
+            name: providers[i].first_name || providers[i].organization_name || providers[i].npi,
+            status: 'error',
+            message: err.message,
+          });
+        }
+        setProgress({ current: i + 1, total });
       }
-      setProgress({ current: i + 1, total });
-    }
 
-    setResults(allResults);
-    setLoading(false);
-    const enrichedCount = allResults.filter(r => r.status === 'enriched').length;
-    toast.success(`Enriched ${enrichedCount} of ${total} providers`);
-    if (onComplete) onComplete();
+      setResults(allResults);
+      const enrichedCount = allResults.filter(r => r.status === 'enriched').length;
+      toast.success(`Enriched ${enrichedCount} of ${total} providers`);
+      if (onComplete) onComplete();
+    } catch (err) {
+      console.error('Enrichment batch failed:', err);
+      toast.error('Enrichment process failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statusIcons = {
@@ -183,13 +189,13 @@ Search the NPI registry and healthcare directories to find accurate data for the
           </DialogHeader>
 
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-400">
               AI will search public healthcare directories and the NPI registry to find missing details
               for <strong>{providers.length}</strong> selected provider{providers.length !== 1 ? 's' : ''}.
             </p>
 
-            <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 space-y-1">
-              <p className="font-medium text-slate-700">Fields that will be enriched:</p>
+            <div className="text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 space-y-1">
+              <p className="font-medium text-slate-300">Fields that will be enriched:</p>
               <p>• Credential (MD, DO, NP, etc.)</p>
               <p>• Organization name</p>
               <p>• Primary specialty</p>
@@ -216,16 +222,16 @@ Search the NPI registry and healthcare directories to find accurate data for the
               <div className="space-y-2">
                 {/* Summary */}
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center p-2 rounded-lg bg-green-50">
-                    <p className="text-lg font-bold text-green-700">{results.filter(r => r.status === 'enriched').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-green-900/20">
+                    <p className="text-lg font-bold text-green-400">{results.filter(r => r.status === 'enriched').length}</p>
                     <p className="text-[9px] text-green-600">Enriched</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-amber-50">
-                    <p className="text-lg font-bold text-amber-700">{results.filter(r => r.status === 'skipped' || r.status === 'no_new_data').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-amber-900/20">
+                    <p className="text-lg font-bold text-amber-400">{results.filter(r => r.status === 'skipped' || r.status === 'no_new_data').length}</p>
                     <p className="text-[9px] text-amber-600">No Changes</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-red-50">
-                    <p className="text-lg font-bold text-red-700">{results.filter(r => r.status === 'error').length}</p>
+                  <div className="text-center p-2 rounded-lg bg-red-900/20">
+                    <p className="text-lg font-bold text-red-400">{results.filter(r => r.status === 'error').length}</p>
                     <p className="text-[9px] text-red-600">Errors</p>
                   </div>
                 </div>
@@ -233,15 +239,15 @@ Search the NPI registry and healthcare directories to find accurate data for the
                 {/* Details */}
                 <div className="max-h-[250px] overflow-y-auto space-y-1">
                   {results.map((r, i) => (
-                    <div key={i} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg">
+                    <div key={i} className="flex items-start gap-2 p-2 bg-slate-800/60 rounded-lg">
                       {statusIcons[r.status] || statusIcons.error}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-slate-800 truncate">{r.name}</p>
+                        <p className="text-xs font-medium text-slate-300 truncate">{r.name}</p>
                         <p className="text-[10px] text-slate-400 font-mono">{r.npi}</p>
                         {r.fieldsUpdated?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {r.fieldsUpdated.map((f, j) => (
-                              <Badge key={j} className="bg-green-100 text-green-700 text-[8px]">{f}</Badge>
+                              <Badge key={j} className="bg-green-900/30 text-green-400 text-[8px]">{f}</Badge>
                             ))}
                           </div>
                         )}

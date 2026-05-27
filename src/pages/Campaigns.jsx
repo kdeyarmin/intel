@@ -70,9 +70,15 @@ export default function Campaigns() {
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this campaign?')) return;
-    await base44.entities.Campaign.delete(id);
-    queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
-    if (selectedCampaign?.id === id) setSelectedCampaign(null);
+    try {
+      await base44.entities.Campaign.delete(id);
+      queryClient.invalidateQueries({ queryKey: ['campaigns_page'] });
+      if (selectedCampaign?.id === id) setSelectedCampaign(null);
+    } catch (err) {
+      console.error('Failed to delete campaign:', err);
+      const { toast } = await import('sonner').then(m => m);
+      toast.error('Failed to delete campaign: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleCreated = () => {
@@ -162,7 +168,7 @@ export default function Campaigns() {
       ) : filtered.length === 0 ? (
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-12 text-center">
-            <Megaphone className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+            <Megaphone className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-400 mb-1">No campaigns found</p>
             <p className="text-xs text-slate-500">Create your first campaign to start tracking outreach performance</p>
           </CardContent>

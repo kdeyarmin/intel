@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Handshake, Building2, MapPin, Megaphone, Users, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../../utils';
+import { toast } from 'sonner';
 
 const PRIORITY_STYLES = {
-  critical: 'bg-red-500/15 text-red-400 border-red-500/30',
-  high: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  medium: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  critical: 'bg-red-900/15 text-red-400 border-red-500/30',
+  high: 'bg-amber-900/15 text-amber-400 border-amber-500/30',
+  medium: 'bg-blue-900/15 text-blue-400 border-blue-500/30',
   low: 'bg-slate-700/50 text-slate-400 border-slate-600',
 };
 
@@ -28,7 +29,7 @@ export default function StrategicPartnerFinder({ nodes = [], edges = [], locatio
 
   const findPartners = async () => {
     setLoading(true);
-
+    try {
     // Build network snapshot
     const npiState = {};
     locations.forEach(l => { if (l.npi && l.state) npiState[l.npi] = l.state; });
@@ -115,7 +116,12 @@ Be very specific about locations, specialties, and organizational types.`,
     });
 
     setPartners(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI strategic partner finder failed:', err);
+      toast.error('Operation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (nodes.length === 0) return null;
@@ -195,7 +201,7 @@ Be very specific about locations, specialties, and organizational types.`,
                     {p.populations_served?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {p.populations_served.map((pop, j) => (
-                          <Badge key={j} className="bg-violet-500/10 text-violet-400 text-[8px] border border-violet-500/20">{pop}</Badge>
+                          <Badge key={j} className="bg-violet-900/10 text-violet-400 text-[8px] border border-violet-500/20">{pop}</Badge>
                         ))}
                       </div>
                     )}

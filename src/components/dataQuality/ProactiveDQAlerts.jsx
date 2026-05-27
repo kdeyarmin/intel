@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ShieldAlert, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
 
 const SEVERITY_STYLES = {
-  critical: 'bg-red-500/15 text-red-400 border-red-500/30',
-  high: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  medium: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  critical: 'bg-red-900/15 text-red-400 border-red-500/30',
+  high: 'bg-amber-900/15 text-amber-400 border-amber-500/30',
+  medium: 'bg-blue-900/15 text-blue-400 border-blue-500/30',
   low: 'bg-slate-700/50 text-slate-400 border-slate-600',
 };
 
@@ -38,20 +38,21 @@ export default function ProactiveDQAlerts() {
   const runPrediction = async () => {
     setLoading(true);
 
+    try {
     const scanHistory = scans.slice(0, 10).map(s => ({
       date: s.created_date,
-      scores: s.scores,
-      alertCount: s.alert_count || 0,
+      scores: s.results_summary?.scores || {},
+      alertCount: s.results_summary?.alerts_generated || 0,
     }));
 
     const alertBreakdown = {
-      open: alerts.filter(a => a.status === 'open').length,
+      open: alerts.filter(a => a.status === 'new' || a.status === 'open').length,
       critical: alerts.filter(a => a.severity === 'critical').length,
       high: alerts.filter(a => a.severity === 'high').length,
       byCategory: {},
     };
-    alerts.filter(a => a.status === 'open').forEach(a => {
-      const cat = a.category || 'other';
+    alerts.filter(a => a.status === 'new' || a.status === 'open').forEach(a => {
+      const cat = a.alert_type || 'other';
       alertBreakdown.byCategory[cat] = (alertBreakdown.byCategory[cat] || 0) + 1;
     });
 
@@ -117,7 +118,11 @@ Be specific and actionable. Reference actual numbers from the data.`,
     });
 
     setPredictions(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('DQ prediction failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const RISK_COLORS = { low: 'text-emerald-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-red-400' };
@@ -215,7 +220,7 @@ Be specific and actionable. Reference actual numbers from the data.`,
                         </div>
                       </div>
                       <p className="text-[11px] text-slate-300 ml-5 mb-1">{alert.evidence}</p>
-                      <div className="ml-5 bg-emerald-500/10 rounded px-2 py-1 mt-1.5">
+                      <div className="ml-5 bg-emerald-900/10 rounded px-2 py-1 mt-1.5">
                         <p className="text-[10px] text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" /> {alert.preventative_action}
                         </p>
@@ -227,7 +232,7 @@ Be specific and actionable. Reference actual numbers from the data.`,
 
               {/* Immediate actions */}
               {predictions.immediate_actions?.length > 0 && (
-                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
+                <div className="bg-cyan-900/10 border border-cyan-500/20 rounded-lg p-3">
                   <p className="text-xs font-medium text-cyan-400 mb-2 flex items-center gap-1">
                     <Activity className="w-3.5 h-3.5" /> Recommended Immediate Actions
                   </p>

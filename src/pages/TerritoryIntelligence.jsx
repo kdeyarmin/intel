@@ -31,82 +31,36 @@ export default function TerritoryIntelligence() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [activeTab, setActiveTab] = useState('map');
 
-  const { data: providers = [], isLoading: loadingProviders } = useQuery({
-    queryKey: ['tiProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 500),
+  const { data: territoryData, isLoading } = useQuery({
+    queryKey: ['tiTerritoryData', filters.stateFilter],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getTerritoryData', { state: filters.stateFilter || 'PA' });
+      return result.data || result;
+    },
     staleTime: 120000,
+    retry: 2,
   });
 
-  const { data: locations = [], isLoading: loadingLocations } = useQuery({
-    queryKey: ['tiLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
-    staleTime: 120000,
-  });
-
-  const { data: taxonomies = [], isLoading: loadingTaxonomies } = useQuery({
-    queryKey: ['tiTaxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
-    staleTime: 120000,
-  });
-
-  const { data: scores = [], isLoading: loadingScores } = useQuery({
-    queryKey: ['tiScores'],
-    queryFn: () => base44.entities.LeadScore.list('-created_date', 500),
-    staleTime: 120000,
-  });
-
-  const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
-    queryKey: ['tiUtilizations'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
-    staleTime: 120000,
-  });
-
-  const isLoading = loadingProviders || loadingLocations || loadingTaxonomies || loadingScores || loadingUtil;
-
-  // Enrich and filter providers
   const filteredProviders = useMemo(() => {
-    return providers
-      .map(provider => {
-        const providerLocs = locations.filter(l => l.npi === provider.npi);
-        const primaryLoc = providerLocs.find(l => l.is_primary) || providerLocs[0];
-        const providerTax = taxonomies.filter(t => t.npi === provider.npi);
-        const primaryTax = providerTax.find(t => t.primary_flag) || providerTax[0];
-        const score = scores.find(s => s.npi === provider.npi);
-        const util = utilizations.find(u => u.npi === provider.npi);
-
-        return {
-          provider,
-          location: primaryLoc,
-          taxonomy: primaryTax,
-          score: score?.score || 0,
-          utilization: util,
-        };
-      })
+    if (!territoryData?.providers) return [];
+    return territoryData.providers
+      .map(p => ({
+        provider: { npi: p.npi, first_name: p.firstName, last_name: p.lastName, organization_name: p.organizationName, entity_type: p.entityType },
+        location: { city: p.city, state: p.state, zip: p.zip, address_1: p.address },
+        taxonomy: { taxonomy_description: p.specialty, taxonomy_code: p.taxonomyCode },
+        score: 0,
+        utilization: { total_medicare_payment: p.totalMedicarePayment, total_medicare_beneficiaries: p.totalBeneficiaries, total_services: p.totalServices, data_year: p.dataYear },
+      }))
       .filter(item => {
-        if (!item.location) return false;
-
-        // State filter
-        if (filters.stateFilter !== 'all' && item.location.state !== filters.stateFilter) return false;
-
-        // Specialty
         if (filters.specialty !== 'all') {
           const desc = (item.taxonomy?.taxonomy_description || '').toLowerCase();
           if (!desc.includes(filters.specialty.toLowerCase())) return false;
         }
-
-        // Score range
-        if (filters.minScore && item.score < parseFloat(filters.minScore)) return false;
-        if (filters.maxScore && item.score > parseFloat(filters.maxScore)) return false;
-
-        // Volume
         if (filters.minVolume && (item.utilization?.total_medicare_beneficiaries || 0) < parseFloat(filters.minVolume)) return false;
-
-        // Entity type
         if (filters.entityType !== 'all' && item.provider.entity_type !== filters.entityType) return false;
-
         return true;
       });
-  }, [providers, locations, taxonomies, scores, utilizations, filters]);
+  }, [territoryData, filters]);
 
   // County stats
   const countyStats = useMemo(() => {
@@ -222,6 +176,7 @@ export default function TerritoryIntelligence() {
             onChange={setFilters}
             onReset={() => setFilters(DEFAULT_FILTERS)}
             providerCount={filteredProviders.length}
+            availableStates={territoryData?.availableStates || []}
           />
         </div>
         <div className="lg:col-span-9">
@@ -263,7 +218,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-400" />
               High-Score (70+)
             </CardTitle>
           </CardHeader>
@@ -276,7 +231,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Heart className="h-4 w-4 text-purple-600" />
+              <Heart className="h-4 w-4 text-purple-400" />
               Behavioral Health
             </CardTitle>
           </CardHeader>
@@ -289,7 +244,7 @@ export default function TerritoryIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="h-4 w-4 text-orange-600" />
+              <Users className="h-4 w-4 text-orange-400" />
               Geriatric-Heavy
             </CardTitle>
           </CardHeader>

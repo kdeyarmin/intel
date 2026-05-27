@@ -18,7 +18,6 @@ import AlertTrendChart from '../components/dataQuality/AlertTrendChart';
 import ProactiveAIScanner from '../components/dataQuality/ProactiveAIScanner';
 import DQAssistant from '../components/dataQuality/DQAssistant';
 import ProfileCompletenessChart from '../components/dataQuality/ProfileCompletenessChart';
-import StateQualityBreakdown from '../components/dataQuality/StateQualityBreakdown';
 import DuplicateStatsWidget from '../components/dataQuality/DuplicateStatsWidget';
 import ProactiveDQAlerts from '../components/dataQuality/ProactiveDQAlerts';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
@@ -40,18 +39,6 @@ export default function DataQuality() {
     staleTime: 30000,
   });
 
-  const { data: providers = [] } = useQuery({
-    queryKey: ['dqProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 10000),
-    staleTime: 120000,
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ['dqLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 10000),
-    staleTime: 120000,
-  });
-
   const { data: batches = [] } = useQuery({
     queryKey: ['dqBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
@@ -71,13 +58,14 @@ export default function DataQuality() {
   });
 
   const latestScan = scans[0];
-  const latestScores = latestScan?.scores || { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, overall: 0 };
+  const rs = latestScan?.results_summary || {};
+  const latestScores = rs.scores || { completeness: 0, accuracy: 0, timeliness: 0, consistency: 0, overall: 0 };
 
-  const openAlerts = alerts.filter(a => a.status === 'open');
+  const openAlerts = alerts.filter(a => a.status === 'new' || a.status === 'open');
   const criticalAlerts = openAlerts.filter(a => a.severity === 'critical' || a.severity === 'high');
-  const withSuggestions = alerts.filter(a => a.suggested_value && a.status === 'open');
+  const withSuggestions = alerts.filter(a => a.suggested_value && (a.status === 'new' || a.status === 'open'));
 
-  const latestRuleResults = latestScan?.rule_results || [];
+  const latestRuleResults = rs.rule_results || [];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
@@ -129,7 +117,7 @@ export default function DataQuality() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-amber-500/10 border-amber-500/20">
+        <Card className="bg-amber-900/10 border-amber-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-amber-400">Open Alerts</p>
@@ -138,7 +126,7 @@ export default function DataQuality() {
             <AlertTriangle className="w-8 h-8 text-amber-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-red-500/10 border-red-500/20">
+        <Card className="bg-red-900/10 border-red-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-red-400">Critical / High</p>
@@ -147,7 +135,7 @@ export default function DataQuality() {
             <AlertTriangle className="w-8 h-8 text-red-500/40" />
           </CardContent>
         </Card>
-        <Card className="bg-violet-500/10 border-violet-500/20">
+        <Card className="bg-violet-900/10 border-violet-500/20">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-violet-400">AI Suggestions</p>
@@ -161,12 +149,10 @@ export default function DataQuality() {
       {/* Data Quality Visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <ProfileCompletenessChart providers={providers} />
+          <ProfileCompletenessChart ruleResults={latestRuleResults} />
         </div>
         <DuplicateStatsWidget batches={batches} />
       </div>
-
-      <StateQualityBreakdown providers={providers} locations={locations} />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -175,7 +161,7 @@ export default function DataQuality() {
           <TabsTrigger value="alerts" className="text-xs">
             Alerts
             {openAlerts.length > 0 && (
-              <Badge className="ml-1.5 bg-amber-500 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
+              <Badge className="ml-1.5 bg-amber-900/20 text-white text-[10px] h-4 px-1.5">{openAlerts.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="assistant" className="gap-1 text-xs">
@@ -232,12 +218,12 @@ export default function DataQuality() {
       </Tabs>
 
       {/* AI Summary Banner */}
-      {latestScan?.summary && (
+      {rs.summary && (
         <div className="bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-xl p-4 flex items-start gap-3">
           <Sparkles className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-violet-300 mb-0.5">AI Analysis</p>
-            <p className="text-sm text-slate-300 leading-relaxed">{latestScan.summary}</p>
+            <p className="text-sm text-slate-300 leading-relaxed">{rs.summary}</p>
           </div>
         </div>
       )}

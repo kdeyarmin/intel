@@ -55,9 +55,27 @@ export default function Organizations() {
     queryFn: () => base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', 500),
   });
 
+  // Stable key of displayed NPIs so the scoped score fetch refetches with the list.
+  const npiKey = useMemo(
+    () => providers.map(p => p.npi).filter(Boolean).sort().join(','),
+    [providers],
+  );
+
+  // Fetch lead scores only for the displayed organizations (was: newest 5000
+  // scores, which over-fetched and usually didn't include the shown orgs).
   const { data: scores = [] } = useQuery({
-    queryKey: ['organizationsPageScores'],
-    queryFn: () => base44.entities.LeadScore.list(),
+    queryKey: ['organizationsPageScores', npiKey],
+    enabled: providers.length > 0,
+    staleTime: 60000,
+    queryFn: () => {
+      const npis = providers.map(p => p.npi).filter(Boolean);
+      if (npis.length === 0) return [];
+      return base44.entities.LeadScore.filter(
+        { npi: { $in: npis } },
+        '-created_date',
+        Math.max(npis.length * 2, 500),
+      );
+    },
   });
 
   const { data: locations = [] } = useQuery({
@@ -110,10 +128,16 @@ export default function Organizations() {
 
   const currentFilters = { searchTerm, ...filters };
 
-  const getScore = (npi) => {
-    const match = scores.find(s => s.npi === npi);
-    return match?.score ?? null;
-  };
+  // O(1) score lookup (was scores.find per row → O(n^2) in the sort comparator).
+  const scoreByNpi = useMemo(() => {
+    const m = new Map();
+    for (const s of scores) {
+      if (s.npi && !m.has(s.npi)) m.set(s.npi, s.score);
+    }
+    return m;
+  }, [scores]);
+
+  const getScore = (npi) => scoreByNpi.get(npi) ?? null;
 
   const locationByNpi = useMemo(() => {
     const map = {};
@@ -321,7 +345,7 @@ export default function Organizations() {
                 <span className="text-sm font-normal text-slate-500">
                   {sortedProviders.length} results
                   {selectedNpis.size > 0 && (
-                    <Badge className="ml-2 bg-violet-500/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
+                    <Badge className="ml-2 bg-violet-900/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
                   )}
                 </span>
               </CardTitle>
@@ -372,7 +396,7 @@ export default function Organizations() {
                         const score = getScore(provider.npi);
                         const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
                         return (
-                          <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-500/5' : ''}>
+                          <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                             <TableCell>
                               <input type="checkbox"
                                 checked={selectedNpis.has(provider.npi)}
@@ -400,23 +424,23 @@ export default function Organizations() {
                                    <span className="text-xs text-slate-400 truncate max-w-[120px]">{provider.email}</span>
                                    {provider.email_confidence && (
                                      <Badge className={`text-[10px] border ${
-                                       provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                                       provider.email_confidence === 'medium' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                                       'bg-red-500/15 text-red-400 border-red-500/20'
+                                       provider.email_confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20' :
+                                       provider.email_confidence === 'medium' ? 'bg-amber-900/15 text-amber-400 border-amber-500/20' :
+                                       'bg-red-900/15 text-red-400 border-red-500/20'
                                      }`}>{provider.email_confidence}</Badge>
                                    )}
                                  </div>
                                ) : (
-                                <span className="text-slate-600 text-xs">—</span>
+                                <span className="text-slate-400 text-xs">—</span>
                                )}
                             </TableCell>
                             <TableCell>
                                {score !== null ? (
-                               <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                               <Badge className="bg-cyan-900/15 text-cyan-400 border border-cyan-500/20">
                                   {score.toFixed(0)}
                                 </Badge>
                               ) : (
-                                <span className="text-slate-600">-</span>
+                                <span className="text-slate-400">-</span>
                               )}
                             </TableCell>
                             <TableCell>

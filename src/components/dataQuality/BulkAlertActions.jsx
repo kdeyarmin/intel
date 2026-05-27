@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { XCircle, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function BulkAlertActions({ selectedIds = [], alerts = [], onClear }) {
   const queryClient = useQueryClient();
@@ -14,25 +15,39 @@ export default function BulkAlertActions({ selectedIds = [], alerts = [], onClea
 
   const bulkAction = async (action) => {
     setProcessing(true);
-    for (const id of selectedIds) {
-      const alert = alerts.find(a => a.id === id);
-      if (!alert) continue;
-      const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
-      if (action === 'dismiss') {
-        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'closed' });
-      } else if (action === 'apply_fix') {
-        await base44.entities.DataQualityAlert.update(id, { ...base, status: 'resolved', resolved_at: new Date().toISOString() });
+    try {
+      let failures = 0;
+      for (const id of selectedIds) {
+        const alert = alerts.find(a => a.id === id);
+        if (!alert) continue;
+        try {
+          const base = { title: alert.title, alert_type: alert.alert_type, severity: alert.severity, status: alert.status };
+          if (action === 'dismiss') {
+            await base44.functions.invoke('runDataQualityScan', { action: 'dismiss', alert_id: id });
+          } else if (action === 'apply_fix') {
+            await base44.functions.invoke('runDataQualityScan', { action: 'apply_fix', alert_id: id });
+          }
+        } catch (e) {
+          failures++;
+          console.error(`Failed to update alert ${id}:`, e);
+        }
       }
+      queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
+      if (failures > 0) {
+        toast.error(`${failures} alert(s) failed to update`);
+      }
+      onClear();
+    } catch (e) {
+      toast.error('Bulk action failed');
+    } finally {
+      setProcessing(false);
     }
-    queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
-    setProcessing(false);
-    onClear();
   };
 
   if (selectedIds.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-100 border rounded-lg">
+    <div className="flex items-center gap-3 p-3 bg-slate-700 border rounded-lg">
       <Badge variant="outline" className="text-xs">{selectedIds.length} selected</Badge>
       <div className="flex gap-2 ml-auto">
         {withSuggestions.length > 0 && (

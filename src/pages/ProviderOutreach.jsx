@@ -25,7 +25,7 @@ export default function ProviderOutreach() {
 
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', selectedCampaign?.id],
-    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }) : [],
+    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }, '-created_date', 2000) : [],
     enabled: !!selectedCampaign?.id
   });
 
@@ -35,13 +35,13 @@ export default function ProviderOutreach() {
 
   const getStatusColor = (status) => {
     const colors = {
-      draft: 'bg-slate-100 text-slate-800',
-      scheduled: 'bg-blue-100 text-blue-800',
-      sending: 'bg-amber-100 text-amber-800',
-      completed: 'bg-green-100 text-green-800',
-      paused: 'bg-orange-100 text-orange-800'
+      draft: 'bg-slate-700 text-slate-300',
+      scheduled: 'bg-blue-900/30 text-blue-400',
+      sending: 'bg-amber-900/30 text-amber-400',
+      completed: 'bg-green-900/30 text-green-400',
+      paused: 'bg-orange-900/30 text-orange-400'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-slate-700/40 text-slate-200';
   };
 
   return (
@@ -204,7 +204,7 @@ export default function ProviderOutreach() {
           ) : (
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="pt-8 text-center">
-                <MessageSquare className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                 <p className="text-slate-400 mb-4">Select a campaign to view performance metrics</p>
                 <Button onClick={() => setTab('campaigns')}>View Campaigns</Button>
               </CardContent>

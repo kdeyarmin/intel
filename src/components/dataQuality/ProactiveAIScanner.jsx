@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 
 const ENTITY_CONFIGS = [
-  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-600 bg-blue-50' },
-  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-600 bg-emerald-50' },
-  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-600 bg-violet-50' },
+  { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-400 bg-blue-900/20' },
+  { key: 'ProviderLocation', icon: MapPin, label: 'Locations', color: 'text-emerald-400 bg-emerald-900/20' },
+  { key: 'ProviderTaxonomy', icon: Stethoscope, label: 'Taxonomies', color: 'text-violet-400 bg-violet-900/20' },
 ];
 
 export default function ProactiveAIScanner() {
@@ -159,24 +159,24 @@ Return up to 10 most important issues, prioritized by severity and affected coun
   };
 
   const healthColors = {
-    good: 'bg-green-100 text-green-700 border-green-200',
-    fair: 'bg-amber-100 text-amber-700 border-amber-200',
-    poor: 'bg-red-100 text-red-700 border-red-200',
+    good: 'bg-green-900/30 text-green-400 border-green-500/30',
+    fair: 'bg-amber-900/30 text-amber-400 border-amber-500/30',
+    poor: 'bg-red-900/30 text-red-400 border-red-500/30',
   };
 
   const sevColors = {
-    critical: 'bg-red-100 text-red-700',
-    high: 'bg-orange-100 text-orange-700',
-    medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-blue-100 text-blue-700',
+    critical: 'bg-red-900/30 text-red-400',
+    high: 'bg-orange-900/30 text-orange-400',
+    medium: 'bg-yellow-900/30 text-yellow-400',
+    low: 'bg-blue-900/30 text-blue-400',
   };
 
   return (
-    <Card className="border-violet-200">
+    <Card className="border-violet-500/30">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-violet-600" />
+            <ShieldAlert className="w-5 h-5 text-violet-400" />
             Proactive AI Quality Scanner
           </CardTitle>
           <Button
@@ -215,9 +215,9 @@ Return up to 10 most important issues, prioritized by severity and affected coun
         {results && (
           <div className="space-y-4">
             {createdCount > 0 && (
-              <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-violet-600 shrink-0" />
-                <p className="text-xs text-violet-700">
+              <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0" />
+                <p className="text-xs text-violet-400">
                   Created <strong>{createdCount}</strong> new alert{createdCount > 1 ? 's' : ''} for critical/high severity issues. View them in the Alerts tab.
                 </p>
               </div>
@@ -227,10 +227,10 @@ Return up to 10 most important issues, prioritized by severity and affected coun
               const Icon = ENTITY_CONFIGS.find(c => c.key === finding.entity)?.icon || User;
               return (
                 <div key={finding.entity} className="border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 bg-slate-50">
+                  <div className="flex items-center justify-between px-4 py-3 bg-slate-800/60">
                     <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm font-semibold text-slate-800">{finding.label}</span>
+                      <Icon className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-semibold text-slate-300">{finding.label}</span>
                       <span className="text-xs text-slate-400">({finding.totalRecords} records)</span>
                     </div>
                     {finding.health && (
@@ -241,16 +241,16 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                   </div>
 
                   {finding.healthSummary && (
-                    <div className="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-start gap-2">
+                    <div className="px-4 py-2 bg-blue-900/20 border-b border-blue-500/30 flex items-start gap-2">
                       <Lightbulb className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-                      <p className="text-xs text-blue-700">{finding.healthSummary}</p>
+                      <p className="text-xs text-blue-400">{finding.healthSummary}</p>
                     </div>
                   )}
 
                   {finding.issues.length === 0 ? (
                     <div className="px-4 py-4 text-center">
                       <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mb-1" />
-                      <p className="text-xs text-green-600">No significant issues found</p>
+                      <p className="text-xs text-green-400">No significant issues found</p>
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -261,7 +261,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                               {issue.severity}
                             </Badge>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium text-slate-800">{issue.summary}</p>
+                              <p className="text-xs font-medium text-slate-300">{issue.summary}</p>
                               <div className="flex gap-2 mt-0.5">
                                 <Badge variant="outline" className="text-[8px]">{issue.category}</Badge>
                                 {issue.field_name && <Badge variant="outline" className="text-[8px]">{issue.field_name}</Badge>}
@@ -272,12 +272,12 @@ Return up to 10 most important issues, prioritized by severity and affected coun
                             </div>
                           </div>
                           {issue.root_cause && (
-                            <p className="text-[10px] text-amber-700 bg-amber-50 rounded px-2 py-1">
+                            <p className="text-[10px] text-amber-400 bg-amber-900/20 rounded px-2 py-1">
                               <strong>Cause:</strong> {issue.root_cause}
                             </p>
                           )}
                           {issue.suggested_fix && (
-                            <p className="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                            <p className="text-[10px] text-emerald-400 bg-emerald-900/20 rounded px-2 py-1">
                               <strong>Fix:</strong> {issue.suggested_fix}
                             </p>
                           )}

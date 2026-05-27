@@ -113,7 +113,7 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
                 <th className="text-left py-2 font-medium">Provider</th>
                 <th className="text-left py-2 font-medium w-12">State</th>
                 {cols.map(c => (
-                  <th key={c.key} className="text-right py-2 font-medium cursor-pointer hover:text-slate-700 select-none" onClick={() => toggleSort(c.key)}>
+                  <th key={c.key} className="text-right py-2 font-medium cursor-pointer hover:text-slate-300 select-none" onClick={() => toggleSort(c.key)}>
                     <span className="flex items-center justify-end gap-1">
                       {c.label}
                       {sortKey === c.key && <ArrowUpDown className="w-3 h-3" />}
@@ -125,16 +125,16 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
             </thead>
             <tbody>
               {filtered.map(r => (
-                <tr key={r.npi} className="border-b border-slate-50 hover:bg-slate-50/50">
+                <tr key={r.npi} className="border-b border-slate-800 hover:bg-slate-800/50">
                   <td className="py-2">
                     <div>
-                      <span className="font-medium text-slate-700">{r.name}</span>
+                      <span className="font-medium text-slate-300">{r.name}</span>
                       <span className="text-slate-400 ml-1.5">{r.npi}</span>
                     </div>
                   </td>
                   <td className="text-slate-500">{r.state || '-'}</td>
                   {cols.map(c => (
-                    <td key={c.key} className="text-right text-slate-600 font-mono">{fv(r[c.key])}</td>
+                    <td key={c.key} className="text-right text-slate-400 font-mono">{fv(r[c.key])}</td>
                   ))}
                   <td>
                     <Link to={createPageUrl(`ProviderDetail?npi=${r.npi}`)}>

@@ -45,27 +45,47 @@ export default function ProviderMessaging({ provider, locations = [] }) {
     const msg = { content: newMessage, timestamp: new Date().toISOString(), direction: 'outbound', status: 'sent' };
     setMessages(prev => [...prev, msg]);
 
-    await base44.integrations.Core.SendEmail({
-      to: providerEmail,
-      subject: `Message from CareMetric regarding ${providerName}`,
-      body: newMessage,
-    });
-
-    setNewMessage('');
-    setSending(false);
-    toast.success('Message sent');
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: providerEmail,
+        subject: `Message from CareMetric regarding ${providerName}`,
+        body: newMessage,
+      });
+      setNewMessage('');
+      toast.success('Message sent');
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setMessages(prev => prev.filter(m => m !== msg));
+      toast.error('Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const generateDraft = async () => {
     setGeneratingDraft(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Draft a brief, professional outreach email to ${providerName}, a healthcare provider${primaryLoc ? ` in ${primaryLoc.city || ''}, ${primaryLoc.state || ''}` : ''}. 
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `Draft a brief, professional outreach email to ${providerName}, a healthcare provider${primaryLoc ? ` in ${primaryLoc.city || ''}, ${primaryLoc.state || ''}` : ''}.
 Purpose: Initial introduction or follow-up regarding potential collaboration.
 Keep it under 80 words, warm but professional, and include a clear call to action (e.g., scheduling a call).
 Do NOT include subject line, just the body.`,
-    });
-    setNewMessage(res);
-    setGeneratingDraft(false);
+      });
+      // InvokeLLM can return a plain string or an object depending on whether
+      // a response_json_schema was provided. Normalize before storing so we
+      // never put [object Object] in the textarea or hit a TypeError on .trim().
+      let draft = '';
+      if (typeof res === 'string') draft = res;
+      else if (res && typeof res.text === 'string') draft = res.text;
+      else if (res && typeof res.body === 'string') draft = res.body;
+      setNewMessage(draft);
+      if (!draft) toast.warning('Draft was empty — try again.');
+    } catch (err) {
+      console.error('Draft generation failed:', err);
+      toast.error('Failed to generate draft. Please try again.');
+    } finally {
+      setGeneratingDraft(false);
+    }
   };
 
   const addEvent = () => {
@@ -109,7 +129,7 @@ Do NOT include subject line, just the body.`,
             <div className="min-h-[120px] max-h-[250px] overflow-y-auto space-y-2 pr-1">
               {messages.length === 0 ? (
                 <div className="text-center py-6">
-                  <MessageSquare className="w-6 h-6 text-slate-600 mx-auto mb-1" />
+                  <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                   <p className="text-xs text-slate-500">No messages yet with {providerName}</p>
                   {!providerEmail && (
                     <p className="text-[10px] text-amber-400 mt-1">No email on file — run email finder first</p>
@@ -187,7 +207,7 @@ Do NOT include subject line, just the body.`,
             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
               {events.length === 0 && !showNewEvent && (
                 <div className="text-center py-6">
-                  <Calendar className="w-6 h-6 text-slate-600 mx-auto mb-1" />
+                  <Calendar className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                   <p className="text-xs text-slate-500">No scheduled events</p>
                 </div>
               )}
@@ -202,7 +222,7 @@ Do NOT include subject line, just the body.`,
                     {e.notes && <p className="text-[9px] text-slate-500">{e.notes}</p>}
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => removeEvent(e.id)}
-                    className="h-5 w-5 p-0 text-slate-600 hover:text-red-400">
+                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400">
                     <X className="w-3 h-3" />
                   </Button>
                 </div>

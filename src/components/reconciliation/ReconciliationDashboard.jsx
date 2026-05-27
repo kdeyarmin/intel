@@ -26,7 +26,7 @@ export default function ReconciliationDashboard() {
   const { data: reconciliations = [] } = useQuery({
     queryKey: ['reconciliations'],
     queryFn: async () => {
-      const all = await base44.entities.ProviderReconciliation.filter({ status: 'discrepancy' });
+      const all = await base44.entities.ProviderReconciliation.filter({ status: 'discrepancy' }, '-created_date', 1000);
       return all.filter(r => r.resolution_status === 'pending' || !r.resolution_status);
     }
   });

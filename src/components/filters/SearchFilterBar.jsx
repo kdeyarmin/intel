@@ -11,7 +11,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
     <div className="space-y-3">
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
           <Input
             placeholder="Search by name, NPI, or keyword..."
             value={searchTerm}
@@ -20,7 +20,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
           />
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-gray-500 hover:text-gray-700">
+          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-300">
             <X className="w-4 h-4 mr-1" /> Clear
           </Button>
         )}

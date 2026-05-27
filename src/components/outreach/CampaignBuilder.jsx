@@ -146,17 +146,17 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                   <SelectContent>
                     {leadLists.map(list => (
                       <SelectItem key={list.id} value={list.id}>
-                        {list.name} ({list.provider_count || 0} providers)
+                        {list.name} ({list.member_count || 0} providers)
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded border">
+              <div className="flex items-center justify-between p-3 bg-slate-800/60 rounded border">
                 <div>
                   <Label className="text-sm font-medium">AI Personalization</Label>
-                  <p className="text-xs text-slate-600 mt-0.5">Personalize each message based on provider profile</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Personalize each message based on provider profile</p>
                 </div>
                 <Switch
                   checked={campaign.ai_personalization}
@@ -176,7 +176,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Email Template</CardTitle>
-              <p className="text-xs text-slate-600 mt-1">Use {{merge_fields}} for personalization</p>
+              <p className="text-xs text-slate-400 mt-1">Use {{merge_fields}} for personalization</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -215,19 +215,19 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
               <CardTitle className="text-base">Message Preview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded border">
+              <div className="p-4 bg-slate-800/60 rounded border">
                 <div className="mb-3">
-                  <p className="text-xs text-slate-600">Subject:</p>
+                  <p className="text-xs text-slate-400">Subject:</p>
                   <p className="font-semibold text-sm">{campaign.subject_template || 'No subject'}</p>
                 </div>
                 <div className="border-t pt-3">
-                  <p className="text-xs text-slate-600 mb-2">Body:</p>
-                  <div className="text-sm whitespace-pre-wrap text-slate-700">{campaign.body_template || 'No body'}</div>
+                  <p className="text-xs text-slate-400 mb-2">Body:</p>
+                  <div className="text-sm whitespace-pre-wrap text-slate-300">{campaign.body_template || 'No body'}</div>
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                <p className="text-sm text-blue-900">
+              <div className="bg-blue-900/20 border border-blue-500/30 rounded p-3">
+                <p className="text-sm text-blue-400">
                   💡 Each message will be personalized with provider data (name, specialty, location, etc.)
                   {campaign.ai_personalization && ' and enhanced with AI.'}
                 </p>
@@ -248,9 +248,9 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
               <CardTitle className="text-base">Launch Campaign</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded">
-                <p className="text-sm text-amber-900 font-medium mb-2">Campaign Summary</p>
-                <div className="space-y-1 text-sm text-amber-800">
+              <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded">
+                <p className="text-sm text-amber-400 font-medium mb-2">Campaign Summary</p>
+                <div className="space-y-1 text-sm text-amber-300">
                   <p>• Name: <strong>{campaign.name}</strong></p>
                   <p>• Target List: <strong>{campaign.lead_list_id ? 'Selected' : 'None'}</strong></p>
                   <p>• Personalization: <strong>{campaign.ai_personalization ? 'Enabled' : 'Disabled'}</strong></p>

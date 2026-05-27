@@ -40,7 +40,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, a
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {Icon && (
-            <div className="p-2 rounded-xl bg-cyan-500/10">
+            <div className="p-2 rounded-xl bg-cyan-900/10">
               <Icon className="w-5 h-5 text-cyan-400" />
             </div>
           )}

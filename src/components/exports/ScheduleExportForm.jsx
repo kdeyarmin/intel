@@ -147,10 +147,10 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
         {recipients.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {recipients.map(email => (
-              <Badge key={email} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              <Badge key={email} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-900/10 text-cyan-400 border border-cyan-500/20">
                 <Mail className="w-3 h-3" />
                 {email}
-                <button onClick={() => removeRecipient(email)} className="hover:bg-cyan-500/20 rounded-full p-0.5">
+                <button onClick={() => removeRecipient(email)} className="hover:bg-cyan-900/20 rounded-full p-0.5">
                   <X className="w-3 h-3" />
                 </button>
               </Badge>

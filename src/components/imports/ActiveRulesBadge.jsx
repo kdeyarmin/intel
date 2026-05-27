@@ -18,7 +18,7 @@ export default function ActiveRulesBadge({ importType }) {
   if (activeCount === 0) return null;
 
   return (
-    <Badge className="bg-violet-500/15 text-violet-400 text-[10px] gap-1">
+    <Badge className="bg-violet-900/15 text-violet-400 text-[10px] gap-1">
       <ShieldCheck className="w-2.5 h-2.5" />
       {activeCount} validation rule{activeCount !== 1 ? 's' : ''}
     </Badge>

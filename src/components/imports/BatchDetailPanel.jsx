@@ -3,7 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   FileText,
+<<<<<<< HEAD
   Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles, Play, Loader2
+=======
+  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
+>>>>>>> origin/main
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
@@ -14,8 +18,11 @@ import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
+<<<<<<< HEAD
 import { pickResumeOffset, resumeProgressPct } from './resumeOffset';
 import { getAutoRetryState, MAX_AUTO_RETRY_ATTEMPTS } from './retryStatus';
+=======
+>>>>>>> origin/main
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -25,11 +32,11 @@ const IMPORT_TYPE_LABELS = buildImportTypeLabels({
 });
 
 const statusColors = {
-  processing: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
-  validating: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/20',
-  completed: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  failed: 'bg-red-500/15 text-red-400 border border-red-500/20',
-  paused: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
+  processing: 'bg-blue-900/15 text-blue-400 border border-blue-500/20',
+  validating: 'bg-yellow-900/15 text-yellow-400 border border-yellow-500/20',
+  completed: 'bg-emerald-900/15 text-emerald-400 border border-emerald-500/20',
+  failed: 'bg-red-900/15 text-red-400 border border-red-500/20',
+  paused: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
   cancelled: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',
 };
 
@@ -255,18 +262,15 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
 
   if (!batch) return null;
 
-  const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
-  const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
-
   return (
     <div className="space-y-5 mt-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge className={statusColors[batch.status] || ''}>{batch.status}</Badge>
-          {batch.dry_run && <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20">Dry Run</Badge>}
+          {batch.dry_run && <Badge className="bg-violet-900/15 text-violet-400 border border-violet-500/20">Dry Run</Badge>}
           {batch.retry_of && (
-            <Badge className="text-xs gap-1 bg-amber-500/15 text-amber-400 border border-amber-500/20">
+            <Badge className="text-xs gap-1 bg-amber-900/15 text-amber-400 border border-amber-500/20">
               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
             </Badge>
           )}
@@ -274,6 +278,7 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         {duration && <span className="text-xs text-slate-500">Duration: {duration}</span>}
       </div>
 
+<<<<<<< HEAD
       {/* Auto-retry banner for failed batches: surfaces worker state + per-batch toggle. */}
       {batch.status === 'failed' && (
         <AutoRetryBanner batch={batch} onUpdated={onUpdated} />
@@ -296,6 +301,8 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         </div>
       )}
 
+=======
+>>>>>>> origin/main
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div><span className="text-slate-500">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>
@@ -327,10 +334,11 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
           <ArrowUpDown className="w-4 h-4 text-cyan-400" /> Row Statistics
         </h4>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-2">
           <StatBox label="Total" value={batch.total_rows?.toLocaleString() || 0} />
           <StatBox label="Valid" value={batch.valid_rows?.toLocaleString() || 0} color="text-emerald-400" />
           <StatBox label="Invalid" value={batch.invalid_rows?.toLocaleString() || 0} color="text-red-400" />
+          <StatBox label="Excluded" value={batch.excluded_rows?.toLocaleString() || 0} color="text-orange-400" />
           <StatBox label="Duplicates" value={batch.duplicate_rows?.toLocaleString() || 0} color="text-amber-400" />
           <StatBox label="Imported" value={batch.imported_rows?.toLocaleString() || 0} color="text-blue-400" />
           <StatBox label="Updated" value={batch.updated_rows?.toLocaleString() || 0} color="text-violet-400" />

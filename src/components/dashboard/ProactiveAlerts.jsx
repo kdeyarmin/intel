@@ -1,84 +1,52 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, TrendingDown, TrendingUp, Clock, Users, Sparkles } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, Users, Sparkles } from 'lucide-react';
 
-export default function ProactiveAlerts({ providers = [], utilizations = [], referrals = [], locations = [] }) {
-  // Ensure we're working with arrays
-  const safeProviders = Array.isArray(providers) ? providers : [];
-  const safeUtilizations = Array.isArray(utilizations) ? utilizations : [];
-  const safeReferrals = Array.isArray(referrals) ? referrals : [];
-  const safeLocations = Array.isArray(locations) ? locations : [];
-
-  const isSampled = safeProviders.length >= 200 || safeLocations.length >= 200;
-
+export default function ProactiveAlerts({ proactiveInsights }) {
   const insights = useMemo(() => {
+    if (!proactiveInsights) return [];
     const alerts = [];
-    const approxSuffix = isSampled ? '+' : '';
 
-    const needEnrichment = safeProviders.filter(p => p.needs_nppes_enrichment);
-    if (needEnrichment.length > 0) {
+    if (proactiveInsights.needsEnrichment > 0) {
       alerts.push({
         id: 'enrichment', icon: Users, severity: 'medium',
-        title: `${needEnrichment.length}${approxSuffix} providers need NPPES enrichment`,
+        title: `${proactiveInsights.needsEnrichment.toLocaleString()} providers need NPPES enrichment`,
         description: 'These providers were imported from CMS data without full NPPES details.',
         color: 'amber',
       });
     }
 
-    const deactivatedNPIs = new Set(safeProviders.filter(p => p.status === 'Deactivated').map(p => p.npi));
-    const deactivatedWithUtil = safeUtilizations.filter(u => deactivatedNPIs.has(u.npi));
-    if (deactivatedWithUtil.length > 0) {
+    if (proactiveInsights.deactivatedProviders > 0) {
       alerts.push({
-        id: 'deactivated-util', icon: AlertTriangle, severity: 'high',
-        title: `${new Set(deactivatedWithUtil.map(u => u.npi)).size}${approxSuffix} deactivated providers with utilization data`,
-        description: 'These providers are deactivated but still appear in utilization records.',
+        id: 'deactivated', icon: AlertTriangle, severity: 'high',
+        title: `${proactiveInsights.deactivatedProviders.toLocaleString()} deactivated providers in database`,
+        description: 'These providers have been deactivated and may need review.',
         color: 'red',
       });
     }
 
-    const refByNPI = {};
-    safeReferrals.forEach(r => { if (!refByNPI[r.npi]) refByNPI[r.npi] = []; refByNPI[r.npi].push(r); });
-    let highGrowthCount = 0;
-    Object.values(refByNPI).forEach(refs => {
-      if (refs.length < 2) return;
-      const sorted = [...refs].sort((a, b) => (a.year || 0) - (b.year || 0));
-      const prev = sorted[sorted.length - 2]?.total_referrals || 0;
-      const curr = sorted[sorted.length - 1]?.total_referrals || 0;
-      if (prev > 0 && curr > prev * 1.5) highGrowthCount++;
-    });
-    if (highGrowthCount > 0) {
-      alerts.push({
-        id: 'ref-growth', icon: TrendingUp, severity: 'info',
-        title: `${highGrowthCount}${approxSuffix} providers with 50%+ referral growth`,
-        description: 'These providers show significant referral volume growth — potential high-value targets.',
-        color: 'emerald',
-      });
-    }
-
-    const noPhone = safeLocations.filter(l => !l.phone);
-    if (noPhone.length > 10) {
+    if (proactiveInsights.noPhoneLocations > 100) {
       alerts.push({
         id: 'missing-phone', icon: Clock, severity: 'low',
-        title: `${noPhone.length}${approxSuffix} locations missing phone numbers`,
+        title: `${proactiveInsights.noPhoneLocations.toLocaleString()} locations missing phone numbers`,
         description: 'Consider enriching contact data for better outreach capability.',
         color: 'blue',
       });
     }
 
     const currentYear = new Date().getFullYear();
-    const latestUtilYear = safeUtilizations.reduce((max, u) => Math.max(max, u.year || 0), 0);
-    if (latestUtilYear > 0 && currentYear - latestUtilYear >= 2) {
+    if (proactiveInsights.latestUtilYear > 0 && currentYear - proactiveInsights.latestUtilYear >= 2) {
       alerts.push({
         id: 'stale-data', icon: TrendingDown, severity: 'medium',
-        title: `Utilization data may be outdated (latest: ${latestUtilYear})`,
+        title: `Utilization data may be outdated (latest: ${proactiveInsights.latestUtilYear})`,
         description: 'Consider importing more recent CMS utilization data for accurate intelligence.',
         color: 'amber',
       });
     }
 
     return alerts;
-  }, [safeProviders, safeUtilizations, safeReferrals, safeLocations, isSampled]);
+  }, [proactiveInsights]);
 
   if (insights.length === 0) return null;
 

@@ -74,14 +74,14 @@ export default function TypeAheadSearch({
         className="pl-9"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-auto">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-slate-800/60 border border-slate-700/50 rounded-lg shadow-lg max-h-64 overflow-auto">
           {filtered.map((item, idx) => {
             const Icon = TYPE_ICONS[item.type] || Search;
             return (
               <button
                 key={idx}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${
-                  idx === highlightIdx ? 'bg-slate-100' : 'hover:bg-slate-50'
+                  idx === highlightIdx ? 'bg-slate-700' : 'hover:bg-slate-800/40'
                 }`}
                 onMouseEnter={() => setHighlightIdx(idx)}
                 onClick={() => {
@@ -92,7 +92,7 @@ export default function TypeAheadSearch({
               >
                 <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-slate-800 truncate block">{item.label}</span>
+                  <span className="text-slate-300 truncate block">{item.label}</span>
                   {item.sublabel && <span className="text-[11px] text-slate-400 truncate block">{item.sublabel}</span>}
                 </div>
                 {item.badge && (

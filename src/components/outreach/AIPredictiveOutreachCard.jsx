@@ -27,10 +27,10 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
   const hasScore = provider.ai_outreach_score !== undefined && provider.ai_outreach_score !== null;
 
   return (
-    <Card className="bg-gradient-to-br from-slate-50 to-white border-indigo-100">
+    <Card className="bg-gradient-to-br from-slate-800/40 to-slate-900 border-indigo-500/30">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2 text-indigo-700">
+          <CardTitle className="text-base flex items-center gap-2 text-indigo-400">
             <BrainCircuit className="w-5 h-5" />
             AI Outreach Prioritization
           </CardTitle>
@@ -39,7 +39,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
             size="sm" 
             onClick={calculateScore} 
             disabled={loading}
-            className="h-8 text-xs bg-white"
+            className="h-8 text-xs bg-slate-800/60"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" />}
             {hasScore ? 'Recalculate' : 'Analyze'}
@@ -55,26 +55,26 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
         ) : (
           <div className="space-y-5">
             <div className="flex items-center gap-4">
-              <div className="flex flex-col items-center justify-center bg-white rounded-full w-16 h-16 shadow-sm border border-indigo-50">
+              <div className="flex flex-col items-center justify-center bg-slate-800/60 rounded-full w-16 h-16 shadow-sm border border-indigo-50">
                 <span className="text-2xl font-bold text-indigo-600">{provider.ai_outreach_score}</span>
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-sm font-medium">Engagement Likelihood</span>
-                  <Badge variant={provider.ai_outreach_score > 75 ? "default" : provider.ai_outreach_score > 40 ? "secondary" : "destructive"} className={provider.ai_outreach_score > 75 ? "bg-emerald-500 hover:bg-emerald-600" : ""}>
+                  <Badge variant={provider.ai_outreach_score > 75 ? "default" : provider.ai_outreach_score > 40 ? "secondary" : "destructive"} className={provider.ai_outreach_score > 75 ? "bg-emerald-900/20 hover:bg-emerald-600" : ""}>
                     {provider.ai_outreach_score > 75 ? 'High' : provider.ai_outreach_score > 40 ? 'Medium' : 'Low'}
                   </Badge>
                 </div>
-                <Progress value={provider.ai_outreach_score} className="h-2 bg-slate-100" />
+                <Progress value={provider.ai_outreach_score} className="h-2 bg-slate-700" />
               </div>
             </div>
 
             {provider.ai_outreach_strategy && (
-              <div className="bg-indigo-50/50 p-3 rounded-md border border-indigo-100/50">
-                <p className="text-xs font-semibold text-indigo-800 mb-1 flex items-center gap-1.5">
+              <div className="bg-indigo-900/20 p-3 rounded-md border border-indigo-500/30">
+                <p className="text-xs font-semibold text-indigo-300 mb-1 flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5" /> Optimal Strategy
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed">
+                <p className="text-sm text-slate-300 leading-relaxed">
                   {provider.ai_outreach_strategy}
                 </p>
               </div>
@@ -87,7 +87,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
                 </p>
                 <ul className="space-y-1.5">
                   {provider.ai_engagement_factors.map((factor, idx) => (
-                    <li key={idx} className="text-sm text-slate-600 flex items-start gap-2">
+                    <li key={idx} className="text-sm text-slate-400 flex items-start gap-2">
                       <span className="text-indigo-400 mt-0.5">•</span>
                       <span className="flex-1">{factor}</span>
                     </li>

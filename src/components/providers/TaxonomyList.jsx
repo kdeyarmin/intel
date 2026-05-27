@@ -20,7 +20,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
           {taxonomies.map((t, i) => (
             <div key={i} className="flex items-center justify-between p-2.5 rounded-lg border bg-slate-800/40">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-900 truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {t.taxonomy_description || t.taxonomy_code}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -30,7 +30,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
                 </div>
               </div>
               {t.primary_flag && (
-                <Badge className="bg-teal-100 text-teal-700 text-[10px] ml-2">Primary</Badge>
+                <Badge className="bg-teal-900/30 text-teal-400 text-[10px] ml-2">Primary</Badge>
               )}
             </div>
           ))}

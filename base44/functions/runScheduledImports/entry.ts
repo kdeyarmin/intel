@@ -9,6 +9,9 @@ import {
 } from './helpers.ts';
 
 const MAX_EXEC_MS = 45_000;
+// Lease window for claiming a schedule before running it. If an invocation
+// crashes mid-run, the schedule becomes eligible again after this long.
+const CLAIM_LEASE_MS = 10 * 60 * 1000;
 
 const US_STATES = [
     'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -127,6 +130,22 @@ Deno.serve(async (req) => {
                 return aT - bT;
             });
             const schedule = familySchedules[0];
+
+            // Claim the schedule before running it. The base44 SDK has no
+            // conditional update, so this lease-based claim (push next_run_at into
+            // the future + mark it running) doesn't give true atomicity, but it
+            // narrows the window in which an overlapping cron invocation could pick
+            // the same schedule down to the brief read->claim gap. triggerImport's
+            // own active-import guard is the final backstop against a double-fire.
+            try {
+                await base44.asServiceRole.entities.ImportScheduleConfig.update(schedule.id, {
+                    next_run_at: new Date(now.getTime() + CLAIM_LEASE_MS).toISOString(),
+                    last_run_status: 'running',
+                });
+            } catch (claimErr) {
+                skipped.push({ id: schedule.id, label: schedule.label, reason: `claim failed: ${claimErr.message}` });
+                continue;
+            }
 
             console.log(`Running scheduled import: ${schedule.label} (${schedule.import_type})`);
             const { runStatus, runSummary } = await runOneSchedule(base44, schedule, now);
