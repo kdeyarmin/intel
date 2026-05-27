@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { LayoutDashboard, Upload, Users, ListCheck, Settings,
-  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
+  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
   Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
   Building, Briefcase, Stethoscope, ClipboardCheck
@@ -59,8 +59,7 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin'] },
-      { name: 'Outreach', icon: Mail, page: 'ProviderOutreach', roles: ['admin'] },
+      { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin'] },
     ]
   },
   {

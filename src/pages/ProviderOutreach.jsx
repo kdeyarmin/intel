@@ -47,10 +47,10 @@ export default function ProviderOutreach() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
-        title="Provider Outreach"
+        title="Campaigns"
         subtitle="Create and manage provider engagement campaigns"
         icon={Mail}
-        breadcrumbs={[{ label: 'Sales & Outreach', page: 'ProviderOutreach' }, { label: 'Campaigns' }]}
+        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Campaigns' }]}
       />
 
       <Tabs value={tab} onValueChange={setTab}>
