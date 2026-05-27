@@ -7,10 +7,10 @@
 // ImportBatch rows, classifies the failure, and re-dispatches the import via
 // triggerImport when the error looks transient.
 //
-// Note: the keyword list here mirrors the `retryable: true` categories in
-// src/components/imports/errorCategories.jsx (network_api, timeout_stall).
-// The two lists must stay in sync; tests assert the overlap.
-
+// Note: the keyword list here is derived from the `retryable: true` categories in
+// src/components/imports/errorCategories.jsx (network_api, timeout_stall), but is
+// intentionally stricter to avoid auto-retrying ambiguous failures. Tests assert
+// representative overlap between the worker and frontend classifications.
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
