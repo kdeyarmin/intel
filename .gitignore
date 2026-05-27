@@ -29,3 +29,27 @@ dist-ssr
 *.sw?
 
 .env
+
+# ─── Replit <-> GitHub sync ────────────────────────────────────────────────────
+# Replit-generated state/caches. Keeping these out of git is what lets you pull
+# or merge between GitHub and the Replit workspace without conflicts.
+# NOTE: .replit and replit.nix are intentionally COMMITTED — do not ignore them.
+.config/
+.upm/
+.cache/
+.breakpoints
+replit_zip_error_log.txt
+
+# Python (the Replit image enables the python-3.11 module)
+.pythonlibs/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Runtime upload destination (Multer writes here) — keep the dir, ignore contents.
+uploads/*
+!uploads/.gitkeep
+
+# Replit Agent chat attachments (screenshots / pasted text) — not part of the app.
+attached_assets/

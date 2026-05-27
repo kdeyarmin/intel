@@ -1,39 +1,115 @@
-**Welcome to your Base44 project** 
+# CareMetric AI Intelligence
 
-**About**
+A healthcare provider intelligence, CRM, and analytics platform. CareMetric
+ingests Medicare/CMS datasets and the NPPES registry, then surfaces provider
+and facility intelligence, referral networks, lead lists, multi-channel
+outreach, and AI-driven insights.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+## Tech stack
 
-This project contains everything you need to run your app locally.
+- **Frontend:** React 18 + Vite 6, TailwindCSS, Radix UI / `shadcn/ui`,
+  TanStack React Query, React Router v7, Recharts, Leaflet.
+- **Backend API:** Express 5 (TypeScript via `tsx`) on port `3001` — generic
+  entity CRUD, a function dispatcher, and integration endpoints.
+- **Database:** PostgreSQL with Drizzle ORM (52 tables). Migrations in
+  `./drizzle/`.
+- **Edge functions:** Base44 Deno functions in `base44/functions/` for
+  scheduled imports, maintenance fan-out, and import lifecycle hooks.
+- **AI:** Anthropic Claude (`@anthropic-ai/sdk`). **Email:** SendGrid.
+  **Uploads:** Multer.
 
-**Edit the code in your local development environment**
-
-Any change pushed to the repo will also be reflected in the Base44 Builder.
-
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
+## Architecture at a glance
 
 ```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
+src/                 React SPA (pages auto-registered via pages.config.js)
+  api/client.js      Base44-SDK-compatible client → talks to /api (same origin)
+server/              Express API (port 3001)
+  routes/            auth, entities (generic CRUD), integrations, functions
+  functions/         backend function handlers (dispatched by routes/functions.ts)
+  db/                Drizzle schema + pool
+  middleware/        JWT auth, rate limiting
+base44/functions/    Deno edge functions (cron driver, import hooks, workers)
+drizzle/             generated SQL migrations
+tests/               Vitest suite (node + jsdom)
 ```
 
-Run the app: `npm run dev`
+In development, Vite (port `5000`) proxies `/api` to the Express server
+(`localhost:3001`); the frontend always talks to the same-origin `/api`.
 
-**Publish your changes**
+## Prerequisites
 
-Open [Base44.com](http://Base44.com) and click on Publish.
+- Node.js 20+ (CI runs on Node 22)
+- A PostgreSQL database
 
-**Docs & Support**
+## Setup
 
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
+1. Clone the repository and install dependencies:
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+   ```bash
+   npm install
+   ```
+
+2. Create a `.env` file from the template and fill in values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Only `DATABASE_URL` is required to boot in development. Production
+   additionally requires `JWT_SECRET` (the server refuses to start without it).
+   See `.env.example` for the full, documented list (admin seed, CORS,
+   Anthropic, SendGrid, model overrides).
+
+3. Push the schema to your database:
+
+   ```bash
+   npm run db:push
+   ```
+
+4. Start the app (runs the API and Vite together):
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:5000.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Run the Express API (`tsx watch`) and Vite dev server together |
+| `npm run dev:api` | API only |
+| `npm run dev:frontend` | Vite only |
+| `npm run build` | Production build of the SPA |
+| `npm run preview` | Preview the production build |
+| `npm run lint` / `lint:fix` | ESLint |
+| `npm run typecheck` | TypeScript check (`tsc -p ./jsconfig.json`) |
+| `npm test` | Run the Vitest suite |
+| `npm run db:push` | Push schema directly (development) |
+| `npm run db:generate` | Generate a migration from schema changes |
+| `npm run db:migrate` | Apply migrations (production deploys) |
+
+## Testing & CI
+
+Tests use [Vitest](https://vitest.dev/). Most run in the default `node`
+environment; component tests opt into jsdom with a
+`// @vitest-environment jsdom` docblock and use React Testing Library. Shared
+setup lives in `tests/setup.js`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs **lint → typecheck → test →
+build** on every pull request (any base branch) and on pushes to `main`.
+
+## Deployment
+
+Configured for Replit autoscale (`.replit`): `npm run build` then
+`NODE_ENV=production node --import tsx server/index.ts`. In production the
+Express server serves the built SPA from `dist/` same-origin, so set
+`JWT_SECRET` and (if serving a separate frontend origin) `ALLOWED_ORIGINS`.
+
+## Further reading
+
+- **`replit.md`** — the deep architecture reference: feature-by-feature
+  breakdown, security model, database performance notes, and changelog.
+- **`CLAUDE.md`** — a practical guide for working in this repo (commands,
+  conventions, and gotchas).
