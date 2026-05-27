@@ -33,11 +33,11 @@ export default function DataQualityInsightsCard({ npi, provider }) {
           <Shield className="w-4 h-4 text-slate-500" />
           Data Quality
           {isClean ? (
-            <Badge className="bg-green-100 text-green-700 text-[10px] ml-auto gap-1">
+            <Badge className="bg-green-900/30 text-green-400 text-[10px] ml-auto gap-1">
               <CheckCircle className="w-3 h-3" /> Clean
             </Badge>
           ) : (
-            <Badge className="bg-amber-100 text-amber-700 text-[10px] ml-auto gap-1">
+            <Badge className="bg-amber-900/30 text-amber-400 text-[10px] ml-auto gap-1">
               <AlertTriangle className="w-3 h-3" /> {openAlerts.length + completeness.length} issue{openAlerts.length + completeness.length > 1 ? 's' : ''}
             </Badge>
           )}
@@ -48,7 +48,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
           <div className="space-y-1">
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Completeness</p>
             {completeness.map(c => (
-              <div key={c} className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded px-2.5 py-1.5">
+              <div key={c} className="flex items-center gap-2 text-xs text-amber-400 bg-amber-900/20 rounded px-2.5 py-1.5">
                 <AlertTriangle className="w-3 h-3 shrink-0" />
                 {c}
               </div>
@@ -60,10 +60,10 @@ export default function DataQualityInsightsCard({ npi, provider }) {
           <div className="space-y-1">
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Open Alerts</p>
             {openAlerts.slice(0, 5).map(a => (
-              <div key={a.id} className="flex items-center gap-2 text-xs bg-slate-50 rounded px-2.5 py-1.5">
+              <div key={a.id} className="flex items-center gap-2 text-xs bg-slate-800/60 rounded px-2.5 py-1.5">
                 {a.suggested_value ? <Sparkles className="w-3 h-3 text-violet-500 shrink-0" /> : <AlertTriangle className="w-3 h-3 text-slate-400 shrink-0" />}
-                <span className="flex-1 truncate text-slate-600">{a.summary}</span>
-                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-100 text-red-700' : a.severity === 'high' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}>
+                <span className="flex-1 truncate text-slate-400">{a.summary}</span>
+                <Badge variant="secondary" className={`text-[9px] ${a.severity === 'critical' ? 'bg-red-900/30 text-red-400' : a.severity === 'high' ? 'bg-orange-900/30 text-orange-400' : 'bg-slate-700 text-slate-400'}`}>
                   {a.severity}
                 </Badge>
               </div>
@@ -80,7 +80,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
         )}
 
         {isClean && (
-          <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 rounded-lg px-3 py-3">
+          <div className="flex items-center gap-2 text-xs text-green-600 bg-green-900/20 rounded-lg px-3 py-3">
             <CheckCircle className="w-4 h-4" />
             <span>All data quality checks pass. Record is complete and accurate.</span>
           </div>

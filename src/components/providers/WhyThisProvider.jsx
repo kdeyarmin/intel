@@ -65,16 +65,16 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
   }
 
   return (
-    <Card className="border-teal-200 bg-teal-50">
+    <Card className="border-teal-500/30 bg-teal-900/20">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-teal-900">
+        <CardTitle className="flex items-center gap-2 text-teal-400">
           <Lightbulb className="h-5 w-5" />
           Why This Provider?
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {reasons.length === 0 ? (
-          <p className="text-sm text-teal-700">
+          <p className="text-sm text-teal-400">
             Limited data available for provider assessment
           </p>
         ) : (
@@ -83,15 +83,15 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
               {reasons.map((reason, idx) => (
                 <div key={idx} className="flex items-start gap-2">
                   <div className="mt-1 h-1.5 w-1.5 rounded-full bg-teal-600 flex-shrink-0" />
-                  <p className="text-sm text-teal-900">{reason}</p>
+                  <p className="text-sm text-teal-400">{reason}</p>
                 </div>
               ))}
             </div>
 
             {score?.score && (
-              <div className="pt-3 border-t border-teal-200">
+              <div className="pt-3 border-t border-teal-500/30">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-teal-900">Overall Assessment</span>
+                  <span className="text-sm font-medium text-teal-400">Overall Assessment</span>
                   <Badge className="bg-teal-600 text-white">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     {score.score >= 80 ? 'Excellent Fit' : score.score >= 60 ? 'Good Fit' : 'Potential Fit'}

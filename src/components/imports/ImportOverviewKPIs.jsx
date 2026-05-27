@@ -14,7 +14,7 @@ function KPICard({ label, value, icon: Icon, iconColor, trend, trendLabel, onCli
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
-            <p className="text-2xl font-bold text-white mt-0.5">{value}</p>
+            <p className="text-2xl lg:text-3xl font-bold text-white mt-0.5">{value}</p>
             {trend !== undefined && (
               <div className="flex items-center gap-1 mt-1">
                 {trend >= 0 ? (
@@ -106,28 +106,28 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
         label="Active Now"
         value={stats.active}
         icon={stats.active > 0 ? Loader2 : Clock}
-        iconColor={stats.active > 0 ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-500'}
+        iconColor={stats.active > 0 ? 'bg-blue-900/20 text-blue-400' : 'bg-slate-800 text-slate-500'}
         onClick={() => onFilterChange?.('active')}
       />
       <KPICard
         label="Last 24h"
         value={stats.recent24h}
         icon={Database}
-        iconColor="bg-cyan-500/20 text-cyan-400"
+        iconColor="bg-cyan-900/20 text-cyan-400"
         onClick={() => onFilterChange?.('all')}
       />
       <KPICard
         label="Successful"
         value={stats.completed}
         icon={CheckCircle2}
-        iconColor="bg-emerald-500/20 text-emerald-400"
+        iconColor="bg-emerald-900/20 text-emerald-400"
         onClick={() => onFilterChange?.('completed')}
       />
       <KPICard
         label="Failed"
         value={stats.failed}
         icon={XCircle}
-        iconColor="bg-red-500/20 text-red-400"
+        iconColor="bg-red-900/20 text-red-400"
         highlight={stats.criticalFailures > 0}
         onClick={() => onFilterChange?.('failed')}
       />
@@ -135,7 +135,7 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
         label="7d Success Rate"
         value={`${stats.successRate7d}%`}
         icon={TrendingUp}
-        iconColor="bg-violet-500/20 text-violet-400"
+        iconColor="bg-violet-900/20 text-violet-400"
         trend={stats.successTrend}
         trendLabel="vs prev 7d"
       />
@@ -143,7 +143,7 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
         label="Records Imported"
         value={stats.totalImported >= 1000000 ? `${(stats.totalImported / 1000000).toFixed(1)}M` : stats.totalImported >= 1000 ? `${(stats.totalImported / 1000).toFixed(1)}K` : stats.totalImported}
         icon={Database}
-        iconColor="bg-amber-500/20 text-amber-400"
+        iconColor="bg-amber-900/20 text-amber-400"
       />
     </div>
   );

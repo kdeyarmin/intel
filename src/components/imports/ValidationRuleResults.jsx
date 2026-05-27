@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 
 const SEVERITY_STYLES = {
-  reject: { icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/20', label: 'Rejected' },
-  warn: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/15', border: 'border-amber-500/20', label: 'Warned' },
-  flag: { icon: Flag, color: 'text-blue-400', bg: 'bg-blue-500/15', border: 'border-blue-500/20', label: 'Flagged' },
+  reject: { icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-900/15', border: 'border-red-500/20', label: 'Rejected' },
+  warn: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-900/15', border: 'border-amber-500/20', label: 'Warned' },
+  flag: { icon: Flag, color: 'text-blue-400', bg: 'bg-blue-900/15', border: 'border-blue-500/20', label: 'Flagged' },
 };
 
 const RULE_TYPE_LABELS = {

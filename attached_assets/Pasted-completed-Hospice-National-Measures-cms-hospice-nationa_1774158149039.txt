@@ -1,0 +1,788 @@
+completed
+Hospice National Measures
+
+cms_hospice_national_measures_2024
+
+24 imported
+24 total
+Mar 22, 12:48 AM ET
+completed
+Hospice State Measures
+
+cms_hospice_state_measures_2024
+
+1,100 imported
+1,100 total
+Mar 22, 12:48 AM ET
+completed
+hospice_provider_data
+
+cms_hospice_provider_data_2024
+
+62,681 imported
+465,181 total
+Mar 22, 12:48 AM ET
+completed
+hospice_general_info
+
+cms_hospice_general_info_2024
+
+6,943 imported
+6,943 total
+Mar 22, 12:48 AM ET
+completed
+Hospice Enrollments
+
+cms_hospice_enrollments_2024
+
+6,227 imported
+6,227 total
+Mar 22, 12:48 AM ET
+completed
+medicare_hospice_utilization
+
+cms_medicare_hospice_utilization_2024
+
+5,823 imported
+5,824 total
+Mar 22, 12:48 AM ET
+completed
+hospice_all_owners
+
+cms_hospice_all_owners_2024
+
+71,507 imported
+71,507 total
+Mar 22, 12:48 AM ET
+completed
+Hospice Provider Measures
+
+cms_hospice_provider_measures_2024
+
+13,075 imported
+173,575 total
+Mar 22, 12:48 AM ET
+completed
+Home Health National Measures
+
+cms_home_health_national_measures_2024
+
+1 imported
+1 total
+Mar 22, 12:48 AM ET
+completed
+home_health_state_measures
+
+cms_home_health_state_measures_2024
+
+55 imported
+55 total
+Mar 22, 12:48 AM ET
+completed
+home_health_agencies
+
+cms_home_health_agencies_2024
+
+12,251 imported
+12,251 total
+Mar 22, 12:48 AM ET
+completed
+HH Enrollments
+
+cms_home_health_enrollments_2024
+
+11,660 imported
+11,660 total
+Mar 22, 12:48 AM ET
+completed
+medicare_hha_utilization
+
+cms_medicare_hha_utilization_2024
+
+8,518 imported
+8,519 total
+Mar 22, 12:48 AM ET
+completed
+home_health_cost_report
+
+cms_home_health_cost_report_2024
+
+10,715 imported
+10,715 total
+Mar 22, 12:48 AM ET
+completed
+home_health_all_owners
+
+cms_home_health_all_owners_2024
+
+102,146 imported
+102,146 total
+Mar 22, 12:48 AM ET
+completed
+Nursing Home Deficiencies
+
+cms_nursing_home_deficiencies_2024
+
+43,983 imported
+43,983 total
+Mar 22, 12:48 AM ET
+completed
+medicare_spending_by_drug_b
+
+cms_medicare_spending_by_drug_b_2024
+
+734 imported
+734 total
+Mar 22, 12:48 AM ET
+completed
+medicare_spending_by_drug_d
+
+cms_medicare_spending_by_drug_d_2024
+
+14,309 imported
+14,309 total
+Mar 22, 12:47 AM ET
+completed
+market_saturation_cbsa
+
+cms_market_saturation_cbsa_2024
+
+207,651 imported
+207,651 total
+Mar 22, 12:47 AM ET
+completed
+medicare_monthly_enrollment
+
+cms_medicare_monthly_enrollment_2024
+
+48,084 imported
+557,084 total
+Mar 22, 12:47 AM ET
+completed
+market_saturation_county
+
+cms_market_saturation_county_2024
+
+105,222 imported
+962,222 total
+Mar 22, 12:47 AM ET
+completed
+medicare_fee_for_service_enrollment
+
+cms_medicare_fee_for_service_enrollment_2024
+
+570,262 imported
+2,957,262 total
+Mar 22, 12:47 AM ET
+completed
+Nursing Home Providers
+
+cms_nursing_home_providers_2024
+
+14,710 imported
+14,710 total
+Mar 22, 12:47 AM ET
+processing
+SNF Provider Measures
+
+cms_snf_provider_measures_2024
+
+51,500 imported
+431,500 total
+Mar 22, 12:47 AM ET
+completed
+nursing_home_penalties
+
+cms_nursing_home_penalties_2024
+
+17,463 imported
+17,463 total
+Mar 22, 12:47 AM ET
+completed
+medicare_snf_utilization
+
+cms_medicare_snf_utilization_2024
+
+14,213 imported
+14,214 total
+Mar 22, 12:47 AM ET
+completed
+hospital_enrollments
+
+cms_hospital_enrollments_2024
+
+9,187 imported
+9,187 total
+Mar 22, 12:17 AM ET
+completed
+medicare_outpatient_by_provider
+
+cms_medicare_outpatient_by_provider_2024
+
+116,799 imported
+116,799 total
+Mar 22, 12:17 AM ET
+completed
+medicare_inpatient_by_provider
+
+cms_medicare_inpatient_by_provider_2024
+
+3,093 imported
+3,093 total
+Mar 22, 12:17 AM ET
+completed
+hospital_infections
+
+cms_hospital_infections_2024
+
+172,404 imported
+172,404 total
+Mar 22, 12:17 AM ET
+completed
+hospital_price_transparency
+
+cms_hospital_price_transparency_2024
+
+10,726 imported
+10,726 total
+Mar 22, 12:17 AM ET
+completed
+hospital_all_owners
+
+cms_hospital_all_owners_2024
+
+147,661 imported
+147,661 total
+Mar 22, 12:17 AM ET
+completed
+hospital_value_based_purchasing
+
+cms_hospital_value_based_purchasing_2024
+
+2,455 imported
+2,455 total
+Mar 22, 12:17 AM ET
+completed
+hospital_cost_report
+
+cms_hospital_cost_report_2024
+
+6,103 imported
+6,103 total
+Mar 22, 12:17 AM ET
+completed
+medicare_inpatient_by_provider
+
+cms_medicare_inpatient_by_provider_2024
+
+3,093 imported
+3,093 total
+Mar 22, 12:17 AM ET
+completed
+hospital_enrollments
+
+cms_hospital_enrollments_2024
+
+9,187 imported
+9,187 total
+Mar 22, 12:17 AM ET
+completed
+hospital_general_info
+
+cms_hospital_general_info_2024
+
+5,426 imported
+5,426 total
+Mar 22, 12:17 AM ET
+completed
+hospital_readmissions
+
+cms_hospital_readmissions_2024
+
+18,330 imported
+18,330 total
+Mar 22, 12:17 AM ET
+completed
+hospital_complications
+
+cms_hospital_complications_2024
+
+95,780 imported
+95,780 total
+Mar 22, 12:17 AM ET
+completed
+hospital_service_area
+
+cms_hospital_service_area_2024
+
+161,201 imported
+1,156,702 total
+Mar 22, 12:17 AM ET
+March 21, 2026
+
+paused
+NPPES Registry
+
+crawler_WY_all_1774077060855
+
+224 imported
+23,131 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_WI_all_1774077060850
+
+14,770 imported
+87,800 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_WV_all_1774077060845
+
+1,451 imported
+91,776 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_WA_all_1774077060840
+
+7,752 imported
+97,263 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_VA_all_1774077060836
+
+11,551 imported
+96,215 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_VT_all_1774077060831
+
+5,210 imported
+27,458 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_UT_all_1774077060827
+
+1,472 imported
+7,603 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_TX_all_1774077060821
+
+48,281 imported
+113,949 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_TN_all_1774077060817
+
+10,619 imported
+82,994 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_SD_all_1774077060812
+
+2,053 imported
+8,960 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_SC_all_1774077060807
+
+43,256 imported
+65,727 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_RI_all_1774077060802
+
+1,200 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_PA_all_1774077060798
+
+3,062 imported
+6,000 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_OR_all_1774077060793
+
+1,200 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_OK_all_1774077060789
+
+826 imported
+2,400 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_OH_all_1774077060784
+
+493 imported
+3,600 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_ND_all_1774077060780
+
+1,200 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NC_all_1774077060776
+
+2,000 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NY_all_1774077060771
+
+1,487 imported
+3,000 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NM_all_1774077060767
+
+7,152 imported
+83,509 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NJ_all_1774077060762
+
+12,793 imported
+202,327 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NH_all_1774077060757
+
+3,459 imported
+10,885 total
+Mar 21, 3:11 AM ET
+paused
+NPPES Registry
+
+crawler_NV_all_1774077060753
+
+50,511 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_NE_all_1774077060749
+
+959 imported
+10,022 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MT_all_1774077060745
+
+2,185 imported
+27,559 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MO_all_1774077060741
+
+10,219 imported
+82,576 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MS_all_1774077060737
+
+3,093 imported
+35,262 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MN_all_1774077060733
+
+400 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MI_all_1774077060729
+
+17,559 imported
+191,011 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MA_all_1774077060725
+
+400 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_MD_all_1774077060721
+
+2,000 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_ME_all_1774077060715
+
+7,118 imported
+59,189 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_LA_all_1774077060712
+
+20,101 imported
+63,252 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_KY_all_1774077060706
+
+1,600 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_KS_all_1774077060702
+
+20,900 imported
+48,211 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_IA_all_1774077060698
+
+8,956 imported
+84,025 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_IN_all_1774077060694
+
+600 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_IL_all_1774077060689
+
+29,935 imported
+194,902 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_ID_all_1774077060677
+
+1 imported
+2,603 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_HI_all_1774077060673
+
+2,340 imported
+26,672 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_GA_all_1774077060668
+
+13,925 imported
+111,602 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_FL_all_1774077060663
+
+16,765 imported
+94,199 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_DE_all_1774077060659
+
+200 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_DC_all_1774077060654
+
+200 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_CT_all_1774077060649
+
+200 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_CO_all_1774077060645
+
+400 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_CA_all_1774077060640
+
+14,708 imported
+303,098 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_AR_all_1774077060636
+
+3,099 imported
+98,747 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_AZ_all_1774077060631
+
+476 imported
+63,724 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_AK_all_1774077060627
+
+438 imported
+37,623 total
+Mar 21, 3:11 AM ET
+completed
+NPPES Registry
+
+crawler_AL_all_1774077060615
+
+740 imported
+80,055 total
+Mar 21, 3:11 AM ET
+completed
+hospital_price_transparency
+
+cms_hospital_price_transparency_2024
+
+10,726 imported
+10,726 total
+Mar 21, 3:06 AM ET
+completed
+provider_taxonomy_crosswalk
+
+cms_provider_taxonomy_crosswalk_2024
+
+565 imported
+565 total
+Mar 21, 3:06 AM ET
+completed
+medicare_part_d_prescribers
+
+cms_medicare_part_d_prescribers_2024
+
+1,216,165 imported
+1,380,665 total
+Mar 21, 3:02 AM ET
+completed
+Medical Equipment Suppliers
+
+cms_medical_equipment_suppliers_2024
+
+58,191 imported
+58,191 total
+Mar 21, 3:02 AM ET
+completed
+medicare_dme_by_referring
+
+cms_medicare_dme_by_referring_2024
+
+265,352 imported
+387,352 total
+Mar 21, 3:02 AM ET
+completed
+medicare_dme_by_supplier
+
+cms_medicare_dme_by_supplier_2024
+
+63,988 imported
+63,988 total
+Mar 21, 3:02 AM ET
+completed
+hospital_infections
+
+cms_hospital_infections_2024
+
+112,904 imported
+172,404 total
+Mar 21, 3:01 AM ET
+completed
+hospital_value_based_purchasing
+
+cms_hospital_value_based_purchasing_2024
+
+2,455 imported
+2,455 total
+Mar 21, 3:01 AM ET
+completed
+hospital_all_owners
+
+cms_hospital_all_owners_2024
+
+4,161 imported
+147,661 total
+Mar 21, 3:01 AM ET

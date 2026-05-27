@@ -41,6 +41,11 @@ import ProviderImportHistory from '../components/providers/ProviderImportHistory
 import ProviderAIQualityInsights from '../components/providers/ProviderAIQualityInsights';
 import ExternalDataDisplay from '../components/enrichment/ExternalDataDisplay';
 import AIPredictiveOutreachCard from '../components/outreach/AIPredictiveOutreachCard';
+import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
+import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
+import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
+import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
+import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -74,7 +79,10 @@ export default function ProviderDetail() {
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['providerUtilAll', npi],
-    queryFn: () => base44.entities.CMSUtilization.filter({ npi }),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi });
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1) }));
+    },
     enabled: !!npi,
   });
 
@@ -113,6 +121,16 @@ export default function ProviderDetail() {
     enabled: !!npi,
   });
 
+  const { data: cmsData } = useQuery({
+    queryKey: ['providerCMSData', npi],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getProviderCMSData', { npi });
+      return result?.data || result;
+    },
+    enabled: !!npi,
+    staleTime: 60000,
+  });
+
   const queryClient = useQueryClient();
   const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
 
@@ -144,7 +162,7 @@ export default function ProviderDetail() {
   if (!provider) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 text-lg mb-4">Provider not found</p>
+        <p className="text-slate-400 text-lg mb-4">Provider not found</p>
         <Button variant="outline" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
         </Button>
@@ -181,7 +199,7 @@ export default function ProviderDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-3 sm:grid-cols-6 gap-1">
+        <TabsList className="w-full h-auto bg-slate-800/50 p-1 mb-6 grid grid-cols-4 sm:grid-cols-7 gap-1">
           <TabsTrigger value="overview" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Overview</span><span className="sm:hidden">Overview</span>
           </TabsTrigger>
@@ -199,6 +217,9 @@ export default function ProviderDetail() {
           </TabsTrigger>
           <TabsTrigger value="quality" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Quality</span><span className="sm:hidden">Quality</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-1.5 h-9 text-xs data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm">
+            <Stethoscope className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Full Report</span><span className="sm:hidden">Report</span>
           </TabsTrigger>
         </TabsList>
 
@@ -237,6 +258,9 @@ export default function ProviderDetail() {
                 score={score}
                 locations={locations}
               />
+              {cmsData?.linked_facilities?.length > 0 && (
+                <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
+              )}
               <ReferralLikelihoodSignals
                 utilization={latestUtil}
                 referrals={latestRef}
@@ -255,6 +279,16 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="clinical" className="space-y-6">
+          {cmsData?.mips?.has_data && (
+            <MIPSPerformanceCard mipsData={cmsData.mips} />
+          )}
+          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data || cmsData?.network?.has_data) && (
+            <ProviderCMSDataCard
+              clinicianData={cmsData.clinician}
+              utilizationCmsData={cmsData.utilization_cms}
+              networkData={cmsData.network}
+            />
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />
             <ReferralSummaryCard referrals={referrals} />
@@ -286,6 +320,14 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="network" className="space-y-6">
+          {cmsData?.linked_facilities?.length > 0 && (
+            <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
+          )}
+          {cmsData?.network?.has_data && (
+            <ProviderCMSDataCard
+              networkData={cmsData.network}
+            />
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                <ProviderAffiliations
@@ -294,6 +336,7 @@ export default function ProviderDetail() {
                 location={primaryLocation}
                 taxonomies={taxonomies}
               />
+              <ReferralPartnersCard npi={npi} referrals={referrals} />
             </div>
             <div className="space-y-6">
               <AIRelatedProviders
@@ -332,11 +375,11 @@ export default function ProviderDetail() {
                            <div className="flex justify-between items-start mb-2">
                               <div>
                                 <h4 className="font-semibold text-sm">{msg.subject || 'No Subject'}</h4>
-                                <p className="text-xs text-slate-500">Sent: {new Date(msg.created_date).toLocaleDateString()}</p>
+                                <p className="text-xs text-slate-400">Sent: {new Date(msg.created_date).toLocaleDateString()}</p>
                               </div>
                               <Badge variant="outline">{msg.status}</Badge>
                            </div>
-                           <p className="text-sm text-slate-600 line-clamp-2">{msg.body}</p>
+                           <p className="text-sm text-slate-400 line-clamp-2">{msg.body}</p>
                         </div>
                       ))}
                      </div>
@@ -366,6 +409,10 @@ export default function ProviderDetail() {
               <AIContactEnrichment provider={provider} location={primaryLocation} taxonomies={taxonomies} />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="report" className="space-y-6">
+          <ComprehensiveReport npi={npi} />
         </TabsContent>
 
         <TabsContent value="quality" className="space-y-6">

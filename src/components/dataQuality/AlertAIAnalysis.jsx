@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Lightbulb, AlertTriangle, Wrench } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AlertAIAnalysis({ alert }) {
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,7 @@ export default function AlertAIAnalysis({ alert }) {
 
   const runAnalysis = async () => {
     setLoading(true);
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a healthcare data quality expert. Analyze this data quality alert and provide root cause analysis and actionable solutions.
 
@@ -56,7 +58,12 @@ Provide:
       ai_analyzed_at: new Date().toISOString(),
     });
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
-    setLoading(false);
+    } catch (err) {
+      console.error('AI analysis failed:', err);
+      toast.error('AI analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!analysis) {
@@ -66,7 +73,7 @@ Provide:
         variant="outline"
         onClick={(e) => { e.stopPropagation(); runAnalysis(); }}
         disabled={loading}
-        className="text-xs h-7 gap-1 border-violet-200 text-violet-600 hover:bg-violet-50"
+        className="text-xs h-7 gap-1 border-violet-500/30 text-violet-600 hover:bg-violet-900/20"
       >
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
         {loading ? 'Analyzing...' : 'AI Analyze'}
@@ -77,26 +84,26 @@ Provide:
   return (
     <div className="space-y-2.5 mt-2">
       {/* Root Cause */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+      <div className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-2.5">
         <div className="flex items-center gap-1.5 mb-1">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-          <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Root Cause</span>
+          <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wide">Root Cause</span>
         </div>
-        <p className="text-xs text-amber-900 leading-relaxed">{analysis.root_cause}</p>
+        <p className="text-xs text-amber-400 leading-relaxed">{analysis.root_cause}</p>
       </div>
 
       {/* Solutions */}
       {analysis.solutions?.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Wrench className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wide">Solutions</span>
+            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">Solutions</span>
           </div>
           <div className="space-y-1">
             {analysis.solutions.map((s, i) => (
               <div key={i} className="flex items-start gap-2">
-                <Badge className="bg-emerald-200 text-emerald-800 text-[8px] shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{i + 1}</Badge>
-                <p className="text-xs text-emerald-900">{s}</p>
+                <Badge className="bg-emerald-200 text-emerald-300 text-[8px] shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{i + 1}</Badge>
+                <p className="text-xs text-emerald-400">{s}</p>
               </div>
             ))}
           </div>
@@ -105,12 +112,12 @@ Provide:
 
       {/* Impact */}
       {analysis.impact_assessment && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <Lightbulb className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Impact Assessment</span>
+            <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">Impact Assessment</span>
           </div>
-          <p className="text-xs text-blue-900 leading-relaxed">{analysis.impact_assessment}</p>
+          <p className="text-xs text-blue-400 leading-relaxed">{analysis.impact_assessment}</p>
         </div>
       )}
 

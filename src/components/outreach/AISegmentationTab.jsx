@@ -10,6 +10,7 @@ export default function AISegmentationTab({ campaigns = [], providers = [], scor
 
   const generateSegmentation = async () => {
     setLoading(true);
+    try {
 
     const providerSample = providers.slice(0, 100).map(p => ({
       npi: p.npi,
@@ -101,10 +102,14 @@ Provide:
       }
     });
     setResults(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI segmentation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const prioColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
   const valColors = { high: 'text-green-600', medium: 'text-amber-600', low: 'text-slate-400' };
 
   return (
@@ -118,8 +123,8 @@ Provide:
         <div className="space-y-2.5">
           {/* Overall Recommendation */}
           {results.overall_recommendation && (
-            <div className="bg-slate-50 rounded-lg p-2 border">
-              <p className="text-[10px] text-slate-700 leading-relaxed">{results.overall_recommendation}</p>
+            <div className="bg-slate-800/40 rounded-lg p-2 border">
+              <p className="text-[10px] text-slate-300 leading-relaxed">{results.overall_recommendation}</p>
             </div>
           )}
 
@@ -127,34 +132,34 @@ Provide:
           <div>
             <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Audience Segments & Budget</p>
             {results.segments?.map((s, i) => (
-              <div key={i} className="bg-white rounded-lg border p-2.5 mb-1.5 hover:border-violet-300 transition-colors">
+              <div key={i} className="bg-slate-800/60 rounded-lg border p-2.5 mb-1.5 hover:border-violet-300 transition-colors">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
                     <Badge className={`text-[8px] ${prioColors[s.priority]}`}>{s.priority}</Badge>
-                    <p className="text-[10px] font-bold text-slate-800">{s.name}</p>
+                    <p className="text-[10px] font-bold text-slate-300">{s.name}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <DollarSign className="w-3 h-3 text-emerald-500" />
-                    <span className="text-[10px] font-bold text-emerald-700">{s.budget_allocation_pct}%</span>
+                    <span className="text-[10px] font-bold text-emerald-400">{s.budget_allocation_pct}%</span>
                   </div>
                 </div>
                 <p className="text-[9px] text-slate-500 mb-1.5">{s.definition}</p>
                 <div className="grid grid-cols-4 gap-1 mb-1.5">
-                  <div className="bg-blue-50 rounded px-1.5 py-0.5 text-center">
+                  <div className="bg-blue-900/20 rounded px-1.5 py-0.5 text-center">
                     <p className="text-[8px] text-blue-400">Size</p>
-                    <p className="text-[9px] font-bold text-blue-700">{s.estimated_size || '~'}  <span className="font-normal text-[8px]">({s.estimated_percentage}%)</span></p>
+                    <p className="text-[9px] font-bold text-blue-400">{s.estimated_size || '~'}  <span className="font-normal text-[8px]">({s.estimated_percentage}%)</span></p>
                   </div>
-                  <div className="bg-emerald-50 rounded px-1.5 py-0.5 text-center">
+                  <div className="bg-emerald-900/20 rounded px-1.5 py-0.5 text-center">
                     <p className="text-[8px] text-emerald-400">Open</p>
-                    <p className="text-[9px] font-bold text-emerald-700">{s.predicted_open_rate}%</p>
+                    <p className="text-[9px] font-bold text-emerald-400">{s.predicted_open_rate}%</p>
                   </div>
-                  <div className="bg-violet-50 rounded px-1.5 py-0.5 text-center">
+                  <div className="bg-violet-900/30 rounded px-1.5 py-0.5 text-center">
                     <p className="text-[8px] text-violet-400">Response</p>
                     <p className="text-[9px] font-bold text-violet-700">{s.predicted_response_rate}%</p>
                   </div>
-                  <div className="bg-amber-50 rounded px-1.5 py-0.5 text-center">
+                  <div className="bg-amber-900/20 rounded px-1.5 py-0.5 text-center">
                     <p className="text-[8px] text-amber-400">Frequency</p>
-                    <p className="text-[9px] font-bold text-amber-700">{s.recommended_frequency}</p>
+                    <p className="text-[9px] font-bold text-amber-400">{s.recommended_frequency}</p>
                   </div>
                 </div>
                 <p className="text-[9px] text-slate-500 italic">{s.messaging_approach}</p>
@@ -164,11 +169,11 @@ Provide:
 
           {/* Budget Allocation Summary Bar */}
           {results.segments?.length > 0 && (
-            <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-100">
-              <p className="text-[10px] font-semibold text-emerald-700 mb-1.5">💰 Budget Allocation</p>
+            <div className="bg-emerald-900/20 rounded-lg p-2 border border-emerald-500/30">
+              <p className="text-[10px] font-semibold text-emerald-400 mb-1.5">💰 Budget Allocation</p>
               <div className="flex h-4 rounded-full overflow-hidden mb-1.5">
                 {results.segments.map((s, i) => {
-                  const colors = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-slate-400'];
+                  const colors = ['bg-violet-900/300', 'bg-blue-900/20', 'bg-emerald-900/20', 'bg-amber-900/20', 'bg-pink-900/20', 'bg-slate-400'];
                   return (
                     <div key={i} className={`${colors[i % colors.length]} transition-all`}
                       style={{ width: `${s.budget_allocation_pct}%` }}
@@ -178,11 +183,11 @@ Provide:
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 {results.segments.map((s, i) => {
-                  const dots = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-slate-400'];
+                  const dots = ['bg-violet-900/300', 'bg-blue-900/20', 'bg-emerald-900/20', 'bg-amber-900/20', 'bg-pink-900/20', 'bg-slate-400'];
                   return (
                     <div key={i} className="flex items-center gap-1">
                       <div className={`w-2 h-2 rounded-full ${dots[i % dots.length]}`} />
-                      <span className="text-[8px] text-slate-600">{s.name} ({s.budget_allocation_pct}%)</span>
+                      <span className="text-[8px] text-slate-400">{s.name} ({s.budget_allocation_pct}%)</span>
                     </div>
                   );
                 })}
@@ -194,16 +199,16 @@ Provide:
           {results.priority_matrix?.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold text-slate-400 uppercase mb-1">Priority Matrix</p>
-              <div className="bg-white rounded-lg border overflow-hidden">
-                <div className="grid grid-cols-4 gap-0 text-[8px] font-semibold text-slate-400 uppercase bg-slate-50 px-2 py-1.5">
+              <div className="bg-slate-800/60 rounded-lg border overflow-hidden">
+                <div className="grid grid-cols-4 gap-0 text-[8px] font-semibold text-slate-400 uppercase bg-slate-800/40 px-2 py-1.5">
                   <span>Segment</span><span>Value</span><span>Effort</span><span>Action</span>
                 </div>
                 {results.priority_matrix.map((p, i) => (
                   <div key={i} className="grid grid-cols-4 gap-0 px-2 py-1.5 border-t text-[9px]">
-                    <span className="font-medium text-slate-700">{p.segment}</span>
+                    <span className="font-medium text-slate-300">{p.segment}</span>
                     <span className={`font-medium ${valColors[p.value]}`}>{p.value}</span>
                     <span className="text-slate-500">{p.effort}</span>
-                    <span className="text-slate-600">{p.recommendation}</span>
+                    <span className="text-slate-400">{p.recommendation}</span>
                   </div>
                 ))}
               </div>
@@ -212,8 +217,8 @@ Provide:
 
           {/* Cross-Segment Strategies */}
           {results.cross_segment_strategies?.length > 0 && (
-            <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-              <p className="text-[10px] font-semibold text-blue-700 mb-1">🔗 Cross-Segment Strategies</p>
+            <div className="bg-blue-900/20 rounded-lg p-2 border border-blue-500/30">
+              <p className="text-[10px] font-semibold text-blue-400 mb-1">🔗 Cross-Segment Strategies</p>
               {results.cross_segment_strategies.map((s, i) => (
                 <p key={i} className="text-[9px] text-blue-600 mb-0.5">• {s}</p>
               ))}
@@ -228,7 +233,7 @@ Provide:
                 <div key={i} className="flex items-start gap-2 mb-1.5">
                   <Badge variant="outline" className="text-[8px] shrink-0 mt-0.5">{t.tier}</Badge>
                   <div>
-                    <p className="text-[9px] text-slate-600">{t.criteria}</p>
+                    <p className="text-[9px] text-slate-400">{t.criteria}</p>
                     <p className="text-[9px] text-violet-600 font-medium">{t.strategy}</p>
                   </div>
                 </div>

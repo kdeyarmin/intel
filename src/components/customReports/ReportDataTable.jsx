@@ -39,7 +39,7 @@ export default function ReportDataTable({ chartData, config }) {
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <CardTitle className="text-sm font-semibold text-slate-700">Data Table</CardTitle>
+        <CardTitle className="text-sm font-semibold text-slate-300">Data Table</CardTitle>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 h-7 text-xs">
             <Download className="w-3 h-3" /> CSV

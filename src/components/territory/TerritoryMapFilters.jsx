@@ -15,7 +15,7 @@ const SPECIALTIES = [
   'Occupational Therapy', 'Speech-Language Pathology',
 ];
 
-export default function TerritoryMapFilters({ filters, onChange, onReset, providerCount }) {
+export default function TerritoryMapFilters({ filters, onChange, onReset, providerCount, availableStates = [] }) {
   const update = (key, value) => onChange({ ...filters, [key]: value });
 
   const activeCount = [
@@ -37,7 +37,7 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
           </span>
           <div className="flex items-center gap-2">
             {activeCount > 0 && (
-              <Badge className="bg-teal-100 text-teal-700 text-[10px]">{activeCount} active</Badge>
+              <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">{activeCount} active</Badge>
             )}
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onReset} title="Reset">
               <RotateCcw className="w-3 h-3" />
@@ -54,12 +54,18 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All States</SelectItem>
-              <SelectItem value="PA">Pennsylvania</SelectItem>
-              <SelectItem value="NJ">New Jersey</SelectItem>
-              <SelectItem value="NY">New York</SelectItem>
-              <SelectItem value="DE">Delaware</SelectItem>
-              <SelectItem value="MD">Maryland</SelectItem>
-              <SelectItem value="OH">Ohio</SelectItem>
+              {availableStates.length > 0 ? availableStates.map(s => (
+                <SelectItem key={s.state} value={s.state}>{s.state} ({s.count.toLocaleString()})</SelectItem>
+              )) : (
+                <>
+                  <SelectItem value="PA">Pennsylvania</SelectItem>
+                  <SelectItem value="NJ">New Jersey</SelectItem>
+                  <SelectItem value="NY">New York</SelectItem>
+                  <SelectItem value="DE">Delaware</SelectItem>
+                  <SelectItem value="MD">Maryland</SelectItem>
+                  <SelectItem value="OH">Ohio</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -141,7 +147,7 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
 
         <div className="pt-2 border-t text-center">
           <p className="text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">{providerCount}</span> providers on map
+            <span className="font-semibold text-slate-300">{providerCount}</span> providers on map
           </p>
         </div>
       </CardContent>

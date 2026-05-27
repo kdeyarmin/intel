@@ -21,8 +21,10 @@ export default function ReferralSummaryCard({ referrals = [] }) {
     const latest = sorted[sorted.length - 1];
     const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
 
-    const yoy = prev && prev.total_referrals > 0
-      ? ((latest.total_referrals - prev.total_referrals) / prev.total_referrals * 100).toFixed(1)
+    const latestTotal = latest.total_referrals || 0;
+    const prevTotal = prev?.total_referrals || 0;
+    const yoy = prev && prevTotal > 0
+      ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1)
       : null;
 
     const breakdown = TYPES.map(t => ({
@@ -51,7 +53,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
       <CardContent>
         <div className="flex items-center gap-4">
           <div className="flex-1">
-            <p className="text-3xl font-bold text-slate-900">{(summary.latest?.total_referrals || 0).toLocaleString()}</p>
+            <p className="text-3xl font-bold text-white">{(summary.latest?.total_referrals || 0).toLocaleString()}</p>
             <p className="text-xs text-slate-500">total referrals</p>
             {summary.yoy && (
               <div className="flex items-center gap-1 mt-1">
@@ -64,7 +66,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
               </div>
             )}
             {summary.dominant && (
-              <p className="text-[10px] text-slate-400 mt-2">Primary channel: <span className="font-medium text-slate-600">{summary.dominant}</span></p>
+              <p className="text-[10px] text-slate-400 mt-2">Primary channel: <span className="font-medium text-slate-400">{summary.dominant}</span></p>
             )}
           </div>
           {summary.breakdown.length > 0 && (
@@ -84,7 +86,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
           {summary.breakdown.map((b, i) => (
             <div key={b.name} className="flex items-center gap-1.5 text-[10px]">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-              <span className="text-slate-600">{b.name}: {b.value.toLocaleString()}</span>
+              <span className="text-slate-400">{b.name}: {b.value.toLocaleString()}</span>
             </div>
           ))}
         </div>

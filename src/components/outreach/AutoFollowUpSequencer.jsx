@@ -113,14 +113,14 @@ Keep each under 100 words.`,
             const enabled = enabledSteps.has(step.id);
             const seqStep = sequence?.steps?.find(s => s.step === step.id);
             return (
-              <div key={step.id} className={`relative border rounded-lg p-3 transition-all ${enabled ? 'border-slate-200' : 'border-slate-100 opacity-50'}`}>
+              <div key={step.id} className={`relative border rounded-lg p-3 transition-all ${enabled ? 'border-slate-700/50' : 'border-slate-700/50 opacity-50'}`}>
                 {i < SEQUENCE_STEPS.length - 1 && <div className="absolute left-6 top-full w-px h-2 bg-slate-200" />}
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center`}>
+                    <div className={`w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center`}>
                       <Icon className={`w-3 h-3 ${step.color}`} />
                     </div>
-                    <span className="text-xs font-medium text-slate-700">Step {step.id}: {step.label}</span>
+                    <span className="text-xs font-medium text-slate-300">Step {step.id}: {step.label}</span>
                     <Badge variant="outline" className="text-[9px]"><Clock className="w-2.5 h-2.5 mr-0.5" />{step.delay}</Badge>
                   </div>
                   <Switch checked={enabled} onCheckedChange={() => {
@@ -129,7 +129,7 @@ Keep each under 100 words.`,
                 </div>
                 {seqStep && enabled && (
                   <div className="ml-8 space-y-1.5 mt-2">
-                    <p className="text-[10px] text-slate-700"><span className="font-medium">Subject:</span> {seqStep.subject}</p>
+                    <p className="text-[10px] text-slate-300"><span className="font-medium">Subject:</span> {seqStep.subject}</p>
                     <p className="text-[10px] text-slate-500 leading-relaxed max-h-16 overflow-y-auto">{seqStep.body}</p>
                     <p className="text-[9px] text-violet-500 italic">{seqStep.reasoning}</p>
                     <Button size="sm" className="h-6 text-[10px] bg-teal-600 hover:bg-teal-700 gap-1"
@@ -144,8 +144,8 @@ Keep each under 100 words.`,
         </div>
 
         {sequence?.best_send_times && (
-          <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-            <p className="text-[10px] font-medium text-amber-700 mb-0.5">Optimal Send Time</p>
+          <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
+            <p className="text-[10px] font-medium text-amber-400 mb-0.5">Optimal Send Time</p>
             <p className="text-[9px] text-amber-600">{sequence.best_send_times.day_of_week} at {sequence.best_send_times.time_of_day} — {sequence.best_send_times.reasoning}</p>
           </div>
         )}

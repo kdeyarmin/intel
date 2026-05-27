@@ -6,7 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Map, Layers, ZoomIn } from 'lucide-react';
 import { getProviderCoords } from './zipCoords';
 import ProviderMapPopup from './ProviderMapPopup';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'react-leaflet';
+
+function RecenterMap({ center }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (center) map.setView(center, map.getZoom(), { animate: true });
+  }, [center[0], center[1]]);
+  return null;
+}
 
 // Volume-based Heatmap overlay
 function VolumeDensityLayer({ points }) {
@@ -110,7 +119,7 @@ function ResetViewButton({ center, zoom }) {
     <Button
       variant="outline"
       size="sm"
-      className="absolute top-2 right-2 z-[1000] bg-white shadow-sm h-7 text-xs gap-1"
+      className="absolute top-2 right-2 z-[1000] bg-slate-800/60 shadow-sm h-7 text-xs gap-1"
       onClick={() => map.setView(center, zoom)}
     >
       <ZoomIn className="w-3 h-3" /> Reset View
@@ -155,7 +164,15 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
     return pts;
   }, [filteredProviders]);
 
-  const center = [40.27, -77.19]; // PA center
+  const center = useMemo(() => {
+    if (mapPoints.length === 0) return [40.27, -77.19];
+    const lats = mapPoints.map(p => p.lat);
+    const lngs = mapPoints.map(p => p.lng);
+    return [
+      (Math.min(...lats) + Math.max(...lats)) / 2,
+      (Math.min(...lngs) + Math.max(...lngs)) / 2,
+    ];
+  }, [mapPoints]);
   const defaultZoom = 7;
 
   // Map stats
@@ -189,8 +206,8 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
             {stats && (
               <div className="flex gap-2">
                 <Badge variant="outline" className="text-[10px]">{stats.total} mapped</Badge>
-                <Badge className="bg-teal-100 text-teal-700 text-[10px]">Avg {stats.avgScore}</Badge>
-                <Badge className="bg-green-100 text-green-700 text-[10px]">{stats.high} high</Badge>
+                <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">Avg {stats.avgScore}</Badge>
+                <Badge className="bg-green-900/30 text-green-400 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
             {actions}
@@ -207,7 +224,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
       <CardContent className="p-0">
         <div className="relative" style={{ height: '560px' }}>
           {mapPoints.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-sm text-slate-400">
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-800/40 text-sm text-slate-400">
               No providers with mappable locations match your filters.
             </div>
           ) : (
@@ -218,34 +235,41 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               scrollWheelZoom={true}
             >
               <TileLayer url={tileUrl} attribution={tileAttr} />
+              <RecenterMap center={center} />
               <ResetViewButton center={center} zoom={defaultZoom} />
 
               {showHeatmap && <HeatmapLayer points={mapPoints} />}
               {showVolumeDensity && <VolumeDensityLayer points={mapPoints} />}
 
-              {mapPoints.map((point, idx) => (
-                <CircleMarker
-                  key={idx}
-                  center={[point.lat, point.lng]}
-                  radius={getScoreRadius(point.score)}
-                  fillColor={getScoreColor(point.score, colorByScore)}
-                  fillOpacity={0.85}
-                  color="#fff"
-                  weight={1}
-                  opacity={0.8}
-                >
-                  <Popup maxWidth={300} className="custom-popup">
-                    <ProviderMapPopup item={point.item} />
-                  </Popup>
-                </CircleMarker>
-              ))}
+              {/* Cluster individual provider markers so the map stays fast and
+                  readable with many points; clusters break apart on zoom-in and
+                  fully disaggregate past zoom 11. Heatmap/density layers above are
+                  intentionally left outside the cluster group. */}
+              <MarkerClusterGroup chunkedLoading maxClusterRadius={50} disableClusteringAtZoom={11}>
+                {mapPoints.map((point, idx) => (
+                  <CircleMarker
+                    key={idx}
+                    center={[point.lat, point.lng]}
+                    radius={getScoreRadius(point.score)}
+                    fillColor={getScoreColor(point.score, colorByScore)}
+                    fillOpacity={0.85}
+                    color="#fff"
+                    weight={1}
+                    opacity={0.8}
+                  >
+                    <Popup maxWidth={300} className="custom-popup">
+                      <ProviderMapPopup item={point.item} />
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MarkerClusterGroup>
             </MapContainer>
           )}
 
           {/* Legend */}
           {colorByScore && mapPoints.length > 0 && (
-            <div className="absolute bottom-3 left-3 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
-              <div className="text-[10px] font-semibold text-slate-700 mb-1.5">Score Legend</div>
+            <div className="absolute bottom-3 left-3 z-[1000] bg-slate-800/60 backdrop-blur-sm rounded-lg shadow-lg p-2.5 border">
+              <div className="text-[10px] font-semibold text-slate-300 mb-1.5">Score Legend</div>
               <div className="space-y-1">
                 {[
                   { color: '#16a34a', label: '80–100 (Excellent)' },
@@ -256,7 +280,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                 ].map(({ color, label }) => (
                   <div key={color} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-[10px] text-slate-600">{label}</span>
+                    <span className="text-[10px] text-slate-400">{label}</span>
                   </div>
                 ))}
               </div>

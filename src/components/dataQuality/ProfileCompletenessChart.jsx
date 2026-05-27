@@ -2,16 +2,16 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const FIELDS = [
-  { key: 'npi', label: 'NPI' },
-  { key: 'first_name', label: 'First Name' },
-  { key: 'last_name', label: 'Last Name' },
-  { key: 'credential', label: 'Credential' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'email', label: 'Email' },
-  { key: 'enumeration_date', label: 'Enum Date' },
-  { key: 'entity_type', label: 'Entity Type' },
-];
+const RULE_LABEL_MAP = {
+  'missing_name': 'Provider Name',
+  'missing_credential': 'Credential',
+  'missing_enum_date': 'Enum Date',
+  'missing_email': 'Email Address',
+  'no_location': 'Location Linked',
+  'no_taxonomy': 'Taxonomy Linked',
+  'missing_address': 'Address',
+  'missing_city': 'City',
+};
 
 function getBarColor(pct) {
   if (pct >= 90) return '#22d3ee';
@@ -20,16 +20,17 @@ function getBarColor(pct) {
   return '#ef4444';
 }
 
-export default function ProfileCompletenessChart({ providers = [] }) {
+export default function ProfileCompletenessChart({ ruleResults = [] }) {
   const data = useMemo(() => {
-    if (providers.length === 0) return [];
-    const total = providers.length;
-    return FIELDS.map(f => {
-      const filled = providers.filter(p => p[f.key] && String(p[f.key]).trim() !== '').length;
-      const pct = Math.round((filled / total) * 100);
-      return { field: f.label, pct, filled, total };
-    }).sort((a, b) => a.pct - b.pct);
-  }, [providers]);
+    const completenessRules = ruleResults.filter(r => r.category === 'completeness');
+    if (completenessRules.length === 0) return [];
+    return completenessRules.map(r => ({
+      field: RULE_LABEL_MAP[r.rule_id] || r.rule_name,
+      pct: r.pct,
+      filled: r.passing,
+      total: r.total,
+    })).sort((a, b) => a.pct - b.pct);
+  }, [ruleResults]);
 
   if (data.length === 0) return null;
 
@@ -46,7 +47,7 @@ export default function ProfileCompletenessChart({ providers = [] }) {
               <YAxis type="category" dataKey="field" tick={{ fontSize: 11, fill: '#94a3b8' }} width={75} />
               <Tooltip
                 contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }}
-                formatter={(v, name, props) => [`${v}% (${props.payload.filled.toLocaleString()} / ${props.payload.total.toLocaleString()})`, 'Completeness']}
+                formatter={(v, name, props) => [`${v}% (${props.payload.filled?.toLocaleString()} / ${props.payload.total?.toLocaleString()})`, 'Completeness']}
               />
               <Bar dataKey="pct" radius={[0, 4, 4, 0]} barSize={18}>
                 {data.map((d, i) => <Cell key={i} fill={getBarColor(d.pct)} />)}

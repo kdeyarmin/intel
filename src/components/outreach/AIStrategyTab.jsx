@@ -10,6 +10,7 @@ export default function AIStrategyTab({ campaigns = [], providers = [], scores =
 
   const generateStrategy = async () => {
     setLoading(true);
+    try {
 
     const historicalData = campaigns.filter(c => c.sent_count > 0).map(c => ({
       name: c.name,
@@ -107,12 +108,16 @@ Also provide:
       }
     });
     setStrategy(res);
-    setLoading(false);
+    } catch (err) {
+      console.error('AI strategy generation failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const impactColors = { positive: 'text-green-600', negative: 'text-red-600', neutral: 'text-slate-500' };
   const impactIcons = { positive: TrendingUp, negative: TrendingDown, neutral: Target };
-  const prioColors = { high: 'bg-red-100 text-red-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-slate-100 text-slate-600' };
+  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
 
   return (
     <div className="space-y-2">
@@ -124,9 +129,9 @@ Also provide:
       {strategy && (
         <div className="space-y-2.5">
           {/* Strategic Assessment */}
-          <div className="bg-slate-50 rounded-lg p-2.5 border">
+          <div className="bg-slate-800/40 rounded-lg p-2.5 border">
             <p className="text-[10px] font-semibold text-slate-500 uppercase mb-1">Strategic Assessment</p>
-            <p className="text-[10px] text-slate-700 leading-relaxed">{strategy.strategic_assessment}</p>
+            <p className="text-[10px] text-slate-300 leading-relaxed">{strategy.strategic_assessment}</p>
           </div>
 
           {/* Patterns */}
@@ -139,7 +144,7 @@ Also provide:
                   <div key={i} className="flex items-start gap-1.5 mb-1.5">
                     <Icon className={`w-3 h-3 mt-0.5 shrink-0 ${impactColors[p.impact]}`} />
                     <div>
-                      <p className="text-[10px] font-medium text-slate-700">{p.pattern}</p>
+                      <p className="text-[10px] font-medium text-slate-300">{p.pattern}</p>
                       <p className="text-[9px] text-slate-400">{p.insight}</p>
                     </div>
                   </div>
@@ -151,14 +156,14 @@ Also provide:
           {/* Working vs Needs Improvement */}
           <div className="grid grid-cols-2 gap-2">
             {strategy.whats_working?.length > 0 && (
-              <div className="bg-green-50 rounded-lg p-2 border border-green-100">
-                <p className="text-[10px] font-semibold text-green-700 mb-1">✓ Working Well</p>
+              <div className="bg-green-900/20 rounded-lg p-2 border border-green-500/30">
+                <p className="text-[10px] font-semibold text-green-400 mb-1">✓ Working Well</p>
                 {strategy.whats_working.map((w, i) => <p key={i} className="text-[9px] text-green-600 mb-0.5">• {w}</p>)}
               </div>
             )}
             {strategy.needs_improvement?.length > 0 && (
-              <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-                <p className="text-[10px] font-semibold text-amber-700 mb-1">⚡ Improve</p>
+              <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
+                <p className="text-[10px] font-semibold text-amber-400 mb-1">⚡ Improve</p>
                 {strategy.needs_improvement.map((n, i) => <p key={i} className="text-[9px] text-amber-600 mb-0.5">• {n}</p>)}
               </div>
             )}
@@ -166,20 +171,20 @@ Also provide:
 
           {/* Campaign Strategies */}
           {strategy.campaign_strategies?.map((s, i) => (
-            <div key={i} className="bg-white rounded-lg border p-2.5 hover:border-violet-300 transition-colors">
+            <div key={i} className="bg-slate-800/60 rounded-lg border p-2.5 hover:border-violet-300 transition-colors">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] font-bold text-slate-800">{s.name}</p>
+                <p className="text-[10px] font-bold text-slate-300">{s.name}</p>
                 <Badge className={`text-[8px] ${prioColors[s.priority]}`}>{s.priority}</Badge>
               </div>
-              <p className="text-[9px] text-slate-600 mb-1.5">{s.concept}</p>
+              <p className="text-[9px] text-slate-400 mb-1.5">{s.concept}</p>
               <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                <div className="bg-blue-50 rounded px-2 py-1">
+                <div className="bg-blue-900/20 rounded px-2 py-1">
                   <p className="text-[8px] text-blue-400">Target</p>
-                  <p className="text-[9px] font-medium text-blue-700">{s.target_audience}</p>
+                  <p className="text-[9px] font-medium text-blue-400">{s.target_audience}</p>
                 </div>
-                <div className="bg-emerald-50 rounded px-2 py-1">
+                <div className="bg-emerald-900/20 rounded px-2 py-1">
                   <p className="text-[8px] text-emerald-400">Expected</p>
-                  <p className="text-[9px] font-medium text-emerald-700">{s.expected_open_rate}% open · {s.expected_response_rate}% response</p>
+                  <p className="text-[9px] font-medium text-emerald-400">{s.expected_open_rate}% open · {s.expected_response_rate}% response</p>
                 </div>
               </div>
               <div className="flex items-start gap-1 mb-1">
@@ -197,13 +202,13 @@ Also provide:
 
           {/* Quarterly Calendar */}
           {strategy.quarterly_calendar?.length > 0 && (
-            <div className="bg-violet-50 rounded-lg p-2.5 border border-violet-100">
+            <div className="bg-violet-900/30 rounded-lg p-2.5 border border-violet-500/30">
               <p className="text-[10px] font-semibold text-violet-700 mb-1.5">📅 Quarterly Cadence</p>
               {strategy.quarterly_calendar.map((q, i) => (
                 <div key={i} className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[8px] shrink-0 w-14 justify-center">{q.month}</Badge>
                   <div>
-                    <span className="text-[9px] font-medium text-violet-800">{q.campaign_type}</span>
+                    <span className="text-[9px] font-medium text-violet-400">{q.campaign_type}</span>
                     <span className="text-[9px] text-violet-500"> — {q.focus}</span>
                   </div>
                 </div>

@@ -71,7 +71,7 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
       </div>
 
       {/* Error categories with solutions */}
-      <Card className="border-red-500/20 bg-red-500/5">
+      <Card className="border-red-500/20 bg-red-900/5">
         <CardContent className="py-3 px-4">
           <p className="text-xs font-semibold text-slate-400 mb-2">Error Breakdown</p>
           <div className="space-y-2">

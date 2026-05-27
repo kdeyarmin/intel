@@ -10,16 +10,12 @@ const KEY_SPECIALTIES = [
   'Gastroenterology', 'Nephrology', 'Urology', 'Ophthalmology', 'Endocrinology',
 ];
 
-export default function CareGapAnalysis({ nodes = [], locations = [] }) {
+export default function CareGapAnalysis({ nodes = [], typeBreakdown }) {
   const gaps = useMemo(() => {
-    // Build state → specialties map
-    const npiState = {};
-    locations.forEach(l => { if (l.npi && l.state) npiState[l.npi] = l.state; });
-
     const stateSpecialties = {};
     const stateCounts = {};
     nodes.forEach(n => {
-      const st = n.state || npiState[n.npi];
+      const st = n.state;
       if (!st) return;
       if (!stateSpecialties[st]) stateSpecialties[st] = {};
       if (!stateCounts[st]) stateCounts[st] = 0;
@@ -49,7 +45,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
     });
 
     return gapList.sort((a, b) => b.gapScore - a.gapScore).slice(0, 12);
-  }, [nodes, locations]);
+  }, [nodes]);
 
   if (gaps.length === 0) {
     return (
@@ -79,7 +75,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   <Badge className="bg-slate-700/50 text-slate-300 font-mono">{g.state}</Badge>
                   <span className="text-xs text-slate-500">{g.totalProviders} providers</span>
                 </div>
-                <Badge className={`text-[10px] ${g.gapScore >= 10 ? 'bg-red-500/15 text-red-400' : g.gapScore >= 5 ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                <Badge className={`text-[10px] ${g.gapScore >= 10 ? 'bg-red-900/15 text-red-400' : g.gapScore >= 5 ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
                   Gap Score: {g.gapScore}
                 </Badge>
               </div>
@@ -92,7 +88,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {g.missingSpecialties.slice(0, 6).map(s => (
-                      <Badge key={s} className="bg-red-500/10 text-red-400 text-[9px] border border-red-500/20">{s}</Badge>
+                      <Badge key={s} className="bg-red-900/10 text-red-400 text-[9px] border border-red-500/20">{s}</Badge>
                     ))}
                     {g.missingSpecialties.length > 6 && (
                       <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">+{g.missingSpecialties.length - 6} more</Badge>
@@ -109,7 +105,7 @@ export default function CareGapAnalysis({ nodes = [], locations = [] }) {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {g.lowCoverage.slice(0, 4).map(c => (
-                      <Badge key={c.specialty} className="bg-amber-500/10 text-amber-400 text-[9px] border border-amber-500/20">
+                      <Badge key={c.specialty} className="bg-amber-900/10 text-amber-400 text-[9px] border border-amber-500/20">
                         {c.specialty} ({c.count})
                       </Badge>
                     ))}

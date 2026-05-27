@@ -3,40 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, User, Activity } from 'lucide-react';
+import { Send, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function ImportAgentChat() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [conversationId, setConversationId] = useState(null);
     const scrollRef = useRef(null);
-
-    useEffect(() => {
-        const initChat = async () => {
-            try {
-                const conv = await base44.agents.createConversation({
-                    agent_name: 'import_manager',
-                    metadata: { name: 'Import Monitor Session' }
-                });
-                setConversationId(conv.id);
-                setMessages(conv.messages || []);
-            } catch (e) {
-                console.error("Failed to initialize chat", e);
-            }
-        };
-        initChat();
-    }, []);
-
-    useEffect(() => {
-        if (!conversationId) return;
-        const unsubscribe = base44.agents.subscribeToConversation(conversationId, (data) => {
-            setMessages(data.messages || []);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, [conversationId]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -45,19 +19,29 @@ export default function ImportAgentChat() {
     }, [messages, loading]);
 
     const handleSend = async () => {
-        if (!input.trim() || !conversationId) return;
+        if (!input.trim() || loading) return;
         const userMsg = input;
         setInput('');
         setLoading(true);
+
+        const newMessages = [...messages, { role: 'user', content: userMsg }];
+        setMessages(newMessages);
+
         try {
-            await base44.agents.addMessage({ id: conversationId }, {
-                role: 'user',
-                content: userMsg
+            const response = await base44.functions.invoke('importAgentChat', {
+                message: userMsg,
+                history: newMessages.slice(-10)
             });
+            const reply = response?.data?.reply || response?.data?.message || 'Sorry, I could not process that request.';
+            setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
         } catch (e) {
-            console.error(e);
-            setLoading(false);
+            console.error('Import agent chat error:', e);
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: 'Sorry, something went wrong. Please try again.'
+            }]);
         }
+        setLoading(false);
     };
 
     return (
@@ -68,9 +52,6 @@ export default function ImportAgentChat() {
                         <Bot className="w-5 h-5 text-cyan-400" />
                         AI Import Manager
                     </div>
-                    <a href={base44.agents.getWhatsAppConnectURL('import_manager')} target="_blank" rel="noopener noreferrer" className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 font-normal bg-green-900/20 px-2 py-1 rounded">
-                        💬 Connect WhatsApp
-                    </a>
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 p-0 flex flex-col min-h-0">
@@ -97,17 +78,6 @@ export default function ImportAgentChat() {
                                 <ReactMarkdown className="prose prose-sm prose-invert max-w-none [&>p]:mb-1">
                                     {m.content}
                                 </ReactMarkdown>
-                                {m.tool_calls && m.tool_calls.length > 0 && (
-                                    <div className="mt-2 text-xs text-slate-400 border-t border-slate-700 pt-2 space-y-1">
-                                        {m.tool_calls.map((tc, idx) => (
-                                            <div key={idx} className="flex items-center gap-1 bg-slate-900/50 p-1 rounded">
-                                                <Activity className="w-3 h-3 text-cyan-500" />
-                                                <span className="font-mono">{tc.name}</span>
-                                                <span className="opacity-50">({tc.status || 'pending'})</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                             {m.role === 'user' && (
                                 <div className="w-8 h-8 rounded-full bg-cyan-700 flex items-center justify-center flex-shrink-0">

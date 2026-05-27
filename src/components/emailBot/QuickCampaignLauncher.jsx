@@ -73,32 +73,38 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
     }
     setLoading(true);
 
-    const newCampaign = await base44.entities.OutreachCampaign.create({
-      name: campaign.name,
-      subject_template: campaign.subject_template,
-      body_template: campaign.body_template,
-      status: 'draft',
-      total_recipients: eligibleProviders.length,
-      source_criteria: 'custom',
-    });
+    try {
+      const newCampaign = await base44.entities.OutreachCampaign.create({
+        name: campaign.name,
+        subject_template: campaign.subject_template,
+        body_template: campaign.body_template,
+        status: 'draft',
+        total_recipients: eligibleProviders.length,
+        source_criteria: 'custom',
+      });
 
-    const messages = eligibleProviders.map(p => ({
-      campaign_id: newCampaign.id,
-      npi: p.npi,
-      recipient_email: p.email,
-      recipient_name: p.entity_type === 'Individual'
-        ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
-        : p.organization_name || p.npi,
-      status: 'pending',
-    }));
+      const messages = eligibleProviders.map(p => ({
+        campaign_id: newCampaign.id,
+        npi: p.npi,
+        recipient_email: p.email,
+        recipient_name: p.entity_type === 'Individual'
+          ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+          : p.organization_name || p.npi,
+        status: 'pending',
+      }));
 
-    if (messages.length > 0) {
-      await base44.entities.OutreachMessage.bulkCreate(messages);
+      if (messages.length > 0) {
+        await base44.entities.OutreachMessage.bulkCreate(messages);
+      }
+
+      toast.success(`Campaign "${campaign.name}" created with ${eligibleProviders.length} recipients`);
+      setStep('done');
+    } catch (err) {
+      console.error('Campaign creation failed:', err);
+      toast.error('Failed to create campaign: ' + (err.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
     }
-
-    toast.success(`Campaign "${campaign.name}" created with ${eligibleProviders.length} recipients`);
-    setLoading(false);
-    setStep('done');
   };
 
   const resetForm = () => {
@@ -125,7 +131,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
                 {eligibleProviders.length} eligible recipients
               </span>
               {selectedProviders.length !== eligibleProviders.length && (
-                <Badge className="bg-amber-500/15 text-amber-400 text-[9px] border border-amber-500/20">
+                <Badge className="bg-amber-900/15 text-amber-400 text-[9px] border border-amber-500/20">
                   {selectedProviders.length - eligibleProviders.length} excluded
                 </Badge>
               )}
@@ -136,7 +142,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
             {/* AI Tips */}
             {aiTips.length > 0 && (
-              <div className="p-2.5 bg-violet-500/5 border border-violet-500/15 rounded-lg">
+              <div className="p-2.5 bg-violet-900/5 border border-violet-500/15 rounded-lg">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Info className="w-3 h-3 text-violet-400" />
                   <span className="text-[10px] font-medium text-violet-300">AI Tips</span>
@@ -232,7 +238,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
         {step === 'done' && (
           <div className="text-center space-y-4 py-4">
-            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/15 flex items-center justify-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-900/15 flex items-center justify-center">
               <Mail className="w-6 h-6 text-emerald-400" />
             </div>
             <div>

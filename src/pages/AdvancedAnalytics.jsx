@@ -24,12 +24,37 @@ export default function AdvancedAnalytics() {
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['aaUtil'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 500);
+      return rows.map(r => ({
+        ...r,
+        year: r.data_year,
+        total_medicare_payment: r.total_medicare_payment_amt || 0,
+        total_medicare_beneficiaries: r.total_unique_benes || 0,
+        total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1),
+        drug_services: 0,
+      }));
+    },
     staleTime: 120000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['aaRef'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.CMSReferral.list('-created_date', 500);
+      return rows.map(r => {
+        const rd = r.raw_data || {};
+        return {
+          ...r,
+          year: r.data_year,
+          total_referrals: 1,
+          home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
+          hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
+          snf_referrals: 0,
+          dme_referrals: rd.DME === 'Y' ? 1 : 0,
+          imaging_referrals: 0,
+        };
+      });
+    },
     staleTime: 120000,
   });
   const { data: locations = [], isLoading: _ll } = useQuery({
@@ -84,7 +109,7 @@ export default function AdvancedAnalytics() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-100 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
+        <TabsList className="bg-slate-800/50 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
             <LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Custom </span>Dashboards
           </TabsTrigger>
@@ -121,7 +146,7 @@ export default function AdvancedAnalytics() {
                   (activeDashboard.widgets || []).length > 0 ? (
                     (activeDashboard.widgets || []).map(w => renderWidget(w))
                   ) : (
-                    <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-xl">
+                    <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-700/50 rounded-xl">
                       <div className="text-center">
                         <LayoutDashboard className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                         <p className="text-sm text-slate-400">Add widgets using the panel on the left</p>
@@ -129,7 +154,7 @@ export default function AdvancedAnalytics() {
                     </div>
                   )
                 ) : (
-                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-xl">
+                  <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-700/50 rounded-xl">
                     <div className="text-center">
                       <LayoutDashboard className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                       <p className="text-sm text-slate-400">Create a dashboard to get started</p>

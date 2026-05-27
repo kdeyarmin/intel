@@ -63,7 +63,7 @@ export default function APIConnectors() {
   };
 
   return (
-    <div className="max-w-[120rem] mx-auto p-6 space-y-8">
+    <div className="max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
       <PageHeader 
         title="API Connectors" 
         subtitle="Manage connections, API keys, and rate limits for CMS and external data sources."

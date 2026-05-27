@@ -32,6 +32,7 @@ Referrals: ${(referrals || []).slice(0, 3).map(r => `Year ${r.year}: ${r.total_r
 
 Look for: volume anomalies, address conflicts, missing critical fields, utilization/referral ratio issues, data staleness.`;
 
+    try {
     const res = await base44.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: {
@@ -55,14 +56,18 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
       },
     });
     setResults(res);
-    setAnalyzing(false);
+    } catch (err) {
+      console.error('AI quality analysis failed:', err);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const scoreColor = (s) => s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400';
   const sevColors = {
-    high: 'bg-red-500/15 text-red-400 border-red-500/20',
-    medium: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-    low: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+    high: 'bg-red-900/15 text-red-400 border-red-500/20',
+    medium: 'bg-amber-900/15 text-amber-400 border-amber-500/20',
+    low: 'bg-blue-900/15 text-blue-400 border-blue-500/20',
   };
 
   return (
@@ -118,7 +123,7 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
                 ))}
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-900/5 border border-emerald-500/20 rounded-lg p-3">
                 <CheckCircle2 className="w-4 h-4" />
                 No quality issues detected
               </div>

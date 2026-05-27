@@ -72,24 +72,24 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
         <div>
           <h2 className="text-2xl font-bold leading-tight">{formatName()}</h2>
           {provider.credential && (
-            <p className="text-gray-600">{provider.credential}</p>
+            <p className="text-slate-400">{provider.credential}</p>
           )}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <Badge variant="outline">{provider.entity_type}</Badge>
             <Badge variant="outline">NPI: {provider.npi}</Badge>
             {provider.status === 'Deactivated' && <Badge variant="destructive">Deactivated</Badge>}
             {provider.needs_nppes_enrichment && (
-              <Badge className="bg-orange-100 text-orange-800 border-orange-200">Needs Enrichment</Badge>
+              <Badge className="bg-orange-900/30 text-orange-300 border-orange-500/30">Needs Enrichment</Badge>
             )}
           </div>
         </div>
 
         {primaryTaxonomy && (
-          <div className="flex items-start gap-2 p-3 bg-teal-50 rounded-lg border border-teal-100">
+          <div className="flex items-start gap-2 p-3 bg-teal-900/20 rounded-lg border border-teal-500/30">
             <Stethoscope className="h-5 w-5 text-teal-600 mt-0.5" />
             <div>
-              <p className="font-medium text-teal-900 text-sm">Primary Specialty</p>
-              <p className="text-sm text-teal-700">
+              <p className="font-medium text-teal-300 text-sm">Primary Specialty</p>
+              <p className="text-sm text-teal-400">
                 {primaryTaxonomy.taxonomy_description || primaryTaxonomy.taxonomy_code}
               </p>
             </div>
@@ -98,7 +98,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
         {taxonomy && taxonomy.length > 1 && (
           <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Additional Specialties</p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Additional Specialties</p>
             <div className="flex flex-wrap gap-2">
               {taxonomy.filter(t => !t.primary_flag).slice(0, 3).map((t, idx) => (
                 <Badge key={idx} variant="outline" className="text-xs font-normal">
@@ -106,7 +106,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 </Badge>
               ))}
               {taxonomy.filter(t => !t.primary_flag).length > 3 && (
-                <Badge variant="outline" className="text-xs font-normal text-gray-500">
+                <Badge variant="outline" className="text-xs font-normal text-slate-400">
                   +{taxonomy.filter(t => !t.primary_flag).length - 3} more
                 </Badge>
               )}
@@ -117,11 +117,11 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
         {primaryLocation && (
           <div className="space-y-2 pt-3 border-t">
             <div className="flex items-start gap-2">
-              <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+              <MapPin className="h-5 w-5 text-slate-500 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Primary Practice Location</p>
-                {primaryLocation.address_1 && <p className="text-sm text-gray-600">{primaryLocation.address_1}</p>}
-                <p className="text-sm text-gray-600">
+                <p className="text-sm font-medium text-white">Primary Practice Location</p>
+                {primaryLocation.address_1 && <p className="text-sm text-slate-400">{primaryLocation.address_1}</p>}
+                <p className="text-sm text-slate-400">
                   {primaryLocation.city}, {primaryLocation.state} {primaryLocation.zip}
                 </p>
               </div>
@@ -129,15 +129,15 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
             {primaryLocation.phone && (
               <div className="flex items-center gap-2 ml-7">
-                <Phone className="h-3.5 w-3.5 text-gray-400" />
-                <p className="text-xs text-gray-600">{primaryLocation.phone}</p>
+                <Phone className="h-3.5 w-3.5 text-slate-500" />
+                <p className="text-xs text-slate-400">{primaryLocation.phone}</p>
               </div>
             )}
 
             {primaryLocation.fax && (
               <div className="flex items-center gap-2 ml-7">
-                <Printer className="h-3.5 w-3.5 text-gray-400" />
-                <p className="text-xs text-gray-600">{primaryLocation.fax}</p>
+                <Printer className="h-3.5 w-3.5 text-slate-500" />
+                <p className="text-xs text-slate-400">{primaryLocation.fax}</p>
               </div>
             )}
           </div>
@@ -147,19 +147,20 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
           <div className="flex items-start gap-2 pt-3 border-t">
             <Mail className="h-5 w-5 text-blue-500 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">Email</p>
+              <p className="text-sm font-medium text-white">Email</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <p className="text-sm text-gray-600 truncate">{provider.email}</p>
+                <p className="text-sm text-slate-400 truncate">{provider.email}</p>
                 {provider.email_confidence && (
                   <Badge className={`text-[10px] h-5 px-1.5 ${
-                    provider.email_confidence === 'high' ? 'bg-green-100 text-green-800' :
-                    provider.email_confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
+                    provider.email_confidence === 'high' ? 'bg-green-900/30 text-green-400' :
+                    provider.email_confidence === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                    'bg-red-900/30 text-red-400'
                   }`}>{provider.email_confidence}</Badge>
                 )}
                 <EmailValidationBadge
                   status={provider.email_validation_status}
                   reason={provider.email_validation_reason}
+                  source={provider.email_source}
                 />
               </div>
             </div>
@@ -168,7 +169,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
         {locations && locations.length > 1 && (
           <div className="pt-3 border-t">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-400">
               {locations.length} practice location{locations.length !== 1 ? 's' : ''} on file
             </p>
           </div>

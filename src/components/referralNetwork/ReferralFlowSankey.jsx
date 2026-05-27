@@ -58,7 +58,7 @@ export default function ReferralFlowSankey({ edges = [], nodes = [] }) {
                 </div>
               </div>
               <div className="w-[38%]">
-                <ArrowRight className="w-3 h-3 text-slate-600 inline mr-1" />
+                <ArrowRight className="w-3 h-3 text-slate-400 inline mr-1" />
                 <span className="text-xs font-medium text-slate-300 truncate inline-block max-w-[85%]">{f.targetLabel}</span>
               </div>
             </div>

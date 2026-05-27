@@ -9,7 +9,6 @@ const IMPORT_TYPE_OPTIONS = [
   { id: 'nppes_monthly', label: 'NPPES Monthly', category: 'nppes' },
   { id: 'nppes_registry', label: 'NPPES Registry', category: 'nppes' },
   { id: 'cms_utilization', label: 'CMS Utilization', category: 'cms_claims' },
-  { id: 'cms_part_d', label: 'CMS Part D', category: 'cms_claims' },
   { id: 'cms_order_referring', label: 'Order & Referring', category: 'cms_claims' },
   { id: 'hospice_enrollments', label: 'Hospice Enrollments', category: 'cms_enrollment' },
   { id: 'home_health_enrollments', label: 'Home Health Enrollments', category: 'cms_enrollment' },
@@ -21,7 +20,6 @@ const IMPORT_TYPE_OPTIONS = [
   { id: 'provider_ownership', label: 'Provider Ownership', category: 'provider_data' },
   { id: 'medicare_hha_stats', label: 'Medicare HHA Stats', category: 'cms_statistics' },
   { id: 'medicare_ma_inpatient', label: 'Medicare MA Inpatient', category: 'cms_statistics' },
-  { id: 'medicare_part_d_stats', label: 'Medicare Part D Stats', category: 'cms_statistics' },
   { id: 'medicare_snf_stats', label: 'Medicare SNF Stats', category: 'cms_statistics' },
 ];
 
@@ -51,10 +49,11 @@ export default function AIBatchCategorizer({ fileName, fileHeaders, onSuggestion
     setSuggestion(null);
     setAccepted(false);
 
-    const headersSample = (fileHeaders || []).slice(0, 30).join(', ');
+    try {
+      const headersSample = (fileHeaders || []).slice(0, 30).join(', ');
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `Analyze this data import file and suggest the best import type and category.
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analyze this data import file and suggest the best import type and category.
 
 File name: "${fileName}"
 Column headers (first 30): ${headersSample}
@@ -67,20 +66,24 @@ Based on the file name and column headers, determine:
 2. The category
 3. A confidence score (0-100)
 4. A brief reason for your suggestion`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          import_type: { type: 'string' },
-          category: { type: 'string' },
-          confidence: { type: 'number' },
-          reason: { type: 'string' },
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            import_type: { type: 'string' },
+            category: { type: 'string' },
+            confidence: { type: 'number' },
+            reason: { type: 'string' },
+          },
+          required: ['import_type', 'category', 'confidence', 'reason'],
         },
-        required: ['import_type', 'category', 'confidence', 'reason'],
-      },
-    });
+      });
 
-    setSuggestion(result);
-    setLoading(false);
+      setSuggestion(result);
+    } catch (err) {
+      console.error('AI categorization failed:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccept = () => {
@@ -128,18 +131,18 @@ Based on the file name and column headers, determine:
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Type:</span>
-                <Badge className="bg-cyan-500/15 text-cyan-400 text-[10px]">{typeLabel}</Badge>
+                <Badge className="bg-cyan-900/15 text-cyan-400 text-[10px]">{typeLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Category:</span>
-                <Badge className="bg-violet-500/15 text-violet-400 text-[10px]">{catLabel}</Badge>
+                <Badge className="bg-violet-900/15 text-violet-400 text-[10px]">{catLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-slate-500">Confidence:</span>
                 <Badge className={`text-[10px] ${
-                  confidence >= 80 ? 'bg-emerald-500/15 text-emerald-400' :
-                  confidence >= 50 ? 'bg-amber-500/15 text-amber-400' :
-                  'bg-red-500/15 text-red-400'
+                  confidence >= 80 ? 'bg-emerald-900/15 text-emerald-400' :
+                  confidence >= 50 ? 'bg-amber-900/15 text-amber-400' :
+                  'bg-red-900/15 text-red-400'
                 }`}>{confidence}%</Badge>
               </div>
             </div>
@@ -179,7 +182,7 @@ Based on the file name and column headers, determine:
                     <button
                       key={t.id}
                       onClick={() => handleOverride(t.id, t.category)}
-                      className="text-left text-[11px] px-2 py-1.5 rounded-md border border-slate-700/40 text-slate-300 hover:bg-cyan-500/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-colors"
+                      className="text-left text-[11px] px-2 py-1.5 rounded-md border border-slate-700/40 text-slate-300 hover:bg-cyan-900/10 hover:border-cyan-500/30 hover:text-cyan-400 transition-colors"
                     >
                       {t.label}
                     </button>

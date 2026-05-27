@@ -44,7 +44,7 @@ function getProgressValue(batch) {
     if (batch.status === 'processing') return 10;
     return 0;
   }
-  const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0);
+  const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0) + (batch.excluded_rows || 0);
   if (batch.status === 'validating') {
     const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
     return Math.min(Math.round((validated / total) * 50), 49);
@@ -54,7 +54,9 @@ function getProgressValue(batch) {
 
 function getElapsedTime(startDate) {
   if (!startDate) return '';
-  const ms = Math.max(0, Date.now() - new Date(startDate).getTime());
+  const parsed = new Date(startDate).getTime();
+  if (isNaN(parsed)) return '';
+  const ms = Math.max(0, Date.now() - parsed);
   const secs = Math.floor(ms / 1000);
   if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);
@@ -104,7 +106,6 @@ export default function LiveProgressCard({ activeBatches }) {
             const progress = getProgressValue(batch);
             const total = batch.total_rows || 0;
             const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
-            const _imported = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0);
             const elapsed = getElapsedTime(batch.created_date);
             const isPaused = batch.status === 'paused';
 
@@ -122,7 +123,7 @@ export default function LiveProgressCard({ activeBatches }) {
                       {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                     </span>
                     <Badge className={`text-[9px] ${
-                      isPaused ? 'bg-amber-500/15 text-amber-400' : 'bg-blue-500/15 text-blue-400'
+                      isPaused ? 'bg-amber-900/15 text-amber-400' : 'bg-blue-900/15 text-blue-400'
                     }`}>
                       {getPhaseLabel(batch.status)}
                     </Badge>
@@ -153,6 +154,11 @@ export default function LiveProgressCard({ activeBatches }) {
                           <RowProgressBar label="Rows Updated" current={batch.updated_rows} total={total} color="bg-violet-500" />
                         )}
                       </>
+                    )}
+                    {(batch.excluded_rows || 0) > 0 && (
+                      <div className="flex items-center gap-1 text-[10px] text-orange-400">
+                        <XCircle className="w-3 h-3" /> {batch.excluded_rows.toLocaleString()} excluded by credential
+                      </div>
                     )}
                     {(batch.invalid_rows || 0) > 0 && (
                       <div className="flex items-center gap-1 text-[10px] text-red-400">

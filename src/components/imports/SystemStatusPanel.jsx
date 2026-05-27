@@ -56,7 +56,7 @@ export default function SystemStatusPanel({ batches }) {
 
   const statusColor = stats.activeCount > 0 ? 'text-blue-400' : stats.failed24h > 0 ? 'text-amber-400' : 'text-emerald-400';
   const statusLabel = stats.activeCount > 0 ? 'Processing' : stats.failed24h > 0 ? 'Issues Detected' : 'All Clear';
-  const statusBg = stats.activeCount > 0 ? 'bg-blue-500/15 border-blue-500/20' : stats.failed24h > 0 ? 'bg-amber-500/15 border-amber-500/20' : 'bg-emerald-500/15 border-emerald-500/20';
+  const statusBg = stats.activeCount > 0 ? 'bg-blue-900/15 border-blue-500/20' : stats.failed24h > 0 ? 'bg-amber-900/15 border-amber-500/20' : 'bg-emerald-900/15 border-emerald-500/20';
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">

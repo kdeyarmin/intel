@@ -71,7 +71,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
       </CardHeader>
       <CardContent className="space-y-3">
         {signals.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-400">
             Insufficient data to generate referral likelihood signals
           </p>
         ) : (
@@ -89,15 +89,15 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
                       {signal.strength}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600 ml-7">{signal.description}</p>
+                  <p className="text-sm text-slate-400 ml-7">{signal.description}</p>
                 </div>
               );
             })}
 
             <div className="pt-3 border-t">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Overall Referral Propensity</span>
-                <Badge className="bg-teal-100 text-teal-800">
+                <span className="text-slate-400">Overall Referral Propensity</span>
+                <Badge className="bg-teal-900/30 text-teal-400">
                   {signals.filter(s => s.strength === 'Strong').length >= 2 ? 'High' : 'Moderate'}
                 </Badge>
               </div>

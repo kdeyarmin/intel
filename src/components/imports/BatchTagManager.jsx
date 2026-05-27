@@ -14,17 +14,25 @@ export default function BatchTagManager({ batch, onUpdate }) {
   const addTag = async () => {
     const tag = newTag.trim().toLowerCase();
     if (!tag || tags.includes(tag)) return;
-    const updated = [...tags, tag];
-    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
-    onUpdate?.();
-    setNewTag('');
-    setIsAdding(false);
+    try {
+      const updated = [...tags, tag];
+      await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+      onUpdate?.();
+      setNewTag('');
+      setIsAdding(false);
+    } catch (e) {
+      console.error('Failed to add tag:', e);
+    }
   };
 
   const removeTag = async (tagToRemove) => {
-    const updated = tags.filter(t => t !== tagToRemove);
-    await base44.entities.ImportBatch.update(batch.id, { tags: updated });
-    onUpdate?.();
+    try {
+      const updated = tags.filter(t => t !== tagToRemove);
+      await base44.entities.ImportBatch.update(batch.id, { tags: updated });
+      onUpdate?.();
+    } catch (e) {
+      console.error('Failed to remove tag:', e);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -50,7 +58,7 @@ export default function BatchTagManager({ batch, onUpdate }) {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="tag name"
-            className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
             autoFocus
           />
           <Button size="sm" variant="ghost" className="h-6 px-1 text-slate-400 hover:text-cyan-400" onClick={addTag}>
