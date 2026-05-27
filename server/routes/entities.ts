@@ -116,9 +116,7 @@ function buildOrderBy(table: any, sortField?: string) {
   if (!sortField) return pk ? [desc(pk)] : [desc(table.created_date)];
   const descending = sortField.startsWith("-");
   const field = descending ? sortField.slice(1) : sortField;
-  if ((field === "created_date" || field === "createdDate") && pk) {
-    return [descending ? desc(pk) : asc(pk)];
-  }
+  // Only optimize id-remapping for default/unspecified sorts, not explicit created_date
   const col = (table as any)[field] || (table as any)[camelToSnake(field)];
   if (!col) return pk ? [desc(pk)] : [desc(table.created_date)];
   return [descending ? desc(col) : asc(col)];

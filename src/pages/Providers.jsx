@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,7 +78,7 @@ export default function Providers() {
       }
       return base44.entities.Provider.list('-created_date', 100);
     },
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const { data: scores = [] } = useQuery({

@@ -121,29 +121,38 @@ For each email assign:
       // as reviewable candidates without overwriting a real address. All are
       // tagged email_source: 'ai_inferred' so the UI can mark them unverified.
       if (emails.length > 0 && provider?.id) {
-        const best = enrichedEmails[0];
-        const candidates = enrichedEmails.map(e => ({
-          email: e.email,
-          confidence: e.confidence,
-          source: 'ai_inferred',
-          validation_status: e.validation_status,
-        }));
-        const promote = best.confidence !== 'low' && best.validation_status !== 'invalid';
-        try {
-          await base44.entities.Provider.update(provider.id, promote ? {
-            email: best.email,
-            email_confidence: best.confidence,
-            email_source: 'ai_inferred',
-            email_validation_status: best.validation_status || 'unknown',
-            email_validation_reason: best.validation_reason || '',
-            additional_emails: candidates.slice(1),
-            email_searched_at: new Date().toISOString(),
-          } : {
-            additional_emails: candidates,
-            email_searched_at: new Date().toISOString(),
-          });
-        } catch (updateErr) {
-          console.error('Failed to auto-save email:', updateErr);
+        // Filter to well-formed entries with email, confidence, and validation_status
+        const filteredEnrichedEmails = enrichedEmails.filter(e =>
+          e.email && typeof e.email === 'string' && e.email.trim().length > 0 &&
+          e.email.includes('@') && e.email.includes('.') &&
+          e.confidence && e.validation_status
+        );
+
+        if (filteredEnrichedEmails.length > 0) {
+          const best = filteredEnrichedEmails[0];
+          const candidates = filteredEnrichedEmails.map(e => ({
+            email: e.email,
+            confidence: e.confidence,
+            source: 'ai_inferred',
+            validation_status: e.validation_status,
+          }));
+          const promote = best.confidence !== 'low' && best.validation_status !== 'invalid';
+          try {
+            await base44.entities.Provider.update(provider.id, promote ? {
+              email: best.email,
+              email_confidence: best.confidence,
+              email_source: 'ai_inferred',
+              email_validation_status: best.validation_status || 'unknown',
+              email_validation_reason: best.validation_reason || '',
+              additional_emails: candidates.slice(1),
+              email_searched_at: new Date().toISOString(),
+            } : {
+              additional_emails: candidates,
+              email_searched_at: new Date().toISOString(),
+            });
+          } catch (updateErr) {
+            console.error('Failed to auto-save email:', updateErr);
+          }
         }
       }
     } catch (err) {

@@ -21,8 +21,8 @@
 CREATE OR REPLACE FUNCTION _to_numeric_or_null(txt text) RETURNS numeric AS $$
   SELECT CASE
     WHEN txt IS NULL THEN NULL
-    WHEN regexp_replace(txt, '[^0-9.\-]', '', 'g') ~ '^-?[0-9]+(\.[0-9]+)?$'
-      THEN regexp_replace(txt, '[^0-9.\-]', '', 'g')::numeric
+    WHEN regexp_replace(txt, '[^0-9eE+\-\.]', '', 'g') ~ '^-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?$'
+      THEN regexp_replace(txt, '[^0-9eE+\-\.]', '', 'g')::numeric
     ELSE NULL
   END;
 $$ LANGUAGE sql IMMUTABLE;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -46,7 +46,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
       limit: 50,
     }),
     select: (res) => res.data || res,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const facilities = data?.facilities || [];

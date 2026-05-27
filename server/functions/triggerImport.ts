@@ -760,6 +760,10 @@ async function fetchExistingByPrimary(
       () => db.select().from(table).where(and(...conds)).limit(20000),
       [] as any[], `lookup existing ${primaryCol}`,
     );
+    if (rows.length === 20000) {
+      const scopeInfo = scope.map(s => `${s.col}=${s.value}`).join(', ');
+      console.warn(`[CMS Import] fetchExistingByPrimary hit 20000-row limit for ${primaryCol}, slice [${i}..${i + slice.length}] (scope: ${scopeInfo}) — some existing rows may be missed in deduplication`);
+    }
     out.push(...rows);
   }
   return out;

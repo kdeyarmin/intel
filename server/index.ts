@@ -26,7 +26,11 @@ app.use(
       if (process.env.NODE_ENV !== "production") return callback(null, true);
       // Same-origin / non-browser requests have no Origin header.
       if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (allowedOrigins.length === 0) {
+        // In production with empty allowlist, reject cross-origin requests
+        return callback(new Error("Not allowed by CORS"));
+      }
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error("Not allowed by CORS"));
@@ -57,6 +61,9 @@ if (process.env.NODE_ENV === "production") {
 const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`[CareMetric API] Server running on port ${PORT}`);
+  if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+    console.warn(`[CareMetric API] WARNING: ALLOWED_ORIGINS is not configured in production — cross-origin requests will be rejected. Set ALLOWED_ORIGINS to enable access from your frontend domain.`);
+  }
 
   async function safeStartupQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
     for (let attempt = 1; attempt <= 3; attempt++) {

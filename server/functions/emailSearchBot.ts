@@ -263,7 +263,7 @@ async function saveEmailToProvider(provider: any, result: any) {
       validation_status: e.validation_status,
     }));
 
-  const promote = shouldPromoteToPrimary(result) ? result : null;
+  const promote = shouldPromoteToPrimary({ email: result.best_email }) ? result : null;
 
   if (!promote) {
     // Nothing trustworthy enough to be the provider's primary email. Mark as
