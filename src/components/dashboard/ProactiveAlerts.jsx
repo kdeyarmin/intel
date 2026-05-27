@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, TrendingDown, TrendingUp, Clock, Users, Sparkles } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Clock, Users, Sparkles } from 'lucide-react';
 
 export default function ProactiveAlerts({ proactiveInsights }) {
   const insights = useMemo(() => {

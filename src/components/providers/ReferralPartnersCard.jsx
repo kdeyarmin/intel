@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Network, ArrowRight, ArrowLeft, ChevronDown, ExternalLink } from 'lucide-react';
+import { Network, ArrowRight, ArrowLeft, ChevronDown } from 'lucide-react';
 
 export default function ReferralPartnersCard({ npi, referrals = [] }) {
   const [showAll, setShowAll] = useState(false);
