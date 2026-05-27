@@ -30,17 +30,28 @@ export function isRetryableErrorMessage(msg: string | null | undefined): boolean
     return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+function normalizeErrorText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
-// back to the most recent error_samples entry's `detail`.
+// back to the most recent error_samples entry's `detail` or `message`.
 export function extractErrorMessage(batch: Record<string, unknown>): string {
-    if (typeof batch.cancel_reason === 'string' && batch.cancel_reason.length > 0) {
-        return batch.cancel_reason;
+    const cancelReason = normalizeErrorText(batch.cancel_reason);
+    if (cancelReason) {
+        return cancelReason;
     }
     const samples = batch.error_samples;
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
-        if (last && typeof last.detail === 'string') return last.detail;
+        if (last) {
+            const detail = normalizeErrorText(last.detail);
+            if (detail) return detail;
+
+            const message = normalizeErrorText(last.message);
+            if (message) return message;
+        }
     }
     return '';
 }
