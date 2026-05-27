@@ -117,9 +117,8 @@ describe("shouldPromoteToPrimary – edge cases", () => {
     expect(shouldPromoteToPrimary({})).toBe(false);
   });
 
-  it("promotes when confidence is undefined (undefined ≠ 'low') and everything else passes", () => {
-    // undefined confidence is NOT "low", so it should be promoted if everything else passes
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: undefined, validation_status: "valid" })).toBe(true);
+  it("does not promote when confidence is undefined", () => {
+    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: undefined, validation_status: "valid" })).toBe(false);
   });
 
   it("returns false when validation_status is 'invalid' regardless of confidence", () => {
@@ -127,8 +126,8 @@ describe("shouldPromoteToPrimary – edge cases", () => {
     expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "medium", validation_status: "invalid" })).toBe(false);
   });
 
-  it("returns true when validation_status is null (unknown — not flagged invalid)", () => {
-    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: null })).toBe(true);
+  it("does not promote when validation_status is null", () => {
+    expect(shouldPromoteToPrimary({ email: "jane@hospital.org", confidence: "high", validation_status: null })).toBe(false);
   });
 
   it("returns false for a placeholder-domain email even with high confidence", () => {
