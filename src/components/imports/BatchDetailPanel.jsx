@@ -166,6 +166,9 @@ function AutoRetryBanner({ batch, onUpdated }) {
         retry_params: { ...latestParams, auto_retry_disabled: !disabled },
       });
       onUpdated?.();
+    } catch (error) {
+      console.error('Failed to update auto-retry setting for import batch', error);
+      window.alert('Unable to update the auto-retry setting right now. Please try again.');
     } finally {
       setBusy(false);
     }
