@@ -75,13 +75,21 @@ function createEntityProxy(entityName) {
 
     subscribe(callback, intervalMs = 5000) {
       let active = true;
-      let lastCheck = new Date().toISOString();
+      // Track the last-seen updated_date per row so we only emit rows that
+      // actually changed since the previous poll. Consumers expect one event per
+      // changed item shaped as { type, id, data } (data is the single row).
+      const lastSeen = new Map();
       const poll = async () => {
         if (!active) return;
         try {
           const items = await request(`/entities/${entityName}?sort=-updated_date&limit=50`);
-          if (items.length > 0) {
-            callback({ type: "update", data: items });
+          for (const item of items) {
+            if (item?.id == null) continue;
+            const stamp = item.updated_date || item.created_date || "";
+            if (lastSeen.get(item.id) !== stamp) {
+              lastSeen.set(item.id, stamp);
+              callback({ type: "update", id: item.id, data: item });
+            }
           }
         } catch (e) {}
         if (active) setTimeout(poll, intervalMs);

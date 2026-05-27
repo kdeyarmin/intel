@@ -929,10 +929,6 @@ export async function handleAnalyzeProviderNetwork(payload: any) {
   return { success: true, network: [], influencers: [], gaps: [], recommendations: [] };
 }
 
-export async function handleReconcileProviderData(payload: any) {
-  return { success: true, reconciled: 0, conflicts: 0, message: "Reconciliation completed." };
-}
-
 export async function handleGenerateHyperPersonalizedMessages(payload: any) {
   return { success: true, messages: [], message: "Message generation requires AI configuration." };
 }
