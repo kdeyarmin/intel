@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 
 const router = Router();
@@ -9,8 +10,46 @@ const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
 let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
 const CMS_CACHE_TTL = 10 * 60 * 1000;
 
-router.post("/:functionName", authMiddleware, async (req: AuthRequest, res: Response) => {
+// Default-deny authorization for the function dispatcher. Only the read-only /
+// analytics / status functions below are callable by any authenticated user.
+// Everything else (imports, crawler control, AI enrichment that spends tokens or
+// writes provider data, email sending, and destructive maintenance) requires the
+// admin role. Adding a new function therefore requires an explicit decision: if
+// it is safe and read-only, list it here; otherwise it is admin-only by default.
+const PUBLIC_FUNCTIONS = new Set<string>([
+  "getDashboardStats",
+  "getDataHealthAlerts",
+  "getCMSAnalytics",
+  "getReferralNetworkData",
+  "getTerritoryData",
+  "getDataHealthMetrics",
+  "getCMSDatasetCatalog",
+  "validateDataQuality",
+  "getEnrichmentCandidateCount",
+  "getIntelCandidateCount",
+  "enrichmentJobStatus",
+  "intelJobStatus",
+  "getFacilityDetail",
+  "listFacilities",
+  "getProviderCMSData",
+  "getCountyIntelligence",
+  "getAvailableStatesCounties",
+  "getComprehensiveReport",
+  "calculateOutreachScore",
+  "analyzeReferralPathways",
+  "analyzeProviderNetwork",
+  "trackCampaignMetrics",
+]);
+
+router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000), async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
+
+  if (!PUBLIC_FUNCTIONS.has(functionName) && req.user?.role !== "admin") {
+    return res.status(403).json({
+      message: "Forbidden",
+      detail: "Admin access is required to invoke this function.",
+    });
+  }
 
   try {
     switch (functionName) {

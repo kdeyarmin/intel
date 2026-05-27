@@ -12,7 +12,27 @@ import functionRoutes from "./routes/functions";
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// In production the SPA is served same-origin, so cross-origin requests should be
+// limited to an explicit allowlist (ALLOWED_ORIGINS, comma-separated). In dev we
+// reflect the request origin for convenience (Vite on a different port).
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (process.env.NODE_ENV !== "production") return callback(null, true);
+      // Same-origin / non-browser requests have no Origin header.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
@@ -57,9 +77,11 @@ app.listen(PORT, "0.0.0.0", async () => {
     const { users } = await import("./db/schema");
     const bcryptLib = await import("bcryptjs");
 
-    const adminEmail = process.env.ADMIN_EMAIL || "kdeyarmin@comcast.net";
-    const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? null : "Baileydog1!");
-    const adminFullName = process.env.ADMIN_FULL_NAME || "K Deyarmin";
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@caremetric.local";
+    // No real credential is committed to source. Production requires ADMIN_PASSWORD;
+    // dev falls back to a clearly non-secret placeholder that should be changed.
+    const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? null : "changeme-dev-only");
+    const adminFullName = process.env.ADMIN_FULL_NAME || "CareMetric Admin";
 
     const [existingAdmin] = await safeStartupQuery(
       () => db.select().from(users).where(eq(users.email, adminEmail)).limit(1),
