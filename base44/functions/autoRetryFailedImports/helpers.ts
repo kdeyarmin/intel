@@ -19,7 +19,7 @@ export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 // retryable: true categories in errorCategories.jsx (timeout_stall, network_api).
 export const RETRYABLE_KEYWORDS = [
     'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
-    'http 5', 'rate limit', 'rate-limit', 'rate_limit',
+    'rate limit', 'rate-limit', 'rate_limit',
     'fetch', 'network', 'connection', 'econnrefused', 'socket',
 ];
 
