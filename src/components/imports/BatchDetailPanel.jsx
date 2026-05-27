@@ -143,6 +143,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
   const headline =
     state === 'disabled' ? 'Auto-retry disabled for this batch'
     : state === 'max_reached' ? `Max auto-retry attempts reached (${attemptCount}/${MAX_AUTO_RETRY_ATTEMPTS})`
+    : state === 'too_old' ? 'Auto-retry not scheduled (batch is outside the worker lookback window)'
     : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, now)})`
     : state === 'eligible' ? `Auto-retry eligible (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS} on next worker tick)`
     : `Auto-retry will trigger if the failure is classified retryable (attempt 1/${MAX_AUTO_RETRY_ATTEMPTS})`;
