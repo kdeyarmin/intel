@@ -1,4 +1,13 @@
 // @vitest-environment jsdom
+/**
+ * Tests for OrgAffiliatedProvidersCard.
+ *
+ * Component behavior:
+ *   - Org locations with falsy address_1 are filtered out via locations.filter(l => l.address_1).
+ *   - If all org locations have blank/null address_1, affiliatedNPIs returns [] immediately.
+ *   - Only non-blank addresses are used for matching.
+ *   - Matching uses Set.has() for performance.
+ */
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -28,10 +37,10 @@ function renderCard(props) {
   );
 }
 
-describe('AffiliatedProvidersCard', () => {
+describe('OrgAffiliatedProvidersCard', () => {
   // ─── null / empty-state cases ─────────────────────────────────────────────
 
-  it('renders nothing when no locations are provided', () => {
+  it('renders nothing when locations is empty', () => {
     const { container } = renderCard({
       npi: ORG_NPI,
       locations: [],
@@ -61,23 +70,31 @@ describe('AffiliatedProvidersCard', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders nothing when matching providers are not Individual entity_type', () => {
-    const orgProvider = makeProvider('2222222222', { entity_type: 'Organization', organization_name: 'Clinic Co' });
+  it('renders nothing when allProviders is empty', () => {
     const { container } = renderCard({
       npi: ORG_NPI,
       locations: [makeLocation(ORG_NPI, '100 Main St', 'Boston', 'MA')],
-      allProviders: [orgProvider],
+      allProviders: [],
       allLocations: [makeLocation('2222222222', '100 Main St', 'Boston', 'MA')],
     });
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders nothing when all own locations have a blank address_1', () => {
+  it('renders nothing with default empty-array props (no crash)', () => {
+    const { container } = renderCard({ npi: ORG_NPI });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('renders nothing when matching providers are not Individual entity_type', () => {
+    const orgProvider = makeProvider('2222222222', {
+      entity_type: 'Organization',
+      organization_name: 'Clinic Co',
+    });
     const { container } = renderCard({
       npi: ORG_NPI,
-      locations: [makeLocation(ORG_NPI, '', 'Boston', 'MA')],
-      allProviders: [makeProvider('2222222222')],
-      allLocations: [makeLocation('2222222222', '', 'Boston', 'MA')],
+      locations: [makeLocation(ORG_NPI, '100 Main St', 'Boston', 'MA')],
+      allProviders: [orgProvider],
+      allLocations: [makeLocation('2222222222', '100 Main St', 'Boston', 'MA')],
     });
     expect(container.firstChild).toBeNull();
   });
@@ -131,14 +148,12 @@ describe('AffiliatedProvidersCard', () => {
       allProviders: providers,
       allLocations,
     });
-    // The badge text is the count
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   // ─── address matching logic ────────────────────────────────────────────────
 
   it('matches on full address_1 + city + state key (not just city/state)', () => {
-    // Different street address in same city/state should NOT match
     const { container } = renderCard({
       npi: ORG_NPI,
       locations: [makeLocation(ORG_NPI, '100 Main St', 'Boston', 'MA')],
@@ -148,8 +163,7 @@ describe('AffiliatedProvidersCard', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('does not include the organization itself as an affiliated provider', () => {
-    // Give the org its own entry in allProviders+allLocations as an Individual
+  it('does not include the organization NPI itself as an affiliated provider', () => {
     const selfProvider = makeProvider(ORG_NPI, { first_name: 'Self', last_name: 'Org' });
     renderCard({
       npi: ORG_NPI,
@@ -160,7 +174,6 @@ describe('AffiliatedProvidersCard', () => {
         makeLocation('2222222222', '100 Main St', 'Boston', 'MA'),
       ],
     });
-    // Only the other provider should appear, not the org itself
     expect(screen.queryByText('Org, Self')).toBeNull();
     expect(screen.getByText('Doc, Other')).toBeInTheDocument();
   });
@@ -187,18 +200,52 @@ describe('AffiliatedProvidersCard', () => {
     expect(screen.getByText('B, Bob')).toBeInTheDocument();
   });
 
-  it('does not spuriously match when org locations all have blank address_1 even if others also blank', () => {
-    // Both have blank address — should not match (guard against blank-address pollution)
+  // ─── blank-address behavior ────────────────────────────────────────────────
+
+  it('blank org address_1 produces no affiliates (filtered out by address_1 guard)', () => {
+    // The component filters out locations with blank address_1, so no matching occurs.
     const { container } = renderCard({
       npi: ORG_NPI,
-      locations: [makeLocation(ORG_NPI, '', 'Boston', 'MA'), makeLocation(ORG_NPI, null, 'Boston', 'MA')],
+      locations: [makeLocation(ORG_NPI, '', 'Boston', 'MA')],
       allProviders: [makeProvider('2222222222')],
       allLocations: [makeLocation('2222222222', '', 'Boston', 'MA')],
     });
     expect(container.firstChild).toBeNull();
   });
 
-  // ─── View link uses ProviderDetail URL ─────────────────────────────────────
+  it('blank org address_1 does NOT match a provider at a real address in the same city/state', () => {
+    // The blank address_1 key is "|Boston|MA"; a real address produces "100 Main St|Boston|MA".
+    const { container } = renderCard({
+      npi: ORG_NPI,
+      locations: [makeLocation(ORG_NPI, '', 'Boston', 'MA')],
+      allProviders: [makeProvider('2222222222')],
+      allLocations: [makeLocation('2222222222', '100 Main St', 'Boston', 'MA')],
+    });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('null address_1 produces no affiliates (filtered out by address_1 guard)', () => {
+    // The component filters out locations with falsy address_1 (including null).
+    const { container } = renderCard({
+      npi: ORG_NPI,
+      locations: [makeLocation(ORG_NPI, null, 'Boston', 'MA')],
+      allProviders: [makeProvider('2222222222')],
+      allLocations: [makeLocation('2222222222', null, 'Boston', 'MA')],
+    });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('real-address org does not match a blank-address provider', () => {
+    const { container } = renderCard({
+      npi: ORG_NPI,
+      locations: [makeLocation(ORG_NPI, '100 Main St', 'Boston', 'MA')],
+      allProviders: [makeProvider('2222222222')],
+      allLocations: [makeLocation('2222222222', '', 'Boston', 'MA')],
+    });
+    expect(container.firstChild).toBeNull();
+  });
+
+  // ─── View link ─────────────────────────────────────────────────────────────
 
   it('each provider row has a "View" link pointing to ProviderDetail', () => {
     renderCard({
@@ -242,9 +289,9 @@ describe('AffiliatedProvidersCard', () => {
     expect(viewLinks).toHaveLength(50);
   });
 
-  // ─── status badge styling ─────────────────────────────────────────────────
+  // ─── status badge ─────────────────────────────────────────────────────────
 
-  it('renders the provider status text in the table', () => {
+  it('renders the provider status text (Active) in the table', () => {
     renderCard({
       npi: ORG_NPI,
       locations: [makeLocation(ORG_NPI, '100 Main St', 'Boston', 'MA')],
@@ -262,12 +309,5 @@ describe('AffiliatedProvidersCard', () => {
       allLocations: [makeLocation('2222222222', '100 Main St', 'Boston', 'MA')],
     });
     expect(screen.getByText('Deactivated')).toBeInTheDocument();
-  });
-
-  // ─── default prop behaviour ───────────────────────────────────────────────
-
-  it('renders nothing with all default empty-array props (no crash)', () => {
-    const { container } = renderCard({ npi: ORG_NPI });
-    expect(container.firstChild).toBeNull();
   });
 });

@@ -97,6 +97,32 @@ describe('DATA_DESTINATION_MAP', () => {
   });
 
   // -----------------------------------------------------------------------
+  // PR change: physician_shared_patient_patterns added, routed to
+  // ReferralNetworkIntelligence alongside cms_order_referring.
+  // -----------------------------------------------------------------------
+  describe('physician_shared_patient_patterns routing', () => {
+    it('routes physician_shared_patient_patterns to ReferralNetworkIntelligence', () => {
+      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.page).toBe('ReferralNetworkIntelligence');
+    });
+
+    it('labels physician_shared_patient_patterns as Referrals', () => {
+      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.label).toBe('Referrals');
+    });
+
+    it('physician_shared_patient_patterns and cms_order_referring share the same page', () => {
+      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.page).toBe(
+        DATA_DESTINATION_MAP.cms_order_referring.page,
+      );
+    });
+
+    it('physician_shared_patient_patterns and cms_order_referring share the same label', () => {
+      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.label).toBe(
+        DATA_DESTINATION_MAP.cms_order_referring.label,
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Structure invariants: every entry must have page and label strings
   // -----------------------------------------------------------------------
   describe('structure invariants', () => {

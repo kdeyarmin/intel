@@ -65,4 +65,71 @@ describe("mapSharedPatientPatternRow", () => {
     expect(m.npi).toBeNull();
     expect(m.referred_to_npi).toBeNull();
   });
+
+  it("always sets referred_to_name to null (not sourced from PSPP data)", () => {
+    const m = mapSharedPatientPatternRow(ROW, 2015, 7);
+    expect(m.referred_to_name).toBeNull();
+  });
+
+  it("stores the full original row in raw_data", () => {
+    const row = { npi_1: "A", npi_2: "B", transaction_count: "3", bene_count: "2" };
+    const m = mapSharedPatientPatternRow(row, 2020, 99);
+    expect(m.raw_data).toBe(row);
+  });
+
+  it("truncates NPI values longer than 20 characters", () => {
+    const m = mapSharedPatientPatternRow(
+      { npi_1: "12345678901234567890EXTRA", npi_2: "B", count: "1" },
+      2020,
+      1,
+    );
+    expect(m.npi).toBe("12345678901234567890");
+    expect(m.npi!.length).toBeLessThanOrEqual(20);
+  });
+
+  it("accepts uppercase NPI_1 / NPI_2 column names (header variant)", () => {
+    const m = mapSharedPatientPatternRow(
+      { NPI_1: "1111111111", NPI_2: "2222222222", TRANSACTION_COUNT: "5" },
+      2016,
+      1,
+    );
+    expect(m.npi).toBe("1111111111");
+    expect(m.referred_to_npi).toBe("2222222222");
+    expect(m.total_referrals).toBe(5);
+  });
+
+  it("returns null total_referrals and total_beneficiaries when no count field is present", () => {
+    const m = mapSharedPatientPatternRow({ npi_1: "A", npi_2: "B" }, 2015, 1);
+    expect(m.total_referrals).toBeNull();
+    expect(m.total_beneficiaries).toBeNull();
+  });
+
+  it("accepts referring_npi / paired_npi aliases", () => {
+    const m = mapSharedPatientPatternRow(
+      { referring_npi: "3333333333", paired_npi: "4444444444", referral_count: "10" },
+      2017,
+      1,
+    );
+    expect(m.npi).toBe("3333333333");
+    expect(m.referred_to_npi).toBe("4444444444");
+    expect(m.total_referrals).toBe(10);
+  });
+
+  it("handles a zero count (genuinely zero shared patients is a valid row)", () => {
+    const m = mapSharedPatientPatternRow(
+      { npi_1: "1", npi_2: "2", transaction_count: "0" },
+      2015,
+      1,
+    );
+    // toIntOrNull returns 0 for "0" since parseInt("0") === 0 which is finite
+    expect(m.total_referrals).toBe(0);
+  });
+
+  it("produces string data_year and string import_batch_id regardless of numeric input", () => {
+    const m = mapSharedPatientPatternRow(ROW, 2019, 42);
+    expect(typeof m.data_year).toBe("string");
+    expect(typeof m.import_batch_id).toBe("string");
+    expect(m.data_year).toBe("2019");
+    expect(m.import_batch_id).toBe("42");
+  });
 });
