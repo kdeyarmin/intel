@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
                     retry_of: batch.id,
                     retry_count: nextAttempt,
                     retry_tags: ['auto_retry_failed'],
+                    category: batch.category || undefined,
                 });
 
                 retried.push({ id: batch.id, type: batch.import_type, attempt: nextAttempt });
