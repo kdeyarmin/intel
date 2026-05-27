@@ -202,6 +202,71 @@ describe("partition – edge cases", () => {
   });
 });
 
+describe("CMS_NATURAL_KEYS – physician_shared_patient_patterns", () => {
+  it("is defined for the new import type", () => {
+    expect(CMS_NATURAL_KEYS.physician_shared_patient_patterns).toBeDefined();
+  });
+
+  it("uses npi as the primary lookup column", () => {
+    expect(CMS_NATURAL_KEYS.physician_shared_patient_patterns.primaryCol).toBe("npi");
+  });
+
+  it("keys on (npi, referred_to_npi, data_year) to prevent duplicate directed edges", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    expect(keyCols).toEqual(["npi", "referred_to_npi", "data_year"]);
+  });
+
+  it("includes referred_to_npi so the reverse edge is a different row", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    expect(keyCols).toContain("referred_to_npi");
+  });
+
+  it("includes data_year so the same pair in different years are distinct rows", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    expect(keyCols).toContain("data_year");
+  });
+
+  it("treats the forward edge (A->B) as distinct from the reverse edge (B->A)", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    const forward = { npi: "1111111111", referred_to_npi: "2222222222", data_year: "2015" };
+    const reverse = { npi: "2222222222", referred_to_npi: "1111111111", data_year: "2015" };
+    const fwdKey = makeKey(forward, keyCols);
+    const revKey = makeKey(reverse, keyCols);
+    expect(fwdKey).not.toBe(revKey);
+  });
+
+  it("de-duplicates re-import of the same directed edge for the same year", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    const rows = [
+      { npi: "A", referred_to_npi: "B", data_year: "2015" },
+      { npi: "A", referred_to_npi: "B", data_year: "2015" },
+    ];
+    const { toCreate, skipped } = partition(rows, [], keyCols);
+    expect(toCreate).toHaveLength(1);
+    expect(skipped).toBe(1);
+  });
+
+  it("preserves two edges between the same pair in different years", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    const rows = [
+      { npi: "A", referred_to_npi: "B", data_year: "2014" },
+      { npi: "A", referred_to_npi: "B", data_year: "2015" },
+    ];
+    const { toCreate, skipped } = partition(rows, [], keyCols);
+    expect(toCreate).toHaveLength(2);
+    expect(skipped).toBe(0);
+  });
+
+  it("skips a row that already exists in the database for the same triple", () => {
+    const { keyCols } = CMS_NATURAL_KEYS.physician_shared_patient_patterns;
+    const incoming = [{ npi: "A", referred_to_npi: "B", data_year: "2015" }];
+    const existing = [{ npi: "A", referred_to_npi: "B", data_year: "2015" }];
+    const { toCreate, skipped } = partition(incoming, existing, keyCols);
+    expect(toCreate).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+});
+
 describe("distinctValues – edge cases", () => {
   it("returns an empty array for empty input", () => {
     expect(distinctValues([], "npi")).toEqual([]);
