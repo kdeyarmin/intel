@@ -68,9 +68,7 @@ import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
 import Hospices from './pages/Hospices.jsx';
 import Hospitals from './pages/Hospitals.jsx';
 import InpatientRehab from './pages/InpatientRehab.jsx';
-import ImportAnalytics from './pages/ImportAnalytics.jsx';
 import ImportMonitoring from './pages/ImportMonitoring.jsx';
-import ImportOverview from './pages/ImportOverview.jsx';
 import LeadListBuilder from './pages/LeadListBuilder.jsx';
 import LeadLists from './pages/LeadLists.jsx';
 import LocationDetail from './pages/LocationDetail.jsx';
@@ -121,9 +119,7 @@ export const PAGES = {
     "Hospices": Hospices,
     "Hospitals": Hospitals,
     "InpatientRehab": InpatientRehab,
-    "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
-    "ImportOverview": ImportOverview,
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationDetail": LocationDetail,
