@@ -578,18 +578,6 @@ export const metricsSnapshots = pgTable("metrics_snapshots", {
   created_date: timestamp("created_date").defaultNow(),
 });
 
-export const campaigns = pgTable("campaigns", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("draft"),
-  type: varchar("type", { length: 50 }),
-  target_audience: jsonb("target_audience"),
-  settings: jsonb("settings"),
-  created_date: timestamp("created_date").defaultNow(),
-  updated_date: timestamp("updated_date").defaultNow(),
-});
-
 export const campaignSequenceSteps = pgTable("campaign_sequence_steps", {
   id: serial("id").primaryKey(),
   campaign_id: integer("campaign_id"),
@@ -878,7 +866,6 @@ export const tableMap: Record<string, any> = {
   ProviderReconciliation: providerReconciliations,
   ProviderServiceUtilization: providerServiceUtilization,
   MetricsSnapshot: metricsSnapshots,
-  Campaign: campaigns,
   CampaignSequenceStep: campaignSequenceSteps,
   SavedFilter: savedFilters,
   ScheduledReport: scheduledReports,

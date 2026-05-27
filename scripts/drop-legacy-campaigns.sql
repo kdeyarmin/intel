@@ -1,0 +1,25 @@
+-- Drop the legacy `campaigns` table — GATED on verification.
+--
+-- Run order:
+--   1. Run scripts/migrate-campaigns-to-outreach.sql (copies legacy `campaigns`
+--      rows into the unified `outreach_campaigns` table; idempotent).
+--   2. Open the unified Campaigns/Outreach page in the app and CONFIRM the
+--      previously legacy campaigns now appear there. Migrated rows carry
+--      metrics #>> '{_legacy,source}' = 'campaigns' and
+--      metrics #>> '{_legacy,legacy_id}' = the old campaigns.id, e.g.:
+--        SELECT id, name, metrics #>> '{_legacy,legacy_id}' AS legacy_id
+--        FROM outreach_campaigns
+--        WHERE metrics #>> '{_legacy,source}' = 'campaigns';
+--   3. ONLY after you have verified the migrated campaigns look correct, run
+--      this script.
+--
+-- This is intentionally a MANUAL script (not an auto-applied drizzle migration)
+-- so the drop cannot happen before that verification. The `Campaign` entity has
+-- already been removed from the application code (server/db/schema.ts tableMap,
+-- server/routes/entities.ts allowlist, src/components/customReports/reportConfig.jsx),
+-- so nothing in the running app reads or writes this table any more.
+--
+-- Note: `campaign_sequence_steps` is a separate table and is intentionally left
+-- untouched here.
+
+DROP TABLE IF EXISTS campaigns;
