@@ -53,6 +53,13 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 2;
 const MAX_CACHE_SIZE = 5000;
 let globalRateLimitDelay = 0;
 let lastRateLimitHit = 0;
+// Per-process state. Queue items are claimed atomically in the DB
+// (UPDATE ... WHERE status='pending' RETURNING), so running multiple instances
+// will NOT double-process work. These counters/caches (worker cap, API cache,
+// rate-limit backoff) are per-instance only — with N instances the effective
+// NPPES request rate is up to N×. For a single-instance deployment this is fine;
+// if scaled horizontally, move the rate-limit backoff to a shared store (e.g.
+// Redis) to stay polite to the NPPES API.
 let activeWorkerCount = 0;
 const MAX_CONCURRENT_WORKERS = 5;
 
