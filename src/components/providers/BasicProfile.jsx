@@ -160,6 +160,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 <EmailValidationBadge
                   status={provider.email_validation_status}
                   reason={provider.email_validation_reason}
+                  source={provider.email_source}
                 />
               </div>
             </div>
