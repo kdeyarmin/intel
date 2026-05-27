@@ -93,7 +93,7 @@ export default function MaintenanceHealthPanel() {
 
   const lastRun = event.timestamp;
   const stale = lastRun && (Date.now() - new Date(lastRun).getTime() > STALE_AFTER_MS);
-  const workers = event.details?.workers ?? [];
+  const workers = Array.isArray(event.details?.workers) ? event.details.workers : [];
   const failed = workers.filter(w => !w.ok);
   const skippedReason = event.details?.skipped_reason;
   // An empty workers array (or a skipped-due-to-budget heartbeat) is a
