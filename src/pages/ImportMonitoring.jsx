@@ -529,9 +529,8 @@ export default function ImportMonitoring() {
       <SystemStatusPanel batches={batches} />
 
       {/* Maintenance heartbeat — surfaces whether the schedule loop's fanout
-          to autoResume / autoRetry / cancelStalled / manageCrawlerRetries is
-          actually running. If this goes stale, paused/failed batches stop
-          getting picked back up. */}
+          to autoResume / autoRetry / cancelStalled is actually running.
+          If this goes stale, paused/failed batches stop getting picked back up. */}
       <MaintenanceHealthPanel />
 
       {/* Live Progress for Active Jobs */}

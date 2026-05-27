@@ -722,6 +722,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
         return res.json({ success: result.ok, worker: result });
       }
+      case "runScheduledImportsFanout":
       case "runMaintenanceFanout": {
         const { consumeToken } = await import("../middleware/rateLimit");
         // Fanout runs every worker, so cap it more aggressively than the
