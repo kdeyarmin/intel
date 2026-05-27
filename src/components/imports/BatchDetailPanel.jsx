@@ -146,7 +146,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
   const headline =
     state === 'disabled' ? 'Auto-retry disabled for this batch'
     : state === 'max_reached' ? `Max auto-retry attempts reached (${attemptCount}/${MAX_AUTO_RETRY_ATTEMPTS})`
-    : state === 'too_old' ? 'Auto-retry window expired for this batch'
+    : state === 'too_old' ? 'Auto-retry not scheduled (batch is outside the worker lookback window)'
     : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, now)})`
     : state === 'eligible' ? `Auto-retry eligible (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS} on next worker tick)`
     : `Auto-retry will trigger if the failure is classified retryable (attempt 1/${MAX_AUTO_RETRY_ATTEMPTS})`;
@@ -260,7 +260,6 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
   }, [safeBatch]);
 
   if (!batch) return null;
-
   const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
   const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
 
@@ -301,7 +300,6 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
           </div>
         </div>
       )}
-
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div><span className="text-slate-500">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>

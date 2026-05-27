@@ -19,10 +19,30 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
+        const serviceSecret = Deno.env.get('AUTO_RETRY_FAILED_IMPORTS_SECRET');
+        const providedServiceSecret = req.headers.get('x-auto-retry-secret');
+
         let user = null;
-        try { user = await base44.auth.me(); } catch (_e) { /* service role */ }
-        const isService = user && user.email && user.email.includes('service+');
-        if (user && user.role !== 'admin' && !isService) {
+        try {
+            user = await base44.auth.me();
+        } catch (_e) {
+            user = null;
+        }
+
+        const isAdmin = user?.role === 'admin';
+        const hasValidServiceCredential =
+            !!serviceSecret &&
+            !!providedServiceSecret &&
+            providedServiceSecret === serviceSecret;
+
+        if (!user && !hasValidServiceCredential) {
+            return Response.json(
+                { error: 'Unauthorized: Admin authentication or valid service credential required' },
+                { status: 401 },
+            );
+        }
+
+        if (user && !isAdmin && !hasValidServiceCredential) {
             return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
@@ -61,10 +81,15 @@ Deno.serve(async (req) => {
                     import_type: batch.import_type,
                     file_url: batch.file_url,
                     year: batch.data_year,
-                    dry_run: false,
+                    dry_run: !!batch.dry_run,
+                    sheet_filter: params.sheet_filter ?? undefined,
+                    row_offset: params.row_offset ?? undefined,
+                    row_limit: params.row_limit ?? undefined,
+                    resume_offset: params.resume_offset ?? undefined,
                     retry_of: batch.id,
                     retry_count: nextAttempt,
                     retry_tags: ['auto_retry_failed'],
+                    category: batch.category || undefined,
                 });
 
                 retried.push({ id: batch.id, type: batch.import_type, attempt: nextAttempt });

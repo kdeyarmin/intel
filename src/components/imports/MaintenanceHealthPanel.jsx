@@ -7,9 +7,10 @@ const POLL_INTERVAL_MS = 60 * 1000;
 
 function formatRelative(iso, now = new Date()) {
   if (!iso) return 'never';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'unknown';
-  const diffMs = now.getTime() - date.getTime();
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return 'unknown';
+  const diffMs = now.getTime() - timestamp;
+  if (diffMs < 0) return 'in the future';
   const min = Math.round(diffMs / 60_000);
   if (min < 1) return 'just now';
   if (min < 60) return `${min}m ago`;
@@ -95,7 +96,7 @@ export default function MaintenanceHealthPanel() {
 
   const lastRun = event.timestamp ?? event.created_date;
   const stale = lastRun && (Date.now() - new Date(lastRun).getTime() > STALE_AFTER_MS);
-  const workers = event.details?.workers ?? [];
+  const workers = Array.isArray(event.details?.workers) ? event.details.workers : [];
   const failed = workers.filter(w => !w.ok);
   const skippedReason = event.details?.skipped_reason;
   // An empty workers array (or a skipped-due-to-budget heartbeat) is a

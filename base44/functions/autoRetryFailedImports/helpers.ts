@@ -13,45 +13,69 @@
 
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
-export const RETRY_BACKOFF_BASE_MS = 60 * 60 * 1000;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
 // Patterns that mark a failure as transient. Matches the keyword sets on the
 // retryable: true categories in errorCategories.jsx (timeout_stall, network_api).
 export const RETRYABLE_KEYWORDS = [
     'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
-    'http 5', '500', '503', '429', 'rate limit', 'rate-limit', 'rate_limit',
+    'http 5', 'rate limit', 'rate-limit', 'rate_limit',
     'fetch', 'network', 'connection', 'econnrefused', 'socket',
 ];
+
+// Match retryable HTTP status codes only when they appear in an HTTP/status
+// context, so unrelated numeric references like "row 500" do not trigger
+// auto-retries.
+export const RETRYABLE_STATUS_CODE_PATTERN =
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
     const lower = String(msg).toLowerCase();
-    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw));
+    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw))
+        || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
+}
+
+function normalizeErrorText(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
 }
 
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
 // back to the most recent error_samples entry's `detail` or `message`.
+// Different importers persist the error string under different keys (`detail` in
+// Medicare imports, `message` in autoImportCMSData) — accept either so the worker
+// doesn't miss transient failures whose error lives in the "wrong" field.
 export function extractErrorMessage(batch: Record<string, unknown>): string {
-    if (typeof batch.cancel_reason === 'string' && batch.cancel_reason.length > 0) {
-        return batch.cancel_reason;
+    const cancelReason = normalizeErrorText(batch.cancel_reason);
+    if (cancelReason) {
+        return cancelReason;
     }
     const samples = batch.error_samples;
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
-        if (last && typeof last.detail === 'string') return last.detail;
-        if (last && typeof last.message === 'string') return last.message;
+        if (last) {
+            const detail = normalizeErrorText(last.detail);
+            if (detail) return detail;
+
+            const message = normalizeErrorText(last.message);
+            if (message) return message;
+        }
     }
     return '';
 }
 
 export function getRetryAttemptCount(batch: Record<string, unknown>): number {
     const params = batch.retry_params as Record<string, unknown> | undefined;
-    const count = params?.auto_retry_count;
-    if (typeof count === 'number' && count >= 0) return count;
+    const autoRetryCount = params?.auto_retry_count;
     const topLevelRetryCount = batch.retry_count;
-    return typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0 ? topLevelRetryCount : 0;
+    const parsedAutoRetryCount = typeof autoRetryCount === 'number' && autoRetryCount >= 0
+        ? autoRetryCount
+        : 0;
+    const parsedTopLevelRetryCount = typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0
+        ? topLevelRetryCount
+        : 0;
+    return Math.max(parsedAutoRetryCount, parsedTopLevelRetryCount);
 }
 
 // Exponential backoff that mirrors runScheduledImports/helpers.backoffHours:
@@ -117,11 +141,12 @@ export function shouldRetryBatch(
         }
     }
 
-    const createdIso = (batch.created_date as string | undefined)
-        ?? (batch.updated_date as string | undefined);
-    if (createdIso) {
-        const created = new Date(createdIso);
-        if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+    const failureIso = (batch.completed_at as string | undefined)
+        ?? (batch.updated_date as string | undefined)
+        ?? (batch.created_date as string | undefined);
+    if (failureIso) {
+        const failureAt = new Date(failureIso);
+        if (!isNaN(failureAt.getTime()) && now.getTime() - failureAt.getTime() > RETRY_LOOKBACK_MS) {
             return { eligible: false, reason: 'too_old' };
         }
     }
