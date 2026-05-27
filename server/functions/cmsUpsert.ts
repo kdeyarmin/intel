@@ -21,7 +21,7 @@ export type CmsKeyConfig = {
 // medicare_facilities is handled separately (it has two identity shapes:
 // provider_id-based and facility_name-based) — see partitionFacilities.
 export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
-  cms_order_referring: { primaryCol: "npi", keyCols: ["npi", "data_year"] },
+  // cms_order_referring is routed to the providers table (upsert on npi), not cms_referrals.
   provider_service_utilization: {
     primaryCol: "npi",
     // The CMS "by Provider and Service" dataset has one row per

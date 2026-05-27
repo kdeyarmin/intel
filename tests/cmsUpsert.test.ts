@@ -58,7 +58,9 @@ describe("distinctValues", () => {
 
 describe("CMS_NATURAL_KEYS", () => {
   it("includes the npi-keyed import types", () => {
-    expect(CMS_NATURAL_KEYS.cms_order_referring.keyCols).toContain("npi");
+    // cms_order_referring is an eligibility registry routed to the providers
+    // table via a dedicated upsert path — it no longer uses CMS_NATURAL_KEYS.
+    expect(CMS_NATURAL_KEYS.cms_order_referring).toBeUndefined();
     expect(CMS_NATURAL_KEYS.provider_service_utilization.keyCols).toContain("npi");
   });
 
