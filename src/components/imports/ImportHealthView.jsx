@@ -5,9 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, XCircle, Pause, AlertCircle, RefreshCw, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { base44 } from '@/api/base44Client';
-import PageHeader from '../components/shared/PageHeader';
-import MaintenanceHealthPanel from '../components/imports/MaintenanceHealthPanel';
-import { ERROR_CATEGORIES } from '../components/imports/errorCategories';
+import { ERROR_CATEGORIES } from './errorCategories';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 import {
   successRateByDay,
@@ -15,7 +13,7 @@ import {
   topErrorCategoriesFromBatches,
   summarizeRetryPipeline,
   unhealthySchedules,
-} from '../components/imports/healthMetrics';
+} from './healthMetrics';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   provider_service_utilization: 'Provider Service Utilization',
@@ -161,7 +159,7 @@ function ScheduleHealthTable({ schedules }) {
   );
 }
 
-export default function ImportHealthDashboard() {
+export default function ImportHealthView() {
   const { data: batches = [], isLoading: batchesLoading } = useQuery({
     queryKey: ['importHealthBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 500),
@@ -185,7 +183,7 @@ export default function ImportHealthDashboard() {
 
   if (batchesLoading || schedulesLoading) {
     return (
-      <div className="p-6 flex items-center gap-2 text-slate-400">
+      <div className="py-6 flex items-center gap-2 text-slate-400">
         <Loader2 className="w-4 h-4 animate-spin" />
         Loading import health metrics...
       </div>
@@ -193,13 +191,10 @@ export default function ImportHealthDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-7xl mx-auto">
-      <PageHeader
-        title="Import Health"
-        description="30-day overview of import outcomes, error patterns, schedule health, and the auto-retry pipeline."
-      />
-
-      <MaintenanceHealthPanel />
+    <div className="space-y-5">
+      <p className="text-xs text-slate-500">
+        30-day overview of import outcomes, error patterns, schedule health, and the auto-retry pipeline.
+      </p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile

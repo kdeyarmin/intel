@@ -31,7 +31,7 @@ const DATA_DESTINATION_MAP = {
   ambulatory_surgical_center: { page: 'Hospitals', label: 'Hospitals' },
   medicare_inpatient_by_provider: { page: 'Hospitals', label: 'Hospitals' },
   medicare_outpatient_by_provider: { page: 'Hospitals', label: 'Hospitals' },
-  medicare_ma_inpatient: { page: 'MAInpatientDashboard', label: 'MA Inpatient' },
+  medicare_ma_inpatient: { page: 'Hospitals', label: 'Hospitals' },
 
   home_health_enrollments: { page: 'HomeHealthAgencies', label: 'Home Health' },
   home_health_all_owners: { page: 'HomeHealthAgencies', label: 'Home Health' },

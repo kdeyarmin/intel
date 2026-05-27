@@ -7,20 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  TrendingUp, 
-  AlertTriangle, 
-  Target, 
-  Network, 
+import {
+  TrendingUp,
+  AlertTriangle,
+  Target,
+  Network,
   Search,
   RefreshCw,
   Building2,
   ArrowRight
 } from 'lucide-react';
-import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
-import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
-export default function ReferralPathwayAnalysis() {
+export default function SingleProviderPathway() {
   const [searchNPI, setSearchNPI] = useState('');
   const [selectedNPI, setSelectedNPI] = useState(null);
   const queryClient = useQueryClient();
@@ -68,7 +67,7 @@ export default function ReferralPathwayAnalysis() {
     }
   };
 
-  const selectedAnalysis = selectedNPI 
+  const selectedAnalysis = selectedNPI
     ? analyses.find(a => a.provider_npi === selectedNPI)
     : null;
 
@@ -81,20 +80,15 @@ export default function ReferralPathwayAnalysis() {
     : `${selectedProvider?.first_name || ''} ${selectedProvider?.last_name || ''}`.trim();
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">AI Referral Pathway Analysis</h1>
-        <p className="text-slate-400 mt-1">
-          AI-powered analysis of referral patterns, predictions, and network leakage detection
-        </p>
-      </div>
+    <div className="space-y-6">
+      <p className="text-sm text-slate-400">
+        AI-powered analysis of one provider&apos;s referral patterns, predicted next destinations, and network-leakage detection.
+      </p>
 
-      <div className="mb-6">
-        <ComplianceDisclaimer />
-      </div>
+      <ComplianceDisclaimer />
 
       {/* Search & Analyze */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
@@ -109,7 +103,7 @@ export default function ReferralPathwayAnalysis() {
               onChange={(e) => setSearchNPI(e.target.value)}
               className="flex-1"
             />
-            <Button 
+            <Button
               onClick={handleAnalyze}
               disabled={analyzeMutation.isPending}
               className="bg-teal-600 hover:bg-teal-700"
@@ -166,7 +160,7 @@ export default function ReferralPathwayAnalysis() {
               <AlertTriangle className="h-4 w-4 text-red-400" />
               <AlertDescription className="text-red-300">
                 <strong>Network Leakage Detected:</strong>{' '}
-                {selectedAnalysis.leakage_details?.out_of_network_percentage?.toFixed(1)}% 
+                {selectedAnalysis.leakage_details?.out_of_network_percentage?.toFixed(1)}%
                 ({selectedAnalysis.leakage_details?.out_of_network_count} referrals) going outside preferred network
               </AlertDescription>
             </Alert>
@@ -263,7 +257,7 @@ export default function ReferralPathwayAnalysis() {
                 <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20">
                   <p className="text-xs text-green-400 font-medium">In-Network Rate</p>
                   <p className="text-lg font-bold text-white mt-1">
-                    {selectedAnalysis.leakage_details?.out_of_network_percentage 
+                    {selectedAnalysis.leakage_details?.out_of_network_percentage
                       ? (100 - selectedAnalysis.leakage_details.out_of_network_percentage).toFixed(1)
                       : '100'}%
                   </p>
@@ -347,7 +341,7 @@ export default function ReferralPathwayAnalysis() {
                     : `${provider?.first_name || ''} ${provider?.last_name || ''}`.trim() || analysis.provider_npi;
 
                   return (
-                    <div 
+                    <div
                       key={analysis.id}
                       className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 cursor-pointer"
                       onClick={() => setSelectedNPI(analysis.provider_npi)}
@@ -393,8 +387,6 @@ export default function ReferralPathwayAnalysis() {
           </CardContent>
         </Card>
       )}
-
-      <DataSourcesFooter />
     </div>
   );
 }

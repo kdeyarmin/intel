@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, CalendarClock
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, HeartPulse, CalendarClock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -28,6 +28,7 @@ import ValidationRulesManager from '../components/imports/ValidationRulesManager
 import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import MaintenanceHealthPanel from '../components/imports/MaintenanceHealthPanel';
+import ImportHealthView from '../components/imports/ImportHealthView';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
@@ -486,6 +487,15 @@ export default function ImportMonitoring() {
           Performance
         </button>
         <button
+          onClick={() => setActiveTab('health')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'health' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <HeartPulse className="w-3.5 h-3.5 inline mr-1" />
+          Health
+        </button>
+        <button
           onClick={() => setActiveTab('automation')}
           className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === 'automation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
@@ -526,6 +536,10 @@ export default function ImportMonitoring() {
 
       {activeTab === 'performance' && (
         <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
+      )}
+
+      {activeTab === 'health' && (
+        <ImportHealthView />
       )}
 
       {activeTab === 'automation' && (
