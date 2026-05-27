@@ -831,7 +831,7 @@ export default function ImportMonitoring() {
                           <DialogHeader>
                             <DialogTitle className="text-slate-200">Import Job Details</DialogTitle>
                           </DialogHeader>
-                          <BatchDetailPanel batch={batch} />
+                          <BatchDetailPanel batch={batch} onUpdated={refreshBatches} />
                         </DialogContent>
                       </Dialog>
                     </div>
