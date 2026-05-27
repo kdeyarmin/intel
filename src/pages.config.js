@@ -74,7 +74,6 @@ import LeadLists from './pages/LeadLists.jsx';
 import LocationDetail from './pages/LocationDetail.jsx';
 import Locations from './pages/Locations.jsx';
 import LongTermCare from './pages/LongTermCare.jsx';
-import MAInpatientDashboard from './pages/MAInpatientDashboard.jsx';
 import NursingHomes from './pages/NursingHomes.jsx';
 import NPPESCrawler from './pages/NPPESCrawler.jsx';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
@@ -123,7 +122,6 @@ export const PAGES = {
     "LocationDetail": LocationDetail,
     "Locations": Locations,
     "LongTermCare": LongTermCare,
-    "MAInpatientDashboard": MAInpatientDashboard,
     "NursingHomes": NursingHomes,
     "NPPESCrawler": NPPESCrawler,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,

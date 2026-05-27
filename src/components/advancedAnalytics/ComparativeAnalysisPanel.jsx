@@ -42,12 +42,11 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
       else if (compareBy === 'specialty') groupKey = npiTaxonomy[u.npi] || 'Unknown';
       else if (compareBy === 'credential') groupKey = prov?.credential || 'Unknown';
 
-      if (!groups[groupKey]) groups[groupKey] = { name: groupKey, total_medicare_payment: 0, total_services: 0, total_medicare_beneficiaries: 0, total_submitted_charges: 0, drug_services: 0, count: 0 };
+      if (!groups[groupKey]) groups[groupKey] = { name: groupKey, total_medicare_payment: 0, total_services: 0, total_medicare_beneficiaries: 0, total_submitted_charges: 0, count: 0 };
       groups[groupKey].total_medicare_payment += u.total_medicare_payment || 0;
       groups[groupKey].total_services += u.total_services || 0;
       groups[groupKey].total_medicare_beneficiaries += u.total_medicare_beneficiaries || 0;
       groups[groupKey].total_submitted_charges += u.total_submitted_charges || 0;
-      groups[groupKey].drug_services += u.drug_services || 0;
       groups[groupKey].count += 1;
     });
     return Object.values(groups)
@@ -60,7 +59,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
   const radarData = useMemo(() => {
     if (comparisonData.length < 2) return [];
     const top = comparisonData.slice(0, 5);
-    const metrics = ['total_medicare_payment', 'total_services', 'total_medicare_beneficiaries', 'total_submitted_charges', 'drug_services'];
+    const metrics = ['total_medicare_payment', 'total_services', 'total_medicare_beneficiaries', 'total_submitted_charges'];
     const maxVals = {};
     metrics.forEach(m => { maxVals[m] = Math.max(...top.map(t => t[m] || 1)); });
     return metrics.map(m => {
@@ -82,7 +81,6 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
     { key: 'total_services', label: 'Total Services' },
     { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
     { key: 'total_submitted_charges', label: 'Submitted Charges' },
-    { key: 'drug_services', label: 'Drug Services' },
   ];
 
   return (

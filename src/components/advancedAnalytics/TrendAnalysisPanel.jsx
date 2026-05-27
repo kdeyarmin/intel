@@ -15,15 +15,12 @@ const METRIC_OPTIONS = {
     { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
     { key: 'total_medicare_payment', label: 'Medicare Payments ($)' },
     { key: 'total_submitted_charges', label: 'Submitted Charges ($)' },
-    { key: 'drug_services', label: 'Drug Services' },
   ],
   referrals: [
     { key: 'total_referrals', label: 'Total Referrals' },
     { key: 'home_health_referrals', label: 'Home Health' },
     { key: 'hospice_referrals', label: 'Hospice' },
-    { key: 'snf_referrals', label: 'SNF' },
     { key: 'dme_referrals', label: 'DME' },
-    { key: 'imaging_referrals', label: 'Imaging' },
   ],
 };
 

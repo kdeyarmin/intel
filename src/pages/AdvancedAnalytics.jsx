@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, GitCompare, Sparkles, LayoutDashboard } from 'lucide-react';
@@ -15,6 +15,7 @@ import PageHeader from '../components/shared/PageHeader';
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeDashboardId, setActiveDashboardId] = useState(null);
+  const queryClient = useQueryClient();
 
   // Core data
   const { data: providers = [], isLoading: lp } = useQuery({
@@ -32,7 +33,6 @@ export default function AdvancedAnalytics() {
         total_medicare_payment: r.total_medicare_payment_amt || 0,
         total_medicare_beneficiaries: r.total_unique_benes || 0,
         total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1),
-        drug_services: 0,
       }));
     },
     staleTime: 120000,
@@ -46,12 +46,10 @@ export default function AdvancedAnalytics() {
         return {
           ...r,
           year: r.data_year,
-          total_referrals: 1,
+          total_referrals: r.total_referrals || 0,
           home_health_referrals: rd.HHA === 'Y' ? 1 : 0,
           hospice_referrals: rd.HOSPICE === 'Y' ? 1 : 0,
-          snf_referrals: 0,
           dme_referrals: rd.DME === 'Y' ? 1 : 0,
-          imaging_referrals: 0,
         };
       });
     },
@@ -138,7 +136,7 @@ export default function AdvancedAnalytics() {
                   dashboards={dashboards}
                   activeId={activeDashboardId}
                   onSelect={setActiveDashboardId}
-                  onWidgetsChange={() => {}}
+                  onWidgetsChange={() => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] })}
                 />
               </div>
               <div className="lg:col-span-9 space-y-5">
