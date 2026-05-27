@@ -7,7 +7,9 @@ const POLL_INTERVAL_MS = 60 * 1000;
 
 function formatRelative(iso, now = new Date()) {
   if (!iso) return 'never';
-  const diffMs = now.getTime() - new Date(iso).getTime();
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'unknown';
+  const diffMs = now.getTime() - date.getTime();
   const min = Math.round(diffMs / 60_000);
   if (min < 1) return 'just now';
   if (min < 60) return `${min}m ago`;
@@ -29,7 +31,7 @@ export default function MaintenanceHealthPanel() {
       try {
         const events = await base44.entities.AuditEvent.filter(
           { event_type: 'maintenance_fanout' },
-          '-timestamp',
+          '-created_date',
           1,
         );
         if (cancelled) return;
@@ -91,7 +93,7 @@ export default function MaintenanceHealthPanel() {
     );
   }
 
-  const lastRun = event.timestamp;
+  const lastRun = event.timestamp ?? event.created_date;
   const stale = lastRun && (Date.now() - new Date(lastRun).getTime() > STALE_AFTER_MS);
   const workers = event.details?.workers ?? [];
   const failed = workers.filter(w => !w.ok);
