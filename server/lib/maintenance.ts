@@ -319,10 +319,12 @@ export async function writeMaintenanceHeartbeat(
 }
 
 // ─── Umbrella: maintenance fanout ────────────────────────────────────────────
-// Runs every non-destructive worker in parallel with a hard time budget, then
-// writes the heartbeat. Mirrors the base44 runScheduledImports fanout but
-// without the schedule-loop preamble — that part will be wired in a separate
-// PR when the cron driver is fully ported to Express.
+// Runs every non-destructive worker in parallel with a time budget for the
+// *heartbeat/reporting*. Note: the current implementation does not cancel
+// in-flight workers when the budget elapses.
+// Mirrors the base44 runScheduledImports fanout but without the schedule-loop
+// preamble — that part will be wired in a separate PR when the cron driver is
+// fully ported to Express.
 
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
