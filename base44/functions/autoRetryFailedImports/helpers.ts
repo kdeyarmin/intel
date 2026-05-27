@@ -125,11 +125,12 @@ export function shouldRetryBatch(
         }
     }
 
-    const createdIso = (batch.created_date as string | undefined)
-        ?? (batch.updated_date as string | undefined);
-    if (createdIso) {
-        const created = new Date(createdIso);
-        if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+    const failureIso = (batch.completed_at as string | undefined)
+        ?? (batch.updated_date as string | undefined)
+        ?? (batch.created_date as string | undefined);
+    if (failureIso) {
+        const failureAt = new Date(failureIso);
+        if (!isNaN(failureAt.getTime()) && now.getTime() - failureAt.getTime() > RETRY_LOOKBACK_MS) {
             return { eligible: false, reason: 'too_old' };
         }
     }

@@ -270,6 +270,16 @@ describe('shouldRetryBatch', () => {
     expect(result.reason).toBe('too_old');
   });
 
+  it('uses the most recent failure timestamp for the lookback window', () => {
+    const createdTooOld = new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
+    const failedRecently = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    const result = shouldRetryBatch(
+      failedBatch({ created_date: createdTooOld, completed_at: failedRecently, updated_date: failedRecently }),
+      now,
+    );
+    expect(result).toEqual({ eligible: true, reason: 'retryable_failure', attemptCount: 0 });
+  });
+
   it('exposes RETRYABLE_KEYWORDS for callers', () => {
     expect(RETRYABLE_KEYWORDS).toContain('timeout');
     expect(RETRYABLE_KEYWORDS).toContain('rate limit');
