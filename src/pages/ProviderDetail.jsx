@@ -14,7 +14,6 @@ import BasicProfile from '../components/providers/BasicProfile';
 import ProviderKPIRow from '../components/providers/ProviderKPIRow';
 import UtilizationInsights from '../components/providers/UtilizationInsights';
 import UtilizationTrendChart from '../components/providers/UtilizationTrendChart';
-import ReferralTrendChart from '../components/providers/ReferralTrendChart';
 import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoodSignals';
 import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
 import WhyThisProvider from '../components/providers/WhyThisProvider';
@@ -45,6 +44,7 @@ import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
 import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
 import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
 import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
+import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedProvidersCard';
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 export default function ProviderDetail() {
@@ -282,11 +282,10 @@ export default function ProviderDetail() {
           {cmsData?.mips?.has_data && (
             <MIPSPerformanceCard mipsData={cmsData.mips} />
           )}
-          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data || cmsData?.network?.has_data) && (
+          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data) && (
             <ProviderCMSDataCard
               clinicianData={cmsData.clinician}
               utilizationCmsData={cmsData.utilization_cms}
-              networkData={cmsData.network}
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -294,10 +293,7 @@ export default function ProviderDetail() {
             <ReferralSummaryCard referrals={referrals} />
           </div>
           <UtilizationInsights utilization={latestUtil} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UtilizationTrendChart utilizations={utilizations} />
-            <ReferralTrendChart referrals={referrals} />
-          </div>
+          <UtilizationTrendChart utilizations={utilizations} />
           <PatientPopulationFingerprint
             provider={provider}
             taxonomy={taxonomies}
@@ -320,9 +316,6 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="network" className="space-y-6">
-          {cmsData?.linked_facilities?.length > 0 && (
-            <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
-          )}
           {cmsData?.network?.has_data && (
             <ProviderCMSDataCard
               networkData={cmsData.network}
@@ -336,6 +329,14 @@ export default function ProviderDetail() {
                 location={primaryLocation}
                 taxonomies={taxonomies}
               />
+              {provider.entity_type === 'Organization' && (
+                <OrgAffiliatedProvidersCard
+                  npi={npi}
+                  locations={locations}
+                  allProviders={allProviders}
+                  allLocations={allLocations}
+                />
+              )}
               <ReferralPartnersCard npi={npi} referrals={referrals} />
             </div>
             <div className="space-y-6">

@@ -283,7 +283,9 @@ export async function handleListFacilities(params: any) {
   const primaryType = LISTING_PRIMARY_TYPES[facility_group] || groupTypes[0];
   const listingTypes = facility_group === 'community_health'
     ? ["fqhc_enrollments", "rural_health_clinic_enrollments"]
-    : [primaryType];
+    : facility_group === 'hospital'
+      ? Array.from(new Set([primaryType, "medicare_ma_inpatient"]))
+      : [primaryType];
   const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
   const safePage = Math.max(1, Number(page) || 1);
   const offset = (safePage - 1) * safeLimit;

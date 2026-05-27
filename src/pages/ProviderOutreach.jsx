@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Mail, Plus, TrendingUp, MessageSquare } from 'lucide-react';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
+import CampaignOutcomesPanel from '../components/outreach/CampaignOutcomesPanel';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
@@ -33,6 +34,21 @@ export default function ProviderOutreach() {
     (c.name || '').toLowerCase().includes(searchCampaign.toLowerCase())
   );
 
+  const ACTIVE_STATUSES = ['active', 'sending', 'scheduled', 'running'];
+  const totalSent = campaigns.reduce((s, c) => s + (c.sent_count || 0), 0);
+  const totalOpened = campaigns.reduce((s, c) => s + (c.opened_count || 0), 0);
+  const totalResponded = campaigns.reduce((s, c) => s + (c.responded_count || 0), 0);
+  const totalConversions = campaigns.reduce((s, c) => s + (Number(c.metrics?.conversions) || 0), 0);
+  const totalRevenue = campaigns.reduce((s, c) => s + (Number(c.metrics?.revenue) || 0), 0);
+  const rollup = [
+    { label: 'Campaigns', value: campaigns.length, sub: `${campaigns.filter(c => ACTIVE_STATUSES.includes((c.status || '').toLowerCase())).length} active`, cls: 'text-cyan-400' },
+    { label: 'Sent', value: totalSent, sub: 'messages', cls: 'text-blue-400' },
+    { label: 'Open Rate', value: totalSent > 0 ? `${Math.round((totalOpened / totalSent) * 100)}%` : '—', sub: `${totalOpened.toLocaleString()} opened`, cls: 'text-emerald-400' },
+    { label: 'Response Rate', value: totalSent > 0 ? `${Math.round((totalResponded / totalSent) * 100)}%` : '—', sub: `${totalResponded.toLocaleString()} responded`, cls: 'text-purple-400' },
+    { label: 'Conversions', value: totalConversions, sub: 'recorded', cls: 'text-amber-400' },
+    { label: 'Revenue', value: `$${totalRevenue.toLocaleString()}`, sub: 'attributed', cls: 'text-green-400' },
+  ];
+
   const getStatusColor = (status) => {
     const colors = {
       draft: 'bg-slate-700 text-slate-300',
@@ -47,11 +63,25 @@ export default function ProviderOutreach() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
-        title="Provider Outreach"
+        title="Campaigns"
         subtitle="Create and manage provider engagement campaigns"
         icon={Mail}
-        breadcrumbs={[{ label: 'Sales & Outreach', page: 'ProviderOutreach' }, { label: 'Campaigns' }]}
+        breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Campaigns' }]}
       />
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {rollup.map(k => (
+          <Card key={k.label} className="bg-[#141d30] border-slate-700/50">
+            <CardContent className="p-4">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wide">{k.label}</p>
+              <p className={`text-2xl font-bold mt-1 ${k.cls}`}>
+                {loadingCampaigns ? '—' : (typeof k.value === 'number' ? k.value.toLocaleString() : k.value)}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{k.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-slate-800/60 border border-slate-700/50 h-auto flex flex-wrap gap-1">
@@ -176,6 +206,8 @@ export default function ProviderOutreach() {
               </div>
 
               <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} />
+
+              <CampaignOutcomesPanel campaign={selectedCampaign} />
 
               {/* Recent Messages */}
               <Card className="bg-[#141d30] border-slate-700/50">

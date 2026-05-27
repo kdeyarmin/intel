@@ -56,12 +56,12 @@ export async function handleGetComprehensiveReport(payload: any) {
       result.taxonomies = await safeQuery(client, `SELECT * FROM provider_taxonomies WHERE npi = $1`, [npi]);
 
       result.utilization = (await safeQuery(client, `
-        SELECT service_type, total_services, total_unique_benes,
+        SELECT service_type, hcpcs_description, total_services, total_unique_benes,
           total_medicare_payment_amt, average_submitted_chrg_amt, data_year
         FROM provider_service_utilization WHERE npi = $1
         ORDER BY data_year DESC LIMIT 100
       `, [npi])).map((u: any) => ({
-        serviceType: u.service_type,
+        serviceType: u.hcpcs_description || u.service_type,
         totalServices: u.total_services,
         totalBeneficiaries: u.total_unique_benes,
         totalPayment: u.total_medicare_payment_amt,
@@ -119,15 +119,34 @@ export async function handleGetComprehensiveReport(payload: any) {
       }));
     }
 
-    const totalPayments = result.utilization.reduce(
-      (s: number, u: any) => s + parseFloat(u.totalPayment || "0"), 0
-    );
-    const totalServices = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalServices || "0", 10), 0
-    );
-    const totalBeneficiaries = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalBeneficiaries || "0", 10), 0
-    );
+    // Aggregate totals and distinct years from the full table — not from the
+    // 100-row display slice which undercounts providers with many HCPCS lines
+    // and may miss years that fall outside the top-100 rows.
+    let totalPayments = 0, totalServices = 0, totalBeneficiaries = 0;
+    let utilizationYears: string[] = [];
+    if (npi) {
+      const aggRows = await safeQuery(client, `
+        SELECT
+          COALESCE(SUM(CAST(NULLIF(total_medicare_payment_amt,'') AS NUMERIC)), 0) AS total_payments,
+          COALESCE(SUM(CAST(NULLIF(total_services,'') AS NUMERIC)), 0)             AS total_services,
+          COALESCE(SUM(CAST(NULLIF(total_unique_benes,'') AS NUMERIC)), 0)          AS total_benes
+        FROM provider_service_utilization
+        WHERE npi = $1
+          AND data_year = (
+            SELECT MAX(data_year) FROM provider_service_utilization WHERE npi = $1
+          )
+      `, [npi]);
+      if (aggRows.length > 0) {
+        totalPayments      = parseFloat(aggRows[0].total_payments || "0");
+        totalServices      = parseInt(aggRows[0].total_services   || "0", 10);
+        totalBeneficiaries = parseInt(aggRows[0].total_benes      || "0", 10);
+      }
+      const yearRows = await safeQuery(client,
+        `SELECT DISTINCT data_year FROM provider_service_utilization WHERE npi = $1 ORDER BY data_year DESC`,
+        [npi],
+      );
+      utilizationYears = yearRows.map((r: any) => r.data_year).filter(Boolean);
+    }
     const totalReferralsOut = result.referralsFrom.reduce(
       (s: number, r: any) => s + (parseInt(r.totalReferrals) || 0), 0
     );
@@ -143,7 +162,7 @@ export async function handleGetComprehensiveReport(payload: any) {
       taxonomyCount: result.taxonomies.length,
       affiliationCount: result.affiliations.length,
       facilityCount: result.facilities.length,
-      utilizationYears: [...new Set(result.utilization.map((u: any) => u.dataYear))].sort(),
+      utilizationYears,
     };
 
     return result;

@@ -1,9 +1,8 @@
 import { db } from "../db";
-import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities } from "../db/schema";
+import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities, providers } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
-import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
-import { mapCMSUtilizationRow } from "./mapCMSUtilizationRow";
+import { CMS_NATURAL_KEYS, partition, distinctValues, deriveLineTotal } from "./cmsUpsert";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -419,16 +418,45 @@ export async function handleTriggerImport(payload: any, user: any) {
   };
 }
 
-function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
+// The CMS "Order & Referring Providers" dataset is an eligibility registry —
+// it lists which providers are enrolled and eligible to order/refer Medicare
+// services (Part B, DME, HHA, PMD, Hospice). It does NOT contain referral
+// relationship counts. We enrich the providers table from this instead of
+// inserting null-count rows into cms_referrals.
+function mapCMSOrderReferringRowToProvider(row: any, batchId: number) {
+  const npi = row.NPI || row.npi || null;
+  if (!npi) return null;
   return {
-    npi: row.NPI || row.npi || null,
-    referred_to_npi: null,
-    referred_to_name: [row.LAST_NAME || row.last_name, row.FIRST_NAME || row.first_name].filter(Boolean).join(", ") || null,
-    total_referrals: null,
-    total_beneficiaries: null,
-    data_year: String(year),
-    raw_data: row,
+    npi,
+    first_name: row.FIRST_NAME || row.first_name || null,
+    last_name: row.LAST_ORG_NAME || row.last_org_name || row.LAST_NAME || row.last_name || null,
+    organization_name: row.FIRST_LINE_ST_ADR || row.org_name || null,
+    credential: row.CRDNTLS || row.crdntls || null,
+    source: "cms_order_referring",
     import_batch_id: String(batchId),
+  };
+}
+
+export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
+  const totalServices = row.Tot_Srvcs ?? row.tot_srvcs ?? null;
+  const avgMedicarePayment = row.Avg_Mdcr_Pymt_Amt ?? row.avg_mdcr_pymt_amt ?? null;
+  return {
+    npi: row.Rndrng_NPI || row.npi || null,
+    // service_type retains the rendering provider's specialty so existing
+    // specialty rollups keep working; the actual service description is in hcpcs_*.
+    service_type: row.Rndrng_Prvdr_Type ?? row.rndrng_prvdr_type ?? null,
+    hcpcs_code: row.HCPCS_Cd || row.hcpcs_cd || null,
+    hcpcs_description: row.HCPCS_Desc || row.hcpcs_desc || null,
+    place_of_service: row.Place_Of_Srvc || row.place_of_srvc || null,
+    total_services: totalServices,
+    total_unique_benes: row.Tot_Benes ?? row.tot_benes ?? null,
+    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg ?? row.avg_sbmtd_chrg ?? null,
+    // Source publishes per-service averages; keep the average truthfully and
+    // derive the line total (avg × services) instead of mislabeling the
+    // average as a total.
+    average_medicare_payment_amt: avgMedicarePayment,
+    total_medicare_payment_amt: deriveLineTotal(totalServices, avgMedicarePayment),
+    data_year: String(year),
   };
 }
 
@@ -803,9 +831,38 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   let table: any;
 
   if (importType === "cms_order_referring") {
-    mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId));
-    mapped = mapped.filter(r => r.npi);
-    table = cmsReferrals;
+    // Route to providers table (upsert on npi) — this is an eligibility registry,
+    // not a referral-relationship dataset. Enrich credential/name for existing
+    // providers; insert minimal records for newly enrolled ones.
+    const provRows = rows
+      .map(r => mapCMSOrderReferringRowToProvider(r, batchId))
+      .filter((r): r is NonNullable<typeof r> => r !== null && !!r.npi);
+    if (provRows.length === 0) return { inserted: 0, skipped: 0, filtered: rows.length };
+    let provInserted = 0, provSkipped = 0;
+    for (let i = 0; i < provRows.length; i += CHUNK_SIZE) {
+      const chunk = provRows.slice(i, i + CHUNK_SIZE);
+      try {
+        const result = await db
+          .insert(providers)
+          .values(chunk)
+          .onConflictDoUpdate({
+            target: providers.npi,
+            set: {
+              credential: sql`COALESCE(EXCLUDED.credential, ${providers.credential})`,
+              first_name: sql`COALESCE(EXCLUDED.first_name, ${providers.first_name})`,
+              last_name: sql`COALESCE(EXCLUDED.last_name, ${providers.last_name})`,
+              organization_name: sql`COALESCE(EXCLUDED.organization_name, ${providers.organization_name})`,
+              source: sql`EXCLUDED.source`,
+              updated_date: sql`NOW()`,
+            },
+          })
+          .returning({ id: providers.id });
+        provInserted += result.length;
+      } catch {
+        provSkipped += chunk.length;
+      }
+    }
+    return { inserted: provInserted, skipped: provSkipped, filtered: rows.length - provRows.length };
   } else if (importType === "provider_service_utilization") {
     mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
     mapped = mapped.filter(r => r.npi);
@@ -844,9 +901,13 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
     if (chunk.length === 0) continue;
 
+    // onConflictDoNothing (no target) is valid SQL whether or not a unique index
+    // exists yet, and becomes an effective DB-level dedup backstop once the
+    // startup-built unique indexes are in place — covering rows the capped
+    // app-side lookup (LOOKUP_PRIMARY_BATCH_SIZE / 20k limit) can miss.
     const result = await safeImportQuery(
       async () => {
-        await db.insert(table).values(chunk);
+        await db.insert(table).values(chunk).onConflictDoNothing();
         return chunk.length;
       },
       -1, `bulk insert ${importType}`
@@ -856,7 +917,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     } else {
       for (const row of chunk) {
         const ok = await safeImportQuery(
-          async () => { await db.insert(table).values(row); return true; },
+          async () => { await db.insert(table).values(row).onConflictDoNothing(); return true; },
           false, `single insert ${importType}`
         );
         if (ok) inserted++;
