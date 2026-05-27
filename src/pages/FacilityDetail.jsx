@@ -183,10 +183,6 @@ function RawDataTable({ rows, facilityType }) {
   const hasMore = filteredRawKeys.length > 10;
   const displayRows = rows.slice(0, 50);
 
-<<<<<<< HEAD
-  return (
-    <div className="space-y-3">
-=======
   const latestRow = [...rows].sort((a, b) => (Number(b.data_year) || 0) - (Number(a.data_year) || 0))[0];
   const summaryCols = activeCols.filter(c => c.key !== 'data_year');
 
@@ -216,7 +212,6 @@ function RawDataTable({ rows, facilityType }) {
         </div>
       )}
 
->>>>>>> refs/remotes/origin/main
       {allRawKeys.length > 5 && (
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">

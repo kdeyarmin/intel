@@ -1,14 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-<<<<<<< HEAD
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Crown, AlertTriangle, TrendingUp, Network } from 'lucide-react';
-=======
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles, AlertTriangle, TrendingUp, Network } from 'lucide-react';
->>>>>>> refs/remotes/origin/main
 import PredictiveNetworkAnalysis from './PredictiveNetworkAnalysis';
 import StrategicPartnerFinder from './StrategicPartnerFinder';
 
@@ -19,54 +13,6 @@ const KEY_SPECIALTIES = [
   'Gastroenterology', 'Nephrology', 'Urology', 'Endocrinology',
 ];
 
-<<<<<<< HEAD
-function HubCard({ hub, rank }) {
-  return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-700/30 hover:bg-slate-800/30">
-      <div className="w-7 h-7 rounded-full bg-amber-900/15 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
-        {rank}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-slate-200 truncate">{hub.label}</p>
-        <p className="text-[10px] text-slate-500">{hub.specialty || hub.entityType}{hub.state ? ` · ${hub.state}` : ''}</p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className="text-xs font-bold text-cyan-400">{hub.totalVolume.toLocaleString()}</p>
-        <p className="text-[10px] text-slate-500">{hub.connections} conn.</p>
-      </div>
-      <Badge className={`text-[9px] shrink-0 ${hub.hubScore >= 80 ? 'bg-red-900/15 text-red-400' : hub.hubScore >= 50 ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
-        {hub.hubScore}
-      </Badge>
-    </div>
-  );
-}
-
-function GapCard({ gap }) {
-  return (
-    <div className="p-2.5 rounded-lg border border-slate-700/30 hover:bg-slate-800/30">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <Badge className="bg-slate-700/50 text-slate-300 font-mono text-[10px]">{gap.state}</Badge>
-          <span className="text-[10px] text-slate-500">{gap.totalProviders} providers</span>
-        </div>
-        <Badge className={`text-[9px] ${gap.severity === 'high' ? 'bg-red-900/15 text-red-400' : 'bg-amber-900/15 text-amber-400'}`}>
-          {gap.severity}
-        </Badge>
-      </div>
-      <p className="text-[11px] text-slate-300">{gap.description}</p>
-      {gap.missingSpecialties?.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {gap.missingSpecialties.slice(0, 4).map(s => (
-            <Badge key={s} className="bg-red-900/10 text-red-400 text-[8px] border border-red-500/20">{s}</Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-=======
->>>>>>> refs/remotes/origin/main
 export default function NetworkInsightsDashboard({ nodes = [], edges = [], locations = [] }) {
   const [aiInsights, setAiInsights] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -195,42 +141,8 @@ Provide:
         </div>
       )}
 
-<<<<<<< HEAD
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Auto-detected hubs */}
-        <Card className="bg-[#141d30] border-slate-700/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-400" />
-              Key Referral Hubs
-              <Badge variant="outline" className="text-[10px] text-slate-500 ml-auto">{topHubs.length} detected</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-[350px] overflow-y-auto pr-1">
-            {topHubs.map((hub, i) => <HubCard key={hub.npi} hub={hub} rank={i + 1} />)}
-          </CardContent>
-        </Card>
-
-        {/* Auto-detected care gaps */}
-        <Card className="bg-[#141d30] border-slate-700/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              Care Gaps & Inefficiencies
-              <Badge variant="outline" className="text-[10px] text-slate-500 ml-auto">{careGaps.length} found</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1.5 max-h-[350px] overflow-y-auto pr-1">
-            {careGaps.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No significant care gaps detected</p>
-            ) : careGaps.map((gap, i) => <GapCard key={i} gap={gap} />)}
-          </CardContent>
-        </Card>
-      </div>
-=======
       {/* Hub and care-gap detail live in the dedicated Hub Analysis and
           Care Gaps tabs; this dashboard focuses on AI-driven synthesis. */}
->>>>>>> refs/remotes/origin/main
 
       {/* AI Insights */}
       <Card className="bg-[#141d30] border-slate-700/50">

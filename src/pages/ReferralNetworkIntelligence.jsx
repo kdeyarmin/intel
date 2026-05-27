@@ -3,11 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-<<<<<<< HEAD
-import { Network, Crown, ArrowRightLeft, MapPin, AlertTriangle, Sparkles } from 'lucide-react';
-=======
 import { Network, Crown, ArrowRightLeft, MapPin, AlertTriangle, Sparkles, Target } from 'lucide-react';
->>>>>>> refs/remotes/origin/main
 
 import NetworkKPIs from '../components/referralNetwork/NetworkKPIs';
 import NetworkFilters from '../components/referralNetwork/NetworkFilters';
@@ -22,10 +18,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import NetworkInfluencerAnalysis from '../components/referralNetwork/NetworkInfluencerAnalysis';
 import NetworkGapAnalysis from '../components/referralNetwork/NetworkGapAnalysis';
 import AINetworkRecommendations from '../components/referralNetwork/AINetworkRecommendations';
-<<<<<<< HEAD
-=======
 import SingleProviderPathway from '../components/referralNetwork/SingleProviderPathway';
->>>>>>> refs/remotes/origin/main
 import PageHeader from '../components/shared/PageHeader';
 
 const HUB_THRESHOLD_PERCENTILE = 0.85;
@@ -179,13 +172,8 @@ export default function ReferralNetworkIntelligence() {
               <TabsTrigger value="influencers" className="gap-1.5 text-xs">
                 <Crown className="w-3.5 h-3.5" /> Influencers
               </TabsTrigger>
-<<<<<<< HEAD
-              <TabsTrigger value="recommendations" className="gap-1.5 text-xs">
-                <Sparkles className="w-3.5 h-3.5" /> Recommendations
-=======
               <TabsTrigger value="single" className="gap-1.5 text-xs">
                 <Target className="w-3.5 h-3.5" /> Single Provider
->>>>>>> refs/remotes/origin/main
               </TabsTrigger>
             </TabsList>
 
@@ -222,14 +210,9 @@ export default function ReferralNetworkIntelligence() {
               <CareGapAnalysis nodes={filteredNodes} typeBreakdown={networkData?.typeBreakdown} />
             </TabsContent>
 
-<<<<<<< HEAD
-            <TabsContent value="insights" className="mt-4">
-              <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} />
-=======
             <TabsContent value="insights" className="mt-4 space-y-5">
               <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} />
               <AINetworkRecommendations />
->>>>>>> refs/remotes/origin/main
             </TabsContent>
 
             <TabsContent value="influencers" className="mt-4">
@@ -246,13 +229,8 @@ export default function ReferralNetworkIntelligence() {
               </div>
             </TabsContent>
 
-<<<<<<< HEAD
-            <TabsContent value="recommendations" className="mt-4">
-              <AINetworkRecommendations />
-=======
             <TabsContent value="single" className="mt-4">
               <SingleProviderPathway />
->>>>>>> refs/remotes/origin/main
             </TabsContent>
           </Tabs>
         </>

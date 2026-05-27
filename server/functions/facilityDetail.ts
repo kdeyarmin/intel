@@ -1,9 +1,5 @@
 import { db, pool } from "../db";
-<<<<<<< HEAD
 import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
-=======
-import { medicareFacilities, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
->>>>>>> refs/remotes/origin/main
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -92,7 +88,6 @@ export async function handleGetFacilityDetail(params: any) {
 
   const groupTypes = facility_group ? FACILITY_TYPE_GROUPS[facility_group] : null;
 
-<<<<<<< HEAD
   // raw_data is moving to the medicare_facilities_raw side table (phase 1):
   // pull every facility column explicitly and overlay raw_data via a LEFT JOIN
   // with COALESCE, so we keep working against both the (still-present) column
@@ -120,10 +115,6 @@ export async function handleGetFacilityDetail(params: any) {
   })
     .from(medicareFacilities)
     .leftJoin(medicareFacilitiesRaw, eq(medicareFacilitiesRaw.facility_id, medicareFacilities.id))
-=======
-  const facilityRows = await db.select()
-    .from(medicareFacilities)
->>>>>>> refs/remotes/origin/main
     .where(
       groupTypes
         ? and(eq(medicareFacilities.provider_id, provider_id), sql`${medicareFacilities.facility_type} = ANY(${groupTypes})`)
@@ -211,7 +202,6 @@ export async function handleGetProviderCMSData(params: any) {
   const { npi } = params;
   if (!npi) return { error: "npi is required" };
 
-<<<<<<< HEAD
   // raw_data is moving to the medicare_facilities_raw side table (phase 1):
   // explicit projection + LEFT JOIN keeps consumers like ProviderCMSDataCard
   // and MIPSPerformanceCard working whether the row's raw_data still lives on
@@ -239,10 +229,6 @@ export async function handleGetProviderCMSData(params: any) {
   })
     .from(medicareFacilities)
     .leftJoin(medicareFacilitiesRaw, eq(medicareFacilitiesRaw.facility_id, medicareFacilities.id))
-=======
-  const allRows = await db.select()
-    .from(medicareFacilities)
->>>>>>> refs/remotes/origin/main
     .where(eq(medicareFacilities.provider_id, npi))
     .orderBy(desc(medicareFacilities.data_year))
     .limit(500);
@@ -347,13 +333,7 @@ export async function handleListFacilities(params: any) {
   const primaryType = LISTING_PRIMARY_TYPES[facility_group] || groupTypes[0];
   const listingTypes = facility_group === 'community_health'
     ? ["fqhc_enrollments", "rural_health_clinic_enrollments"]
-<<<<<<< HEAD
     : [primaryType];
-=======
-    : facility_group === 'hospital'
-      ? Array.from(new Set([primaryType, "medicare_ma_inpatient"]))
-      : [primaryType];
->>>>>>> refs/remotes/origin/main
   const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
   const safePage = Math.max(1, Number(page) || 1);
   const offset = (safePage - 1) * safeLimit;

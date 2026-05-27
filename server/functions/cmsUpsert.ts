@@ -21,12 +21,6 @@ export type CmsKeyConfig = {
 // medicare_facilities is handled separately (it has two identity shapes:
 // provider_id-based and facility_name-based) — see partitionFacilities.
 export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
-<<<<<<< HEAD
-  cms_order_referring: { primaryCol: "npi", keyCols: ["npi", "data_year"] },
-  provider_service_utilization: {
-    primaryCol: "npi",
-    keyCols: ["npi", "service_type", "data_year"],
-=======
   // cms_order_referring is routed to the providers table (upsert on npi), not cms_referrals.
   provider_service_utilization: {
     primaryCol: "npi",
@@ -35,7 +29,6 @@ export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
     // collapsed every one of a provider's service lines into a single row,
     // discarding the bulk of the dataset — key on the HCPCS service instead.
     keyCols: ["npi", "hcpcs_code", "place_of_service", "data_year"],
->>>>>>> refs/remotes/origin/main
   },
 };
 
@@ -80,8 +73,6 @@ export function distinctValues(rows: Record<string, unknown>[], col: string): st
   }
   return [...out];
 }
-<<<<<<< HEAD
-=======
 
 // Total Medicare payment for one service line. The "by Provider and Service"
 // dataset only publishes the *average* payment per service, so the true line
@@ -97,4 +88,3 @@ export function deriveLineTotal(totalServices: unknown, averageAmount: unknown):
   if (!Number.isFinite(svc) || !Number.isFinite(avg) || svc <= 0) return null;
   return (svc * avg).toFixed(2);
 }
->>>>>>> refs/remotes/origin/main

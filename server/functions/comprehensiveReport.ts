@@ -56,20 +56,12 @@ export async function handleGetComprehensiveReport(payload: any) {
       result.taxonomies = await safeQuery(client, `SELECT * FROM provider_taxonomies WHERE npi = $1`, [npi]);
 
       result.utilization = (await safeQuery(client, `
-<<<<<<< HEAD
-        SELECT service_type, total_services, total_unique_benes,
-=======
         SELECT service_type, hcpcs_description, total_services, total_unique_benes,
->>>>>>> refs/remotes/origin/main
           total_medicare_payment_amt, average_submitted_chrg_amt, data_year
         FROM provider_service_utilization WHERE npi = $1
         ORDER BY data_year DESC LIMIT 100
       `, [npi])).map((u: any) => ({
-<<<<<<< HEAD
-        serviceType: u.service_type,
-=======
         serviceType: u.hcpcs_description || u.service_type,
->>>>>>> refs/remotes/origin/main
         totalServices: u.total_services,
         totalBeneficiaries: u.total_unique_benes,
         totalPayment: u.total_medicare_payment_amt,
@@ -127,17 +119,6 @@ export async function handleGetComprehensiveReport(payload: any) {
       }));
     }
 
-<<<<<<< HEAD
-    const totalPayments = result.utilization.reduce(
-      (s: number, u: any) => s + parseFloat(u.totalPayment || "0"), 0
-    );
-    const totalServices = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalServices || "0", 10), 0
-    );
-    const totalBeneficiaries = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalBeneficiaries || "0", 10), 0
-    );
-=======
     // Aggregate totals and distinct years from the full table — not from the
     // 100-row display slice which undercounts providers with many HCPCS lines
     // and may miss years that fall outside the top-100 rows.
@@ -166,7 +147,6 @@ export async function handleGetComprehensiveReport(payload: any) {
       );
       utilizationYears = yearRows.map((r: any) => r.data_year).filter(Boolean);
     }
->>>>>>> refs/remotes/origin/main
     const totalReferralsOut = result.referralsFrom.reduce(
       (s: number, r: any) => s + (parseInt(r.totalReferrals) || 0), 0
     );
@@ -182,11 +162,7 @@ export async function handleGetComprehensiveReport(payload: any) {
       taxonomyCount: result.taxonomies.length,
       affiliationCount: result.affiliations.length,
       facilityCount: result.facilities.length,
-<<<<<<< HEAD
-      utilizationYears: [...new Set(result.utilization.map((u: any) => u.dataYear))].sort(),
-=======
       utilizationYears,
->>>>>>> refs/remotes/origin/main
     };
 
     return result;

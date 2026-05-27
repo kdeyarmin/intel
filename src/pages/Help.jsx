@@ -17,11 +17,7 @@ const GUIDE_SECTIONS = [
     color: 'text-amber-400',
     content: [
       { heading: 'Welcome to CareMetric AI', text: 'CareMetric AI is a Medicare provider intelligence platform designed for home health, hospice, and post-acute care organizations. It helps you identify, score, and engage referral sources using public CMS data and AI-powered enrichment.' },
-<<<<<<< HEAD
-      { heading: 'First Steps', text: '1. **Dashboard** — Start here to see your system health, database counts, and recent activity.\n2. **Import Data** — Go to Admin → Data Center to import NPPES, CMS Utilization, Referral, and other Medicare datasets.\n3. **Browse Providers** — View imported providers under Providers → All Providers.\n4. **Build Lead Lists** — Use Sales & Outreach → Lead Builder to create targeted lists based on specialty, geography, and score.\n5. **Run Outreach** — Create campaigns in Sales & Outreach → Campaigns to engage your top leads.' },
-=======
       { heading: 'First Steps', text: '1. **Dashboard** — Start here to see your system health, database counts, and recent activity.\n2. **Import Data** — Go to Data Operations → Data Center to import NPPES, CMS Utilization, Referral, and other Medicare datasets.\n3. **Browse Providers** — View imported providers under Directory → All Providers.\n4. **Build Lead Lists** — Use Sales & Outreach → Lead Lists to create targeted lists based on specialty, geography, and score.\n5. **Run Outreach** — Create campaigns in Sales & Outreach → Campaigns to engage your top leads.' },
->>>>>>> refs/remotes/origin/main
       { heading: 'User Roles', text: '**Admin** — Full access to all features including data imports, crawler, enrichment, scoring rules, and system configuration.\n\n**Sales Rep** — Access to providers, lead lists, campaigns, analytics, and reports. Cannot access admin-only features like data imports or the NPPES crawler.' },
     ]
   },
@@ -56,11 +52,7 @@ const GUIDE_SECTIONS = [
     content: [
       { heading: 'Lead Lists', text: 'View and manage saved lead lists. Each list contains providers matching specific criteria with their current status (New, Contacted, Qualified, Not a fit).' },
       { heading: 'Lead Builder', text: 'Create targeted lead lists by combining filters:\n• **Geography** — State, ZIP code, radius\n• **Specialty** — Taxonomy codes and descriptions\n• **Score Range** — Minimum/maximum CareMetric score\n• **Volume** — Minimum Medicare beneficiaries or referrals\n• **Medicare Status** — Active enrollment filter' },
-<<<<<<< HEAD
-      { heading: 'Email Bot', text: '(Admin only) AI-powered email discovery and verification tool. Searches the web for provider email addresses, validates deliverability, and tracks quality scores. Run single searches or batch operations.' },
-=======
       { heading: 'Intelligence', text: '(Admin only) AI-powered email discovery, verification, and provider enrichment — found under Sales & Outreach → Intelligence. Searches the web for provider email addresses, validates deliverability, and tracks quality scores. Run single searches or batch operations.' },
->>>>>>> refs/remotes/origin/main
       { heading: 'Campaigns', text: 'Create and manage outreach campaigns:\n1. Click "New Campaign" and fill in campaign details\n2. Select your target audience from existing lead lists\n3. Design your email template with personalization tokens\n4. Launch and track open rates, responses, and conversions in the Analytics tab' },
     ]
   },
@@ -83,11 +75,7 @@ const GUIDE_SECTIONS = [
     color: 'text-orange-400',
     content: [
       { heading: 'Data Center', text: 'Central hub for all data imports. Choose from supported import types:\n• **NPPES Registry** — National Provider Identifier data\n• **CMS Utilization** — Medicare claims and service data\n• **CMS Referrals** — Provider-to-provider referral patterns\n• **Medicare HHA Stats** — Home Health Agency statistics\n• **Medicare MA Inpatient** — Medicare Advantage hospital data\n• **Medicare SNF Stats** — Skilled Nursing Facility data\n• And more...' },
-<<<<<<< HEAD
-      { heading: 'How to Import', text: '1. Go to Admin → Data Center\n2. Select the import category and type\n3. Upload your CSV/Excel file or use the auto-download URL\n4. Review the column mapping (AI-assisted)\n5. Validate the data (dry run recommended first)\n6. Click Import to process the data\n7. Monitor progress in Admin → Import Monitor' },
-=======
       { heading: 'How to Import', text: '1. Go to Data Operations → Data Center\n2. Select the import category and type\n3. Upload your CSV/Excel file or use the auto-download URL\n4. Review the column mapping (AI-assisted)\n5. Validate the data (dry run recommended first)\n6. Click Import to process the data\n7. Monitor progress in Data Operations → Imports' },
->>>>>>> refs/remotes/origin/main
       { heading: 'Import Monitor', text: 'Track all import batches with real-time progress. View success/failure rates, error samples, and retry failed imports. Filter by status, type, or date range.' },
     ]
   },

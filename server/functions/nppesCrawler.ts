@@ -290,13 +290,6 @@ async function upsertLocations(records: any[]) {
       toCreate.push(loc);
     }
     if (toCreate.length > 0) {
-<<<<<<< HEAD
-      try { await db.insert(providerLocations).values(toCreate); imported += toCreate.length; }
-      catch (bulkErr: any) {
-        for (const loc of toCreate) {
-          try { await db.insert(providerLocations).values(loc); imported++; }
-          catch (err: any) { skipped++; }
-=======
       try {
         const inserted = await db.insert(providerLocations).values(toCreate).onConflictDoNothing().returning({ id: providerLocations.id });
         imported += inserted.length;
@@ -307,7 +300,6 @@ async function upsertLocations(records: any[]) {
             const ins = await db.insert(providerLocations).values(loc).onConflictDoNothing().returning({ id: providerLocations.id });
             if (ins.length > 0) imported++; else skipped++;
           } catch (err: any) { skipped++; }
->>>>>>> refs/remotes/origin/main
         }
       }
     }
@@ -340,13 +332,6 @@ async function upsertTaxonomies(records: any[]) {
       toCreate.push(tax);
     }
     if (toCreate.length > 0) {
-<<<<<<< HEAD
-      try { await db.insert(providerTaxonomies).values(toCreate); imported += toCreate.length; }
-      catch (bulkErr: any) {
-        for (const tax of toCreate) {
-          try { await db.insert(providerTaxonomies).values(tax); imported++; }
-          catch (err: any) { skipped++; }
-=======
       try {
         const inserted = await db.insert(providerTaxonomies).values(toCreate).onConflictDoNothing().returning({ id: providerTaxonomies.id });
         imported += inserted.length;
@@ -357,7 +342,6 @@ async function upsertTaxonomies(records: any[]) {
             const ins = await db.insert(providerTaxonomies).values(tax).onConflictDoNothing().returning({ id: providerTaxonomies.id });
             if (ins.length > 0) imported++; else skipped++;
           } catch (err: any) { skipped++; }
->>>>>>> refs/remotes/origin/main
         }
       }
     }

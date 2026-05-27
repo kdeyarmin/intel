@@ -14,10 +14,6 @@ import BasicProfile from '../components/providers/BasicProfile';
 import ProviderKPIRow from '../components/providers/ProviderKPIRow';
 import UtilizationInsights from '../components/providers/UtilizationInsights';
 import UtilizationTrendChart from '../components/providers/UtilizationTrendChart';
-<<<<<<< HEAD
-import ReferralTrendChart from '../components/providers/ReferralTrendChart';
-=======
->>>>>>> refs/remotes/origin/main
 import ReferralLikelihoodSignals from '../components/providers/ReferralLikelihoodSignals';
 import PatientPopulationFingerprint from '../components/providers/PatientPopulationFingerprint';
 import WhyThisProvider from '../components/providers/WhyThisProvider';
@@ -48,10 +44,7 @@ import MIPSPerformanceCard from '../components/providers/MIPSPerformanceCard';
 import LinkedFacilitiesCard from '../components/providers/LinkedFacilitiesCard';
 import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
 import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
-<<<<<<< HEAD
-=======
 import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedProvidersCard';
->>>>>>> refs/remotes/origin/main
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 export default function ProviderDetail() {
@@ -289,18 +282,10 @@ export default function ProviderDetail() {
           {cmsData?.mips?.has_data && (
             <MIPSPerformanceCard mipsData={cmsData.mips} />
           )}
-<<<<<<< HEAD
-          {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data || cmsData?.network?.has_data) && (
-            <ProviderCMSDataCard
-              clinicianData={cmsData.clinician}
-              utilizationCmsData={cmsData.utilization_cms}
-              networkData={cmsData.network}
-=======
           {(cmsData?.clinician?.has_data || cmsData?.utilization_cms?.has_data) && (
             <ProviderCMSDataCard
               clinicianData={cmsData.clinician}
               utilizationCmsData={cmsData.utilization_cms}
->>>>>>> refs/remotes/origin/main
             />
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,14 +293,7 @@ export default function ProviderDetail() {
             <ReferralSummaryCard referrals={referrals} />
           </div>
           <UtilizationInsights utilization={latestUtil} />
-<<<<<<< HEAD
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <UtilizationTrendChart utilizations={utilizations} />
-            <ReferralTrendChart referrals={referrals} />
-          </div>
-=======
           <UtilizationTrendChart utilizations={utilizations} />
->>>>>>> refs/remotes/origin/main
           <PatientPopulationFingerprint
             provider={provider}
             taxonomy={taxonomies}
@@ -338,12 +316,6 @@ export default function ProviderDetail() {
         </TabsContent>
 
         <TabsContent value="network" className="space-y-6">
-<<<<<<< HEAD
-          {cmsData?.linked_facilities?.length > 0 && (
-            <LinkedFacilitiesCard linkedFacilities={cmsData.linked_facilities} />
-          )}
-=======
->>>>>>> refs/remotes/origin/main
           {cmsData?.network?.has_data && (
             <ProviderCMSDataCard
               networkData={cmsData.network}
@@ -357,8 +329,6 @@ export default function ProviderDetail() {
                 location={primaryLocation}
                 taxonomies={taxonomies}
               />
-<<<<<<< HEAD
-=======
               {provider.entity_type === 'Organization' && (
                 <OrgAffiliatedProvidersCard
                   npi={npi}
@@ -367,7 +337,6 @@ export default function ProviderDetail() {
                   allLocations={allLocations}
                 />
               )}
->>>>>>> refs/remotes/origin/main
               <ReferralPartnersCard npi={npi} referrals={referrals} />
             </div>
             <div className="space-y-6">

@@ -43,21 +43,10 @@ function formatCount(value) {
 }
 
 export default function DatabaseOverview({ stats, loading }) {
-<<<<<<< HEAD
-  const emailPct = stats?.totalProviders > 0 && stats?.emailStats
-    ? Math.round((stats.emailStats.withEmail / stats.totalProviders) * 100)
-    : 0;
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-=======
   return (
     <div className="space-y-3">
       <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Database Records</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
->>>>>>> refs/remotes/origin/main
         <StatCard
           title="Providers"
           value={formatCount(stats?.totalProviders)}
@@ -84,16 +73,6 @@ export default function DatabaseOverview({ stats, loading }) {
           link="CMSAnalytics"
           loading={loading}
         />
-<<<<<<< HEAD
-        <StatCard
-          title="Emails Found"
-          value={formatCount(stats?.emailStats?.withEmail)}
-          subtitle={`${emailPct}% coverage`}
-          link="ProviderIntelligence"
-          loading={loading}
-        />
-=======
->>>>>>> refs/remotes/origin/main
       </div>
     </div>
   );

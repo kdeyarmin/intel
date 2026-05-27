@@ -132,11 +132,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           type: isOrg ? 'Organization' : 'Provider',
           label: name || p.npi,
           sublabel: `NPI: ${p.npi}${p.credential ? ` • ${p.credential}` : ''}${p.status === 'Deactivated' ? ' • Deactivated' : ''}`,
-<<<<<<< HEAD
-          url: isOrg ? createPageUrl(`OrganizationDetail?npi=${p.npi}`) : createPageUrl(`ProviderDetail?npi=${p.npi}`),
-=======
           url: createPageUrl(`ProviderDetail?npi=${p.npi}`),
->>>>>>> refs/remotes/origin/main
         });
       }
     });

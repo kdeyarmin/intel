@@ -99,8 +99,6 @@ export default function CountyIntelligence() {
           <p className="text-sm text-slate-400 mt-1">
             Analyze provider and facility landscape by state and city
           </p>
-<<<<<<< HEAD
-=======
           <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
             <span className="text-slate-500">Related:</span>
             <Link to={createPageUrl('TerritoryIntelligence')} className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
@@ -110,7 +108,6 @@ export default function CountyIntelligence() {
               <Network className="w-3 h-3" /> Referral Network
             </Link>
           </div>
->>>>>>> refs/remotes/origin/main
         </div>
       </div>
 

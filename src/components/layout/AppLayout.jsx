@@ -3,17 +3,10 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { LayoutDashboard, Upload, Users, ListCheck, Settings,
-<<<<<<< HEAD
-  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch, Mail,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
-  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
-  Building
-=======
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
   Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
   Building, Briefcase, Stethoscope, ClipboardCheck
->>>>>>> refs/remotes/origin/main
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlobalSearchDialog from '../search/GlobalSearchDialog';
@@ -25,17 +18,6 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'user'] },
       { name: 'AI Assistant', icon: Bot, page: 'AIAssistant', roles: ['admin', 'user'] },
-<<<<<<< HEAD
-    ]
-  },
-  {
-    label: 'Providers',
-    items: [
-      { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
-      { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
-      { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
-      { name: 'County Intel', icon: MapPin, page: 'CountyIntelligence', roles: ['admin', 'user'] },
-=======
       { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
     ]
   },
@@ -45,7 +27,6 @@ const NAV_SECTIONS = [
       { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
       { name: 'Organizations', icon: Briefcase, page: 'Organizations', roles: ['admin', 'user'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
->>>>>>> refs/remotes/origin/main
     ]
   },
   {
@@ -62,40 +43,18 @@ const NAV_SECTIONS = [
     ]
   },
   {
-<<<<<<< HEAD
-    label: 'Sales & Outreach',
-    items: [
-      { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
-      { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'Campaigns', roles: ['admin'] },
-      { name: 'Outreach', icon: Mail, page: 'ProviderOutreach', roles: ['admin'] },
-    ]
-  },
-  {
-=======
->>>>>>> refs/remotes/origin/main
     label: 'Analytics',
     items: [
       { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'user'] },
       { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'user'] },
-<<<<<<< HEAD
-      { name: 'Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
-=======
       { name: 'Utilization', icon: Stethoscope, page: 'Utilization', roles: ['admin', 'user'] },
       { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
       { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
       { name: 'County Intel', icon: MapPin, page: 'CountyIntelligence', roles: ['admin', 'user'] },
->>>>>>> refs/remotes/origin/main
       { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'user'] },
     ]
   },
   {
-<<<<<<< HEAD
-    label: 'Admin',
-    items: [
-      { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
-      { name: 'CMS Dataset Catalog', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
-=======
     label: 'Sales & Outreach',
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
@@ -108,19 +67,10 @@ const NAV_SECTIONS = [
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
       { name: 'CMS Catalog', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
->>>>>>> refs/remotes/origin/main
       { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
       { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
       { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
-<<<<<<< HEAD
-      { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
-      { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
-      { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
-      { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
-      { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
-=======
       { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Provider Matching', icon: ClipboardCheck, page: 'ProviderLocationMatching', roles: ['admin'] },
@@ -132,7 +82,6 @@ const NAV_SECTIONS = [
       { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
       { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
       { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
->>>>>>> refs/remotes/origin/main
     ]
   },
 ];

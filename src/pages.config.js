@@ -53,15 +53,9 @@ import AdminSettings from './pages/AdminSettings.jsx';
 import AdvancedAnalytics from './pages/AdvancedAnalytics.jsx';
 import CMSAnalytics from './pages/CMSAnalytics.jsx';
 import CMSDataSources from './pages/CMSDataSources.jsx';
-<<<<<<< HEAD
-import Campaigns from './pages/Campaigns.jsx';
-import CountyIntelligence from './pages/CountyIntelligence.jsx';
-import CustomReports from './pages/CustomReports.jsx';
-=======
 import CountyIntelligence from './pages/CountyIntelligence.jsx';
 import CustomReports from './pages/CustomReports.jsx';
 // Campaigns route is unified onto the OutreachCampaign-based ProviderOutreach page.
->>>>>>> refs/remotes/origin/main
 import Dashboard from './pages/Dashboard.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import DataQuality from './pages/DataQuality.jsx';
@@ -74,30 +68,15 @@ import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
 import Hospices from './pages/Hospices.jsx';
 import Hospitals from './pages/Hospitals.jsx';
 import InpatientRehab from './pages/InpatientRehab.jsx';
-<<<<<<< HEAD
-import ImportAnalytics from './pages/ImportAnalytics.jsx';
 import ImportMonitoring from './pages/ImportMonitoring.jsx';
-import ImportOverview from './pages/ImportOverview.jsx';
-=======
-import ImportMonitoring from './pages/ImportMonitoring.jsx';
->>>>>>> refs/remotes/origin/main
 import LeadListBuilder from './pages/LeadListBuilder.jsx';
 import LeadLists from './pages/LeadLists.jsx';
 import LocationDetail from './pages/LocationDetail.jsx';
 import Locations from './pages/Locations.jsx';
 import LongTermCare from './pages/LongTermCare.jsx';
-<<<<<<< HEAD
-import MAInpatientDashboard from './pages/MAInpatientDashboard.jsx';
-import NursingHomes from './pages/NursingHomes.jsx';
-import NPPESCrawler from './pages/NPPESCrawler.jsx';
-import NPPESCrawlerDashboard from './pages/NPPESCrawlerDashboard.jsx';
-import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
-import OrganizationDetail from './pages/OrganizationDetail.jsx';
-=======
 import NursingHomes from './pages/NursingHomes.jsx';
 import NPPESCrawler from './pages/NPPESCrawler.jsx';
 import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
->>>>>>> refs/remotes/origin/main
 import Organizations from './pages/Organizations.jsx';
 import ProviderDetail from './pages/ProviderDetail.jsx';
 import ProviderLocationMatching from './pages/ProviderLocationMatching.jsx';
@@ -105,10 +84,6 @@ import ProviderOutreach from './pages/ProviderOutreach.jsx';
 import Providers from './pages/Providers.jsx';
 import ReconciliationDashboard from './pages/ReconciliationDashboard.jsx';
 import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence.jsx';
-<<<<<<< HEAD
-import ReferralPathwayAnalysis from './pages/ReferralPathwayAnalysis.jsx';
-=======
->>>>>>> refs/remotes/origin/main
 import ScoringRules from './pages/ScoringRules.jsx';
 import SecurityAudit from './pages/SecurityAudit.jsx';
 import TerritoryIntelligence from './pages/TerritoryIntelligence.jsx';
@@ -123,11 +98,7 @@ export const PAGES = {
     "AdvancedAnalytics": AdvancedAnalytics,
     "CMSAnalytics": CMSAnalytics,
     "CMSDataSources": CMSDataSources,
-<<<<<<< HEAD
-    "Campaigns": Campaigns,
-=======
     "Campaigns": ProviderOutreach,
->>>>>>> refs/remotes/origin/main
     "CountyIntelligence": CountyIntelligence,
     "CustomReports": CustomReports,
     "Dashboard": Dashboard,
@@ -144,30 +115,15 @@ export const PAGES = {
     "Hospices": Hospices,
     "Hospitals": Hospitals,
     "InpatientRehab": InpatientRehab,
-<<<<<<< HEAD
-    "ImportAnalytics": ImportAnalytics,
     "ImportMonitoring": ImportMonitoring,
-    "ImportOverview": ImportOverview,
-=======
-    "ImportMonitoring": ImportMonitoring,
->>>>>>> refs/remotes/origin/main
     "LeadListBuilder": LeadListBuilder,
     "LeadLists": LeadLists,
     "LocationDetail": LocationDetail,
     "Locations": Locations,
     "LongTermCare": LongTermCare,
-<<<<<<< HEAD
-    "MAInpatientDashboard": MAInpatientDashboard,
-    "NursingHomes": NursingHomes,
-    "NPPESCrawler": NPPESCrawler,
-    "NPPESCrawlerDashboard": NPPESCrawlerDashboard,
-    "NPPESCrawlerSettings": NPPESCrawlerSettings,
-    "OrganizationDetail": OrganizationDetail,
-=======
     "NursingHomes": NursingHomes,
     "NPPESCrawler": NPPESCrawler,
     "NPPESCrawlerSettings": NPPESCrawlerSettings,
->>>>>>> refs/remotes/origin/main
     "Organizations": Organizations,
     "ProviderDetail": ProviderDetail,
     "ProviderLocationMatching": ProviderLocationMatching,
@@ -175,10 +131,6 @@ export const PAGES = {
     "Providers": Providers,
     "ReconciliationDashboard": ReconciliationDashboard,
     "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
-<<<<<<< HEAD
-    "ReferralPathwayAnalysis": ReferralPathwayAnalysis,
-=======
->>>>>>> refs/remotes/origin/main
     "ScoringRules": ScoringRules,
     "SecurityAudit": SecurityAudit,
     "TerritoryIntelligence": TerritoryIntelligence,

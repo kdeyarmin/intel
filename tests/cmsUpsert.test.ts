@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-<<<<<<< HEAD
-import { makeKey, partition, distinctValues, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
-=======
 import { makeKey, partition, distinctValues, deriveLineTotal, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
->>>>>>> refs/remotes/origin/main
 
 describe("makeKey", () => {
   it("joins normalized key columns", () => {
@@ -62,10 +58,6 @@ describe("distinctValues", () => {
 
 describe("CMS_NATURAL_KEYS", () => {
   it("includes the npi-keyed import types", () => {
-<<<<<<< HEAD
-    expect(CMS_NATURAL_KEYS.cms_order_referring.keyCols).toContain("npi");
-    expect(CMS_NATURAL_KEYS.provider_service_utilization.keyCols).toContain("service_type");
-=======
     // cms_order_referring is an eligibility registry routed to the providers
     // table via a dedicated upsert path — it no longer uses CMS_NATURAL_KEYS.
     expect(CMS_NATURAL_KEYS.cms_order_referring).toBeUndefined();
@@ -118,7 +110,6 @@ describe("deriveLineTotal", () => {
     expect(deriveLineTotal("10", "")).toBeNull();
     expect(deriveLineTotal("10", null)).toBeNull();
     expect(deriveLineTotal("10", "N/A")).toBeNull();
->>>>>>> refs/remotes/origin/main
   });
 });
 
