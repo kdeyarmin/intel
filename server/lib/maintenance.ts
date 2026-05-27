@@ -253,6 +253,40 @@ export async function runCancelStalledImports(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: manage crawler retries ────────────────────────────────────────────
+// Resumes paused/failed crawler-owned NPPES batches, mirroring the old
+// scheduledImports maintenance worker.
+
+export async function runManageCrawlerRetries(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { handleNppesCrawler } = await import("../functions/nppesCrawler");
+    const result = await handleNppesCrawler({ action: "batch_resume" }, SYSTEM_ADMIN_USER) as {
+      success?: boolean;
+      message?: string;
+      error?: unknown;
+    };
+    const failed = result?.success === false || result?.error != null;
+    return {
+      worker: "manageCrawlerRetries",
+      ok: !failed,
+      durationMs: Date.now() - started,
+      details: {
+        success: result?.success ?? null,
+        message: result?.message ?? null,
+      },
+      ...(failed ? { error: truncErr(result?.error ?? result?.message ?? "Crawler retry failed") } : {}),
+    };
+  } catch (e) {
+    return {
+      worker: "manageCrawlerRetries",
+      ok: false,
+      durationMs: Date.now() - started,
+      error: truncErr(e),
+    };
+  }
+}
+
 // ─── Worker: cleanup all imports ─────────────────────────────────────────────
 // Wraps the destructive cleanup already exposed at functions/cleanupAllImports.
 // Re-exported as a worker so it can be invoked via the same fanout/UI surface
@@ -329,6 +363,7 @@ export async function writeMaintenanceHeartbeat(
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
+  { name: "manageCrawlerRetries", run: runManageCrawlerRetries },
   { name: "cancelStalledImports", run: runCancelStalledImports },
 ];
 

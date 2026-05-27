@@ -712,6 +712,16 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
         return res.json({ success: result.ok, worker: result });
       }
+      case "manageCrawlerRetries": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:manageCrawlerRetries:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runManageCrawlerRetries, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runManageCrawlerRetries();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({ success: result.ok, worker: result });
+      }
       case "cancelStalledImports": {
         const { consumeToken } = await import("../middleware/rateLimit");
         if (!consumeToken(`maint:cancelStalledImports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
