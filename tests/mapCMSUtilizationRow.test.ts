@@ -22,7 +22,7 @@ describe("mapCMSUtilizationRow", () => {
     expect(out.raw_data).toBe(row);
   });
 
-  it("falls back to lower-case npi and HCPCS_Desc when Rndrng_* fields are absent", () => {
+  it("falls back to the npi field and HCPCS_Desc when Rndrng_* fields are absent", () => {
     const out = mapCMSUtilizationRow(
       { npi: "9999999999", HCPCS_Desc: "Office visit" },
       2023,
