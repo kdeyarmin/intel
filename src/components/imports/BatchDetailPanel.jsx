@@ -3,11 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   FileText,
-<<<<<<< HEAD
   Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles, Play, Loader2
-=======
-  Database, Settings, BarChart3, ArrowUpDown, RefreshCw, Link2, ShieldCheck, Sparkles
->>>>>>> origin/main
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import ErrorSummaryPanel from './ErrorSummaryPanel';
@@ -18,11 +14,8 @@ import ErrorFilterBar from './ErrorFilterBar';
 import AIRuleSuggestions from './AIRuleSuggestions';
 import DetailedErrorRows from './DetailedErrorRows';
 import { categorizeError } from './errorCategories';
-<<<<<<< HEAD
 import { pickResumeOffset, resumeProgressPct } from './resumeOffset';
 import { getAutoRetryState, MAX_AUTO_RETRY_ATTEMPTS } from './retryStatus';
-=======
->>>>>>> origin/main
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -262,6 +255,9 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
 
   if (!batch) return null;
 
+  const { resumeOffset, resumeIsByteOffset } = pickResumeOffset(safeBatch.retry_params);
+  const resumePct = resumeProgressPct(resumeOffset, resumeIsByteOffset, safeBatch.total_rows);
+
   return (
     <div className="space-y-5 mt-2">
       {/* Header */}
@@ -278,7 +274,6 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         {duration && <span className="text-xs text-slate-500">Duration: {duration}</span>}
       </div>
 
-<<<<<<< HEAD
       {/* Auto-retry banner for failed batches: surfaces worker state + per-batch toggle. */}
       {batch.status === 'failed' && (
         <AutoRetryBanner batch={batch} onUpdated={onUpdated} />
@@ -301,8 +296,6 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         </div>
       )}
 
-=======
->>>>>>> origin/main
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div><span className="text-slate-500">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>
