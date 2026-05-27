@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Mail, Plus, TrendingUp, MessageSquare } from 'lucide-react';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
+import CampaignOutcomesPanel from '../components/outreach/CampaignOutcomesPanel';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
@@ -37,12 +38,15 @@ export default function ProviderOutreach() {
   const totalSent = campaigns.reduce((s, c) => s + (c.sent_count || 0), 0);
   const totalOpened = campaigns.reduce((s, c) => s + (c.opened_count || 0), 0);
   const totalResponded = campaigns.reduce((s, c) => s + (c.responded_count || 0), 0);
+  const totalConversions = campaigns.reduce((s, c) => s + (Number(c.metrics?.conversions) || 0), 0);
+  const totalRevenue = campaigns.reduce((s, c) => s + (Number(c.metrics?.revenue) || 0), 0);
   const rollup = [
     { label: 'Campaigns', value: campaigns.length, sub: `${campaigns.filter(c => ACTIVE_STATUSES.includes((c.status || '').toLowerCase())).length} active`, cls: 'text-cyan-400' },
-    { label: 'Recipients', value: campaigns.reduce((s, c) => s + (c.total_recipients || 0), 0), sub: 'targeted', cls: 'text-slate-200' },
     { label: 'Sent', value: totalSent, sub: 'messages', cls: 'text-blue-400' },
     { label: 'Open Rate', value: totalSent > 0 ? `${Math.round((totalOpened / totalSent) * 100)}%` : '—', sub: `${totalOpened.toLocaleString()} opened`, cls: 'text-emerald-400' },
     { label: 'Response Rate', value: totalSent > 0 ? `${Math.round((totalResponded / totalSent) * 100)}%` : '—', sub: `${totalResponded.toLocaleString()} responded`, cls: 'text-purple-400' },
+    { label: 'Conversions', value: totalConversions, sub: 'recorded', cls: 'text-amber-400' },
+    { label: 'Revenue', value: `$${totalRevenue.toLocaleString()}`, sub: 'attributed', cls: 'text-green-400' },
   ];
 
   const getStatusColor = (status) => {
@@ -65,7 +69,7 @@ export default function ProviderOutreach() {
         breadcrumbs={[{ label: 'Sales & Outreach' }, { label: 'Campaigns' }]}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {rollup.map(k => (
           <Card key={k.label} className="bg-[#141d30] border-slate-700/50">
             <CardContent className="p-4">
@@ -202,6 +206,8 @@ export default function ProviderOutreach() {
               </div>
 
               <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} />
+
+              <CampaignOutcomesPanel campaign={selectedCampaign} />
 
               {/* Recent Messages */}
               <Card className="bg-[#141d30] border-slate-700/50">
