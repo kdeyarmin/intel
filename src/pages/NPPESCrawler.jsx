@@ -139,8 +139,14 @@ export default function NPPESCrawler() {
         breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
       />
 
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit" role="tablist" aria-label="NPPES crawler views">
         <button
+          type="button"
+          role="tab"
+          id="nppes-crawler-tab-control"
+          aria-selected={crawlerTab === 'control'}
+          aria-controls="nppes-crawler-panel-control"
+          tabIndex={crawlerTab === 'control' ? 0 : -1}
           onClick={() => setCrawlerTab('control')}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
             crawlerTab === 'control' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
@@ -150,6 +156,12 @@ export default function NPPESCrawler() {
           Control
         </button>
         <button
+          type="button"
+          role="tab"
+          id="nppes-crawler-tab-analytics"
+          aria-selected={crawlerTab === 'analytics'}
+          aria-controls="nppes-crawler-panel-analytics"
+          tabIndex={crawlerTab === 'analytics' ? 0 : -1}
           onClick={() => setCrawlerTab('analytics')}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
             crawlerTab === 'analytics' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
@@ -161,7 +173,7 @@ export default function NPPESCrawler() {
       </div>
 
       {crawlerTab === 'control' && (
-      <>
+      <div role="tabpanel" id="nppes-crawler-panel-control" aria-labelledby="nppes-crawler-tab-control">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-[#141d30] border-slate-700/50">
@@ -414,10 +426,14 @@ export default function NPPESCrawler() {
       {isRunning && <CurrentStateProgress status={status} />}
 
       <CrawlerMonitoring status={status} />
-      </>
+      </div>
       )}
 
-      {crawlerTab === 'analytics' && <CrawlerAnalyticsView />}
+      {crawlerTab === 'analytics' && (
+        <div role="tabpanel" id="nppes-crawler-panel-analytics" aria-labelledby="nppes-crawler-tab-analytics">
+          <CrawlerAnalyticsView />
+        </div>
+      )}
 
       <DataSourcesFooter />
       
