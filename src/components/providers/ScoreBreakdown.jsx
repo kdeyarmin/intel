@@ -24,7 +24,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
         {score && (
           <div className="flex items-center gap-4 pb-4 border-b">
             <div className="text-5xl font-bold text-teal-600">{score}</div>
-            <div className="text-gray-600">
+            <div className="text-slate-400">
               <p className="text-sm">Out of 100</p>
             </div>
           </div>
@@ -37,7 +37,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{componentLabels[key]}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">{data.value}/100</span>
+                  <span className="text-sm text-slate-400">{data.value}/100</span>
                   <Badge variant="outline" className="text-xs">
                     {data.contribution.toFixed(1)} pts
                   </Badge>
@@ -45,7 +45,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
               </div>
               <div className="flex items-center gap-2">
                 <Progress value={percentage} className="h-2 flex-1" />
-                <span className="text-xs text-gray-500 w-12 text-right">
+                <span className="text-xs text-slate-400 w-12 text-right">
                   {data.weight}% wt
                 </span>
               </div>
@@ -58,7 +58,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
             <p className="text-sm font-medium mb-2">Key Factors:</p>
             <ul className="space-y-1">
               {reasons.map((reason, idx) => (
-                <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                <li key={idx} className="text-sm text-slate-300 flex items-start gap-2">
                   <span className="text-teal-600 mt-1">•</span>
                   <span>{reason}</span>
                 </li>

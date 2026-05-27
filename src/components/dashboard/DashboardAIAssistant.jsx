@@ -22,66 +22,53 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExpanded, setIsExpanded] = useState(isFullPage);
-  const [conversation, setConversation] = useState(null);
+  const [initError, setInitError] = useState(false);
   const messagesEndRef = useRef(null);
-
-  // Initialize Conversation with Agent
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const conv = await base44.agents.createConversation({
-          agent_name: 'caremetric_assistant',
-          metadata: { name: 'Dashboard Session' }
-        });
-        setConversation(conv);
-        if (conv.messages) setMessages(conv.messages);
-      } catch (err) {
-        console.error("Agent init failed:", err);
-      }
-    };
-    if (isExpanded && !conversation) init();
-  }, [isExpanded]);
-
-  // Subscribe to updates
-  useEffect(() => {
-    if (conversation?.id) {
-      const unsubscribe = base44.agents.subscribeToConversation(conversation.id, (data) => {
-        setMessages(data.messages);
-        
-        // Check if latest message is from assistant and done
-        const lastMsg = data.messages[data.messages.length - 1];
-        if (lastMsg?.role === 'assistant' && !lastMsg.tool_calls?.some(tc => ['running', 'pending'].includes(tc.status))) {
-          setIsGenerating(false);
-        }
-      });
-      return unsubscribe;
-    }
-  }, [conversation?.id]);
 
   useEffect(() => {
     if (isFullPage) setIsExpanded(true);
   }, [isFullPage]);
 
-  // Scroll to bottom
   useEffect(() => {
     const container = messagesEndRef.current?.parentElement;
     if (container) container.scrollTop = container.scrollHeight;
   }, [messages]);
 
+  const buildSystemContext = () => {
+    return `You are CareMetric AI Assistant, a healthcare provider intelligence analyst. You help users understand their provider data, referral networks, market saturation, and data quality metrics. Be concise, data-driven, and actionable. Format responses with markdown headers, bullets, and bold for key metrics. If you don't have specific data, provide general healthcare analytics guidance relevant to the question.`;
+  };
+
   const runQuery = async (prompt) => {
-    if (!prompt.trim() || !conversation) return;
-    
+    if (!prompt.trim()) return;
+
     setIsGenerating(true);
     setInput('');
-    
-    // Optimistic UI update handled by subscription
+    setInitError(false);
+
+    const userMsg = { role: 'user', content: prompt };
+    setMessages(prev => [...prev, userMsg]);
+
     try {
-      await base44.agents.addMessage(conversation, {
-        role: 'user',
-        content: prompt
+      const conversationHistory = [...messages, userMsg]
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n\n');
+
+      const fullPrompt = `${buildSystemContext()}\n\nConversation so far:\n${conversationHistory}\n\nRespond to the latest user message. Be specific and actionable.`;
+
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: fullPrompt,
+        max_tokens: 2048,
       });
+
+      const assistantContent = res.response || res.raw_response || JSON.stringify(res);
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
     } catch (err) {
-      console.error(err);
+      console.error("AI Assistant error:", err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `⚠️ Unable to generate analysis: ${err.message || 'Unknown error'}. Please try again.`
+      }]);
+    } finally {
       setIsGenerating(false);
     }
   };
@@ -90,18 +77,19 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
     e.preventDefault();
     runQuery(input);
   };
+
   return (
     <Card className={`bg-[#141d30] border-slate-700/50 shadow-lg shadow-black/10 ${isFullPage ? 'h-full flex flex-col' : ''}`}>
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2 text-white font-semibold">
-            <div className="w-6 h-6 rounded-lg bg-violet-500/20 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-lg bg-violet-900/20 flex items-center justify-center">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
             </div>
             CareMetric AI Assistant
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge className="bg-violet-500/15 text-violet-400 border border-violet-500/20 text-[10px]">
+            <Badge className="bg-violet-900/15 text-violet-400 border border-violet-500/20 text-[10px]">
               Live Data
             </Badge>
             {!isFullPage && (
@@ -119,7 +107,6 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
 
       {isExpanded && (
         <CardContent className={`space-y-3 pt-0 ${isFullPage ? 'flex-1 flex flex-col min-h-0' : ''}`}>
-          {/* Quick prompts */}
           <div className="flex gap-2 flex-wrap">
             {QUICK_PROMPTS.map((qp) => {
               const Icon = qp.icon;
@@ -150,7 +137,6 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
             )}
           </div>
 
-          {/* Messages */}
           {messages.length > 0 && (
             <div className={`${isFullPage ? 'flex-1 min-h-0' : 'max-h-[400px]'} overflow-y-auto space-y-3 pr-1 scroll-smooth`}>
               {messages.map((msg, i) => (
@@ -192,21 +178,13 @@ export default function DashboardAIAssistant({ isFullPage = false }) {
             </div>
           )}
 
-          {/* Initial state */}
           {messages.length === 0 && !isGenerating && (
             <div className="text-center py-6">
               <Sparkles className="w-8 h-8 mx-auto mb-2 text-violet-400/40" />
-              <p className="text-sm text-slate-400">Loading initial briefing...</p>
-            </div>
-          )}
-          {messages.length === 0 && isGenerating && (
-            <div className="text-center py-6">
-              <Loader2 className="w-8 h-8 mx-auto mb-2 text-violet-400 animate-spin" />
-              <p className="text-sm text-slate-400">Generating your daily briefing...</p>
+              <p className="text-sm text-slate-400">Ask me about your data, providers, or market trends</p>
             </div>
           )}
 
-          {/* Input */}
           <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
               value={input}

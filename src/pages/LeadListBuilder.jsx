@@ -62,7 +62,10 @@ export default function LeadListBuilder() {
 
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['llbUtilizations'],
-    queryFn: () => base44.entities.CMSUtilization.list('-created_date', 500),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 500);
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     staleTime: 120000,
   });
 
@@ -95,12 +98,13 @@ export default function LeadListBuilder() {
   const filteredResults = React.useMemo(() => {
     return providers
       .map(provider => {
-        const providerLocations = locations.filter(l => l.npi === provider.npi);
-        const primaryLocation = providerLocations.find(l => l.is_primary) || providerLocations[0];
-        const providerTaxonomies = taxonomies.filter(t => t.npi === provider.npi);
-        const score = scores.find(s => s.npi === provider.npi);
-        const utilization = utilizations.find(u => u.npi === provider.npi);
-        const listMember = listMembers.find(m => m.npi === provider.npi);
+        if (!provider.npi) return null;
+        const providerLocations = locations.filter(l => l?.npi === provider.npi);
+        const primaryLocation = providerLocations.find(l => l?.is_primary) || providerLocations[0];
+        const providerTaxonomies = taxonomies.filter(t => t?.npi === provider.npi);
+        const score = scores.find(s => s?.npi === provider.npi);
+        const utilization = utilizations.find(u => u?.npi === provider.npi);
+        const listMember = listMembers.find(m => m?.npi === provider.npi);
 
         return {
           provider,
@@ -111,6 +115,7 @@ export default function LeadListBuilder() {
           listMember,
         };
       })
+      .filter(Boolean)
       .filter(result => {
         const { location, taxonomy, score, utilization } = result;
 
@@ -169,7 +174,7 @@ export default function LeadListBuilder() {
         name: listName,
         description: listDescription,
         filters: filters,
-        provider_count: filteredResults.length,
+        member_count: filteredResults.length,
       };
 
       const newList = await createListMutation.mutateAsync(listData);
@@ -319,7 +324,7 @@ export default function LeadListBuilder() {
                     placeholder="Optional description"
                   />
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-slate-400">
                   This will save {filteredResults.length} providers
                 </div>
                 <Button onClick={handleSaveList} className="w-full">
@@ -362,7 +367,7 @@ export default function LeadListBuilder() {
                   <Users className="h-5 w-5" />
                   Results
                 </div>
-                <span className="text-base font-normal text-gray-600">
+                <span className="text-base font-normal text-slate-400">
                   {filteredResults.length} providers
                 </span>
               </CardTitle>

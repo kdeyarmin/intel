@@ -115,26 +115,44 @@ For each email assign:
 
       setResults(res);
 
-      // Auto-save the best email to the provider record
+      // Persist results. These are AI-inferred guesses, so only promote one to
+      // the provider's primary email when it is plausibly deliverable (not a
+      // low-confidence guess and not flagged invalid). Otherwise keep the guesses
+      // as reviewable candidates without overwriting a real address. All are
+      // tagged email_source: 'ai_inferred' so the UI can mark them unverified.
       if (emails.length > 0 && provider?.id) {
-        const best = enrichedEmails[0];
-        try {
-          await base44.entities.Provider.update(provider.id, {
-            email: best.email,
-            email_confidence: best.confidence,
-            email_source: best.source || '',
-            email_validation_status: best.validation_status || 'unknown',
-            email_validation_reason: best.validation_reason || '',
-            additional_emails: enrichedEmails.slice(1).map(e => ({
-              email: e.email,
-              confidence: e.confidence,
-              source: e.source,
-              validation_status: e.validation_status,
-            })),
-            email_searched_at: new Date().toISOString(),
-          });
-        } catch (updateErr) {
-          console.error('Failed to auto-save email:', updateErr);
+        // Filter to well-formed entries with email, confidence, and validation_status
+        const filteredEnrichedEmails = enrichedEmails.filter(e =>
+          e.email && typeof e.email === 'string' && e.email.trim().length > 0 &&
+          e.email.includes('@') && e.email.includes('.') &&
+          e.confidence && e.validation_status
+        );
+
+        if (filteredEnrichedEmails.length > 0) {
+          const best = filteredEnrichedEmails[0];
+          const candidates = filteredEnrichedEmails.map(e => ({
+            email: e.email,
+            confidence: e.confidence,
+            source: 'ai_inferred',
+            validation_status: e.validation_status,
+          }));
+          const promote = best.confidence !== 'low' && best.validation_status !== 'invalid';
+          try {
+            await base44.entities.Provider.update(provider.id, promote ? {
+              email: best.email,
+              email_confidence: best.confidence,
+              email_source: 'ai_inferred',
+              email_validation_status: best.validation_status || 'unknown',
+              email_validation_reason: best.validation_reason || '',
+              additional_emails: candidates.slice(1),
+              email_searched_at: new Date().toISOString(),
+            } : {
+              additional_emails: candidates,
+              email_searched_at: new Date().toISOString(),
+            });
+          } catch (updateErr) {
+            console.error('Failed to auto-save email:', updateErr);
+          }
         }
       }
     } catch (err) {
@@ -153,13 +171,13 @@ For each email assign:
   };
 
   const confColors = {
-    high: 'bg-green-100 text-green-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-red-100 text-red-800',
+    high: 'bg-green-900/30 text-green-400',
+    medium: 'bg-yellow-900/30 text-yellow-400',
+    low: 'bg-red-900/30 text-red-400',
   };
 
   return (
-    <Card className="bg-gray-100">
+    <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <Mail className="w-4 h-4 text-blue-600" />
@@ -177,7 +195,7 @@ For each email assign:
       </CardHeader>
       <CardContent>
         {!results && !loading && (
-          <p className="text-sm text-gray-400 text-center py-4">
+          <p className="text-sm text-slate-500 text-center py-4">
             Click "Find Emails" to search for this provider's contact information
           </p>
         )}
@@ -195,7 +213,7 @@ For each email assign:
                   <div key={idx} className="flex items-center justify-between bg-slate-800/40 border border-slate-700/50 rounded-lg px-3 py-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900 truncate">{item.email}</span>
+                        <span className="text-sm font-medium text-white truncate">{item.email}</span>
                         <Badge className={confColors[item.confidence] + ' text-xs'}>
                           {item.confidence}
                         </Badge>
@@ -206,7 +224,7 @@ For each email assign:
                         />
                       </div>
                       {item.source && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">{item.source}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">{item.source}</p>
                       )}
                     </div>
                     <Button
@@ -221,22 +239,22 @@ For each email assign:
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-2">No email addresses found</p>
+              <p className="text-sm text-slate-400 text-center py-2">No email addresses found</p>
             )}
 
             {results.organization_domain && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-400">
                 Organization domain: <span className="font-medium">{results.organization_domain}</span>
               </p>
             )}
 
             {results.notes && (
-              <p className="text-xs text-gray-500">{results.notes}</p>
+              <p className="text-xs text-slate-400">{results.notes}</p>
             )}
 
-            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg p-2">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-amber-400">
                 These are AI-generated suggestions, not verified addresses. Always confirm before sending outreach.
               </p>
             </div>

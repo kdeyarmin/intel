@@ -17,7 +17,7 @@ const KEY_SPECIALTIES = [
 function HubCard({ hub, rank }) {
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-700/30 hover:bg-slate-800/30">
-      <div className="w-7 h-7 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
+      <div className="w-7 h-7 rounded-full bg-amber-900/15 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
         {rank}
       </div>
       <div className="min-w-0 flex-1">
@@ -28,7 +28,7 @@ function HubCard({ hub, rank }) {
         <p className="text-xs font-bold text-cyan-400">{hub.totalVolume.toLocaleString()}</p>
         <p className="text-[10px] text-slate-500">{hub.connections} conn.</p>
       </div>
-      <Badge className={`text-[9px] shrink-0 ${hub.hubScore >= 80 ? 'bg-red-500/15 text-red-400' : hub.hubScore >= 50 ? 'bg-amber-500/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
+      <Badge className={`text-[9px] shrink-0 ${hub.hubScore >= 80 ? 'bg-red-900/15 text-red-400' : hub.hubScore >= 50 ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
         {hub.hubScore}
       </Badge>
     </div>
@@ -43,7 +43,7 @@ function GapCard({ gap }) {
           <Badge className="bg-slate-700/50 text-slate-300 font-mono text-[10px]">{gap.state}</Badge>
           <span className="text-[10px] text-slate-500">{gap.totalProviders} providers</span>
         </div>
-        <Badge className={`text-[9px] ${gap.severity === 'high' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>
+        <Badge className={`text-[9px] ${gap.severity === 'high' ? 'bg-red-900/15 text-red-400' : 'bg-amber-900/15 text-amber-400'}`}>
           {gap.severity}
         </Badge>
       </div>
@@ -51,7 +51,7 @@ function GapCard({ gap }) {
       {gap.missingSpecialties?.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">
           {gap.missingSpecialties.slice(0, 4).map(s => (
-            <Badge key={s} className="bg-red-500/10 text-red-400 text-[8px] border border-red-500/20">{s}</Badge>
+            <Badge key={s} className="bg-red-900/10 text-red-400 text-[8px] border border-red-500/20">{s}</Badge>
           ))}
         </div>
       )}
@@ -180,7 +180,7 @@ Provide:
               <CardContent className="p-3 text-center">
                 <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
                 <p className="text-[10px] text-slate-400 font-medium">{m.label}</p>
-                <p className="text-[9px] text-slate-600">{m.sub}</p>
+                <p className="text-[9px] text-slate-400">{m.sub}</p>
               </CardContent>
             </Card>
           ))}
@@ -265,7 +265,7 @@ Provide:
                   </p>
                   <ul className="space-y-1">
                     {section.items.map((item, i) => (
-                      <li key={i} className="text-xs text-slate-400 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-slate-600">
+                      <li key={i} className="text-xs text-slate-400 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-slate-400">
                         {item}
                       </li>
                     ))}

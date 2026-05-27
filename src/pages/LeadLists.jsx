@@ -23,7 +23,7 @@ export default function LeadLists() {
 
   const { data: lists = [], isLoading } = useQuery({
     queryKey: ['leadLists'],
-    queryFn: () => base44.entities.LeadList.list('-created_date'),
+    queryFn: () => base44.entities.LeadList.list('-created_date', 500),
   });
 
   const deleteMutation = useMutation({
@@ -34,7 +34,7 @@ export default function LeadLists() {
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
       await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
       deleteMutation.mutate(listId);
     } catch (error) {
@@ -87,7 +87,7 @@ export default function LeadLists() {
                     <TableRow key={list.id}>
                       <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
                       <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
-                      <TableCell className="text-slate-300">{list.provider_count}</TableCell>
+                      <TableCell className="text-slate-300">{list.member_count}</TableCell>
                       <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
@@ -137,54 +137,71 @@ function ViewListDialog({ listId, listName }) {
 
   const loadLeads = async () => {
     setLoading(true);
-    const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId });
-    if (members.length === 0) { setLeads([]); setLoading(false); return; }
+    try {
+      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
+      if (members.length === 0) { setLeads([]); return; }
 
-    const npis = members.map(m => m.npi);
-    const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
-      base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
-      base44.entities.CMSUtilization.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
-      base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
-    ]);
+      const npis = members.map(m => m.npi);
+      const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
+        base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
+        base44.entities.ProviderServiceUtilization.filter({ npi: { $in: npis } }, undefined, 1000).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
+        base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
+        base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
+      ]);
 
-    const enriched = members.map(member => ({
-      member,
-      provider: providers.find(p => p.npi === member.npi),
-      score: scores.find(s => s.npi === member.npi),
-      location: locations.find(l => l.npi === member.npi && l.is_primary),
-      utilization: utilizations.find(u => u.npi === member.npi),
-      referrals: referrals.find(r => r.npi === member.npi),
-      taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
-    }));
+      const enriched = members.map(member => ({
+        member,
+        provider: providers.find(p => p.npi === member.npi),
+        score: scores.find(s => s.npi === member.npi),
+        location: locations.find(l => l.npi === member.npi && l.is_primary),
+        utilization: utilizations.find(u => u.npi === member.npi),
+        referrals: referrals.find(r => r.npi === member.npi),
+        taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
+      }));
 
-    setLeads(enriched);
-    setLoading(false);
+      setLeads(enriched);
+    } catch (err) {
+      console.error('[LeadLists] Failed to load leads:', err);
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUpdateStatus = async (memberId, status) => {
-    await base44.entities.LeadListMember.update(memberId, { status });
-    setLeads(leads.map(l =>
-      l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
-    ));
+    try {
+      await base44.entities.LeadListMember.update(memberId, { status });
+      setLeads(prev => prev.map(l =>
+        l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
+      ));
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
   };
 
   const handleUpdateNotes = async (memberId, notes) => {
-    await base44.entities.LeadListMember.update(memberId, { notes });
-    setLeads(leads.map(l =>
-      l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
-    ));
+    try {
+      await base44.entities.LeadListMember.update(memberId, { notes });
+      setLeads(prev => prev.map(l =>
+        l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
+      ));
+    } catch (err) {
+      console.error('Failed to update notes:', err);
+    }
   };
 
   const handleRemoveProvider = async (memberId) => {
-    await base44.entities.LeadListMember.delete(memberId);
-    setLeads(leads.filter(l => l.member.id !== memberId));
-    // Update list count
-    const list = await base44.entities.LeadList.filter({ id: listId });
-    if (list[0]) {
-      await base44.entities.LeadList.update(listId, { provider_count: Math.max((list[0].provider_count || 0) - 1, 0) });
+    try {
+      await base44.entities.LeadListMember.delete(memberId);
+      setLeads(prev => prev.filter(l => l.member.id !== memberId));
+      const list = await base44.entities.LeadList.filter({ id: listId });
+      if (list[0]) {
+        await base44.entities.LeadList.update(listId, { member_count: Math.max((list[0].member_count || 0) - 1, 0) });
+      }
+    } catch (err) {
+      console.error('Failed to remove provider:', err);
     }
   };
 

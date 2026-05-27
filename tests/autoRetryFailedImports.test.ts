@@ -10,7 +10,7 @@ import {
   nextRetryDueAt,
   shouldRetryBatch,
 } from '../base44/functions/autoRetryFailedImports/helpers';
-import { ERROR_CATEGORIES, isErrorRetryable } from '../src/components/imports/errorCategories.jsx';
+import { isErrorRetryable } from '../src/components/imports/errorCategories.jsx';
 
 describe('isRetryableErrorMessage', () => {
   it('returns false for empty/missing messages', () => {
@@ -22,7 +22,8 @@ describe('isRetryableErrorMessage', () => {
   it('matches network/HTTP transient errors', () => {
     expect(isRetryableErrorMessage('HTTP 500 Internal Server Error')).toBe(true);
     expect(isRetryableErrorMessage('HTTP 503 Service Unavailable')).toBe(true);
-    expect(isRetryableErrorMessage('429 Too Many Requests')).toBe(true);
+    expect(isRetryableErrorMessage('HTTP 429 Too Many Requests')).toBe(true);
+    expect(isRetryableErrorMessage('Failed to download: 503 Service Unavailable')).toBe(true);
     expect(isRetryableErrorMessage('Rate limit exceeded')).toBe(true);
     expect(isRetryableErrorMessage('Connection refused: ECONNREFUSED')).toBe(true);
     expect(isRetryableErrorMessage('fetch failed')).toBe(true);
@@ -98,6 +99,20 @@ describe('extractErrorMessage', () => {
     })).toBe('most recent error');
   });
 
+  it('also reads error_samples[*].message for importers that use it', () => {
+    // autoImportCMSData writes { message: error.message } on fatal failure.
+    // Worker must see those, not just `detail`-style entries.
+    expect(extractErrorMessage({
+      error_samples: [{ message: 'fetch timeout' }],
+    })).toBe('fetch timeout');
+  });
+
+  it('prefers detail over message when both exist on the same entry', () => {
+    expect(extractErrorMessage({
+      error_samples: [{ detail: 'detail value', message: 'message value' }],
+    })).toBe('detail value');
+  });
+
   it('returns empty string when no error info present', () => {
     expect(extractErrorMessage({})).toBe('');
     expect(extractErrorMessage({ cancel_reason: '' })).toBe('');
@@ -126,6 +141,11 @@ describe('getRetryAttemptCount', () => {
   it('treats non-numeric values as 0', () => {
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 'two' as any } })).toBe(0);
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: -3 } })).toBe(0);
+  });
+
+  it('falls back to top-level retry_count for spawned retry batches', () => {
+    expect(getRetryAttemptCount({ retry_count: 2 })).toBe(2);
+    expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 1 }, retry_count: 3 })).toBe(3);
   });
 });
 
@@ -216,6 +236,15 @@ describe('shouldRetryBatch', () => {
   it('refuses past MAX_AUTO_RETRY_ATTEMPTS', () => {
     const result = shouldRetryBatch(
       failedBatch({ retry_params: { auto_retry_count: MAX_AUTO_RETRY_ATTEMPTS } }),
+      now,
+    );
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toMatch(/max_attempts_reached/);
+  });
+
+  it('refuses past MAX_AUTO_RETRY_ATTEMPTS when only retry_count is present', () => {
+    const result = shouldRetryBatch(
+      failedBatch({ retry_count: MAX_AUTO_RETRY_ATTEMPTS }),
       now,
     );
     expect(result.eligible).toBe(false);

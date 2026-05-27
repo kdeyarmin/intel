@@ -7,10 +7,10 @@ import { Check, X, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import MatchScoreBars from './MatchScoreBars';
 
 const STATUS_STYLES = {
-  suggested: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  override: 'bg-blue-100 text-blue-800',
+  suggested: 'bg-yellow-900/30 text-yellow-400',
+  approved: 'bg-green-900/30 text-green-400',
+  rejected: 'bg-red-900/30 text-red-400',
+  override: 'bg-blue-900/30 text-blue-400',
 };
 
 export default function MatchCard({ match, onUpdateStatus, selected, onToggleSelect }) {
@@ -27,7 +27,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
   const confidenceColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
 
   return (
-    <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-500/15 border-blue-500/30' : 'bg-slate-800/40'}`}>
+    <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-900/15 border-blue-500/30' : 'bg-slate-800/40'}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -36,35 +36,35 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
                 type="checkbox"
                 checked={!!selected}
                 onChange={() => onToggleSelect(match.id)}
-                className="mt-1.5 h-4 w-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                className="mt-1.5 h-4 w-4 rounded border-slate-600/50 text-blue-600 cursor-pointer"
               />
             )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-gray-900">{match.provider_name || match.npi}</span>
-              <span className="text-gray-400">→</span>
-              <span className="text-sm text-gray-600 truncate">{match.location_display || match.location_id}</span>
+              <span className="font-semibold text-white">{match.provider_name || match.npi}</span>
+              <span className="text-slate-500">→</span>
+              <span className="text-sm text-slate-400 truncate">{match.location_display || match.location_id}</span>
             </div>
             <div className="flex items-center gap-2 mt-2">
               <Badge className={STATUS_STYLES[match.status]}>{match.status}</Badge>
               <span className={`text-lg font-bold ${confidenceColor}`}>{match.confidence_score}%</span>
-              <span className="text-xs text-gray-400">confidence</span>
+              <span className="text-xs text-slate-500">confidence</span>
             </div>
           </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {match.status !== 'approved' && (
-              <Button size="sm" variant="ghost" className="text-green-600 hover:bg-green-50" onClick={() => handleAction('approved')} disabled={saving}>
+              <Button size="sm" variant="ghost" className="text-green-600 hover:bg-green-900/20" onClick={() => handleAction('approved')} disabled={saving}>
                 <Check className="w-4 h-4" />
               </Button>
             )}
             {match.status !== 'rejected' && (
-              <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleAction('rejected')} disabled={saving}>
+              <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-900/20" onClick={() => handleAction('rejected')} disabled={saving}>
                 <X className="w-4 h-4" />
               </Button>
             )}
             {(match.status === 'approved' || match.status === 'rejected') && (
-              <Button size="sm" variant="ghost" className="text-gray-500 hover:bg-gray-50" onClick={() => handleAction('suggested')} disabled={saving}>
+              <Button size="sm" variant="ghost" className="text-slate-400 hover:bg-slate-800/40" onClick={() => handleAction('suggested')} disabled={saving}>
                 <RotateCcw className="w-4 h-4" />
               </Button>
             )}
@@ -86,8 +86,8 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
 
             {match.match_reasons?.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Match Reasons</p>
-                <ul className="text-sm text-gray-700 space-y-1">
+                <p className="text-xs font-medium text-slate-400 mb-1">Match Reasons</p>
+                <ul className="text-sm text-slate-300 space-y-1">
                   {match.match_reasons.map((r, i) => (
                     <li key={i} className="flex items-start gap-1.5">
                       <span className="text-blue-400 mt-0.5">•</span> {r}
@@ -98,7 +98,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
             )}
 
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-1">Override Notes</p>
+              <p className="text-xs font-medium text-slate-400 mb-1">Override Notes</p>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}

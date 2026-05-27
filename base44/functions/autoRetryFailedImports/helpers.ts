@@ -7,27 +7,33 @@
 // ImportBatch rows, classifies the failure, and re-dispatches the import via
 // triggerImport when the error looks transient.
 //
-// Note: the keyword list here mirrors the `retryable: true` categories in
-// src/components/imports/errorCategories.jsx (network_api, timeout_stall).
-// The two lists must stay in sync; tests assert the overlap.
-
+// Note: the keyword list here is derived from the `retryable: true` categories in
+// src/components/imports/errorCategories.jsx (network_api, timeout_stall), but is
+// intentionally stricter to avoid auto-retrying ambiguous failures. Tests assert
+// representative overlap between the worker and frontend classifications.
 export const MAX_AUTO_RETRY_ATTEMPTS = 3;
 export const RETRY_BACKOFF_CAP_HOURS = 24;
-export const RETRY_BACKOFF_BASE_MS = 60 * 60 * 1000;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
 // Patterns that mark a failure as transient. Matches the keyword sets on the
 // retryable: true categories in errorCategories.jsx (timeout_stall, network_api).
 export const RETRYABLE_KEYWORDS = [
     'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
-    'http 5', '500', '503', '429', 'rate limit', 'rate-limit', 'rate_limit',
+    'rate limit', 'rate-limit', 'rate_limit',
     'fetch', 'network', 'connection', 'econnrefused', 'socket',
 ];
+
+// Match retryable HTTP status codes only when they appear in an HTTP/status
+// context, so unrelated numeric references like "row 500" do not trigger
+// auto-retries.
+export const RETRYABLE_STATUS_CODE_PATTERN =
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?|statuscode)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
     const lower = String(msg).toLowerCase();
-    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw));
+    return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw))
+        || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
 }
 
 function normalizeErrorText(value: unknown): string {
@@ -36,7 +42,14 @@ function normalizeErrorText(value: unknown): string {
 
 // Pull the most actionable error string out of a batch. Prefer cancel_reason
 // (set by the import functions when they pause/fail with context), then fall
+<<<<<<< HEAD
 // back to the most recent error_samples entry's `detail` or `message`.
+=======
+// back to the most recent error_samples entry. Different importers persist the
+// error string under different keys (`detail` in Medicare imports,
+// `message` in autoImportCMSData) — accept either so the worker doesn't miss
+// transient failures whose error lives in the "wrong" field.
+>>>>>>> origin/main
 export function extractErrorMessage(batch: Record<string, unknown>): string {
     const cancelReason = normalizeErrorText(batch.cancel_reason);
     if (cancelReason) {
@@ -46,11 +59,16 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
     if (Array.isArray(samples) && samples.length > 0) {
         const last = samples[samples.length - 1] as Record<string, unknown> | undefined;
         if (last) {
+<<<<<<< HEAD
             const detail = normalizeErrorText(last.detail);
             if (detail) return detail;
 
             const message = normalizeErrorText(last.message);
             if (message) return message;
+=======
+            if (typeof last.detail === 'string' && last.detail.length > 0) return last.detail;
+            if (typeof last.message === 'string' && last.message.length > 0) return last.message;
+>>>>>>> origin/main
         }
     }
     return '';
@@ -58,8 +76,15 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
 
 export function getRetryAttemptCount(batch: Record<string, unknown>): number {
     const params = batch.retry_params as Record<string, unknown> | undefined;
-    const count = params?.auto_retry_count;
-    return typeof count === 'number' && count >= 0 ? count : 0;
+    const autoRetryCount = params?.auto_retry_count;
+    const topLevelRetryCount = batch.retry_count;
+    const parsedAutoRetryCount = typeof autoRetryCount === 'number' && autoRetryCount >= 0
+        ? autoRetryCount
+        : 0;
+    const parsedTopLevelRetryCount = typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0
+        ? topLevelRetryCount
+        : 0;
+    return Math.max(parsedAutoRetryCount, parsedTopLevelRetryCount);
 }
 
 // Exponential backoff that mirrors runScheduledImports/helpers.backoffHours:

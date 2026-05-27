@@ -138,7 +138,7 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
           <div className="flex gap-3 mb-4 flex-wrap">
             {insights.map((ins, i) => (
               <div key={i} className={`flex items-center gap-1.5 text-xs rounded-lg px-3 py-2 ${
-                ins.type === 'anomaly' ? 'bg-red-50 text-red-700' : ins.type === 'forecast' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
+                ins.type === 'anomaly' ? 'bg-red-900/20 text-red-400' : ins.type === 'forecast' ? 'bg-amber-900/20 text-amber-400' : 'bg-blue-900/20 text-blue-400'
               }`}>
                 {ins.type === 'trend' && <TrendingUp className="w-3.5 h-3.5" />}
                 {ins.type === 'forecast' && <ArrowUpRight className="w-3.5 h-3.5" />}

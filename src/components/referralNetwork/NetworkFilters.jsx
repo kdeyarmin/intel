@@ -26,7 +26,7 @@ export default function NetworkFilters({
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-            <Input placeholder="Search NPI or name..." value={search} onChange={(e) => onSearchChange(e.target.value)} className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+            <Input placeholder="Search NPI or name..." value={search} onChange={(e) => onSearchChange(e.target.value)} className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
           </div>
           <Select value={entityType} onValueChange={onEntityTypeChange}>
             <SelectTrigger className="w-32 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue placeholder="Type" /></SelectTrigger>
@@ -50,7 +50,7 @@ export default function NetworkFilters({
               {specialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="number" placeholder="Min volume" value={minVolume || ''} onChange={(e) => onMinVolumeChange(Number(e.target.value) || 0)} className="w-28 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600" />
+          <Input type="number" placeholder="Min volume" value={minVolume || ''} onChange={(e) => onMinVolumeChange(Number(e.target.value) || 0)} className="w-28 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
           {hasFilters && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-slate-500 hover:text-slate-300" onClick={onReset}>
               <RotateCcw className="w-3 h-3" /> Reset

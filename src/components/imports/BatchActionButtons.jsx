@@ -21,33 +21,48 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handlePause = async () => {
     setIsActing(true);
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'paused',
-      paused_at: new Date().toISOString(),
-    });
-    setIsActing(false);
-    onAction?.();
+    try {
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'paused',
+        paused_at: new Date().toISOString(),
+      });
+      onAction?.();
+    } catch (err) {
+      console.error('Pause failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
+
+  const isFlatFile = batch.import_type === 'nppes_flat_file' || batch.import_type === 'nppes_registry_file';
 
   const handleResume = async () => {
     setIsActing(true);
     try {
-      const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
-      
-      // Update status first
       await base44.entities.ImportBatch.update(batch.id, {
         status: 'processing',
         paused_at: null,
       });
 
-      // Trigger resumption
-      await base44.functions.invoke('triggerImport', {
-        import_type: batch.import_type,
-        file_url: batch.file_url,
-        batch_id: batch.id,
-        resume_offset: offset,
-        year: batch.data_year // Ensure year is passed if available
-      });
+      if (isFlatFile) {
+        const rp = batch.retry_params || {};
+        await base44.functions.invoke('importNPPESFlatFile', {
+          batch_id: batch.id,
+          file_url: rp.file_url || batch.file_url || batch.file_name,
+          byte_offset: rp.byte_offset || 0,
+          headers: rp.headers || null,
+          total_rows: rp.total_rows || batch.imported_rows || 0,
+        });
+      } else {
+        const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
+        await base44.functions.invoke('triggerImport', {
+          import_type: batch.import_type,
+          file_url: batch.file_url,
+          batch_id: batch.id,
+          resume_offset: offset,
+          year: batch.data_year,
+        });
+      }
       
       onAction?.();
     } catch (error) {
@@ -59,33 +74,43 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handleCancel = async () => {
     setIsActing(true);
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      cancel_reason: cancelReason || 'Manually cancelled by user',
-    });
-    setIsActing(false);
-    setCancelDialogOpen(false);
-    setCancelReason('');
-    onAction?.();
+    try {
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: cancelReason || 'Manually cancelled by user',
+      });
+      setCancelDialogOpen(false);
+      setCancelReason('');
+      onAction?.();
+    } catch (err) {
+      console.error('Cancel failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   const handleSkip = async () => {
     setIsActing(true);
-    const existingTags = batch.tags || [];
-    await base44.entities.ImportBatch.update(batch.id, {
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      tags: [...new Set([...existingTags, 'skipped'])],
-      error_samples: [
-        ...(batch.error_samples || []),
-        { message: `Marked as skipped: ${skipReason || 'Minor issues bypassed by user'}` },
-      ],
-    });
-    setIsActing(false);
-    setSkipDialogOpen(false);
-    setSkipReason('');
-    onAction?.();
+    try {
+      const existingTags = batch.tags || [];
+      await base44.entities.ImportBatch.update(batch.id, {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        tags: [...new Set([...existingTags, 'skipped'])],
+        error_samples: [
+          ...(batch.error_samples || []),
+          { message: `Marked as skipped: ${skipReason || 'Minor issues bypassed by user'}` },
+        ],
+      });
+      setSkipDialogOpen(false);
+      setSkipReason('');
+      onAction?.();
+    } catch (err) {
+      console.error('Skip failed:', err);
+    } finally {
+      setIsActing(false);
+    }
   };
 
   if (isActing) {
@@ -99,7 +124,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400" onClick={handlePause}>
             <Pause className="w-3 h-3" /> Pause
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
@@ -107,17 +132,17 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
       {isPaused && (
         <>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={handleResume}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/10" onClick={handleResume}>
             <RefreshCw className="w-3 h-3" /> Resume
           </Button>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={() => setCancelDialogOpen(true)}>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-red-400 border-red-500/30 hover:bg-red-900/10" onClick={() => setCancelDialogOpen(true)}>
             <StopCircle className="w-3 h-3" /> Cancel
           </Button>
         </>
       )}
 
       {canRetry && (
-        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-500/10" onClick={onRetryClick}>
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/10" onClick={onRetryClick}>
           <RefreshCw className="w-3 h-3" /> Retry{batch.retry_count > 0 ? ` (${batch.retry_count}/${MAX_RETRIES})` : ''}
         </Button>
       )}
@@ -144,7 +169,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
             placeholder="Reason for cancellation (optional)"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
-            className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
           />
           <DialogFooter>
             <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
@@ -165,7 +190,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           <p className="text-sm text-slate-400">
             This will mark the batch as completed with a "skipped" tag. Use this for batches with minor issues that don't need to be retried.
           </p>
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 space-y-1">
+          <div className="bg-amber-900/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-400 space-y-1">
             <p className="font-medium">Batch Summary:</p>
             <p>Total: {batch.total_rows?.toLocaleString() || 0} · Valid: {batch.valid_rows?.toLocaleString() || 0} · Imported: {batch.imported_rows?.toLocaleString() || 0}</p>
             {batch.invalid_rows > 0 && <p className="text-red-400">{batch.invalid_rows} invalid rows will be ignored</p>}
@@ -174,7 +199,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
             placeholder="Reason for skipping (optional)"
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
-            className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-600"
+            className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
           />
           <DialogFooter>
             <Button variant="outline" className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setSkipDialogOpen(false)}>Cancel</Button>

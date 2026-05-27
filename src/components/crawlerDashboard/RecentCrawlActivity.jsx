@@ -26,7 +26,7 @@ function getStateFromFileName(fileName) {
   return match ? match[1].toUpperCase() : fileName.slice(0, 20);
 }
 
-export default function RecentCrawlActivity({ nppesImports, auditEvents, loading }) {
+export default function RecentCrawlActivity({ nppesImports, auditEvents: _auditEvents, loading }) {
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-72 w-full" /></CardContent></Card>;
 
   const recentBatches = (nppesImports || []).slice(0, 15);
@@ -60,9 +60,9 @@ export default function RecentCrawlActivity({ nppesImports, auditEvents, loading
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-slate-200">{state}</span>
                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
-                        batch.status === 'completed' ? 'border-emerald-200 text-emerald-700' :
-                        batch.status === 'failed' ? 'border-red-200 text-red-700' :
-                        'border-blue-200 text-blue-700'
+                        batch.status === 'completed' ? 'border-emerald-500/30 text-emerald-400' :
+                        batch.status === 'failed' ? 'border-red-500/30 text-red-400' :
+                        'border-blue-500/30 text-blue-400'
                       }`}>
                         {isProcessing ? 'processing' : batch.status}
                       </Badge>

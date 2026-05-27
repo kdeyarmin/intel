@@ -49,52 +49,61 @@ export default function BatchProviderUpdater() {
     setApplying(true);
     let success = 0, failed = 0;
 
-    const toApply = approved.filter(r => selected.has(r.id));
+    try {
+      const toApply = approved.filter(r => selected.has(r.id));
 
-    for (const r of toApply) {
-      const d = r.enrichment_details;
-      if (!d) continue;
+      for (const r of toApply) {
+        try {
+          const d = r.enrichment_details;
+          if (!d) continue;
 
-      const provs = await base44.entities.Provider.filter({ npi: r.npi });
-      if (provs.length === 0) { failed++; continue; }
+          const provs = await base44.entities.Provider.filter({ npi: r.npi });
+          if (provs.length === 0) { failed++; continue; }
 
-      const prov = provs[0];
-      const update = {};
+          const prov = provs[0];
+          const update = {};
 
-      if (d.group_practices?.length > 0 && !prov.organization_name) {
-        update.organization_name = d.group_practices[0];
-      }
-
-      // Create affiliations
-      if (d.hospital_affiliations?.length > 0) {
-        for (const aff of d.hospital_affiliations) {
-          const existing = await base44.entities.ProviderAffiliation.filter({ npi: r.npi });
-          const alreadyExists = existing.some(e => e.affiliation_name.toLowerCase() === aff.toLowerCase());
-          if (!alreadyExists) {
-            await base44.entities.ProviderAffiliation.create({
-              npi: r.npi, affiliation_name: aff, affiliation_type: 'hospital',
-              source: 'enrichment', status: 'confirmed', is_active: true,
-              confidence: r.confidence,
-            });
+          if (d.group_practices?.length > 0 && !prov.organization_name) {
+            update.organization_name = d.group_practices[0];
           }
+
+          if (d.hospital_affiliations?.length > 0) {
+            const existing = await base44.entities.ProviderAffiliation.filter({ npi: r.npi }, '-created_date', 200);
+            for (const aff of d.hospital_affiliations) {
+              const alreadyExists = existing.some(e => e.affiliation_name.toLowerCase() === aff.toLowerCase());
+              if (!alreadyExists) {
+                await base44.entities.ProviderAffiliation.create({
+                  npi: r.npi, affiliation_name: aff, affiliation_type: 'hospital',
+                  source: 'enrichment', status: 'confirmed', is_active: true,
+                  confidence: r.confidence,
+                });
+              }
+            }
+          }
+
+          if (Object.keys(update).length > 0) {
+            await base44.entities.Provider.update(prov.id, update);
+          }
+
+          await base44.entities.EnrichmentRecord.update(r.id, { status: 'auto_applied' });
+          success++;
+        } catch (err) {
+          console.error(`Failed to apply update for ${r.npi}:`, err);
+          failed++;
         }
       }
 
-      if (Object.keys(update).length > 0) {
-        await base44.entities.Provider.update(prov.id, update);
-      }
-
-      // Mark as auto_applied
-      await base44.entities.EnrichmentRecord.update(r.id, { status: 'auto_applied' });
-      success++;
+      setResults({ success, failed });
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ['approvedEnrichments'] });
+      queryClient.invalidateQueries({ queryKey: ['enrichmentRecords'] });
+      toast.success(`Applied ${success} updates to provider profiles`);
+    } catch (err) {
+      console.error('Apply updates failed:', err);
+      toast.error('Failed to apply updates: ' + (err.message || 'Unknown error'));
+    } finally {
+      setApplying(false);
     }
-
-    setResults({ success, failed });
-    setSelected(new Set());
-    setApplying(false);
-    queryClient.invalidateQueries({ queryKey: ['approvedEnrichments'] });
-    queryClient.invalidateQueries({ queryKey: ['enrichmentRecords'] });
-    toast.success(`Applied ${success} updates to provider profiles`);
   };
 
   const GROUP_CONFIG = [
@@ -116,7 +125,7 @@ export default function BatchProviderUpdater() {
           <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
             <Upload className="w-4 h-4 text-emerald-400" />
             Batch Apply to Profiles
-            <Badge className="bg-emerald-500/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
+            <Badge className="bg-emerald-900/15 text-emerald-400 text-[10px]">{approved.length} ready</Badge>
           </CardTitle>
           {selected.size > 0 && (
             <Button size="sm" onClick={applyUpdates} disabled={applying}
@@ -151,21 +160,21 @@ export default function BatchProviderUpdater() {
                       onCheckedChange={() => setSelected(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}
                       className="border-slate-600" />
                     <span className="text-[10px] text-slate-400 truncate">{r.provider_name || r.npi}</span>
-                    <span className="text-[9px] text-slate-600 truncate flex-1">
+                    <span className="text-[9px] text-slate-400 truncate flex-1">
                       {gc.key === 'organization' && r.enrichment_details?.group_practices?.[0]}
                       {gc.key === 'affiliations' && r.enrichment_details?.hospital_affiliations?.slice(0, 2).join(', ')}
                       {gc.key === 'telehealth' && (r.enrichment_details?.telehealth_available ? '✓ Available' : '✗ N/A')}
                     </span>
                   </div>
                 ))}
-                {items.length > 10 && <p className="text-[9px] text-slate-600">+{items.length - 10} more</p>}
+                {items.length > 10 && <p className="text-[9px] text-slate-400">+{items.length - 10} more</p>}
               </div>
             </div>
           );
         })}
 
         {results && (
-          <div className="bg-emerald-500/10 rounded-lg p-2 text-center">
+          <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
             <p className="text-xs text-emerald-400">{results.success} profiles updated</p>
             {results.failed > 0 && <p className="text-[10px] text-red-400">{results.failed} failed</p>}

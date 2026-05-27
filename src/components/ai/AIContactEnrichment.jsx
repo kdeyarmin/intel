@@ -72,7 +72,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const confColor = { high: 'bg-green-100 text-green-700', medium: 'bg-amber-100 text-amber-700', low: 'bg-red-100 text-red-700' };
+  const confColor = { high: 'bg-green-900/30 text-green-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-red-900/30 text-red-400' };
 
   const ContactRow = ({ icon: Icon, label, items = [] }) => {
     if (!items.length) return null;
@@ -83,9 +83,9 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
         </p>
         {items.map((item, i) => (
           <div key={i} className="flex items-center gap-2 bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-700/50">
-            <span className="text-xs font-medium text-slate-700 flex-1 truncate">{item.value}</span>
+            <span className="text-xs font-medium text-slate-300 flex-1 truncate">{item.value}</span>
             <Badge className={`text-[9px] ${confColor[item.confidence] || confColor.low}`}>{item.confidence}</Badge>
-            <button onClick={() => copyValue(item.value, `${label}-${i}`)} className="text-slate-400 hover:text-slate-600">
+            <button onClick={() => copyValue(item.value, `${label}-${i}`)} className="text-slate-400 hover:text-slate-400">
               {copiedField === `${label}-${i}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
             </button>
           </div>
@@ -142,16 +142,16 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
                 <div className="flex flex-wrap gap-1.5">
                   {results.social_profiles.map((p, i) => (
                     <a key={i} href={p.url} target="_blank" rel="noopener noreferrer">
-                      <Badge variant="outline" className="text-[10px] hover:bg-blue-50 cursor-pointer">{p.platform}</Badge>
+                      <Badge variant="outline" className="text-[10px] hover:bg-blue-900/20 cursor-pointer">{p.platform}</Badge>
                     </a>
                   ))}
                 </div>
               </div>
             )}
             {results.summary && <p className="text-[10px] text-slate-500 italic">{results.summary}</p>}
-            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[10px] text-amber-700">AI-generated suggestions. Verify before outreach.</p>
+              <p className="text-[10px] text-amber-400">AI-generated suggestions. Verify before outreach.</p>
             </div>
           </div>
         )}

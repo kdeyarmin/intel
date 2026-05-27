@@ -30,11 +30,6 @@ const KNOWN_ALIASES = {
   'DME': ['dme', 'dme_referrals', 'durable medical equipment'],
   'Total Referrals': ['total referrals', 'total_referrals', 'tot_referrals'],
   'SNF': ['snf', 'snf_referrals', 'skilled nursing facility'],
-  // CMS Part D
-  'Total 30-Day Fill Count': ['total 30-day fill count', 'tot_30day_fill_cnt', 'total_30day_fills', 'fill count'],
-  'Total Day Supply': ['total day supply', 'tot_day_suply', 'total_day_supply', 'day supply'],
-  'Brand Drug Cost': ['brand drug cost', 'brnd_drug_tot_cost', 'brand_cost', 'brand cost'],
-  'Generic Drug Cost': ['generic drug cost', 'gnrc_drug_tot_cost', 'generic_cost', 'generic cost'],
   'Specialty Description': ['specialty description', 'specialty_description', 'specialty', 'provider type', 'rndrng_prvdr_type'],
   // Provider service utilization
   'HCPCS_Cd': ['hcpcs_cd', 'hcpcs code', 'hcpcs', 'procedure code', 'cpt code'],
@@ -79,7 +74,6 @@ const OPTIONAL_COLUMNS = {
     'Healthcare Provider Taxonomy Code_1',
   ],
   cms_utilization: ['Total Submitted Charges', 'Total Medicare Allowed Amount', 'Drug Services', 'Provider Type', 'Provider State'],
-  cms_part_d: ['Provider Last Name', 'Provider First Name', 'Provider State', 'Specialty Description', 'Total 30-Day Fill Count', 'Total Day Supply', 'Brand Drug Cost', 'Generic Drug Cost'],
   cms_order_referring: ['LAST_NAME', 'FIRST_NAME', 'Year', 'SNF', 'PMD', 'Total Referrals'],
   pa_home_health: ['Address', 'Zip', 'Phone', 'County'],
   hospice_providers: ['Address', 'Zip', 'Phone', 'County'],

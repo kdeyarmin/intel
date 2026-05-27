@@ -7,33 +7,33 @@ import { Sparkles, Loader2, Check, X, AlertTriangle, ChevronDown, ChevronRight }
 import { toast } from 'sonner';
 
 function GapBadge({ count }) {
-  if (count === 0) return <Badge className="bg-green-100 text-green-700 text-[9px]">Complete</Badge>;
-  return <Badge className="bg-amber-100 text-amber-700 text-[9px]">{count} missing</Badge>;
+  if (count === 0) return <Badge className="bg-green-900/30 text-green-400 text-[9px]">Complete</Badge>;
+  return <Badge className="bg-amber-900/30 text-amber-400 text-[9px]">{count} missing</Badge>;
 }
 
 function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
   const confColor = {
-    high: 'bg-green-100 text-green-700',
-    medium: 'bg-amber-100 text-amber-700',
-    low: 'bg-red-100 text-red-700',
+    high: 'bg-green-900/30 text-green-400',
+    medium: 'bg-amber-900/30 text-amber-400',
+    low: 'bg-red-900/30 text-red-400',
   };
 
   return (
     <div className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 hover:border-slate-700/50 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold text-slate-700">{suggestion.field_label}</span>
+          <span className="text-xs font-semibold text-slate-300">{suggestion.field_label}</span>
           <Badge className={`text-[9px] ${confColor[suggestion.confidence] || confColor.low}`}>
             {suggestion.confidence}
           </Badge>
           {suggestion.is_correction && (
-            <Badge className="bg-blue-100 text-blue-700 text-[9px]">Correction</Badge>
+            <Badge className="bg-blue-900/30 text-blue-400 text-[9px]">Correction</Badge>
           )}
         </div>
         {suggestion.current_value && (
           <p className="text-[10px] text-slate-400 line-through">{suggestion.current_value}</p>
         )}
-        <p className="text-sm text-slate-800 font-medium">{suggestion.suggested_value}</p>
+        <p className="text-sm text-slate-300 font-medium">{suggestion.suggested_value}</p>
         {suggestion.reason && (
           <p className="text-[10px] text-slate-400 mt-0.5">{suggestion.reason}</p>
         )}
@@ -42,7 +42,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 text-green-600 hover:bg-green-50"
+          className="h-7 w-7 text-green-600 hover:bg-green-900/20"
           onClick={() => onAccept(suggestion)}
           disabled={accepting}
         >
@@ -51,7 +51,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 text-slate-400 hover:bg-red-50 hover:text-red-500"
+          className="h-7 w-7 text-slate-400 hover:bg-red-900/20 hover:text-red-500"
           onClick={() => onReject(suggestion)}
         >
           <X className="w-3.5 h-3.5" />
@@ -274,11 +274,11 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         {/* Data gaps summary */}
         <button
           onClick={() => setShowGaps(!showGaps)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/60 rounded-lg hover:bg-slate-700 transition-colors"
         >
           <div className="flex items-center gap-2">
             {showGaps ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-            <span className="text-xs font-medium text-slate-600">Data Gaps</span>
+            <span className="text-xs font-medium text-slate-400">Data Gaps</span>
           </div>
           <GapBadge count={gaps.length} />
         </button>
@@ -316,13 +316,13 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             {/* Completeness score */}
             {suggestions.completeness != null && (
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-500 transition-all"
                     style={{ width: `${suggestions.completeness}%` }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-slate-700">{suggestions.completeness}%</span>
+                <span className="text-xs font-semibold text-slate-300">{suggestions.completeness}%</span>
               </div>
             )}
 
@@ -341,7 +341,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-7 text-xs text-violet-700 border-violet-200 hover:bg-violet-50"
+                className="w-full h-7 text-xs text-violet-700 border-violet-500/30 hover:bg-violet-900/20"
                 onClick={handleAcceptAll}
               >
                 <Check className="w-3 h-3 mr-1" /> Accept All High-Confidence ({visibleSuggestions.filter(s => s.confidence === 'high').length})
@@ -390,9 +390,9 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
               <p className="text-xs text-slate-400 text-center py-3">All suggestions have been reviewed.</p>
             )}
 
-            <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+            <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[10px] text-amber-700">AI-sourced data. Review before accepting.</p>
+              <p className="text-[10px] text-amber-400">AI-sourced data. Review before accepting.</p>
             </div>
           </div>
         )}

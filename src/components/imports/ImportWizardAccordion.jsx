@@ -43,7 +43,7 @@ const STEP_ERROR = 'error';
 function StepHeader({ number, title, subtitle, status, expanded, onClick, badge }) {
   const icons = {
     [STEP_PENDING]: <Circle className="w-5 h-5 text-slate-500" />,
-    [STEP_ACTIVE]: <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">{number}</div>,
+    [STEP_ACTIVE]: <div className="w-5 h-5 rounded-full bg-cyan-900/20 flex items-center justify-center text-[10px] font-bold text-white">{number}</div>,
     [STEP_DONE]: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
     [STEP_ERROR]: <XCircle className="w-5 h-5 text-red-400" />,
   };

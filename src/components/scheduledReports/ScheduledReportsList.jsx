@@ -15,16 +15,15 @@ const DATASET_LABELS = {
   ma_inpatient: 'MA Inpatient',
   hha_stats: 'HHA Stats',
   inpatient_drg: 'Inpatient DRG',
-  part_d_stats: 'Part D',
   snf_stats: 'SNF Stats',
   providers: 'Providers',
   locations: 'Locations',
 };
 
 const FREQ_COLORS = {
-  daily: 'bg-blue-100 text-blue-700',
-  weekly: 'bg-purple-100 text-purple-700',
-  monthly: 'bg-amber-100 text-amber-700',
+  daily: 'bg-blue-900/30 text-blue-400',
+  weekly: 'bg-purple-900/30 text-purple-400',
+  monthly: 'bg-amber-900/30 text-amber-400',
 };
 
 export default function ScheduledReportsList({
@@ -66,8 +65,8 @@ export default function ScheduledReportsList({
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-semibold text-slate-800 truncate">{report.name}</h3>
-                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-100 text-slate-600'}`}>
+                  <h3 className="text-sm font-semibold text-slate-300 truncate">{report.name}</h3>
+                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-700 text-slate-400'}`}>
                     {report.frequency}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">

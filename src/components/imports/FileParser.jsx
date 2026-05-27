@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -21,6 +21,8 @@ export default function FileParser({ onParsed, selectedType }) {
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
 
   const handleFileSelect = async (e) => {
     const selectedFile = e.target.files[0];
@@ -87,6 +89,7 @@ export default function FileParser({ onParsed, selectedType }) {
         setProgress(100);
 
         setTimeout(() => {
+          if (!mountedRef.current) return;
           onParsed({ headers, file: selectedFile, file_url, parseMode: 'excel', rowCount: rows.length });
           setUploading(false);
           setProgress(0);
@@ -110,6 +113,7 @@ export default function FileParser({ onParsed, selectedType }) {
         setProgress(100);
 
         setTimeout(() => {
+          if (!mountedRef.current) return;
           onParsed({ headers, file: selectedFile, file_url, parseMode: 'json', rowCount: rows.length });
           setUploading(false);
           setProgress(0);
@@ -133,12 +137,14 @@ export default function FileParser({ onParsed, selectedType }) {
 
         if (isLargeFile) {
           setTimeout(() => {
+            if (!mountedRef.current) return;
             onParsed({ headers, file: selectedFile, file_url: null, parseMode: 'csv_large', delimiter });
             setUploading(false);
             setProgress(0);
           }, 300);
         } else {
           setTimeout(() => {
+            if (!mountedRef.current) return;
             onParsed({ headers, file: selectedFile, file_url, parseMode: 'csv', delimiter });
             setUploading(false);
             setProgress(0);
@@ -174,7 +180,7 @@ export default function FileParser({ onParsed, selectedType }) {
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-3">
             <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-slate-400">
               Parsing {fileName}...
             </span>
           </div>
@@ -183,8 +189,8 @@ export default function FileParser({ onParsed, selectedType }) {
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
     </div>

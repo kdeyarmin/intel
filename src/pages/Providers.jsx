@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,14 +58,52 @@ export default function Providers() {
 
   const queryClient = useQueryClient();
 
+  // Debounce the search term so we don't fire a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // When searching, query the full providers table server-side (the previous
+  // behavior only ever loaded the newest 100 rows and filtered client-side, so
+  // search silently missed almost everything). With no search term we still show
+  // the most recent providers as the default directory view.
   const { data: providers = [], isLoading } = useQuery({
-    queryKey: ['providersPage'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 100),
+    queryKey: ['providersPage', debouncedSearch],
+    queryFn: async () => {
+      if (debouncedSearch.length >= 2) {
+        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: 300 });
+        return res.data?.providers || [];
+      }
+      return base44.entities.Provider.list('-created_date', 100);
+    },
+    placeholderData: keepPreviousData,
   });
 
+  // Stable key of the currently displayed NPIs so the scoped score fetch
+  // refetches when the provider list changes.
+  const npiKey = useMemo(
+    () => providers.map(p => p.npi).filter(Boolean).sort().join(','),
+    [providers],
+  );
+
+  // Fetch lead scores ONLY for the displayed providers (was: newest 5000 scores,
+  // which both over-fetched and usually didn't even include the shown providers,
+  // so their score showed blank).
   const { data: scores = [] } = useQuery({
-    queryKey: ['providersPageScores'],
-    queryFn: () => base44.entities.LeadScore.list(),
+    queryKey: ['providersPageScores', npiKey],
+    enabled: providers.length > 0,
+    staleTime: 60000,
+    queryFn: () => {
+      const npis = providers.map(p => p.npi).filter(Boolean);
+      if (npis.length === 0) return [];
+      return base44.entities.LeadScore.filter(
+        { npi: { $in: npis } },
+        '-created_date',
+        Math.max(npis.length * 2, 500),
+      );
+    },
   });
 
   const { data: locations = [] } = useQuery({
@@ -141,10 +179,17 @@ export default function Providers() {
 
   const currentFilters = { searchTerm, ...filters };
 
-  const getScore = (npi) => {
-    const match = scores.find(s => s.npi === npi);
-    return match?.score ?? null;
-  };
+  // O(1) score lookup. scores are sorted -created_date, so the first row seen per
+  // NPI is the most recent — keep that one (matches the previous find() semantics).
+  const scoreByNpi = useMemo(() => {
+    const m = new Map();
+    for (const s of scores) {
+      if (s.npi && !m.has(s.npi)) m.set(s.npi, s.score);
+    }
+    return m;
+  }, [scores]);
+
+  const getScore = (npi) => scoreByNpi.get(npi) ?? null;
 
   // Build options from data
   const credentialOptions = useMemo(() => {
@@ -267,11 +312,17 @@ export default function Providers() {
     const basic = providers.filter(p => {
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
+        const locs = locationByNpi[p.npi] || [];
+        const locMatch = locs.some(l =>
+          (l.city || '').toLowerCase().includes(q) ||
+          (l.state || '').toLowerCase().includes(q)
+        );
         const match = (p.npi || '').includes(q) ||
           (p.last_name || '').toLowerCase().includes(q) ||
           (p.first_name || '').toLowerCase().includes(q) ||
           (p.organization_name || '').toLowerCase().includes(q) ||
-          (p.credential || '').toLowerCase().includes(q);
+          (p.credential || '').toLowerCase().includes(q) ||
+          locMatch;
         if (!match) return false;
       }
       if (filters.entityTypeFilter !== 'all' && p.entity_type !== filters.entityTypeFilter) return false;
@@ -315,8 +366,8 @@ export default function Providers() {
       let va, vb;
       switch (sortField) {
         case 'name':
-          va = a.entity_type === 'Individual' ? `${a.last_name} ${a.first_name}` : a.organization_name || '';
-          vb = b.entity_type === 'Individual' ? `${b.last_name} ${b.first_name}` : b.organization_name || '';
+          va = a.entity_type === 'Individual' ? `${a.last_name || ''} ${a.first_name || ''}`.trim() : a.organization_name || '';
+          vb = b.entity_type === 'Individual' ? `${b.last_name || ''} ${b.first_name || ''}`.trim() : b.organization_name || '';
           return dir * va.localeCompare(vb);
         case 'npi':
           return dir * (a.npi || '').localeCompare(b.npi || '');
@@ -394,7 +445,7 @@ export default function Providers() {
     const newList = await base44.entities.LeadList.create({
       name: listName,
       filters: { search: searchTerm },
-      provider_count: filteredProviders.length,
+      member_count: filteredProviders.length,
     });
 
     const memberBatch = filteredProviders.slice(0, 50).map(provider => ({
@@ -673,7 +724,7 @@ export default function Providers() {
             <span className="text-sm font-normal text-slate-500">
               {sortedProviders.length} results
               {selectedNpis.size > 0 && (
-                <Badge className="ml-2 bg-violet-500/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
+                <Badge className="ml-2 bg-violet-900/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
               )}
             </span>
           </CardTitle>
@@ -727,7 +778,7 @@ export default function Providers() {
                     const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[provider.npi] || [])[0];
                     const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
                     return (
-                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-500/5' : ''}>
+                      <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                         <TableCell>
                           <input type="checkbox"
                             checked={selectedNpis.has(provider.npi)}
@@ -767,9 +818,9 @@ export default function Providers() {
                                <span className="text-xs text-slate-400 truncate max-w-[120px]">{provider.email}</span>
                                {provider.email_confidence && (
                                  <Badge className={`text-[10px] border ${
-                                   provider.email_confidence === 'high' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' :
-                                   provider.email_confidence === 'medium' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' :
-                                   'bg-red-500/15 text-red-400 border-red-500/20'
+                                   provider.email_confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20' :
+                                   provider.email_confidence === 'medium' ? 'bg-amber-900/15 text-amber-400 border-amber-500/20' :
+                                   'bg-red-900/15 text-red-400 border-red-500/20'
                                  }`}>{provider.email_confidence}</Badge>
                                )}
                              </div>
@@ -779,7 +830,7 @@ export default function Providers() {
                         </TableCell>
                         <TableCell>
                            {score !== null ? (
-                           <Badge className="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                           <Badge className="bg-cyan-900/15 text-cyan-400 border border-cyan-500/20">
                               {score.toFixed(0)}
                             </Badge>
                           ) : (

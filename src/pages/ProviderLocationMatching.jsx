@@ -99,17 +99,17 @@ export default function ProviderLocationMatching() {
   }), [matches]);
 
   const statCards = [
-    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-400', bg: 'bg-blue-500/15' },
-    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
-    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/15' },
-    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/15' },
+    { label: 'Total Matches', value: stats.total, icon: Sparkles, color: 'text-blue-400', bg: 'bg-blue-900/15' },
+    { label: 'Pending Review', value: stats.suggested, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-900/15' },
+    { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/15' },
+    { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'text-red-400', bg: 'bg-red-900/15' },
   ];
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">Provider-Location Matching</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Provider-Location Matching</h1>
           <p className="text-slate-400 mt-1">AI-powered matching with feedback learning &amp; bulk controls</p>
         </div>
         <Button
@@ -155,12 +155,12 @@ export default function ProviderLocationMatching() {
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-sm text-slate-400">Average Confidence Score</span>
-              <span className={`text-2xl font-bold ${stats.avgConfidence >= 75 ? 'text-green-600' : stats.avgConfidence >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+              <span className={`text-2xl font-bold ${stats.avgConfidence >= 75 ? 'text-green-400' : stats.avgConfidence >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
                 {stats.avgConfidence}%
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-blue-500/20 text-blue-400">{stats.override} overrides</Badge>
+              <Badge className="bg-blue-900/20 text-blue-400">{stats.override} overrides</Badge>
             </div>
           </CardContent>
         </Card>

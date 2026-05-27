@@ -45,7 +45,7 @@ function RowInspector({ error, onClose }) {
           </div>
         ))}
       </div>
-      <div className="bg-red-500/5 border border-red-500/15 rounded px-2.5 py-2">
+      <div className="bg-red-900/5 border border-red-500/15 rounded px-2.5 py-2">
         <span className="text-[9px] text-slate-500 block mb-0.5">Error Message</span>
         <p className="text-[11px] text-red-300 break-words">{msg}</p>
       </div>
@@ -139,7 +139,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
               </div>
             ))}
             {patterns.length > 5 && (
-              <p className="text-[10px] text-slate-600">+{patterns.length - 5} more patterns</p>
+              <p className="text-[10px] text-slate-400">+{patterns.length - 5} more patterns</p>
             )}
           </div>
 
@@ -151,12 +151,12 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
               </span>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <Search className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
                     value={rowSearch}
                     onChange={(e) => setRowSearch(e.target.value)}
                     placeholder="Search rows..."
-                    className="h-6 w-32 pl-5 text-[10px] bg-slate-900/40 border-slate-700/50 text-slate-300 placeholder:text-slate-600"
+                    className="h-6 w-32 pl-5 text-[10px] bg-slate-900/40 border-slate-700/50 text-slate-300 placeholder:text-slate-400"
                   />
                 </div>
                 <Button
@@ -184,7 +184,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                     <div key={idx}>
                       <div
                         className={`grid grid-cols-[60px_80px_1fr_40px] px-2.5 py-1.5 text-[11px] border-b border-slate-700/10 hover:bg-slate-700/15 transition-colors ${
-                          inspectedRow === idx ? 'bg-cyan-500/5' : ''
+                          inspectedRow === idx ? 'bg-cyan-900/5' : ''
                         }`}
                       >
                         <span className="text-slate-300 font-mono">
@@ -194,7 +194,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                           {err.phase ? (
                             <Badge className="text-[8px] bg-slate-700/50 text-slate-400 px-1 py-0">{err.phase}</Badge>
                           ) : (
-                            <span className="text-slate-600">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </span>
                         <span className="text-slate-400 truncate">{err.message || err.detail || 'No details'}</span>
@@ -231,7 +231,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
           </div>
 
           {/* Solutions */}
-          <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-2.5 space-y-1.5">
+          <div className="bg-emerald-900/5 border border-emerald-500/15 rounded-lg p-2.5 space-y-1.5">
             <div className="flex items-center gap-1.5">
               <Lightbulb className="w-3.5 h-3.5 text-yellow-400" />
               <span className="text-[10px] font-semibold text-emerald-400">How to Fix "{config.label}" Errors</span>

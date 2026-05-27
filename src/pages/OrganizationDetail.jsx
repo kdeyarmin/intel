@@ -39,7 +39,10 @@ export default function OrganizationDetail() {
 
   const { data: utilizations = [] } = useQuery({
     queryKey: ['orgUtil', npi],
-    queryFn: () => base44.entities.CMSUtilization.filter({ npi }),
+    queryFn: async () => {
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi });
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
+    },
     enabled: !!npi,
   });
 
@@ -125,7 +128,7 @@ export default function OrganizationDetail() {
   if (!provider) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-gray-500 text-lg mb-4">Organization not found</p>
+        <p className="text-slate-400 text-lg mb-4">Organization not found</p>
         <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" /> Go Back</Button>
       </div>
     );
@@ -143,7 +146,7 @@ export default function OrganizationDetail() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2.5 rounded-lg bg-indigo-500/15">
+                <div className="p-2.5 rounded-lg bg-indigo-900/15">
                   <Building2 className="w-6 h-6 text-indigo-400" />
                 </div>
                 <div>
@@ -153,25 +156,25 @@ export default function OrganizationDetail() {
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Badge variant="outline">Organization</Badge>
-                <Badge className={provider.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}>
+                <Badge className={provider.status === 'Active' ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}>
                   {provider.status}
                 </Badge>
-                {score && <Badge className="bg-amber-500/20 text-amber-400">Score: {score.score}/100</Badge>}
-                {provider.needs_nppes_enrichment && <Badge className="bg-orange-500/20 text-orange-400">Needs Enrichment</Badge>}
+                {score && <Badge className="bg-amber-900/20 text-amber-400">Score: {score.score}/100</Badge>}
+                {provider.needs_nppes_enrichment && <Badge className="bg-orange-900/20 text-orange-400">Needs Enrichment</Badge>}
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <div className="p-3 bg-blue-900/10 rounded-lg border border-blue-500/20">
                 <Users className="w-4 h-4 text-blue-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">{(latestUtil?.total_medicare_beneficiaries || 0).toLocaleString()}</p>
                 <p className="text-[10px] text-blue-400">Beneficiaries</p>
               </div>
-              <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+              <div className="p-3 bg-emerald-900/10 rounded-lg border border-emerald-500/20">
                 <DollarSign className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">${((latestUtil?.total_medicare_payment || 0) / 1000).toFixed(0)}K</p>
                 <p className="text-[10px] text-emerald-400">Medicare Pay</p>
               </div>
-              <div className="p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+              <div className="p-3 bg-violet-900/10 rounded-lg border border-violet-500/20">
                 <GitBranch className="w-4 h-4 text-violet-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">{(latestRef?.total_referrals || 0).toLocaleString()}</p>
                 <p className="text-[10px] text-violet-400">Referrals</p>
@@ -248,7 +251,7 @@ export default function OrganizationDetail() {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {taxonomies.map((t) => (
-                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-500/15 border-teal-500/30 text-teal-400' : ''}>
+                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-900/15 border-teal-500/30 text-teal-400' : ''}>
                   {t.taxonomy_description || t.taxonomy_code}
                   {t.primary_flag && ' (Primary)'}
                 </Badge>
@@ -287,7 +290,7 @@ export default function OrganizationDetail() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {l.address_1 || '-'}
-                          {l.is_primary && <Badge className="bg-blue-500/20 text-blue-400 text-[10px]">Primary</Badge>}
+                          {l.is_primary && <Badge className="bg-blue-900/20 text-blue-400 text-[10px]">Primary</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>{l.city || '-'}</TableCell>
@@ -324,7 +327,7 @@ export default function OrganizationDetail() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" />
+              <Users className="w-4 h-4 text-indigo-400" />
               Affiliated Providers
               <Badge variant="outline" className="ml-auto text-xs">{affiliatedProviders.length}</Badge>
             </CardTitle>
@@ -347,7 +350,7 @@ export default function OrganizationDetail() {
                       <TableCell className="font-mono text-xs">{p.npi}</TableCell>
                       <TableCell className="font-medium">{p.last_name}, {p.first_name}</TableCell>
                       <TableCell>{p.credential || '-'}</TableCell>
-                      <TableCell><Badge className={p.status === 'Active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'} >{p.status}</Badge></TableCell>
+                      <TableCell><Badge className={p.status === 'Active' ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'} >{p.status}</Badge></TableCell>
                       <TableCell>
                         <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>
                           <Button variant="outline" size="sm" className="text-xs h-7">View</Button>

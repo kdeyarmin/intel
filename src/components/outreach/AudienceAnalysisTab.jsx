@@ -153,15 +153,15 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
 
       {results?.profile && (
         <div className="grid grid-cols-3 gap-1.5">
-          <div className="bg-blue-50 rounded-lg p-1.5 text-center">
-            <p className="text-sm font-bold text-blue-700">{results.profile.count}</p>
+          <div className="bg-blue-900/20 rounded-lg p-1.5 text-center">
+            <p className="text-sm font-bold text-blue-400">{results.profile.count}</p>
             <p className="text-[8px] text-blue-500">Recipients</p>
           </div>
-          <div className="bg-emerald-50 rounded-lg p-1.5 text-center">
-            <p className="text-sm font-bold text-emerald-700">{results.profile.avgScore}</p>
+          <div className="bg-emerald-900/20 rounded-lg p-1.5 text-center">
+            <p className="text-sm font-bold text-emerald-400">{results.profile.avgScore}</p>
             <p className="text-[8px] text-emerald-500">Avg Score</p>
           </div>
-          <div className="bg-violet-50 rounded-lg p-1.5 text-center">
+          <div className="bg-violet-900/30 rounded-lg p-1.5 text-center">
             <p className="text-sm font-bold text-violet-700">{results.profile.emailCoverage}%</p>
             <p className="text-[8px] text-violet-500">Email Coverage</p>
           </div>
@@ -171,7 +171,7 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
       {results?.insights && (
         <div className="space-y-2">
           {/* Summary */}
-          <p className="text-[10px] text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5 leading-relaxed">
+          <p className="text-[10px] text-slate-400 bg-slate-800/40 rounded-lg px-2 py-1.5 leading-relaxed">
             {results.insights.audience_summary}
           </p>
 
@@ -180,9 +180,9 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
             <div>
               <p className="text-[10px] font-medium text-slate-400 uppercase mb-1">Audience Segments</p>
               {results.insights.segments.map((seg, i) => (
-                <div key={i} className="bg-white border rounded-lg p-2 mb-1">
+                <div key={i} className="bg-slate-800/60 border rounded-lg p-2 mb-1">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-slate-700">{seg.name}</p>
+                    <p className="text-[10px] font-semibold text-slate-300">{seg.name}</p>
                     <Badge variant="outline" className="text-[8px]">{seg.percentage}%</Badge>
                   </div>
                   <p className="text-[9px] text-slate-500 mt-0.5">{seg.description}</p>
@@ -197,10 +197,10 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
             <div>
               <p className="text-[10px] font-medium text-slate-400 uppercase mb-1">Optimal Send Times</p>
               {results.insights.optimal_send_times.map((st, i) => (
-                <div key={i} className="flex items-start gap-2 bg-emerald-50 rounded-lg p-2 mb-1 border border-emerald-100">
+                <div key={i} className="flex items-start gap-2 bg-emerald-900/20 rounded-lg p-2 mb-1 border border-emerald-500/30">
                   <Badge className="bg-emerald-600 text-white text-[8px] shrink-0 mt-0.5">#{i + 1}</Badge>
                   <div>
-                    <p className="text-[10px] font-semibold text-emerald-800">{st.day} — {st.time}</p>
+                    <p className="text-[10px] font-semibold text-emerald-300">{st.day} — {st.time}</p>
                     <p className="text-[9px] text-emerald-600">{st.reasoning}</p>
                     {st.expected_open_rate_boost && (
                       <p className="text-[8px] text-emerald-500 mt-0.5">Expected boost: {st.expected_open_rate_boost}</p>
@@ -216,8 +216,8 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
             <div>
               <p className="text-[10px] font-medium text-slate-400 uppercase mb-1">Subject Line Variations</p>
               {results.insights.subject_line_variations.map((sl, i) => (
-                <div key={i} className="bg-white border rounded-lg p-2 mb-1 hover:border-violet-300 transition-colors">
-                  <p className="text-[10px] font-medium text-slate-800">"{sl.subject}"</p>
+                <div key={i} className="bg-slate-800/60 border rounded-lg p-2 mb-1 hover:border-violet-300 transition-colors">
+                  <p className="text-[10px] font-medium text-slate-300">"{sl.subject}"</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge variant="outline" className="text-[8px]">{sl.style}</Badge>
                     <span className="text-[8px] text-slate-400">{sl.expected_performance}</span>
@@ -229,8 +229,8 @@ Context: CareMetric is a healthcare analytics company reaching out to physicians
 
           {/* Risks */}
           {results.insights.risks?.length > 0 && (
-            <div className="bg-amber-50 rounded-lg p-2 border border-amber-100">
-              <p className="text-[10px] font-medium text-amber-700 mb-1">⚠ Risks & Gaps</p>
+            <div className="bg-amber-900/20 rounded-lg p-2 border border-amber-500/30">
+              <p className="text-[10px] font-medium text-amber-400 mb-1">⚠ Risks & Gaps</p>
               {results.insights.risks.map((r, i) => (
                 <p key={i} className="text-[9px] text-amber-600">• {r}</p>
               ))}
