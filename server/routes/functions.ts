@@ -678,14 +678,65 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleReconcileProviderData(req.body));
       }
       case "cleanupAllImports": {
-        const { db } = await import("../db");
-        const { sql } = await import("drizzle-orm");
-        await db.execute(sql`UPDATE import_batches SET status = 'cancelled', updated_date = NOW() WHERE status IN ('processing', 'validating', 'paused', 'failed')`);
-        await db.execute(sql`DELETE FROM import_batches WHERE status = 'cancelled'`);
-        await db.execute(sql`DELETE FROM nppes_queue_items`);
-        const remaining = await db.execute(sql`SELECT status, count(*)::int as cnt FROM import_batches GROUP BY status ORDER BY status`);
-        const rows = Array.isArray(remaining) ? remaining : (remaining as any)?.rows || [];
-        return res.json({ success: true, message: "All non-completed imports and queue items deleted", remaining: rows });
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:cleanupAllImports:${req.user?.id ?? "anon"}`, 2, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runCleanupAllImports, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runCleanupAllImports();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({
+          success: result.ok,
+          message: result.ok ? "All non-completed imports and queue items deleted" : `Cleanup failed: ${result.error}`,
+          remaining: (result.details as { remaining?: unknown })?.remaining ?? [],
+          worker: result,
+        });
+      }
+      case "autoResumePausedImports": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:autoResumePausedImports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runAutoResumePausedImports, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runAutoResumePausedImports();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({ success: result.ok, worker: result });
+      }
+      case "autoRetryFailedImports": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:autoRetryFailedImports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runAutoRetryFailedImports, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runAutoRetryFailedImports();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({ success: result.ok, worker: result });
+      }
+      case "cancelStalledImports": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:cancelStalledImports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runCancelStalledImports, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runCancelStalledImports();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({ success: result.ok, worker: result });
+      }
+      case "runMaintenanceFanout": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        // Fanout runs every worker, so cap it more aggressively than the
+        // per-worker buttons. Two manual invocations a minute is plenty.
+        if (!consumeToken(`maint:fanout:${req.user?.id ?? "anon"}`, 2, 60_000)) {
+          return res.status(429).json({ message: "Maintenance fanout rate limit exceeded. Try again in a minute." });
+        }
+        const { runMaintenanceFanout } = await import("../lib/maintenance");
+        const { workers } = await runMaintenanceFanout("admin_ui", { userEmail: req.user?.email });
+        return res.json({
+          success: workers.every(w => w.ok),
+          workers,
+          succeeded: workers.filter(w => w.ok).length,
+          failed: workers.filter(w => !w.ok).length,
+        });
       }
       case "generateHyperPersonalizedMessages": {
         const { handleGenerateHyperPersonalizedMessages } = await import("../functions/stubs");
