@@ -95,6 +95,25 @@ export default function NPPESCrawler() {
     handleAction('batch_stop', 'Crawler stopped');
   };
 
+  const handleCrawlerTabKeyDown = (event, tabId) => {
+    let nextTabId = null;
+    if (event.key === 'ArrowRight') {
+      nextTabId = tabId === 'control' ? 'analytics' : 'control';
+    } else if (event.key === 'ArrowLeft') {
+      nextTabId = tabId === 'analytics' ? 'control' : 'analytics';
+    } else if (event.key === 'Home') {
+      nextTabId = 'control';
+    } else if (event.key === 'End') {
+      nextTabId = 'analytics';
+    }
+
+    if (!nextTabId) return;
+
+    event.preventDefault();
+    setCrawlerTab(nextTabId);
+    document.getElementById(`nppes-crawler-tab-${nextTabId}`)?.focus();
+  };
+
   const completedCount = status?.completed || 0;
   const failedCount = status?.failed || 0;
   const processingCount = status?.processing || 0;
@@ -139,7 +158,7 @@ export default function NPPESCrawler() {
         breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
       />
 
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit" role="tablist" aria-label="NPPES crawler views">
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit" role="tablist" aria-label="Switch between crawler control and analytics">
         <button
           type="button"
           role="tab"
@@ -147,6 +166,7 @@ export default function NPPESCrawler() {
           aria-selected={crawlerTab === 'control'}
           aria-controls="nppes-crawler-panel-control"
           tabIndex={crawlerTab === 'control' ? 0 : -1}
+          onKeyDown={(event) => handleCrawlerTabKeyDown(event, 'control')}
           onClick={() => setCrawlerTab('control')}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
             crawlerTab === 'control' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
@@ -162,6 +182,7 @@ export default function NPPESCrawler() {
           aria-selected={crawlerTab === 'analytics'}
           aria-controls="nppes-crawler-panel-analytics"
           tabIndex={crawlerTab === 'analytics' ? 0 : -1}
+          onKeyDown={(event) => handleCrawlerTabKeyDown(event, 'analytics')}
           onClick={() => setCrawlerTab('analytics')}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
             crawlerTab === 'analytics' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
