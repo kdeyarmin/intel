@@ -81,9 +81,29 @@ export default function Providers() {
     placeholderData: keepPreviousData,
   });
 
+  // Stable key of the currently displayed NPIs so the scoped score fetch
+  // refetches when the provider list changes.
+  const npiKey = useMemo(
+    () => providers.map(p => p.npi).filter(Boolean).sort().join(','),
+    [providers],
+  );
+
+  // Fetch lead scores ONLY for the displayed providers (was: newest 5000 scores,
+  // which both over-fetched and usually didn't even include the shown providers,
+  // so their score showed blank).
   const { data: scores = [] } = useQuery({
-    queryKey: ['providersPageScores'],
-    queryFn: () => base44.entities.LeadScore.list('-created_date', 5000),
+    queryKey: ['providersPageScores', npiKey],
+    enabled: providers.length > 0,
+    staleTime: 60000,
+    queryFn: () => {
+      const npis = providers.map(p => p.npi).filter(Boolean);
+      if (npis.length === 0) return [];
+      return base44.entities.LeadScore.filter(
+        { npi: { $in: npis } },
+        '-created_date',
+        Math.max(npis.length * 2, 500),
+      );
+    },
   });
 
   const { data: locations = [] } = useQuery({
@@ -159,10 +179,17 @@ export default function Providers() {
 
   const currentFilters = { searchTerm, ...filters };
 
-  const getScore = (npi) => {
-    const match = scores.find(s => s.npi === npi);
-    return match?.score ?? null;
-  };
+  // O(1) score lookup. scores are sorted -created_date, so the first row seen per
+  // NPI is the most recent — keep that one (matches the previous find() semantics).
+  const scoreByNpi = useMemo(() => {
+    const m = new Map();
+    for (const s of scores) {
+      if (s.npi && !m.has(s.npi)) m.set(s.npi, s.score);
+    }
+    return m;
+  }, [scores]);
+
+  const getScore = (npi) => scoreByNpi.get(npi) ?? null;
 
   // Build options from data
   const credentialOptions = useMemo(() => {

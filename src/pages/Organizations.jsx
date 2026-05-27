@@ -55,9 +55,27 @@ export default function Organizations() {
     queryFn: () => base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', 500),
   });
 
+  // Stable key of displayed NPIs so the scoped score fetch refetches with the list.
+  const npiKey = useMemo(
+    () => providers.map(p => p.npi).filter(Boolean).sort().join(','),
+    [providers],
+  );
+
+  // Fetch lead scores only for the displayed organizations (was: newest 5000
+  // scores, which over-fetched and usually didn't include the shown orgs).
   const { data: scores = [] } = useQuery({
-    queryKey: ['organizationsPageScores'],
-    queryFn: () => base44.entities.LeadScore.list('-created_date', 5000),
+    queryKey: ['organizationsPageScores', npiKey],
+    enabled: providers.length > 0,
+    staleTime: 60000,
+    queryFn: () => {
+      const npis = providers.map(p => p.npi).filter(Boolean);
+      if (npis.length === 0) return [];
+      return base44.entities.LeadScore.filter(
+        { npi: { $in: npis } },
+        '-created_date',
+        Math.max(npis.length * 2, 500),
+      );
+    },
   });
 
   const { data: locations = [] } = useQuery({
@@ -110,10 +128,16 @@ export default function Organizations() {
 
   const currentFilters = { searchTerm, ...filters };
 
-  const getScore = (npi) => {
-    const match = scores.find(s => s.npi === npi);
-    return match?.score ?? null;
-  };
+  // O(1) score lookup (was scores.find per row → O(n^2) in the sort comparator).
+  const scoreByNpi = useMemo(() => {
+    const m = new Map();
+    for (const s of scores) {
+      if (s.npi && !m.has(s.npi)) m.set(s.npi, s.score);
+    }
+    return m;
+  }, [scores]);
+
+  const getScore = (npi) => scoreByNpi.get(npi) ?? null;
 
   const locationByNpi = useMemo(() => {
     const map = {};
