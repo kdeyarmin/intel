@@ -10,7 +10,12 @@ const lastShown = new Map();
 function notifyError(error, { kind }) {
         // Auth failures are handled by the auth layer (redirect to login); don't toast.
         if (error?.status === 401) return;
-        const message = error?.message || 'Something went wrong. Please try again.';
+        const status = error?.status ?? error?.response?.status;
+        const rawMessage = error?.message;
+        const message =
+                status && status >= 400 && status < 500
+                        ? (rawMessage || 'Request failed.')
+                        : 'Something went wrong. Please try again.';
         // Queries refetch/poll, so suppress repeats of the same message for a
         // while; mutations are explicit user actions, so only guard against the
         // double-fire of a single click.
