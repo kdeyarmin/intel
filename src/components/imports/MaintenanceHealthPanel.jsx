@@ -7,7 +7,10 @@ const POLL_INTERVAL_MS = 60 * 1000;
 
 function formatRelative(iso, now = new Date()) {
   if (!iso) return 'never';
-  const diffMs = now.getTime() - new Date(iso).getTime();
+  const timestamp = new Date(iso).getTime();
+  if (Number.isNaN(timestamp)) return 'unknown';
+  const diffMs = now.getTime() - timestamp;
+  if (diffMs < 0) return 'in the future';
   const min = Math.round(diffMs / 60_000);
   if (min < 1) return 'just now';
   if (min < 60) return `${min}m ago`;
