@@ -21,11 +21,17 @@ describe("consumeToken", () => {
   });
 
   it("resets after the window elapses", async () => {
-    const key = `reset-${Math.random()}`;
-    expect(consumeToken(key, 1, 20)).toBe(true);
-    expect(consumeToken(key, 1, 20)).toBe(false);
-    await new Promise((r) => setTimeout(r, 35));
-    expect(consumeToken(key, 1, 20)).toBe(true); // window expired -> fresh bucket
+    vi.useFakeTimers();
+    try {
+      const key = `reset-${Math.random()}`;
+      expect(consumeToken(key, 1, 20)).toBe(true);
+      expect(consumeToken(key, 1, 20)).toBe(false);
+      await vi.advanceTimersByTimeAsync(35);
+      expect(consumeToken(key, 1, 20)).toBe(true); // window expired -> fresh bucket
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   });
 
   it("allows exactly max=1 then blocks", () => {
