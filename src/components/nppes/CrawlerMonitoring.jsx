@@ -5,10 +5,10 @@ import { AlertCircle, Clock, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export default function CrawlerMonitoring({ status }) {
-  if (!status) return null;
-
+  // Hooks must run on every render, so compute (null-safe) before any early
+  // return. The `if (!status)` guard lives after the hook below.
   const { metricsData, errorData, batchPerformanceData } = useMemo(() => {
-    const liveMetrics = Object.entries(status.granular_metrics || {}).map(([state, data]) => ({
+    const liveMetrics = Object.entries(status?.granular_metrics || {}).map(([state, data]) => ({
       state,
       avgTime: (data.avg_prefix_time_ms || 0) / 1000,
       rateLimits: data.rate_limit_hits || 0,
@@ -16,13 +16,13 @@ export default function CrawlerMonitoring({ status }) {
       completedItems: data.completed_items || 0
     })).sort((a, b) => b.avgTime - a.avgTime);
 
-    const liveErrors = (status.errors || []).map(err => ({
+    const liveErrors = (status?.errors || []).map(err => ({
       message: (err.original_message || 'Unknown error').length > 30 ? (err.original_message || 'Unknown error').substring(0, 30) + '...' : (err.original_message || 'Unknown error'),
       count: err.count,
       statesCount: (err.affected_states || []).length
     })).slice(0, 5);
 
-    const batches = status.batches || [];
+    const batches = status?.batches || [];
     const batchPerf = [];
     const batchErrorMap = {};
     
@@ -66,6 +66,8 @@ export default function CrawlerMonitoring({ status }) {
       batchPerformanceData: dedupedBatchPerf,
     };
   }, [status]);
+
+  if (!status) return null;
 
   const isLive = (status.crawler_status === 'running' || status.processing > 0);
   const hasHighErrorRate = status.completed > 0 && status.failed > (status.completed * 0.2) && status.failed > 5;

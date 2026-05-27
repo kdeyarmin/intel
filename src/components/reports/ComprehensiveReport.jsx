@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
-  FileText, Users, MapPin, Stethoscope, DollarSign, Activity,
-  Network, Building2, TrendingUp, Shield, ArrowRight, Printer,
-  ChevronDown, ChevronUp, ExternalLink
+  FileText, MapPin, Stethoscope, Activity,
+  Network, Building2, TrendingUp, Shield, Printer,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 
 function formatCurrency(val) {

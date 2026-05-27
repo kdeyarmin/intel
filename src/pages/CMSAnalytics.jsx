@@ -1,12 +1,12 @@
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Database, Activity, Users, DollarSign, Building2, ArrowRightLeft, MapPin, FileText, Pill, Globe } from 'lucide-react';
+import { BarChart3, Database, Activity, Users, DollarSign, MapPin, FileText, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend, Treemap
+  PieChart, Pie, Cell, Legend
 } from 'recharts';
 import PageHeader from '../components/shared/PageHeader';
 

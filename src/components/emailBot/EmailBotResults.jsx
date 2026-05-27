@@ -52,6 +52,7 @@ export default function EmailBotResults({ results }) {
                   <EmailValidationBadge
                     status={r.validation_status}
                     reason={r.validation_reason}
+                    source="ai_inferred"
                   />
                 )}
               </TableCell>

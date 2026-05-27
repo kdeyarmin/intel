@@ -81,7 +81,7 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
               <div className="flex items-center gap-2 mt-1.5">
                 <span className="text-xs text-slate-300">{provider.email}</span>
                 {provider.email_validation_status && provider.email_validation_status !== '' && (
-                  <EmailValidationBadge status={provider.email_validation_status} reason={provider.email_validation_reason} size="sm" />
+                  <EmailValidationBadge status={provider.email_validation_status} reason={provider.email_validation_reason} source={provider.email_source} size="sm" />
                 )}
                 {provider.email_confidence && (
                   <Badge className={`text-[9px] ${

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Map, Layers, ZoomIn } from 'lucide-react';
 import { getProviderCoords } from './zipCoords';
 import ProviderMapPopup from './ProviderMapPopup';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'react-leaflet';
 
 function RecenterMap({ center }) {
@@ -240,22 +241,28 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               {showHeatmap && <HeatmapLayer points={mapPoints} />}
               {showVolumeDensity && <VolumeDensityLayer points={mapPoints} />}
 
-              {mapPoints.map((point, idx) => (
-                <CircleMarker
-                  key={idx}
-                  center={[point.lat, point.lng]}
-                  radius={getScoreRadius(point.score)}
-                  fillColor={getScoreColor(point.score, colorByScore)}
-                  fillOpacity={0.85}
-                  color="#fff"
-                  weight={1}
-                  opacity={0.8}
-                >
-                  <Popup maxWidth={300} className="custom-popup">
-                    <ProviderMapPopup item={point.item} />
-                  </Popup>
-                </CircleMarker>
-              ))}
+              {/* Cluster individual provider markers so the map stays fast and
+                  readable with many points; clusters break apart on zoom-in and
+                  fully disaggregate past zoom 11. Heatmap/density layers above are
+                  intentionally left outside the cluster group. */}
+              <MarkerClusterGroup chunkedLoading maxClusterRadius={50} disableClusteringAtZoom={11}>
+                {mapPoints.map((point, idx) => (
+                  <CircleMarker
+                    key={idx}
+                    center={[point.lat, point.lng]}
+                    radius={getScoreRadius(point.score)}
+                    fillColor={getScoreColor(point.score, colorByScore)}
+                    fillOpacity={0.85}
+                    color="#fff"
+                    weight={1}
+                    opacity={0.8}
+                  >
+                    <Popup maxWidth={300} className="custom-popup">
+                      <ProviderMapPopup item={point.item} />
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MarkerClusterGroup>
             </MapContainer>
           )}
 

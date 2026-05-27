@@ -266,7 +266,9 @@ async function paramQuery(sqlText: string, values: any[], timeoutMs: number = 30
     const result = await client.query(sqlText, values);
     return result.rows || [];
   } finally {
-    await client.query(`SET statement_timeout = '0'`).catch(() => {});
+    // RESET (not SET '0', which would leave the pooled connection with no timeout
+    // at all for the next query that reuses it).
+    await client.query(`RESET statement_timeout`).catch(() => {});
     client.release();
   }
 }

@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, User, Activity } from 'lucide-react';
+import { Send, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function ImportAgentChat() {

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Database, ChevronDown, ChevronUp, Pill, DollarSign, Stethoscope, Package, Network, Building2, Video } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const TYPE_CONFIG = {
   clinician_national_file: { label: 'Clinician Profile', icon: Stethoscope, iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },

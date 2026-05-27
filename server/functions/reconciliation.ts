@@ -1,8 +1,10 @@
 import { db } from "../db";
 import { providers, providerReconciliations, reconciliationJobs, apiInteractionLogs } from "../db/schema";
-import { sql, eq, and, isNotNull, desc } from "drizzle-orm";
+import { sql, eq, and, isNotNull, desc, gt, asc } from "drizzle-orm";
 
 const NPPES_API_BASE = "https://npiregistry.cms.hhs.gov/api/?version=2.1";
+const DEFAULT_BATCH = 50;
+const MAX_BATCH = 500;
 
 const FIELDS_TO_COMPARE = [
   { field: "first_name", nppes: "basic.first_name", severity: "high" },
@@ -13,6 +15,11 @@ const FIELDS_TO_COMPARE = [
   { field: "status", nppes: "basic.status", severity: "high" },
   { field: "entity_type", nppes: "enumeration_type", severity: "medium" },
 ];
+
+// Only these provider columns may ever be written back from an external source on
+// "accept". Anything else is rejected outright (defense-in-depth around the
+// dynamic column identifier used in the UPDATE).
+const RECONCILABLE_FIELDS = new Set(FIELDS_TO_COMPARE.map((f) => f.field));
 
 function getNestedValue(obj: any, path: string): string | null {
   const parts = path.split(".");
@@ -94,6 +101,18 @@ export async function handleReconcileProviderData(payload: any) {
     throw { status: 400, message: `Sources not yet supported: ${unsupported.join(", ")}. Currently supported: ${supportedSources.join(", ")}` };
   }
 
+  const batchSize = Math.max(1, Math.min(Number(payload?.batch_size) || DEFAULT_BATCH, MAX_BATCH));
+
+  // Resume from where the last sweep left off so coverage advances across runs,
+  // instead of re-checking a random 50 rows every time. The cursor is the highest
+  // provider id reconciled so far, persisted in the job's results JSON.
+  const lastJobRows = await db.select({ results: reconciliationJobs.results })
+    .from(reconciliationJobs)
+    .where(eq(reconciliationJobs.status, "completed"))
+    .orderBy(desc(reconciliationJobs.id))
+    .limit(1);
+  const startCursor = Number((lastJobRows[0]?.results as any)?.last_reconciled_id) || 0;
+
   const startedAt = new Date();
   let job: any;
   try {
@@ -104,18 +123,13 @@ export async function handleReconcileProviderData(payload: any) {
     `);
     const jobRows = Array.isArray(jobResult) ? jobResult : (jobResult as any)?.rows || [];
     job = jobRows[0];
-    console.log("[Reconciliation] Created job:", job?.id);
+    console.log("[Reconciliation] Created job:", job?.id, "from cursor", startCursor);
   } catch (e: any) {
     console.error("[Reconciliation] Failed to create job:", e.message, e.stack);
     throw { status: 500, message: `Failed to initialize reconciliation job: ${e.message}` };
   }
 
   try {
-    const maxIdResult = await db.execute(sql`SELECT MAX(id) as max_id FROM providers`);
-    const maxIdRow = Array.isArray(maxIdResult) ? maxIdResult[0] : (maxIdResult as any)?.rows?.[0];
-    const maxId = parseInt(maxIdRow?.max_id) || 100000;
-    const randomStart = Math.max(1, Math.floor(Math.random() * (maxId - 1000)));
-
     const sampleProviders = await db.select({
       id: providers.id,
       npi: providers.npi,
@@ -130,11 +144,18 @@ export async function handleReconcileProviderData(payload: any) {
       .where(and(
         isNotNull(providers.npi),
         sql`${providers.npi} != ''`,
-        sql`${providers.id} >= ${randomStart}`
+        gt(providers.id, startCursor)
       ))
-      .limit(50);
+      .orderBy(asc(providers.id))
+      .limit(batchSize);
 
     const rows = sampleProviders;
+    // Fewer rows than requested means we reached the end of the table — the next
+    // sweep should wrap back to the beginning.
+    const lastRowId = rows[rows.length - 1]?.id;
+    const noRows = rows.length === 0;
+    const reachedEnd = rows.length < batchSize;
+    const lastReconciledId = reachedEnd ? 0 : (lastRowId ?? startCursor);
 
     let matched = 0;
     let discrepanciesFound = 0;
@@ -203,16 +224,31 @@ export async function handleReconcileProviderData(payload: any) {
       matched,
       discrepancies_found: discrepanciesFound,
       ai_suggestions_generated: 0,
+      results: {
+        last_reconciled_id: lastReconciledId,
+        range_start: startCursor,
+        range_end: lastRowId ?? startCursor,
+        reached_end: reachedEnd,
+      },
       completed_at: new Date(),
     }).where(eq(reconciliationJobs.id, job.id));
 
+    const coverageNote = noRows
+      ? `No providers found after id ${startCursor}; the next run wraps to the beginning.`
+      : reachedEnd
+        ? "Reached the end of the provider table; the next run wraps to the beginning."
+        : `Next run resumes after provider id ${lastReconciledId}.`;
+
     return {
       success: true,
-      message: `Reconciliation complete: ${totalChecked} providers checked, ${matched} matched, ${discrepanciesFound} discrepancies found.`,
+      message: noRows
+        ? `Reconciliation batch done: ${totalChecked} providers checked, ${matched} matched, ${discrepanciesFound} discrepancies. ${coverageNote}`
+        : `Reconciliation batch done: ${totalChecked} providers checked (ids ${startCursor + 1}–${lastRowId ?? startCursor}), ${matched} matched, ${discrepanciesFound} discrepancies. ${coverageNote}`,
       job_id: job.id,
       total_providers: totalChecked,
       matched,
       discrepancies_found: discrepanciesFound,
+      cursor: { from: startCursor, to: lastReconciledId, reached_end: reachedEnd },
     };
   } catch (e: any) {
     console.error("[Reconciliation] Main error:", e.message, e.stack);
@@ -227,14 +263,31 @@ async function handleResolveDiscrepancy(reconciliationId: number, resolution: st
   const [recon] = await db.select().from(providerReconciliations).where(eq(providerReconciliations.id, reconciliationId));
   if (!recon) throw { status: 404, message: "Reconciliation record not found" };
 
+  let applied = 0;
+  const failures: string[] = [];
   if (resolution === "accept") {
     const discrepancies = (recon.discrepancies as any[]) || [];
     for (const disc of discrepancies) {
       const field = disc.field;
-      const newVal = disc.external_value === "(empty)" ? null : disc.external_value;
+      // Only known, reconcilable columns may be written back.
+      if (!RECONCILABLE_FIELDS.has(field)) {
+        failures.push(`${field}: not a reconcilable field`);
+        continue;
+      }
+      const newVal = disc.external_value === "(empty)" ? null : String(disc.external_value);
       try {
-        await db.execute(sql`UPDATE providers SET ${sql.identifier(field)} = ${newVal} WHERE npi = ${recon.npi}`);
-      } catch {}
+        await db.execute(
+          sql`UPDATE providers SET ${sql.identifier(field)} = ${newVal}, updated_date = NOW() WHERE npi = ${recon.npi}`,
+        );
+        applied++;
+      } catch (e: any) {
+        // Surface the failure instead of silently swallowing it.
+        console.warn(`[Reconciliation] write-back failed for ${recon.npi}.${field}: ${e.message}`);
+        failures.push(`${field}: ${e.message}`);
+      }
+    }
+    if (failures.length > 0 && applied === 0) {
+      throw { status: 500, message: `Failed to apply discrepancy: ${failures.join("; ")}` };
     }
   }
 
@@ -245,5 +298,11 @@ async function handleResolveDiscrepancy(reconciliationId: number, resolution: st
     updated_date: new Date(),
   }).where(eq(providerReconciliations.id, reconciliationId));
 
-  return { success: true, message: `Discrepancy ${resolution === "accept" ? "accepted and merged" : "rejected"}` };
+  return {
+    success: true,
+    message: resolution === "accept"
+      ? `Discrepancy accepted; ${applied} field(s) merged${failures.length ? `, ${failures.length} failed` : ""}.`
+      : "Discrepancy rejected",
+    ...(failures.length ? { warnings: failures } : {}),
+  };
 }

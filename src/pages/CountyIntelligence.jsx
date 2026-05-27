@@ -8,9 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  MapPin, Users, Building2, DollarSign, Activity, TrendingUp,
-  Search, ChevronDown, ArrowRight, BarChart3, Network, Stethoscope,
-  ExternalLink
+  MapPin, Users, Building2, DollarSign, Activity,
+  Search, ChevronDown, ArrowRight, BarChart3, Network, Stethoscope
 } from 'lucide-react';
 
 function formatCurrency(val) {

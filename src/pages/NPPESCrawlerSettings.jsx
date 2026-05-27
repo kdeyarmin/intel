@@ -116,7 +116,7 @@ export default function NPPESCrawlerSettings() {
         excluded_credentials: existingConfig.excluded_credentials ?? DEFAULTS.excluded_credentials,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [existingConfig?.id, existingConfig?.updated_date]);
 
   const saveMutation = useMutation({

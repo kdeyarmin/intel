@@ -410,7 +410,7 @@ export default function ProviderIntelligence() {
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {p.email_validation_status && p.email_validation_status !== '' && (
-                            <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} size="sm" />
+                            <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} source={p.email_source} size="sm" />
                           )}
                           <Badge className={`${confColor} text-[10px]`}>{p.email_confidence}</Badge>
                         </div>
@@ -517,7 +517,7 @@ export default function ProviderIntelligence() {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {p.email_validation_status && (
-                          <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} size="sm" />
+                          <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} source={p.email_source} size="sm" />
                         )}
                         <Button onClick={() => toggleSelectProvider(p.npi)} variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-500 hover:text-red-400">×</Button>
                       </div>
