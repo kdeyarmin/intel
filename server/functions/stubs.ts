@@ -676,7 +676,14 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
       if (fieldsToSave.length === 0) { no_data++; continue; }
 
       const avgConfidence = fieldsToSave.reduce((sum, f) => sum + f.confidence, 0) / fieldsToSave.length;
-      const autoApplyThreshold = 0;
+      // AI inferences are hypotheses, not verified facts. Only auto-apply them to
+      // provider rows when the caller explicitly opts in AND confidence clears a
+      // real bar; otherwise store them as "pending" so they surface in the human
+      // review queue. (Previously the threshold was 0, so every guess — including
+      // 0.5-confidence ones — was silently written straight onto provider rows.)
+      const AUTO_APPLY_THRESHOLD = 0.85;
+      const autoApply = auto_apply_high_confidence === true;
+      const summaryStatus = autoApply && avgConfidence >= AUTO_APPLY_THRESHOLD ? "applied" : "pending";
 
       await db.insert(enrichmentRecords).values({
         npi,
@@ -685,7 +692,7 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
         old_value: null,
         new_value: JSON.stringify(enrichmentData),
         confidence: avgConfidence,
-        status: avgConfidence >= autoApplyThreshold ? "applied" : "pending",
+        status: summaryStatus,
         enrichment_details: enrichmentData,
       });
 
@@ -697,12 +704,12 @@ Only return the JSON object, nothing else. If you can't find data for a field, o
           old_value: null,
           new_value: f.value,
           confidence: f.confidence,
-          status: f.confidence >= autoApplyThreshold ? "applied" : "pending",
-          enrichment_details: { field: f.field, source: "AI inference" },
+          status: autoApply && f.confidence >= AUTO_APPLY_THRESHOLD ? "applied" : "pending",
+          enrichment_details: { field: f.field, source: "AI inference (unverified)" },
         });
       }
 
-      if (avgConfidence >= autoApplyThreshold) {
+      if (autoApply && avgConfidence >= AUTO_APPLY_THRESHOLD) {
         const updates: any = {};
         if (enrichmentData.gender && !provider.gender) updates.gender = enrichmentData.gender;
         if (Object.keys(updates).length > 0) {
