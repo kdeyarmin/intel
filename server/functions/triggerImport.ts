@@ -436,14 +436,14 @@ export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
   return {
     npi: row.Rndrng_NPI || row.npi || null,
     // service_type retains the rendering provider's specialty so existing
-    // specialty rollups keep working; the actual service is in hcpcs_*.
-    service_type: row.Rndrng_Prvdr_Type || row.HCPCS_Desc || null,
+    // specialty rollups keep working; the actual service description is in hcpcs_*.
+    service_type: row.Rndrng_Prvdr_Type ?? row.rndrng_prvdr_type ?? null,
     hcpcs_code: row.HCPCS_Cd || row.hcpcs_cd || null,
     hcpcs_description: row.HCPCS_Desc || row.hcpcs_desc || null,
     place_of_service: row.Place_Of_Srvc || row.place_of_srvc || null,
     total_services: totalServices,
     total_unique_benes: row.Tot_Benes ?? row.tot_benes ?? null,
-    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg ?? null,
+    average_submitted_chrg_amt: row.Avg_Sbmtd_Chrg ?? row.avg_sbmtd_chrg ?? null,
     // Source publishes per-service averages; keep the average truthfully and
     // derive the line total (avg × services) instead of mislabeling the
     // average as a total.

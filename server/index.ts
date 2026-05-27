@@ -260,7 +260,20 @@ app.listen(PORT, "0.0.0.0", async () => {
           FROM pg_index i
           JOIN pg_class c ON c.oid = i.indrelid
           JOIN pg_class c2 ON c2.oid = i.indexrelid
-          WHERE c.relname = 'medicare_facilities' AND c2.relname != 'medicare_facilities_pkey'
+          WHERE c.relname = ANY(ARRAY[
+            'medicare_facilities',
+            'cms_referrals',
+            'provider_service_utilization',
+            'provider_locations',
+            'provider_taxonomies'
+          ])
+          AND c2.relname NOT IN (
+            'medicare_facilities_pkey',
+            'cms_referrals_pkey',
+            'provider_service_utilization_pkey',
+            'provider_locations_pkey',
+            'provider_taxonomies_pkey'
+          )
         `).catch(() => ({ rows: [] }));
         
         for (const idx of existingIdx.rows) {
@@ -295,7 +308,7 @@ app.listen(PORT, "0.0.0.0", async () => {
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_provider ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year ON cms_referrals (npi, data_year)",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, hcpcs_code, place_of_service, data_year)",
+          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year)",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, location_type, left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, taxonomy_code)",
         ];

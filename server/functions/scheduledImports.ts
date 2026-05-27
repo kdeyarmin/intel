@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { importScheduleConfigs, importBatches, auditEvents } from "../db/schema";
-import { eq, and, inArray, desc, lt } from "drizzle-orm";
+import { eq, and, inArray, desc, lt, or, isNull } from "drizzle-orm";
 import { handleTriggerImport } from "./triggerImport";
 import { handleNppesCrawler } from "./nppesCrawler";
 import {
@@ -55,7 +55,7 @@ async function runOneSchedule(schedule: any): Promise<{ runStatus: string; runSu
         taxonomy_description: config.taxonomy_description || "",
         entity_type: config.entity_type || "",
       };
-      if (!config.crawl_all_states) {
+      if (config.crawl_all_states === false) {
         if (!config.state) throw new Error("Scheduled NPPES run requires a state when crawl_all_states is disabled");
         payload.states = [config.state];
       }
@@ -89,7 +89,10 @@ async function runOneSchedule(schedule: any): Promise<{ runStatus: string; runSu
 }
 
 export async function handleRunScheduledImports(_payload?: any, _user?: any) {
-  const schedules = await db.select().from(importScheduleConfigs).where(eq(importScheduleConfigs.is_active, true));
+  const schedules = await db
+    .select()
+    .from(importScheduleConfigs)
+    .where(and(eq(importScheduleConfigs.is_active, true), eq(importScheduleConfigs.enabled, true)));
   const now = new Date();
   const shapes = schedules.map(toScheduleShape);
   const results: any[] = [];
@@ -121,14 +124,23 @@ export async function handleRunScheduledImports(_payload?: any, _user?: any) {
     );
     const schedule = familySchedules[0];
 
-    // Claim with a lease (push next_run_at out + mark running) to narrow the
-    // window where an overlapping cron invocation picks the same schedule.
+    // Claim with a compare-and-set lease: only update the row if it is still
+    // due (next_run_at IS NULL or < now), which prevents a second concurrent
+    // invocation from double-claiming the same schedule.
     // handleTriggerImport's own active-import guard is the final backstop.
     try {
-      await db
+      const claimed = await db
         .update(importScheduleConfigs)
         .set({ next_run_at: new Date(now.getTime() + CLAIM_LEASE_MS), last_run_status: "running", updated_date: new Date() })
-        .where(eq(importScheduleConfigs.id, schedule.id));
+        .where(and(
+          eq(importScheduleConfigs.id, schedule.id),
+          or(isNull(importScheduleConfigs.next_run_at), lt(importScheduleConfigs.next_run_at, now)),
+        ))
+        .returning({ id: importScheduleConfigs.id });
+      if (claimed.length === 0) {
+        skipped.push({ id: schedule.id, reason: "claim lost (another invocation already claimed it)" });
+        continue;
+      }
     } catch (e: any) {
       skipped.push({ id: schedule.id, reason: `claim failed: ${e.message}` });
       continue;

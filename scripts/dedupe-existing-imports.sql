@@ -82,7 +82,7 @@ WHERE a.id > b.id
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year
 --   ON cms_referrals (npi, data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural
---   ON provider_service_utilization (npi, hcpcs_code, place_of_service, data_year);
+--   ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural
 --   ON provider_locations (npi, location_type, left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))));
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural

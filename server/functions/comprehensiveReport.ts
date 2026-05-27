@@ -119,15 +119,27 @@ export async function handleGetComprehensiveReport(payload: any) {
       }));
     }
 
-    const totalPayments = result.utilization.reduce(
-      (s: number, u: any) => s + parseFloat(u.totalPayment || "0"), 0
-    );
-    const totalServices = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalServices || "0", 10), 0
-    );
-    const totalBeneficiaries = result.utilization.reduce(
-      (s: number, u: any) => s + parseInt(u.totalBeneficiaries || "0", 10), 0
-    );
+    // Aggregate the latest year's totals from the full table (not from the
+    // 100-row display slice, which undercounts providers with many HCPCS lines).
+    let totalPayments = 0, totalServices = 0, totalBeneficiaries = 0;
+    if (npi) {
+      const aggRows = await safeQuery(client, `
+        SELECT
+          COALESCE(SUM(CAST(NULLIF(total_medicare_payment_amt,'') AS NUMERIC)), 0) AS total_payments,
+          COALESCE(SUM(CAST(NULLIF(total_services,'') AS NUMERIC)), 0) AS total_services,
+          COALESCE(SUM(CAST(NULLIF(total_unique_benes,'') AS NUMERIC)), 0) AS total_benes
+        FROM provider_service_utilization
+        WHERE npi = $1
+          AND data_year = (
+            SELECT MAX(data_year) FROM provider_service_utilization WHERE npi = $1
+          )
+      `, [npi]);
+      if (aggRows.length > 0) {
+        totalPayments       = parseFloat(aggRows[0].total_payments  || "0");
+        totalServices       = parseInt(aggRows[0].total_services     || "0", 10);
+        totalBeneficiaries  = parseInt(aggRows[0].total_benes        || "0", 10);
+      }
+    }
     const totalReferralsOut = result.referralsFrom.reduce(
       (s: number, r: any) => s + (parseInt(r.totalReferrals) || 0), 0
     );

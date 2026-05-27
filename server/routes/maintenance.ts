@@ -18,12 +18,14 @@ const router = Router();
 // with header `x-maintenance-token: $MAINTENANCE_TOKEN` on a cadence (e.g.
 // every 10 minutes). runScheduledImports also fans out to the other workers,
 // so that single call is enough; the others are exposed for manual use.
-const TASKS: Record<string, (payload: any, user: any) => Promise<any>> = {
+// Use Object.create(null) so the object has no prototype — inherited keys like
+// "toString" or "constructor" can't accidentally match a caller's task name.
+const TASKS = Object.assign(Object.create(null) as Record<string, (payload: any, user: any) => Promise<any>>, {
   runScheduledImports: handleRunScheduledImports,
   autoRetryFailedImports: () => handleAutoRetryFailedImports(),
   autoResumePausedImports: () => handleAutoResumePausedImports(),
   cancelStalledImports: () => handleCancelStalledImports(),
-};
+});
 
 function timingSafeEqualStr(a: string, b: string): boolean {
   const ab = Buffer.from(a);

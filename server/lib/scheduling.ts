@@ -60,7 +60,9 @@ export function computeNextRun(
   random: () => number = Math.random,
 ): Date {
   const next = new Date(now);
-  const [hours, minutes] = (schedule.schedule_time || "02:00").split(":").map(Number);
+  const [rawH, rawM] = (schedule.schedule_time || "02:00").split(":").map(Number);
+  const hours   = Number.isInteger(rawH) && rawH >= 0 && rawH <= 23 ? rawH : 2;
+  const minutes = Number.isInteger(rawM) && rawM >= 0 && rawM <= 59 ? rawM : 0;
 
   if (schedule.schedule_frequency === "daily") {
     next.setDate(next.getDate() + 1);
