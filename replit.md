@@ -39,6 +39,7 @@ The system spans three layers: (1) the **React SPA** (`src/`), with pages auto-r
 - **Recent Changes (2026-05-27):** Added the Vitest test harness + CI workflow; wired the scheduled-import maintenance fan-out (`runScheduledImports` driving the four maintenance workers); added the auto-retry pipeline for transient import failures plus the import-health surfaces (`MaintenanceHealthPanel`, `ImportHealthDashboard`, `retryStatus.js`, `healthMetrics.js`).
 
 ## External Dependencies
+
 - **AI:** Anthropic Claude (via `/api/integrations/ai/invoke`). Models centralized in `server/lib/aiModels.ts`: **Sonnet 4.6** (`claude-sonnet-4-6`) for conversational assistants, multi-step reasoning, and analytical/structured output (Data Quality Assistant, Pattern Analysis, AI Import Manager chat, default `/ai/invoke`); **Haiku 4.5** (`claude-haiku-4-5-20251001`) for high-volume bulk worker loops (Email Search Bot, Provider Intelligence Bot, third-party enrichment, custom data-point lookup); **Opus 4.7** (`claude-opus-4-7`) reserved for the heaviest reasoning tasks. All models can be overridden via `CLAUDE_MODEL_SONNET` / `CLAUDE_MODEL_HAIKU` / `CLAUDE_MODEL_OPUS` env vars without code changes.
 - **Email:** SendGrid (via `/api/integrations/email/send`)
 - **Database:** PostgreSQL (with Drizzle ORM). Migrations are in `./drizzle/` (generated via `npm run db:generate`). The initial migration uses `IF NOT EXISTS` to be safe against existing production tables. For development, `npm run db:push` syncs schema directly. For production deployments, use `npm run db:migrate`.
