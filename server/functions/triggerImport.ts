@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities } from "../db/schema";
+import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
@@ -804,6 +804,30 @@ async function dedupeFacilities(importType: string, chunk: any[]): Promise<any[]
   return toCreate;
 }
 
+// Dual-write helper for medicare_facilities → medicare_facilities_raw split.
+// Phase 1: every facility insert also mirrors raw_data into the side table.
+// Must run inside a transaction so the column and the side-table row land
+// together (or neither does). Exported for unit-testing the contract.
+export async function dualWriteFacilityRows(
+  tx: { insert: (table: any) => any },
+  rows: Array<Record<string, any>>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const inserted = await tx
+    .insert(medicareFacilities)
+    .values(rows)
+    .returning({ id: medicareFacilities.id });
+  const rawRows = rows
+    .map((row, idx) => ({ facility_id: inserted[idx]?.id, raw_data: row.raw_data }))
+    .filter((r) => r.facility_id != null && r.raw_data != null);
+  if (rawRows.length > 0) {
+    await tx.insert(medicareFacilitiesRaw).values(rawRows).onConflictDoUpdate({
+      target: medicareFacilitiesRaw.facility_id,
+      set: { raw_data: sql`excluded.raw_data`, updated_at: sql`NOW()` },
+    });
+  }
+}
+
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
@@ -856,9 +880,24 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 
     if (chunk.length === 0) continue;
 
+    // For medicare_facilities we dual-write into medicare_facilities_raw (the
+    // side table that owns the wide raw_data blob). Phase 1 of the column
+    // split — the facility row keeps its raw_data column so existing readers
+    // still work during the rollout; phase 2 drops the column once readers
+    // have switched and the dual-write has soaked. Wrapping the bulk insert
+    // + raw mirror in a single transaction keeps the two tables consistent
+    // even if the second statement errors.
+    const isFacility = table === medicareFacilities;
+
     const result = await safeImportQuery(
       async () => {
-        await db.insert(table).values(chunk);
+        if (isFacility) {
+          await db.transaction(async (tx) => {
+            await dualWriteFacilityRows(tx, chunk);
+          });
+        } else {
+          await db.insert(table).values(chunk);
+        }
         return chunk.length;
       },
       -1, `bulk insert ${importType}`
@@ -868,7 +907,16 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     } else {
       for (const row of chunk) {
         const ok = await safeImportQuery(
-          async () => { await db.insert(table).values(row); return true; },
+          async () => {
+            if (isFacility) {
+              await db.transaction(async (tx) => {
+                await dualWriteFacilityRows(tx, [row]);
+              });
+            } else {
+              await db.insert(table).values(row);
+            }
+            return true;
+          },
           false, `single insert ${importType}`
         );
         if (ok) inserted++;
