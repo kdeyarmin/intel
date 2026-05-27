@@ -15,6 +15,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import StateDetailSheet from '../components/nppes/StateDetailSheet';
 import CrawlerMonitoring from '../components/nppes/CrawlerMonitoring';
 import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
+import CrawlerAnalyticsView from '../components/crawlerDashboard/CrawlerAnalyticsView';
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
 
@@ -33,6 +34,7 @@ export default function NPPESCrawler() {
   
   const [selectedState, setSelectedState] = useState(null);
   const [viewMode, setViewMode] = useState('map');
+  const [crawlerTab, setCrawlerTab] = useState('control');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const queryClient = useQueryClient();
 
@@ -137,6 +139,29 @@ export default function NPPESCrawler() {
         breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
       />
 
+      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg w-fit">
+        <button
+          onClick={() => setCrawlerTab('control')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            crawlerTab === 'control' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 inline mr-1.5" />
+          Control
+        </button>
+        <button
+          onClick={() => setCrawlerTab('analytics')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            crawlerTab === 'analytics' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 inline mr-1.5" />
+          Analytics
+        </button>
+      </div>
+
+      {crawlerTab === 'control' && (
+      <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-[#141d30] border-slate-700/50">
@@ -377,7 +402,7 @@ export default function NPPESCrawler() {
                   <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-300">Errors Detected</p>
-                    <p className="text-xs text-red-400/80 mt-1">{failedCount} states failed. Check Error Reports in Data Quality.</p>
+                    <p className="text-xs text-red-400/80 mt-1">{failedCount} states failed. See the crawler activity log below, or the Imports monitor for batch-level errors.</p>
                   </div>
                 </div>
               )}
@@ -389,6 +414,10 @@ export default function NPPESCrawler() {
       {isRunning && <CurrentStateProgress status={status} />}
 
       <CrawlerMonitoring status={status} />
+      </>
+      )}
+
+      {crawlerTab === 'analytics' && <CrawlerAnalyticsView />}
 
       <DataSourcesFooter />
       
