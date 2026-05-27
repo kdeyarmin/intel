@@ -578,6 +578,26 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         }
       }
 
+      case "runScheduledImports": {
+        const { handleRunScheduledImports } = await import("../functions/scheduledImports");
+        return res.json(await handleRunScheduledImports(req.body, req.user));
+      }
+
+      case "autoRetryFailedImports": {
+        const { handleAutoRetryFailedImports } = await import("../functions/scheduledImports");
+        return res.json(await handleAutoRetryFailedImports());
+      }
+
+      case "autoResumePausedImports": {
+        const { handleAutoResumePausedImports } = await import("../functions/scheduledImports");
+        return res.json(await handleAutoResumePausedImports());
+      }
+
+      case "cancelStalledImports": {
+        const { handleCancelStalledImports } = await import("../functions/scheduledImports");
+        return res.json(await handleCancelStalledImports());
+      }
+
       case "validateDataQuality": {
         const { handleValidateDataQuality } = await import("../functions/stubs");
         return res.json(await handleValidateDataQuality(req.body));

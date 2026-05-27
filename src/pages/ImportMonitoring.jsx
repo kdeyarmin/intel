@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, CalendarClock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -42,6 +42,7 @@ import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
+import ImportScheduleManager from '../components/imports/ImportScheduleManager';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
 const CATEGORY_LABELS = {
@@ -484,6 +485,15 @@ export default function ImportMonitoring() {
           <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
           Performance
         </button>
+        <button
+          onClick={() => setActiveTab('automation')}
+          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+            activeTab === 'automation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <CalendarClock className="w-3.5 h-3.5 inline mr-1" />
+          Automation
+        </button>
       </div>
 
       {activeTab === 'history' && (
@@ -516,6 +526,10 @@ export default function ImportMonitoring() {
 
       {activeTab === 'performance' && (
         <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
+      )}
+
+      {activeTab === 'automation' && (
+        <ImportScheduleManager />
       )}
 
       {activeTab === 'monitoring' && <>
