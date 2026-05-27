@@ -32,7 +32,7 @@ export default function MaintenanceHealthPanel() {
       try {
         const events = await base44.entities.AuditEvent.filter(
           { event_type: 'maintenance_fanout' },
-          '-timestamp',
+          '-created_date',
           1,
         );
         if (cancelled) return;
@@ -94,7 +94,7 @@ export default function MaintenanceHealthPanel() {
     );
   }
 
-  const lastRun = event.timestamp;
+  const lastRun = event.timestamp ?? event.created_date;
   const stale = lastRun && (Date.now() - new Date(lastRun).getTime() > STALE_AFTER_MS);
   const workers = Array.isArray(event.details?.workers) ? event.details.workers : [];
   const failed = workers.filter(w => !w.ok);

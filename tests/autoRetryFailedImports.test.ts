@@ -99,6 +99,15 @@ describe('extractErrorMessage', () => {
     })).toBe('most recent error');
   });
 
+  it('falls back to last error_samples.message when detail is absent', () => {
+    expect(extractErrorMessage({
+      error_samples: [
+        { message: 'first error' },
+        { message: 'most recent error' },
+      ],
+    })).toBe('most recent error');
+  });
+
   it('also reads error_samples[*].message for importers that use it', () => {
     // autoImportCMSData writes { message: error.message } on fatal failure.
     // Worker must see those, not just `detail`-style entries.
@@ -136,6 +145,10 @@ describe('getRetryAttemptCount', () => {
 
   it('reads numeric auto_retry_count', () => {
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 2 } })).toBe(2);
+  });
+
+  it('falls back to top-level retry_count when retry_params count is missing', () => {
+    expect(getRetryAttemptCount({ retry_count: 2 })).toBe(2);
   });
 
   it('treats non-numeric values as 0', () => {
