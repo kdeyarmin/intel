@@ -11,8 +11,9 @@
 -- stashed under metrics._legacy.legacy_id).
 --
 -- Non-destructive: it does NOT drop the legacy `campaigns` table. After you have
--- verified the migrated campaigns look correct in the app, drop it manually:
---     DROP TABLE IF EXISTS campaigns;
+-- verified the migrated campaigns look correct in the app, run the gated drop
+-- script (which is just `DROP TABLE IF EXISTS campaigns;`):
+--     psql "$DATABASE_URL" -f scripts/drop-legacy-campaigns.sql
 
 INSERT INTO outreach_campaigns
   (name, description, status, campaign_type, metrics, created_date, updated_date)

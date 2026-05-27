@@ -140,6 +140,7 @@ function isAllowedUrl(url: string): boolean {
 
 const CMS_DATASET_CATALOG = [
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
+  { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
   { id: "medicare_dme_by_supplier", title: "DME Suppliers - by Supplier", description: "Medicare Durable Medical Equipment, Devices & Supplies payment and utilization data by supplier.", category: "Physicians & Clinicians", records: "~70K", priority: "medium" },
@@ -457,6 +458,54 @@ export function mapCMSUtilizationRow(row: any, year: number, _batchId: number) {
     average_medicare_payment_amt: avgMedicarePayment,
     total_medicare_payment_amt: deriveLineTotal(totalServices, avgMedicarePayment),
     data_year: String(year),
+  };
+}
+
+// First non-empty value among a list of candidate keys.
+function firstField(row: any, keys: string[]): any {
+  for (const k of keys) {
+    const v = row?.[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return null;
+}
+
+function toIntOrNull(v: any): number | null {
+  if (v === null || v === undefined) return null;
+  const cleaned = String(v).replace(/[^0-9-]/g, "");
+  if (cleaned === "" || cleaned === "-") return null;
+  const n = parseInt(cleaned, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+// The CMS "Physician Shared Patient Patterns" (PSPP) dataset records pairs of
+// providers who shared the same Medicare beneficiaries within a time window
+// (30/60/90/180 days) — i.e. real provider-to-provider relationships, unlike the
+// "Order & Referring" eligibility registry. Each row is a directed edge with
+// shared-patient / encounter counts; we store it in cms_referrals so the
+// Network/County/Dashboard referral features can surface true relationships.
+//
+// PSPP is distributed as headerless/variant CSV (CMS FOIA, NBER mirror) and is
+// NOT on the data.cms.gov JSON data-api, so column names vary by source. We read
+// a tolerant set of aliases per logical field and keep the full row in raw_data
+// so nothing is lost. The destination columns (referred_to_npi, total_referrals,
+// total_beneficiaries) are what countyIntelligence/comprehensiveReport read.
+export function mapSharedPatientPatternRow(row: any, year: number, batchId: number) {
+  const npi = firstField(row, ["npi_1", "NPI_1", "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi", "npi", "NPI"]);
+  const referredToNpi = firstField(row, ["npi_2", "NPI_2", "to_npi", "TO_NPI", "dst_npi", "referred_npi", "paired_npi", "provider_2_npi"]);
+  const referrals = toIntOrNull(firstField(row, ["transaction_count", "TRANSACTION_COUNT", "transactions", "pair_count", "PAIR_COUNT", "shared_count", "referral_count", "count", "COUNT", "total_referrals"]));
+  const beneficiaries = toIntOrNull(firstField(row, ["bene_count", "BENE_COUNT", "beneficiary_count", "unique_bene_count", "patient_count", "shared_patient_count", "benes", "total_beneficiaries"]));
+  return {
+    npi: npi != null ? String(npi).trim().slice(0, 20) : null,
+    referred_to_npi: referredToNpi != null ? String(referredToNpi).trim().slice(0, 20) : null,
+    referred_to_name: null as string | null,
+    // Consumers order by total_referrals, so fall back to the shared-beneficiary
+    // count when a distinct encounter/transaction count isn't published.
+    total_referrals: referrals != null ? referrals : beneficiaries,
+    total_beneficiaries: beneficiaries,
+    data_year: String(year),
+    raw_data: row,
+    import_batch_id: String(batchId),
   };
 }
 
@@ -867,6 +916,11 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
     mapped = mapped.filter(r => r.npi);
     table = providerServiceUtilization;
+  } else if (importType === "physician_shared_patient_patterns") {
+    // Provider-to-provider shared-patient edges -> cms_referrals.
+    mapped = rows.map(r => mapSharedPatientPatternRow(r, year, batchId));
+    mapped = mapped.filter(r => r.npi && r.referred_to_npi);
+    table = cmsReferrals;
   } else {
     mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId));
     mapped = mapped.filter(r => r.provider_id || r.facility_name);

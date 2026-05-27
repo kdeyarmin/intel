@@ -30,6 +30,14 @@ export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
     // discarding the bulk of the dataset — key on the HCPCS service instead.
     keyCols: ["npi", "hcpcs_code", "place_of_service", "data_year"],
   },
+  // Physician Shared Patient Patterns: one directed provider->provider edge per
+  // (npi, referred_to_npi, data_year). Keyed so re-imports/resumes don't
+  // multiply edges; the DB-level backstop is the unique index
+  // uq_cms_referrals_npi_referred_year (see server/index.ts).
+  physician_shared_patient_patterns: {
+    primaryCol: "npi",
+    keyCols: ["npi", "referred_to_npi", "data_year"],
+  },
 };
 
 export function makeKey(row: Record<string, unknown>, cols: string[]): string {
