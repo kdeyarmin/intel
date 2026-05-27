@@ -27,7 +27,7 @@ export const RETRYABLE_KEYWORDS = [
 // context, so unrelated numeric references like "row 500" do not trigger
 // auto-retries.
 export const RETRYABLE_STATUS_CODE_PATTERN =
-    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b/;
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
