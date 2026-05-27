@@ -135,7 +135,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
 
   const { state, attemptCount, lastReason, nextDueAt } = retryState;
   const disabled = state === 'disabled';
-  const maxReached = state === 'max_reached';
+  const maxReached = state === 'max_reached' || state === 'too_old';
   const tone = disabled || maxReached
     ? { border: 'border-slate-500/30', bg: 'bg-slate-500/10', text: 'text-slate-300', sub: 'text-slate-400' }
     : { border: 'border-blue-500/30', bg: 'bg-blue-500/10', text: 'text-blue-200', sub: 'text-blue-300/80' };
@@ -143,6 +143,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
   const headline =
     state === 'disabled' ? 'Auto-retry disabled for this batch'
     : state === 'max_reached' ? `Max auto-retry attempts reached (${attemptCount}/${MAX_AUTO_RETRY_ATTEMPTS})`
+    : state === 'too_old' ? 'Auto-retry window expired for this batch (older than 48h lookback)'
     : state === 'pending' && nextDueAt ? `Auto-retry pending (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS}, due ${relativeFromNow(nextDueAt, now)})`
     : state === 'eligible' ? `Auto-retry eligible (attempt ${attemptCount + 1}/${MAX_AUTO_RETRY_ATTEMPTS} on next worker tick)`
     : `Auto-retry will trigger if the failure is classified retryable (attempt 1/${MAX_AUTO_RETRY_ATTEMPTS})`;
