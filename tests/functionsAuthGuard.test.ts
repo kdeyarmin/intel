@@ -97,8 +97,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 22 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(22);
+  it("contains exactly the 23 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(23);
   });
 
   it("all listed functions are individually verified", () => {
