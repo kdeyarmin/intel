@@ -519,7 +519,7 @@ function toIntOrNull(v: any): number | null {
 // PSPP is distributed as headerless/variant CSV (CMS FOIA, NBER mirror) and is
 // NOT on the data.cms.gov JSON data-api, so column names vary by source. We read
 // a tolerant set of aliases per logical field and keep the full row in raw_data
-// so nothing is lost. The destination columns (referred_to_npi, total_referrals,
+// so nothing is lost. Destination columns are derived from aliases and normalized.
 /**
  * Normalize a physician shared-patient-pattern row into the shape used for `cms_referrals`.
  *
