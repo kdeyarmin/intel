@@ -6,10 +6,10 @@
 export type CMSUtilizationRow = {
   npi: string | null;
   service_type: string | null;
-  total_services: unknown;
-  total_unique_benes: unknown;
-  average_submitted_chrg_amt: unknown;
-  total_medicare_payment_amt: unknown;
+  total_services: unknown | null;
+  total_unique_benes: unknown | null;
+  average_submitted_chrg_amt: unknown | null;
+  total_medicare_payment_amt: unknown | null;
   data_year: string;
   raw_data: Record<string, unknown>;
 };
