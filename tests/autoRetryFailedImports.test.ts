@@ -23,6 +23,7 @@ describe('isRetryableErrorMessage', () => {
     expect(isRetryableErrorMessage('HTTP 500 Internal Server Error')).toBe(true);
     expect(isRetryableErrorMessage('HTTP 503 Service Unavailable')).toBe(true);
     expect(isRetryableErrorMessage('HTTP 429 Too Many Requests')).toBe(true);
+    expect(isRetryableErrorMessage('Failed to download: 503 Service Unavailable')).toBe(true);
     expect(isRetryableErrorMessage('Rate limit exceeded')).toBe(true);
     expect(isRetryableErrorMessage('Connection refused: ECONNREFUSED')).toBe(true);
     expect(isRetryableErrorMessage('fetch failed')).toBe(true);
@@ -141,6 +142,11 @@ describe('getRetryAttemptCount', () => {
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 'two' as any } })).toBe(0);
     expect(getRetryAttemptCount({ retry_params: { auto_retry_count: -3 } })).toBe(0);
   });
+
+  it('falls back to top-level retry_count for spawned retry batches', () => {
+    expect(getRetryAttemptCount({ retry_count: 2 })).toBe(2);
+    expect(getRetryAttemptCount({ retry_params: { auto_retry_count: 1 }, retry_count: 3 })).toBe(3);
+  });
 });
 
 describe('backoffHoursForAttempt', () => {
@@ -230,6 +236,15 @@ describe('shouldRetryBatch', () => {
   it('refuses past MAX_AUTO_RETRY_ATTEMPTS', () => {
     const result = shouldRetryBatch(
       failedBatch({ retry_params: { auto_retry_count: MAX_AUTO_RETRY_ATTEMPTS } }),
+      now,
+    );
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toMatch(/max_attempts_reached/);
+  });
+
+  it('refuses past MAX_AUTO_RETRY_ATTEMPTS when only retry_count is present', () => {
+    const result = shouldRetryBatch(
+      failedBatch({ retry_count: MAX_AUTO_RETRY_ATTEMPTS }),
       now,
     );
     expect(result.eligible).toBe(false);

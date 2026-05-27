@@ -27,7 +27,7 @@ export const RETRYABLE_KEYWORDS = [
 // context, so unrelated numeric references like "row 500" do not trigger
 // auto-retries.
 export const RETRYABLE_STATUS_CODE_PATTERN =
-    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?|statuscode)\D*(?:429|500|503)\b/;
+    /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?|statuscode)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
 
 export function isRetryableErrorMessage(msg: string | null | undefined): boolean {
     if (!msg) return false;
@@ -59,8 +59,15 @@ export function extractErrorMessage(batch: Record<string, unknown>): string {
 
 export function getRetryAttemptCount(batch: Record<string, unknown>): number {
     const params = batch.retry_params as Record<string, unknown> | undefined;
-    const count = params?.auto_retry_count;
-    return typeof count === 'number' && count >= 0 ? count : 0;
+    const autoRetryCount = params?.auto_retry_count;
+    const topLevelRetryCount = batch.retry_count;
+    const parsedAutoRetryCount = typeof autoRetryCount === 'number' && autoRetryCount >= 0
+        ? autoRetryCount
+        : 0;
+    const parsedTopLevelRetryCount = typeof topLevelRetryCount === 'number' && topLevelRetryCount >= 0
+        ? topLevelRetryCount
+        : 0;
+    return Math.max(parsedAutoRetryCount, parsedTopLevelRetryCount);
 }
 
 // Exponential backoff that mirrors runScheduledImports/helpers.backoffHours:
