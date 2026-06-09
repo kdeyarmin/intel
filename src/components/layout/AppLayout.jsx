@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { pagesConfig } from '@/pages.config.js';
 import { LayoutDashboard, Upload, Users, ListCheck, Settings,
   Shield, LogOut, BarChart3, MapPin, Activity, GitBranch,
   Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
@@ -9,8 +10,10 @@ import { LayoutDashboard, Upload, Users, ListCheck, Settings,
   Building, Briefcase, Stethoscope, ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import GlobalSearchDialog from '../search/GlobalSearchDialog';
 import NotificationBell from '../shared/NotificationBell';
+
+const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
+const GlobalSearchDialog = lazy(loadGlobalSearchDialog);
 
 const NAV_SECTIONS = [
   {
@@ -86,53 +89,68 @@ const NAV_SECTIONS = [
   },
 ];
 
+const getInitialSidebarState = () => {
+  const saved = localStorage.getItem('caremetric_sidebar');
+  if (saved !== null) return saved === 'true';
+  return window.matchMedia('(min-width: 1024px)').matches;
+};
+
+const SearchDialogFallback = () => null;
+
 export default function AppLayout({ children, currentPageName }) {
-  const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem('caremetric_sidebar');
-    if (saved !== null) return saved === 'true';
-    return window.matchMedia('(min-width: 1024px)').matches;
-  });
+  const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarState);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
   const mainRef = React.useRef(null);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setSidebarOpen(prev => {
       const next = !prev;
       localStorage.setItem('caremetric_sidebar', String(next));
       return next;
     });
-  };
-
-  useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTop = 0;
-    }
-    window.scrollTo(0, 0);
-    const t = setTimeout(() => {
-      if (mainRef.current) {
-        mainRef.current.scrollTop = 0;
-      }
-    }, 50);
-    return () => clearTimeout(t);
-  }, [currentPageName]);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const currentUser = await base44.auth.me();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Failed to load user', error);
-      }
-    };
-    loadUser();
   }, []);
 
-  const toggleSection = (label) => {
+  React.useLayoutEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0 });
+    window.scrollTo(0, 0);
+  }, [currentPageName]);
+
+  const toggleSection = useCallback((label) => {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
-  };
+  }, []);
+
+  const visibleNavSections = useMemo(() => NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: user?.role
+      ? section.items.filter(item => item.roles.includes(user.role))
+      : section.items,
+  })).filter(section => section.items.length > 0), [user?.role]);
+
+  const handleMobileNavClick = useCallback(() => {
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, []);
+
+  const preloadRoute = useCallback((page) => {
+    pagesConfig.preloadPage?.(page);
+  }, []);
+
+  const openSearch = useCallback(() => {
+    loadGlobalSearchDialog();
+    setSearchOpen(true);
+  }, []);
+
+  React.useEffect(() => {
+    const handler = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        openSearch();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [openSearch]);
 
   return (
     <div className="flex h-screen bg-[#0f1729]">
@@ -149,7 +167,7 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`} onClick={(e) => { if (window.innerWidth < 1024 && sidebarOpen && e.target.tagName === 'A') setSidebarOpen(false); }}>
+      <aside className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
           <div className="flex items-center gap-3">
@@ -177,7 +195,9 @@ export default function AppLayout({ children, currentPageName }) {
         {/* Search Button */}
         <div className="px-2 py-2 min-w-[14rem]">
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={openSearch}
+            onMouseEnter={loadGlobalSearchDialog}
+            onFocus={loadGlobalSearchDialog}
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
           >
             <Search className="w-4 h-4 shrink-0" />
@@ -188,11 +208,7 @@ export default function AppLayout({ children, currentPageName }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark min-w-[14rem]">
-          {NAV_SECTIONS.map((section) => {
-            const filteredItems = user?.role
-              ? section.items.filter(item => item.roles.includes(user.role))
-              : section.items;
-            if (filteredItems.length === 0) return null;
+          {visibleNavSections.map((section) => {
             const isCollapsed = collapsedSections[section.label];
 
             return (
@@ -204,7 +220,7 @@ export default function AppLayout({ children, currentPageName }) {
                   {section.label}
                   {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
-                {!isCollapsed && filteredItems.map((item) => {
+                {!isCollapsed && section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentPageName === item.page;
                   return (
@@ -212,7 +228,9 @@ export default function AppLayout({ children, currentPageName }) {
                       key={item.name}
                       to={createPageUrl(item.page)}
                       title={item.name}
-                      onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
+                      onClick={handleMobileNavClick}
+                      onMouseEnter={() => preloadRoute(item.page)}
+                      onFocus={() => preloadRoute(item.page)}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
@@ -240,7 +258,7 @@ export default function AppLayout({ children, currentPageName }) {
           </div>
           <Button
             variant="ghost"
-            onClick={() => base44.auth.logout()}
+            onClick={logout}
             className="w-full text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
           >
             <LogOut className="w-4 h-4" />
@@ -249,7 +267,11 @@ export default function AppLayout({ children, currentPageName }) {
         </div>
       </aside>
 
-      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      {searchOpen && (
+        <Suspense fallback={<SearchDialogFallback />}>
+          <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+        </Suspense>
+      )}
 
       {/* Top bar when sidebar is closed */}
       {!sidebarOpen && (
@@ -259,7 +281,7 @@ export default function AppLayout({ children, currentPageName }) {
           </Button>
           <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
           <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
-          <button onClick={() => setSearchOpen(true)} className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
+          <button onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" />
           </button>
           <NotificationBell />

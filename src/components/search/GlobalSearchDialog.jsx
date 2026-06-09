@@ -45,22 +45,28 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const listRef = useRef(null);
   const inputRef = useRef(null);
+  const normalizedQuery = query.trim();
+  const hasSearchTerm = open && normalizedQuery.length >= 2;
+  const hasNpiSearchTerm = hasSearchTerm && /^\d{4,}$/.test(normalizedQuery);
 
   const { data: providers = [] } = useQuery({
     queryKey: ['globalProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
+    enabled: hasSearchTerm,
     staleTime: 120000,
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['globalLocations'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    enabled: hasSearchTerm,
     staleTime: 120000,
   });
 
   const { data: taxonomies = [] } = useQuery({
     queryKey: ['globalTaxonomies'],
     queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    enabled: hasSearchTerm,
     staleTime: 120000,
   });
 
@@ -70,18 +76,21 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
       const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 300);
       return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
     },
+    enabled: hasNpiSearchTerm,
     staleTime: 120000,
   });
 
   const { data: referrals = [] } = useQuery({
     queryKey: ['globalRef'],
     queryFn: () => base44.entities.CMSReferral.list('-created_date', 300),
+    enabled: hasNpiSearchTerm,
     staleTime: 120000,
   });
 
   const { data: leadLists = [] } = useQuery({
     queryKey: ['globalLeadLists'],
     queryFn: () => base44.entities.LeadList.list('-created_date', 100),
+    enabled: hasSearchTerm,
     staleTime: 120000,
   });
 
@@ -90,17 +99,6 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   }, [open]);
 
   useEffect(() => { setHighlightIdx(-1); }, [query, activeCategory]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        onOpenChange(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onOpenChange]);
 
   const searchablePages = useMemo(() => (
     Object.keys(pagesConfig.Pages).map((page) => ({
@@ -117,7 +115,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     // Pages
     searchablePages.forEach(p => {
       if (p.name.toLowerCase().includes(q)) {
-        items.push({ type: 'Page', label: p.name, sublabel: 'Navigate to page', url: createPageUrl(p.page) });
+        items.push({ type: 'Page', label: p.name, sublabel: 'Navigate to page', url: createPageUrl(p.page), pageName: p.page });
       }
     });
 
@@ -133,6 +131,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           label: name || p.npi,
           sublabel: `NPI: ${p.npi}${p.credential ? ` • ${p.credential}` : ''}${p.status === 'Deactivated' ? ' • Deactivated' : ''}`,
           url: createPageUrl(`ProviderDetail?npi=${p.npi}`),
+          pageName: 'ProviderDetail',
         });
       }
     });
@@ -146,6 +145,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           label: `${l.address_1 || 'Unknown'}, ${l.city || ''} ${l.state || ''}`,
           sublabel: `NPI: ${l.npi} • ${l.location_type || ''} ${l.is_primary ? '• Primary' : ''}`,
           url: createPageUrl(`LocationDetail?id=${l.id}`),
+          pageName: 'LocationDetail',
         });
       }
     });
@@ -160,6 +160,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           label: t.taxonomy_description || t.taxonomy_code,
           sublabel: `NPI: ${t.npi} • Code: ${t.taxonomy_code || ''}${t.primary_flag ? ' • Primary' : ''}`,
           url: createPageUrl(`ProviderDetail?npi=${t.npi}`),
+          pageName: 'ProviderDetail',
         });
       }
     });
@@ -175,6 +176,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
             label: `Utilization for NPI ${u.npi}`,
             sublabel: `${u.year || ''} • ${(u.total_medicare_beneficiaries || 0).toLocaleString()} beneficiaries • $${((u.total_medicare_payment || 0) / 1000).toFixed(0)}K`,
             url: createPageUrl(`ProviderDetail?npi=${u.npi}`),
+            pageName: 'ProviderDetail',
           });
         }
       });
@@ -187,6 +189,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
             label: `Referrals for NPI ${r.npi}`,
             sublabel: `${r.year || ''} • ${(r.total_referrals || 0).toLocaleString()} total referrals`,
             url: createPageUrl(`ProviderDetail?npi=${r.npi}`),
+            pageName: 'ProviderDetail',
           });
         }
       });
@@ -200,6 +203,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           label: ll.name,
           sublabel: `${ll.member_count || 0} providers`,
           url: createPageUrl('LeadLists'),
+          pageName: 'LeadLists',
         });
       }
     });
@@ -221,6 +225,10 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   const [recentSearches, setRecentSearches] = useState(() => {
     try { return JSON.parse(localStorage.getItem('recentSearches') || '[]'); } catch { return []; }
   });
+
+  const preloadResultPage = (item) => {
+    if (item?.pageName) pagesConfig.preloadPage?.(item.pageName);
+  };
 
   const goTo = (url) => {
     if (query && query.length >= 2) {
@@ -321,7 +329,8 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                   <button
                     key={idx}
                     onClick={() => goTo(item.url)}
-                    onMouseEnter={() => setHighlightIdx(idx)}
+                    onFocus={() => preloadResultPage(item)}
+                    onMouseEnter={() => { setHighlightIdx(idx); preloadResultPage(item); }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-900/10' : 'hover:bg-slate-800/50'}`}
                   >
                     <div className={`p-1.5 rounded-md ${config.color}`}>

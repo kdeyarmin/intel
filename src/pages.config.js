@@ -47,98 +47,121 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import AIAssistant from './pages/AIAssistant.jsx';
-import APIConnectors from './pages/APIConnectors.jsx';
-import AdminSettings from './pages/AdminSettings.jsx';
-import AdvancedAnalytics from './pages/AdvancedAnalytics.jsx';
-import CMSAnalytics from './pages/CMSAnalytics.jsx';
-import CMSDataSources from './pages/CMSDataSources.jsx';
-import CountyIntelligence from './pages/CountyIntelligence.jsx';
-import CustomReports from './pages/CustomReports.jsx';
-// Campaigns route is unified onto the OutreachCampaign-based ProviderOutreach page.
-import Dashboard from './pages/Dashboard.jsx';
-import DataCenter from './pages/DataCenter.jsx';
-import DataQuality from './pages/DataQuality.jsx';
-import CommunityHealthCenters from './pages/CommunityHealthCenters.jsx';
-import DMESuppliers from './pages/DMESuppliers.jsx';
-import ProviderIntelligence from './pages/ProviderIntelligence.jsx';
-import FacilityDetail from './pages/FacilityDetail.jsx';
-import Help from './pages/Help.jsx';
-import HomeHealthAgencies from './pages/HomeHealthAgencies.jsx';
-import Hospices from './pages/Hospices.jsx';
-import Hospitals from './pages/Hospitals.jsx';
-import InpatientRehab from './pages/InpatientRehab.jsx';
-import ImportMonitoring from './pages/ImportMonitoring.jsx';
-import LeadListBuilder from './pages/LeadListBuilder.jsx';
-import LeadLists from './pages/LeadLists.jsx';
-import LocationDetail from './pages/LocationDetail.jsx';
-import Locations from './pages/Locations.jsx';
-import LongTermCare from './pages/LongTermCare.jsx';
-import NursingHomes from './pages/NursingHomes.jsx';
-import NPPESCrawler from './pages/NPPESCrawler.jsx';
-import NPPESCrawlerSettings from './pages/NPPESCrawlerSettings.jsx';
-import Organizations from './pages/Organizations.jsx';
-import ProviderDetail from './pages/ProviderDetail.jsx';
-import ProviderLocationMatching from './pages/ProviderLocationMatching.jsx';
-import ProviderOutreach from './pages/ProviderOutreach.jsx';
-import Providers from './pages/Providers.jsx';
-import ReconciliationDashboard from './pages/ReconciliationDashboard.jsx';
-import ReferralNetworkIntelligence from './pages/ReferralNetworkIntelligence.jsx';
-import ScoringRules from './pages/ScoringRules.jsx';
-import SecurityAudit from './pages/SecurityAudit.jsx';
-import TerritoryIntelligence from './pages/TerritoryIntelligence.jsx';
-import Utilization from './pages/Utilization.jsx';
+import React, { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
+const pageLoaders = {
+    AIAssistant: () => import('./pages/AIAssistant.jsx'),
+    APIConnectors: () => import('./pages/APIConnectors.jsx'),
+    AdminSettings: () => import('./pages/AdminSettings.jsx'),
+    AdvancedAnalytics: () => import('./pages/AdvancedAnalytics.jsx'),
+    CMSAnalytics: () => import('./pages/CMSAnalytics.jsx'),
+    CMSDataSources: () => import('./pages/CMSDataSources.jsx'),
+    CountyIntelligence: () => import('./pages/CountyIntelligence.jsx'),
+    CustomReports: () => import('./pages/CustomReports.jsx'),
+    Dashboard: () => import('./pages/Dashboard.jsx'),
+    DataCenter: () => import('./pages/DataCenter.jsx'),
+    DataQuality: () => import('./pages/DataQuality.jsx'),
+    CommunityHealthCenters: () => import('./pages/CommunityHealthCenters.jsx'),
+    DMESuppliers: () => import('./pages/DMESuppliers.jsx'),
+    ProviderIntelligence: () => import('./pages/ProviderIntelligence.jsx'),
+    FacilityDetail: () => import('./pages/FacilityDetail.jsx'),
+    Help: () => import('./pages/Help.jsx'),
+    HomeHealthAgencies: () => import('./pages/HomeHealthAgencies.jsx'),
+    Hospices: () => import('./pages/Hospices.jsx'),
+    Hospitals: () => import('./pages/Hospitals.jsx'),
+    InpatientRehab: () => import('./pages/InpatientRehab.jsx'),
+    ImportMonitoring: () => import('./pages/ImportMonitoring.jsx'),
+    LeadListBuilder: () => import('./pages/LeadListBuilder.jsx'),
+    LeadLists: () => import('./pages/LeadLists.jsx'),
+    LocationDetail: () => import('./pages/LocationDetail.jsx'),
+    Locations: () => import('./pages/Locations.jsx'),
+    LongTermCare: () => import('./pages/LongTermCare.jsx'),
+    NursingHomes: () => import('./pages/NursingHomes.jsx'),
+    NPPESCrawler: () => import('./pages/NPPESCrawler.jsx'),
+    NPPESCrawlerSettings: () => import('./pages/NPPESCrawlerSettings.jsx'),
+    Organizations: () => import('./pages/Organizations.jsx'),
+    ProviderDetail: () => import('./pages/ProviderDetail.jsx'),
+    ProviderLocationMatching: () => import('./pages/ProviderLocationMatching.jsx'),
+    ProviderOutreach: () => import('./pages/ProviderOutreach.jsx'),
+    Providers: () => import('./pages/Providers.jsx'),
+    ReconciliationDashboard: () => import('./pages/ReconciliationDashboard.jsx'),
+    ReferralNetworkIntelligence: () => import('./pages/ReferralNetworkIntelligence.jsx'),
+    ScoringRules: () => import('./pages/ScoringRules.jsx'),
+    SecurityAudit: () => import('./pages/SecurityAudit.jsx'),
+    TerritoryIntelligence: () => import('./pages/TerritoryIntelligence.jsx'),
+    Utilization: () => import('./pages/Utilization.jsx'),
+};
 
-export const PAGES = {
-    "AIAssistant": AIAssistant,
-    "APIConnectors": APIConnectors,
-    "AdminSettings": AdminSettings,
-    "AdvancedAnalytics": AdvancedAnalytics,
-    "CMSAnalytics": CMSAnalytics,
-    "CMSDataSources": CMSDataSources,
-    "Campaigns": ProviderOutreach,
-    "CountyIntelligence": CountyIntelligence,
-    "CustomReports": CustomReports,
-    "Dashboard": Dashboard,
-    "DataCenter": DataCenter,
-    "DataQuality": DataQuality,
-    "CommunityHealthCenters": CommunityHealthCenters,
-    "DMESuppliers": DMESuppliers,
-    "EmailSearchBot": ProviderIntelligence,
-    "EnrichmentHub": ProviderIntelligence,
-    "FacilityDetail": FacilityDetail,
-    "ProviderIntelligence": ProviderIntelligence,
-    "Help": Help,
-    "HomeHealthAgencies": HomeHealthAgencies,
-    "Hospices": Hospices,
-    "Hospitals": Hospitals,
-    "InpatientRehab": InpatientRehab,
-    "ImportMonitoring": ImportMonitoring,
-    "LeadListBuilder": LeadListBuilder,
-    "LeadLists": LeadLists,
-    "LocationDetail": LocationDetail,
-    "Locations": Locations,
-    "LongTermCare": LongTermCare,
-    "NursingHomes": NursingHomes,
-    "NPPESCrawler": NPPESCrawler,
-    "NPPESCrawlerSettings": NPPESCrawlerSettings,
-    "Organizations": Organizations,
-    "ProviderDetail": ProviderDetail,
-    "ProviderLocationMatching": ProviderLocationMatching,
-    "ProviderOutreach": ProviderOutreach,
-    "Providers": Providers,
-    "ReconciliationDashboard": ReconciliationDashboard,
-    "ReferralNetworkIntelligence": ReferralNetworkIntelligence,
-    "ScoringRules": ScoringRules,
-    "SecurityAudit": SecurityAudit,
-    "TerritoryIntelligence": TerritoryIntelligence,
-    "Utilization": Utilization,
-}
+const pageLoaderAliases = {
+    // Campaigns route is unified onto the OutreachCampaign-based ProviderOutreach page.
+    Campaigns: pageLoaders.ProviderOutreach,
+    EmailSearchBot: pageLoaders.ProviderIntelligence,
+    EnrichmentHub: pageLoaders.ProviderIntelligence,
+};
+
+export const PAGE_LOADERS = {
+    AIAssistant: pageLoaders.AIAssistant,
+    APIConnectors: pageLoaders.APIConnectors,
+    AdminSettings: pageLoaders.AdminSettings,
+    AdvancedAnalytics: pageLoaders.AdvancedAnalytics,
+    CMSAnalytics: pageLoaders.CMSAnalytics,
+    CMSDataSources: pageLoaders.CMSDataSources,
+    Campaigns: pageLoaderAliases.Campaigns,
+    CountyIntelligence: pageLoaders.CountyIntelligence,
+    CustomReports: pageLoaders.CustomReports,
+    Dashboard: pageLoaders.Dashboard,
+    DataCenter: pageLoaders.DataCenter,
+    DataQuality: pageLoaders.DataQuality,
+    CommunityHealthCenters: pageLoaders.CommunityHealthCenters,
+    DMESuppliers: pageLoaders.DMESuppliers,
+    EmailSearchBot: pageLoaderAliases.EmailSearchBot,
+    EnrichmentHub: pageLoaderAliases.EnrichmentHub,
+    FacilityDetail: pageLoaders.FacilityDetail,
+    ProviderIntelligence: pageLoaders.ProviderIntelligence,
+    Help: pageLoaders.Help,
+    HomeHealthAgencies: pageLoaders.HomeHealthAgencies,
+    Hospices: pageLoaders.Hospices,
+    Hospitals: pageLoaders.Hospitals,
+    InpatientRehab: pageLoaders.InpatientRehab,
+    ImportMonitoring: pageLoaders.ImportMonitoring,
+    LeadListBuilder: pageLoaders.LeadListBuilder,
+    LeadLists: pageLoaders.LeadLists,
+    LocationDetail: pageLoaders.LocationDetail,
+    Locations: pageLoaders.Locations,
+    LongTermCare: pageLoaders.LongTermCare,
+    NursingHomes: pageLoaders.NursingHomes,
+    NPPESCrawler: pageLoaders.NPPESCrawler,
+    NPPESCrawlerSettings: pageLoaders.NPPESCrawlerSettings,
+    Organizations: pageLoaders.Organizations,
+    ProviderDetail: pageLoaders.ProviderDetail,
+    ProviderLocationMatching: pageLoaders.ProviderLocationMatching,
+    ProviderOutreach: pageLoaders.ProviderOutreach,
+    Providers: pageLoaders.Providers,
+    ReconciliationDashboard: pageLoaders.ReconciliationDashboard,
+    ReferralNetworkIntelligence: pageLoaders.ReferralNetworkIntelligence,
+    ScoringRules: pageLoaders.ScoringRules,
+    SecurityAudit: pageLoaders.SecurityAudit,
+    TerritoryIntelligence: pageLoaders.TerritoryIntelligence,
+    Utilization: pageLoaders.Utilization,
+};
+
+const lazyPage = (loader) => {
+    const LazyPage = lazy(loader);
+    return function LazyRoutePage(props) {
+        return React.createElement(LazyPage, props);
+    };
+};
+
+export const preloadPage = (pageName) => PAGE_LOADERS[pageName]?.();
+
+export const PAGES = Object.fromEntries(
+    Object.entries(PAGE_LOADERS).map(([name, loader]) => [name, lazyPage(loader)])
+);
 
 export const pagesConfig = {
     mainPage: "Dashboard",
     Pages: PAGES,
     Layout: __Layout,
+    preloadPage,
 };

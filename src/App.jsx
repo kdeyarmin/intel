@@ -1,4 +1,4 @@
-import { useEffect, Component } from 'react';
+import { Suspense, Component } from 'react';
 import { Toaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -7,7 +7,6 @@ import { pagesConfig } from './pages.config.js'
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound.jsx';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Login from '@/pages/Login';
 
 class ErrorBoundary extends Component {
@@ -42,13 +41,21 @@ class ErrorBoundary extends Component {
   }
 }
 
+
+const PageLoadingFallback = () => (
+  <div className="flex min-h-[50vh] items-center justify-center" aria-label="Loading page">
+    <div className="w-8 h-8 border-4 border-slate-700 border-t-cyan-400 rounded-full animate-spin"></div>
+  </div>
+);
+
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout ?
-  <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>;
+const LayoutWrapper = ({ children, currentPageName }) => {
+  const content = <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>;
+  return Layout ? <Layout currentPageName={currentPageName}>{content}</Layout> : content;
+};
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoadingAuth } = useAuth();
