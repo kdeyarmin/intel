@@ -406,7 +406,7 @@ export default function Organizations() {
                             </TableCell>
                             <TableCell className="font-mono text-sm text-slate-400">{provider.npi}</TableCell>
                             <TableCell>
-                              <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)} className="hover:underline font-medium text-slate-200">
+                              <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)} className="hover:underline font-medium text-slate-200">
                                 {provider.organization_name}
                               </Link>
                             </TableCell>
@@ -444,7 +444,7 @@ export default function Organizations() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
+                              <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
                                 <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View Details</Button>
                               </Link>
                             </TableCell>
