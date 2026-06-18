@@ -47,7 +47,7 @@ export default function BatchProviderUpdater() {
   const applyUpdates = async () => {
     if (selected.size === 0) return;
     setApplying(true);
-    let success = 0, failed = 0;
+    let success = 0, failed = 0, noop = 0;
 
     try {
       const toApply = approved.filter(r => selected.has(r.id));
@@ -62,6 +62,7 @@ export default function BatchProviderUpdater() {
 
           const prov = provs[0];
           const update = {};
+          let appliedSomething = false;
 
           if (d.group_practices?.length > 0 && !prov.organization_name) {
             update.organization_name = d.group_practices[0];
@@ -70,34 +71,44 @@ export default function BatchProviderUpdater() {
           if (d.hospital_affiliations?.length > 0) {
             const existing = await base44.entities.ProviderAffiliation.filter({ npi: r.npi }, '-created_date', 200);
             for (const aff of d.hospital_affiliations) {
-              const alreadyExists = existing.some(e => e.affiliation_name.toLowerCase() === aff.toLowerCase());
+              const alreadyExists = existing.some(e => (e.affiliation_name || '').toLowerCase() === aff.toLowerCase());
               if (!alreadyExists) {
                 await base44.entities.ProviderAffiliation.create({
                   npi: r.npi, affiliation_name: aff, affiliation_type: 'hospital',
                   source: 'enrichment', status: 'confirmed', is_active: true,
                   confidence: r.confidence,
                 });
+                appliedSomething = true;
               }
             }
           }
 
           if (Object.keys(update).length > 0) {
             await base44.entities.Provider.update(prov.id, update);
+            appliedSomething = true;
           }
 
-          await base44.entities.EnrichmentRecord.update(r.id, { status: 'auto_applied' });
-          success++;
+          if (appliedSomething) {
+            await base44.entities.EnrichmentRecord.update(r.id, { status: 'auto_applied' });
+            success++;
+          } else {
+            // Nothing was persisted (e.g. a telehealth-only record — there is no
+            // telehealth column on the provider — or all data already present).
+            // Leave it 'approved' rather than falsely marking it applied and
+            // dropping the signal.
+            noop++;
+          }
         } catch (err) {
           console.error(`Failed to apply update for ${r.npi}:`, err);
           failed++;
         }
       }
 
-      setResults({ success, failed });
+      setResults({ success, failed, noop });
       setSelected(new Set());
       queryClient.invalidateQueries({ queryKey: ['approvedEnrichments'] });
       queryClient.invalidateQueries({ queryKey: ['enrichmentRecords'] });
-      toast.success(`Applied ${success} updates to provider profiles`);
+      toast.success(`Applied ${success} update(s)${noop ? `; ${noop} had no applicable profile changes` : ''}`);
     } catch (err) {
       console.error('Apply updates failed:', err);
       toast.error('Failed to apply updates: ' + (err.message || 'Unknown error'));
@@ -112,7 +123,7 @@ export default function BatchProviderUpdater() {
     { key: 'affiliations', label: 'Hospital Affiliations', icon: Users, color: 'text-violet-400',
       desc: 'Create ProviderAffiliation records' },
     { key: 'telehealth', label: 'Telehealth Status', icon: Wifi, color: 'text-cyan-400',
-      desc: 'Flag telehealth availability' },
+      desc: 'Informational — no provider telehealth field to write yet' },
   ];
 
   if (isLoading) return null;
@@ -177,6 +188,7 @@ export default function BatchProviderUpdater() {
           <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
             <p className="text-xs text-emerald-400">{results.success} profiles updated</p>
+            {results.noop > 0 && <p className="text-[10px] text-slate-400">{results.noop} had no applicable changes</p>}
             {results.failed > 0 && <p className="text-[10px] text-red-400">{results.failed} failed</p>}
           </div>
         )}
