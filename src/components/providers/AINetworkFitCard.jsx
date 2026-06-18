@@ -11,6 +11,7 @@ export default function AINetworkFitCard({ provider, taxonomy = [], utilization,
 
   const runAnalysis = async () => {
     setLoading(true);
+    try {
     const name = provider.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider.organization_name || provider.npi;
@@ -56,7 +57,13 @@ Provide:
       }
     });
     setAnalysis(res);
-    setLoading(false);
+    } catch (err) {
+      // Without this, a rejected InvokeLLM would leave the button stuck on
+      // "Analyzing..." forever.
+      console.error('AI network fit analysis failed', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const scoreColor = (s) => s >= 75 ? 'text-emerald-400' : s >= 50 ? 'text-amber-400' : 'text-red-400';

@@ -98,7 +98,9 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
 
   const progressData = [
     { name: 'Sent', value: metrics.sent_count },
-    { name: 'Opened', value: Math.round(metrics.sent_count * (metrics.open_rate / 100)) },
+    // Use the raw opened count, not sent_count * open_rate — open_rate is a
+    // rounded .toFixed(1) string, so re-deriving introduces rounding error.
+    { name: 'Opened', value: metrics.opened },
     { name: 'Responded', value: metrics.conversion_count }
   ];
 
