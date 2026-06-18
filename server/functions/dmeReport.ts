@@ -172,10 +172,12 @@ export async function handleGetDMEProviders(params: any) {
     // very large scopes — the page still renders without it).
     let emailStats = { total, searched: 0, with_email: 0 };
     try {
+      // count(DISTINCT …) keeps the coverage accurate even after a re-scan,
+      // which inserts an additional enrichment_records row per supplier.
       const statRows = (await client.query(
-        `SELECT count(*)::int AS total,
-                count(*) FILTER (WHERE e.npi IS NOT NULL)::int AS searched,
-                count(*) FILTER (WHERE e.new_value IS NOT NULL AND e.new_value <> '')::int AS with_email
+        `SELECT count(DISTINCT f.provider_id)::int AS total,
+                count(DISTINCT e.npi)::int AS searched,
+                count(DISTINCT e.npi) FILTER (WHERE e.new_value IS NOT NULL AND e.new_value <> '')::int AS with_email
            FROM (SELECT DISTINCT provider_id FROM medicare_facilities WHERE ${whereSQL}) f
            LEFT JOIN enrichment_records e
              ON e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email'`,
@@ -302,36 +304,58 @@ async function saveDMEEmailResult(providerId: string, name: string, found: { bes
   });
 }
 
-async function fetchUnsearchedBatch(state: string | null, batchSize: number): Promise<any[]> {
+/**
+ * Fetch the next batch of suppliers to search.
+ *
+ * Normal mode skips suppliers that already have an enrichment record (NOT
+ * EXISTS), so the loop makes progress as records are written and resumes
+ * cleanly across restarts. Re-scan mode ignores existing records (so previously
+ * searched suppliers are processed again) and instead advances by a keyset
+ * cursor on provider_id — otherwise the unchanged NOT EXISTS-free selection
+ * would return the same rows forever.
+ */
+async function fetchSupplierBatch(
+  state: string | null,
+  batchSize: number,
+  rescan: boolean,
+  cursor: string,
+): Promise<any[]> {
   const where: string[] = ["f.facility_type = $1"];
   const values: any[] = [DME_FACILITY_TYPE];
   let p = 2;
   if (state) { where.push(`f.state = $${p}`); values.push(state); p++; }
-  where.push(`NOT EXISTS (SELECT 1 FROM enrichment_records e WHERE e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email')`);
+  if (rescan) {
+    where.push(`f.provider_id > $${p}`); values.push(cursor || ""); p++;
+  } else {
+    where.push(`NOT EXISTS (SELECT 1 FROM enrichment_records e WHERE e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email')`);
+  }
   return withClient(30000, async (client) => {
     return (await client.query(
       `SELECT DISTINCT ON (f.provider_id) f.provider_id, f.facility_name, f.address, f.city, f.state, f.zip, f.raw_data
          FROM medicare_facilities f
         WHERE ${where.join(" AND ")}
-        ORDER BY f.provider_id, f.data_year DESC
+        ORDER BY f.provider_id ASC, f.data_year DESC
         LIMIT $${p}`,
       [...values, batchSize],
     )).rows;
   });
 }
 
-async function countUnsearched(state: string | null): Promise<number> {
+/** Count suppliers the job will process: all in scope (re-scan) or only the unsearched ones. */
+async function countToProcess(state: string | null, rescan: boolean): Promise<number> {
   const where: string[] = ["facility_type = $1"];
   const values: any[] = [DME_FACILITY_TYPE];
   let p = 2;
   if (state) { where.push(`state = $${p}`); values.push(state); p++; }
+  const notSearched = rescan
+    ? ""
+    : ` AND NOT EXISTS (SELECT 1 FROM enrichment_records e WHERE e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email')`;
   return withClient(30000, async (client) => {
     try {
       const rows = (await client.query(
         `SELECT count(*)::int AS count FROM (
            SELECT DISTINCT provider_id FROM medicare_facilities f
-            WHERE ${where.join(" AND ")}
-              AND NOT EXISTS (SELECT 1 FROM enrichment_records e WHERE e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email')
+            WHERE ${where.join(" AND ")}${notSearched}
          ) s`,
         values,
       )).rows;
@@ -340,7 +364,7 @@ async function countUnsearched(state: string | null): Promise<number> {
   });
 }
 
-async function runDMEEmailSearch(taskId: number, state: string | null) {
+async function runDMEEmailSearch(taskId: number, state: string | null, rescan: boolean) {
   const anthropic = getAnthropicClient();
   let processed = 0;
   let found = 0;
@@ -352,8 +376,9 @@ async function runDMEEmailSearch(taskId: number, state: string | null) {
   found = Number(meta0.success_count || 0);
   errors = Number(meta0.error_count || 0);
   const totalItems = Number(meta0.total_items || 0);
+  let cursor: string = String(meta0.cursor || "");
 
-  console.log(`[DMEEmail] Task ${taskId} started (state=${state || "ALL"}, total=${totalItems})`);
+  console.log(`[DMEEmail] Task ${taskId} started (state=${state || "ALL"}, rescan=${rescan}, total=${totalItems})`);
 
   while (true) {
     const [task] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
@@ -364,7 +389,7 @@ async function runDMEEmailSearch(taskId: number, state: string | null) {
 
     let batch: any[] = [];
     try {
-      batch = await fetchUnsearchedBatch(state, FINDER_BATCH);
+      batch = await fetchSupplierBatch(state, FINDER_BATCH, rescan, cursor);
     } catch (e: any) {
       console.error(`[DMEEmail] Task ${taskId}: batch fetch failed: ${e.message}`);
       await new Promise((r) => setTimeout(r, 5000));
@@ -422,9 +447,13 @@ async function runDMEEmailSearch(taskId: number, state: string | null) {
 
     await Promise.all(Array.from({ length: Math.min(FINDER_CONCURRENCY, batch.length) }, () => worker()));
 
+    // Re-scan advances by keyset cursor (every supplier in the batch was
+    // processed, regardless of worker order, so the max provider_id is safe).
+    if (rescan && batch.length > 0) cursor = String(batch[batch.length - 1].provider_id || cursor);
+
     await db.update(backgroundTasks).set({
       progress: processed,
-      metadata: { state, total_items: totalItems, processed_items: processed, success_count: found, error_count: errors },
+      metadata: { state, rescan, cursor, total_items: totalItems, processed_items: processed, success_count: found, error_count: errors },
       updated_date: new Date(),
     }).where(eq(backgroundTasks.id, taskId));
 
@@ -437,7 +466,7 @@ async function runDMEEmailSearch(taskId: number, state: string | null) {
       status: "completed",
       progress: processed,
       result: { total_processed: processed, total_found: found, total_errors: errors },
-      metadata: { state, total_items: totalItems, processed_items: processed, success_count: found, error_count: errors },
+      metadata: { state, rescan, cursor, total_items: totalItems, processed_items: processed, success_count: found, error_count: errors },
       completed_at: new Date(),
       updated_date: new Date(),
     }).where(eq(backgroundTasks.id, taskId));
@@ -448,6 +477,7 @@ async function runDMEEmailSearch(taskId: number, state: string | null) {
 
 export async function handleStartDMEEmailSearch(payload: any) {
   const state = normalizeState(payload?.state);
+  const rescan = payload?.rescan === true;
 
   const existingActive = await db.select().from(backgroundTasks)
     .where(and(eq(backgroundTasks.task_type, TASK_TYPE), eq(backgroundTasks.status, "processing")));
@@ -464,21 +494,28 @@ export async function handleStartDMEEmailSearch(payload: any) {
     }
   }
 
-  const totalItems = await countUnsearched(state);
+  const totalItems = await countToProcess(state, rescan);
   if (totalItems === 0) {
-    return { success: true, message: `No unsearched DME suppliers${state ? ` in ${state}` : ""}.`, task_id: null, total_items: 0 };
+    return {
+      success: true,
+      message: rescan
+        ? `No DME suppliers${state ? ` in ${state}` : ""} to re-search.`
+        : `No unsearched DME suppliers${state ? ` in ${state}` : ""}.`,
+      task_id: null,
+      total_items: 0,
+    };
   }
 
   const [task] = await db.insert(backgroundTasks).values({
     task_type: TASK_TYPE,
     status: "processing",
     progress: 0,
-    metadata: { state, total_items: totalItems, processed_items: 0, success_count: 0, error_count: 0 },
+    metadata: { state, rescan, cursor: "", total_items: totalItems, processed_items: 0, success_count: 0, error_count: 0 },
     started_at: new Date(),
   }).returning();
 
   activeTaskIds.add(task.id);
-  runDMEEmailSearch(task.id, state).catch((err) => {
+  runDMEEmailSearch(task.id, state, rescan).catch((err) => {
     console.error("[DMEEmail] Background search error:", err.message);
     activeTaskIds.delete(task.id);
     db.update(backgroundTasks)
@@ -488,7 +525,7 @@ export async function handleStartDMEEmailSearch(payload: any) {
 
   return {
     success: true,
-    message: `Started AI email search for ${totalItems.toLocaleString()} DME supplier${totalItems === 1 ? "" : "s"}${state ? ` in ${state}` : ""}.`,
+    message: `Started AI email ${rescan ? "re-search" : "search"} for ${totalItems.toLocaleString()} DME supplier${totalItems === 1 ? "" : "s"}${state ? ` in ${state}` : ""}.`,
     task_id: task.id,
     total_items: totalItems,
   };
@@ -520,6 +557,7 @@ export async function handleDMEEmailSearchStatus() {
     status: task.status,
     task_id: task.id,
     state: (task.metadata as any)?.state || null,
+    rescan: (task.metadata as any)?.rescan === true,
     progress,
     started_at: task.started_at,
     completed_at: task.completed_at,

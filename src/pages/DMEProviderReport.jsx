@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { exportCSV, exportExcel } from '@/components/exports/exportUtils';
@@ -49,6 +50,7 @@ export default function DMEProviderReport() {
   const [selectedState, setSelectedState] = useState('');
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(null); // 'csv' | 'excel' | null
+  const [rescan, setRescan] = useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
@@ -92,7 +94,7 @@ export default function DMEProviderReport() {
   }, [isRunning, queryClient]);
 
   const startMutation = useMutation({
-    mutationFn: () => base44.functions.invoke('startDMEEmailSearch', { state: selectedState || undefined }).then((r) => r.data || r),
+    mutationFn: () => base44.functions.invoke('startDMEEmailSearch', { state: selectedState || undefined, rescan }).then((r) => r.data || r),
     onSuccess: (res) => {
       toast[res?.task_id ? 'success' : 'info'](res?.message || 'Email search started');
       queryClient.invalidateQueries({ queryKey: ['dmeEmailStatus'] });
@@ -202,8 +204,10 @@ export default function DMEProviderReport() {
                 <p className="text-sm font-medium text-slate-200">AI Email Finder</p>
                 <p className="text-xs text-slate-400">
                   {isRunning
-                    ? `Searching${jobStatus?.state ? ` ${jobStatus.state}` : ''}… ${jobProgress?.processed?.toLocaleString() || 0}/${jobProgress?.total?.toLocaleString() || 0} · ${jobProgress?.found?.toLocaleString() || 0} found`
-                    : `Finds business emails for DME suppliers missing one${selectedState ? ` in ${selectedState}` : ' (all states)'}.`}
+                    ? `${jobStatus?.rescan ? 'Re-searching' : 'Searching'}${jobStatus?.state ? ` ${jobStatus.state}` : ''}… ${jobProgress?.processed?.toLocaleString() || 0}/${jobProgress?.total?.toLocaleString() || 0} · ${jobProgress?.found?.toLocaleString() || 0} found`
+                    : rescan
+                      ? `Re-scans ALL suppliers${selectedState ? ` in ${selectedState}` : ' (all states)'}, including already-searched, to refresh emails.`
+                      : `Finds business emails for DME suppliers missing one${selectedState ? ` in ${selectedState}` : ' (all states)'}.`}
                 </p>
               </div>
             </div>
@@ -215,6 +219,12 @@ export default function DMEProviderReport() {
                 <p className="text-[10px] text-slate-400 mt-1 text-right">{jobProgress.percent}%</p>
               </div>
             )}
+            {!isRunning && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Switch id="dme-rescan" checked={rescan} onCheckedChange={setRescan} />
+                <label htmlFor="dme-rescan" className="text-xs text-slate-400 cursor-pointer whitespace-nowrap">Re-search found</label>
+              </div>
+            )}
             {isRunning ? (
               <Button variant="outline" size="sm" onClick={() => stopMutation.mutate()} disabled={stopMutation.isPending}
                 className="border-rose-500/40 text-rose-400 hover:bg-rose-900/20">
@@ -224,7 +234,7 @@ export default function DMEProviderReport() {
               <Button size="sm" onClick={() => startMutation.mutate()} disabled={startMutation.isPending}
                 className="bg-cyan-600 hover:bg-cyan-700">
                 {startMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-2" />}
-                Find Emails{selectedState ? ` (${selectedState})` : ' (All)'}
+                {rescan ? 'Re-search' : 'Find'} Emails{selectedState ? ` (${selectedState})` : ' (All)'}
               </Button>
             )}
           </CardContent>
