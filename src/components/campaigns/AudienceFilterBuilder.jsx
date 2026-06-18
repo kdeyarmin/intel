@@ -152,8 +152,10 @@ export default function AudienceFilterBuilder({ filters, onFiltersChange, onCoun
 
       <div className="flex items-center gap-2 pt-1 border-t border-slate-700/40">
         <Users className="w-4 h-4 text-cyan-400" />
-        <span className="text-sm font-semibold text-cyan-300">{matchingProviders.length.toLocaleString()}</span>
-        <span className="text-xs text-slate-400">providers match</span>
+        <span className="text-sm font-semibold text-cyan-300">{matchingProviders.length.toLocaleString()}{providers.length >= 500 ? '+' : ''}</span>
+        {/* The match count is computed over a sample (newest 500 providers), so
+            it's a lower bound, not an exact full-database count. */}
+        <span className="text-xs text-slate-400">providers match{providers.length >= 500 ? ' (sampled)' : ''}</span>
       </div>
     </div>
   );

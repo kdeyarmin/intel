@@ -273,6 +273,45 @@ export function getCMSDatasetCatalog() {
   };
 }
 
+// Sentinel file_names that represent control/signal rows, not real imports.
+const SENTINEL_FILE_NAMES = new Set([
+  "batch_process_active", "crawler_batch_stop_signal", "crawler_auto_stop_signal",
+]);
+
+// Insert a new import batch atomically under a per-import_type advisory lock,
+// re-checking for a concurrently-started active import inside the lock. This
+// closes the check-then-act race between the active-import pre-check and the
+// insert, so two near-simultaneous triggerImport calls for the same type can't
+// both start an import. Returns a 409-shaped conflict instead of inserting if a
+// real active import is found inside the lock.
+async function insertBatchAtomically(
+  importType: string,
+  values: any,
+): Promise<{ batch?: any; conflict?: any }> {
+  return await db.transaction(async (tx) => {
+    // hashtext() -> int4, accepted by the bigint pg_advisory_xact_lock overload.
+    // Released automatically on commit/rollback.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${importType}))`);
+    const active = await tx.select().from(importBatches)
+      .where(and(eq(importBatches.import_type, importType), inArray(importBatches.status, ["validating", "processing"])));
+    const realActive = active.filter((b) => !SENTINEL_FILE_NAMES.has(b.file_name || ""));
+    if (realActive.length > 0) {
+      const existing = realActive[0];
+      return {
+        conflict: {
+          status: 409,
+          message: `Import for ${importType} is already in progress`,
+          conflict: true,
+          existing_batch_id: existing.id,
+          started_at: existing.created_date,
+        },
+      };
+    }
+    const [batch] = await tx.insert(importBatches).values(values).returning();
+    return { batch };
+  });
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
@@ -330,14 +369,15 @@ export async function handleTriggerImport(payload: any, user: any) {
       throw { status: 400, message: "file_url is required for NPPES flat file imports" };
     }
 
-    const [batch] = await db.insert(importBatches).values({
+    const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
       file_name: file_url.split("/").pop() || "nppes_flat_file",
       status: "processing",
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-    }).returning();
+    });
+    if (conflict) throw conflict;
 
     setTimeout(() => {
       handleImportNPPESFlatFile({ batch_id: batch.id, file_url, byte_offset: 0 })
@@ -382,7 +422,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
   } else {
-    const [batch] = await db.insert(importBatches).values({
+    const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
       file_name: `cms_${import_type}_${resolvedYear}`,
       status: "processing",
@@ -390,7 +430,8 @@ export async function handleTriggerImport(payload: any, user: any) {
       total_rows: 0,
       imported_rows: 0,
       retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter, state_filter, skip_validation },
-    }).returning();
+    });
+    if (conflict) throw conflict;
     activeBatchId = batch.id;
   }
 
