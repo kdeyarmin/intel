@@ -50,9 +50,11 @@ Deno.serve(async (req) => {
         // Anchor for idempotency: when did the parent batch complete? An update
         // event on an already-completed batch (e.g. a later metadata edit, or a
         // payload_too_large re-delivery where old_data is unavailable) must not
-        // re-fire dependents that already ran for this completion.
-        const parentCompletedAtMs = batchData.completed_at || batchData.updated_date
-            ? new Date(batchData.completed_at || batchData.updated_date).getTime()
+        // re-fire dependents that already ran for this completion. Anchor on
+        // completed_at ONLY — updated_date is bumped by any later edit, which
+        // would wrongly skip a legitimately-new completion.
+        const parentCompletedAtMs = batchData.completed_at
+            ? new Date(batchData.completed_at).getTime()
             : null;
 
         for (const schedule of dependentSchedules) {

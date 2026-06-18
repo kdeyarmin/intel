@@ -57,8 +57,12 @@ export function getAutoRetryState(batch, now = new Date()) {
     return { state: 'max_reached', attemptCount, lastAttempt, lastReason, nextDueAt: null };
   }
 
-  // The checks below mirror shouldRetryBatch's ordering EXACTLY so the banner
-  // never disagrees with the worker on whether a batch is runnable right now.
+  // The checks below mirror shouldRetryBatch's STATE ORDERING and timing
+  // (backoff before lookback; failure-time basis) so the banner agrees with the
+  // worker on *when* a batch becomes runnable. One thing it intentionally does
+  // NOT replicate is the worker's retryable-error classification — the banner
+  // can't reliably reclassify the error string the same way, so the 'never_tried'
+  // copy hedges ("will trigger if the failure is classified retryable") instead.
 
   // 1. Backoff window. The worker applies backoff even to the first attempt
   //    (computed from the failure time), so a freshly-failed batch is in

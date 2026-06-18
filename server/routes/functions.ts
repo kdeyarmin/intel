@@ -81,12 +81,14 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
               (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
           `);
           const est = fastCounts.rows[0] || {};
-          const totalProviders = Number(est.providers || 0);
-          const totalLocations = Number(est.locations || 0);
-          const totalReferrals = Number(est.referrals || 0);
-          const totalUtilization = Number(est.utilization || 0);
-          const totalTaxonomies = Number(est.taxonomies || 0);
-          const totalFacilities = Number(est.facilities || 0);
+          // pg_class.reltuples is -1 for a never-ANALYZEd table (PG14+); clamp
+          // to 0 so counts/scale factors never go negative.
+          const totalProviders = Math.max(0, Number(est.providers) || 0);
+          const totalLocations = Math.max(0, Number(est.locations) || 0);
+          const totalReferrals = Math.max(0, Number(est.referrals) || 0);
+          const totalUtilization = Math.max(0, Number(est.utilization) || 0);
+          const totalTaxonomies = Math.max(0, Number(est.taxonomies) || 0);
+          const totalFacilities = Math.max(0, Number(est.facilities) || 0);
 
           const safeQ = async (text: string) => {
             try { return (await client.query(text)).rows; }
@@ -553,7 +555,8 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         // scan — same approach as getDashboardStats. The alert/scan tables
         // are small operational tables, so count(*) there is fine.
         const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
-        const providerCount = Number((((provEst as any).rows || provEst) || [])[0]?.est || 0);
+        // reltuples is -1 for a never-ANALYZEd table (PG14+); clamp to 0.
+        const providerCount = Math.max(0, Number((((provEst as any).rows || provEst) || [])[0]?.est) || 0);
         const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
         const [scanCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityScans);
 

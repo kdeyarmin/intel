@@ -332,8 +332,7 @@ export async function handleTriggerImport(payload: any, user: any) {
   const activeImports = await db.select().from(importBatches)
     .where(and(eq(importBatches.import_type, import_type), inArray(importBatches.status, ["validating", "processing"])));
   const realActive = activeImports.filter((b) => {
-    const fn = b.file_name || "";
-    return fn !== "batch_process_active" && fn !== "crawler_batch_stop_signal" && fn !== "crawler_auto_stop_signal" && b.id !== batch_id;
+    return !SENTINEL_FILE_NAMES.has(b.file_name || "") && b.id !== batch_id;
   });
 
   if (realActive.length > 0) {
@@ -411,13 +410,26 @@ export async function handleTriggerImport(payload: any, user: any) {
 
   let activeBatchId: number;
 
+  // On resume (batch_id), the re-invoke (e.g. autoResumePausedImports) carries
+  // only basic params, NOT the original npi_filter/state_filter/skip_validation.
+  // Fall back to the values stored on the batch's retry_params so a resumed
+  // filtered import keeps filtering the remainder instead of importing it raw.
+  let effNpiFilter = npi_filter;
+  let effStateFilter = state_filter;
+  let effSkipValidation = skip_validation;
+
   if (batch_id) {
+    const [existing] = await db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1);
+    const prevParams = ((existing?.retry_params as any) || {});
+    effNpiFilter = npi_filter ?? prevParams.npi_filter;
+    effStateFilter = state_filter ?? prevParams.state_filter;
+    effSkipValidation = skip_validation ?? prevParams.skip_validation;
     await db.update(importBatches).set({
       status: "processing",
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter, state_filter, skip_validation },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, skip_validation: effSkipValidation },
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
@@ -429,7 +441,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter, state_filter, skip_validation },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, skip_validation: effSkipValidation },
     });
     if (conflict) throw conflict;
     activeBatchId = batch.id;
@@ -443,12 +455,12 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run,
       resume_offset: resolvedOffset,
       batch_id: activeBatchId,
-      npi_filter,
-      state_filter,
+      npi_filter: effNpiFilter,
+      state_filter: effStateFilter,
       // skip_validation is carried for forward-compat; the server CMS importer
       // does not run rule-based validation (only required-key checks), so there
       // is nothing for it to skip today.
-      skip_validation,
+      skip_validation: effSkipValidation,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -565,6 +577,9 @@ const FILTER_NPI_FIELDS = [
   "NPI", "npi", "Rndrng_NPI", "rndrng_npi", "Prscrbr_NPI", "PRSCRBR_NPI",
   "Suplr_NPI", "suplr_npi", "Rfrg_NPI", "rfrg_npi", "npi_1", "NPI_1",
   "provider_npi", "PROVIDER_NPI", "org_npi", "ORG_NPI",
+  // Shared-patient-pattern (PSPP) source-NPI aliases, matching the keys
+  // mapSharedPatientPatternRow reads, so an npi_filter on that dataset works.
+  "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi",
 ];
 const FILTER_STATE_FIELDS = [
   "state", "State", "STATE", "st", "ST", "state_cd", "STATE_CD",

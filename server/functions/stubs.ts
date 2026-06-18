@@ -232,7 +232,8 @@ export async function handleValidateDataQuality(_payload: any) {
   // Public function — estimate the 6M-row providers count from pg_class
   // rather than a full count(*) scan.
   const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
-  const providerCount = Number((((provEst as any).rows || provEst) || [])[0]?.est || 0);
+  // reltuples is -1 for a never-ANALYZEd table (PG14+); clamp to 0.
+  const providerCount = Math.max(0, Number((((provEst as any).rows || provEst) || [])[0]?.est) || 0);
   const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
   return {
     total_providers: providerCount,
