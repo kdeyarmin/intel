@@ -22,6 +22,10 @@ const FINDER_BATCH = 12;
 const FINDER_CONCURRENCY = 5;
 const FINDER_DELAY_MS = 300;
 const CANCEL_CHECK_INTERVAL = 6;
+// Stop the job after this many consecutive all-error batches — a strong signal
+// the email provider is down. Leaving those suppliers unsearched lets a later
+// run retry them instead of permanently recording them as "no email".
+const MAX_ERROR_BATCHES = 2;
 
 const activeTaskIds = new Set<number>();
 
@@ -84,7 +88,7 @@ function buildRow(facility: any, enriched: any) {
     all_emails: emails.join("; "),
     emails_found: emails.length,
     email_status: emails.length === 0
-      ? (searched ? "not_found" : "")
+      ? (searched ? "not_found" : "not_searched")
       : (searched ? "found" : "directory"),
     email_confidence: details.validation_status || (enriched?.confidence != null ? String(enriched.confidence) : ""),
     email_source: searched ? DME_EMAIL_SOURCE : (contact.email ? "directory" : ""),
@@ -138,9 +142,12 @@ export async function handleGetDMEProviders(params: any) {
       let offset = 0;
       while (out.length < EXPORT_CAP) {
         const facilities = (await client.query(
-          `SELECT DISTINCT ON (provider_id) provider_id, facility_name, address, city, state, zip, raw_data
-             FROM medicare_facilities WHERE ${whereSQL}
-            ORDER BY provider_id, data_year DESC
+          `SELECT DISTINCT ON (mf.provider_id) mf.provider_id, mf.facility_name, mf.address, mf.city, mf.state, mf.zip,
+                  COALESCE(mfr.raw_data, mf.raw_data) AS raw_data
+             FROM medicare_facilities mf
+             LEFT JOIN medicare_facilities_raw mfr ON mfr.facility_id = mf.id
+            WHERE ${whereSQL}
+            ORDER BY mf.provider_id, mf.data_year DESC
             LIMIT $${p} OFFSET $${p + 1}`,
           [...values, EXPORT_CHUNK, offset],
         )).rows;
@@ -157,9 +164,12 @@ export async function handleGetDMEProviders(params: any) {
 
     const offset = (page - 1) * limit;
     const facilities = (await client.query(
-      `SELECT DISTINCT ON (provider_id) provider_id, facility_name, address, city, state, zip, raw_data
-         FROM medicare_facilities WHERE ${whereSQL}
-        ORDER BY provider_id, data_year DESC
+      `SELECT DISTINCT ON (mf.provider_id) mf.provider_id, mf.facility_name, mf.address, mf.city, mf.state, mf.zip,
+              COALESCE(mfr.raw_data, mf.raw_data) AS raw_data
+         FROM medicare_facilities mf
+         LEFT JOIN medicare_facilities_raw mfr ON mfr.facility_id = mf.id
+        WHERE ${whereSQL}
+        ORDER BY mf.provider_id, mf.data_year DESC
         LIMIT $${p} OFFSET $${p + 1}`,
       [...values, limit, offset],
     )).rows;
@@ -276,8 +286,11 @@ For each email, assign:
 Be strict: emails inferred without a verified domain should be "risky" at best. Never invent example.com / test.com style domains.`;
 
   const result = await callClaudeJSON(anthropic, prompt, EMAIL_SCHEMA);
+  // Keep only syntactically valid addresses the model did NOT flag as invalid —
+  // an "invalid" candidate is an implausible domain the model itself rejected, so
+  // it should never become the primary email or appear in the exported list.
   const emails = (result.emails || []).filter(
-    (e: any) => e && typeof e.email === "string" && isValidEmailSyntax(e.email),
+    (e: any) => e && typeof e.email === "string" && isValidEmailSyntax(e.email) && e.validation_status !== "invalid",
   );
   if (emails.length === 0) return { best: null, all: [] };
   const ranked = rankEmailCandidates(emails);
@@ -319,6 +332,7 @@ async function fetchSupplierBatch(
   batchSize: number,
   rescan: boolean,
   cursor: string,
+  excludeIds: string[] = [],
 ): Promise<any[]> {
   const where: string[] = ["f.facility_type = $1"];
   const values: any[] = [DME_FACILITY_TYPE];
@@ -328,11 +342,16 @@ async function fetchSupplierBatch(
     where.push(`f.provider_id > $${p}`); values.push(cursor || ""); p++;
   } else {
     where.push(`NOT EXISTS (SELECT 1 FROM enrichment_records e WHERE e.npi = f.provider_id AND e.source = '${DME_EMAIL_SOURCE}' AND e.field_name = 'email')`);
+    // Suppliers that errored earlier this run have no record yet, so they'd be
+    // re-selected immediately; skip them in-run (they retry on the next run).
+    if (excludeIds.length > 0) { where.push(`f.provider_id <> ALL($${p})`); values.push(excludeIds); p++; }
   }
   return withClient(30000, async (client) => {
     return (await client.query(
-      `SELECT DISTINCT ON (f.provider_id) f.provider_id, f.facility_name, f.address, f.city, f.state, f.zip, f.raw_data
+      `SELECT DISTINCT ON (f.provider_id) f.provider_id, f.facility_name, f.address, f.city, f.state, f.zip,
+              COALESCE(fr.raw_data, f.raw_data) AS raw_data
          FROM medicare_facilities f
+         LEFT JOIN medicare_facilities_raw fr ON fr.facility_id = f.id
         WHERE ${where.join(" AND ")}
         ORDER BY f.provider_id ASC, f.data_year DESC
         LIMIT $${p}`,
@@ -377,6 +396,12 @@ async function runDMEEmailSearch(taskId: number, state: string | null, rescan: b
   errors = Number(meta0.error_count || 0);
   const totalItems = Number(meta0.total_items || 0);
   let cursor: string = String(meta0.cursor || "");
+  // Suppliers that errored this run (transient API/DB failure). They are not
+  // written as searched, so we exclude them in-run to avoid re-pulling the same
+  // failing rows; the next run retries them.
+  const failedIds: string[] = [];
+  let consecutiveErrorBatches = 0;
+  let outage = false;
 
   console.log(`[DMEEmail] Task ${taskId} started (state=${state || "ALL"}, rescan=${rescan}, total=${totalItems})`);
 
@@ -389,7 +414,7 @@ async function runDMEEmailSearch(taskId: number, state: string | null, rescan: b
 
     let batch: any[] = [];
     try {
-      batch = await fetchSupplierBatch(state, FINDER_BATCH, rescan, cursor);
+      batch = await fetchSupplierBatch(state, FINDER_BATCH, rescan, cursor, failedIds);
     } catch (e: any) {
       console.error(`[DMEEmail] Task ${taskId}: batch fetch failed: ${e.message}`);
       await new Promise((r) => setTimeout(r, 5000));
@@ -434,18 +459,21 @@ async function runDMEEmailSearch(taskId: number, state: string | null, rescan: b
           if (result.best?.email) found++;
         } catch (err: any) {
           errors++;
-          // Mark as searched anyway so a single failure doesn't wedge the batch
-          // loop (which selects rows lacking any enrichment record).
-          try {
-            await saveDMEEmailResult(f.provider_id, company.name, { best: null, all: [] }, { error: String(err?.message || err).slice(0, 200) });
-            processed++;
-          } catch { /* give up on this row this pass */ }
+          // Transient API/DB failure: do NOT write a not_found record (that would
+          // mark the supplier searched and hide it from ordinary reruns during an
+          // outage). Skip it this run; the next run retries it.
+          failedIds.push(f.provider_id);
+          console.warn(`[DMEEmail] Task ${taskId}: ${f.provider_id} failed: ${String(err?.message || err).slice(0, 120)}`);
         }
         if (myIdx < batch.length - 1) await new Promise((r) => setTimeout(r, FINDER_DELAY_MS));
       }
     };
 
+    const procBefore = processed;
+    const errBefore = errors;
     await Promise.all(Array.from({ length: Math.min(FINDER_CONCURRENCY, batch.length) }, () => worker()));
+    const batchSaved = processed - procBefore;
+    const batchErrored = errors - errBefore;
 
     // Re-scan advances by keyset cursor (every supplier in the batch was
     // processed, regardless of worker order, so the max provider_id is safe).
@@ -458,21 +486,54 @@ async function runDMEEmailSearch(taskId: number, state: string | null, rescan: b
     }).where(eq(backgroundTasks.id, taskId));
 
     if (cancelled) break;
+
+    // A batch where every supplier errored (and none saved) signals a likely
+    // provider outage — stop early after a couple in a row rather than churning
+    // through the whole scope failing every call.
+    if (batchSaved === 0 && batchErrored > 0) {
+      if (++consecutiveErrorBatches >= MAX_ERROR_BATCHES) { outage = true; break; }
+    } else {
+      consecutiveErrorBatches = 0;
+    }
   }
 
   const [finalTask] = await db.select().from(backgroundTasks).where(eq(backgroundTasks.id, taskId));
   if (finalTask && finalTask.status !== "cancelled") {
     await db.update(backgroundTasks).set({
-      status: "completed",
+      status: outage ? "failed" : "completed",
+      error: outage ? "Email provider errors — stopped early; unsearched suppliers left for retry. Rerun to continue." : null,
       progress: processed,
-      result: { total_processed: processed, total_found: found, total_errors: errors },
+      result: { total_processed: processed, total_found: found, total_errors: errors, outage },
       metadata: { state, rescan, cursor, total_items: totalItems, processed_items: processed, success_count: found, error_count: errors },
       completed_at: new Date(),
       updated_date: new Date(),
     }).where(eq(backgroundTasks.id, taskId));
   }
   activeTaskIds.delete(taskId);
-  console.log(`[DMEEmail] Task ${taskId} finished — processed=${processed}, found=${found}, errors=${errors}`);
+  console.log(`[DMEEmail] Task ${taskId} finished — processed=${processed}, found=${found}, errors=${errors}${outage ? " (stopped: outage)" : ""}`);
+}
+
+/**
+ * On server boot, any dme_email_search task still marked "processing" is
+ * orphaned — its in-process worker died with the previous instance (activeTaskIds
+ * is in-memory). Mark such tasks failed so the UI doesn't show a job running
+ * forever. Mirrors cleanupOrphanedEmailTasks / cleanupOrphanedIntelTasks.
+ */
+export async function cleanupOrphanedDMETasks() {
+  try {
+    const orphaned = await db.select().from(backgroundTasks)
+      .where(and(eq(backgroundTasks.task_type, TASK_TYPE), eq(backgroundTasks.status, "processing")));
+    for (const task of orphaned) {
+      if (!activeTaskIds.has(task.id)) {
+        console.log(`[DMEEmail] Cleaning up orphaned task ${task.id}`);
+        await db.update(backgroundTasks)
+          .set({ status: "failed", error: "Orphaned task — server restarted", completed_at: new Date(), updated_date: new Date() })
+          .where(eq(backgroundTasks.id, task.id));
+      }
+    }
+  } catch (err: any) {
+    console.error("[DMEEmail] Orphan cleanup error:", err.message);
+  }
 }
 
 export async function handleStartDMEEmailSearch(payload: any) {
@@ -551,9 +612,12 @@ export async function handleDMEEmailSearchStatus() {
 
   if (!task) return { running: false, status: "idle", progress: null };
 
+  // A "processing" task with no live worker in this process (activeTaskIds) is
+  // orphaned from a restart — report it as not running so the UI doesn't show a
+  // perpetually-running job. Boot cleanup will flip its DB status to failed.
   const progress = computeJobProgress(task.metadata);
   return {
-    running: task.status === "processing",
+    running: task.status === "processing" && activeTaskIds.has(task.id),
     status: task.status,
     task_id: task.id,
     state: (task.metadata as any)?.state || null,
