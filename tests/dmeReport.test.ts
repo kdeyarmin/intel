@@ -11,6 +11,7 @@ import {
   DME_EMAIL_SOURCE,
   extractDMEContact,
   rankEmailCandidates,
+  collectDMEEmails,
   confidenceToScore,
   computeJobProgress,
   normalizeState,
@@ -81,6 +82,41 @@ describe('rankEmailCandidates', () => {
     const copy = [...input];
     rankEmailCandidates(input);
     expect(input).toEqual(copy);
+  });
+});
+
+describe('collectDMEEmails', () => {
+  it('returns the primary first, then additional candidates, de-duplicated', () => {
+    const enriched = {
+      new_value: 'info@acme.com',
+      enrichment_details: {
+        all_emails: [
+          { email: 'info@acme.com' },        // dup of primary
+          { email: 'sales@acme.com' },
+          { email: 'billing@acme.com' },
+        ],
+      },
+    };
+    expect(collectDMEEmails(enriched)).toEqual(['info@acme.com', 'sales@acme.com', 'billing@acme.com']);
+  });
+
+  it('is case-insensitive when de-duplicating', () => {
+    const enriched = {
+      new_value: 'Info@Acme.com',
+      enrichment_details: { all_emails: [{ email: 'info@acme.com' }, { email: 'SALES@acme.com' }] },
+    };
+    expect(collectDMEEmails(enriched)).toEqual(['Info@Acme.com', 'SALES@acme.com']);
+  });
+
+  it('appends a distinct directory email last', () => {
+    const enriched = { new_value: 'sales@acme.com', enrichment_details: { all_emails: [{ email: 'sales@acme.com' }] } };
+    expect(collectDMEEmails(enriched, 'contact@acme.com')).toEqual(['sales@acme.com', 'contact@acme.com']);
+  });
+
+  it('handles a plain string candidate list and missing record', () => {
+    expect(collectDMEEmails({ enrichment_details: { all_emails: ['a@b.com', 'a@b.com'] } })).toEqual(['a@b.com']);
+    expect(collectDMEEmails(null)).toEqual([]);
+    expect(collectDMEEmails(undefined, 'only@dir.com')).toEqual(['only@dir.com']);
   });
 });
 

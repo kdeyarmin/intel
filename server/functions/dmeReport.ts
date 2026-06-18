@@ -9,6 +9,7 @@ import {
   DME_EMAIL_SOURCE,
   extractDMEContact,
   rankEmailCandidates,
+  collectDMEEmails,
   confidenceToScore,
   computeJobProgress,
   normalizeState,
@@ -64,7 +65,10 @@ async function fetchEnrichedEmails(client: any, providerIds: string[]): Promise<
 function buildRow(facility: any, enriched: any) {
   const contact = extractDMEContact(facility.raw_data);
   const details = enriched?.enrichment_details || {};
-  const email = enriched?.new_value || contact.email || "";
+  // Every distinct email found for this supplier, primary first. A supplier can
+  // have multiple mailboxes, so the report exposes all of them.
+  const emails = collectDMEEmails(enriched, contact.email);
+  const searched = !!enriched;
   return {
     provider_id: facility.provider_id,
     npi: contact.npi || (facility.provider_id?.length === 10 ? facility.provider_id : ""),
@@ -75,11 +79,15 @@ function buildRow(facility: any, enriched: any) {
     zip: facility.zip || "",
     phone: contact.phone || "",
     website: contact.website || "",
-    email,
-    email_status: enriched ? (enriched.status || (enriched.new_value ? "found" : "not_found"))
-      : (contact.email ? "directory" : ""),
+    email: emails[0] || "",
+    additional_emails: emails.slice(1).join("; "),
+    all_emails: emails.join("; "),
+    emails_found: emails.length,
+    email_status: emails.length === 0
+      ? (searched ? "not_found" : "")
+      : (searched ? "found" : "directory"),
     email_confidence: details.validation_status || (enriched?.confidence != null ? String(enriched.confidence) : ""),
-    email_source: enriched ? DME_EMAIL_SOURCE : (contact.email ? "directory" : ""),
+    email_source: searched ? DME_EMAIL_SOURCE : (contact.email ? "directory" : ""),
   };
 }
 
@@ -252,10 +260,10 @@ COMPANY:
 - Website: ${company.website || "N/A"}
 
 STEP 1 - FIND EMAILS:
-1. Determine the most likely company domain from the business name, website, and location.
+1. Determine the most likely company domain(s) from the business name, website, and location.
 2. If a website is listed, use that domain directly.
-3. Apply common business email patterns: info@, sales@, contact@, admin@, billing@, orders@ at the company domain.
-4. Return up to 3 possible emails ranked by likelihood. General/department mailboxes are acceptable and expected for a supplier company.
+3. Apply common business email patterns across every plausible department mailbox: info@, sales@, contact@, admin@, billing@, orders@, support@, customerservice@ at the company domain.
+4. Return ALL plausible email addresses you can find — up to 6 distinct addresses ranked by likelihood. Include multiple department mailboxes and any plausible alternate domains. General/department mailboxes are acceptable and expected for a supplier company.
 
 STEP 2 - VALIDATE EACH EMAIL:
 For each email, assign:

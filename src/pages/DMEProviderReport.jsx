@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { exportCSV } from '@/components/exports/exportUtils';
+import { exportCSV, exportExcel } from '@/components/exports/exportUtils';
 
 const EXPORT_FIELDS = [
   { key: 'name', label: 'Company Name' },
@@ -20,7 +20,9 @@ const EXPORT_FIELDS = [
   { key: 'state', label: 'State' },
   { key: 'zip', label: 'ZIP' },
   { key: 'phone', label: 'Phone' },
-  { key: 'email', label: 'Email' },
+  { key: 'email', label: 'Primary Email' },
+  { key: 'additional_emails', label: 'Additional Emails' },
+  { key: 'emails_found', label: 'Emails Found' },
   { key: 'email_status', label: 'Email Status' },
   { key: 'website', label: 'Website' },
 ];
@@ -46,7 +48,7 @@ export default function DMEProviderReport() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [page, setPage] = useState(1);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState(null); // 'csv' | 'excel' | null
 
   React.useEffect(() => {
     const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
@@ -107,8 +109,8 @@ export default function DMEProviderReport() {
     onError: (e) => toast.error(e?.message || 'Failed to stop email search'),
   });
 
-  const handleExport = async () => {
-    setExporting(true);
+  const handleExport = async (format) => {
+    setExporting(format);
     try {
       const res = await base44.functions.invoke('getDMEProviders', {
         state: selectedState || undefined,
@@ -122,12 +124,14 @@ export default function DMEProviderReport() {
       }
       const ts = new Date().toISOString().split('T')[0];
       const scope = selectedState ? `-${selectedState}` : '-all';
-      exportCSV(rows, EXPORT_FIELDS, `dme-providers${scope}-${ts}`);
-      toast.success(`Exported ${rows.length.toLocaleString()} DME providers to CSV`);
+      const fileName = `dme-providers${scope}-${ts}`;
+      if (format === 'excel') exportExcel(rows, EXPORT_FIELDS, fileName);
+      else exportCSV(rows, EXPORT_FIELDS, fileName);
+      toast.success(`Exported ${rows.length.toLocaleString()} DME providers to ${format.toUpperCase()}`);
     } catch (e) {
       toast.error(e?.message || 'Export failed');
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -145,10 +149,17 @@ export default function DMEProviderReport() {
           </div>
           <Badge className="bg-slate-700/50 text-slate-400 ml-2">{total.toLocaleString()} suppliers</Badge>
         </div>
-        <Button onClick={handleExport} disabled={exporting || total === 0} className="bg-cyan-600 hover:bg-cyan-700">
-          {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-          {exporting ? 'Exporting…' : 'Export CSV'}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => handleExport('csv')} disabled={!!exporting || total === 0} className="bg-cyan-600 hover:bg-cyan-700">
+            {exporting === 'csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {exporting === 'csv' ? 'Exporting…' : 'Export CSV'}
+          </Button>
+          <Button onClick={() => handleExport('excel')} disabled={!!exporting || total === 0} variant="outline"
+            className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-900/20">
+            {exporting === 'excel' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {exporting === 'excel' ? 'Exporting…' : 'Export Excel'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -286,10 +297,17 @@ export default function DMEProviderReport() {
               </div>
               <div className="md:col-span-3 min-w-0">
                 {p.email ? (
-                  <span className="text-sm text-cyan-300 truncate flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                    <span className="truncate">{p.email}</span>
-                  </span>
+                  <div className="min-w-0">
+                    <span className="text-sm text-cyan-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                      <span className="truncate">{p.email}</span>
+                    </span>
+                    {p.emails_found > 1 && (
+                      <span title={p.all_emails} className="text-[10px] text-slate-400 cursor-help">
+                        +{p.emails_found - 1} more email{p.emails_found - 1 === 1 ? '' : 's'}
+                      </span>
+                    )}
+                  </div>
                 ) : (
                   <span className="text-sm text-slate-500">—</span>
                 )}

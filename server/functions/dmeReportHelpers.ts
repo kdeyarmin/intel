@@ -42,6 +42,40 @@ export function rankEmailCandidates<T extends { confidence?: string | null; vali
   });
 }
 
+/**
+ * Collect every distinct email found for a DME supplier, primary first.
+ *
+ * The finder persists the full ranked candidate list in
+ * `enrichment_details.all_emails` and the promoted top pick in `new_value`. A
+ * supplier can legitimately have several mailboxes (info@, sales@, billing@, …),
+ * so the report surfaces all of them. The primary is listed first, then the
+ * remaining candidates in rank order, then any directory email, de-duplicated
+ * case-insensitively.
+ */
+export function collectDMEEmails(
+  enriched: { new_value?: string | null; enrichment_details?: any } | null | undefined,
+  directoryEmail?: string | null,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (e: unknown) => {
+    if (typeof e !== "string") return;
+    const v = e.trim();
+    if (!v) return;
+    const key = v.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(v);
+  };
+  push(enriched?.new_value);
+  const all = enriched?.enrichment_details?.all_emails;
+  if (Array.isArray(all)) {
+    for (const c of all) push(typeof c === "string" ? c : c?.email);
+  }
+  push(directoryEmail);
+  return out;
+}
+
 function coerceObject(raw: unknown): Record<string, unknown> {
   if (!raw) return {};
   if (typeof raw === "string") {
