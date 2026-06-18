@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,11 @@ export default function AIEmailFinder({ provider, locations, taxonomies }) {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState(null);
+  const copyTimerRef = useRef(null);
+
+  // Clear the "copied" reset timer on unmount so it can't fire setState after
+  // the component is gone.
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const findEmails = async () => {
     setLoading(true);
@@ -167,7 +172,8 @@ For each email assign:
     navigator.clipboard.writeText(email);
     setCopiedIdx(idx);
     toast.success('Email copied');
-    setTimeout(() => setCopiedIdx(null), 2000);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopiedIdx(null), 2000);
   };
 
   const confColors = {

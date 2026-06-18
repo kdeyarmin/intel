@@ -17,7 +17,7 @@ export default function CrawlerKPIs({ nppesImports, loading }) {
     // Calculate average time per state (only for completed batches)
     const completedBatches = nppesImports.filter(b => b.status === 'completed' && b.completed_at && b.created_date);
     const totalTimeMs = completedBatches.reduce((acc, curr) => {
-      return acc + (new Date(curr.completed_at) - new Date(curr.created_date));
+      return acc + Math.max(0, new Date(curr.completed_at) - new Date(curr.created_date));
     }, 0);
     const avgTimePerStateMs = completedBatches.length > 0 ? totalTimeMs / completedBatches.length : 0;
     const avgTimePerStateSec = Math.round(avgTimePerStateMs / 1000);

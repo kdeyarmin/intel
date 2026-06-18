@@ -63,7 +63,7 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
     }
   };
 
-  const scoreColor = (s) => s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400';
+  const scoreColor = (s) => typeof s !== 'number' ? 'text-slate-400' : s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-amber-400' : 'text-red-400';
   const sevColors = {
     high: 'bg-red-900/15 text-red-400 border-red-500/20',
     medium: 'bg-amber-900/15 text-amber-400 border-amber-500/20',
@@ -102,7 +102,7 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
         {results && (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className={`text-2xl font-bold ${scoreColor(results.quality_score)}`}>{results.quality_score}</span>
+              <span className={`text-2xl font-bold ${scoreColor(results.quality_score)}`}>{typeof results.quality_score === 'number' ? results.quality_score : '—'}</span>
               <span className="text-xs text-slate-500">/ 100</span>
               <p className="text-xs text-slate-400 flex-1">{results.summary}</p>
             </div>

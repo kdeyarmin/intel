@@ -46,7 +46,7 @@ export default function ProviderImportHistory({ _npi }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2 text-slate-200">
           <FileText className="w-4 h-4 text-cyan-400" />
-          Related Import Batches
+          Recent Data Imports
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">

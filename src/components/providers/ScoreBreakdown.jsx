@@ -30,8 +30,9 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
           </div>
         )}
         {Object.entries(breakdown).map(([key, data]) => {
-          const percentage = data.weight > 0 ? (data.contribution / data.weight) * 100 : 0;
-          
+          const rawPct = data.weight > 0 ? (data.contribution / data.weight) * 100 : 0;
+          const percentage = Math.min(100, Math.max(0, rawPct));
+
           return (
             <div key={key} className="space-y-2">
               <div className="flex items-center justify-between">
@@ -39,7 +40,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-400">{data.value}/100</span>
                   <Badge variant="outline" className="text-xs">
-                    {data.contribution.toFixed(1)} pts
+                    {Number(data.contribution || 0).toFixed(1)} pts
                   </Badge>
                 </div>
               </div>

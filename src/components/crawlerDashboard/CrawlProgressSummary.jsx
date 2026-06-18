@@ -42,7 +42,7 @@ export default function CrawlProgressSummary({ crawlStatus, nppesImports, totalS
     const withDuration = (nppesImports || []).filter(b => b.completed_at && b.created_date);
     if (withDuration.length === 0) return '—';
     const totalMs = withDuration.reduce((sum, b) => {
-      return sum + (new Date(b.completed_at) - new Date(b.created_date));
+      return sum + Math.max(0, new Date(b.completed_at) - new Date(b.created_date));
     }, 0);
     const avgSec = Math.round(totalMs / withDuration.length / 1000);
     if (avgSec < 60) return `${avgSec}s`;
