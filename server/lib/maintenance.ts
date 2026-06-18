@@ -376,7 +376,10 @@ export async function runMaintenanceFanout(
 
   const placeholders = new Map<string, WorkerResult>();
   for (const w of FANOUT_WORKERS) {
-    placeholders.set(w.name, { worker: w.name, ok: false, durationMs: 0, error: "timeout" });
+    // Honest default: if a worker hasn't reported by the budget it has exceeded
+    // the *reporting* window — it is not cancelled and may still complete (the
+    // workers are idempotent). Don't label it a hard "timeout"/failure.
+    placeholders.set(w.name, { worker: w.name, ok: false, durationMs: 0, error: "exceeded reporting budget (still running)" });
   }
 
   const invocations = FANOUT_WORKERS.map(async w => {

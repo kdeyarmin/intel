@@ -64,18 +64,21 @@ export function computeNextRun(
   const hours   = Number.isInteger(rawH) && rawH >= 0 && rawH <= 23 ? rawH : 2;
   const minutes = Number.isInteger(rawM) && rawM >= 0 && rawM <= 59 ? rawM : 0;
 
+  // Use UTC setters so schedule_time is interpreted as UTC regardless of the
+  // runtime timezone (matches the tests' getUTCHours assertions and avoids
+  // DST/local-time drift).
   if (schedule.schedule_frequency === "daily") {
-    next.setDate(next.getDate() + 1);
+    next.setUTCDate(next.getUTCDate() + 1);
   } else if (schedule.schedule_frequency === "weekly") {
-    next.setDate(next.getDate() + 7);
+    next.setUTCDate(next.getUTCDate() + 7);
   } else if (schedule.schedule_frequency === "monthly") {
-    next.setMonth(next.getMonth() + 1);
+    next.setUTCMonth(next.getUTCMonth() + 1);
   } else if (schedule.schedule_frequency === "on_completion") {
     // No regular cadence — the dependency check handles it. Sentinel ~1h out.
-    next.setHours(next.getHours() + 1);
+    next.setUTCHours(next.getUTCHours() + 1);
     return next;
   }
-  next.setHours(hours, minutes, 0, 0);
+  next.setUTCHours(hours, minutes, 0, 0);
 
   if (failures > 0) {
     next.setTime(next.getTime() + backoffHours(failures) * 60 * 60_000);

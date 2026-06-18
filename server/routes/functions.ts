@@ -268,12 +268,38 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         if (cmsAnalyticsCache && (Date.now() - cmsAnalyticsCache.timestamp < CMS_CACHE_TTL)) {
           return res.json(cmsAnalyticsCache.data);
         }
-        const { db } = await import("../db");
+        const { db, pool } = await import("../db");
         const { sql } = await import("drizzle-orm");
 
         const safeMvQuery = async (queryFn: () => Promise<any>, fallback: any = []) => {
           try { return await queryFn(); }
           catch (e: any) { console.warn(`[getCMSAnalytics] View query failed: ${e.message?.slice(0, 150)}`); return fallback; }
+        };
+
+        // The medicare_facilities aggregate is a GROUP BY + count(DISTINCT state)
+        // over a ~46M-row table. Run it on a dedicated connection under a
+        // statement_timeout so a slow scan can't pin a pooled connection (the
+        // whole result set is cached for 10 minutes).
+        const timedFacilityAggregate = async () => {
+          const client = await pool.connect();
+          try {
+            await client.query("SET statement_timeout = '20s'");
+            return await client.query(`
+              SELECT facility_type, count(*) AS record_count,
+                count(DISTINCT state) AS state_count,
+                max(data_year) AS latest_year
+              FROM medicare_facilities
+              WHERE facility_type IN (
+                'market_saturation_county', 'market_saturation_cbsa',
+                'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
+                'nppes_registry', 'provider_taxonomy_crosswalk'
+              )
+              GROUP BY facility_type
+            `);
+          } finally {
+            try { await client.query("RESET statement_timeout"); } catch { /* ignore */ }
+            client.release();
+          }
         };
 
         const [
@@ -299,18 +325,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
               sum(total_services) AS total_services
             FROM mv_cms_util_by_type
           `)),
-          safeMvQuery(() => db.execute(sql`
-            SELECT facility_type, count(*) AS record_count, 
-              count(DISTINCT state) AS state_count,
-              max(data_year) AS latest_year
-            FROM medicare_facilities
-            WHERE facility_type IN (
-              'market_saturation_county', 'market_saturation_cbsa',
-              'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
-              'nppes_registry', 'provider_taxonomy_crosswalk'
-            )
-            GROUP BY facility_type
-          `)),
+          safeMvQuery(timedFacilityAggregate),
         ]);
 
         const topServices = ((topServicesResult as any).rows || topServicesResult) || [];
