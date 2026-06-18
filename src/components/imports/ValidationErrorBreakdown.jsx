@@ -178,13 +178,16 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                 <span className="text-right">View</span>
               </div>
               <div className="max-h-48 overflow-y-auto">
-                {visibleErrors.map((err, idx) => {
+                {visibleErrors.map((err) => {
                   const rowNum = err.row ?? err.row_index ?? err.chunk_start;
+                  // Stable key so the inspected row tracks the same error when
+                  // the row search filters/reorders the list (index would not).
+                  const rowKey = `${rowNum ?? ''}|${err.phase ?? ''}|${(err.message || err.detail || '').slice(0, 60)}`;
                   return (
-                    <div key={idx}>
+                    <div key={rowKey}>
                       <div
                         className={`grid grid-cols-[60px_80px_1fr_40px] px-2.5 py-1.5 text-[11px] border-b border-slate-700/10 hover:bg-slate-700/15 transition-colors ${
-                          inspectedRow === idx ? 'bg-cyan-900/5' : ''
+                          inspectedRow === rowKey ? 'bg-cyan-900/5' : ''
                         }`}
                       >
                         <span className="text-slate-300 font-mono">
@@ -202,13 +205,13 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                           <Button
                             variant="ghost" size="sm"
                             className="h-5 w-5 p-0 text-slate-500 hover:text-cyan-400"
-                            onClick={() => setInspectedRow(inspectedRow === idx ? null : idx)}
+                            onClick={() => setInspectedRow(inspectedRow === rowKey ? null : rowKey)}
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
                         </span>
                       </div>
-                      {inspectedRow === idx && (
+                      {inspectedRow === rowKey && (
                         <div className="px-2.5 pb-2">
                           <RowInspector error={err} onClose={() => setInspectedRow(null)} />
                         </div>

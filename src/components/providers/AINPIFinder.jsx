@@ -128,13 +128,31 @@ Return up to 10 results, ordered by relevance.`,
     setImporting(prev => new Set([...prev, match.npi]));
     try {
       const isOrg = match.entity_type === 'Organization';
-      const nameParts = match.name.split(',').map(s => s.trim());
+      // Handle both "Last, First" and "First Last" formats so an LLM that
+      // returns "John Smith" doesn't drop the whole name into last_name.
+      const rawName = (match.name || '').trim();
+      let firstName = '', lastName = '';
+      if (!isOrg) {
+        if (rawName.includes(',')) {
+          const [last, first] = rawName.split(',').map(s => s.trim());
+          lastName = last || rawName;
+          firstName = first || '';
+        } else {
+          const parts = rawName.split(/\s+/).filter(Boolean);
+          if (parts.length > 1) {
+            firstName = parts.slice(0, -1).join(' ');
+            lastName = parts[parts.length - 1];
+          } else {
+            lastName = rawName;
+          }
+        }
+      }
 
       await base44.entities.Provider.create({
         npi: match.npi,
         entity_type: isOrg ? 'Organization' : 'Individual',
-        last_name: isOrg ? '' : (nameParts[0] || match.name),
-        first_name: isOrg ? '' : (nameParts[1] || ''),
+        last_name: lastName,
+        first_name: firstName,
         organization_name: isOrg ? match.name : '',
         credential: match.credential || '',
         status: 'Active',

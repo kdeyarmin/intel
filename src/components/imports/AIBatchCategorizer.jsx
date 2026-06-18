@@ -42,7 +42,11 @@ export default function AIBatchCategorizer({ fileName, fileHeaders, onSuggestion
     if (fileName && fileHeaders?.length > 0) {
       runAICategorization();
     }
-  }, [fileName, fileHeaders]);
+    // Depend on a primitive join of the headers, not the array identity, so a
+    // caller passing a fresh-but-equal array each render can't re-fire the LLM
+    // call on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileName, (fileHeaders || []).join('|')]);
 
   const runAICategorization = async () => {
     setLoading(true);

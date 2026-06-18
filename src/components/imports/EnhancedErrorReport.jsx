@@ -293,18 +293,22 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                 <p className="text-sm">No errors match your filters</p>
               </div>
             ) : (
-              filteredErrors.map((err, idx) => {
+              filteredErrors.map((err) => {
                 const errMsg = err.message || err.detail || '';
                 const cat = categorizeError(errMsg);
                 const config = ERROR_CATEGORIES[cat];
                 const suggestion = getSuggestedFix(err);
-                const isExpanded = expandedRows.has(idx);
+                // Stable key derived from error content so the expanded row
+                // tracks the same error when the filter/search changes (an array
+                // index would point at a different error after filtering).
+                const rowKey = `${err.row ?? ''}|${err.sheet ?? ''}|${errMsg.slice(0, 80)}`;
+                const isExpanded = expandedRows.has(rowKey);
 
                 return (
-                  <div key={idx} className="bg-slate-800/40 border border-slate-700/40 rounded-lg overflow-hidden">
+                  <div key={rowKey} className="bg-slate-800/40 border border-slate-700/40 rounded-lg overflow-hidden">
                     <button
                       className="w-full flex items-start gap-2.5 p-3 text-left hover:bg-slate-700/20 transition-colors"
-                      onClick={() => toggleRow(idx)}
+                      onClick={() => toggleRow(rowKey)}
                     >
                       <div className={`w-1 h-8 rounded-full flex-shrink-0 mt-0.5 ${
                         suggestion.severity === 'error' ? 'bg-red-900/20' :

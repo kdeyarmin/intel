@@ -25,7 +25,6 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
   });
 
   const [leadLists, setLeadLists] = useState([]);
-  const [_preview, _setPreview] = useState(null);
 
   React.useEffect(() => {
     fetchLeadLists();
@@ -40,59 +39,40 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
     }
   };
 
-  const _handleCreate = async () => {
-    if (!campaign.name || !campaign.subject_template || !campaign.body_template) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const newCampaign = await base44.entities.OutreachCampaign.create({
-        name: campaign.name,
-        description: campaign.description,
-        lead_list_id: campaign.lead_list_id,
-        subject_template: campaign.subject_template,
-        body_template: campaign.body_template,
-        status: 'draft',
-        source_criteria: campaign.lead_list_id ? 'lead_list' : 'custom'
-      });
-
-      onCampaignCreated?.(newCampaign);
-      setCampaign({
-        name: '',
-        description: '',
-        lead_list_id: '',
-        subject_template: '',
-        body_template: '',
-        ai_personalization: true,
-        schedule_send: false,
-        scheduled_at: ''
-      });
-      setStep('details');
-    } catch (error) {
-      alert('Failed to create campaign: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSend = async (sendNow = false) => {
-    if (!campaign.id) {
-      alert('Campaign must be saved first');
+    if (!campaign.name || !campaign.subject_template || !campaign.body_template) {
+      alert('Please fill in the campaign name, subject, and message body first.');
       return;
     }
 
     setLoading(true);
     try {
+      // Persist the campaign first if it hasn't been saved yet — there's nothing
+      // for sendCampaignMessages to operate on without a campaign id. (Previously
+      // "Send Now" always errored because campaign.id was never set.)
+      let campaignId = campaign.id;
+      if (!campaignId) {
+        const created = await base44.entities.OutreachCampaign.create({
+          name: campaign.name,
+          description: campaign.description,
+          lead_list_id: campaign.lead_list_id,
+          subject_template: campaign.subject_template,
+          body_template: campaign.body_template,
+          status: 'draft',
+          source_criteria: campaign.lead_list_id ? 'lead_list' : 'custom',
+        });
+        campaignId = created.id;
+        setCampaign(prev => ({ ...prev, id: campaignId }));
+      }
+
       const result = await base44.functions.invoke('sendCampaignMessages', {
-        campaign_id: campaign.id,
+        campaign_id: campaignId,
         batch_size: 50,
-        send_now: sendNow
+        send_now: sendNow,
       });
 
-      alert(`Campaign ready! ${result.data.results.messages_created} messages created.`);
-      onCampaignCreated?.(campaign);
+      alert(`Campaign ready! ${result.data?.results?.messages_created ?? 0} messages created.`);
+      onCampaignCreated?.({ ...campaign, id: campaignId });
     } catch (error) {
       alert('Failed to send campaign: ' + error.message);
     } finally {
