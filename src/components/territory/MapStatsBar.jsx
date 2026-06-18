@@ -21,7 +21,7 @@ export default function MapStatsBar({ providers, countyStats }) {
     ? Math.round(providers.reduce((sum, p) => sum + (p.score || 0), 0) / totalProviders)
     : 0;
   const highScoreCount = providers.filter(p => p.score >= 70).length;
-  const orgCount = providers.filter(p => p.provider.entity_type === 'Organization').length;
+  const orgCount = providers.filter(p => p.provider?.entity_type === 'Organization').length;
   const citiesCount = countyStats.length;
 
   return (
@@ -29,7 +29,7 @@ export default function MapStatsBar({ providers, countyStats }) {
       <StatBox icon={Users} iconColor="bg-blue-900/20" label="Total Providers" value={totalProviders.toLocaleString()} />
       <StatBox icon={TrendingUp} iconColor="bg-teal-900/20" label="Avg Score" value={avgScore} />
       <StatBox icon={TrendingUp} iconColor="bg-green-900/20" label="Score 70+" value={highScoreCount} />
-      <StatBox icon={Building2} iconColor="bg-violet-900/300" label="Organizations" value={orgCount} />
+      <StatBox icon={Building2} iconColor="bg-violet-900/20" label="Organizations" value={orgCount} />
       <StatBox icon={MapPin} iconColor="bg-amber-900/20" label="Cities" value={citiesCount} />
     </div>
   );

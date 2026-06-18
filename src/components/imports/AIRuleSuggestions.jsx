@@ -126,11 +126,14 @@ export default function AIRuleSuggestions({ importType }) {
   }, [recentBatches, existingRules]);
 
   const createRuleMutation = useMutation({
-    mutationFn: async (suggestion, useCustomConfig = false) => {
-      const config = useCustomConfig && customConfig[suggestion.id] 
-        ? customConfig[suggestion.id] 
+    // TanStack mutate() passes a single `variables` argument; a second
+    // positional arg is treated as options, not forwarded to mutationFn. Take
+    // an object so the "Apply Customized Rule" flag actually reaches us.
+    mutationFn: async ({ suggestion, useCustomConfig = false }) => {
+      const config = useCustomConfig && customConfig[suggestion.id]
+        ? customConfig[suggestion.id]
         : buildRuleConfig(suggestion.ruleType);
-      
+
       await base44.entities.ImportValidationRule.create({
         import_type: importType,
         rule_name: suggestion.ruleName,
@@ -143,7 +146,7 @@ export default function AIRuleSuggestions({ importType }) {
         order: 100,
       });
     },
-    onSuccess: (_, suggestion) => {
+    onSuccess: (_, { suggestion }) => {
       setAddedRules(prev => new Set(prev).add(suggestion.id));
       setCustomizing(null);
       queryClient.invalidateQueries({ queryKey: ['existingRulesForSuggestion'] });
@@ -255,7 +258,7 @@ export default function AIRuleSuggestions({ importType }) {
                            <Button
                              size="sm"
                              className="h-7 text-xs gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
-                             onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate(s); }}
+                             onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate({ suggestion: s }); }}
                              disabled={isAdding}
                            >
                              {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
@@ -300,7 +303,7 @@ export default function AIRuleSuggestions({ importType }) {
               onClick={() => {
                 const sug = suggestions.find(s => s.id === customizing);
                 if (sug) {
-                  createRuleMutation.mutate(sug, true);
+                  createRuleMutation.mutate({ suggestion: sug, useCustomConfig: true });
                 }
               }}
               disabled={createRuleMutation.isPending}

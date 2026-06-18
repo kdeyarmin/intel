@@ -123,7 +123,7 @@ Only return affiliations you can verify. Be specific with names.`,
       }
     });
 
-    const existing = affiliations.map(a => a.affiliation_name.toLowerCase());
+    const existing = affiliations.map(a => (a.affiliation_name || '').toLowerCase());
     const newAffs = (res.affiliations || []).filter(a => a.name && !existing.includes(a.name.toLowerCase()));
 
     for (const aff of newAffs) {

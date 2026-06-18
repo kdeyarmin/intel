@@ -21,9 +21,15 @@ export default function ProviderComparison({ providerIds = [] }) {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Stable primitive key so the effect doesn't re-run on every parent render
+  // (the caller passes a freshly-built array each time).
+  const idsKey = providerIds.join(',');
+
   useEffect(() => {
+    let ignore = false;
     const fetchProviders = async () => {
       if (!providerIds || providerIds.length === 0) {
+        setProviders([]);
         setLoading(false);
         return;
       }
@@ -34,13 +40,16 @@ export default function ProviderComparison({ providerIds = [] }) {
         const query = { npi: { $in: providerIds } };
         const fetchedProviders = await base44.entities.Provider.filter(query);
 
-        // Fetch associated performance measures (mocked / synthesized from existing entities)
         const enrichedProviders = await Promise.all(
           fetchedProviders.map(async (provider) => {
-            const utilization = await base44.entities.ProviderServiceUtilization.filter({ npi: provider.npi }, '', 5);
-            const referrals = await base44.entities.CMSReferral.filter({ npi: provider.npi }, '', 5);
+            // Fetch the two per-provider datasets in parallel rather than
+            // serially to avoid an N+1 waterfall.
+            const [utilization, referrals] = await Promise.all([
+              base44.entities.ProviderServiceUtilization.filter({ npi: provider.npi }, '', 5),
+              base44.entities.CMSReferral.filter({ npi: provider.npi }, '', 5),
+            ]);
 
-            // Calculate some synthesized metrics for comparison
+            // Derived from real CMS utilization data.
             const totalServices = utilization.reduce((acc, curr) => acc + (parseInt(curr.total_services) || 0), 0);
             const uniqueBeneficiaries = utilization.reduce((acc, curr) => acc + (parseInt(curr.total_unique_benes) || 0), 0);
             const avgCharges = utilization.reduce((acc, curr) => acc + parseFloat(curr.average_submitted_chrg_amt || 0), 0) / (utilization.length || 1);
@@ -52,24 +61,29 @@ export default function ProviderComparison({ providerIds = [] }) {
                 uniqueBeneficiaries,
                 avgCharges,
                 referralCount: referrals.length,
-                performanceScore: provider.ai_outreach_score || Math.floor(Math.random() * 40) + 60, // Fallback mock score
-                readmissionRate: (Math.random() * 10 + 5).toFixed(1) + '%', // Mock data
-                patientSatisfaction: (Math.random() * 2 + 3).toFixed(1) // Mock data
+                // Only show a real outreach score. Readmission rate and
+                // patient satisfaction are not in our data set, so we render
+                // N/A rather than fabricating clinical indicators.
+                performanceScore: provider.ai_outreach_score ?? null,
+                readmissionRate: null,
+                patientSatisfaction: null,
               }
             };
           })
         );
 
-        setProviders(enrichedProviders);
+        if (!ignore) setProviders(enrichedProviders);
       } catch (err) {
         console.error("Error fetching comparison data:", err);
+        if (!ignore) setProviders([]);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
 
     fetchProviders();
-  }, [providerIds]);
+    return () => { ignore = true; };
+  }, [idsKey]);
 
   if (loading) {
     return (
@@ -130,7 +144,7 @@ export default function ProviderComparison({ providerIds = [] }) {
                   </div>
                   <div className="text-right">
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-900/10 text-cyan-400 font-bold text-sm border border-cyan-500/20">
-                      {provider.metrics.performanceScore}
+                      {provider.metrics.performanceScore ?? '—'}
                     </div>
                     <div className="text-[9px] text-slate-500 uppercase tracking-wider mt-1">Score</div>
                   </div>
@@ -169,16 +183,16 @@ export default function ProviderComparison({ providerIds = [] }) {
                   icon={Users}
                   colorClass="text-blue-400"
                 />
-                <StatCard 
-                  label="Readmission Rate" 
-                  value={provider.metrics.readmissionRate} 
+                <StatCard
+                  label="Readmission Rate"
+                  value={provider.metrics.readmissionRate || 'N/A'}
                   icon={AlertTriangle}
-                  colorClass={parseFloat(provider.metrics.readmissionRate) > 10 ? 'text-amber-400' : 'text-emerald-400'}
+                  colorClass="text-slate-400"
                   description="30-day all-cause"
                 />
-                <StatCard 
-                  label="Patient Sat." 
-                  value={`${provider.metrics.patientSatisfaction} / 5`} 
+                <StatCard
+                  label="Patient Sat."
+                  value={provider.metrics.patientSatisfaction ? `${provider.metrics.patientSatisfaction} / 5` : 'N/A'}
                   icon={Star}
                   colorClass="text-yellow-400"
                   description="HCAHPS Est."

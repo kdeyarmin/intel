@@ -229,10 +229,13 @@ export async function cleanupOrphanedEnrichmentTasks() {
 }
 
 export async function handleValidateDataQuality(_payload: any) {
-  const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
+  // Public function — estimate the 6M-row providers count from pg_class
+  // rather than a full count(*) scan.
+  const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
+  const providerCount = Number((((provEst as any).rows || provEst) || [])[0]?.est || 0);
   const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
   return {
-    total_providers: providerCount.count,
+    total_providers: providerCount,
     total_alerts: alertCount.count,
     data_completeness_score: 0,
     data_accuracy_score: 0,

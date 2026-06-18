@@ -143,4 +143,34 @@ describe('getAutoRetryState', () => {
     }, now);
     expect(state.state).toBe('too_old');
   });
+
+  it('measures the lookback from the FAILURE time, not the creation time', () => {
+    // A long-running import created 50h ago but that only failed 90 min ago is
+    // still in the worker's window (failureIso = completed_at). The banner must
+    // NOT report too_old — otherwise it tells the operator the batch will never
+    // retry while the worker is about to retry it.
+    const created = new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString();
+    const failed = new Date(now.getTime() - 90 * 60 * 1000).toISOString();
+    const state = getAutoRetryState({
+      status: 'failed',
+      import_type: 'medicare_hha_stats',
+      created_date: created,
+      completed_at: failed,
+    }, now);
+    expect(state.state).not.toBe('too_old');
+  });
+
+  it('reports pending (not never_tried) for a freshly-failed batch in first-attempt backoff', () => {
+    // The worker applies backoff to the first attempt too, computed from the
+    // failure time. A batch that failed 5 min ago will not run for ~1h, so the
+    // banner must show 'pending' rather than 'never_tried'.
+    const recentFailure = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+    const state = getAutoRetryState({
+      status: 'failed',
+      import_type: 'medicare_hha_stats',
+      completed_at: recentFailure,
+    }, now);
+    expect(state.state).toBe('pending');
+    expect(state.nextDueAt).toBeInstanceOf(Date);
+  });
 });

@@ -11,12 +11,15 @@ export default function SuccessRateTrendChart({ batches = [] }) {
     for (const b of batches) {
       if (!b.created_date) continue;
       const d = new Date(b.created_date);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
-      if (!byDay[key]) byDay[key] = { day: key, total: 0, completed: 0 };
+      if (isNaN(d.getTime())) continue;
+      // Key by full ISO date (avoids cross-year collisions); M/D for the axis.
+      const key = d.toISOString().slice(0, 10);
+      if (!byDay[key]) byDay[key] = { key, day: `${d.getMonth() + 1}/${d.getDate()}`, total: 0, completed: 0 };
       byDay[key].total++;
       if (b.status === 'completed') byDay[key].completed++;
     }
     return Object.values(byDay)
+      .sort((a, b) => a.key.localeCompare(b.key))
       .slice(-30)
       .map(d => ({
         day: d.day,

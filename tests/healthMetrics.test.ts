@@ -143,9 +143,13 @@ describe('summarizeRetryPipeline', () => {
 
   it('tallies failed batches by retry state', () => {
     const tooOldIso = new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString();
-    const recentIso = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    const recentIso = new Date(now.getTime() - 30 * 60 * 1000).toISOString();       // still inside the first-attempt backoff
+    const pastBackoffIso = new Date(now.getTime() - 90 * 60 * 1000).toISOString();   // past the 1h first-attempt backoff, within lookback
     const batches = [
-      // never_tried — fresh failed batch with no auto-retries yet
+      // never_tried — no auto-retry yet AND past the first-attempt backoff window
+      { status: 'failed', import_type: 'medicare_hha_stats', completed_at: pastBackoffIso, created_date: pastBackoffIso },
+      // pending — failed recently, still inside the first-attempt backoff window
+      // (the worker would hold it in backoff_active, not run it yet)
       { status: 'failed', import_type: 'medicare_hha_stats', completed_at: recentIso, created_date: recentIso },
       // disabled
       { status: 'failed', import_type: 'medicare_hha_stats', completed_at: recentIso, created_date: recentIso, retry_params: { auto_retry_disabled: true } },
@@ -158,6 +162,7 @@ describe('summarizeRetryPipeline', () => {
     ];
     const buckets = summarizeRetryPipeline(batches, now);
     expect(buckets.never_tried).toBe(1);
+    expect(buckets.pending).toBe(1);
     expect(buckets.disabled).toBe(1);
     expect(buckets.max_reached).toBe(1);
     expect(buckets.too_old).toBe(1);

@@ -33,7 +33,7 @@ export default function RecentActivityCard({ events = [], loading = false }) {
               <div key={event.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-700/30 transition-colors">
                  <div className="relative mt-1.5">
                    <div className="w-2 h-2 rounded-full bg-cyan-400" />
-                   {idx < events.length - 1 && (
+                   {idx < Math.min(events.length, 5) - 1 && (
                      <div className="absolute top-2.5 left-[3px] w-px h-8 bg-slate-700" />
                    )}
                  </div>

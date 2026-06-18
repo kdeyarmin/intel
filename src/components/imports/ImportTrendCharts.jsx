@@ -10,8 +10,10 @@ export default function ImportTrendCharts({ batches = [] }) {
     for (const b of batches) {
       if (!b.created_date) continue;
       const d = new Date(b.created_date);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
-      if (!byDay[key]) byDay[key] = { day: key, total: 0, completed: 0, failed: 0, durations: [] };
+      if (isNaN(d.getTime())) continue;
+      // Key by full ISO date (avoids cross-year collisions); M/D for the axis.
+      const key = d.toISOString().slice(0, 10);
+      if (!byDay[key]) byDay[key] = { key, day: `${d.getMonth() + 1}/${d.getDate()}`, total: 0, completed: 0, failed: 0, durations: [] };
       byDay[key].total++;
       if (b.status === 'completed') byDay[key].completed++;
       if (b.status === 'failed') byDay[key].failed++;
@@ -21,7 +23,7 @@ export default function ImportTrendCharts({ batches = [] }) {
       }
     }
 
-    const days = Object.values(byDay).slice(-14);
+    const days = Object.values(byDay).sort((a, b) => a.key.localeCompare(b.key)).slice(-14);
     const successRateData = days.map(d => {
       const terminal = d.completed + d.failed;
       return {

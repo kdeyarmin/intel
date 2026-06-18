@@ -57,22 +57,33 @@ export function getAutoRetryState(batch, now = new Date()) {
     return { state: 'max_reached', attemptCount, lastAttempt, lastReason, nextDueAt: null };
   }
 
-  // Worker won't touch batches older than the lookback window, so neither should
-  // the banner — otherwise we'd show 'pending' for a batch that will never retry.
-  const createdIso = batch.created_date || batch.updated_date;
-  if (createdIso) {
-    const created = new Date(createdIso);
-    if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+  // The checks below mirror shouldRetryBatch's ordering EXACTLY so the banner
+  // never disagrees with the worker on whether a batch is runnable right now.
+
+  // 1. Backoff window. The worker applies backoff even to the first attempt
+  //    (computed from the failure time), so a freshly-failed batch is in
+  //    backoff — it must show 'pending', not 'never_tried'. This check runs
+  //    before the lookback check, matching the worker, so a recently-retried
+  //    but old batch shows 'pending' rather than 'too_old'.
+  const nextDueAt = nextRetryDueAt(lastAttempt, attemptCount + 1);
+  if (nextDueAt && nextDueAt.getTime() > now.getTime()) {
+    return { state: 'pending', attemptCount, lastAttempt, lastReason, nextDueAt };
+  }
+
+  // 2. Lookback window. Measure from the FAILURE time (completed_at first),
+  //    matching the worker's `failureIso` precedence — NOT the creation time.
+  //    A long-running import created >48h ago but that failed recently is
+  //    still retried by the worker, so the banner must not show 'too_old'.
+  const failureIso = batch.completed_at || batch.updated_date || batch.created_date;
+  if (failureIso) {
+    const failedAt = new Date(failureIso);
+    if (!isNaN(failedAt.getTime()) && now.getTime() - failedAt.getTime() > RETRY_LOOKBACK_MS) {
       return { state: 'too_old', attemptCount, lastAttempt, lastReason, nextDueAt: null };
     }
   }
 
-  const nextDueAt = nextRetryDueAt(lastAttempt, attemptCount + 1);
   if (attemptCount === 0 && !params.last_auto_retry_at) {
     return { state: 'never_tried', attemptCount, lastAttempt, lastReason, nextDueAt };
-  }
-  if (nextDueAt && nextDueAt.getTime() > now.getTime()) {
-    return { state: 'pending', attemptCount, lastAttempt, lastReason, nextDueAt };
   }
   return { state: 'eligible', attemptCount, lastAttempt, lastReason, nextDueAt };
 }

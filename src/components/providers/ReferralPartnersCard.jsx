@@ -27,11 +27,13 @@ export default function ReferralPartnersCard({ npi, referrals = [] }) {
     staleTime: 120000,
   });
 
-  const sent = referrals
+  // Copy before sorting — `referrals`/`receivedReferrals` come from React
+  // Query's cache; sorting in place mutates the cached array.
+  const sent = [...referrals]
     .sort((a, b) => (b.total_referrals || 0) - (a.total_referrals || 0))
     .slice(0, 30);
 
-  const received = receivedReferrals
+  const received = [...receivedReferrals]
     .sort((a, b) => (b.totalReferrals || 0) - (a.totalReferrals || 0))
     .slice(0, 30);
 

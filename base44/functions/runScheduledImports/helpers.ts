@@ -60,7 +60,12 @@ export function computeNextRun(
     random: () => number = Math.random,
 ): Date {
     const next = new Date(now);
-    const [hours, minutes] = (schedule.schedule_time || '02:00').split(':').map(Number);
+    // Validate schedule_time so a malformed value (e.g. "abc", "25:70", "2")
+    // can't produce an Invalid Date that wedges the schedule. Mirrors the
+    // server copy in server/lib/scheduling.ts.
+    const [rawH, rawM] = (schedule.schedule_time || '02:00').split(':').map(Number);
+    const hours = Number.isInteger(rawH) && rawH >= 0 && rawH <= 23 ? rawH : 2;
+    const minutes = Number.isInteger(rawM) && rawM >= 0 && rawM <= 59 ? rawM : 0;
 
     if (schedule.schedule_frequency === 'daily') {
         next.setDate(next.getDate() + 1);

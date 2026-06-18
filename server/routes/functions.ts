@@ -9,6 +9,13 @@ let dashboardStatsCache: { data: any; timestamp: number } | null = null;
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
 let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
 const CMS_CACHE_TTL = 10 * 60 * 1000;
+// Sample size for the dashboard's no-phone extrapolation. Used for both the
+// LIMIT and the scale-up divisor so the two can never drift apart.
+const PHONE_SAMPLE_SIZE = 2000;
+// The territory "available states" rollup is a GROUP BY over the 12M-row
+// provider_locations table and is identical for every request, so cache it.
+let territoryStatesCache: { data: any[]; timestamp: number } | null = null;
+const TERRITORY_STATES_TTL = 10 * 60 * 1000;
 
 // Default-deny authorization for the function dispatcher. Only the read-only /
 // analytics / status functions below are callable by any authenticated user.
@@ -112,7 +119,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
           const phoneSample = await safeQ(`
             SELECT count(*) AS count
-            FROM (SELECT phone FROM provider_locations LIMIT 2000) s
+            FROM (SELECT phone FROM provider_locations LIMIT ${PHONE_SAMPLE_SIZE}) s
             WHERE phone IS NULL OR phone = ''
           `);
           const utilYearRows = await safeQ(`
@@ -145,7 +152,10 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           }
 
           const phoneSampleCount = Number(phoneSample[0]?.count || 0);
-          const phoneScale = totalLocations / 5000;
+          // Extrapolate the no-phone count from the sampled rows. The divisor
+          // MUST match the sample LIMIT above — previously hardcoded to 5000
+          // while the sample was 2000, under-estimating by 2.5x.
+          const phoneScale = totalLocations / PHONE_SAMPLE_SIZE;
           const uyRow = utilYearRows[0] || {};
 
           const result = {
@@ -479,15 +489,21 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
 
         const rows = result;
 
-        const statesResult = await db.execute(sql`
-          SELECT state, COUNT(*)::int AS cnt
-          FROM provider_locations
-          WHERE state IS NOT NULL AND state != ''
-          GROUP BY state
-          ORDER BY cnt DESC
-          LIMIT 60
-        `);
-        const statesList = ((statesResult as any).rows || statesResult) || [];
+        let statesList: any[];
+        if (territoryStatesCache && Date.now() - territoryStatesCache.timestamp < TERRITORY_STATES_TTL) {
+          statesList = territoryStatesCache.data;
+        } else {
+          const statesResult = await db.execute(sql`
+            SELECT state, COUNT(*)::int AS cnt
+            FROM provider_locations
+            WHERE state IS NOT NULL AND state != ''
+            GROUP BY state
+            ORDER BY cnt DESC
+            LIMIT 60
+          `);
+          statesList = ((statesResult as any).rows || statesResult) || [];
+          territoryStatesCache = { data: statesList, timestamp: Date.now() };
+        }
 
         return res.json({
           providers: rows.map((r: any) => ({
@@ -514,15 +530,20 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
 
       case "getDataHealthMetrics": {
         const { db } = await import("../db");
-        const { providers, dataQualityAlerts, dataQualityScans } = await import("../db/schema");
+        const { dataQualityAlerts, dataQualityScans } = await import("../db/schema");
         const { sql } = await import("drizzle-orm");
 
-        const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
+        // This function is public (any authenticated user). Estimate the
+        // 6M-row providers count from pg_class instead of a full count(*)
+        // scan — same approach as getDashboardStats. The alert/scan tables
+        // are small operational tables, so count(*) there is fine.
+        const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
+        const providerCount = Number((((provEst as any).rows || provEst) || [])[0]?.est || 0);
         const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
         const [scanCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityScans);
 
         return res.json({
-          total_providers: providerCount.count,
+          total_providers: providerCount,
           total_alerts: alertCount.count,
           total_scans: scanCount.count,
           data_completeness: 0,

@@ -12,8 +12,10 @@ import 'react-leaflet';
 function RecenterMap({ center }) {
   const map = useMap();
   React.useEffect(() => {
-    if (center) map.setView(center, map.getZoom(), { animate: true });
-  }, [center[0], center[1]]);
+    if (center && map) map.setView(center, map.getZoom(), { animate: true });
+    // Depend on the values, not on `center[0]` — indexing a nullish `center`
+    // in the dep array itself would throw before the effect ever runs.
+  }, [center, map]);
   return null;
 }
 
