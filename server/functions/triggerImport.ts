@@ -278,7 +278,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, skip_validation } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -377,7 +377,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter, state_filter, skip_validation },
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
@@ -389,7 +389,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter, state_filter, skip_validation },
     }).returning();
     activeBatchId = batch.id;
   }
@@ -402,6 +402,12 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run,
       resume_offset: resolvedOffset,
       batch_id: activeBatchId,
+      npi_filter,
+      state_filter,
+      // skip_validation is carried for forward-compat; the server CMS importer
+      // does not run rule-based validation (only required-key checks), so there
+      // is nothing for it to skip today.
+      skip_validation,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -507,6 +513,56 @@ function toIntOrNull(v: any): number | null {
   if (cleaned === "" || cleaned === "-") return null;
   const n = parseInt(cleaned, 10);
   return Number.isFinite(n) ? n : null;
+}
+
+// ── Optional import row filters (npi_filter / state_filter) ─────────────────
+// CMS dataset rows carry the provider NPI and state under wildly varying header
+// names (data-api caps vs provider-data snake_case, "Rndrng_" vs "Prscrbr_"
+// prefixes, etc.). These alias lists let the optional filters extract the
+// relevant field regardless of dataset shape.
+const FILTER_NPI_FIELDS = [
+  "NPI", "npi", "Rndrng_NPI", "rndrng_npi", "Prscrbr_NPI", "PRSCRBR_NPI",
+  "Suplr_NPI", "suplr_npi", "Rfrg_NPI", "rfrg_npi", "npi_1", "NPI_1",
+  "provider_npi", "PROVIDER_NPI", "org_npi", "ORG_NPI",
+];
+const FILTER_STATE_FIELDS = [
+  "state", "State", "STATE", "st", "ST", "state_cd", "STATE_CD",
+  "Rndrng_Prvdr_State_Abrvtn", "Prvdr_State_Abrvtn", "prvdr_state",
+  "Rndrng_Prvdr_State", "Prscrbr_State_Abrvtn", "provider_state",
+  "PROVIDER_STATE", "BENE_STATE_ABRVTN", "state_abbreviation",
+  "STATE_ABBREVIATION", "Provider State", "State Code",
+];
+
+// Parse a comma/space/semicolon-separated filter string (or array) into a
+// trimmed, de-duplicated list. Exported for unit testing.
+export function parseFilterList(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[,\s;]+/);
+  return [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
+}
+
+// Build a row predicate from the optional npi_filter / state_filter inputs, or
+// null when neither is set (so callers can skip filtering entirely). NPIs are
+// compared digits-only; states case-insensitively. Exported for unit testing.
+export function buildImportRowFilter(
+  npiFilter: unknown,
+  stateFilter: unknown,
+): ((row: any) => boolean) | null {
+  const npis = new Set(
+    parseFilterList(npiFilter).map((s) => s.replace(/\D/g, "")).filter(Boolean),
+  );
+  const states = new Set(parseFilterList(stateFilter).map((s) => s.toUpperCase()));
+  if (npis.size === 0 && states.size === 0) return null;
+  return (row: any) => {
+    if (npis.size > 0) {
+      const npi = String(firstField(row, FILTER_NPI_FIELDS) ?? "").replace(/\D/g, "");
+      if (!npi || !npis.has(npi)) return false;
+    }
+    if (states.size > 0) {
+      const st = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim().toUpperCase();
+      if (!st || !states.has(st)) return false;
+    }
+    return true;
+  };
 }
 
 // The CMS "Physician Shared Patient Patterns" (PSPP) dataset records pairs of
@@ -1067,7 +1123,10 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 }
 
 export async function handleAutoImportCMSData(params: any) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0 } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter } = params;
+  // Optional row-level filters from the import dialog. Built once; null when no
+  // filter is configured so the common path stays allocation-free.
+  const rowFilter = buildImportRowFilter(npi_filter, state_filter);
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
@@ -1196,9 +1255,19 @@ export async function handleAutoImportCMSData(params: any) {
         break;
       }
 
-      if (!dry_run) {
+      // Apply the optional npi_filter / state_filter to this page. Pagination
+      // (offset / hasMore) still uses the ORIGINAL row count; rows removed by
+      // the filter are counted as skipped.
+      let pageRows = rows;
+      if (rowFilter) {
+        const beforeLen = pageRows.length;
+        pageRows = pageRows.filter(rowFilter);
+        totalSkipped += beforeLen - pageRows.length;
+      }
+
+      if (!dry_run && pageRows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, rows, year, batch_id);
+          const result = await insertCMSRows(import_type, pageRows, year, batch_id);
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {

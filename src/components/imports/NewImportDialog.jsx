@@ -193,6 +193,9 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       if (rowOffset) invokeParams.row_offset = Number(rowOffset);
       if (rowLimit) invokeParams.row_limit = Number(rowLimit);
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+      if (npiFilter.trim()) invokeParams.npi_filter = npiFilter.trim();
+      if (stateFilter.trim()) invokeParams.state_filter = stateFilter.trim();
+      if (skipValidation) invokeParams.skip_validation = true;
       if (Object.keys(mapping).length > 0) invokeParams.column_mapping = mapping;
 
       const response = await base44.functions.invoke('triggerImport', invokeParams);
