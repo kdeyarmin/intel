@@ -42,6 +42,7 @@ const NAV_SECTIONS = [
       { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
       { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
       { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
+      { name: 'DME Report', icon: FileBarChart2, page: 'DMEProviderReport', roles: ['admin', 'user'] },
       { name: 'Community Health', icon: Building, page: 'CommunityHealthCenters', roles: ['admin', 'user'] },
     ]
   },
