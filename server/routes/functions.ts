@@ -42,6 +42,8 @@ const PUBLIC_FUNCTIONS = new Set<string>([
   "getCountyIntelligence",
   "getAvailableStatesCounties",
   "getComprehensiveReport",
+  "getDMEProviders",
+  "dmeEmailSearchStatus",
   "searchProviders",
   "calculateOutreachScore",
   "analyzeReferralPathways",
@@ -891,6 +893,23 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "getComprehensiveReport": {
         const { handleGetComprehensiveReport } = await import("../functions/comprehensiveReport");
         return res.json(await handleGetComprehensiveReport(req.body));
+      }
+
+      case "getDMEProviders": {
+        const { handleGetDMEProviders } = await import("../functions/dmeReport");
+        return res.json(await handleGetDMEProviders(req.body));
+      }
+      case "dmeEmailSearchStatus": {
+        const { handleDMEEmailSearchStatus } = await import("../functions/dmeReport");
+        return res.json(await handleDMEEmailSearchStatus());
+      }
+      case "startDMEEmailSearch": {
+        const { handleStartDMEEmailSearch } = await import("../functions/dmeReport");
+        return res.json(await handleStartDMEEmailSearch(req.body));
+      }
+      case "stopDMEEmailSearch": {
+        const { handleStopDMEEmailSearch } = await import("../functions/dmeReport");
+        return res.json(await handleStopDMEEmailSearch());
       }
 
       case "searchProviders": {

@@ -248,6 +248,8 @@ app.listen(PORT, "0.0.0.0", async () => {
       await cleanupOrphanedEnrichmentTasks();
       const { cleanupOrphanedIntelTasks } = await import("./functions/providerIntelligenceBot");
       await cleanupOrphanedIntelTasks();
+      const { cleanupOrphanedDMETasks } = await import("./functions/dmeReport");
+      await cleanupOrphanedDMETasks();
     } catch (e: any) {
       console.error(`[CareMetric API] Background task cleanup error:`, e.message);
     }
