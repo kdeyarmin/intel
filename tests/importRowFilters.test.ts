@@ -48,6 +48,15 @@ describe("buildImportRowFilter", () => {
     expect(f({ city: "Philadelphia" })).toBe(false); // no state present
   });
 
+  it("matches the supplier/referring/practice state aliases the mapper reads", () => {
+    const f = buildImportRowFilter(null, "PA")!;
+    expect(f({ Suplr_Prvdr_State_Abrvtn: "PA" })).toBe(true);
+    expect(f({ Rfrg_Prvdr_State_Abrvtn: "pa" })).toBe(true);
+    expect(f({ practicestate: "PA" })).toBe(true);
+    expect(f({ "ENROLLMENT STATE": "PA" })).toBe(true);
+    expect(f({ Suplr_Prvdr_State_Abrvtn: "NJ" })).toBe(false);
+  });
+
   it("requires BOTH npi and state to match when both are set", () => {
     const f = buildImportRowFilter("1234567890", "PA")!;
     expect(f({ NPI: "1234567890", state: "PA" })).toBe(true);

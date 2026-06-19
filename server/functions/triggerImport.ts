@@ -410,18 +410,22 @@ export async function handleTriggerImport(payload: any, user: any) {
 
   let activeBatchId: number;
 
-  // On resume (batch_id), the re-invoke (e.g. autoResumePausedImports) carries
-  // only basic params, NOT the original npi_filter/state_filter. Fall back to
-  // the values stored on the batch's retry_params so a resumed filtered import
-  // keeps filtering the remainder instead of importing it raw.
+  // Restore the original npi_filter/state_filter when this is a resume
+  // (batch_id) OR an auto-retry (retry_of) — both re-invokes (autoResumePaused-
+  // Imports / autoRetryFailedImports) carry only basic params, so without this
+  // the remainder/retry would import the FULL dataset unfiltered. Inherit from
+  // the batch being resumed, else from the original batch being retried.
   let effNpiFilter = npi_filter;
   let effStateFilter = state_filter;
-
-  if (batch_id) {
-    const [existing] = await db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1);
-    const prevParams = ((existing?.retry_params as any) || {});
+  const inheritFiltersFrom = batch_id ?? retry_of;
+  if (inheritFiltersFrom != null && (npi_filter === undefined || state_filter === undefined)) {
+    const [src] = await db.select().from(importBatches).where(eq(importBatches.id, Number(inheritFiltersFrom))).limit(1);
+    const prevParams = ((src?.retry_params as any) || {});
     effNpiFilter = npi_filter ?? prevParams.npi_filter;
     effStateFilter = state_filter ?? prevParams.state_filter;
+  }
+
+  if (batch_id) {
     await db.update(importBatches).set({
       status: "processing",
       cancel_reason: null,
@@ -581,6 +585,10 @@ const FILTER_STATE_FIELDS = [
   "Rndrng_Prvdr_State", "Prscrbr_State_Abrvtn", "provider_state",
   "PROVIDER_STATE", "BENE_STATE_ABRVTN", "state_abbreviation",
   "STATE_ABBREVIATION", "Provider State", "State Code",
+  // Keep in sync with mapMedicareFacilityRow's state field list so a
+  // state_filter works for supplier/referring/practice-shaped CMS feeds.
+  "Suplr_Prvdr_State_Abrvtn", "Rfrg_Prvdr_State_Abrvtn", "practicestate",
+  "ENROLLMENT STATE",
 ];
 
 // Parse a comma/space/semicolon-separated filter string (or array) into a
