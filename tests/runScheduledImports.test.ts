@@ -106,6 +106,20 @@ describe('computeNextRun', () => {
     expect(next.getTime() - now.getTime()).toBeLessThan(8 * 24 * 60 * 60_000);
   });
 
+  it('clamps a month-end monthly run to the last valid day instead of overflowing', () => {
+    // Jan 31 + 1 month must NOT overflow into March; it should land on Feb 28
+    // (2026 is not a leap year). A naive setUTCMonth(+1) would yield Mar 3.
+    const jan31 = new Date('2026-01-31T08:00:00Z');
+    const next = computeNextRun(
+      { schedule_time: '02:00', schedule_frequency: 'monthly' },
+      jan31,
+      0,
+      () => 0.5,
+    );
+    expect(next.getUTCMonth()).toBe(1); // February (0-indexed)
+    expect(next.getUTCDate()).toBe(28);
+  });
+
   it('on_completion frequency returns a 1h sentinel (no clamp, no jitter)', () => {
     const next = computeNextRun(
       { schedule_frequency: 'on_completion' },

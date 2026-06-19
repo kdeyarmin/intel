@@ -5,7 +5,13 @@ import {
   backoffHoursForAttempt,
   nextRetryDueAt,
   getAutoRetryState,
+  isRetryableErrorMessage,
 } from '../src/components/imports/retryStatus.js';
+import { isRetryableErrorMessage as workerIsRetryable } from '../base44/functions/autoRetryFailedImports/helpers.ts';
+
+// A retryable error so a fixture passes the non_retryable gate and reaches the
+// timing/attempt states under test.
+const RETRYABLE = 'connection timeout';
 
 describe('backoffHoursForAttempt (frontend mirror)', () => {
   it('returns 0 for attempt 0 or negative', () => {
@@ -62,10 +68,21 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       completed_at: '2026-05-09T11:00:00Z',
     }, now);
     expect(state.state).toBe('never_tried');
     expect(state.attemptCount).toBe(0);
+  });
+
+  it('returns null for a non-retryable failure (worker would not retry it)', () => {
+    const state = getAutoRetryState({
+      status: 'failed',
+      import_type: 'medicare_hha_stats',
+      cancel_reason: 'invalid NPI format in row 42',
+      completed_at: '2026-05-09T11:00:00Z',
+    }, now);
+    expect(state).toBeNull();
   });
 
   it('reports disabled when retry_params.auto_retry_disabled is true', () => {
@@ -92,6 +109,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       retry_params: { auto_retry_count: 1, last_auto_retry_at: recent },
     }, now);
     // attempt 1 -> next is attempt 2 -> backoff 2h. 30min < 2h, so pending.
@@ -104,6 +122,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       retry_params: { auto_retry_count: 1, last_auto_retry_at: longAgo },
     }, now);
     expect(state.state).toBe('eligible');
@@ -113,6 +132,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       retry_params: {
         auto_retry_count: 1,
         last_auto_retry_at: '2026-05-09T11:00:00Z',
@@ -126,6 +146,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       retry_params: { auto_retry_count: -1 },
     }, now);
     expect(state.attemptCount).toBe(0);
@@ -138,6 +159,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       created_date: longAgo,
       completed_at: longAgo,
     }, now);
@@ -154,6 +176,7 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       created_date: created,
       completed_at: failed,
     }, now);
@@ -168,9 +191,24 @@ describe('getAutoRetryState', () => {
     const state = getAutoRetryState({
       status: 'failed',
       import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
       completed_at: recentFailure,
     }, now);
     expect(state.state).toBe('pending');
     expect(state.nextDueAt).toBeInstanceOf(Date);
+  });
+});
+
+describe('retryable classification stays in sync with the worker', () => {
+  const samples = [
+    'connection timeout', 'HTTP 503 service unavailable', 'rate limit exceeded',
+    'fetch failed: ECONNREFUSED', 'socket hang up', 'stalled — no progress',
+    'invalid NPI format', 'duplicate key value', 'missing required column',
+    'parse error in row 500', '', 'something unexpected',
+  ];
+  it('matches the worker isRetryableErrorMessage for every sample', () => {
+    for (const msg of samples) {
+      expect(isRetryableErrorMessage(msg)).toBe(workerIsRetryable(msg));
+    }
   });
 });

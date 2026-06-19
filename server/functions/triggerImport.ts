@@ -317,7 +317,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, skip_validation } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -411,25 +411,23 @@ export async function handleTriggerImport(payload: any, user: any) {
   let activeBatchId: number;
 
   // On resume (batch_id), the re-invoke (e.g. autoResumePausedImports) carries
-  // only basic params, NOT the original npi_filter/state_filter/skip_validation.
-  // Fall back to the values stored on the batch's retry_params so a resumed
-  // filtered import keeps filtering the remainder instead of importing it raw.
+  // only basic params, NOT the original npi_filter/state_filter. Fall back to
+  // the values stored on the batch's retry_params so a resumed filtered import
+  // keeps filtering the remainder instead of importing it raw.
   let effNpiFilter = npi_filter;
   let effStateFilter = state_filter;
-  let effSkipValidation = skip_validation;
 
   if (batch_id) {
     const [existing] = await db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1);
     const prevParams = ((existing?.retry_params as any) || {});
     effNpiFilter = npi_filter ?? prevParams.npi_filter;
     effStateFilter = state_filter ?? prevParams.state_filter;
-    effSkipValidation = skip_validation ?? prevParams.skip_validation;
     await db.update(importBatches).set({
       status: "processing",
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, skip_validation: effSkipValidation },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
@@ -441,7 +439,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, skip_validation: effSkipValidation },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
     });
     if (conflict) throw conflict;
     activeBatchId = batch.id;
@@ -457,10 +455,6 @@ export async function handleTriggerImport(payload: any, user: any) {
       batch_id: activeBatchId,
       npi_filter: effNpiFilter,
       state_filter: effStateFilter,
-      // skip_validation is carried for forward-compat; the server CMS importer
-      // does not run rule-based validation (only required-key checks), so there
-      // is nothing for it to skip today.
-      skip_validation: effSkipValidation,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 

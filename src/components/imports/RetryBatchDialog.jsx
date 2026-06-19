@@ -17,7 +17,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
   const [stateFilter, setStateFilter] = useState('');
   const [sheetFilter, setSheetFilter] = useState('');
   const [dryRun, setDryRun] = useState(false);
-  const [skipValidation, setSkipValidation] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
   // Reset state when batch changes, apply presets if provided
@@ -29,7 +28,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         setRowLimit(presets.row_limit ? String(presets.row_limit) : '');
         setSheetFilter(presets.sheet_filter || '');
         setDryRun(presets.dry_run_first || false);
-        setSkipValidation(presets.skip_validation || false);
       } else {
         setRetryMode('full');
         setRowOffset(batch.imported_rows ? String(batch.imported_rows) : '');
@@ -57,7 +55,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
     try {
       const retryParams = {
         mode: retryMode,
-        skip_validation: skipValidation,
       };
 
       if (retryMode === 'row_range') {
@@ -99,7 +96,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         if (stateFilter) invokeParams.state_filter = stateFilter;
       }
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
-      if (skipValidation) invokeParams.skip_validation = true;
 
       await base44.functions.invoke('triggerImport', invokeParams);
 
@@ -301,13 +297,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             <div className="flex items-center justify-between">
               <Label className="text-sm text-slate-200">Dry run (validate only)</Label>
               <Switch checked={dryRun} onCheckedChange={setDryRun} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm text-slate-200">Skip validation</Label>
-                <p className="text-xs text-slate-400">Import directly without re-validating rows</p>
-              </div>
-              <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
             </div>
           </div>
         </div>

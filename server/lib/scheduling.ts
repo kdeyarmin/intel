@@ -72,7 +72,13 @@ export function computeNextRun(
   } else if (schedule.schedule_frequency === "weekly") {
     next.setUTCDate(next.getUTCDate() + 7);
   } else if (schedule.schedule_frequency === "monthly") {
+    // Clamp to the last valid day of the target month so the 29th-31st in a
+    // shorter month doesn't overflow into the following month (skipping a month).
+    const targetDay = next.getUTCDate();
+    next.setUTCDate(1);
     next.setUTCMonth(next.getUTCMonth() + 1);
+    const daysInTargetMonth = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+    next.setUTCDate(Math.min(targetDay, daysInTargetMonth));
   } else if (schedule.schedule_frequency === "on_completion") {
     // No regular cadence — the dependency check handles it. Sentinel ~1h out.
     next.setUTCHours(next.getUTCHours() + 1);

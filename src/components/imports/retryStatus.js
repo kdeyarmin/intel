@@ -11,6 +11,49 @@ export const RETRY_BACKOFF_CAP_HOURS = 24;
 // pending/eligible for batches the worker will never touch.
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
+// Verbatim copy of the worker's retryable-error classifier
+// (base44/functions/autoRetryFailedImports/helpers.ts). Kept in sync so the
+// banner agrees with the worker on WHICH failures auto-retry; retryStatus.test.ts
+// asserts this matches the worker's isRetryableErrorMessage.
+export const RETRYABLE_KEYWORDS = [
+  'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
+  'http 5', 'rate limit', 'rate-limit', 'rate_limit',
+  'fetch', 'network', 'connection', 'econnrefused', 'socket',
+];
+
+export const RETRYABLE_STATUS_CODE_PATTERN =
+  /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
+
+export function isRetryableErrorMessage(msg) {
+  if (!msg) return false;
+  const lower = String(msg).toLowerCase();
+  return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw))
+    || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
+}
+
+function normalizeErrorText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// Pull the most actionable error string out of a batch (cancel_reason first,
+// then the most recent error_samples entry's detail/message) — mirrors the
+// worker's extractErrorMessage.
+export function extractBatchErrorMessage(batch) {
+  const cancelReason = normalizeErrorText(batch?.cancel_reason);
+  if (cancelReason) return cancelReason;
+  const samples = batch?.error_samples;
+  if (Array.isArray(samples) && samples.length > 0) {
+    const last = samples[samples.length - 1];
+    if (last) {
+      const detail = normalizeErrorText(last.detail);
+      if (detail) return detail;
+      const message = normalizeErrorText(last.message);
+      if (message) return message;
+    }
+  }
+  return '';
+}
+
 export function backoffHoursForAttempt(attemptCount) {
   if (attemptCount <= 0) return 0;
   return Math.min(Math.pow(2, attemptCount - 1), RETRY_BACKOFF_CAP_HOURS);
@@ -27,8 +70,9 @@ export function nextRetryDueAt(lastAttemptIso, attemptCount) {
 // Decide what to show on the BatchDetailPanel auto-retry banner.
 //
 // Returns `null` for batches the worker won't touch (NPPES is handled by
-// manageCrawlerRetries; non-failed batches don't need retry visibility) so
-// the caller can hide the banner entirely.
+// manageCrawlerRetries; non-failed batches don't need retry visibility; and
+// failures whose error isn't classified retryable) so the caller can hide the
+// banner entirely.
 //
 // Otherwise returns a structured view with a `state`:
 //   - 'disabled'      — operator opted out via auto_retry_disabled
@@ -57,12 +101,17 @@ export function getAutoRetryState(batch, now = new Date()) {
     return { state: 'max_reached', attemptCount, lastAttempt, lastReason, nextDueAt: null };
   }
 
+  // Non-retryable failures: the worker's shouldRetryBatch returns
+  // non_retryable_error and never retries these, so hide the banner (return
+  // null) like the other "worker won't touch this" cases (nppes/non-failed).
+  // This check is ordered exactly as in the worker: after max, before backoff.
+  if (!isRetryableErrorMessage(extractBatchErrorMessage(batch))) {
+    return null;
+  }
+
   // The checks below mirror shouldRetryBatch's STATE ORDERING and timing
   // (backoff before lookback; failure-time basis) so the banner agrees with the
-  // worker on *when* a batch becomes runnable. One thing it intentionally does
-  // NOT replicate is the worker's retryable-error classification — the banner
-  // can't reliably reclassify the error string the same way, so the 'never_tried'
-  // copy hedges ("will trigger if the failure is classified retryable") instead.
+  // worker on *when* a (retryable) batch becomes runnable.
 
   // 1. Backoff window. The worker applies backoff even to the first attempt
   //    (computed from the failure time), so a freshly-failed batch is in

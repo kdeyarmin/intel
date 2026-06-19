@@ -145,20 +145,24 @@ describe('summarizeRetryPipeline', () => {
     const tooOldIso = new Date(now.getTime() - 50 * 60 * 60 * 1000).toISOString();
     const recentIso = new Date(now.getTime() - 30 * 60 * 1000).toISOString();       // still inside the first-attempt backoff
     const pastBackoffIso = new Date(now.getTime() - 90 * 60 * 1000).toISOString();   // past the 1h first-attempt backoff, within lookback
+    // retryable error so the timing/attempt states pass the non_retryable gate
+    const err = 'connection timeout';
     const batches = [
       // never_tried — no auto-retry yet AND past the first-attempt backoff window
-      { status: 'failed', import_type: 'medicare_hha_stats', completed_at: pastBackoffIso, created_date: pastBackoffIso },
+      { status: 'failed', import_type: 'medicare_hha_stats', cancel_reason: err, completed_at: pastBackoffIso, created_date: pastBackoffIso },
       // pending — failed recently, still inside the first-attempt backoff window
       // (the worker would hold it in backoff_active, not run it yet)
-      { status: 'failed', import_type: 'medicare_hha_stats', completed_at: recentIso, created_date: recentIso },
-      // disabled
+      { status: 'failed', import_type: 'medicare_hha_stats', cancel_reason: err, completed_at: recentIso, created_date: recentIso },
+      // disabled (checked before the retryable gate, so no error needed)
       { status: 'failed', import_type: 'medicare_hha_stats', completed_at: recentIso, created_date: recentIso, retry_params: { auto_retry_disabled: true } },
-      // max_reached
+      // max_reached (checked before the retryable gate)
       { status: 'failed', import_type: 'medicare_hha_stats', completed_at: recentIso, created_date: recentIso, retry_params: { auto_retry_count: 3 } },
       // too_old
-      { status: 'failed', import_type: 'medicare_hha_stats', completed_at: tooOldIso, created_date: tooOldIso },
+      { status: 'failed', import_type: 'medicare_hha_stats', cancel_reason: err, completed_at: tooOldIso, created_date: tooOldIso },
       // out_of_scope (NPPES)
       { status: 'failed', import_type: 'nppes_registry' },
+      // out_of_scope (non-retryable error — worker would never retry it)
+      { status: 'failed', import_type: 'medicare_hha_stats', cancel_reason: 'invalid NPI format', completed_at: recentIso, created_date: recentIso },
     ];
     const buckets = summarizeRetryPipeline(batches, now);
     expect(buckets.never_tried).toBe(1);
@@ -166,7 +170,7 @@ describe('summarizeRetryPipeline', () => {
     expect(buckets.disabled).toBe(1);
     expect(buckets.max_reached).toBe(1);
     expect(buckets.too_old).toBe(1);
-    expect(buckets.out_of_scope).toBe(1);
+    expect(buckets.out_of_scope).toBe(2); // nppes + non-retryable
   });
 
   it('returns all-zero counts for empty input', () => {
