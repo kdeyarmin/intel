@@ -34,7 +34,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         setRowLimit('');
         setSheetFilter('');
         setDryRun(false);
-        setSkipValidation(false);
       }
       setNpiFilter('');
       setStateFilter('');

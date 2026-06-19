@@ -86,9 +86,17 @@ export function getAutoRetryState(batch, now = new Date()) {
   if (batch.import_type === 'nppes_registry') return null;
 
   const params = batch.retry_params || {};
-  const attemptCount = typeof params.auto_retry_count === 'number' && params.auto_retry_count >= 0
+  // Match the worker's getRetryAttemptCount: the greater of retry_params.
+  // auto_retry_count and the top-level retry_count, so a batch exhausted via
+  // either counter is treated as max_reached (the banner agreed with the worker
+  // only on auto_retry_count before).
+  const autoRetryCount = typeof params.auto_retry_count === 'number' && params.auto_retry_count >= 0
     ? params.auto_retry_count
     : 0;
+  const topLevelRetryCount = typeof batch.retry_count === 'number' && batch.retry_count >= 0
+    ? batch.retry_count
+    : 0;
+  const attemptCount = Math.max(autoRetryCount, topLevelRetryCount);
   const lastAttempt = params.last_auto_retry_at || batch.completed_at || batch.updated_date || null;
   const lastReason = typeof params.last_auto_retry_reason === 'string'
     ? params.last_auto_retry_reason

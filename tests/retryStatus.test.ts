@@ -104,6 +104,18 @@ describe('getAutoRetryState', () => {
     expect(state.state).toBe('max_reached');
   });
 
+  it('counts the top-level retry_count toward max_reached (matches the worker)', () => {
+    // A retryable error that would otherwise be eligible, but the top-level
+    // retry_count is exhausted — the worker uses max(auto_retry_count, retry_count).
+    const state = getAutoRetryState({
+      status: 'failed',
+      import_type: 'medicare_hha_stats',
+      cancel_reason: RETRYABLE,
+      retry_count: MAX_AUTO_RETRY_ATTEMPTS,
+    }, now);
+    expect(state.state).toBe('max_reached');
+  });
+
   it('reports pending when within the backoff window', () => {
     const recent = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
     const state = getAutoRetryState({

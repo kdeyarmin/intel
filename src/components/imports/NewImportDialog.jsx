@@ -116,7 +116,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setTags([]);
     setTagInput('');
     setDryRun(false);
-    setSkipValidation(false);
     setRowOffset('');
     setRowLimit('');
     setNpiFilter('');
