@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ApiUsageChart({ nppesImports, loading }) {
-  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-800/50" />;
-
-  const data = (nppesImports || [])
+  // Memoize so the per-batch JSON.stringify scan over error_samples doesn't run
+  // on every render (this dashboard refetches on an interval).
+  const data = React.useMemo(() => (nppesImports || [])
     .filter(b => b.import_type === 'nppes_registry' && b.created_date && b.file_name?.includes('crawler_'))
     .slice(0, 20)
     .reverse()
@@ -13,18 +13,20 @@ export default function ApiUsageChart({ nppesImports, loading }) {
       // Use actual api_requests_count if available, otherwise estimate from total_rows
       const totalRows = b.total_rows || ((b.imported_rows || 0) + (b.updated_rows || 0) + (b.skipped_rows || 0) + (b.invalid_rows || 0));
       const successfulRequests = b.api_requests_count || Math.ceil(totalRows / 200);
-      
+
       // Estimate rate limits from error samples or retry count
       // If we had explicit rate_limit_count, use it. Otherwise guess from errors.
       const rateLimits = (b.rate_limit_count || 0) + (b.error_samples || []).filter(e => JSON.stringify(e).includes('429') || JSON.stringify(e).includes('rate limit')).length;
-      
+
       return {
         name: (b.file_name?.match(/crawler_([A-Z]{2})/) || [null, 'Batch'])[1],
         date: new Date(b.created_date).toLocaleDateString(),
         requests: successfulRequests || 0,
         rateLimits: rateLimits || 0,
       };
-    });
+    }), [nppesImports]);
+
+  if (loading) return <Card className="h-[350px] animate-pulse bg-slate-800/50" />;
 
   if (data.length === 0) return (
     <Card>

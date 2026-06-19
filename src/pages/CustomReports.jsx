@@ -159,7 +159,12 @@ export default function CustomReports() {
         action: 'run_single',
         report_id: report.id,
       });
-      toast.success(`Sent to ${res.data.emails_sent} recipient(s)`);
+      const data = res?.data || {};
+      toast.success(
+        typeof data.emails_sent === 'number'
+          ? `Sent to ${data.emails_sent} recipient(s)`
+          : (data.message || 'Report run complete'),
+      );
       queryClient.invalidateQueries({ queryKey: ['scheduledReports'] });
     } catch (err) {
       toast.error(`Failed: ${err.message}`);

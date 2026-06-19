@@ -21,19 +21,15 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
     try {
       const query = search.trim();
 
-      // Search by NPI or name
+      // Search by NPI or name. Use the server-side searchProviders function so
+      // name search covers the whole ~6M-row table instead of just the newest
+      // 200 rows we'd otherwise load and filter client-side.
       let providers = [];
       if (/^\d+$/.test(query)) {
         providers = await base44.entities.Provider.filter({ npi: query }, undefined, 20);
       } else {
-        const all = await base44.entities.Provider.list('-created_date', 200);
-        const q = query.toLowerCase();
-        providers = all.filter(p => {
-          const name = p.entity_type === 'Individual'
-            ? `${p.first_name} ${p.last_name}`.toLowerCase()
-            : (p.organization_name || '').toLowerCase();
-          return name.includes(q) || (p.npi || '').includes(q);
-        }).slice(0, 20);
+        const res = await base44.functions.invoke('searchProviders', { q: query, limit: 20 });
+        providers = res?.data?.providers || [];
       }
 
       setResults(providers);

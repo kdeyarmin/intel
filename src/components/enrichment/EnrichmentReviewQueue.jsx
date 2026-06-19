@@ -160,6 +160,10 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
     setBatchLoading(true);
     try {
       const user = await base44.auth.me();
+      // Apply at most one provider write per NPI in the batch. Claiming the NPI
+      // synchronously (between awaits) prevents two records for the same NPI from
+      // both reading provs[0] and racing a lost update.
+      const handledNpis = new Set();
       const promises = [...selected].map(async (id) => {
         const rec = records.find(r => r.id === id);
         if (!rec) return;
@@ -168,7 +172,8 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
           reviewed_by: user.email,
           reviewed_at: new Date().toISOString(),
         });
-        if (status === 'approved' && rec.enrichment_details) {
+        if (status === 'approved' && rec.enrichment_details && rec.npi && !handledNpis.has(rec.npi)) {
+          handledNpis.add(rec.npi);
           const provs = await base44.entities.Provider.filter({ npi: rec.npi });
           if (provs.length > 0 && rec.enrichment_details.group_practices?.length > 0 && !provs[0].organization_name) {
             await base44.entities.Provider.update(provs[0].id, { organization_name: rec.enrichment_details.group_practices[0] });

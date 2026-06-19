@@ -21,7 +21,7 @@ function extractMIPSMetrics(perfRow) {
 export default function MIPSPerformanceCard({ mipsData }) {
   const [expanded, setExpanded] = useState(false);
 
-  if (!mipsData?.has_data) return null;
+  if (!mipsData?.has_data || !mipsData.by_year) return null;
 
   const years = Object.keys(mipsData.by_year).sort((a, b) => Number(b) - Number(a));
   if (years.length === 0) return null;

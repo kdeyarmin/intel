@@ -21,11 +21,15 @@ export default function AIFailureAnalysis({ batch, onRetryWithSettings, compact 
   const [expanded, setExpanded] = useState(!compact);
   const [autoAnalyzed, setAutoAnalyzed] = useState(false);
 
-  // Auto-trigger analysis for failed batches
+  // Auto-trigger analysis for failed batches. Reset first so switching to a
+  // different batch doesn't keep showing the previous batch's analysis.
   useEffect(() => {
-    if (batch?.status === 'failed' && !analysis && !autoAnalyzed) {
+    setAnalysis(null);
+    if (batch?.status === 'failed') {
       setAutoAnalyzed(true);
       runAnalysis();
+    } else {
+      setAutoAnalyzed(false);
     }
   }, [batch?.id, batch?.status]);
 

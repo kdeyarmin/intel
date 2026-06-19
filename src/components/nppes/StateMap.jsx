@@ -39,6 +39,11 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
     return batch.imported_rows || batch.valid_rows || null;
   };
 
+  // Legend counts derived from getStateStatus so each state lands in exactly one
+  // bucket (the active state was previously counted in both Active and Processing).
+  const legendCounts = { active: 0, completed: 0, processing: 0, failed: 0, pending: 0 };
+  for (const st of Object.keys(STATE_POSITIONS)) legendCounts[getStateStatus(st)]++;
+
   const maxRow = 7;
   const maxCol = 12;
 
@@ -92,11 +97,11 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-xs">
         {[
-          { key: 'active', label: 'Active', count: (currentState && (running || autoMode)) ? 1 : 0 },
-          { key: 'completed', label: 'Completed', count: completedSet.size },
-          { key: 'processing', label: 'Processing', count: processingSet.size },
-          { key: 'failed', label: 'Failed', count: failedSet.size },
-          { key: 'pending', label: 'Pending', count: Math.max(0, Object.keys(STATE_POSITIONS).length - completedSet.size - failedSet.size - processingSet.size) },
+          { key: 'active', label: 'Active', count: legendCounts.active },
+          { key: 'completed', label: 'Completed', count: legendCounts.completed },
+          { key: 'processing', label: 'Processing', count: legendCounts.processing },
+          { key: 'failed', label: 'Failed', count: legendCounts.failed },
+          { key: 'pending', label: 'Pending', count: legendCounts.pending },
         ].map(item => (
           <div key={item.key} className="flex items-center gap-1.5">
             <div 

@@ -5,10 +5,15 @@
  * (the corresponding source files were also deleted):
  *   - ImportAnalytics
  *   - ImportOverview
+ *   - ImportHealthDashboard
  *   - MAInpatientDashboard
  *   - NPPESCrawlerDashboard
  *   - ReferralPathwayAnalysis
  *   - ProjectManagement
+ *   - Campaigns (page file; the "Campaigns" route remains, aliased to ProviderOutreach)
+ *
+ * And OrganizationDetail was RE-ADDED (organization rows now link to a dedicated
+ * org detail page instead of ProviderDetail).
  *
  * We mock all page imports (vi.mock is hoisted before static imports by
  * vitest) so we never pull in the full React component tree, then assert
@@ -29,7 +34,6 @@ vi.mock('../src/pages/AdminSettings.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/AdvancedAnalytics.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/CMSAnalytics.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/CMSDataSources.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/Campaigns.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/CountyIntelligence.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/CustomReports.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Dashboard.jsx', () => ({ default: () => null }));
@@ -54,6 +58,7 @@ vi.mock('../src/pages/NursingHomes.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawler.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawlerSettings.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Organizations.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/OrganizationDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderLocationMatching.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderOutreach.jsx', () => ({ default: () => null }));
@@ -102,8 +107,8 @@ describe('pages.config.js – PAGES registry', () => {
       expect('ProjectManagement' in PAGES).toBe(false);
     });
 
-    it('does not contain OrganizationDetail (unified into ProviderDetail)', () => {
-      expect('OrganizationDetail' in PAGES).toBe(false);
+    it('does not contain ImportHealthDashboard (file deleted)', () => {
+      expect('ImportHealthDashboard' in PAGES).toBe(false);
     });
   });
 
@@ -143,6 +148,7 @@ describe('pages.config.js – PAGES registry', () => {
       'NPPESCrawler',
       'NPPESCrawlerSettings',
       'Organizations',
+      'OrganizationDetail',
       'ProviderDetail',
       'ProviderLocationMatching',
       'ProviderOutreach',

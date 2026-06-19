@@ -39,11 +39,14 @@ export default function CampaignAnalytics({ campaign, onBack, onUpdate }) {
     const lists = await base44.entities.LeadList.list('-created_date', 200);
     const linkedLists = lists.filter(l => listIds.includes(l.id));
 
-    let members = [];
-    for (const lid of listIds) {
-      const m = await base44.entities.LeadListMember.filter({ lead_list_id: lid }, '-created_date', 5000);
-      members.push(...m.map(mm => ({ ...mm, _list_id: lid })));
-    }
+    // Fetch each list's members in parallel rather than serially.
+    const memberArrays = await Promise.all(
+      listIds.map(lid =>
+        base44.entities.LeadListMember.filter({ lead_list_id: lid }, '-created_date', 5000)
+          .then(m => m.map(mm => ({ ...mm, _list_id: lid })))
+      )
+    );
+    const members = memberArrays.flat();
 
     setListsData(linkedLists);
     setAllMembers(members);

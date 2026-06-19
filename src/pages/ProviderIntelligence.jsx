@@ -169,7 +169,10 @@ export default function ProviderIntelligence() {
       totalFound: meta.success_count || 0,
       batchNumber: meta.current_batch_number || 0,
       status: activeTask.status === 'cancelled' ? 'stopped' : activeTask.status === 'processing' ? 'running' : 'complete',
-      startTime: activeTask.started_at ? new Date(activeTask.started_at).getTime() : Date.now(),
+      // Leave null (not Date.now()) when the task has no start time — the tracker
+      // zeroes throughput/ETA on a missing startTime rather than dividing by a
+      // ~0 elapsed and reporting a nonsensical rate.
+      startTime: activeTask.started_at ? new Date(activeTask.started_at).getTime() : null,
       batchTimes: []
     };
   }, [activeTask, allRunProgress]);

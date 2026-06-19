@@ -31,14 +31,18 @@ export default function SystemStatusPanel({ batches }) {
 
     // Total rows processed in 24h
     const totalRowsProcessed = last24h.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
-    
+    // Rows processed by the SAME completed batches the durations come from, so
+    // throughput isn't inflated by dividing all-24h rows by completed-only time.
+    const completedRowsProcessed = completed24h.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
+
     // Success rate
     const finishedCount = completed24h.length + failed24h.length;
     const successRate = finishedCount > 0 ? Math.round((completed24h.length / finishedCount) * 100) : 100;
 
-    // Throughput (rows per minute)
-    const throughput = avgDuration > 0 && totalRowsProcessed > 0
-      ? Math.round(totalRowsProcessed / (durations.reduce((a, b) => a + b, 0) / 60000))
+    // Throughput (rows per minute) over completed batches
+    const totalDurationMin = durations.reduce((a, b) => a + b, 0) / 60000;
+    const throughput = totalDurationMin > 0 && completedRowsProcessed > 0
+      ? Math.round(completedRowsProcessed / totalDurationMin)
       : 0;
 
     return {

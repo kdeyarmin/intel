@@ -60,20 +60,35 @@ export function computeNextRun(
     random: () => number = Math.random,
 ): Date {
     const next = new Date(now);
-    const [hours, minutes] = (schedule.schedule_time || '02:00').split(':').map(Number);
+    // Validate schedule_time so a malformed value (e.g. "abc", "25:70", "2")
+    // can't produce an Invalid Date that wedges the schedule. Mirrors the
+    // server copy in server/lib/scheduling.ts.
+    const [rawH, rawM] = (schedule.schedule_time || '02:00').split(':').map(Number);
+    const hours = Number.isInteger(rawH) && rawH >= 0 && rawH <= 23 ? rawH : 2;
+    const minutes = Number.isInteger(rawM) && rawM >= 0 && rawM <= 59 ? rawM : 0;
 
+    // Use UTC setters so schedule_time is interpreted as UTC regardless of the
+    // runtime timezone (the tests assert via getUTCHours; this makes the UTC
+    // contract explicit and avoids DST/local-time drift).
     if (schedule.schedule_frequency === 'daily') {
-        next.setDate(next.getDate() + 1);
+        next.setUTCDate(next.getUTCDate() + 1);
     } else if (schedule.schedule_frequency === 'weekly') {
-        next.setDate(next.getDate() + 7);
+        next.setUTCDate(next.getUTCDate() + 7);
     } else if (schedule.schedule_frequency === 'monthly') {
-        next.setMonth(next.getMonth() + 1);
+        // Clamp to the last valid day of the target month so the 29th-31st in a
+        // shorter month doesn't overflow (e.g. Jan 31 -> setUTCMonth would land
+        // in early March, silently skipping February).
+        const targetDay = next.getUTCDate();
+        next.setUTCDate(1);
+        next.setUTCMonth(next.getUTCMonth() + 1);
+        const daysInTargetMonth = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 0)).getUTCDate();
+        next.setUTCDate(Math.min(targetDay, daysInTargetMonth));
     } else if (schedule.schedule_frequency === 'on_completion') {
         // No regular cadence — the dependency check handles it. Set to a sentinel ~1h out.
-        next.setHours(next.getHours() + 1);
+        next.setUTCHours(next.getUTCHours() + 1);
         return next;
     }
-    next.setHours(hours, minutes, 0, 0);
+    next.setUTCHours(hours, minutes, 0, 0);
 
     // #8 — push out further on consecutive failures
     if (failures > 0) {

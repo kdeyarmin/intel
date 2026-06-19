@@ -21,11 +21,16 @@ export default function UtilizationInsights({ utilization }) {
     );
   }
 
-  const rawPatientVolume = utilization.total_medicare_beneficiaries || 0;
-  const rawTotalServices = utilization.total_services || 0;
+  const rawPatientVolume = Number(utilization.total_medicare_beneficiaries) || 0;
+  const rawTotalServices = Number(utilization.total_services) || 0;
   const patientVolume = suppressSmallCell(rawPatientVolume);
   const totalServices = suppressSmallCell(rawTotalServices);
-  const servicesPerPatient = (patientVolume !== '<11' && patientVolume > 0) ? (totalServices / patientVolume).toFixed(1) : 0;
+  // Compute the ratio from the RAW numeric values, not the suppressed display
+  // strings ('<11'), so it never becomes the string "NaN" and the intensity
+  // thresholds below compare real numbers.
+  const servicesPerPatient = rawPatientVolume > 0
+    ? Number((rawTotalServices / rawPatientVolume).toFixed(1))
+    : 0;
 
   const getVolumeIndicator = () => {
     if (patientVolume === '<11') return { label: 'Low Volume', color: 'bg-slate-700/40 text-slate-200' };

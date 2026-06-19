@@ -47,7 +47,26 @@ Deno.serve(async (req) => {
         const now = new Date();
         const results = [];
 
+        // Anchor for idempotency: when did the parent batch complete? An update
+        // event on an already-completed batch (e.g. a later metadata edit, or a
+        // payload_too_large re-delivery where old_data is unavailable) must not
+        // re-fire dependents that already ran for this completion. Anchor on
+        // completed_at ONLY — updated_date is bumped by any later edit, which
+        // would wrongly skip a legitimately-new completion.
+        const parentCompletedAtMs = batchData.completed_at
+            ? new Date(batchData.completed_at).getTime()
+            : null;
+
         for (const schedule of dependentSchedules) {
+            // Skip if this child already ran successfully since the parent completed.
+            if (parentCompletedAtMs && schedule.last_successful_run_at) {
+                const childRanMs = new Date(schedule.last_successful_run_at).getTime();
+                if (!isNaN(childRanMs) && childRanMs >= parentCompletedAtMs) {
+                    results.push({ import_type: schedule.import_type, status: 'skipped', summary: 'Already ran since parent completion' });
+                    continue;
+                }
+            }
+
             console.log(`[DependencyManager] Triggering dependent schedule: ${schedule.label} (${schedule.import_type})`);
 
             let runStatus = 'success';

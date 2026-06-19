@@ -26,7 +26,12 @@ export default function OrgAffiliatedProvidersCard({ npi, locations = [], allPro
     return [...npis];
   }, [locations, allLocations, npi]);
 
-  const affiliatedProviders = allProviders.filter(p => affiliatedNPIs.includes(p.npi) && p.entity_type === 'Individual');
+  const affiliatedProviders = useMemo(() => {
+    const affiliatedSet = new Set(affiliatedNPIs);
+    // Set.has is O(1) — `affiliatedNPIs.includes` inside a filter over a large
+    // provider array would be O(n·m).
+    return allProviders.filter(p => affiliatedSet.has(p.npi) && p.entity_type === 'Individual');
+  }, [allProviders, affiliatedNPIs]);
 
   if (affiliatedProviders.length === 0) return null;
 

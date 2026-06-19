@@ -34,8 +34,8 @@ function CheckRow({ label, passed, total }) {
 
 export default function AccuracyPanel({ providers = [], locations = [] }) {
   const validNPIs = providers.filter(p => validateNPI(p.npi)).length;
-  const validStates = locations.filter(l => l.state && VALID_STATES.has(l.state.toUpperCase())).length;
-  const validZips = locations.filter(l => l.zip && /^\d{5}(-\d{4})?$/.test(l.zip.trim())).length;
+  const validStates = locations.filter(l => l.state && VALID_STATES.has(String(l.state).toUpperCase())).length;
+  const validZips = locations.filter(l => l.zip && /^\d{5}(-\d{4})?$/.test(String(l.zip).trim())).length;
   const validEntityTypes = providers.filter(p => p.entity_type === 'Individual' || p.entity_type === 'Organization').length;
   const validGender = providers.filter(p => ['M', 'F', ''].includes(p.gender)).length;
 

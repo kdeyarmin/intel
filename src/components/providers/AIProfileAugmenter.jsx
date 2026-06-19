@@ -107,6 +107,7 @@ export default function AIProfileAugmenter({ providers = [], locations = [], tax
     setResults(null);
     setApplied(new Set());
 
+    try {
     const batch = providers.slice(0, 15).map(p => {
       const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
       const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
@@ -163,55 +164,68 @@ Only return information you find with reasonable confidence from public sources.
     });
 
     setResults(res);
-    setLoading(false);
     const enriched = (res.profiles || []).filter(p => p.website || p.affiliations?.length || p.board_certifications?.length || p.education || p.languages?.length);
     toast.success(`Found enrichment data for ${enriched.length} of ${batch.length} providers`);
+    } catch (err) {
+      console.error('Profile augmentation failed:', err);
+      toast.error('Augmentation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApply = async (profile) => {
     setApplying(prev => new Set([...prev, profile.npi]));
 
-    const provider = providers.find(p => p.npi === profile.npi);
-    if (provider) {
-      const enrichmentData = {};
-      const enrichmentParts = [];
-      if (profile.website) enrichmentParts.push(`Website: ${profile.website}`);
-      if (profile.affiliations?.length) enrichmentParts.push(`Affiliations: ${profile.affiliations.join(', ')}`);
-      if (profile.board_certifications?.length) enrichmentParts.push(`Certifications: ${profile.board_certifications.join(', ')}`);
-      if (profile.education) enrichmentParts.push(`Education: ${profile.education}`);
-      if (profile.languages?.length) enrichmentParts.push(`Languages: ${profile.languages.join(', ')}`);
+    try {
+      const provider = providers.find(p => p.npi === profile.npi);
+      if (provider) {
+        const enrichmentData = {};
+        const enrichmentParts = [];
+        if (profile.website) enrichmentParts.push(`Website: ${profile.website}`);
+        if (profile.affiliations?.length) enrichmentParts.push(`Affiliations: ${profile.affiliations.join(', ')}`);
+        if (profile.board_certifications?.length) enrichmentParts.push(`Certifications: ${profile.board_certifications.join(', ')}`);
+        if (profile.education) enrichmentParts.push(`Education: ${profile.education}`);
+        if (profile.languages?.length) enrichmentParts.push(`Languages: ${profile.languages.join(', ')}`);
 
-      if (profile.website && !provider.email_source) {
-        enrichmentData.email_source = profile.website;
+        // Persist the discovered website to the provider's website column (was
+        // incorrectly written into email_source, which tracks email provenance).
+        if (profile.website && !provider.website) {
+          enrichmentData.website = profile.website;
+        }
+
+        await base44.entities.DataQualityAlert.create({
+          alert_type: 'new_issue_detected',
+          title: 'Profile Augmentation',
+          rule_id: `augment_${profile.npi}`,
+          rule_name: 'Profile Augmentation',
+          category: 'completeness',
+          severity: 'low',
+          summary: enrichmentParts.join(' | '),
+          npi: profile.npi,
+          status: 'accepted',
+          ai_root_cause: profile.notes || 'AI-augmented profile data',
+          ai_solutions: [
+            profile.website || '',
+            (profile.affiliations || []).join(', '),
+            (profile.board_certifications || []).join(', '),
+          ].filter(Boolean),
+        });
+
+        if (Object.keys(enrichmentData).length > 0) {
+          await base44.entities.Provider.update(provider.id, enrichmentData);
+        }
       }
 
-      await base44.entities.DataQualityAlert.create({
-        alert_type: 'new_issue_detected',
-        title: 'Profile Augmentation',
-        rule_id: `augment_${profile.npi}`,
-        rule_name: 'Profile Augmentation',
-        category: 'completeness',
-        severity: 'low',
-        summary: enrichmentParts.join(' | '),
-        npi: profile.npi,
-        status: 'accepted',
-        ai_root_cause: profile.notes || 'AI-augmented profile data',
-        ai_solutions: [
-          profile.website || '',
-          (profile.affiliations || []).join(', '),
-          (profile.board_certifications || []).join(', '),
-        ].filter(Boolean),
-      });
-
-      if (Object.keys(enrichmentData).length > 0) {
-        await base44.entities.Provider.update(provider.id, enrichmentData);
-      }
+      setApplied(prev => new Set([...prev, profile.npi]));
+      toast.success(`Saved enrichment for ${profile.name}`);
+      if (onComplete) onComplete();
+    } catch (err) {
+      console.error(`Failed to save enrichment for ${profile.npi}:`, err);
+      toast.error('Failed to save enrichment. Please try again.');
+    } finally {
+      setApplying(prev => { const n = new Set(prev); n.delete(profile.npi); return n; });
     }
-
-    setApplying(prev => { const n = new Set(prev); n.delete(profile.npi); return n; });
-    setApplied(prev => new Set([...prev, profile.npi]));
-    toast.success(`Saved enrichment for ${profile.name}`);
-    if (onComplete) onComplete();
   };
 
   const handleApplyAll = async () => {

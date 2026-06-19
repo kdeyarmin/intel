@@ -273,12 +273,51 @@ export function getCMSDatasetCatalog() {
   };
 }
 
+// Sentinel file_names that represent control/signal rows, not real imports.
+const SENTINEL_FILE_NAMES = new Set([
+  "batch_process_active", "crawler_batch_stop_signal", "crawler_auto_stop_signal",
+]);
+
+// Insert a new import batch atomically under a per-import_type advisory lock,
+// re-checking for a concurrently-started active import inside the lock. This
+// closes the check-then-act race between the active-import pre-check and the
+// insert, so two near-simultaneous triggerImport calls for the same type can't
+// both start an import. Returns a 409-shaped conflict instead of inserting if a
+// real active import is found inside the lock.
+async function insertBatchAtomically(
+  importType: string,
+  values: any,
+): Promise<{ batch?: any; conflict?: any }> {
+  return await db.transaction(async (tx) => {
+    // hashtext() -> int4, accepted by the bigint pg_advisory_xact_lock overload.
+    // Released automatically on commit/rollback.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${importType}))`);
+    const active = await tx.select().from(importBatches)
+      .where(and(eq(importBatches.import_type, importType), inArray(importBatches.status, ["validating", "processing"])));
+    const realActive = active.filter((b) => !SENTINEL_FILE_NAMES.has(b.file_name || ""));
+    if (realActive.length > 0) {
+      const existing = realActive[0];
+      return {
+        conflict: {
+          status: 409,
+          message: `Import for ${importType} is already in progress`,
+          conflict: true,
+          existing_batch_id: existing.id,
+          started_at: existing.created_date,
+        },
+      };
+    }
+    const [batch] = await tx.insert(importBatches).values(values).returning();
+    return { batch };
+  });
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -293,8 +332,7 @@ export async function handleTriggerImport(payload: any, user: any) {
   const activeImports = await db.select().from(importBatches)
     .where(and(eq(importBatches.import_type, import_type), inArray(importBatches.status, ["validating", "processing"])));
   const realActive = activeImports.filter((b) => {
-    const fn = b.file_name || "";
-    return fn !== "batch_process_active" && fn !== "crawler_batch_stop_signal" && fn !== "crawler_auto_stop_signal" && b.id !== batch_id;
+    return !SENTINEL_FILE_NAMES.has(b.file_name || "") && b.id !== batch_id;
   });
 
   if (realActive.length > 0) {
@@ -330,14 +368,15 @@ export async function handleTriggerImport(payload: any, user: any) {
       throw { status: 400, message: "file_url is required for NPPES flat file imports" };
     }
 
-    const [batch] = await db.insert(importBatches).values({
+    const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
       file_name: file_url.split("/").pop() || "nppes_flat_file",
       status: "processing",
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-    }).returning();
+    });
+    if (conflict) throw conflict;
 
     setTimeout(() => {
       handleImportNPPESFlatFile({ batch_id: batch.id, file_url, byte_offset: 0 })
@@ -371,26 +410,42 @@ export async function handleTriggerImport(payload: any, user: any) {
 
   let activeBatchId: number;
 
+  // Restore the original npi_filter/state_filter when this is a resume
+  // (batch_id) OR an auto-retry (retry_of) — both re-invokes (autoResumePaused-
+  // Imports / autoRetryFailedImports) carry only basic params, so without this
+  // the remainder/retry would import the FULL dataset unfiltered. Inherit from
+  // the batch being resumed, else from the original batch being retried.
+  let effNpiFilter = npi_filter;
+  let effStateFilter = state_filter;
+  const inheritFiltersFrom = batch_id ?? retry_of;
+  if (inheritFiltersFrom != null && (npi_filter === undefined || state_filter === undefined)) {
+    const [src] = await db.select().from(importBatches).where(eq(importBatches.id, Number(inheritFiltersFrom))).limit(1);
+    const prevParams = ((src?.retry_params as any) || {});
+    effNpiFilter = npi_filter ?? prevParams.npi_filter;
+    effStateFilter = state_filter ?? prevParams.state_filter;
+  }
+
   if (batch_id) {
     await db.update(importBatches).set({
       status: "processing",
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
   } else {
-    const [batch] = await db.insert(importBatches).values({
+    const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
       file_name: `cms_${import_type}_${resolvedYear}`,
       status: "processing",
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl },
-    }).returning();
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
+    });
+    if (conflict) throw conflict;
     activeBatchId = batch.id;
   }
 
@@ -402,6 +457,8 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run,
       resume_offset: resolvedOffset,
       batch_id: activeBatchId,
+      npi_filter: effNpiFilter,
+      state_filter: effStateFilter,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -507,6 +564,63 @@ function toIntOrNull(v: any): number | null {
   if (cleaned === "" || cleaned === "-") return null;
   const n = parseInt(cleaned, 10);
   return Number.isFinite(n) ? n : null;
+}
+
+// ── Optional import row filters (npi_filter / state_filter) ─────────────────
+// CMS dataset rows carry the provider NPI and state under wildly varying header
+// names (data-api caps vs provider-data snake_case, "Rndrng_" vs "Prscrbr_"
+// prefixes, etc.). These alias lists let the optional filters extract the
+// relevant field regardless of dataset shape.
+const FILTER_NPI_FIELDS = [
+  "NPI", "npi", "Rndrng_NPI", "rndrng_npi", "Prscrbr_NPI", "PRSCRBR_NPI",
+  "Suplr_NPI", "suplr_npi", "Rfrg_NPI", "rfrg_npi", "npi_1", "NPI_1",
+  "provider_npi", "PROVIDER_NPI", "org_npi", "ORG_NPI",
+  // Shared-patient-pattern (PSPP) source-NPI aliases, matching the keys
+  // mapSharedPatientPatternRow reads, so an npi_filter on that dataset works.
+  "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi",
+];
+const FILTER_STATE_FIELDS = [
+  "state", "State", "STATE", "st", "ST", "state_cd", "STATE_CD",
+  "Rndrng_Prvdr_State_Abrvtn", "Prvdr_State_Abrvtn", "prvdr_state",
+  "Rndrng_Prvdr_State", "Prscrbr_State_Abrvtn", "provider_state",
+  "PROVIDER_STATE", "BENE_STATE_ABRVTN", "state_abbreviation",
+  "STATE_ABBREVIATION", "Provider State", "State Code",
+  // Keep in sync with mapMedicareFacilityRow's state field list so a
+  // state_filter works for supplier/referring/practice-shaped CMS feeds.
+  "Suplr_Prvdr_State_Abrvtn", "Rfrg_Prvdr_State_Abrvtn", "practicestate",
+  "ENROLLMENT STATE",
+];
+
+// Parse a comma/space/semicolon-separated filter string (or array) into a
+// trimmed, de-duplicated list. Exported for unit testing.
+export function parseFilterList(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[,\s;]+/);
+  return [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
+}
+
+// Build a row predicate from the optional npi_filter / state_filter inputs, or
+// null when neither is set (so callers can skip filtering entirely). NPIs are
+// compared digits-only; states case-insensitively. Exported for unit testing.
+export function buildImportRowFilter(
+  npiFilter: unknown,
+  stateFilter: unknown,
+): ((row: any) => boolean) | null {
+  const npis = new Set(
+    parseFilterList(npiFilter).map((s) => s.replace(/\D/g, "")).filter(Boolean),
+  );
+  const states = new Set(parseFilterList(stateFilter).map((s) => s.toUpperCase()));
+  if (npis.size === 0 && states.size === 0) return null;
+  return (row: any) => {
+    if (npis.size > 0) {
+      const npi = String(firstField(row, FILTER_NPI_FIELDS) ?? "").replace(/\D/g, "");
+      if (!npi || !npis.has(npi)) return false;
+    }
+    if (states.size > 0) {
+      const st = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim().toUpperCase();
+      if (!st || !states.has(st)) return false;
+    }
+    return true;
+  };
 }
 
 // The CMS "Physician Shared Patient Patterns" (PSPP) dataset records pairs of
@@ -1067,7 +1181,10 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 }
 
 export async function handleAutoImportCMSData(params: any) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0 } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter } = params;
+  // Optional row-level filters from the import dialog. Built once; null when no
+  // filter is configured so the common path stays allocation-free.
+  const rowFilter = buildImportRowFilter(npi_filter, state_filter);
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
@@ -1196,9 +1313,19 @@ export async function handleAutoImportCMSData(params: any) {
         break;
       }
 
-      if (!dry_run) {
+      // Apply the optional npi_filter / state_filter to this page. Pagination
+      // (offset / hasMore) still uses the ORIGINAL row count; rows removed by
+      // the filter are counted as skipped.
+      let pageRows = rows;
+      if (rowFilter) {
+        const beforeLen = pageRows.length;
+        pageRows = pageRows.filter(rowFilter);
+        totalSkipped += beforeLen - pageRows.length;
+      }
+
+      if (!dry_run && pageRows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, rows, year, batch_id);
+          const result = await insertCMSRows(import_type, pageRows, year, batch_id);
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {

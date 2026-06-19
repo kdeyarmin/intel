@@ -11,14 +11,19 @@ export default function ImportVolumeChart({ batches = [] }) {
     for (const b of batches) {
       if (!b.created_date) continue;
       const d = new Date(b.created_date);
-      const key = `${d.getMonth() + 1}/${d.getDate()}`;
-      if (!byDay[key]) byDay[key] = { day: key, completed: 0, failed: 0, other: 0, total: 0 };
+      if (isNaN(d.getTime())) continue;
+      // Key by full ISO date so cross-year days (e.g. 6/18/2025 vs 6/18/2026)
+      // don't collapse into one bucket; keep a short M/D label for the axis.
+      const key = d.toISOString().slice(0, 10);
+      if (!byDay[key]) byDay[key] = { key, day: `${d.getMonth() + 1}/${d.getDate()}`, completed: 0, failed: 0, other: 0, total: 0 };
       byDay[key].total++;
       if (b.status === 'completed') byDay[key].completed++;
       else if (b.status === 'failed') byDay[key].failed++;
       else byDay[key].other++;
     }
-    return Object.values(byDay).slice(-30);
+    // Sort chronologically then take the most recent 30 (input order isn't
+    // guaranteed, so slice(-30) on insertion order could keep the oldest 30).
+    return Object.values(byDay).sort((a, b) => a.key.localeCompare(b.key)).slice(-30);
   }, [batches]);
 
   if (data.length === 0) return null;

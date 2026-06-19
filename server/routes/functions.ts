@@ -9,6 +9,13 @@ let dashboardStatsCache: { data: any; timestamp: number } | null = null;
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
 let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
 const CMS_CACHE_TTL = 10 * 60 * 1000;
+// Sample size for the dashboard's no-phone extrapolation. Used for both the
+// LIMIT and the scale-up divisor so the two can never drift apart.
+const PHONE_SAMPLE_SIZE = 2000;
+// The territory "available states" rollup is a GROUP BY over the 12M-row
+// provider_locations table and is identical for every request, so cache it.
+let territoryStatesCache: { data: any[]; timestamp: number } | null = null;
+const TERRITORY_STATES_TTL = 10 * 60 * 1000;
 
 // Default-deny authorization for the function dispatcher. Only the read-only /
 // analytics / status functions below are callable by any authenticated user.
@@ -76,12 +83,14 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
               (SELECT reltuples::bigint FROM pg_class WHERE relname = 'medicare_facilities') AS facilities
           `);
           const est = fastCounts.rows[0] || {};
-          const totalProviders = Number(est.providers || 0);
-          const totalLocations = Number(est.locations || 0);
-          const totalReferrals = Number(est.referrals || 0);
-          const totalUtilization = Number(est.utilization || 0);
-          const totalTaxonomies = Number(est.taxonomies || 0);
-          const totalFacilities = Number(est.facilities || 0);
+          // pg_class.reltuples is -1 for a never-ANALYZEd table (PG14+); clamp
+          // to 0 so counts/scale factors never go negative.
+          const totalProviders = Math.max(0, Number(est.providers) || 0);
+          const totalLocations = Math.max(0, Number(est.locations) || 0);
+          const totalReferrals = Math.max(0, Number(est.referrals) || 0);
+          const totalUtilization = Math.max(0, Number(est.utilization) || 0);
+          const totalTaxonomies = Math.max(0, Number(est.taxonomies) || 0);
+          const totalFacilities = Math.max(0, Number(est.facilities) || 0);
 
           const safeQ = async (text: string) => {
             try { return (await client.query(text)).rows; }
@@ -114,7 +123,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
           const phoneSample = await safeQ(`
             SELECT count(*) AS count
-            FROM (SELECT phone FROM provider_locations LIMIT 2000) s
+            FROM (SELECT phone FROM provider_locations LIMIT ${PHONE_SAMPLE_SIZE}) s
             WHERE phone IS NULL OR phone = ''
           `);
           const utilYearRows = await safeQ(`
@@ -147,7 +156,10 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           }
 
           const phoneSampleCount = Number(phoneSample[0]?.count || 0);
-          const phoneScale = totalLocations / 5000;
+          // Extrapolate the no-phone count from the sampled rows. The divisor
+          // MUST match the sample LIMIT above — previously hardcoded to 5000
+          // while the sample was 2000, under-estimating by 2.5x.
+          const phoneScale = totalLocations / PHONE_SAMPLE_SIZE;
           const uyRow = utilYearRows[0] || {};
 
           const result = {
@@ -260,12 +272,38 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         if (cmsAnalyticsCache && (Date.now() - cmsAnalyticsCache.timestamp < CMS_CACHE_TTL)) {
           return res.json(cmsAnalyticsCache.data);
         }
-        const { db } = await import("../db");
+        const { db, pool } = await import("../db");
         const { sql } = await import("drizzle-orm");
 
         const safeMvQuery = async (queryFn: () => Promise<any>, fallback: any = []) => {
           try { return await queryFn(); }
           catch (e: any) { console.warn(`[getCMSAnalytics] View query failed: ${e.message?.slice(0, 150)}`); return fallback; }
+        };
+
+        // The medicare_facilities aggregate is a GROUP BY + count(DISTINCT state)
+        // over a ~46M-row table. Run it on a dedicated connection under a
+        // statement_timeout so a slow scan can't pin a pooled connection (the
+        // whole result set is cached for 10 minutes).
+        const timedFacilityAggregate = async () => {
+          const client = await pool.connect();
+          try {
+            await client.query("SET statement_timeout = '20s'");
+            return await client.query(`
+              SELECT facility_type, count(*) AS record_count,
+                count(DISTINCT state) AS state_count,
+                max(data_year) AS latest_year
+              FROM medicare_facilities
+              WHERE facility_type IN (
+                'market_saturation_county', 'market_saturation_cbsa',
+                'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
+                'nppes_registry', 'provider_taxonomy_crosswalk'
+              )
+              GROUP BY facility_type
+            `);
+          } finally {
+            try { await client.query("RESET statement_timeout"); } catch { /* ignore */ }
+            client.release();
+          }
         };
 
         const [
@@ -291,18 +329,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
               sum(total_services) AS total_services
             FROM mv_cms_util_by_type
           `)),
-          safeMvQuery(() => db.execute(sql`
-            SELECT facility_type, count(*) AS record_count, 
-              count(DISTINCT state) AS state_count,
-              max(data_year) AS latest_year
-            FROM medicare_facilities
-            WHERE facility_type IN (
-              'market_saturation_county', 'market_saturation_cbsa',
-              'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
-              'nppes_registry', 'provider_taxonomy_crosswalk'
-            )
-            GROUP BY facility_type
-          `)),
+          safeMvQuery(timedFacilityAggregate),
         ]);
 
         const topServices = ((topServicesResult as any).rows || topServicesResult) || [];
@@ -481,15 +508,21 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
 
         const rows = result;
 
-        const statesResult = await db.execute(sql`
-          SELECT state, COUNT(*)::int AS cnt
-          FROM provider_locations
-          WHERE state IS NOT NULL AND state != ''
-          GROUP BY state
-          ORDER BY cnt DESC
-          LIMIT 60
-        `);
-        const statesList = ((statesResult as any).rows || statesResult) || [];
+        let statesList: any[];
+        if (territoryStatesCache && Date.now() - territoryStatesCache.timestamp < TERRITORY_STATES_TTL) {
+          statesList = territoryStatesCache.data;
+        } else {
+          const statesResult = await db.execute(sql`
+            SELECT state, COUNT(*)::int AS cnt
+            FROM provider_locations
+            WHERE state IS NOT NULL AND state != ''
+            GROUP BY state
+            ORDER BY cnt DESC
+            LIMIT 60
+          `);
+          statesList = ((statesResult as any).rows || statesResult) || [];
+          territoryStatesCache = { data: statesList, timestamp: Date.now() };
+        }
 
         return res.json({
           providers: rows.map((r: any) => ({
@@ -516,15 +549,21 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
 
       case "getDataHealthMetrics": {
         const { db } = await import("../db");
-        const { providers, dataQualityAlerts, dataQualityScans } = await import("../db/schema");
+        const { dataQualityAlerts, dataQualityScans } = await import("../db/schema");
         const { sql } = await import("drizzle-orm");
 
-        const [providerCount] = await db.select({ count: sql<number>`count(*)` }).from(providers);
+        // This function is public (any authenticated user). Estimate the
+        // 6M-row providers count from pg_class instead of a full count(*)
+        // scan — same approach as getDashboardStats. The alert/scan tables
+        // are small operational tables, so count(*) there is fine.
+        const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
+        // reltuples is -1 for a never-ANALYZEd table (PG14+); clamp to 0.
+        const providerCount = Math.max(0, Number((((provEst as any).rows || provEst) || [])[0]?.est) || 0);
         const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
         const [scanCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityScans);
 
         return res.json({
-          total_providers: providerCount.count,
+          total_providers: providerCount,
           total_alerts: alertCount.count,
           total_scans: scanCount.count,
           data_completeness: 0,

@@ -86,7 +86,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
   const [dryRun, setDryRun] = useState(false);
-  const [skipValidation, setSkipValidation] = useState(false);
   const [rowOffset, setRowOffset] = useState('');
   const [rowLimit, setRowLimit] = useState('');
   const [npiFilter, setNpiFilter] = useState('');
@@ -117,7 +116,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
     setTags([]);
     setTagInput('');
     setDryRun(false);
-    setSkipValidation(false);
     setRowOffset('');
     setRowLimit('');
     setNpiFilter('');
@@ -193,6 +191,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
       if (rowOffset) invokeParams.row_offset = Number(rowOffset);
       if (rowLimit) invokeParams.row_limit = Number(rowLimit);
       if (sheetFilter) invokeParams.sheet_filter = sheetFilter;
+      if (npiFilter.trim()) invokeParams.npi_filter = npiFilter.trim();
+      if (stateFilter.trim()) invokeParams.state_filter = stateFilter.trim();
       if (Object.keys(mapping).length > 0) invokeParams.column_mapping = mapping;
 
       const response = await base44.functions.invoke('triggerImport', invokeParams);
@@ -380,13 +380,6 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   <p className="text-[10px] text-slate-400">Validate only — no data will be written</p>
                 </div>
                 <Switch checked={dryRun} onCheckedChange={setDryRun} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm text-slate-300">Skip Validation</Label>
-                  <p className="text-[10px] text-slate-400">Import directly without row-level validation</p>
-                </div>
-                <Switch checked={skipValidation} onCheckedChange={setSkipValidation} />
               </div>
             </div>
 

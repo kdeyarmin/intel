@@ -75,19 +75,26 @@ export default function OrganizationDetail() {
   const provider = providers?.[0];
   const score = scores?.[0];
 
-  // Affiliated providers: others at same address
+  // Affiliated providers: others at same address. Skip blank addresses so an
+  // org without a usable address doesn't match every other blank-address record.
   const affiliatedNPIs = useMemo(() => {
     if (!locations.length || !allLocations.length) return [];
-    const orgAddresses = locations.map(l => `${l.address_1}|${l.city}|${l.state}`);
+    const orgAddresses = new Set(
+      locations.filter(l => l.address_1).map(l => `${l.address_1}|${l.city}|${l.state}`),
+    );
+    if (orgAddresses.size === 0) return [];
     const npis = new Set();
     allLocations.forEach(l => {
       const key = `${l.address_1}|${l.city}|${l.state}`;
-      if (orgAddresses.includes(key) && l.npi !== npi) npis.add(l.npi);
+      if (orgAddresses.has(key) && l.npi !== npi) npis.add(l.npi);
     });
     return [...npis];
   }, [locations, allLocations, npi]);
 
-  const affiliatedProviders = allProviders.filter(p => affiliatedNPIs.includes(p.npi) && p.entity_type === 'Individual');
+  const affiliatedProviders = useMemo(() => {
+    const affiliatedSet = new Set(affiliatedNPIs);
+    return allProviders.filter(p => affiliatedSet.has(p.npi) && p.entity_type === 'Individual');
+  }, [allProviders, affiliatedNPIs]);
 
   // Utilization chart data
   const utilChart = useMemo(() =>

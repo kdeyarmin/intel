@@ -35,18 +35,6 @@ export default function CrawlerAnalyticsView() {
     staleTime: 30000,
   });
 
-  const { data: auditEvents = [], isLoading: loadingAudit } = useQuery({
-    queryKey: ['nppesAuditEvents'],
-    queryFn: async () => {
-      const all = await base44.entities.AuditEvent.filter({ event_type: 'import' }, '-created_date', 100);
-      return all.filter(e => {
-        const d = e.details || {};
-        return d.entity === 'nppes_registry' || d.action?.toLowerCase().includes('nppes') || d.action?.toLowerCase().includes('crawl');
-      });
-    },
-    staleTime: 30000,
-  });
-
   const loading = loadingStatus || loadingImports;
 
   return (
@@ -83,8 +71,7 @@ export default function CrawlerAnalyticsView() {
         <LastFiveRunsMetrics nppesImports={nppesImports} loading={loadingImports} />
         <RecentCrawlActivity
           nppesImports={nppesImports}
-          auditEvents={auditEvents}
-          loading={loadingImports || loadingAudit}
+          loading={loadingImports}
         />
       </div>
 

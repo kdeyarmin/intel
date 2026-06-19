@@ -13,7 +13,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
     staleTime: 60000,
   });
 
-  const openAlerts = alerts.filter(a => a.status === 'open');
+  const openAlerts = alerts.filter(a => a.status === 'open' || a.status === 'new');
   const fixedAlerts = alerts.filter(a => a.status === 'accepted' || a.status === 'auto_fixed');
   const _hasSuggestions = openAlerts.some(a => a.suggested_value);
 

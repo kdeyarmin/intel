@@ -11,6 +11,49 @@ export const RETRY_BACKOFF_CAP_HOURS = 24;
 // pending/eligible for batches the worker will never touch.
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
+// Verbatim copy of the worker's retryable-error classifier
+// (base44/functions/autoRetryFailedImports/helpers.ts). Kept in sync so the
+// banner agrees with the worker on WHICH failures auto-retry; retryStatus.test.ts
+// asserts this matches the worker's isRetryableErrorMessage.
+export const RETRYABLE_KEYWORDS = [
+  'timeout', 'timed out', 'stalled', 'exceeded', 'too long', 'abort', 'execution time', 'inactivity',
+  'http 5', 'rate limit', 'rate-limit', 'rate_limit',
+  'fetch', 'network', 'connection', 'econnrefused', 'socket',
+];
+
+export const RETRYABLE_STATUS_CODE_PATTERN =
+  /\b(?:http(?:\/\d(?:\.\d)?)?|status(?:\s+code)?|response(?:\s+status)?)\D*(?:429|500|503)\b|\b(?:429\s+too many requests|500\s+internal server error|503\s+service unavailable)\b/;
+
+export function isRetryableErrorMessage(msg) {
+  if (!msg) return false;
+  const lower = String(msg).toLowerCase();
+  return RETRYABLE_KEYWORDS.some(kw => lower.includes(kw))
+    || RETRYABLE_STATUS_CODE_PATTERN.test(lower);
+}
+
+function normalizeErrorText(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// Pull the most actionable error string out of a batch (cancel_reason first,
+// then the most recent error_samples entry's detail/message) — mirrors the
+// worker's extractErrorMessage.
+export function extractBatchErrorMessage(batch) {
+  const cancelReason = normalizeErrorText(batch?.cancel_reason);
+  if (cancelReason) return cancelReason;
+  const samples = batch?.error_samples;
+  if (Array.isArray(samples) && samples.length > 0) {
+    const last = samples[samples.length - 1];
+    if (last) {
+      const detail = normalizeErrorText(last.detail);
+      if (detail) return detail;
+      const message = normalizeErrorText(last.message);
+      if (message) return message;
+    }
+  }
+  return '';
+}
+
 export function backoffHoursForAttempt(attemptCount) {
   if (attemptCount <= 0) return 0;
   return Math.min(Math.pow(2, attemptCount - 1), RETRY_BACKOFF_CAP_HOURS);
@@ -27,8 +70,9 @@ export function nextRetryDueAt(lastAttemptIso, attemptCount) {
 // Decide what to show on the BatchDetailPanel auto-retry banner.
 //
 // Returns `null` for batches the worker won't touch (NPPES is handled by
-// manageCrawlerRetries; non-failed batches don't need retry visibility) so
-// the caller can hide the banner entirely.
+// manageCrawlerRetries; non-failed batches don't need retry visibility; and
+// failures whose error isn't classified retryable) so the caller can hide the
+// banner entirely.
 //
 // Otherwise returns a structured view with a `state`:
 //   - 'disabled'      — operator opted out via auto_retry_disabled
@@ -42,9 +86,17 @@ export function getAutoRetryState(batch, now = new Date()) {
   if (batch.import_type === 'nppes_registry') return null;
 
   const params = batch.retry_params || {};
-  const attemptCount = typeof params.auto_retry_count === 'number' && params.auto_retry_count >= 0
+  // Match the worker's getRetryAttemptCount: the greater of retry_params.
+  // auto_retry_count and the top-level retry_count, so a batch exhausted via
+  // either counter is treated as max_reached (the banner agreed with the worker
+  // only on auto_retry_count before).
+  const autoRetryCount = typeof params.auto_retry_count === 'number' && params.auto_retry_count >= 0
     ? params.auto_retry_count
     : 0;
+  const topLevelRetryCount = typeof batch.retry_count === 'number' && batch.retry_count >= 0
+    ? batch.retry_count
+    : 0;
+  const attemptCount = Math.max(autoRetryCount, topLevelRetryCount);
   const lastAttempt = params.last_auto_retry_at || batch.completed_at || batch.updated_date || null;
   const lastReason = typeof params.last_auto_retry_reason === 'string'
     ? params.last_auto_retry_reason
@@ -57,22 +109,42 @@ export function getAutoRetryState(batch, now = new Date()) {
     return { state: 'max_reached', attemptCount, lastAttempt, lastReason, nextDueAt: null };
   }
 
-  // Worker won't touch batches older than the lookback window, so neither should
-  // the banner — otherwise we'd show 'pending' for a batch that will never retry.
-  const createdIso = batch.created_date || batch.updated_date;
-  if (createdIso) {
-    const created = new Date(createdIso);
-    if (!isNaN(created.getTime()) && now.getTime() - created.getTime() > RETRY_LOOKBACK_MS) {
+  // Non-retryable failures: the worker's shouldRetryBatch returns
+  // non_retryable_error and never retries these, so hide the banner (return
+  // null) like the other "worker won't touch this" cases (nppes/non-failed).
+  // This check is ordered exactly as in the worker: after max, before backoff.
+  if (!isRetryableErrorMessage(extractBatchErrorMessage(batch))) {
+    return null;
+  }
+
+  // The checks below mirror shouldRetryBatch's STATE ORDERING and timing
+  // (backoff before lookback; failure-time basis) so the banner agrees with the
+  // worker on *when* a (retryable) batch becomes runnable.
+
+  // 1. Backoff window. The worker applies backoff even to the first attempt
+  //    (computed from the failure time), so a freshly-failed batch is in
+  //    backoff — it must show 'pending', not 'never_tried'. This check runs
+  //    before the lookback check, matching the worker, so a recently-retried
+  //    but old batch shows 'pending' rather than 'too_old'.
+  const nextDueAt = nextRetryDueAt(lastAttempt, attemptCount + 1);
+  if (nextDueAt && nextDueAt.getTime() > now.getTime()) {
+    return { state: 'pending', attemptCount, lastAttempt, lastReason, nextDueAt };
+  }
+
+  // 2. Lookback window. Measure from the FAILURE time (completed_at first),
+  //    matching the worker's `failureIso` precedence — NOT the creation time.
+  //    A long-running import created >48h ago but that failed recently is
+  //    still retried by the worker, so the banner must not show 'too_old'.
+  const failureIso = batch.completed_at || batch.updated_date || batch.created_date;
+  if (failureIso) {
+    const failedAt = new Date(failureIso);
+    if (!isNaN(failedAt.getTime()) && now.getTime() - failedAt.getTime() > RETRY_LOOKBACK_MS) {
       return { state: 'too_old', attemptCount, lastAttempt, lastReason, nextDueAt: null };
     }
   }
 
-  const nextDueAt = nextRetryDueAt(lastAttempt, attemptCount + 1);
   if (attemptCount === 0 && !params.last_auto_retry_at) {
     return { state: 'never_tried', attemptCount, lastAttempt, lastReason, nextDueAt };
-  }
-  if (nextDueAt && nextDueAt.getTime() > now.getTime()) {
-    return { state: 'pending', attemptCount, lastAttempt, lastReason, nextDueAt };
   }
   return { state: 'eligible', attemptCount, lastAttempt, lastReason, nextDueAt };
 }

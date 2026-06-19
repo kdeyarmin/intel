@@ -12,16 +12,26 @@ export default function AISegmentationTab({ campaigns = [], providers = [], scor
     setLoading(true);
     try {
 
+    // Build NPI-keyed lookups once (O(n+m)) instead of .find per provider (O(n·m)).
+    const primaryLocByNpi = new Map();
+    locations.forEach(l => { if (l.is_primary && !primaryLocByNpi.has(l.npi)) primaryLocByNpi.set(l.npi, l); });
+    const primaryTaxByNpi = new Map();
+    taxonomies.forEach(t => { if (t.primary_flag && !primaryTaxByNpi.has(t.npi)) primaryTaxByNpi.set(t.npi, t); });
+    const scoreByNpi = new Map();
+    scores.forEach(s => { if (!scoreByNpi.has(s.npi)) scoreByNpi.set(s.npi, s); });
+    const refByNpi = new Map();
+    referrals.forEach(r => { if (!refByNpi.has(r.npi)) refByNpi.set(r.npi, r); });
+
     const providerSample = providers.slice(0, 100).map(p => ({
       npi: p.npi,
       type: p.entity_type,
       credential: p.credential,
       hasEmail: !!p.email,
       emailValidation: p.email_validation_status,
-      state: locations.find(l => l.npi === p.npi && l.is_primary)?.state || '',
-      specialty: taxonomies.find(t => t.npi === p.npi && t.primary_flag)?.taxonomy_description || '',
-      score: scores.find(s => s.npi === p.npi)?.score || 0,
-      referrals: referrals.find(r => r.npi === p.npi)?.total_referrals || 0,
+      state: primaryLocByNpi.get(p.npi)?.state || '',
+      specialty: primaryTaxByNpi.get(p.npi)?.taxonomy_description || '',
+      score: scoreByNpi.get(p.npi)?.score || 0,
+      referrals: refByNpi.get(p.npi)?.total_referrals || 0,
     }));
 
     const historicalPerf = campaigns.filter(c => c.sent_count > 0).map(c => ({
