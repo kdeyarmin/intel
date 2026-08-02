@@ -1,0 +1,69 @@
+{
+  "name": "CMSServiceUtilization",
+  "type": "object",
+  "properties": {
+    "geo_level": {
+      "type": "string",
+      "description": "Geographic level (National, State, etc.)"
+    },
+    "geo_code": {
+      "type": "string",
+      "description": "Geographic code"
+    },
+    "geo_description": {
+      "type": "string",
+      "description": "Geographic description"
+    },
+    "hcpcs_code": {
+      "type": "string",
+      "description": "HCPCS procedure/service code"
+    },
+    "hcpcs_description": {
+      "type": "string",
+      "description": "HCPCS code description"
+    },
+    "drug_indicator": {
+      "type": "string",
+      "enum": [
+        "Y",
+        "N"
+      ],
+      "description": "Drug indicator"
+    },
+    "place_of_service": {
+      "type": "string",
+      "description": "F=Facility, O=Office"
+    },
+    "total_providers": {
+      "type": "number",
+      "description": "Number of providers"
+    },
+    "total_beneficiaries": {
+      "type": "number",
+      "description": "Number of beneficiaries"
+    },
+    "total_services": {
+      "type": "number",
+      "description": "Total services provided"
+    },
+    "avg_submitted_charge": {
+      "type": "number",
+      "description": "Average submitted charge"
+    },
+    "avg_medicare_allowed": {
+      "type": "number",
+      "description": "Average Medicare allowed amount"
+    },
+    "avg_medicare_payment": {
+      "type": "number",
+      "description": "Average Medicare payment"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Data year"
+    }
+  },
+  "required": [
+    "hcpcs_code"
+  ]
+}

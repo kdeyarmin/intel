@@ -1,0 +1,168 @@
+{
+  "name": "ImportBatch",
+  "type": "object",
+  "properties": {
+    "import_type": {
+      "type": "string",
+      "enum": [
+        "nppes_monthly",
+        "nppes_registry",
+        "cms_utilization",
+        "cms_order_referring",
+        "pa_home_health",
+        "hospice_providers",
+        "nursing_home_chains",
+        "hospice_enrollments",
+        "home_health_enrollments",
+        "home_health_cost_reports",
+        "cms_service_utilization",
+        "provider_service_utilization",
+        "home_health_pdgm",
+        "inpatient_drg",
+        "provider_ownership",
+        "medicare_hha_stats",
+        "medicare_ma_inpatient",
+        "medicare_snf_stats",
+        "medical_equipment_suppliers",
+        "hospice_provider_measures",
+        "hospice_state_measures",
+        "hospice_national_measures",
+        "snf_provider_measures",
+        "nursing_home_providers",
+        "nursing_home_deficiencies",
+        "home_health_national_measures"
+      ],
+      "description": "Type of data import"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "validating",
+        "processing",
+        "completed",
+        "failed",
+        "paused",
+        "cancelled"
+      ],
+      "default": "validating"
+    },
+    "dry_run": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, validation only, no data write"
+    },
+    "data_year": {
+      "type": "integer"
+    },
+    "total_rows": {
+      "type": "number"
+    },
+    "valid_rows": {
+      "type": "number"
+    },
+    "invalid_rows": {
+      "type": "number"
+    },
+    "duplicate_rows": {
+      "type": "number",
+      "description": "Number of duplicate NPIs found in source data"
+    },
+    "imported_rows": {
+      "type": "number"
+    },
+    "updated_rows": {
+      "type": "number",
+      "description": "Number of existing records updated with newer data"
+    },
+    "skipped_rows": {
+      "type": "number",
+      "description": "Number of records skipped (identical to existing)"
+    },
+    "api_requests_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total API requests made during this batch"
+    },
+    "rate_limit_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of 429 rate limit responses received"
+    },
+    "error_samples": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Sample of validation errors"
+    },
+    "column_mapping": {
+      "type": "object",
+      "description": "CSV column to schema field mapping"
+    },
+    "dedup_summary": {
+      "type": "object",
+      "description": "Deduplication summary: new/updated/skipped counts per entity type"
+    },
+    "ai_analysis": {
+      "type": "object",
+      "description": "AI-generated analysis of the imported dataset"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "nppes",
+        "cms_claims",
+        "cms_enrollment",
+        "cms_statistics",
+        "provider_data",
+        "other"
+      ],
+      "description": "Batch category for organization"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Custom tags for filtering and organization"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times this batch has been retried"
+    },
+    "retry_of": {
+      "type": "string",
+      "description": "ID of the original batch this is a retry of"
+    },
+    "retry_params": {
+      "type": "object",
+      "description": "Custom parameters used for retry (row_offset, row_limit, etc.)"
+    },
+    "paused_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancelled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancel_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "import_type",
+    "file_name"
+  ]
+}

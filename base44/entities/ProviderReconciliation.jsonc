@@ -1,0 +1,114 @@
+{
+  "name": "ProviderReconciliation",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "reconciliation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When reconciliation was performed"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "nppes",
+        "pecos",
+        "cms"
+      ],
+      "description": "External data source"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "match",
+        "discrepancy",
+        "missing_external",
+        "missing_internal"
+      ],
+      "description": "Reconciliation status"
+    },
+    "discrepancies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "internal_value": {
+            "type": "string"
+          },
+          "external_value": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        }
+      },
+      "description": "List of field differences"
+    },
+    "ai_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          },
+          "reasoning": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "AI-generated resolution suggestions"
+    },
+    "resolution_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "manual_review"
+      ],
+      "default": "pending",
+      "description": "Resolution status"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When discrepancy was resolved"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "Email of user who resolved"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Resolution notes"
+    }
+  },
+  "required": [
+    "npi",
+    "reconciliation_date",
+    "source",
+    "status"
+  ]
+}

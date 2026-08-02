@@ -1,0 +1,105 @@
+{
+  "name": "NursingHomeChain",
+  "type": "object",
+  "properties": {
+    "chain_name": {
+      "type": "string",
+      "description": "Nursing home chain name"
+    },
+    "chain_id": {
+      "type": "string",
+      "description": "CMS Chain ID"
+    },
+    "number_of_facilities": {
+      "type": "number",
+      "description": "Total facilities in chain"
+    },
+    "number_of_states": {
+      "type": "number",
+      "description": "States with operations"
+    },
+    "number_of_sff": {
+      "type": "number",
+      "description": "Special Focus Facilities count"
+    },
+    "abuse_icon_count": {
+      "type": "number",
+      "description": "Facilities with abuse icon"
+    },
+    "abuse_icon_percentage": {
+      "type": "number",
+      "description": "Percentage with abuse icon"
+    },
+    "for_profit_percent": {
+      "type": "number",
+      "description": "For-profit facility percentage"
+    },
+    "avg_overall_rating": {
+      "type": "number",
+      "description": "Average 5-star rating"
+    },
+    "avg_health_inspection_rating": {
+      "type": "number",
+      "description": "Average health inspection rating"
+    },
+    "avg_staffing_rating": {
+      "type": "number",
+      "description": "Average staffing rating"
+    },
+    "avg_quality_rating": {
+      "type": "number",
+      "description": "Average quality rating"
+    },
+    "avg_nurse_hours_per_resident_day": {
+      "type": "number",
+      "description": "Average total nurse hours per resident day"
+    },
+    "avg_rn_hours_per_resident_day": {
+      "type": "number",
+      "description": "Average RN hours per resident day"
+    },
+    "avg_staff_turnover_percentage": {
+      "type": "number",
+      "description": "Average nursing staff turnover"
+    },
+    "avg_rn_turnover_percentage": {
+      "type": "number",
+      "description": "Average RN turnover"
+    },
+    "total_fines": {
+      "type": "number",
+      "description": "Total number of fines"
+    },
+    "total_fines_amount": {
+      "type": "number",
+      "description": "Total fines in dollars"
+    },
+    "avg_rehospitalization_rate": {
+      "type": "number",
+      "description": "Short-stay rehospitalization %"
+    },
+    "avg_antipsychotic_use": {
+      "type": "number",
+      "description": "Long-stay antipsychotic %"
+    },
+    "avg_falls_with_injury": {
+      "type": "number",
+      "description": "Long-stay falls with major injury %"
+    },
+    "avg_pressure_ulcers": {
+      "type": "number",
+      "description": "Long-stay pressure ulcers %"
+    },
+    "avg_uti_rate": {
+      "type": "number",
+      "description": "Long-stay UTI %"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Data year"
+    }
+  },
+  "required": [
+    "chain_name"
+  ]
+}

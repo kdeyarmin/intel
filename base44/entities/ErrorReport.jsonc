@@ -1,0 +1,90 @@
+{
+  "name": "ErrorReport",
+  "type": "object",
+  "properties": {
+    "error_type": {
+      "type": "string",
+      "enum": [
+        "import_failure",
+        "user_reported",
+        "system_error"
+      ],
+      "description": "Type of error"
+    },
+    "error_category": {
+      "type": "string",
+      "enum": [
+        "rate_limit",
+        "api_downtime",
+        "data_validation",
+        "network_error",
+        "unknown"
+      ],
+      "default": "unknown",
+      "description": "Specific category of the error for automated handling"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Error severity level"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source of the error (e.g., batch_id, page name)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Error title or summary"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed error description"
+    },
+    "error_samples": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Sample error records"
+    },
+    "context": {
+      "type": "object",
+      "description": "Additional context (import_type, file_name, etc.)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "investigating",
+        "resolved",
+        "dismissed"
+      ],
+      "default": "new",
+      "description": "Status of the error report"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the error was resolved"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "User who resolved the error"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Notes about the resolution"
+    }
+  },
+  "required": [
+    "error_type",
+    "title",
+    "description"
+  ]
+}

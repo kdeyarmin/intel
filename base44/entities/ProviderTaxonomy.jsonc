@@ -1,0 +1,33 @@
+{
+  "name": "ProviderTaxonomy",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "taxonomy_code": {
+      "type": "string",
+      "description": "Healthcare Provider Taxonomy Code"
+    },
+    "taxonomy_description": {
+      "type": "string",
+      "description": "Human-readable taxonomy (e.g., Psychiatry, Family Medicine)"
+    },
+    "primary_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is this the provider's primary specialty?"
+    },
+    "license_number": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "npi",
+    "taxonomy_code"
+  ]
+}

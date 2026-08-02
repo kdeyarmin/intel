@@ -1,0 +1,105 @@
+{
+  "name": "ProviderDEASchedules",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Provider name from DEA registry"
+    },
+    "dea_number": {
+      "type": "string",
+      "description": "DEA registration number"
+    },
+    "is_dea_registered": {
+      "type": "boolean",
+      "description": "Whether provider is registered with DEA for controlled substances"
+    },
+    "dea_registration_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "expired",
+        "not_found"
+      ],
+      "description": "DEA registration status"
+    },
+    "authorized_schedules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "type": "string",
+            "enum": [
+              "CI",
+              "CII",
+              "CIII",
+              "CIV",
+              "CV"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "authorized": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Controlled substance schedules authorized (Schedule I-V)"
+    },
+    "registration_expiry": {
+      "type": "string",
+      "format": "date",
+      "description": "DEA registration expiration date"
+    },
+    "license_type": {
+      "type": "string",
+      "description": "Type of DEA license (MD, DO, NP, PA, etc.)"
+    },
+    "state_license": {
+      "type": "string",
+      "description": "State medical license number"
+    },
+    "specialties_allowed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Medical specialties allowed to prescribe controlled substances"
+    },
+    "restrictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Any restrictions on prescribing controlled substances"
+    },
+    "can_prescribe_opioids": {
+      "type": "boolean",
+      "description": "Whether provider is authorized to prescribe opioids"
+    },
+    "can_prescribe_stimulants": {
+      "type": "boolean",
+      "description": "Whether provider is authorized to prescribe stimulants"
+    },
+    "can_prescribe_benzodiazepines": {
+      "type": "boolean",
+      "description": "Whether provider is authorized to prescribe benzodiazepines"
+    },
+    "validation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When validation was last performed"
+    }
+  },
+  "required": [
+    "npi",
+    "is_dea_registered"
+  ]
+}

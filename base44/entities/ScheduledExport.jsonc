@@ -1,0 +1,97 @@
+{
+  "name": "ScheduledExport",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Export schedule name"
+    },
+    "dataset": {
+      "type": "string",
+      "enum": [
+        "providers",
+        "locations",
+        "referrals",
+        "utilization",
+        "lead_lists",
+        "campaigns"
+      ],
+      "description": "Source dataset to export"
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "excel",
+        "json",
+        "pdf"
+      ],
+      "default": "csv"
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Selected column keys to export (empty = all)"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Filter criteria applied before export"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "default": "weekly"
+    },
+    "schedule_day": {
+      "type": "string",
+      "description": "Day of week (Mon-Sun) or day of month (1-28)"
+    },
+    "schedule_time": {
+      "type": "string",
+      "default": "08:00",
+      "description": "HH:MM time"
+    },
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email addresses to receive the export"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "include_summary": {
+      "type": "boolean",
+      "default": false,
+      "description": "Include AI summary in email body"
+    }
+  },
+  "required": [
+    "name",
+    "dataset",
+    "format",
+    "frequency",
+    "recipients"
+  ]
+}

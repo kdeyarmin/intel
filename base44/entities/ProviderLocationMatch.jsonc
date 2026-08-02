@@ -1,0 +1,73 @@
+{
+  "name": "ProviderLocationMatch",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "Provider NPI"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "ProviderLocation record ID"
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "AI confidence score 0-100"
+    },
+    "match_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Reasons for the match"
+    },
+    "specialization_score": {
+      "type": "number",
+      "description": "Score based on specialty alignment 0-100"
+    },
+    "proximity_score": {
+      "type": "number",
+      "description": "Score based on geographic proximity 0-100"
+    },
+    "referral_score": {
+      "type": "number",
+      "description": "Score based on referral patterns 0-100"
+    },
+    "name_match_score": {
+      "type": "number",
+      "description": "Fuzzy name matching score 0-100 (Levenshtein + token overlap)"
+    },
+    "address_match_score": {
+      "type": "number",
+      "description": "Address/city/state/ZIP similarity score 0-100"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "approved",
+        "rejected",
+        "override"
+      ],
+      "default": "suggested",
+      "description": "Match status"
+    },
+    "override_notes": {
+      "type": "string",
+      "description": "Notes for manual overrides"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Cached provider display name"
+    },
+    "location_display": {
+      "type": "string",
+      "description": "Cached location display string"
+    }
+  },
+  "required": [
+    "npi",
+    "location_id",
+    "confidence_score"
+  ]
+}

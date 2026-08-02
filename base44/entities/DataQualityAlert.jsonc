@@ -1,0 +1,83 @@
+{
+  "name": "DataQualityAlert",
+  "type": "object",
+  "properties": {
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "quality_drop",
+        "quality_decline",
+        "low_email_coverage",
+        "poor_email_validation",
+        "low_location_completeness",
+        "high_deactivation",
+        "low_referral_coverage",
+        "data_inconsistency",
+        "new_issue_detected"
+      ],
+      "description": "Type of quality issue"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Alert severity level"
+    },
+    "title": {
+      "type": "string",
+      "description": "Alert title/summary"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the issue"
+    },
+    "metric_affected": {
+      "type": "string",
+      "description": "Which metric was affected (completeness_score, email_quality, etc.)"
+    },
+    "action_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether immediate action is required"
+    },
+    "suggested_action": {
+      "type": "string",
+      "description": "Recommended remediation steps"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "acknowledged",
+        "resolved",
+        "closed"
+      ],
+      "default": "new",
+      "description": "Alert status"
+    },
+    "scan_id": {
+      "type": "string",
+      "description": "Reference to DataQualityScan that triggered this alert"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the alert was resolved"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "Email of user who resolved this"
+    }
+  },
+  "required": [
+    "alert_type",
+    "severity",
+    "title",
+    "status"
+  ]
+}

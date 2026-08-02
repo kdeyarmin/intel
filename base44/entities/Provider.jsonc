@@ -1,0 +1,244 @@
+{
+  "name": "Provider",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "Individual",
+        "Organization"
+      ],
+      "description": "Provider type"
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "middle_name": {
+      "type": "string"
+    },
+    "credential": {
+      "type": "string",
+      "description": "MD, DO, NP, PA, etc."
+    },
+    "organization_name": {
+      "type": "string"
+    },
+    "enumeration_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_update_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Deactivated"
+      ],
+      "default": "Active"
+    },
+    "needs_nppes_enrichment": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if created from CMS data without NPPES details"
+    },
+    "email": {
+      "type": "string",
+      "description": "Primary email address found via AI search"
+    },
+    "email_confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        ""
+      ],
+      "default": "",
+      "description": "Confidence level of the email address"
+    },
+    "email_source": {
+      "type": "string",
+      "description": "Where the email was found (e.g., practice website, directory)"
+    },
+    "email_validation_status": {
+      "type": "string",
+      "enum": [
+        "valid",
+        "invalid",
+        "risky",
+        "unknown",
+        ""
+      ],
+      "default": "",
+      "description": "AI-validated deliverability status of the email"
+    },
+    "email_validation_reason": {
+      "type": "string",
+      "description": "Reason for the validation status"
+    },
+    "email_quality_score": {
+      "type": "number",
+      "description": "Email quality score 0-100 from AI analysis"
+    },
+    "email_quality_confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Confidence level from quality analysis"
+    },
+    "email_quality_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Analysis reasons for quality score"
+    },
+    "email_quality_risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Risk flags detected in email analysis"
+    },
+    "email_quality_analysis": {
+      "type": "object",
+      "description": "Detailed quality analysis results"
+    },
+    "email_analyzed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When email quality analysis was last performed"
+    },
+    "additional_emails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "validation_status": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Additional email addresses found"
+    },
+    "email_searched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When email search was last run"
+    },
+    "cell_phone": {
+      "type": "string",
+      "description": "Mobile/Cell phone number found via AI search"
+    },
+    "website": {
+      "type": "string",
+      "description": "Provider or practice website URL"
+    },
+    "website_validated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether website URL has been verified"
+    },
+    "linkedin_url": {
+      "type": "string",
+      "description": "LinkedIn profile URL"
+    },
+    "twitter_url": {
+      "type": "string",
+      "description": "Twitter/X profile URL"
+    },
+    "firmographics": {
+      "type": "object",
+      "description": "Company firmographics data (revenue, employee count, etc.)"
+    },
+    "ai_enrichment_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "enriched",
+        "partial",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Status of AI-powered data enrichment"
+    },
+    "ai_enrichment_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fields that were enriched (e.g., 'website', 'specialty', 'address')"
+    },
+    "ai_enrichment_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When AI enrichment was last performed"
+    },
+    "ai_enrichment_notes": {
+      "type": "string",
+      "description": "Notes from AI enrichment process"
+    },
+    "completeness_score": {
+      "type": "number",
+      "description": "Profile completeness percentage (0-100) based on populated fields"
+    },
+    "needs_specialty_enrichment": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if specialty/taxonomy info is missing"
+    },
+    "needs_location_enrichment": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if address/location info is missing or incomplete"
+    },
+    "ai_category": {
+      "type": "string",
+      "description": "AI-categorized specialty or provider type"
+    },
+    "ai_outreach_score": {
+      "type": "number",
+      "description": "Predicted potential outreach engagement score (0-100)"
+    },
+    "ai_profile_summary": {
+      "type": "string",
+      "description": "AI-generated summarized profile for quick review"
+    },
+    "ai_outreach_strategy": {
+      "type": "string",
+      "description": "Suggested optimal outreach strategy"
+    },
+    "ai_engagement_factors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Factors influencing engagement likelihood"
+    }
+  },
+  "required": [
+    "npi"
+  ]
+}

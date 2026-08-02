@@ -1,0 +1,58 @@
+{
+  "name": "SNFProviderMeasure",
+  "type": "object",
+  "properties": {
+    "ccn": {
+      "type": "string"
+    },
+    "provider_name": {
+      "type": "string"
+    },
+    "address_1": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "cms_region": {
+      "type": "string"
+    },
+    "measure_code": {
+      "type": "string"
+    },
+    "score": {
+      "type": "string"
+    },
+    "footnote": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string"
+    },
+    "end_date": {
+      "type": "string"
+    },
+    "measure_date_range": {
+      "type": "string"
+    },
+    "location_string": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ccn",
+    "measure_code"
+  ]
+}

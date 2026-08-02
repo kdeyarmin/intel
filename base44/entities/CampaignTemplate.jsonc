@@ -1,0 +1,45 @@
+{
+  "name": "CampaignTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name"
+    },
+    "subject_template": {
+      "type": "string",
+      "description": "Email subject with {{merge_fields}}"
+    },
+    "body_template": {
+      "type": "string",
+      "description": "Email body with {{merge_fields}}"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "introduction",
+        "partnership",
+        "follow_up",
+        "referral",
+        "custom"
+      ],
+      "default": "custom",
+      "description": "Template category"
+    },
+    "ai_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this template was AI-generated"
+    },
+    "use_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times this template has been used"
+    }
+  },
+  "required": [
+    "name",
+    "subject_template",
+    "body_template"
+  ]
+}

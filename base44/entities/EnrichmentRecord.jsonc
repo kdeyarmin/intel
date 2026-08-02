@@ -1,0 +1,155 @@
+{
+  "name": "EnrichmentRecord",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "Provider NPI enriched"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Provider name at time of enrichment"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "nppes_api",
+        "ai_web_search",
+        "cms_public",
+        "manual"
+      ],
+      "description": "Data source used for enrichment"
+    },
+    "enrichment_type": {
+      "type": "string",
+      "enum": [
+        "affiliation",
+        "group_membership",
+        "review_score",
+        "contact_info",
+        "credential",
+        "specialty",
+        "address",
+        "multi_field"
+      ],
+      "description": "Type of enrichment performed"
+    },
+    "field_name": {
+      "type": "string",
+      "description": "Entity field that was enriched"
+    },
+    "old_value": {
+      "type": "string",
+      "description": "Previous value before enrichment"
+    },
+    "new_value": {
+      "type": "string",
+      "description": "New value from enrichment"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "rejected",
+        "auto_applied"
+      ],
+      "default": "pending_review",
+      "description": "Review status of this enrichment"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of user who reviewed"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "enrichment_details": {
+      "type": "object",
+      "description": "Additional structured data from enrichment",
+      "properties": {
+        "hospital_affiliations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group_practices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_score": {
+          "type": "number"
+        },
+        "review_count": {
+          "type": "number"
+        },
+        "review_source": {
+          "type": "string"
+        },
+        "board_certifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "education": {
+          "type": "string"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accepting_new_patients": {
+          "type": "boolean"
+        },
+        "estimated_patient_volume": {
+          "type": "string"
+        },
+        "insurance_accepted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "telehealth_available": {
+          "type": "boolean"
+        },
+        "office_hours": {
+          "type": "string"
+        },
+        "cash_pay_info": {
+          "type": "string"
+        },
+        "ai_explanation": {
+          "type": "string",
+          "description": "AI reasoning for how data was found and verified"
+        }
+      }
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "Batch enrichment run ID"
+    }
+  },
+  "required": [
+    "npi",
+    "source",
+    "enrichment_type",
+    "status"
+  ]
+}

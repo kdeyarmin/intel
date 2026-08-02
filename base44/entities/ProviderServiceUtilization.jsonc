@@ -1,0 +1,58 @@
+{
+  "name": "ProviderServiceUtilization",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "Provider NPI"
+    },
+    "hcpcs_code": {
+      "type": "string",
+      "description": "HCPCS service code"
+    },
+    "hcpcs_description": {
+      "type": "string",
+      "description": "Service description"
+    },
+    "drug_indicator": {
+      "type": "string",
+      "enum": [
+        "Y",
+        "N"
+      ],
+      "description": "Drug indicator"
+    },
+    "place_of_service": {
+      "type": "string",
+      "description": "F=Facility, O=Office"
+    },
+    "total_beneficiaries": {
+      "type": "number",
+      "description": "Number of beneficiaries"
+    },
+    "total_services": {
+      "type": "number",
+      "description": "Total services provided"
+    },
+    "avg_submitted_charge": {
+      "type": "number",
+      "description": "Average submitted charge"
+    },
+    "avg_medicare_allowed": {
+      "type": "number",
+      "description": "Average Medicare allowed"
+    },
+    "avg_medicare_payment": {
+      "type": "number",
+      "description": "Average Medicare payment"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Data year"
+    }
+  },
+  "required": [
+    "npi",
+    "hcpcs_code"
+  ]
+}

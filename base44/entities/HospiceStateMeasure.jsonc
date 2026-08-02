@@ -1,0 +1,28 @@
+{
+  "name": "HospiceStateMeasure",
+  "type": "object",
+  "properties": {
+    "state": {
+      "type": "string"
+    },
+    "measure_code": {
+      "type": "string"
+    },
+    "measure_name": {
+      "type": "string"
+    },
+    "score": {
+      "type": "string"
+    },
+    "footnote": {
+      "type": "string"
+    },
+    "measure_date_range": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "state",
+    "measure_code"
+  ]
+}

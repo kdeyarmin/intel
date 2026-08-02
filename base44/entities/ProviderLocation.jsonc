@@ -1,0 +1,66 @@
+{
+  "name": "ProviderLocation",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "location_type": {
+      "type": "string",
+      "enum": [
+        "Practice",
+        "Mailing"
+      ],
+      "default": "Practice"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false,
+      "description": "Primary practice location flag"
+    },
+    "address_1": {
+      "type": "string"
+    },
+    "address_2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "fax": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address for this location/practice"
+    },
+    "email_confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        ""
+      ],
+      "default": "",
+      "description": "Confidence level of the email"
+    },
+    "email_source": {
+      "type": "string",
+      "description": "Where the email was found"
+    }
+  },
+  "required": [
+    "npi"
+  ]
+}

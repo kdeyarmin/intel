@@ -1,0 +1,72 @@
+{
+  "name": "CampaignTask",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Reference to Campaign"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "call",
+        "follow_up",
+        "meeting",
+        "research",
+        "other"
+      ],
+      "default": "email"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "in_progress",
+        "completed",
+        "skipped"
+      ],
+      "default": "todo"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of the assigned user"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "npi": {
+      "type": "string",
+      "description": "Related provider NPI (optional)"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "title"
+  ]
+}

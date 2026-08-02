@@ -1,0 +1,42 @@
+{
+  "name": "CMSReferral",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "year": {
+      "type": "integer",
+      "description": "Data year"
+    },
+    "total_referrals": {
+      "type": "number",
+      "description": "Total referral count"
+    },
+    "home_health_referrals": {
+      "type": "number",
+      "description": "Referrals to home health agencies"
+    },
+    "hospice_referrals": {
+      "type": "number",
+      "description": "Referrals to hospice"
+    },
+    "snf_referrals": {
+      "type": "number",
+      "description": "Skilled Nursing Facility referrals"
+    },
+    "dme_referrals": {
+      "type": "number",
+      "description": "Durable Medical Equipment referrals"
+    },
+    "imaging_referrals": {
+      "type": "number",
+      "description": "Imaging/radiology referrals"
+    }
+  },
+  "required": [
+    "npi",
+    "year"
+  ]
+}

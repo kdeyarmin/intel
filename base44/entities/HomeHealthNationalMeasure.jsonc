@@ -1,0 +1,33 @@
+{
+  "name": "HomeHealthNationalMeasure",
+  "type": "object",
+  "properties": {
+    "country": {
+      "type": "string"
+    },
+    "quality_of_patient_care_star_rating": {
+      "type": "string"
+    },
+    "discharge_function_score": {
+      "type": "string"
+    },
+    "transfer_of_health_information_to_the_provider": {
+      "type": "string"
+    },
+    "transfer_of_health_information_to_the_patient": {
+      "type": "string"
+    },
+    "ppr_national_observed_rate": {
+      "type": "string"
+    },
+    "dtc_national_observed_rate": {
+      "type": "string"
+    },
+    "pph_national_observed_rate": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "country"
+  ]
+}

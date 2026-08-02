@@ -1,0 +1,31 @@
+{
+  "name": "ApiInteractionLog",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "npi": {
+      "type": "string"
+    },
+    "status_code": {
+      "type": "number"
+    },
+    "is_success": {
+      "type": "boolean"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "response_time_ms": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "source",
+    "endpoint"
+  ]
+}

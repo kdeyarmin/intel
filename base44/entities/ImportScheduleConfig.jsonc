@@ -1,0 +1,150 @@
+{
+  "name": "ImportScheduleConfig",
+  "type": "object",
+  "properties": {
+    "import_type": {
+      "type": "string",
+      "enum": [
+        "cms_utilization",
+        "cms_order_referring",
+        "provider_service_utilization",
+        "home_health_enrollments",
+        "hospice_enrollments",
+        "nppes_registry",
+        "medicare_hha_stats",
+        "medicare_ma_inpatient",
+        "medicare_snf_stats",
+        "medical_equipment_suppliers",
+        "hospice_provider_measures",
+        "hospice_state_measures",
+        "hospice_national_measures",
+        "snf_provider_measures",
+        "nursing_home_providers",
+        "nursing_home_deficiencies",
+        "home_health_national_measures"
+      ],
+      "description": "Type of data import"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable label"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Year of the data if applicable"
+    },
+    "api_url": {
+      "type": "string",
+      "description": "CMS data API URL or NPPES API base"
+    },
+    "schedule_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "on_completion"
+      ],
+      "default": "daily"
+    },
+    "depends_on_import_type": {
+      "type": "string",
+      "enum": [
+        "cms_utilization",
+        "cms_order_referring",
+        "provider_service_utilization",
+        "home_health_enrollments",
+        "hospice_enrollments",
+        "nppes_registry",
+        "medicare_hha_stats",
+        "medicare_ma_inpatient",
+        "medicare_snf_stats",
+        "medical_equipment_suppliers",
+        "hospice_provider_measures",
+        "hospice_state_measures",
+        "hospice_national_measures",
+        "snf_provider_measures",
+        "nursing_home_providers",
+        "nursing_home_deficiencies",
+        "home_health_national_measures"
+      ],
+      "description": "If schedule_frequency is on_completion, trigger this when this import_type completes successfully"
+    },
+    "schedule_time": {
+      "type": "string",
+      "description": "HH:MM run time"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last successful run"
+    },
+    "next_run_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Next scheduled run"
+    },
+    "nppes_config": {
+      "type": "object",
+      "description": "NPPES-specific search criteria",
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "taxonomy_description": {
+          "type": "string"
+        },
+        "entity_type": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "crawl_all_states": {
+          "type": "boolean"
+        }
+      }
+    },
+    "last_run_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ],
+      "description": "Outcome of last run"
+    },
+    "last_run_summary": {
+      "type": "string",
+      "description": "Summary text from last run"
+    },
+    "notify_on_complete": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_on_failure": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_verified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time the URL was tested"
+    },
+    "cms_metadata": {
+      "type": "object",
+      "description": "Metadata from CMS.gov testing"
+    }
+  },
+  "required": [
+    "import_type",
+    "label"
+  ]
+}

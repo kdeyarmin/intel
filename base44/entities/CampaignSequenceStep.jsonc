@@ -1,0 +1,56 @@
+{
+  "name": "CampaignSequenceStep",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Reference to Campaign"
+    },
+    "step_number": {
+      "type": "number"
+    },
+    "name": {
+      "type": "string",
+      "description": "Name of the step"
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "time_delay",
+        "status_change"
+      ],
+      "default": "time_delay"
+    },
+    "trigger_status": {
+      "type": "string",
+      "description": "Lead status that triggers this (if trigger_type=status_change)"
+    },
+    "delay_days": {
+      "type": "number",
+      "default": 1,
+      "description": "Days to wait after previous step (if trigger_type=time_delay)"
+    },
+    "subject_template": {
+      "type": "string"
+    },
+    "body_template": {
+      "type": "string",
+      "description": "Merge fields: {{npi}}, {{first_name}}, {{last_name}}, {{specialty}}"
+    },
+    "use_ai_personalization": {
+      "type": "boolean",
+      "default": true,
+      "description": "Use AI to hyper-personalize the email based on provider data"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "campaign_id",
+    "step_number",
+    "subject_template",
+    "body_template"
+  ]
+}

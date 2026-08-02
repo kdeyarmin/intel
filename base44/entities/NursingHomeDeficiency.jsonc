@@ -1,0 +1,45 @@
+{
+  "name": "NursingHomeDeficiency",
+  "type": "object",
+  "properties": {
+    "ccn": {
+      "type": "string"
+    },
+    "provider_name": {
+      "type": "string"
+    },
+    "provider_address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "inspection_cycle": {
+      "type": "string"
+    },
+    "health_survey_date": {
+      "type": "string"
+    },
+    "fire_safety_survey_date": {
+      "type": "string"
+    },
+    "total_number_of_health_deficiencies": {
+      "type": "string"
+    },
+    "total_number_of_fire_safety_deficiencies": {
+      "type": "string"
+    },
+    "location_string": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ccn"
+  ]
+}

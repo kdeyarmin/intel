@@ -1,0 +1,59 @@
+{
+  "name": "ImportMetrics",
+  "type": "object",
+  "properties": {
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the metrics snapshot"
+    },
+    "total_providers": {
+      "type": "number",
+      "description": "Total provider count at snapshot"
+    },
+    "providers_with_location": {
+      "type": "number",
+      "description": "Providers with at least one location"
+    },
+    "providers_with_taxonomy": {
+      "type": "number",
+      "description": "Providers with at least one taxonomy"
+    },
+    "providers_needing_enrichment": {
+      "type": "number",
+      "description": "Providers flagged for NPPES enrichment"
+    },
+    "total_locations": {
+      "type": "number"
+    },
+    "total_utilization_records": {
+      "type": "number"
+    },
+    "total_referral_records": {
+      "type": "number"
+    },
+    "completeness_score": {
+      "type": "number",
+      "description": "Overall completeness score 0-100"
+    },
+    "accuracy_score": {
+      "type": "number",
+      "description": "Overall accuracy score 0-100"
+    },
+    "imports_today": {
+      "type": "number",
+      "description": "Number of imports on this date"
+    },
+    "imports_failed_today": {
+      "type": "number",
+      "description": "Number of failed imports on this date"
+    },
+    "rows_imported_today": {
+      "type": "number",
+      "description": "Total rows imported on this date"
+    }
+  },
+  "required": [
+    "snapshot_date"
+  ]
+}

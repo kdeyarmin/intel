@@ -1,0 +1,120 @@
+{
+  "name": "LeadScore",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "score": {
+      "type": "number",
+      "description": "CareMetric Fit Score (0-100)"
+    },
+    "score_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the score was calculated"
+    },
+    "score_breakdown": {
+      "type": "object",
+      "description": "Detailed breakdown of score components",
+      "properties": {
+        "specialty_match": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        },
+        "medicare_status": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        },
+        "patient_volume": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        },
+        "referral_signals": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        },
+        "group_size": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        },
+        "geography": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "weight": {
+              "type": "number"
+            },
+            "contribution": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable reasons for the score"
+    }
+  },
+  "required": [
+    "npi",
+    "score"
+  ]
+}

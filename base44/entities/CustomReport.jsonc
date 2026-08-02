@@ -1,0 +1,78 @@
+{
+  "name": "CustomReport",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Report name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description"
+    },
+    "dataset": {
+      "type": "string",
+      "enum": [
+        "cms_utilization",
+        "cms_referrals",
+        "ma_inpatient",
+        "hha_stats",
+        "inpatient_drg",
+        "snf_stats",
+        "providers",
+        "reconciliation_discrepancies",
+        "outreach_metrics"
+      ],
+      "description": "Source dataset"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Selected metric fields to display"
+    },
+    "group_by": {
+      "type": "string",
+      "description": "Field to group data by"
+    },
+    "chart_type": {
+      "type": "string",
+      "enum": [
+        "bar",
+        "line",
+        "pie"
+      ],
+      "default": "bar",
+      "description": "Visualization chart type"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Filter criteria (year, state, hospital_type, etc.)",
+      "properties": {
+        "year": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "hospital_type": {
+          "type": "string"
+        },
+        "table_name": {
+          "type": "string"
+        }
+      }
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "dataset",
+    "metrics",
+    "chart_type"
+  ]
+}

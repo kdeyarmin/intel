@@ -1,0 +1,66 @@
+{
+  "name": "ProviderOwnership",
+  "type": "object",
+  "properties": {
+    "enrollment_id": {
+      "type": "string",
+      "description": "CMS Enrollment ID"
+    },
+    "associate_id": {
+      "type": "string",
+      "description": "Provider associate ID"
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "Provider organization name"
+    },
+    "owner_associate_id": {
+      "type": "string",
+      "description": "Owner associate ID"
+    },
+    "owner_type": {
+      "type": "string",
+      "enum": [
+        "I",
+        "O"
+      ],
+      "description": "I=Individual, O=Organization"
+    },
+    "owner_role_code": {
+      "type": "string",
+      "description": "Role code (34, 40, 41, 42, 43, etc.)"
+    },
+    "owner_role_text": {
+      "type": "string",
+      "description": "Role description"
+    },
+    "owner_first_name": {
+      "type": "string"
+    },
+    "owner_middle_name": {
+      "type": "string"
+    },
+    "owner_last_name": {
+      "type": "string"
+    },
+    "owner_title": {
+      "type": "string"
+    },
+    "owner_organization_name": {
+      "type": "string"
+    },
+    "percentage_ownership": {
+      "type": "number",
+      "description": "Percentage ownership stake"
+    },
+    "association_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of association"
+    }
+  },
+  "required": [
+    "enrollment_id",
+    "associate_id"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "name": "ProviderNPIValidation",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier to validate"
+    },
+    "is_valid": {
+      "type": "boolean",
+      "description": "Whether the NPI is valid in the NPI registry"
+    },
+    "npi_type": {
+      "type": "string",
+      "enum": [
+        "individual",
+        "organization",
+        "invalid"
+      ],
+      "description": "Type of NPI (Individual = NPI-1, Organization = NPI-2)"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "Name of the provider from NPI registry"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "First name (for individual providers)"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Last name (for individual providers)"
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "Organization name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Primary address from NPI registry"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "credentials": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Credentials from NPI registry"
+    },
+    "taxonomies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Healthcare provider taxonomy codes"
+    },
+    "deactivation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "If NPI is deactivated"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "deactivated"
+      ],
+      "description": "Current status in NPI registry"
+    },
+    "validation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When validation was performed"
+    },
+    "discrepancies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Any discrepancies found between app data and NPI registry"
+    }
+  },
+  "required": [
+    "npi",
+    "is_valid"
+  ]
+}

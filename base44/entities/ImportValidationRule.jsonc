@@ -1,0 +1,127 @@
+{
+  "name": "ImportValidationRule",
+  "type": "object",
+  "properties": {
+    "import_type": {
+      "type": "string",
+      "enum": [
+        "nppes_monthly",
+        "nppes_registry",
+        "cms_utilization",
+        "cms_part_d",
+        "cms_order_referring",
+        "provider_service_utilization",
+        "hospice_enrollments",
+        "home_health_enrollments",
+        "home_health_cost_reports",
+        "nursing_home_chains",
+        "home_health_pdgm",
+        "inpatient_drg",
+        "provider_ownership",
+        "medicare_hha_stats",
+        "medicare_ma_inpatient",
+        "medicare_part_d_stats",
+        "medicare_snf_stats",
+        "_global"
+      ],
+      "description": "Import type this rule applies to, or _global for all types"
+    },
+    "rule_name": {
+      "type": "string",
+      "description": "Human-readable rule name"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this rule checks"
+    },
+    "column": {
+      "type": "string",
+      "description": "Column/field name this rule targets"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": [
+        "required",
+        "regex",
+        "numeric_range",
+        "enum_values",
+        "max_length",
+        "date_format",
+        "cross_field",
+        "unique",
+        "custom_expression"
+      ],
+      "description": "Type of validation check"
+    },
+    "config": {
+      "type": "object",
+      "description": "Rule configuration (pattern, min, max, values, expression, etc.)",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for regex rule"
+        },
+        "min": {
+          "type": "number",
+          "description": "Min value for numeric_range"
+        },
+        "max": {
+          "type": "number",
+          "description": "Max value for numeric_range"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed values for enum_values"
+        },
+        "max_length": {
+          "type": "number",
+          "description": "Max length for max_length"
+        },
+        "date_format": {
+          "type": "string",
+          "description": "Expected date format string"
+        },
+        "other_column": {
+          "type": "string",
+          "description": "Other column for cross_field"
+        },
+        "operator": {
+          "type": "string",
+          "description": "Comparison operator for cross_field (gt, lt, gte, lte, eq, neq)"
+        },
+        "expression": {
+          "type": "string",
+          "description": "JS-like expression for custom_expression"
+        }
+      }
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "reject",
+        "warn",
+        "flag"
+      ],
+      "default": "reject",
+      "description": "reject=row excluded, warn=imported with warning, flag=imported and flagged"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "order": {
+      "type": "number",
+      "default": 0,
+      "description": "Execution order (lower runs first)"
+    }
+  },
+  "required": [
+    "import_type",
+    "rule_name",
+    "rule_type",
+    "column"
+  ]
+}

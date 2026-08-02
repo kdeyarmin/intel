@@ -1,0 +1,96 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Campaign name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "paused",
+        "completed",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "lead_list_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of lead lists in this campaign"
+    },
+    "goal": {
+      "type": "string",
+      "description": "Campaign goal/objective"
+    },
+    "target_conversion_rate": {
+      "type": "number",
+      "description": "Target conversion percentage"
+    },
+    "budget": {
+      "type": "number",
+      "description": "Campaign budget in dollars"
+    },
+    "revenue_generated": {
+      "type": "number",
+      "default": 0,
+      "description": "Total revenue attributed to this campaign"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "emails_sent": {
+      "type": "number",
+      "default": 0,
+      "description": "Total emails sent"
+    },
+    "emails_opened": {
+      "type": "number",
+      "default": 0,
+      "description": "Total emails opened"
+    },
+    "emails_responded": {
+      "type": "number",
+      "default": 0,
+      "description": "Total email responses"
+    },
+    "emails_bounced": {
+      "type": "number",
+      "default": 0,
+      "description": "Total bounced emails"
+    },
+    "conversions": {
+      "type": "number",
+      "default": 0,
+      "description": "Total conversions from campaign"
+    },
+    "audience_filters": {
+      "type": "object",
+      "description": "Saved audience filter criteria used to build the target segment"
+    },
+    "audience_size": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of providers matching audience filters"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

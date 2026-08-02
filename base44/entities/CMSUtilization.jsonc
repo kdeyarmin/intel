@@ -1,0 +1,42 @@
+{
+  "name": "CMSUtilization",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "year": {
+      "type": "integer",
+      "description": "Data year"
+    },
+    "total_services": {
+      "type": "number",
+      "description": "Total services provided"
+    },
+    "total_medicare_beneficiaries": {
+      "type": "number",
+      "description": "Unique Medicare beneficiaries"
+    },
+    "total_submitted_charges": {
+      "type": "number",
+      "description": "Total charges submitted"
+    },
+    "total_medicare_allowed": {
+      "type": "number",
+      "description": "Total Medicare allowed amount"
+    },
+    "total_medicare_payment": {
+      "type": "number",
+      "description": "Total Medicare payment amount"
+    },
+    "drug_services": {
+      "type": "number",
+      "description": "Number of drug-related services"
+    }
+  },
+  "required": [
+    "npi",
+    "year"
+  ]
+}

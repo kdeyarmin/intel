@@ -1,0 +1,95 @@
+{
+  "name": "ProviderAffiliation",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "Provider NPI"
+    },
+    "affiliation_name": {
+      "type": "string",
+      "description": "Name of hospital, medical group, or organization"
+    },
+    "affiliation_type": {
+      "type": "string",
+      "enum": [
+        "hospital",
+        "medical_group",
+        "health_system",
+        "clinic",
+        "academic",
+        "other"
+      ],
+      "description": "Type of affiliation"
+    },
+    "role": {
+      "type": "string",
+      "description": "Provider role at affiliation (e.g., Attending, Staff, Partner)"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "ai_suggested",
+        "nppes",
+        "cms",
+        "enrichment"
+      ],
+      "default": "manual",
+      "description": "How this affiliation was added"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        ""
+      ],
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "pending_review",
+        "rejected"
+      ],
+      "default": "confirmed"
+    },
+    "affiliation_npi": {
+      "type": "string",
+      "description": "NPI of the affiliated organization if available"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "npi",
+    "affiliation_name",
+    "affiliation_type"
+  ]
+}

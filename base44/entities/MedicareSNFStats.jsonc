@@ -1,0 +1,90 @@
+{
+  "name": "MedicareSNFStats",
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "Which SNF table (SNF1-SNF6)"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Calendar year of the data"
+    },
+    "category": {
+      "type": "string",
+      "description": "Row category/label"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Sub-category or detail level"
+    },
+    "entitlement_type": {
+      "type": "string",
+      "description": "Type of entitlement (aged, disabled, ESRD)"
+    },
+    "facility_type": {
+      "type": "string",
+      "description": "Type of facility"
+    },
+    "persons_served": {
+      "type": "number",
+      "description": "Number of persons with utilization"
+    },
+    "total_stays": {
+      "type": "number",
+      "description": "Total SNF stays"
+    },
+    "total_covered_days": {
+      "type": "number",
+      "description": "Total covered days of care"
+    },
+    "program_payments": {
+      "type": "number",
+      "description": "Total Medicare program payments"
+    },
+    "beneficiary_payments": {
+      "type": "number",
+      "description": "Total beneficiary cost sharing"
+    },
+    "payment_per_stay": {
+      "type": "number",
+      "description": "Average payment per stay"
+    },
+    "avg_length_of_stay": {
+      "type": "number",
+      "description": "Average length of stay in days"
+    },
+    "covered_days_per_1000": {
+      "type": "number",
+      "description": "Covered days per 1,000 enrollees"
+    },
+    "stays_per_1000": {
+      "type": "number",
+      "description": "SNF stays per 1,000 enrollees"
+    },
+    "demographic_group": {
+      "type": "string",
+      "description": "Demographic characteristic"
+    },
+    "state": {
+      "type": "string",
+      "description": "State abbreviation if geographic data"
+    },
+    "bedsize_category": {
+      "type": "string",
+      "description": "Facility bedsize category"
+    },
+    "service_level": {
+      "type": "string",
+      "description": "Service level or covered days range"
+    },
+    "raw_data": {
+      "type": "object",
+      "description": "Full row data as extracted from source"
+    }
+  },
+  "required": [
+    "table_name",
+    "data_year"
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "name": "HomeHealthEnrollment",
+  "type": "object",
+  "properties": {
+    "enrollment_id": {
+      "type": "string",
+      "description": "CMS Enrollment ID"
+    },
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "ccn": {
+      "type": "string",
+      "description": "CMS Certification Number"
+    },
+    "organization_name": {
+      "type": "string",
+      "description": "Legal organization name"
+    },
+    "doing_business_as": {
+      "type": "string",
+      "description": "DBA name"
+    },
+    "incorporation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of incorporation"
+    },
+    "incorporation_state": {
+      "type": "string",
+      "description": "State of incorporation"
+    },
+    "organization_type": {
+      "type": "string",
+      "description": "Organization structure type"
+    },
+    "proprietary_nonprofit": {
+      "type": "string",
+      "enum": [
+        "P",
+        "N",
+        ""
+      ],
+      "description": "P=Proprietary, N=Non-profit"
+    },
+    "address_1": {
+      "type": "string"
+    },
+    "address_2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "enrollment_state": {
+      "type": "string",
+      "description": "State where enrolled"
+    },
+    "practice_location_type": {
+      "type": "string",
+      "description": "HHA Branch, HHA Parent, etc."
+    }
+  },
+  "required": [
+    "enrollment_id",
+    "npi"
+  ]
+}

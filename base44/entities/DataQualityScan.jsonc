@@ -1,0 +1,140 @@
+{
+  "name": "DataQualityScan",
+  "type": "object",
+  "properties": {
+    "scan_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the scan was performed"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Entity scanned (providers, locations, etc.)"
+    },
+    "total_records": {
+      "type": "number",
+      "description": "Total records analyzed in this scan"
+    },
+    "completeness_score": {
+      "type": "number",
+      "description": "Overall completeness percentage (0-100)"
+    },
+    "accuracy_issues": {
+      "type": "number",
+      "description": "Number of accuracy issues detected"
+    },
+    "duplicate_count": {
+      "type": "number",
+      "description": "Number of potential duplicate records"
+    },
+    "quality_details": {
+      "type": "object",
+      "description": "Detailed metrics breakdown",
+      "properties": {
+        "provider_metrics": {
+          "type": "object",
+          "properties": {
+            "total_records": {
+              "type": "number"
+            },
+            "field_completeness": {
+              "type": "number"
+            },
+            "fields": {
+              "type": "object"
+            }
+          }
+        },
+        "location_metrics": {
+          "type": "object",
+          "properties": {
+            "total_records": {
+              "type": "number"
+            },
+            "field_completeness": {
+              "type": "number"
+            },
+            "fields": {
+              "type": "object"
+            }
+          }
+        },
+        "email_quality": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "number"
+            },
+            "with_email": {
+              "type": "number"
+            },
+            "with_validation": {
+              "type": "number"
+            },
+            "valid_emails": {
+              "type": "number"
+            },
+            "completeness_percent": {
+              "type": "number"
+            },
+            "validation_percent": {
+              "type": "number"
+            },
+            "valid_percent": {
+              "type": "number"
+            }
+          }
+        },
+        "referral_coverage": {
+          "type": "object",
+          "properties": {
+            "total_providers": {
+              "type": "number"
+            },
+            "with_referrals": {
+              "type": "number"
+            },
+            "coverage_percent": {
+              "type": "number"
+            }
+          }
+        },
+        "utilization_coverage": {
+          "type": "object",
+          "properties": {
+            "total_providers": {
+              "type": "number"
+            },
+            "with_utilization": {
+              "type": "number"
+            },
+            "coverage_percent": {
+              "type": "number"
+            }
+          }
+        },
+        "deactivated_providers": {
+          "type": "number"
+        },
+        "data_quality_score": {
+          "type": "number"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed"
+      ],
+      "default": "running",
+      "description": "Scan status"
+    }
+  },
+  "required": [
+    "scan_date",
+    "entity_type",
+    "status"
+  ]
+}

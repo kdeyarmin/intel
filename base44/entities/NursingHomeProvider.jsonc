@@ -1,0 +1,57 @@
+{
+  "name": "NursingHomeProvider",
+  "type": "object",
+  "properties": {
+    "ccn": {
+      "type": "string"
+    },
+    "provider_name": {
+      "type": "string"
+    },
+    "provider_address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "urban": {
+      "type": "string"
+    },
+    "ownership_type": {
+      "type": "string"
+    },
+    "number_of_certified_beds": {
+      "type": "string"
+    },
+    "overall_rating": {
+      "type": "string"
+    },
+    "health_inspection_rating": {
+      "type": "string"
+    },
+    "qm_rating": {
+      "type": "string"
+    },
+    "staffing_rating": {
+      "type": "string"
+    },
+    "location_string": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ccn"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "name": "ColumnMappingRule",
+  "type": "object",
+  "properties": {
+    "import_type": {
+      "type": "string",
+      "description": "Import type this rule applies to (e.g., nppes_monthly, cms_utilization)"
+    },
+    "target_field": {
+      "type": "string",
+      "description": "The target schema field name"
+    },
+    "csv_column": {
+      "type": "string",
+      "description": "The CSV column header that maps to this field"
+    },
+    "times_used": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of times this mapping has been confirmed by users"
+    },
+    "last_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this mapping was last used/confirmed"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "user_correction",
+        "confirmed",
+        "auto_learned"
+      ],
+      "default": "user_correction",
+      "description": "How this rule was created"
+    }
+  },
+  "required": [
+    "import_type",
+    "target_field",
+    "csv_column"
+  ]
+}

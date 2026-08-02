@@ -1,0 +1,73 @@
+{
+  "name": "OutreachMessage",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Reference to Campaign"
+    },
+    "npi": {
+      "type": "string",
+      "description": "Recipient provider NPI"
+    },
+    "recipient_email": {
+      "type": "string"
+    },
+    "recipient_name": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Rendered subject line"
+    },
+    "body_html": {
+      "type": "string",
+      "description": "Individually rendered HTML body (overrides campaign template)"
+    },
+    "body_text": {
+      "type": "string",
+      "description": "Individually rendered text body"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "generated",
+        "sent",
+        "opened",
+        "clicked",
+        "responded",
+        "bounced",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "clicked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "responded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "response_notes": {
+      "type": "string"
+    },
+    "ai_personalization_reason": {
+      "type": "string",
+      "description": "Why the AI wrote what it wrote"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "npi"
+  ]
+}

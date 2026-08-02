@@ -1,0 +1,33 @@
+{
+  "name": "AnalyticsDashboard",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Dashboard name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "widgets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Array of widget configurations"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Auto-load on page visit"
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "widgets"
+  ]
+}

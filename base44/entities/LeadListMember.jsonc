@@ -1,0 +1,33 @@
+{
+  "name": "LeadListMember",
+  "type": "object",
+  "properties": {
+    "lead_list_id": {
+      "type": "string",
+      "description": "Reference to LeadList"
+    },
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Contacted",
+        "Qualified",
+        "Not a fit"
+      ],
+      "default": "New",
+      "description": "Lead status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about this lead"
+    }
+  },
+  "required": [
+    "lead_list_id",
+    "npi"
+  ]
+}

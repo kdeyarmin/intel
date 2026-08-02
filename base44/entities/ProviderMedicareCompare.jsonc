@@ -1,0 +1,83 @@
+{
+  "name": "ProviderMedicareCompare",
+  "type": "object",
+  "properties": {
+    "npi": {
+      "type": "string",
+      "description": "National Provider Identifier"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Provider name from Medicare data"
+    },
+    "medicare_id": {
+      "type": "string",
+      "description": "Medicare provider ID"
+    },
+    "quality_score": {
+      "type": "number",
+      "description": "Overall quality score (0-100) from Medicare data"
+    },
+    "safety_score": {
+      "type": "number",
+      "description": "Patient safety score"
+    },
+    "timeliness_score": {
+      "type": "number",
+      "description": "Timeliness of care score"
+    },
+    "cost_score": {
+      "type": "number",
+      "description": "Cost efficiency score"
+    },
+    "readmission_rate": {
+      "type": "number",
+      "description": "Hospital readmission rate percentage"
+    },
+    "mortality_rate": {
+      "type": "number",
+      "description": "Mortality rate percentage"
+    },
+    "patient_satisfaction": {
+      "type": "number",
+      "description": "Patient satisfaction score (0-100)"
+    },
+    "medical_school": {
+      "type": "string",
+      "description": "Medical school attended"
+    },
+    "board_certification": {
+      "type": "string",
+      "description": "Board certification information"
+    },
+    "years_of_experience": {
+      "type": "number",
+      "description": "Years in practice"
+    },
+    "hospital_affiliations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Associated hospitals"
+    },
+    "data_source": {
+      "type": "string",
+      "default": "medicare_provider_compare",
+      "description": "Source of the data"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this data was last updated"
+    },
+    "raw_data": {
+      "type": "object",
+      "description": "Full API response data"
+    }
+  },
+  "required": [
+    "npi",
+    "data_source"
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "name": "MedicareMAInpatient",
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "Which MA table this came from (MA4, MA5, MA6, MA7)"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Calendar year of the data"
+    },
+    "category": {
+      "type": "string",
+      "description": "Row category/label (e.g. hospital type, entitlement, demographic, state)"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Sub-category or detail level"
+    },
+    "hospital_type": {
+      "type": "string",
+      "description": "Type of hospital (short-stay, long-term care, psychiatric, rehabilitation, etc.)"
+    },
+    "total_discharges": {
+      "type": "number",
+      "description": "Total discharges"
+    },
+    "total_covered_days": {
+      "type": "number",
+      "description": "Total covered days of care"
+    },
+    "total_stays": {
+      "type": "number",
+      "description": "Total stays/admissions"
+    },
+    "persons_served": {
+      "type": "number",
+      "description": "Number of persons with utilization"
+    },
+    "avg_length_of_stay": {
+      "type": "number",
+      "description": "Average length of stay in days"
+    },
+    "covered_days_per_1000": {
+      "type": "number",
+      "description": "Covered days per 1,000 enrollees"
+    },
+    "discharges_per_1000": {
+      "type": "number",
+      "description": "Discharges per 1,000 enrollees"
+    },
+    "total_enrollees": {
+      "type": "number",
+      "description": "Total MA enrollees in category"
+    },
+    "state": {
+      "type": "string",
+      "description": "State abbreviation if geographic data"
+    },
+    "entitlement_type": {
+      "type": "string",
+      "description": "Type of entitlement (aged, disabled, ESRD)"
+    },
+    "demographic_group": {
+      "type": "string",
+      "description": "Demographic characteristic (age, sex, race, dual status)"
+    },
+    "raw_data": {
+      "type": "object",
+      "description": "Full row data as extracted from the source"
+    }
+  },
+  "required": [
+    "table_name",
+    "data_year"
+  ]
+}

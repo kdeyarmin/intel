@@ -1,0 +1,38 @@
+{
+  "name": "NPPESQueueItem",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip_prefix": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "batch_id",
+    "state",
+    "zip_prefix",
+    "status"
+  ]
+}

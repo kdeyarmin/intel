@@ -1,0 +1,59 @@
+{
+  "name": "LeadList",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Lead list name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Saved filter criteria (JSON)",
+      "properties": {
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "zip": {
+          "type": "string"
+        },
+        "radius_miles": {
+          "type": "number"
+        },
+        "taxonomies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "min_score": {
+          "type": "number"
+        },
+        "max_score": {
+          "type": "number"
+        },
+        "medicare_active": {
+          "type": "boolean"
+        },
+        "min_referrals": {
+          "type": "number"
+        },
+        "min_beneficiaries": {
+          "type": "number"
+        }
+      }
+    },
+    "provider_count": {
+      "type": "number",
+      "description": "Number of providers in this list"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

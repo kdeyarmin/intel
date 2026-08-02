@@ -1,0 +1,94 @@
+{
+  "name": "MedicareHHAStats",
+  "type": "object",
+  "properties": {
+    "table_name": {
+      "type": "string",
+      "description": "Which HHA table this came from (HHA1-HHA6)"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Calendar year of the data"
+    },
+    "category": {
+      "type": "string",
+      "description": "Row category/label (e.g. entitlement type, demographic, state)"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Sub-category or detail level"
+    },
+    "persons_served": {
+      "type": "number",
+      "description": "Number of persons served"
+    },
+    "total_visits": {
+      "type": "number",
+      "description": "Total service visits"
+    },
+    "total_episodes": {
+      "type": "number",
+      "description": "Total episodes"
+    },
+    "total_charges": {
+      "type": "number",
+      "description": "Total charges submitted"
+    },
+    "program_payments": {
+      "type": "number",
+      "description": "Total Medicare program payments"
+    },
+    "payment_per_person": {
+      "type": "number",
+      "description": "Payment per person served"
+    },
+    "visits_per_person": {
+      "type": "number",
+      "description": "Average visits per person"
+    },
+    "skilled_nursing_visits": {
+      "type": "number",
+      "description": "Skilled nursing visits"
+    },
+    "pt_visits": {
+      "type": "number",
+      "description": "Physical therapy visits"
+    },
+    "ot_visits": {
+      "type": "number",
+      "description": "Occupational therapy visits"
+    },
+    "speech_therapy_visits": {
+      "type": "number",
+      "description": "Speech therapy visits"
+    },
+    "home_health_aide_visits": {
+      "type": "number",
+      "description": "Home health aide visits"
+    },
+    "medical_social_service_visits": {
+      "type": "number",
+      "description": "Medical social service visits"
+    },
+    "agency_type": {
+      "type": "string",
+      "description": "Type of agency (freestanding, facility-based, etc.)"
+    },
+    "control_type": {
+      "type": "string",
+      "description": "Type of ownership control"
+    },
+    "state": {
+      "type": "string",
+      "description": "State abbreviation if geographic data"
+    },
+    "raw_data": {
+      "type": "object",
+      "description": "Full row data as extracted from the source"
+    }
+  },
+  "required": [
+    "table_name",
+    "data_year"
+  ]
+}

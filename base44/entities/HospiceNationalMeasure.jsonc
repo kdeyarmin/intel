@@ -1,0 +1,24 @@
+{
+  "name": "HospiceNationalMeasure",
+  "type": "object",
+  "properties": {
+    "measure_code": {
+      "type": "string"
+    },
+    "measure_name": {
+      "type": "string"
+    },
+    "score": {
+      "type": "string"
+    },
+    "footnote": {
+      "type": "string"
+    },
+    "date_range": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "measure_code"
+  ]
+}

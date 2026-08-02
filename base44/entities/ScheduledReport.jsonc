@@ -1,0 +1,123 @@
+{
+  "name": "ScheduledReport",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Report name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the report"
+    },
+    "dataset": {
+      "type": "string",
+      "enum": [
+        "cms_utilization",
+        "cms_referrals",
+        "ma_inpatient",
+        "hha_stats",
+        "inpatient_drg",
+        "snf_stats",
+        "providers",
+        "locations",
+        "reconciliation_discrepancies",
+        "outreach_metrics"
+      ],
+      "description": "Source dataset for the report"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Selected metric fields"
+    },
+    "group_by": {
+      "type": "string",
+      "description": "Field to group data by"
+    },
+    "chart_type": {
+      "type": "string",
+      "enum": [
+        "bar",
+        "line",
+        "pie",
+        "table_only"
+      ],
+      "default": "bar"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Filter criteria (year, state, etc.)"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "default": "weekly",
+      "description": "How often to generate and send the report"
+    },
+    "schedule_day": {
+      "type": "string",
+      "description": "Day for weekly (Mon-Sun) or day of month (1-28)"
+    },
+    "schedule_time": {
+      "type": "string",
+      "default": "08:00",
+      "description": "Time of day (HH:MM) to send"
+    },
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email addresses to receive the report"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_run_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_run_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "last_run_summary": {
+      "type": "string",
+      "description": "Summary of last execution"
+    },
+    "include_csv": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include CSV data attachment in email"
+    },
+    "include_summary": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include AI-generated summary in email"
+    },
+    "max_rows": {
+      "type": "number",
+      "default": 500,
+      "description": "Max rows to include in report"
+    }
+  },
+  "required": [
+    "name",
+    "dataset",
+    "frequency",
+    "recipients"
+  ]
+}

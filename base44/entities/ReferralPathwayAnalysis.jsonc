@@ -1,0 +1,81 @@
+{
+  "name": "ReferralPathwayAnalysis",
+  "type": "object",
+  "properties": {
+    "provider_npi": {
+      "type": "string",
+      "description": "Provider being analyzed"
+    },
+    "analysis_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_referrals_analyzed": {
+      "type": "number",
+      "description": "Number of referrals in analysis"
+    },
+    "top_destinations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Top referral destinations with counts and percentages"
+    },
+    "referral_pattern": {
+      "type": "string",
+      "description": "AI-identified pattern (concentrated, diversified, specialty-driven, etc.)"
+    },
+    "predicted_next_referral": {
+      "type": "object",
+      "description": "AI prediction of next likely referral destination",
+      "properties": {
+        "agency_name": {
+          "type": "string"
+        },
+        "probability": {
+          "type": "number"
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      }
+    },
+    "leakage_detected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether referrals are going outside preferred network"
+    },
+    "leakage_details": {
+      "type": "object",
+      "description": "Details about referral leakage",
+      "properties": {
+        "out_of_network_count": {
+          "type": "number"
+        },
+        "out_of_network_percentage": {
+          "type": "number"
+        },
+        "top_leakage_destinations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "ai_insights": {
+      "type": "string",
+      "description": "AI-generated insights about referral behavior"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI recommendations for engagement strategy"
+    }
+  },
+  "required": [
+    "provider_npi"
+  ]
+}

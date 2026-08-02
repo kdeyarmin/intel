@@ -1,0 +1,46 @@
+{
+  "name": "ReconciliationSettings",
+  "type": "object",
+  "properties": {
+    "config_key": {
+      "type": "string",
+      "default": "default"
+    },
+    "nppes_endpoint": {
+      "type": "string",
+      "default": "https://npiregistry.cms.hhs.gov/api/?version=2.1"
+    },
+    "pecos_endpoint": {
+      "type": "string"
+    },
+    "pecos_api_key": {
+      "type": "string"
+    },
+    "cms_endpoint": {
+      "type": "string"
+    },
+    "cms_api_key": {
+      "type": "string"
+    },
+    "enable_ai_fallback": {
+      "type": "boolean",
+      "default": true
+    },
+    "auto_accept_threshold": {
+      "type": "number",
+      "default": 90,
+      "description": "Auto-accept discrepancy if confidence is above this percentage"
+    },
+    "auto_accept_low_severity": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_ai_suggestions": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "config_key"
+  ]
+}

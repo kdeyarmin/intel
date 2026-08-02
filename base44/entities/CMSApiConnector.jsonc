@@ -1,0 +1,63 @@
+{
+  "name": "CMSApiConnector",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the connector (e.g., CMS Provider Data API)"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "cms_data",
+        "nppes",
+        "pecos",
+        "custom"
+      ],
+      "default": "cms_data"
+    },
+    "api_url": {
+      "type": "string",
+      "description": "Base URL of the API"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "API Key or token (optional for public endpoints)"
+    },
+    "is_authorized": {
+      "type": "boolean",
+      "default": false
+    },
+    "rate_limit_requests": {
+      "type": "integer",
+      "default": 100,
+      "description": "Number of requests allowed"
+    },
+    "rate_limit_period": {
+      "type": "integer",
+      "default": 60,
+      "description": "Time period for rate limit in seconds"
+    },
+    "last_tested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "test_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "untested"
+      ],
+      "default": "untested"
+    },
+    "test_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "source_type",
+    "api_url"
+  ]
+}

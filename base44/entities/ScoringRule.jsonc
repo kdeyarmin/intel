@@ -1,0 +1,44 @@
+{
+  "name": "ScoringRule",
+  "type": "object",
+  "properties": {
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the scoring component"
+    },
+    "weight": {
+      "type": "number",
+      "description": "Weight percentage (0-100)"
+    },
+    "threshold": {
+      "type": "number",
+      "description": "Minimum value to trigger scoring"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this rule measures"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "specialty_match",
+        "medicare_participation",
+        "patient_volume",
+        "part_d_signals",
+        "geographic_priority",
+        "practice_type",
+        "behavioral_health"
+      ],
+      "description": "Rule category"
+    }
+  },
+  "required": [
+    "rule_name",
+    "weight",
+    "category"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "PreferredAgency",
+  "type": "object",
+  "properties": {
+    "agency_name": {
+      "type": "string",
+      "description": "Name of the home health/hospice agency"
+    },
+    "agency_type": {
+      "type": "string",
+      "enum": [
+        "Home Health",
+        "Hospice",
+        "SNF",
+        "DME"
+      ],
+      "description": "Type of post-acute care provider"
+    },
+    "npi": {
+      "type": "string",
+      "description": "Agency NPI if available"
+    },
+    "service_area_states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "States where agency operates"
+    },
+    "quality_rating": {
+      "type": "number",
+      "description": "Quality rating (1-5 stars)"
+    },
+    "network_tier": {
+      "type": "string",
+      "enum": [
+        "Tier 1 - Preferred",
+        "Tier 2 - Approved",
+        "Tier 3 - Accepted"
+      ],
+      "default": "Tier 1 - Preferred",
+      "description": "Network preference tier"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "agency_name",
+    "agency_type"
+  ]
+}

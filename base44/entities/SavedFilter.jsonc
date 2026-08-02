@@ -1,0 +1,47 @@
+{
+  "name": "SavedFilter",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "User-friendly filter name"
+    },
+    "page": {
+      "type": "string",
+      "enum": [
+        "Providers",
+        "Locations",
+        "Referrals",
+        "Utilization",
+        "ImportMonitoring",
+        "Campaigns",
+        "LeadLists"
+      ],
+      "description": "Which list page this filter applies to"
+    },
+    "filters": {
+      "type": "object",
+      "description": "Serialized filter state"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, auto-apply when visiting the page"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "custom",
+        "preset",
+        "shared"
+      ],
+      "default": "custom",
+      "description": "Filter category"
+    }
+  },
+  "required": [
+    "name",
+    "page",
+    "filters"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "name": "MedicalEquipmentSupplier",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string"
+    },
+    "accepts_assignment": {
+      "type": "string"
+    },
+    "participation_begin_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "practice_name": {
+      "type": "string"
+    },
+    "address_1": {
+      "type": "string"
+    },
+    "address_2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "specialties": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string"
+    },
+    "supplies": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "string"
+    },
+    "longitude": {
+      "type": "string"
+    },
+    "is_contracted_for_cba": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider_id"
+  ]
+}

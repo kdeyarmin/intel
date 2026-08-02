@@ -1,0 +1,95 @@
+{
+  "name": "DataCleaningRule",
+  "type": "object",
+  "properties": {
+    "rule_name": {
+      "type": "string",
+      "description": "Name of the cleaning rule"
+    },
+    "rule_type": {
+      "type": "string",
+      "enum": [
+        "format_standardization",
+        "typo_correction",
+        "pattern_validation",
+        "consistency_check"
+      ],
+      "description": "Type of cleaning rule"
+    },
+    "target_field": {
+      "type": "string",
+      "description": "Provider field this rule applies to (e.g., 'phone', 'email', 'address')"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this rule is active"
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Regex pattern for validation or matching"
+    },
+    "replacement": {
+      "type": "string",
+      "description": "Replacement pattern or format template"
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Before/after examples of the rule"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "default": "info",
+      "description": "Severity level if rule is violated"
+    },
+    "auto_fix": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to automatically apply fix or just flag for review"
+    },
+    "typo_map": {
+      "type": "object",
+      "description": "Map of common typos to corrections (e.g., {cardiologu: cardiology})"
+    },
+    "consistency_checks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Rules for checking consistency across fields"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this rule does"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of user who created this rule"
+    },
+    "last_modified_by": {
+      "type": "string",
+      "description": "Email of user who last modified this rule"
+    }
+  },
+  "required": [
+    "rule_name",
+    "rule_type",
+    "target_field"
+  ]
+}

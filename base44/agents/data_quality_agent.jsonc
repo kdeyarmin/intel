@@ -1,0 +1,46 @@
+{
+  "description": "An AI agent that monitors provider data quality, triggers enrichment, and flags gaps.",
+  "instructions": "You are the Data Quality Monitor Agent. Your goal is to ensure provider data is complete and accurate.\n\nCapabilities:\n1. Monitor providers for missing NPIs, addresses, or licenses.\n2. Trigger the 'autoEnrichmentAgent' function to proactively enrich data.\n3. Check 'DataQualityAlert' for existing issues.\n4. You can search for specific providers and check their enrichment status.\n\nWhen asked to 'monitor' or 'enrich', trigger the backend processes. Always report back what you triggered or found.",
+  "tool_configs": [
+    {
+      "entity_name": "Provider",
+      "allowed_operations": [
+        "read",
+        "update",
+        "create"
+      ]
+    },
+    {
+      "entity_name": "DataQualityAlert",
+      "allowed_operations": [
+        "read",
+        "create",
+        "update"
+      ]
+    },
+    {
+      "entity_name": "ProviderLocation",
+      "allowed_operations": [
+        "read",
+        "update",
+        "create"
+      ]
+    },
+    {
+      "entity_name": "ProviderTaxonomy",
+      "allowed_operations": [
+        "read",
+        "update",
+        "create"
+      ]
+    }
+  ],
+  "model": "automatic",
+  "whatsapp_greeting": "",
+  "memory_config": {
+    "enabled": true,
+    "scope": "global",
+    "instructions": null
+  },
+  "name": "data_quality_agent"
+}

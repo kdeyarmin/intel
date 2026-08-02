@@ -1,0 +1,55 @@
+{
+  "name": "InpatientDRG",
+  "type": "object",
+  "properties": {
+    "provider_ccn": {
+      "type": "string",
+      "description": "Provider CCN"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Provider organization name"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "drg_code": {
+      "type": "string",
+      "description": "Diagnosis Related Group code"
+    },
+    "drg_description": {
+      "type": "string",
+      "description": "DRG description"
+    },
+    "total_discharges": {
+      "type": "number",
+      "description": "Total discharges"
+    },
+    "avg_submitted_charge": {
+      "type": "number",
+      "description": "Average covered charges"
+    },
+    "avg_total_payment": {
+      "type": "number",
+      "description": "Average total payment"
+    },
+    "avg_medicare_payment": {
+      "type": "number",
+      "description": "Average Medicare payment"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Data year"
+    }
+  },
+  "required": [
+    "provider_ccn",
+    "drg_code"
+  ]
+}

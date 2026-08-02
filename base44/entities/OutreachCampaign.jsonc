@@ -1,0 +1,80 @@
+{
+  "name": "OutreachCampaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Campaign name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "lead_list_id": {
+      "type": "string",
+      "description": "Reference to LeadList"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "scheduled",
+        "sending",
+        "completed",
+        "paused"
+      ],
+      "default": "draft"
+    },
+    "subject_template": {
+      "type": "string",
+      "description": "Email subject with {{merge_fields}}"
+    },
+    "body_template": {
+      "type": "string",
+      "description": "Email body HTML with {{merge_fields}}"
+    },
+    "total_recipients": {
+      "type": "number",
+      "default": 0
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0
+    },
+    "opened_count": {
+      "type": "number",
+      "default": 0
+    },
+    "responded_count": {
+      "type": "number",
+      "default": 0
+    },
+    "bounced_count": {
+      "type": "number",
+      "default": 0
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_criteria": {
+      "type": "string",
+      "enum": [
+        "lead_list",
+        "referral_hubs",
+        "network_position",
+        "data_quality",
+        "custom"
+      ],
+      "description": "What criteria was used to build the target list"
+    }
+  },
+  "required": [
+    "name",
+    "subject_template",
+    "body_template"
+  ]
+}

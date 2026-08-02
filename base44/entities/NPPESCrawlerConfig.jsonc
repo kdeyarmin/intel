@@ -1,0 +1,103 @@
+{
+  "name": "NPPESCrawlerConfig",
+  "type": "object",
+  "properties": {
+    "config_key": {
+      "type": "string",
+      "default": "default"
+    },
+    "api_batch_size": {
+      "type": "integer",
+      "default": 200
+    },
+    "import_chunk_size": {
+      "type": "integer",
+      "default": 50
+    },
+    "max_retries": {
+      "type": "integer",
+      "default": 3
+    },
+    "api_delay_ms": {
+      "type": "integer",
+      "default": 200
+    },
+    "retry_backoff_ms": {
+      "type": "integer",
+      "default": 5000
+    },
+    "request_timeout_ms": {
+      "type": "integer",
+      "default": 15000
+    },
+    "crawl_entity_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "NPI-1",
+          "NPI-2"
+        ]
+      },
+      "default": [
+        "NPI-1",
+        "NPI-2"
+      ]
+    },
+    "max_crawl_duration_sec": {
+      "type": "integer",
+      "default": 160
+    },
+    "auto_retry_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "retry_delay_minutes": {
+      "type": "integer",
+      "default": 60
+    },
+    "retry_escalation_threshold": {
+      "type": "integer",
+      "default": 3
+    },
+    "escalation_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "manual_review_required"
+      ]
+    },
+    "max_pages_per_query": {
+      "type": "integer",
+      "default": 6
+    },
+    "max_skip": {
+      "type": "integer",
+      "default": 1000
+    },
+    "concurrency": {
+      "type": "integer",
+      "default": 4
+    },
+    "selected_states": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "crawl_all_states": {
+      "type": "boolean",
+      "default": true
+    },
+    "crawler_stopped": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "config_key"
+  ]
+}

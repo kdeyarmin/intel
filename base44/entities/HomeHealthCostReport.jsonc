@@ -1,0 +1,98 @@
+{
+  "name": "HomeHealthCostReport",
+  "type": "object",
+  "properties": {
+    "rpt_rec_num": {
+      "type": "string",
+      "description": "Report record number"
+    },
+    "ccn": {
+      "type": "string",
+      "description": "Provider CCN"
+    },
+    "hha_name": {
+      "type": "string",
+      "description": "Home health agency name"
+    },
+    "street_address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "type_of_control": {
+      "type": "string",
+      "description": "Ownership type code"
+    },
+    "fiscal_year_begin": {
+      "type": "string",
+      "format": "date"
+    },
+    "fiscal_year_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "total_medicare_visits": {
+      "type": "number",
+      "description": "Total Medicare visits"
+    },
+    "total_medicaid_visits": {
+      "type": "number",
+      "description": "Total Medicaid visits"
+    },
+    "total_visits": {
+      "type": "number",
+      "description": "Total visits all payers"
+    },
+    "total_episodes": {
+      "type": "number",
+      "description": "Total episodes of care"
+    },
+    "total_charges": {
+      "type": "number",
+      "description": "Total charges"
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Total operating cost"
+    },
+    "net_patient_revenue_medicare": {
+      "type": "number",
+      "description": "Net Medicare revenue"
+    },
+    "net_patient_revenue_medicaid": {
+      "type": "number",
+      "description": "Net Medicaid revenue"
+    },
+    "net_patient_revenue_total": {
+      "type": "number",
+      "description": "Total net patient revenue"
+    },
+    "total_operating_expenses": {
+      "type": "number",
+      "description": "Total operating expenses"
+    },
+    "net_income": {
+      "type": "number",
+      "description": "Net income or loss"
+    },
+    "total_assets": {
+      "type": "number",
+      "description": "Total assets"
+    },
+    "total_liabilities": {
+      "type": "number",
+      "description": "Total liabilities"
+    }
+  },
+  "required": [
+    "rpt_rec_num",
+    "ccn"
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "name": "HomeHealthPDGM",
+  "type": "object",
+  "properties": {
+    "provider_id": {
+      "type": "string",
+      "description": "Provider CCN or aggregate ID"
+    },
+    "provider_name": {
+      "type": "string",
+      "description": "Provider name"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "grouping_code": {
+      "type": "string",
+      "description": "PDGM grouping code"
+    },
+    "grouping_description": {
+      "type": "string",
+      "description": "PDGM clinical group description"
+    },
+    "beneficiaries": {
+      "type": "number",
+      "description": "Distinct beneficiary count"
+    },
+    "total_episodes": {
+      "type": "number",
+      "description": "Total episode stay count"
+    },
+    "total_service_days": {
+      "type": "number",
+      "description": "Total service days"
+    },
+    "avg_charge_per_episode": {
+      "type": "number",
+      "description": "Average charge per episode"
+    },
+    "avg_allowed_per_episode": {
+      "type": "number",
+      "description": "Average Medicare allowed per episode"
+    },
+    "avg_payment_per_episode": {
+      "type": "number",
+      "description": "Average Medicare payment per episode"
+    },
+    "pt_visits": {
+      "type": "number",
+      "description": "Physical therapy visits"
+    },
+    "ot_visits": {
+      "type": "number",
+      "description": "Occupational therapy visits"
+    },
+    "slp_visits": {
+      "type": "number",
+      "description": "Speech-language pathology visits"
+    },
+    "data_year": {
+      "type": "integer",
+      "description": "Data year"
+    }
+  },
+  "required": [
+    "provider_id",
+    "grouping_code"
+  ]
+}

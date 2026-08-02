@@ -1,0 +1,84 @@
+{
+  "name": "ReconciliationJob",
+  "type": "object",
+  "properties": {
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "full_sync",
+        "scheduled",
+        "manual",
+        "incremental"
+      ],
+      "description": "Type of reconciliation job"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "nppes",
+          "pecos",
+          "cms"
+        ]
+      },
+      "description": "External sources to reconcile against"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "running",
+        "completed",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Job status"
+    },
+    "total_providers": {
+      "type": "number",
+      "description": "Total providers processed"
+    },
+    "matched": {
+      "type": "number",
+      "description": "Providers with no discrepancies"
+    },
+    "discrepancies_found": {
+      "type": "number",
+      "description": "Providers with discrepancies"
+    },
+    "missing_external": {
+      "type": "number",
+      "description": "Providers not found in external source"
+    },
+    "missing_internal": {
+      "type": "number",
+      "description": "External providers not in system"
+    },
+    "ai_suggestions_generated": {
+      "type": "number",
+      "description": "Number of AI suggestions created"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "If failed, error details"
+    },
+    "summary": {
+      "type": "object",
+      "description": "High-level summary of findings"
+    }
+  },
+  "required": [
+    "job_type",
+    "sources",
+    "status"
+  ]
+}
