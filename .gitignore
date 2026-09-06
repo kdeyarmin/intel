@@ -53,3 +53,4 @@ uploads/*
 
 # Replit Agent chat attachments (screenshots / pasted text) — not part of the app.
 attached_assets/
+base44/.app.jsonc
