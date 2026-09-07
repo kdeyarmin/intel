@@ -8,6 +8,12 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import HelpSection from '../components/help/HelpSection';
+import CentralSupportCard from '../components/help/CentralSupportCard';
+import {
+  buildCareMetricIntelSupportUrl,
+  isVerifiedCareMetricIntelProduction,
+  resolveCentralSupportActivation,
+} from '../lib/centralSupport';
 
 const GUIDE_SECTIONS = [
   {
@@ -118,6 +124,16 @@ export default function Help() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSections, setExpandedSections] = useState(new Set(['getting-started']));
   const [generating, setGenerating] = useState(false);
+  const centralSupportRuntime = {
+    appId: import.meta.env.VITE_BASE44_APP_ID,
+    environment: import.meta.env.VITE_DEPLOY_ENV,
+    hostname: typeof window === 'undefined' ? '' : window.location.hostname,
+    flag: import.meta.env.VITE_CENTRAL_SUPPORT_HUB_ENABLED,
+    isDevelopment: import.meta.env.DEV === true,
+  };
+  const centralSupportIdentityVerified = isVerifiedCareMetricIntelProduction(centralSupportRuntime);
+  const centralSupportEnabled = resolveCentralSupportActivation(centralSupportRuntime);
+  const centralSupportUrl = centralSupportEnabled ? buildCareMetricIntelSupportUrl() : null;
 
   const toggleSection = (id) => {
     setExpandedSections(prev => {
@@ -238,6 +254,8 @@ export default function Help() {
           </Button>
         }
       />
+
+      {centralSupportIdentityVerified && <CentralSupportCard hubUrl={centralSupportUrl} />}
 
       {/* Search & controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

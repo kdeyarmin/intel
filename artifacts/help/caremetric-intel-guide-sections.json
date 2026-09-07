@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "product": {
+    "slug": "caremetric-intel",
+    "name": "CareMetric Intel"
+  },
+  "source": {
+    "repository": "kdeyarmin/intel",
+    "ref": "30a5887cb15bf0f0e6c00f7f59760b2ea45d334e",
+    "path": "src/pages/Help.jsx",
+    "constant": "GUIDE_SECTIONS"
+  },
+  "privacy": {
+    "classification": "static_product_documentation",
+    "runtime_or_entity_data_included": false,
+    "excluded_context": [
+      "user",
+      "tenant",
+      "provider",
+      "patient",
+      "record",
+      "query",
+      "fragment",
+      "token",
+      "free_text"
+    ]
+  },
+  "summary": {
+    "section_count": 9,
+    "topic_count": 30,
+    "text_character_count": 7518,
+    "canonical_sha256": "132548d4528c36bfd5a70cb8099d56c4a23fce5dcebcf409c8f3324dfebd24e1"
+  },
+  "sections": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "topics": [
+        {
+          "heading": "Welcome to CareMetric AI",
+          "text": "CareMetric AI is a Medicare provider intelligence platform designed for home health, hospice, and post-acute care organizations. It helps you identify, score, and engage referral sources using public CMS data and AI-powered enrichment.",
+          "sha256": "7bfe760a98e7f338afc97a9cc1a00ed99c90ae06d86a7543221f4bfc637f45ba"
+        },
+        {
+          "heading": "First Steps",
+          "text": "1. **Dashboard** — Start here to see your system health, database counts, and recent activity.\n2. **Import Data** — Go to Data Operations → Data Center to import NPPES, CMS Utilization, Referral, and other Medicare datasets.\n3. **Browse Providers** — View imported providers under Directory → All Providers.\n4. **Build Lead Lists** — Use Sales & Outreach → Lead Lists to create targeted lists based on specialty, geography, and score.\n5. **Run Outreach** — Create campaigns in Sales & Outreach → Campaigns to engage your top leads.",
+          "sha256": "529951154c003af58d8c704603329708768802f6f0d85a2437a6623472c3f73e"
+        },
+        {
+          "heading": "User Roles",
+          "text": "**Admin** — Full access to all features including data imports, crawler, enrichment, scoring rules, and system configuration.\n\n**Sales Rep** — Access to providers, lead lists, campaigns, analytics, and reports. Cannot access admin-only features like data imports or the NPPES crawler.",
+          "sha256": "c7da413699ffa301e1c91d346ab55f6a781f2baf1aed737954f5f88bcc472c32"
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard",
+      "topics": [
+        {
+          "heading": "Overview",
+          "text": "The Dashboard is your home base. It displays key metrics including total providers, locations, email coverage, recent imports, and system health indicators.",
+          "sha256": "602aae91dbed9a48153eba8fcbf51708ace257a2e6aa3e44605b63fd3e2b0dc4"
+        },
+        {
+          "heading": "Key Sections",
+          "text": "• **System Health Strip** — Shows database record counts and system status at a glance.\n• **Database Overview** — Breakdown of providers, locations, taxonomies, and utilization records.\n• **Email Health** — Coverage percentage of providers with verified email addresses.\n• **Proactive Alerts** — AI-generated notifications about data quality issues or opportunities.\n• **Recent Activity** — Audit log of recent imports, exports, and scoring runs.",
+          "sha256": "da060a5994d18995587f57def9b0d4c159ee50800a777096ba8761f5cd80cb6b"
+        }
+      ]
+    },
+    {
+      "id": "providers",
+      "title": "Providers & Locations",
+      "topics": [
+        {
+          "heading": "All Providers",
+          "text": "Browse, search, and filter your provider database. Use the search bar to find providers by NPI, name, or specialty. Click any provider to see their full profile including contact info, utilization data, referral patterns, and lead score.",
+          "sha256": "ac8f90dfadaffb59824f017eb4e4cb85c2fe0959c4afa9b31de070e65654250c"
+        },
+        {
+          "heading": "Provider Detail",
+          "text": "Each provider profile includes:\n• **Basic Profile** — Name, NPI, specialty, credentials, contact info\n• **Score Breakdown** — CareMetric Referral Propensity Score with factor analysis\n• **Utilization Insights** — Medicare claims volume, service intensity\n• **Referral Summary** — Referral patterns and network connections\n• **Locations** — Practice addresses and phone numbers\n• **AI Enrichment** — Website, email, LinkedIn, and other discovered data",
+          "sha256": "853e524021b2286217fedb91691866512030d8f038212aa5098b89ab5caa7c49"
+        },
+        {
+          "heading": "Organizations",
+          "text": "View organization-type providers (NPI-2) like hospitals, clinics, and agencies. Filter by state, type, or search by name.",
+          "sha256": "4b40b29e3a4d063d4cb1c47001a666f13affdb437ff54640dabc16164a0e3afd"
+        },
+        {
+          "heading": "Locations",
+          "text": "Browse all practice locations. Filter by state, location type (Practice/Mailing), or primary status. Export to CSV for external use.",
+          "sha256": "3bd371098525e6a61d29920b4217c2c3dd29cab291c2969d5333655661d5ece6"
+        },
+        {
+          "heading": "Territory Map",
+          "text": "Interactive geographic visualization of your provider data. Filter by state, specialty, and score to identify market density and gaps.",
+          "sha256": "55c23b2920d0fdba58e9776bf815eb51d8cec8ae1500a81ac68cff4e00d8f362"
+        }
+      ]
+    },
+    {
+      "id": "sales-outreach",
+      "title": "Sales & Outreach",
+      "topics": [
+        {
+          "heading": "Lead Lists",
+          "text": "View and manage saved lead lists. Each list contains providers matching specific criteria with their current status (New, Contacted, Qualified, Not a fit).",
+          "sha256": "de1602ae3fc44b0b9138c6dc420df46193d310894fb0d14d21b6c7470a1ab073"
+        },
+        {
+          "heading": "Lead Builder",
+          "text": "Create targeted lead lists by combining filters:\n• **Geography** — State, ZIP code, radius\n• **Specialty** — Taxonomy codes and descriptions\n• **Score Range** — Minimum/maximum CareMetric score\n• **Volume** — Minimum Medicare beneficiaries or referrals\n• **Medicare Status** — Active enrollment filter",
+          "sha256": "634d182675bba2696fd61c6b59c356e466a7166b1bfef001487241e2ff4b8cfd"
+        },
+        {
+          "heading": "Intelligence",
+          "text": "(Admin only) AI-powered email discovery, verification, and provider enrichment — found under Sales & Outreach → Intelligence. Searches the web for provider email addresses, validates deliverability, and tracks quality scores. Run single searches or batch operations.",
+          "sha256": "d30b72b31f9bf17f15dd7ed7f43fc5527686a606c7f8ea3ae4cda91805aae3fa"
+        },
+        {
+          "heading": "Campaigns",
+          "text": "Create and manage outreach campaigns:\n1. Click \"New Campaign\" and fill in campaign details\n2. Select your target audience from existing lead lists\n3. Design your email template with personalization tokens\n4. Launch and track open rates, responses, and conversions in the Analytics tab",
+          "sha256": "41b4e4c89eab911126140ac166d9d42a5f3e4f0733f1dc3f74ba743f82ddde59"
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "title": "Analytics & Reports",
+      "topics": [
+        {
+          "heading": "Advanced Analytics",
+          "text": "Deep-dive analytics with trend analysis, comparative panels, predictive models, and drill-down tables. Use the dashboard builder to create custom visualizations.",
+          "sha256": "d36bbb74dc154d4c7fb9ad07d712e929c30d9e948a86aa69d473a8fe9fab9040"
+        },
+        {
+          "heading": "CMS Data",
+          "text": "Explore raw CMS datasets including Medicare Advantage Inpatient, HHA Statistics, Inpatient DRG, Utilization, Referrals, and SNF data. Filter by year and dataset type.",
+          "sha256": "fd9bda9ad45f444e8463c63c60e7cf381cd0ebedabb77665b3fac34d91f0668f"
+        },
+        {
+          "heading": "Referral Network",
+          "text": "Visualize referral relationships between providers. Identify hub providers, network gaps, and geographic clustering. Use AI recommendations to find new referral targets.",
+          "sha256": "41e9428a6b25c2da766d6b84d89912426bf244a1d0a9d7b8238487776f7f460e"
+        },
+        {
+          "heading": "Custom Reports",
+          "text": "Build custom reports by selecting data sources, metrics, filters, and chart types. Save reports for reuse and schedule automated delivery.",
+          "sha256": "ccbc5ea851341dc06057a636020ca9e215e2443196dc97ca4d7c68ed264cd2f4"
+        }
+      ]
+    },
+    {
+      "id": "data-import",
+      "title": "Data Import (Admin)",
+      "topics": [
+        {
+          "heading": "Data Center",
+          "text": "Central hub for all data imports. Choose from supported import types:\n• **NPPES Registry** — National Provider Identifier data\n• **CMS Utilization** — Medicare claims and service data\n• **CMS Referrals** — Provider-to-provider referral patterns\n• **Medicare HHA Stats** — Home Health Agency statistics\n• **Medicare MA Inpatient** — Medicare Advantage hospital data\n• **Medicare SNF Stats** — Skilled Nursing Facility data\n• And more...",
+          "sha256": "756ba8987de2998fb83340c131b815b05f6b2cb08c9a7fcd68539b0982a393d4"
+        },
+        {
+          "heading": "How to Import",
+          "text": "1. Go to Data Operations → Data Center\n2. Select the import category and type\n3. Upload your CSV/Excel file or use the auto-download URL\n4. Review the column mapping (AI-assisted)\n5. Validate the data (dry run recommended first)\n6. Click Import to process the data\n7. Monitor progress in Data Operations → Imports",
+          "sha256": "5f9fc4646edbf30c43a7a3c269fb3a88789536a685c689e2729279463332ed0f"
+        },
+        {
+          "heading": "Import Monitor",
+          "text": "Track all import batches with real-time progress. View success/failure rates, error samples, and retry failed imports. Filter by status, type, or date range.",
+          "sha256": "d86d2f172e10cdfedaa84bf17962c8b492544e68c4685c1920600eaebef64470"
+        }
+      ]
+    },
+    {
+      "id": "nppes-crawler",
+      "title": "NPPES Crawler (Admin)",
+      "topics": [
+        {
+          "heading": "Overview",
+          "text": "The NPPES Crawler automatically pulls provider data from the National Plan and Provider Enumeration System API, processing one state at a time.",
+          "sha256": "b014668da9807dae6bfdc8089ffb89dd182d8a4e39a7d8ac6dac9b41490ab079"
+        },
+        {
+          "heading": "Manual Mode",
+          "text": "Click \"Start Crawl\" to begin browser-based crawling. You can pause, resume, or stop at any time. The page must remain open.",
+          "sha256": "810d13003e06685db239a7a6abb543532e1201008ab96f4eff82ae075a4bb772"
+        },
+        {
+          "heading": "Auto Mode",
+          "text": "Click \"Start Auto-Crawler\" for server-side crawling that runs independently — you can close the browser. The system processes all states sequentially and handles retries automatically.",
+          "sha256": "e99fa7e8316e5ecc308e9bf6a9fdcc708070ef8b65f7c758238bd970a965cfd0"
+        },
+        {
+          "heading": "Settings",
+          "text": "Configure crawler parameters in NPPES Crawler → Settings:\n• **API Batch Size** — Records per API request (max 200)\n• **API Delay** — Pause between requests to avoid rate limiting\n• **Concurrency** — Parallel workers for faster processing\n• **Max Crawl Duration** — Time limit per state before saving partial results\n• **Entity Types** — Choose Individual (NPI-1), Organization (NPI-2), or both",
+          "sha256": "638e71b9d3d13f6e2c951751a20a1dc949165534a71b106cef87a13c21b09844"
+        }
+      ]
+    },
+    {
+      "id": "enrichment",
+      "title": "Enrichment & Quality (Admin)",
+      "topics": [
+        {
+          "heading": "Enrichment Hub",
+          "text": "Enhance provider records with additional data:\n• **AI Enrichment** — Discovers websites, emails, LinkedIn profiles, and additional practice details\n• **Bulk Operations** — Enrich multiple providers at once\n• **Review Queue** — Review and approve AI-suggested changes before applying",
+          "sha256": "1e22888545c280422f83793be2df7ad23e778ea2642de5ca7146dffbcc805f9f"
+        },
+        {
+          "heading": "Data Quality",
+          "text": "Monitor and maintain data integrity:\n• **Quality Score** — Overall data completeness and accuracy rating\n• **Alerts** — Automated detection of quality drops, missing data, and inconsistencies\n• **Cleaning Rules** — Define and apply data standardization rules\n• **Scan History** — Track quality metrics over time",
+          "sha256": "a6fa52c0969376087303dd89e78941c1bb6f8cdcb7fe69126991d79f74631291"
+        },
+        {
+          "heading": "Scoring Rules",
+          "text": "Configure the CareMetric Referral Propensity Score (0–100):\n• **Specialty Match** — Weight for target specialties\n• **Medicare Participation** — Active enrollment bonus\n• **Patient Volume** — Beneficiary count factor\n• **Geographic Priority** — Location-based weighting\n• **Practice Type** — Solo/small group preference\n\nAdjust weights and recalculate scores for all providers.",
+          "sha256": "a4b68a2c371b0449912aa68e5d1588a6afb67f7da6c5519d51b5bf3dc32bc943"
+        }
+      ]
+    },
+    {
+      "id": "ai-assistant",
+      "title": "AI Assistant",
+      "topics": [
+        {
+          "heading": "Overview",
+          "text": "The AI Assistant helps you interact with your data using natural language. Ask questions about providers, get market insights, or request data analysis.",
+          "sha256": "70acc37159c931f72ddbc899125943f5935e01f2f9d43eceb41995b683eda3fa"
+        },
+        {
+          "heading": "Example Queries",
+          "text": "• \"Show me the top 10 providers in Pennsylvania by score\"\n• \"How many providers have verified emails?\"\n• \"What specialties have the highest referral volume?\"\n• \"Create a lead list of family medicine providers in Philadelphia\"\n• \"Summarize the data quality for our provider database\"",
+          "sha256": "c42d329d94da344791e78c77afa5a77f83b8903740ca7c05c5be9861c25f756a"
+        }
+      ]
+    }
+  ]
+}

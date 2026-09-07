@@ -107,6 +107,33 @@ Configured for Replit autoscale (`.replit`): `npm run build` then
 Express server serves the built SPA from `dist/` same-origin, so set
 `JWT_SECRET` and (if serving a separate frontend origin) `ALLOWED_ORIGINS`.
 
+### Central CareMetric support
+
+The local `/Help` guide remains the fallback in every environment. On the
+verified production app only (Base44 app `6993c62145573ca8a97ad4a9` at
+`caremetricintel.com`), the page also offers a launcher to CareMetric's
+first-party Support Hub at
+`https://support-hub-web-production.up.railway.app/help` for product
+`caremetric-intel`. The launcher accepts no runtime arguments and sends only
+the static product, route, locale, and environment labels; it never forwards a
+user, tenant, provider, patient, record, current URL query/hash, token, or free
+text. An explicit `VITE_CENTRAL_SUPPORT_HUB_ENABLED` value other than `true`
+disables only the external launcher; the central phone and email remain visible
+on the verified production Help page during a Hub outage.
+
+Central software support is `(877) 521-2890` (`+18775212890`) and
+`support@caremetric.ai`. Support requests must not include patient information
+or other protected health information.
+
+Regenerate the static guide inventory only from a committed guide revision:
+
+```bash
+SOURCE_COMMIT=$(git rev-parse HEAD) node scripts/generate-help-inventory.mjs
+```
+
+The generator deliberately refuses to run without the full source commit so a
+future guide change cannot silently retain stale provenance.
+
 ## Further reading
 
 - **`replit.md`** — the deep architecture reference: feature-by-feature
