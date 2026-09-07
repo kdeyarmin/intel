@@ -124,6 +124,15 @@ Central software support is `(877) 521-2890` (`+18775212890`) and
 `support@caremetric.ai`. Support requests must not include patient information
 or other protected health information.
 
+Regenerate the static guide inventory only from a committed guide revision:
+
+```bash
+SOURCE_COMMIT=$(git rev-parse HEAD) node scripts/generate-help-inventory.mjs
+```
+
+The generator deliberately refuses to run without the full source commit so a
+future guide change cannot silently retain stale provenance.
+
 ## Further reading
 
 - **`replit.md`** — the deep architecture reference: feature-by-feature

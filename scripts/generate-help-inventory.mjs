@@ -16,7 +16,11 @@ export function extractGuideSections(source) {
   const expression = source
     .slice(start + marker.length, end + 2)
     .replace(/icon:\s*([A-Za-z][A-Za-z0-9_]*),/g, "icon: '$1',");
-  const sections = vm.runInNewContext(`(${expression})`, Object.create(null), { timeout: 1_000 });
+  const context = vm.createContext(Object.create(null), {
+    codeGeneration: { strings: false, wasm: false },
+  });
+  const script = new vm.Script(`(${expression})`);
+  const sections = script.runInContext(context, { timeout: 1_000 });
 
   if (!Array.isArray(sections)) throw new Error('GUIDE_SECTIONS must be an array');
   return sections.map((section) => {
@@ -38,6 +42,14 @@ export function extractGuideSections(source) {
       }),
     };
   });
+}
+
+export function requireSourceCommit(environment = process.env) {
+  const sourceCommit = environment.SOURCE_COMMIT;
+  if (typeof sourceCommit !== 'string' || !/^[a-f0-9]{40}$/.test(sourceCommit)) {
+    throw new Error('SOURCE_COMMIT must be the full 40-character commit containing GUIDE_SECTIONS');
+  }
+  return sourceCommit;
 }
 
 export function buildManifest(source, sourceCommit) {
@@ -77,7 +89,7 @@ export function buildManifest(source, sourceCommit) {
 
 async function main() {
   const source = await readFile(SOURCE_PATH, 'utf8');
-  const sourceCommit = process.env.SOURCE_COMMIT || '30a5887cb15bf0f0e6c00f7f59760b2ea45d334e';
+  const sourceCommit = requireSourceCommit();
   const manifest = buildManifest(source, sourceCommit);
   await mkdir(new URL('../artifacts/help/', import.meta.url), { recursive: true });
   await writeFile(OUTPUT_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
