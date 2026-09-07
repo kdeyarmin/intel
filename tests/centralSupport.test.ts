@@ -4,6 +4,7 @@ import {
   CAREMETRIC_INTEL_PRODUCTION_APP_ID,
   CENTRAL_SUPPORT_EMAIL,
   CENTRAL_SUPPORT_PHONE,
+  isVerifiedCareMetricIntelProduction,
   resolveCentralSupportActivation,
 } from '../src/lib/centralSupport';
 
@@ -36,6 +37,7 @@ describe('CareMetric Intel central support integration', () => {
   });
 
   it('activates only for the verified production app and host', () => {
+    expect(isVerifiedCareMetricIntelProduction(PRODUCTION_INPUT)).toBe(true);
     expect(resolveCentralSupportActivation(PRODUCTION_INPUT)).toBe(true);
     expect(resolveCentralSupportActivation({ ...PRODUCTION_INPUT, flag: 'true' })).toBe(true);
     expect(resolveCentralSupportActivation({ ...PRODUCTION_INPUT, hostname: 'CAREMetricIntel.com.' })).toBe(true);
@@ -50,6 +52,15 @@ describe('CareMetric Intel central support integration', () => {
     { ...PRODUCTION_INPUT, flag: 'TRUE' },
     { ...PRODUCTION_INPUT, isDevelopment: true },
   ])('fails closed outside the verified production identity: %o', (input) => {
+    if (input.flag !== 'false' && input.flag !== 'TRUE') {
+      expect(isVerifiedCareMetricIntelProduction(input)).toBe(false);
+    }
     expect(resolveCentralSupportActivation(input)).toBe(false);
+  });
+
+  it('keeps verified production identity true when only the Hub kill switch is off', () => {
+    const disabled = { ...PRODUCTION_INPUT, flag: 'false' };
+    expect(isVerifiedCareMetricIntelProduction(disabled)).toBe(true);
+    expect(resolveCentralSupportActivation(disabled)).toBe(false);
   });
 });

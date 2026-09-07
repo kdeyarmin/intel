@@ -118,7 +118,8 @@ first-party Support Hub at
 the static product, route, locale, and environment labels; it never forwards a
 user, tenant, provider, patient, record, current URL query/hash, token, or free
 text. An explicit `VITE_CENTRAL_SUPPORT_HUB_ENABLED` value other than `true`
-disables the launcher.
+disables only the external launcher; the central phone and email remain visible
+on the verified production Help page during a Hub outage.
 
 Central software support is `(877) 521-2890` (`+18775212890`) and
 `support@caremetric.ai`. Support requests must not include patient information

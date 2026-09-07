@@ -8,28 +8,35 @@ export const CAREMETRIC_INTEL_PRODUCTION_APP_ID = '6993c62145573ca8a97ad4a9';
 export const CAREMETRIC_INTEL_PRODUCTION_HOST = 'caremetricintel.com';
 
 /**
- * The launcher is enabled only for the verified CareMetric Intel production
- * identity. An explicit value other than `true` is a fail-closed kill switch.
+ * Match the one verified CareMetric Intel production identity. This controls
+ * whether central contact routes are shown at all.
  */
-export function resolveCentralSupportActivation({
+export function isVerifiedCareMetricIntelProduction({
   appId,
   environment,
   hostname,
-  flag,
   isDevelopment = false,
 } = {}) {
   const normalizedHostname = typeof hostname === 'string'
     ? hostname.trim().toLowerCase().replace(/\.$/, '')
     : '';
 
-  if (
+  return !(
     isDevelopment
     || appId !== CAREMETRIC_INTEL_PRODUCTION_APP_ID
     || environment !== 'production'
     || normalizedHostname !== CAREMETRIC_INTEL_PRODUCTION_HOST
-  ) return false;
+  );
+}
 
-  return flag == null || flag === 'true';
+/**
+ * The external Hub launcher is enabled only for the verified production
+ * identity. An explicit value other than `true` is a fail-closed kill switch;
+ * central phone and email remain available independently.
+ */
+export function resolveCentralSupportActivation(input = {}) {
+  if (!isVerifiedCareMetricIntelProduction(input)) return false;
+  return input.flag == null || input.flag === 'true';
 }
 
 /**
