@@ -3,9 +3,9 @@ export const APP_ID='6993c62145573ca8a97ad4a9';
 export const APP_ORIGIN='https://caremetricintel.com';
 export const AUTHORIZATION_URL='https://support-hub-web-production.up.railway.app/api/internal/admin/intel/authorize';
 export const TOKEN_HEADER='X-CareMetric-Hub-Authorization';
-export const operations=['capabilities','overview','users.list'] as const;
+export const operations=['capabilities','overview','users.list','support.identity.resolve'] as const;
 type Row=Record<string,unknown>;
-type Operation={operation:typeof operations[number];limit:number;offset:number;search:string};
+type Operation={operation:typeof operations[number];limit:number;offset:number;search:string;sourceUserId?:string;sourceAccountId?:string};
 type Entity={filter:(query:Row,sort:string,limit:number,offset:number,fields:string[])=>Promise<unknown>};
 export type Client={asServiceRole:{entities:Record<string,Entity>};cleanup?:()=>void};
 type Options={getEnv:(name:string)=>string|undefined;createClient:(request:Request)=>Client;fetcher?:typeof fetch;now?:()=>Date};
@@ -21,6 +21,12 @@ function parseOperation(value:unknown):Operation {
   const row=object(value);
   if(!operations.includes(row.operation as Operation['operation'])) return fail(400,'invalid_request');
   const operation=row.operation as Operation['operation'];
+  if(operation==='support.identity.resolve') {
+    if(Object.keys(row).sort().join(',')!=='operation,sourceAccountId,sourceUserId')return fail(400,'invalid_request');
+    const sourceUserId=nativeId(row.sourceUserId),sourceAccountId=nativeId(row.sourceAccountId);
+    if(sourceUserId!==sourceAccountId)return fail(400,'invalid_request');
+    return {operation,sourceUserId,sourceAccountId,limit:20,offset:0,search:''};
+  }
   const allowed=operation==='users.list'?['operation','search','limit','offset']:['operation'];
   if(Object.keys(row).some(key=>!allowed.includes(key))) return fail(400,'invalid_request');
   const limit=row.limit??20,offset=row.offset??0,search=row.search??'';
@@ -96,6 +102,16 @@ export function createCentralAdminHandler({getEnv,createClient,fetcher=fetch,now
       if(actors.length!==1||actors[0].id!==native||actors[0].role!=='admin')return fail(403,'forbidden');
       let data:unknown;
       if(operation.operation==='capabilities')data={apiVersion:1,operations:[...operations],sourceRevision:config.revision};
+      else if(operation.operation==='support.identity.resolve') {
+        const sourceUserId=nativeId(operation.sourceUserId),sourceAccountId=nativeId(operation.sourceAccountId);
+        const matches=rows(await bounded(users.filter({id:sourceUserId},'id',2,0,['id','role','updated_date']),signal),2);
+        if(matches.length!==1||matches[0].id!==sourceUserId||!['admin','user'].includes(String(matches[0].role)))return fail(403,'forbidden');
+        const updated=nullableText(matches[0].updated_date,100);
+        if(updated!==null&&!Number.isFinite(Date.parse(updated)))return fail();
+        const evidence=JSON.stringify(['intel',APP_ID,sourceUserId,matches[0].role,updated]);
+        const revision=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(evidence))),b=>b.toString(16).padStart(2,'0')).join('');
+        data={product:'intel',sourceUserId,sourceAccountId,accountKind:'individual',relationship:'individual_owner',revision};
+      }
       else{
         const all:Row[]=[];let previous='';
         const fields=operation.operation==='overview'?['id','role']:['id','role','full_name','email','created_date'];

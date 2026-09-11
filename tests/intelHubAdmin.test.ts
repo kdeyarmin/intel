@@ -11,7 +11,8 @@ function fixture({records=[user],actorRole='admin',actorId=native,settings={},au
   let requested:unknown={operation:'capabilities'};
   const cleanup=vi.fn();
   const filter=vi.fn(filterOverride??(async(query,_sort,limit,offset,fields)=>{
-    if(query.id)return [{id:actorId,role:actorRole}];
+    if(query.id===native)return [{id:actorId,role:actorRole}];
+    if(query.id)return records.filter(row=>row.id===query.id).map(row=>Object.fromEntries(fields.map(key=>[key,row[key]])));
     return records.slice(offset,offset+limit).map(row=>Object.fromEntries(fields.map(key=>[key,row[key]])));
   }));
   const createClient=vi.fn(()=>({asServiceRole:{entities:{User:{filter}}},cleanup}));
@@ -28,6 +29,29 @@ function fixture({records=[user],actorRole='admin',actorId=native,settings={},au
   };
   return {request,handler,filter,fetcher,createClient,cleanup};
 }
+describe('Intel protected support identity',()=>{
+  const op={operation:'support.identity.resolve',sourceUserId:id(1),sourceAccountId:id(1)};
+  it('resolves an individual account without inventing an organization or activity status',async()=>{
+    const f=fixture();const response=await f.request(op);expect(response.status).toBe(200);const result=await response.json();
+    expect(result.data).toEqual({product:'intel',sourceUserId:id(1),sourceAccountId:id(1),accountKind:'individual',relationship:'individual_owner',revision:expect.stringMatching(/^[0-9a-f]{64}$/)});
+    expect(f.filter.mock.calls[1]).toEqual([{id:id(1)},'id',2,0,['id','role','updated_date']]);expect(JSON.stringify(result)).not.toMatch(/someone@|password|never-export/);
+  });
+  it('rejects a missing native user or unsupported protected role',async()=>{
+    expect((await fixture({records:[]}).request(op)).status).toBe(403);
+    expect((await fixture({records:[{...user,role:'unknown'}]}).request(op)).status).toBe(403);
+  });
+  it('rejects duplicate and mismatched individual-account records',async()=>{
+    expect((await fixture({records:[user,user]}).request(op)).status).toBe(403);
+    const f=fixture();expect((await f.request({...op,sourceAccountId:id(2)})).status).toBe(400);expect(f.filter).not.toHaveBeenCalled();
+  });
+  it('changes revision when native protected evidence changes',async()=>{
+    const a=await(await fixture().request(op)).json();const b=await(await fixture({records:[{...user,updated_date:'2026-09-11T01:00:00Z'}]}).request(op)).json();expect(a.data.revision).not.toBe(b.data.revision);
+  });
+  it('rejects a different operation capability before native lookup',async()=>{
+    const f=fixture({authority:{operation:{...op,sourceUserId:id(2)}}});expect((await f.request(op)).status).toBe(403);expect(f.filter).not.toHaveBeenCalled();
+  });
+});
+
 describe('actual Intel hosted Hub handler',()=>{
   it.each(['capabilities','overview','users.list'])('authorizes and projects %s',async operation=>{
     const f=fixture();const response=await f.request({operation});expect(response.status).toBe(200);
