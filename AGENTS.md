@@ -26,7 +26,8 @@ Instructions for Codex cloud and other AI coding agents working in this reposito
 | Task | Command |
 | --- | --- |
 | Install | `npm ci` when a lockfile exists, otherwise `npm install` |
-| Full dev | `npm run dev` |
+| Hosted/frontend dev | `npm run dev` |
+| Local full stack dev | `npm run dev:full` |
 | API dev | `npm run dev:api` |
 | Frontend dev | `npm run dev:frontend` |
 | Build | `npm run build` |
