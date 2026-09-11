@@ -7,7 +7,8 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "concurrently --kill-others \"tsx watch server/index.ts\" \"vite\"",
+    "dev": "vite",
+    "dev:full": "concurrently --kill-others \"tsx watch server/index.ts\" \"vite\"",
     "dev:api": "tsx watch server/index.ts",
     "dev:frontend": "vite",
     "build": "vite build",
