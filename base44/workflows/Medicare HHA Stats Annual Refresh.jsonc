@@ -1,0 +1,48 @@
+{
+  "name": "Medicare HHA Stats Annual Refresh",
+  "description": "Annual import of CMS Medicare Home Health Agency use and payment data (updated yearly by CMS)",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 8 15 * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "medicare_hha_stats_annual_refresh",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "importMedicareHHA",
+            "args": {
+              "action": "import",
+              "year": 2023,
+              "dry_run": false
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "importMedicareHHA"
+  }
+}

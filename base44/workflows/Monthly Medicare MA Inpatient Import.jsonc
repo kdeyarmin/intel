@@ -1,0 +1,48 @@
+{
+  "name": "Monthly Medicare MA Inpatient Import",
+  "description": "Monthly import of Medicare Advantage Inpatient Hospital data from CMS ZIP files",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 9 15 * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "monthly_medicare_ma_inpatient_import",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "importMedicareMAInpatient",
+            "args": {
+              "action": "import",
+              "year": 2021,
+              "dry_run": false
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "importMedicareMAInpatient"
+  }
+}

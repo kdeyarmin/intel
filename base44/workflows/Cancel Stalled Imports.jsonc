@@ -1,0 +1,46 @@
+{
+  "name": "Cancel Stalled Imports",
+  "description": "Checks every 30 minutes for import batches stuck in validating/processing for over 2 hours, cancels them, and notifies admins via email.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 30,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-02-19T21:58:09.055000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "cancel_stalled_imports",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "cancelStalledImports",
+            "args": {
+              "threshold_hours": 2
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "cancelStalledImports"
+  }
+}
