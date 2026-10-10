@@ -113,7 +113,7 @@ export default function Providers() {
   // behavior only ever loaded the newest 100 rows and filtered client-side, so
   // search silently missed almost everything). With no search term we still show
   // the most recent providers as the default directory view.
-  const { data: providers = [], isLoading, isError, error: providersError, refetch: refetchProviders } = useQuery({
+  const { data: providers = [], isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
     queryKey: ['providersPage', debouncedSearch],
     queryFn: async () => {
       if (debouncedSearch.length >= 2) {
@@ -499,7 +499,9 @@ export default function Providers() {
       <PageHeader
         title="Providers"
         subtitle={
-          debouncedSearch.length >= 2
+          isPlaceholderData
+            ? 'Searching…'
+            : debouncedSearch.length >= 2
             ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"`
             : `Showing the ${providers.length.toLocaleString()} most recently added providers — search by name or NPI to find anyone else`
         }

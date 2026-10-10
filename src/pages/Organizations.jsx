@@ -80,7 +80,7 @@ export default function Organizations() {
   // only the newest 500 loaded in the browser). With no search, show the
   // newest organizations.
   const isSearching = debouncedSearch.length >= 2;
-  const { data: providers = [], isLoading, isError, error: loadError, refetch } = useQuery({
+  const { data: providers = [], isLoading, isError, error: loadError, refetch, isPlaceholderData } = useQuery({
     queryKey: ['organizationsPage', debouncedSearch],
     placeholderData: keepPreviousData,
     queryFn: async () => {
@@ -304,7 +304,9 @@ export default function Organizations() {
       <PageHeader
         title="Organizations"
         subtitle={
-          isSearching
+          isPlaceholderData
+            ? 'Searching…'
+            : isSearching
             ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} organization${providers.length === 1 ? '' : 's'} matching "${debouncedSearch}"`
             : `Showing the ${providers.length.toLocaleString()} most recently added organizations — search by name or NPI to find others`
         }
