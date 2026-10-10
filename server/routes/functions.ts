@@ -604,8 +604,22 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleMatchProvidersToLocations(req.body));
       }
       case "generateScheduledReport": {
-        const { handleGenerateScheduledReport } = await import("../functions/stubs");
-        return res.json(await handleGenerateScheduledReport(req.body));
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`scheduledReport:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Too many report runs. Try again in a minute." });
+        }
+        const { handleGenerateScheduledReport } = await import("../functions/scheduledReports");
+        return res.json(await handleGenerateScheduledReport(req.body, req.user));
+      }
+      case "runDueScheduledReports": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:runDueScheduledReports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runDueScheduledReportsWorker, writeMaintenanceHeartbeat } = await import("../lib/maintenance");
+        const result = await runDueScheduledReportsWorker();
+        await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
+        return res.json({ success: result.ok, worker: result });
       }
       case "testCMSUrl": {
         const { consumeToken } = await import("../middleware/rateLimit");

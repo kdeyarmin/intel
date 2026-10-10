@@ -25,6 +25,7 @@ const TASKS = Object.assign(Object.create(null) as Record<string, (payload: any,
   autoRetryFailedImports: () => handleAutoRetryFailedImports(),
   autoResumePausedImports: () => handleAutoResumePausedImports(),
   cancelStalledImports: () => handleCancelStalledImports(),
+  runDueScheduledReports: async () => (await import("../functions/scheduledReports")).handleRunDueScheduledReports(),
 });
 
 function timingSafeEqualStr(a: string, b: string): boolean {

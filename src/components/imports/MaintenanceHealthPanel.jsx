@@ -22,6 +22,7 @@ const MAINTENANCE_TASKS = [
   { key: 'autoResumePausedImports', label: 'Resume paused imports' },
   { key: 'autoRetryFailedImports', label: 'Retry failed imports' },
   { key: 'cancelStalledImports', label: 'Cancel stalled imports' },
+  { key: 'runDueScheduledReports', label: 'Send due scheduled reports' },
   { key: 'cleanupAllImports', label: 'Cleanup all imports', destructive: true },
 ];
 

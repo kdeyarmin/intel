@@ -563,10 +563,6 @@ export async function handleMatchProvidersToLocations(_payload: any) {
   return notConfigured("Automatic provider-to-facility matching isn't available yet.");
 }
 
-export async function handleGenerateScheduledReport(_payload: any) {
-  return notConfigured("Emailing scheduled reports isn't available yet. Run the report on this page and export it instead.");
-}
-
 export async function handlePredictImportFormat(_payload: any) {
   return notConfigured("Import format prediction isn't available yet.");
 }
