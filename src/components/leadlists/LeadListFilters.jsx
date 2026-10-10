@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Filter, X } from 'lucide-react';
+import { US_STATES } from '@/lib/usStates';
 
 export default function LeadListFilters({ filters, onChange, onReset }) {
   const uid = useId();
@@ -18,7 +19,7 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+            <Filter className="h-5 w-5" aria-hidden="true" />
             Lead Filters
           </CardTitle>
           <Button variant="outline" size="sm" onClick={onReset}>
@@ -36,18 +37,18 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PA">Pennsylvania</SelectItem>
                 <SelectItem value="all">All States</SelectItem>
+                {US_STATES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor={`${uid}-county`}>County</Label>
+            <Label htmlFor={`${uid}-county`}>City (contains)</Label>
             <Input
               id={`${uid}-county`}
-              aria-label="County"
-              placeholder="e.g., Allegheny"
+              aria-label="City (contains)"
+              placeholder="e.g., Pittsburgh"
               value={filters.county || ''}
               onChange={(e) => handleChange('county', e.target.value)}
             />
@@ -61,18 +62,6 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
               placeholder="e.g., 15222"
               value={filters.zip || ''}
               onChange={(e) => handleChange('zip', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor={`${uid}-radius`}>Radius (miles)</Label>
-            <Input
-              id={`${uid}-radius`}
-              aria-label="Radius (miles)"
-              type="number"
-              placeholder="e.g., 25"
-              value={filters.radius || ''}
-              onChange={(e) => handleChange('radius', e.target.value)}
             />
           </div>
 
