@@ -200,6 +200,15 @@ function requestOnce(url: URL, opts: Required<Omit<SafeFetchOptions, "headers">>
   });
 }
 
+/**
+ * Headers to send after a redirect. The caller's headers (API keys, tokens)
+ * were meant for the original origin, so a redirect to any other origin
+ * (host, port or scheme) drops them all.
+ */
+export function headersAfterRedirect(from: URL, to: URL, headers: Record<string, string>): Record<string, string> {
+  return from.origin === to.origin ? headers : {};
+}
+
 export async function safeFetch(input: string, options: SafeFetchOptions = {}): Promise<SafeFetchResponse> {
   const opts = {
     method: options.method || "GET",
@@ -212,11 +221,12 @@ export async function safeFetch(input: string, options: SafeFetchOptions = {}): 
   const started = Date.now();
   const signal = AbortSignal.timeout(opts.timeoutMs);
   let url = validateOutboundUrl(input);
+  let headers = opts.headers;
 
   for (let redirects = 0; ; redirects += 1) {
     let res;
     try {
-      res = await requestOnce(url, opts, signal);
+      res = await requestOnce(url, { ...opts, headers }, signal);
     } catch (e: any) {
       if (e instanceof SafeFetchError) throw e;
       if (signal.aborted || e?.name === "AbortError" || e?.name === "TimeoutError") {
@@ -227,7 +237,9 @@ export async function safeFetch(input: string, options: SafeFetchOptions = {}): 
     const location = res.headers.location;
     if (REDIRECTS.has(res.status) && typeof location === "string") {
       if (redirects >= opts.maxRedirects) throw new SafeFetchError("too_many_redirects", "Too many redirects.");
-      url = validateOutboundUrl(new URL(location, url));
+      const next = validateOutboundUrl(new URL(location, url));
+      headers = headersAfterRedirect(url, next, headers);
+      url = next;
       continue;
     }
     return { ...res, finalUrl: url.toString(), redirects, elapsedMs: Date.now() - started };

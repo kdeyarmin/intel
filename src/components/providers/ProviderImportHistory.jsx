@@ -6,6 +6,7 @@ import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   home_health_enrollments: 'HH Enrollments',
@@ -26,10 +27,13 @@ function formatDate(ts) {
 }
 
 export default function ProviderImportHistory({ _npi }) {
+  // Import batches are admin-only data; regular users don't see this card.
+  const { isAdmin } = usePageAccess();
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['importBatchesAll'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 50),
     staleTime: 60000,
+    enabled: isAdmin,
   });
 
   // Filter to batches that likely imported this NPI's data type
@@ -38,7 +42,7 @@ export default function ProviderImportHistory({ _npi }) {
     .filter(b => relevantTypes.includes(b.import_type) && b.status === 'completed')
     .slice(0, 5);
 
-  if (isLoading) return null;
+  if (!isAdmin || isLoading) return null;
   if (relevantBatches.length === 0) return null;
 
   return (

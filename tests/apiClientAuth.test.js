@@ -68,12 +68,35 @@ describe('401 handling', () => {
     expect(localStorage.getItem('auth_token')).toBeNull();
   });
 
-  it('ignores 401s from the auth endpoints themselves', async () => {
+  it('ignores 401s from sign-in and from the startup session probe', async () => {
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'Invalid credentials' })));
     await expect(base44.auth.login('a@b.c', 'wrong')).rejects.toThrow('Invalid credentials');
-    await expect(base44.auth.me()).rejects.toThrow();
+    await expect(base44.auth.me({ probe: true })).rejects.toThrow();
     expect(events).toEqual([]);
     expect(localStorage.getItem('auth_token')).toBe('stale');
+  });
+
+  it('treats a 401 from /auth/me outside the probe as an expired session', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, {})));
+    await expect(base44.auth.me()).rejects.toThrow();
+    expect(events).toEqual(['expired']);
+    expect(localStorage.getItem('auth_token')).toBeNull();
+  });
+
+  it("ignores a 401 for the old session that arrives after signing in again", async () => {
+    let finishOld;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
+    })));
+    const old = base44.entities.Provider.list();
+
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
+    await base44.auth.login('a@b.c', 'right');
+
+    finishOld();
+    await expect(old).rejects.toThrow();
+    expect(events).toEqual([]);
+    expect(localStorage.getItem('auth_token')).toBe('fresh');
   });
 
   it('does nothing while already on the login page', async () => {
