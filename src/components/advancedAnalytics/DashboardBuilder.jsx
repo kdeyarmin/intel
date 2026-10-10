@@ -106,37 +106,35 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
           <p className="text-xs text-slate-400 text-center py-4">No dashboards yet. Create one to get started.</p>
         ) : (
           dashboards.map(db => (
+            // Selecting the dashboard is its own button; the actions are siblings,
+            // not controls nested inside it.
             <div
               key={db.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(db.id)}
-              onKeyDown={(e) => {
-                if (e.target !== e.currentTarget) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelect(db.id);
-                }
-              }}
-              className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors border ${
+              className={`flex items-center gap-2 p-2.5 rounded-lg transition-colors border ${
                 activeId === db.id ? 'bg-violet-900/30 border-violet-500/40' : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800/40'
               }`}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onSelect(db.id)}
+                aria-current={activeId === db.id ? 'true' : undefined}
+                className="flex-1 min-w-0 text-left"
+              >
+                <span className="flex items-center gap-1.5">
                   {db.is_default && <Badge className="text-[9px] bg-amber-900/30 text-amber-400 px-1 py-0">Default</Badge>}
                   <span className="text-sm font-medium text-slate-300 truncate">{db.name}</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</p>
-              </div>
+                </span>
+                <span className="block text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</span>
+              </button>
               <div className="flex gap-0.5 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); favMutation.mutate(db); }} aria-label={db.is_favorite ? `Unfavorite dashboard ${db.name}` : `Favorite dashboard ${db.name}`} className="p-1 hover:text-amber-500 text-slate-300 transition-colors">
+                <button type="button" onClick={(e) => { e.stopPropagation(); favMutation.mutate(db); }} aria-label={db.is_favorite ? `Unfavorite dashboard ${db.name}` : `Favorite dashboard ${db.name}`} className="p-1 hover:text-amber-500 text-slate-300 transition-colors">
                   <Star className={`w-3.5 h-3.5 ${db.is_favorite ? 'text-amber-500 fill-amber-500' : ''}`} aria-hidden="true" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); defaultMutation.mutate(db); }} className="p-1 hover:text-violet-500 text-slate-300 transition-colors" title="Set default" aria-label={`Set ${db.name} as default dashboard`}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); defaultMutation.mutate(db); }} className="p-1 hover:text-violet-500 text-slate-300 transition-colors" title="Set default" aria-label={`Set ${db.name} as default dashboard`}>
                   <LayoutDashboard className={`w-3.5 h-3.5 ${db.is_default ? 'text-violet-500' : ''}`} aria-hidden="true" />
                 </button>
                 <button
+                  type="button"
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (await confirm({ title: `Delete dashboard "${db.name}"?`, confirmLabel: 'Delete', destructive: true })) {

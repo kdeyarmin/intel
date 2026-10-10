@@ -21,13 +21,29 @@ function sourceFiles(dir: string): string[] {
 const tag = (name: string) =>
   new RegExp(`<${name}\\b((?:[^>"'{}]|"[^"]*"|'[^']*'|\\{(?:[^{}]|\\{(?:[^{}]|\\{[^{}]*\\})*\\})*\\})*)>`, 'g');
 
-function unnamed(name: string, ok: RegExp) {
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * An id alone doesn't name a control: some label in the same file has to point
+ * at it (htmlFor with the same literal or the same expression).
+ */
+function labelledById(attrs: string, src: string): boolean {
+  const literal = attrs.match(/\bid="([^"]+)"/);
+  if (literal) return new RegExp(`htmlFor="${escapeRe(literal[1])}"`).test(src);
+  const expr = attrs.match(/\bid=\{((?:[^{}]|\{[^{}]*\})*)\}/);
+  if (expr) return src.includes(`htmlFor={${expr[1]}}`);
+  return false;
+}
+
+const NAMED = /aria-label|aria-labelledby/;
+
+function unnamed(name: string, ok: RegExp, viaId = false) {
   const found: string[] = [];
   for (const file of sourceFiles(SRC)) {
     if (file.includes(`${path.sep}ui${path.sep}`)) continue;
     const src = fs.readFileSync(file, 'utf8');
     for (const m of src.matchAll(tag(name))) {
-      if (!ok.test(m[1])) {
+      if (!ok.test(m[1]) && !(viaId && labelledById(m[1], src))) {
         const line = src.slice(0, m.index).split('\n').length;
         found.push(`${path.relative(SRC, file)}:${line}`);
       }
@@ -38,15 +54,22 @@ function unnamed(name: string, ok: RegExp) {
 
 describe('accessible names in source', () => {
   it('every SelectTrigger has a label (aria-label, aria-labelledby, or an id a <Label htmlFor> points at)', () => {
-    expect(unnamed('SelectTrigger', /aria-label|aria-labelledby|\bid=/)).toEqual([]);
+    expect(unnamed('SelectTrigger', NAMED, true)).toEqual([]);
   });
 
   it('every Progress bar has a name', () => {
-    expect(unnamed('Progress', /aria-label|aria-labelledby/)).toEqual([]);
+    expect(unnamed('Progress', NAMED)).toEqual([]);
   });
 
-  it('every native select has a label', () => {
-    expect(unnamed('select', /aria-label|aria-labelledby|\bid=/)).toEqual([]);
+  it('every native select has a label (aria-label, aria-labelledby, or an id a label htmlFor points at)', () => {
+    expect(unnamed('select', NAMED, true)).toEqual([]);
+  });
+
+  it('checks that the label points at the id', () => {
+    expect(labelledById('id="state"', '<Label htmlFor="state">State</Label>')).toBe(true);
+    expect(labelledById('id="state"', '<Label>State</Label>')).toBe(false);
+    expect(labelledById('id={`${uid}-state`}', '<Label htmlFor={`${uid}-state`}>State</Label>')).toBe(true);
+    expect(labelledById('id={`${uid}-state`}', '<Label htmlFor={`${uid}-other`}>Other</Label>')).toBe(false);
   });
 
   it('size="icon" buttons have a name', () => {

@@ -50,6 +50,8 @@ import AppLayout from '../src/components/layout/AppLayout';
 import GlobalSearchDialog from '../src/components/search/GlobalSearchDialog';
 import Login from '../src/pages/Login';
 import UserManagement from '../src/components/admin/UserManagement';
+import DashboardBuilder from '../src/components/advancedAnalytics/DashboardBuilder';
+import CriticalFailureAlerts from '../src/components/imports/CriticalFailureAlerts';
 
 function wrap(ui, path = '/Dashboard') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -123,6 +125,15 @@ describe('app shell', () => {
     expect(aside.hasAttribute('inert')).toBe(true);
   });
 
+  it('on a wide screen, focus follows the sidebar toggle instead of staying on a control that went away', async () => {
+    setWidth(1400);
+    wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open sidebar' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Open sidebar' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Collapse sidebar' })));
+  });
+
   it('on a small screen, Escape closes the open sidebar and focus returns to its button', async () => {
     setWidth(500);
     wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
@@ -130,6 +141,34 @@ describe('app shell', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Collapse sidebar' })));
     fireEvent.keyDown(document, { key: 'Escape' });
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open sidebar' })));
+  });
+});
+
+describe('rows with actions', () => {
+  it('keep the row action and the inner buttons as separate controls', async () => {
+    const onSelect = vi.fn();
+    const onViewErrors = vi.fn();
+    // In a main landmark, as on the pages that use them.
+    wrap(
+      <main>
+        <DashboardBuilder dashboards={[{ id: 1, name: 'Weekly', widgets: [] }]} activeId={1} onSelect={onSelect} onWidgetsChange={() => {}} />
+        <CriticalFailureAlerts
+          batches={[{ id: 9, status: 'failed', import_type: 'nppes_flat_file', created_date: new Date().toISOString(), error_samples: [{ message: 'boom' }] }]}
+          onViewErrors={onViewErrors}
+        />
+      </main>,
+    );
+    expect(await violations()).toEqual([]);
+    // No interactive element inside another.
+    for (const el of document.querySelectorAll('button, [role="button"], a')) {
+      expect(el.parentElement.closest('button, [role="button"], a'), el.outerHTML.slice(0, 80)).toBeNull();
+    }
+    fireEvent.click(screen.getByRole('button', { name: /^Weekly/ }));
+    expect(onSelect).toHaveBeenCalledWith(1);
+    expect(screen.getByRole('button', { name: /Delete dashboard Weekly/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /boom/ }));
+    expect(onViewErrors).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /Resume/ })).toBeInTheDocument();
   });
 });
 

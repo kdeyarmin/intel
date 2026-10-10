@@ -85,8 +85,8 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
           <div key={i} className="flex items-center gap-2 bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-700/50">
             <span className="text-xs font-medium text-slate-300 flex-1 truncate">{item.value}</span>
             <Badge className={`text-[9px] ${confColor[item.confidence] || confColor.low}`}>{item.confidence}</Badge>
-            <button onClick={() => copyValue(item.value, `${label}-${i}`)} className="text-slate-400 hover:text-slate-200">
-              {copiedField === `${label}-${i}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+            <button type="button" onClick={() => copyValue(item.value, `${label}-${i}`)} aria-label={`Copy ${item.value}`} className="text-slate-400 hover:text-slate-200">
+              {copiedField === `${label}-${i}` ? <Check className="w-3 h-3 text-green-500" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
             </button>
           </div>
         ))}
