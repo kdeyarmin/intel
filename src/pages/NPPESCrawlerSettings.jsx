@@ -169,8 +169,8 @@ export default function NPPESCrawlerSettings() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <PageTabs current="NPPESCrawlerSettings" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PageTabs current="NPPESCrawlerSettings" />
         <PageHeader
           title="Crawler Settings"
           subtitle="Configure NPPES crawler parameters"
@@ -185,7 +185,7 @@ export default function NPPESCrawlerSettings() {
           <Button
             onClick={() => saveMutation.mutate(form)}
             disabled={!hasChanges || saveMutation.isPending}
-            className="bg-teal-600 hover:bg-teal-700 gap-1.5"
+            className="bg-teal-700 hover:bg-teal-600 text-white gap-1.5"
           >
             <Save className="w-4 h-4" />
             {saveMutation.isPending ? 'Saving...' : 'Save Settings'}
