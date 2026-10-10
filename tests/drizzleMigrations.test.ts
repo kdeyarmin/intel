@@ -277,10 +277,16 @@ describe.each([
     expect(entry.when).toBeGreaterThan(prev.when);
   });
 
-  it("is idempotent and only adds nullable columns or new tables", () => {
+  it("is idempotent and only adds nullable columns, new tables or indexes", () => {
     const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
     for (const stmt of statements) {
-      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "\w+" [\w()]+;|CREATE TABLE IF NOT EXISTS )/);
+      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "\w+" [\w()]+;|CREATE TABLE IF NOT EXISTS |CREATE INDEX IF NOT EXISTS "\w+" ON "\w+" )/);
+    }
+  });
+
+  it("every index it creates is declared in the Drizzle schema", () => {
+    for (const [, name] of sql.matchAll(/CREATE INDEX IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, name).toContain(`index("${name}")`);
     }
   });
 
