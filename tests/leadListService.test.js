@@ -4,6 +4,7 @@
  * de-duplicated against the list, and member_count must match what's stored.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 const { LeadList, LeadListMember } = vi.hoisted(() => ({
   LeadList: { create: vi.fn(), filter: vi.fn(), update: vi.fn() },
@@ -14,7 +15,7 @@ vi.mock('@/api/base44Client', () => ({
   base44: { entities: { LeadList, LeadListMember } },
 }));
 
-import { saveProvidersToLeadList, MAX_MEMBERS_PER_SAVE } from '../src/components/leadlists/leadListService';
+import { saveProvidersToLeadList, listMembers, MAX_MEMBERS_PER_SAVE } from '../src/components/leadlists/leadListService';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -84,5 +85,26 @@ describe('saveProvidersToLeadList', () => {
   it('errors clearly when the chosen list was deleted', async () => {
     LeadList.filter.mockResolvedValue([]);
     await expect(saveProvidersToLeadList({ listId: 99, npis: ['1'] })).rejects.toThrow('no longer exists');
+  });
+});
+
+describe('listMembers', () => {
+  it('returns every member row across pages, in id order', async () => {
+    const page1 = Array.from({ length: 5000 }, (_, i) => ({ id: i + 1, npi: String(i), status: 'New' }));
+    const page2 = [{ id: 5001, npi: 'last', status: 'Contacted' }];
+    LeadListMember.filter.mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
+
+    const rows = await listMembers(9);
+
+    expect(rows).toHaveLength(5001);
+    expect(rows[5000]).toEqual(page2[0]);
+    expect(LeadListMember.filter).toHaveBeenNthCalledWith(1, { list_id: 9, id: { $gt: 0 } }, 'id', 5000);
+    expect(LeadListMember.filter).toHaveBeenNthCalledWith(2, { list_id: 9, id: { $gt: 5000 } }, 'id', 5000);
+  });
+
+  it('is how the list dialog loads members, so lists over one page are shown whole', () => {
+    const page = readFileSync(new URL('../src/pages/LeadLists.jsx', import.meta.url), 'utf8');
+    expect(page).toMatch(/await listMembers\(listId\)/);
+    expect(page).not.toMatch(/LeadListMember\.filter\(\{ list_id: listId \}/);
   });
 });
