@@ -144,6 +144,26 @@ describe("runAssistantTurn", () => {
     expect(persisted.at(-1)).toEqual({ role: "assistant", content: [{ type: "text", text: "Looking at Allegheny" }] });
   });
 
+  it("charges a stopped request for what the API already billed", async () => {
+    const onUsage = vi.fn();
+    const { input, controller } = setup([{ hang: true, partial: "Looking", usage: { input_tokens: 5000, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, outputSoFar: 900 }], { onUsage });
+    const running = runAssistantTurn(input);
+    await new Promise((r) => setTimeout(r, 10));
+    controller.abort();
+    const result = await running;
+    expect(result.status).toBe("interrupted");
+    expect(onUsage).toHaveBeenCalledTimes(1);
+    expect(onUsage.mock.calls[0][0]).toMatchObject({ input_tokens: 5000, output_tokens: 900 });
+    expect(result.usage).toMatchObject({ input_tokens: 5000, output_tokens: 900, requests: 1 });
+  });
+
+  it("charges each completed request once", async () => {
+    const onUsage = vi.fn();
+    const { input } = setup([text("Done.")], { onUsage });
+    await runAssistantTurn(input);
+    expect(onUsage).toHaveBeenCalledTimes(1);
+  });
+
   it("re-issues the request when streamed tool input can't be parsed, then gives up", async () => {
     const bad = { throw: new Error("Unable to parse tool parameter JSON from model.") };
     const ok = setup([bad, text("Recovered.")]);

@@ -35,8 +35,9 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
     async list() {
       return users.map(clone);
     },
-    async countPending() {
-      return users.filter((u) => u.status === "pending").length;
+    async pendingSummary() {
+      const pending = users.filter((u) => u.status === "pending");
+      return { count: pending.length, latest_id: pending.length ? Math.max(...pending.map((u) => u.id)) : null };
     },
     async activeAdmins() {
       return users.filter((u) => u.role === "admin" && u.status === "active").map(clone);
@@ -93,6 +94,10 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
     },
     async revokeTokens(userId: number, purpose?: string) {
       for (const t of tokens) if (t.user_id === userId && !t.used_at && (!purpose || t.purpose === purpose)) t.used_at = new Date();
+    },
+    async replaceToken(data: any) {
+      await repo.revokeTokens(data.user_id, data.purpose);
+      await repo.createToken(data);
     },
   };
   return repo;

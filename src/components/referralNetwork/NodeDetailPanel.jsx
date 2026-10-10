@@ -20,7 +20,7 @@ export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose,
   const list = (title, Icon, items, other, color) => items.length > 0 && (
     <div>
       <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1.5 flex items-center gap-1">
-        <Icon className="w-3 h-3" aria-hidden="true" /> {title} ({items.length} shown)
+        <Icon className="w-3 h-3" aria-hidden="true" /> {title} ({items.length > 5 ? `top 5 of ${items.length}` : items.length})
       </p>
       {items.slice(0, 5).map(e => (
         <div key={`${e.source}>${e.target}`} className="flex items-center justify-between text-xs py-1 border-b border-slate-700/30">

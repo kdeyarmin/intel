@@ -134,7 +134,7 @@ export const toolCall = (calls: Array<{ id: string; name: string; input: unknown
 export const withStop = (m: any, stop_reason: string) => ({ ...m, stop_reason });
 
 /** What a scripted stream does: return a message, or throw while streaming. */
-export type Step = any | { throw: unknown } | { hang: true; partial?: string };
+export type Step = any | { throw: unknown } | { hang: true; partial?: string; usage?: Record<string, number>; outputSoFar?: number };
 
 function eventsFor(m: any): any[] {
   const out: any[] = [{ type: "message_start", message: { ...m, content: [], stop_reason: null } }];
@@ -168,6 +168,10 @@ export function scriptedStreams(steps: Step[]): { factory: StreamFactory; calls:
       async *[Symbol.asyncIterator]() {
         if (step && "throw" in step) throw step.throw;
         if (step && "hang" in step) {
+          // What the API reports before the user stops it: input at the start,
+          // output so far in a delta.
+          if (step.usage) yield { type: "message_start", message: { id: "msg_hang", type: "message", role: "assistant", content: [], usage: step.usage } } as any;
+          if (step.outputSoFar != null) yield { type: "message_delta", delta: {}, usage: { output_tokens: step.outputSoFar } } as any;
           if (step.partial) {
             yield { type: "content_block_start", index: 0, content_block: { type: "text", text: "", citations: null } } as any;
             yield { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: step.partial } } as any;

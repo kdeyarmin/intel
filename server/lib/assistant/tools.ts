@@ -256,7 +256,7 @@ const TOOL_SPECS = [
     async run(_input, ctx) {
       const s = await ctx.deps.getDashboardStats();
       return {
-        note: "Totals are table-size estimates; email and phone figures are extrapolated from samples.",
+        note: "Totals are table-size estimates; email and phone figures are extrapolated from samples. top_states counts come from a sample of 10,000 provider locations: use them to rank states, not as state totals.",
         totals: {
           providers: s.totalProviders, locations: s.totalLocations, referral_pairs: s.totalReferrals,
           utilization_rows: s.totalUtilization, facilities: s.totalFacilities,
@@ -313,7 +313,8 @@ const TOOL_SPECS = [
     description:
       "Propose a new lead list. This does not create it: the user sees a card with the list and creates it by pressing Confirm (or cancels). Use it only when the user asks for a list to be made, with NPIs that came back from other tools in this conversation.",
     input: z.object({
-      name: z.string().min(1).max(120),
+      // Trimmed before the length check, so a blank name is rejected here.
+      name: z.string().trim().min(1).max(120),
       description: z.string().max(500).optional(),
       npis: z.array(NPI).min(1).max(ASSISTANT_CONFIG.maxProposalNpis),
       reason: z.string().max(300).optional().describe("One sentence on why these providers, shown on the card"),

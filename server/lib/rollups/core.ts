@@ -29,9 +29,58 @@ export const npiKey = (npi: unknown): number | null => {
 
 export interface Accumulator<Row, Out> {
   add(rows: Row[]): void;
-  results(): Out[];
+  /** Moves the chunk's partial results to the staging store (after each chunk). */
+  flush?(): Promise<void>;
+  results(): Out[] | Promise<Out[]>;
   /** Rows that couldn't be used (e.g. unparseable money), for the run log. */
   skipped(): number;
+}
+
+/**
+ * Where an accumulator keeps the parts that grow with the whole table (the
+ * distinct providers per group, every referral target), so a job's memory is
+ * bounded by one chunk. The runner uses session temp tables; tests use memory.
+ */
+export interface Staging {
+  /** Adds (key, value) pairs; repeats are ignored. */
+  addDistinct(pairs: Array<[string, number]>): Promise<void>;
+  /** Distinct values per key. */
+  distinctCounts(): Promise<Map<string, number>>;
+  /** Adds to the running total and count of (key, id). */
+  addSums(rows: Array<{ key: string; id: number; total: number; count: number }>): Promise<void>;
+  /** Per key, the `keep` ids with the largest totals (ties: smaller id first). */
+  topSums(keep: number): Promise<Array<{ key: string; id: number; total: number; count: number }>>;
+}
+
+export function memoryStaging(): Staging {
+  const distinct = new Map<string, Set<number>>();
+  const sums = new Map<string, Map<number, { total: number; count: number }>>();
+  return {
+    async addDistinct(pairs) {
+      for (const [k, v] of pairs) {
+        let set = distinct.get(k);
+        if (!set) distinct.set(k, (set = new Set()));
+        set.add(v);
+      }
+    },
+    async distinctCounts() {
+      return new Map([...distinct].map(([k, set]) => [k, set.size]));
+    },
+    async addSums(rows) {
+      for (const r of rows) {
+        let m = sums.get(r.key);
+        if (!m) sums.set(r.key, (m = new Map()));
+        const e = m.get(r.id) || { total: 0, count: 0 };
+        e.total += r.total;
+        e.count += r.count;
+        m.set(r.id, e);
+      }
+    },
+    async topSums(keep) {
+      return [...sums].flatMap(([key, m]) =>
+        [...m].sort((a, b) => b[1].total - a[1].total || a[0] - b[0]).slice(0, keep).map(([id, e]) => ({ key, id, ...e })));
+    },
+  };
 }
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────
@@ -74,8 +123,10 @@ interface PsuRow {
  * beneficiaries and payments (the payment total, or average × services when
  * only the average was imported).
  */
-export function cmsServiceTypes(): Accumulator<PsuRow, { data_year: string; service_type: string; provider_count: number; total_services: number; total_payments: number; total_beneficiaries: number }> {
-  const m = new Map<string, { year: string; type: string; npis: Set<number>; services: number; payments: number; benes: number }>();
+export function cmsServiceTypes(staging: Staging = memoryStaging()): Accumulator<PsuRow, { data_year: string; service_type: string; provider_count: number; total_services: number; total_payments: number; total_beneficiaries: number }> {
+  const m = new Map<string, { year: string; type: string; services: number; payments: number; benes: number }>();
+  // This chunk's (group, provider) pairs; the distinct count is kept in staging.
+  let pairs = new Map<string, Set<number>>();
   let skipped = 0;
   return {
     add(rows) {
@@ -89,11 +140,15 @@ export function cmsServiceTypes(): Accumulator<PsuRow, { data_year: string; serv
         const key = `${year}|${type}`;
         let e = m.get(key);
         if (!e) {
-          e = { year, type, npis: new Set(), services: 0, payments: 0, benes: 0 };
+          e = { year, type, services: 0, payments: 0, benes: 0 };
           m.set(key, e);
         }
         const npi = npiKey(r.npi);
-        if (npi != null) e.npis.add(npi);
+        if (npi != null) {
+          let set = pairs.get(key);
+          if (!set) pairs.set(key, (set = new Set()));
+          set.add(npi);
+        }
         const services = parseCount(r.total_services) ?? 0;
         const total = parseMoney(r.total_medicare_payment_amt);
         const avg = parseMoney(r.average_medicare_payment_amt);
@@ -104,21 +159,33 @@ export function cmsServiceTypes(): Accumulator<PsuRow, { data_year: string; serv
         e.benes += parseCount(r.total_unique_benes) ?? 0;
       }
     },
-    results: () => [...m.values()].map((e) => ({
-      data_year: e.year,
-      service_type: e.type.slice(0, 255),
-      provider_count: e.npis.size,
-      total_services: Math.round(e.services),
-      total_payments: Math.round(e.payments * 100) / 100,
-      total_beneficiaries: Math.round(e.benes),
-    })),
+    async flush() {
+      const out: Array<[string, number]> = [];
+      for (const [key, set] of pairs) for (const npi of set) out.push([key, npi]);
+      pairs = new Map();
+      if (out.length) await staging.addDistinct(out);
+    },
+    async results() {
+      await this.flush!();
+      const providers = await staging.distinctCounts();
+      return [...m].map(([key, e]) => ({
+        data_year: e.year,
+        service_type: e.type.slice(0, 255),
+        provider_count: providers.get(key) ?? 0,
+        total_services: Math.round(e.services),
+        total_payments: Math.round(e.payments * 100) / 100,
+        total_beneficiaries: Math.round(e.benes),
+      }));
+    },
     skipped: () => skipped,
   };
 }
 
 /** The most-referred-to providers per data year (top `keep`), with how many providers refer to each. */
-export function cmsTopReferred(keep = 500): Accumulator<{ npi: string | null; referred_to_npi: string | null; total_referrals: unknown; data_year: string | null }, { data_year: string; referred_to_npi: string; total_referrals: number; referring_providers: number }> {
-  const years = new Map<string, Map<number, { total: number; count: number }>>();
+export function cmsTopReferred(keep = 500, staging: Staging = memoryStaging()): Accumulator<{ npi: string | null; referred_to_npi: string | null; total_referrals: unknown; data_year: string | null }, { data_year: string; referred_to_npi: string; total_referrals: number; referring_providers: number }> {
+  // This chunk's partial sums per (year, target); the running totals for every
+  // target live in staging, which picks the top ones at the end.
+  let chunk = new Map<string, { key: string; id: number; total: number; count: number }>();
   let skipped = 0;
   return {
     add(rows) {
@@ -129,24 +196,27 @@ export function cmsTopReferred(keep = 500): Accumulator<{ npi: string | null; re
           skipped += 1;
           continue;
         }
-        let m = years.get(year);
-        if (!m) {
-          m = new Map();
-          years.set(year, m);
-        }
-        const e = m.get(to) || { total: 0, count: 0 };
+        const k = `${year}|${to}`;
+        const e = chunk.get(k) || { key: year, id: to, total: 0, count: 0 };
         e.total += parseCount(r.total_referrals) ?? 0;
         e.count += 1;
-        m.set(to, e);
+        chunk.set(k, e);
       }
     },
-    results: () => [...years].flatMap(([year, m]) =>
-      [...m].sort((a, b) => b[1].total - a[1].total || a[0] - b[0]).slice(0, keep).map(([npi, e]) => ({
-        data_year: year,
-        referred_to_npi: String(npi).padStart(10, "0"),
+    async flush() {
+      const rows = [...chunk.values()];
+      chunk = new Map();
+      if (rows.length) await staging.addSums(rows);
+    },
+    async results() {
+      await this.flush!();
+      return (await staging.topSums(keep)).map((e) => ({
+        data_year: e.key,
+        referred_to_npi: String(e.id).padStart(10, "0"),
         total_referrals: Math.round(e.total),
         referring_providers: e.count,
-      }))),
+      }));
+    },
     skipped: () => skipped,
   };
 }

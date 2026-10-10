@@ -54,12 +54,12 @@ export default function AppLayout({ children, currentPageName }) {
     asideRef.current?.toggleAttribute('inert', !sidebarOpen);
   }, [sidebarOpen]);
 
-  // Move focus with the sidebar when it opens or closes as an overlay, so
-  // keyboard users aren't left on a control that just disappeared.
+  // Move focus with the sidebar when it opens or closes (at any width: the
+  // toggle pressed is replaced, and a collapsed sidebar is inert), so keyboard
+  // users aren't left on a control that just disappeared.
   React.useEffect(() => {
     if (wasOpen.current === sidebarOpen) return;
     wasOpen.current = sidebarOpen;
-    if (window.innerWidth >= 1024) return;
     if (sidebarOpen) closeButtonRef.current?.focus();
     else openButtonRef.current?.focus();
   }, [sidebarOpen]);

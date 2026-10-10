@@ -3,28 +3,134 @@
 // src/components/customReports/ReportChart.jsx), when the next run is due
 // (schedules are entered in US Eastern time), and the email body.
 
+export interface ReportField {
+  key: string;
+  label: string;
+}
+
 export interface ReportDataset {
   /** Entity name in server/db/schema.ts tableMap. */
   entity: string;
   label: string;
   yearField?: string;
+  metrics: ReportField[];
+  groupOptions: ReportField[];
+  /** Filters the dataset supports ("year" filters on yearField). */
+  filters: string[];
   /** Metrics that mean "how many rows" rather than a value to sum. */
   countMetrics?: string[];
 }
 
-// Datasets offered by the report builder and the schedule form. Only these
-// tables can be read, and only columns that exist on them.
+const YEAR: ReportField = { key: "data_year", label: "Year" };
+const STATE: ReportField = { key: "state", label: "State" };
+const NPI: ReportField = { key: "npi", label: "Provider NPI" };
+
+// The datasets the report builder and schedule form offer, mirrored from
+// src/components/customReports/reportConfig.jsx (SCHEDULE_DATASETS; a parity
+// test keeps the two identical and checks every field is a real column).
+// A schedule may only use these metrics and groups.
 export const REPORT_DATASETS: Record<string, ReportDataset> = {
-  cms_utilization: { entity: "ProviderServiceUtilization", label: "Provider Service Utilization", yearField: "data_year" },
-  cms_referrals: { entity: "CMSReferral", label: "CMS Referrals", yearField: "data_year" },
-  ma_inpatient: { entity: "MedicareFacility", label: "MA Inpatient Hospitals", yearField: "data_year" },
-  hha_stats: { entity: "MedicareFacility", label: "Home Health Agency Stats", yearField: "data_year" },
-  inpatient_drg: { entity: "MedicareFacility", label: "Inpatient DRG", yearField: "data_year" },
-  snf_stats: { entity: "MedicareFacility", label: "SNF Stats", yearField: "data_year" },
-  providers: { entity: "Provider", label: "Providers", countMetrics: ["npi"] },
-  locations: { entity: "ProviderLocation", label: "Provider Locations", countMetrics: ["npi"] },
-  outreach_metrics: { entity: "OutreachCampaign", label: "Outreach Campaigns" },
+  cms_utilization: {
+    entity: "ProviderServiceUtilization", label: "Provider Service Utilization", yearField: "data_year", filters: ["year"],
+    metrics: [
+      { key: "total_services", label: "Total Services" },
+      { key: "total_unique_benes", label: "Medicare Beneficiaries" },
+      { key: "total_medicare_payment_amt", label: "Medicare Payment ($)" },
+    ],
+    groupOptions: [YEAR, NPI, { key: "service_type", label: "Service Type" }],
+  },
+  cms_referrals: {
+    entity: "CMSReferral", label: "CMS Referral Patterns", yearField: "data_year", filters: ["year"],
+    metrics: [{ key: "total_referrals", label: "Total Referrals" }, { key: "total_beneficiaries", label: "Beneficiaries" }],
+    groupOptions: [YEAR, NPI],
+  },
+  ma_inpatient: {
+    entity: "MedicareFacility", label: "Medicare Facilities", yearField: "data_year", filters: ["year", "state"],
+    metrics: [
+      { key: "total_discharges", label: "Total Discharges" },
+      { key: "total_days_of_care", label: "Days of Care" },
+      { key: "total_charges", label: "Total Charges ($)" },
+      { key: "total_payments", label: "Total Payments ($)" },
+    ],
+    groupOptions: [YEAR, STATE, { key: "facility_type", label: "Facility Type" }],
+  },
+  hha_stats: {
+    entity: "MedicareHHAStats", label: "Home Health Agency Stats", yearField: "data_year", filters: ["year", "state"],
+    metrics: [{ key: "npi", label: "Agencies" }], countMetrics: ["npi"],
+    groupOptions: [YEAR, STATE],
+  },
+  inpatient_drg: {
+    entity: "InpatientDRG", label: "Inpatient DRG", yearField: "data_year", filters: ["year"],
+    metrics: [{ key: "total_discharges", label: "Total Discharges" }],
+    groupOptions: [YEAR, { key: "drg_code", label: "DRG Code" }, NPI],
+  },
+  snf_stats: {
+    entity: "MedicareSNFStats", label: "Medicare SNF", yearField: "data_year", filters: ["year", "state"],
+    metrics: [{ key: "npi", label: "Facilities" }], countMetrics: ["npi"],
+    groupOptions: [YEAR, STATE],
+  },
+  providers: {
+    entity: "Provider", label: "Providers", filters: [],
+    metrics: [{ key: "npi", label: "Providers" }], countMetrics: ["npi"],
+    groupOptions: [
+      { key: "entity_type", label: "Entity Type" },
+      { key: "status", label: "Status" },
+      { key: "gender", label: "Gender" },
+      { key: "email_validation_status", label: "Email Validation" },
+      { key: "ai_enrichment_status", label: "Enrichment Status" },
+    ],
+  },
+  reconciliation_discrepancies: {
+    entity: "ProviderReconciliation", label: "Reconciliation Discrepancies", filters: [],
+    metrics: [{ key: "npi", label: "Discrepancies" }], countMetrics: ["npi"],
+    groupOptions: [
+      { key: "source_a", label: "Source" },
+      { key: "field_name", label: "Field" },
+      { key: "status", label: "Status" },
+      { key: "resolution_status", label: "Resolution Status" },
+    ],
+  },
+  outreach_metrics: {
+    entity: "OutreachCampaign", label: "Outreach Metrics", filters: [],
+    metrics: [{ key: "id", label: "Campaigns" }, { key: "total_recipients", label: "Recipients" }], countMetrics: ["id"],
+    groupOptions: [{ key: "status", label: "Campaign Status" }, { key: "campaign_type", label: "Campaign Type" }],
+  },
+  locations: {
+    entity: "ProviderLocation", label: "Provider Locations", filters: [],
+    metrics: [{ key: "npi", label: "Locations" }], countMetrics: ["npi"],
+    groupOptions: [STATE, { key: "location_type", label: "Location Type" }, { key: "city", label: "City" }],
+  },
 };
+
+const FILTER_FIELDS: Record<string, (ds: ReportDataset) => string | undefined> = {
+  year: (ds) => ds.yearField,
+  state: () => "state",
+};
+
+/**
+ * Check a schedule against its dataset and list the columns to read. Throws
+ * with a message naming anything the dataset doesn't offer (a metric removed
+ * from the list, or a schedule saved before it was corrected) instead of
+ * reporting zeros for it.
+ */
+export function reportFields(ds: ReportDataset, config: ReportConfig): string[] {
+  const metrics = config.metrics || [];
+  if (!metrics.length) throw new Error("Pick at least one metric for this schedule.");
+  const metricKeys = new Set(ds.metrics.map((m) => m.key));
+  const bad = metrics.filter((m) => !metricKeys.has(m));
+  if (bad.length) throw new Error(`${ds.label} has no ${bad.map((m) => `"${humanize(m)}"`).join(", ")} metric. Edit the schedule and pick its metrics again.`);
+  if (config.group_by && !ds.groupOptions.some((g) => g.key === config.group_by)) {
+    throw new Error(`${ds.label} can't be grouped by "${humanize(config.group_by)}". Edit the schedule and pick a grouping again.`);
+  }
+  const filterCols: string[] = [];
+  for (const [name, value] of Object.entries(config.filters || {})) {
+    if (value === undefined || value === null || value === "") continue;
+    const col = ds.filters.includes(name) ? FILTER_FIELDS[name]?.(ds) : undefined;
+    if (!col) throw new Error(`${ds.label} can't be filtered by "${humanize(name)}". Edit the schedule and clear that filter.`);
+    filterCols.push(col);
+  }
+  return [...new Set([...metrics, ...(config.group_by ? [config.group_by] : []), ...filterCols])];
+}
 
 export interface ReportConfig {
   dataset?: string;
@@ -48,8 +154,6 @@ export function aggregateReport(rows: Record<string, any>[], config: ReportConfi
   let data = rows;
   if (f.year && ds.yearField) data = data.filter((r) => String(r[ds.yearField!]) === String(f.year));
   if (f.state) data = data.filter((r) => String(r.state || "").toUpperCase() === String(f.state).toUpperCase());
-  if (f.hospital_type) data = data.filter((r) => String(r.hospital_type || "").toLowerCase().includes(String(f.hospital_type).toLowerCase()));
-  if (f.table_name) data = data.filter((r) => r.table_name === f.table_name);
   if (data.length === 0) return [];
 
   const add = (target: Record<string, any>, row: Record<string, any>) => {
@@ -95,12 +199,18 @@ function zoneOffset(instant: number, timeZone: string): number {
   return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - Math.floor(instant / 1000) * 1000;
 }
 
-/** The UTC instant for a wall-clock time in a zone (DST-aware). */
+/**
+ * The UTC instant for a wall-clock time in a zone (DST-aware). A time that
+ * happens twice (fall back) is the first one; a time that doesn't exist
+ * (spring forward: 02:30 on the change day) moves forward by the gap, to 03:30.
+ */
 export function zonedTime(y: number, m: number, d: number, hh: number, mm: number, timeZone = REPORT_TIMEZONE): Date {
-  const guess = Date.UTC(y, m - 1, d, hh, mm);
-  let t = guess - zoneOffset(guess, timeZone);
-  t = guess - zoneOffset(t, timeZone); // second pass settles DST transitions
-  return new Date(t);
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  // Try the offsets in force just before and just after the wall time.
+  const before = wall - zoneOffset(wall - 864e5 / 2, timeZone);
+  const after = wall - zoneOffset(wall + 864e5 / 2, timeZone);
+  const valid = [before, after].filter((t) => t + zoneOffset(t, timeZone) === wall);
+  return new Date(valid.length ? Math.min(...valid) : Math.max(before, after));
 }
 
 function zonedDate(instant: Date, timeZone = REPORT_TIMEZONE) {
@@ -155,8 +265,9 @@ const formatNumber = (v: unknown) => {
 
 function csvCell(v: unknown): string {
   const s = String(v ?? "");
-  // Neutralise spreadsheet formulas, then quote when needed.
-  const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s) ? `'${s}` : s;
+  // Neutralise spreadsheet formulas in text (a negative number stays a
+  // number), then quote when needed.
+  const safe = typeof v !== "number" && /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
@@ -212,14 +323,22 @@ export function summarizeReport(rows: ReportRow[], metrics: Array<{ key: string;
   return `${top.group} leads ${rows.length} ${groupLabel.toLowerCase()} groups on ${first.label.toLowerCase()} with ${formatNumber(top[first.key])} (${share}% of ${formatNumber(total)}).`;
 }
 
-/** Recipients a report may go to: app users, or addresses on an allowed domain. */
-export function partitionRecipients(recipients: unknown, userEmails: Set<string>, allowedDomains: string[]) {
+/** Recipients a report may go to: active app users, or addresses without an account on an allowed domain. */
+export function partitionRecipients(
+  recipients: unknown,
+  userEmails: Set<string>,
+  allowedDomains: string[],
+  inactiveEmails: Set<string> = new Set(),
+) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@"));
   const allowed: string[] = [];
   const blocked: string[] = [];
   for (const email of [...new Set(list)]) {
     const domain = email.split("@")[1];
-    (userEmails.has(email) || allowedDomains.includes(domain) ? allowed : blocked).push(email);
+    // An account awaiting approval or disabled is blocked even on an allowed
+    // domain; the domain rule is for addresses with no account.
+    const ok = userEmails.has(email) || (!inactiveEmails.has(email) && allowedDomains.includes(domain));
+    (ok ? allowed : blocked).push(email);
   }
   return { allowed: allowed.slice(0, 25), blocked };
 }

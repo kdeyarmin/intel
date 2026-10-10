@@ -143,13 +143,14 @@ export default function CountyIntelligence() {
             <Badge variant="outline" className="text-slate-400">{data.zip_areas} ZIP areas</Badge>
             {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
           </div>
-          {(data.sample?.sampled || !data.sample?.details_cover_all) && (
+          {(data.sample?.sampled || !data.sample?.details_cover_all || data.sample?.facilities_capped) && (
             <p className="flex items-start gap-1.5 text-xs text-slate-400">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               {data.sample.sampled
                 ? `This county has more practice locations than we read at once; specialties and provider types describe ${summary.sampledProviders.toLocaleString()} of them.`
                 : ''}
               {!data.sample.details_cover_all && ` Referrals and services are from the first ${data.sample.detail_limit.toLocaleString()} providers.`}
+              {data.sample.facilities_capped && ` Facility totals cover the newest ${data.sample.facility_limit.toLocaleString()} facility records.`}
             </p>
           )}
 
@@ -256,14 +257,27 @@ export default function CountyIntelligence() {
               <CardContent>
                 {facilities.length === 0 ? <p className="text-sm text-slate-400">No Medicare facilities found in this county.</p> : (
                   <ul className="space-y-1.5">
-                    {list('fac', facilities, 10).map((f) => (
-                      <li key={f.id}>
-                        <Link to={createPageUrl(`FacilityDetail?id=${f.providerId}&group=${f.group}`)} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/30 hover:bg-slate-900/60 text-xs">
+                    {list('fac', facilities, 10).map((f) => {
+                      const body = (
+                        <>
                           <span className="truncate text-slate-200">{f.name || f.providerId}</span>
                           <span className="shrink-0 text-slate-400">{FACILITY_LABELS[f.group] || f.group} · {f.city}</span>
-                        </Link>
-                      </li>
-                    ))}
+                        </>
+                      );
+                      // Facility Detail looks facilities up by CMS provider number;
+                      // a record without one has no page to open.
+                      return (
+                        <li key={f.id}>
+                          {f.providerId ? (
+                            <Link to={createPageUrl(`FacilityDetail?id=${encodeURIComponent(f.providerId)}&group=${f.group}`)} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/30 hover:bg-slate-900/60 text-xs">
+                              {body}
+                            </Link>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/30 text-xs">{body}</div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 {facilities.length > 10 && (

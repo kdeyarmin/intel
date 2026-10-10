@@ -65,6 +65,7 @@ export const assistantMessages = pgTable("assistant_messages", {
   created_at: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("assistant_messages_conversation_seq_uq").on(table.conversation_id, table.seq),
+  index("assistant_messages_turn_idx").on(table.turn_id),
   // Named explicitly: the generated name is longer than Postgres's 63-character limit.
   foreignKey({ name: "assistant_messages_conversation_id_fk", columns: [table.conversation_id], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
 ]);
@@ -86,6 +87,7 @@ export const assistantActions = pgTable("assistant_actions", {
   created_at: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("assistant_actions_conversation_idx").on(table.conversation_id),
+  index("assistant_actions_turn_idx").on(table.turn_id),
 ]);
 
 export const assistantUsage = pgTable("assistant_usage", {

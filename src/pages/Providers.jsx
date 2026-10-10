@@ -57,7 +57,22 @@ const URL_DEFAULTS = {
   sort: 'default',
   dir: 'asc',
   tab: 'directory',
+  // Date range on created_date, and text-match filters (JSON).
+  range: 'all',
+  from: '',
+  to: '',
+  tf: '',
 };
+
+function parseTextFilters(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 const FILTER_KEYS = {
   entityTypeFilter: 'type',
@@ -90,8 +105,17 @@ export default function Providers() {
   const [saveListOpen, setSaveListOpen] = useState(false);
   // Set when a single row's "add to list" button opened the dialog.
   const [listDialogNpis, setListDialogNpis] = useState(null);
-  const [textFilters, setTextFilters] = useState([]);
-  const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
+  const textFilters = useMemo(() => parseTextFilters(url.tf), [url.tf]);
+  const setTextFilters = useCallback((next) => {
+    setUrl({ tf: next?.length ? JSON.stringify(next) : '' });
+  }, [setUrl]);
+  const dateRange = useMemo(
+    () => ({ preset: url.range, startDate: url.from, endDate: url.to }),
+    [url.range, url.from, url.to],
+  );
+  const setDateRange = useCallback((next) => {
+    setUrl({ range: next?.preset || 'all', from: next?.startDate || '', to: next?.endDate || '' });
+  }, [setUrl]);
   const [activePresetId, setActivePresetId] = useState(null);
 
   const queryClient = useQueryClient();
@@ -495,8 +519,9 @@ export default function Providers() {
 
   const COLORS = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#f43f5e'];
 
-  // Saves the checked rows if any are selected, otherwise everything the
-  // current search/filters matched.
+  // Saves the checked rows if any are selected, otherwise the providers loaded
+  // on this page (the first 100, or up to 300 search results). The button
+  // says how many.
   const saveListNpis = selectedNpis.size > 0
     ? Array.from(selectedNpis)
     : sortedProviders.map(p => p.npi);
@@ -578,7 +603,9 @@ export default function Providers() {
           >
             <Save className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">
-              {selectedNpis.size > 0 ? `Add ${selectedNpis.size} to Lead List` : 'Save as Lead List'}
+              {selectedNpis.size > 0
+                ? `Add ${selectedNpis.size} to Lead List`
+                : `Save ${saveListNpis.length} shown as Lead List`}
             </span>
             <span className="sm:hidden">Save List</span>
           </Button>

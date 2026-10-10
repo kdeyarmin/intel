@@ -44,6 +44,9 @@ export default [
       // `{{token}}` text in JSX, or reading a const before its declaration).
       "no-undef": "error",
       "react/jsx-no-undef": "error",
+      // `variables: false` still reports a const read before its declaration
+      // in the same scope (the render-time TDZ crash); it only skips reads
+      // inside nested functions, which run later.
       "no-use-before-define": [
         "error",
         { functions: false, classes: false, variables: false },

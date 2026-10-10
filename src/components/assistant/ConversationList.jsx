@@ -61,10 +61,10 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
                     <span className="block text-[10px] text-slate-400">{when(c.updated_at)}</span>
                   </button>
                   <div className="flex shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400" aria-label={`Rename ${c.title || 'conversation'}`} onClick={() => setRenaming(c.id)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 text-slate-400" aria-label={`Rename ${c.title || 'conversation'}`} onClick={() => setRenaming(c.id)}>
                       <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-red-400" aria-label={`Delete ${c.title || 'conversation'}`} onClick={() => onDelete(c)}>
+                    <Button size="icon" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 text-slate-400 hover:text-red-400" aria-label={`Delete ${c.title || 'conversation'}`} onClick={() => onDelete(c)}>
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                     </Button>
                   </div>

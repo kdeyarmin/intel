@@ -87,7 +87,10 @@ const COUNTY = {
   sample: { sampled: true, detail_limit: 1000, details_cover_all: false },
   topSpecialties: [{ name: 'Cardiology', count: 11 }],
   facilitySummary: [{ type: 'hospital', count: 1, totalPayments: 0, avgRating: 4 }],
-  facilities: [{ id: 7, name: 'Mercy', type: 'hospital_general_info', group: 'hospital', providerId: '390001', city: 'Pittsburgh' }],
+  facilities: [
+    { id: 7, name: 'Mercy', type: 'hospital_general_info', group: 'hospital', providerId: '390001', city: 'Pittsburgh' },
+    { id: 8, name: 'Hilltop Hospice', type: 'hospice_general_info', group: 'hospice', providerId: null, city: 'Pittsburgh' },
+  ],
   providers: [{ npi: '1000000001', name: 'Ann Chen, MD', specialty: 'Cardiology', score: null }],
   referrals: [{ fromNpi: '1', fromName: 'Ann Chen, MD', toNpi: '2', toName: 'Mercy Hospital', totalReferrals: 45 }],
   topServices: [{ code: '93306', name: 'Echocardiogram', amount: 1200 }],
@@ -112,13 +115,28 @@ describe('CountyIntelligence', () => {
     expect(screen.getByRole('link', { name: /Mercy\s*Hospitals · Pittsburgh/ })).toHaveAttribute('href', '/FacilityDetail?id=390001&group=hospital');
     expect(screen.getByText('Unscored')).toBeInTheDocument();
     expect(screen.getByText('Not reported in the imported facility data')).toBeInTheDocument();
+    // A record without a CMS provider number has no detail page to link to.
+    expect(screen.getByText('Hilltop Hospice')).toBeInTheDocument();
+    expect(screen.getByText('Hilltop Hospice').closest('a')).toBeNull();
   });
 
-  it('keeps the county in the URL when the state changes back', async () => {
+  it('drops the county when the state changes, and does not bring it back', async () => {
+    // Radix Select needs these in jsdom.
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.scrollIntoView ??= () => {};
     invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getGeoCounties' ? { counties: [] } : COUNTY));
     renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
     await screen.findByRole('heading', { name: 'Allegheny County, PA' });
     expect(screen.getByTestId('url').textContent).toBe('?state=PA&county=42003');
-    fireEvent.click(screen.getByRole('link', { name: /Territory map and county density/ }));
+
+    const pickState = async (name) => {
+      fireEvent.keyDown(document.getElementById('county-state'), { key: 'Enter' });
+      fireEvent.click(await screen.findByRole('option', { name }));
+    };
+    await pickState('OH');
+    expect(screen.getByTestId('url').textContent).toBe('?state=OH');
+    await pickState('PA');
+    expect(screen.getByTestId('url').textContent).toBe('?state=PA');
+    expect(invoke).not.toHaveBeenCalledWith('getCountyIntelligence', { state: 'PA', county_fips: '' });
   });
 });

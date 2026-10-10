@@ -45,7 +45,7 @@ export default function RuleResultsTable({ results = [] }) {
               </TableCell>
               <TableCell className="text-right font-mono text-sm">{r.pct}%</TableCell>
               <TableCell>
-                <Progress value={r.pct} className="h-2" aria-label={`${r.rule_name} failure rate`} />
+                <Progress value={r.pct} className="h-2" aria-label={`${r.rule_name} pass rate`} />
               </TableCell>
               <TableCell className="text-right text-sm text-red-400 font-medium">
                 {r.failing > 0 ? r.failing.toLocaleString() : '—'}
