@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Mail, Phone, Stethoscope, ChevronRight, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function DataHealthAlerts() {
+  const { canOpen } = usePageAccess();
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ['dh_alerts'],
     queryFn: async () => {
@@ -45,11 +47,13 @@ export default function DataHealthAlerts() {
             Critical Data Health Alerts
             <Badge variant="outline" className="ml-2 bg-rose-500/10 text-rose-400 border-rose-500/20">{alerts.length} High-Value Records</Badge>
           </CardTitle>
-          <Link to={createPageUrl('DataQuality')}>
-            <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-400 hover:text-white">
-              View All <ChevronRight className="w-3 h-3 ml-1" />
-            </Button>
-          </Link>
+          {canOpen('DataQuality') && (
+            <Link to={createPageUrl('DataQuality')}>
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-400 hover:text-white">
+                View All <ChevronRight className="w-3 h-3 ml-1" />
+              </Button>
+            </Link>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-0">

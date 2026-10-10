@@ -8,6 +8,9 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound.jsx';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import Login from '@/pages/Login';
+import { buildLoginUrl } from '@/lib/returnUrl';
+import { canAccessPage } from '@/components/layout/navConfig';
+import AccessDenied from '@/components/shared/AccessDenied';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -57,8 +60,8 @@ const LayoutWrapper = ({ children, currentPageName }) => {
   return Layout ? <Layout currentPageName={currentPageName}>{content}</Layout> : content;
 };
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+const ProtectedRoute = ({ children, pageName }) => {
+  const { isAuthenticated, isLoadingAuth, sessionExpired, user } = useAuth();
   const location = useLocation();
 
   if (isLoadingAuth) {
@@ -70,18 +73,31 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={`/login?returnUrl=${encodeURIComponent(location.pathname)}`} replace />;
+    return <Navigate to={buildLoginUrl(location, { reason: sessionExpired ? 'expired' : undefined })} replace />;
+  }
+
+  if (pageName && !canAccessPage(pageName, user?.role)) {
+    return <DeniedPage pageName={pageName} />;
   }
 
   return children;
 };
+
+// Admin-only pages are hidden from non-admin nav, but a bookmarked or shared
+// URL still lands here: keep the app chrome and explain instead of rendering a
+// page whose data calls would all fail with 403.
+const DeniedPage = ({ pageName }) => (
+  <LayoutWrapper currentPageName={pageName}>
+    <AccessDenied />
+  </LayoutWrapper>
+);
 
 const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={
-        <ProtectedRoute>
+        <ProtectedRoute pageName={mainPageKey}>
           <LayoutWrapper currentPageName={mainPageKey}>
             <MainPage />
           </LayoutWrapper>
@@ -92,7 +108,7 @@ const AuthenticatedApp = () => {
           key={path}
           path={`/${path}`}
           element={
-            <ProtectedRoute>
+            <ProtectedRoute pageName={path}>
               <LayoutWrapper currentPageName={path}>
                 <Page />
               </LayoutWrapper>

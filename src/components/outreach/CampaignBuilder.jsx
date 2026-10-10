@@ -156,7 +156,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Email Template</CardTitle>
-              <p className="text-xs text-slate-400 mt-1">Use {{merge_fields}} for personalization</p>
+              <p className="text-xs text-slate-400 mt-1">Use {'{{merge_fields}}'} for personalization</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -167,7 +167,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                   onChange={(e) => setCampaign({ ...campaign, subject_template: e.target.value })}
                   className="mt-1 font-mono text-sm"
                 />
-                <p className="text-xs text-slate-500 mt-2">Available: {{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}, {{location_state}}</p>
+                <p className="text-xs text-slate-500 mt-2">Available: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}, {{location_state}}'}</p>
               </div>
 
               <div>

@@ -7,6 +7,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { pagesConfig } from '@/pages.config.js';
+import { useAuth } from '@/lib/AuthContext';
+import { getVisibleNavSections } from '@/components/layout/navConfig';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
   Stethoscope, ListChecks, FileBarChart2, ArrowUp, ArrowDown
@@ -29,17 +31,9 @@ const QUICK_FILTERS = [
   { label: 'High-score leads', search: 'high', type: 'shortcut' },
 ];
 
-function formatPageLabel(page) {
-  return page
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/\bAi\b/g, 'AI')
-    .replace(/\bCms\b/g, 'CMS')
-    .replace(/\bNppes\b/g, 'NPPES')
-    .trim();
-}
-
 export default function GlobalSearchDialog({ open, onOpenChange }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [highlightIdx, setHighlightIdx] = useState(-1);
@@ -100,12 +94,12 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
   useEffect(() => { setHighlightIdx(-1); }, [query, activeCategory]);
 
+  // Only sidebar pages the user can open: detail pages need an id, alias
+  // routes duplicate real pages, and admin pages would just say "Access denied".
   const searchablePages = useMemo(() => (
-    Object.keys(pagesConfig.Pages).map((page) => ({
-      name: formatPageLabel(page),
-      page,
-    }))
-  ), []);
+    getVisibleNavSections(user?.role).flatMap((section) =>
+      section.items.map((item) => ({ name: item.name, page: item.page, section: section.label })))
+  ), [user?.role]);
 
   const allResults = useMemo(() => {
     if (!query || query.length < 2) return [];
@@ -114,8 +108,8 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
     // Pages
     searchablePages.forEach(p => {
-      if (p.name.toLowerCase().includes(q)) {
-        items.push({ type: 'Page', label: p.name, sublabel: 'Navigate to page', url: createPageUrl(p.page), pageName: p.page });
+      if (p.name.toLowerCase().includes(q) || p.section.toLowerCase().includes(q)) {
+        items.push({ type: 'Page', label: p.name, sublabel: p.section, url: createPageUrl(p.page), pageName: p.page });
       }
     });
 

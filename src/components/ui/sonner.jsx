@@ -1,15 +1,13 @@
 "use client";
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
 
 const Toaster = ({
   ...props
 }) => {
-  const { theme = "system" } = useTheme()
-
+  // The app is dark-only and has no ThemeProvider, so don't follow the OS theme.
   return (
     (<Sonner
-      theme={theme}
+      theme="dark"
       className="toaster group"
       toastOptions={{
         classNames: {
