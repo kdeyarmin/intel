@@ -6,17 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Lightbulb, ArrowRight } from 'lucide-react';
 import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
 
-export default function AINetworkRecommendations({ state = null }) {
+export default function AINetworkRecommendations({ state = null, leadListId = null, leadListName = null }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
-  useEffect(() => { setData(null); }, [state]);
+  useEffect(() => { setData(null); }, [state, leadListId]);
 
   const handleGetRecommendations = async () => {
     setLoading(true);
     try {
       const result = await invokeOrThrow('analyzeProviderNetwork', {
         analysis_type: 'full',
-        ...(state ? { state } : {}),
+        ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
       });
       setData(result.analysis);
     } catch (error) {
@@ -37,7 +37,7 @@ export default function AINetworkRecommendations({ state = null }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-violet-400 mb-4">
-            Recommendations for growing and strengthening the referral network, based on its influencers and specialty gaps. {scopeHint(state)}
+            Recommendations for growing and strengthening the referral network, based on its influencers and specialty gaps. {scopeHint(state, leadListName)}
           </p>
           <Button onClick={handleGetRecommendations} disabled={loading} className="gap-2 bg-violet-600 hover:bg-violet-700">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}

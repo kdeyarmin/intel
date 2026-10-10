@@ -23,7 +23,8 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
     const laid = sorted.map((node, i) => {
       if (i === 0) return { ...node, x: cx, y: cy };
       const angle = (2 * Math.PI * i) / (sorted.length - 1 || 1);
-      const radius = 120 + Math.min(i * 15, 220);
+      // Spiral outwards, staying inside the 800×600 drawing (labels included).
+      const radius = 90 + (i / Math.max(sorted.length - 1, 1)) * 170;
       return { ...node, x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
     });
 
@@ -61,9 +62,9 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
           </div>
         </div>
         <div className="flex gap-3 mt-1">
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-blue-900/20" /> Individual</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-violet-900/20" /> Organization</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-red-900/20" /> Hub</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Individual</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-violet-500" /> Organization</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-red-500" /> Hub</div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -96,12 +97,12 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
                   />
                   {(r > 14 || isHovered) && (
                     <text x={n.x} y={n.y + r + 12} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight={isHovered ? '600' : '400'}>
-                      {n.label.length > 18 ? n.label.slice(0, 16) + '…' : n.label}
+                      {(n.label || n.npi).length > 18 ? (n.label || n.npi).slice(0, 16) + '…' : (n.label || n.npi)}
                     </text>
                   )}
                   {isHovered && (
                     <text x={n.x} y={n.y + r + 22} textAnchor="middle" fontSize="8" fill="#64748b">
-                      {n.totalVolume.toLocaleString()} referrals
+                      {(Number(n.totalVolume) || 0).toLocaleString()} shared patients
                     </text>
                   )}
                 </g>

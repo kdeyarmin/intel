@@ -7,17 +7,17 @@ import { Loader2, AlertTriangle, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
 
-export default function NetworkGapAnalysis({ state = null }) {
+export default function NetworkGapAnalysis({ state = null, leadListId = null, leadListName = null }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
-  useEffect(() => { setData(null); }, [state]);
+  useEffect(() => { setData(null); }, [state, leadListId]);
 
   const handleAnalyze = async () => {
     setLoading(true);
     try {
       const result = await invokeOrThrow('analyzeProviderNetwork', {
         analysis_type: 'gaps',
-        ...(state ? { state } : {}),
+        ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
       });
       setData(result.analysis);
     } catch (error) {
@@ -38,7 +38,7 @@ export default function NetworkGapAnalysis({ state = null }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-400 mb-4">
-            Find specialties where most providers aren't part of the referral network yet. {scopeHint(state)}
+            Find specialties where most providers aren't part of the referral network yet. {scopeHint(state, leadListName)}
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}

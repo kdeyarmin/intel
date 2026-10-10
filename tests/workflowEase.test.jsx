@@ -67,6 +67,7 @@ function UrlStateHarness() {
       <span data-testid="search">{location.search}</span>
       <button onClick={() => setState({ state: 'PA', page: 2 })}>filter</button>
       <button onClick={() => setState((cur) => ({ page: cur.page + 1 }))}>next</button>
+      <button onClick={() => { setState({ state: '' }); setState({ page: 9 }); }}>both</button>
       <button onClick={() => navigate('/other')}>leave</button>
     </div>
   );
@@ -88,6 +89,18 @@ describe('useUrlState', () => {
     fireEvent.click(screen.getByText('leave'));
     fireEvent.click(screen.getByText('back'));
     expect(JSON.parse(screen.getByTestId('state').textContent)).toMatchObject({ state: 'PA', page: 3 });
+  });
+
+  it('keeps both of two updates made in a row', () => {
+    render(
+      <MemoryRouter initialEntries={['/list?state=OH&page=2']}>
+        <Routes>
+          <Route path="/list" element={<UrlStateHarness />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText('both'));
+    expect(screen.getByTestId('search').textContent).toBe('?page=9');
   });
 });
 

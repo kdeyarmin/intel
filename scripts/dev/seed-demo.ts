@@ -103,10 +103,15 @@ async function main() {
     const locations: unknown[][] = [];
     const taxonomies: unknown[][] = [];
     const people: Array<{ npi: string; spec: (typeof SPECIALTIES)[number]; city: (typeof CITIES)[number] }> = [];
-    let base = 199_000_000;
+    // Skip NPIs another local dataset already uses (the demo rows were deleted above).
+    const candidates = Array.from({ length: 400 }, (_, k) => npiFrom(199_000_000 + k));
+    const { rows: taken } = await client.query("SELECT npi FROM providers WHERE npi = ANY($1)", [candidates]);
+    const takenSet = new Set(taken.map((r: any) => r.npi));
+    const free = candidates.filter((n) => !takenSet.has(n));
+    if (free.length < 160) throw new Error("Too many demo NPIs are already in use by other rows.");
 
     for (let i = 0; i < 160; i += 1) {
-      const npi = npiFrom(base++);
+      const npi = free[i];
       const city = CITIES[i % CITIES.length];
       const zip = pick(city.zips);
       const isOrg = i % 8 === 7;

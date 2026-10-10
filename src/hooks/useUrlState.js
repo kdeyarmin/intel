@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 function parseParam(raw, fallback) {
@@ -46,12 +46,18 @@ export function writeUrlState(params, defaults, patch) {
 export function useUrlState(defaults) {
   const [params, setParams] = useSearchParams();
   const state = useMemo(() => readUrlState(params, defaults), [params, defaults]);
+  // react-router hands functional updates the params from the last render, so
+  // two quick updates (e.g. clear a filter, then switch tab) would drop the
+  // first. Build each update on the latest params written instead.
+  const latest = useRef(params);
+  latest.current = params;
 
   const setState = useCallback((update) => {
-    setParams((prev) => {
-      const patch = typeof update === 'function' ? update(readUrlState(prev, defaults)) : update;
-      return writeUrlState(prev, defaults, patch);
-    }, { replace: true });
+    const base = latest.current;
+    const patch = typeof update === 'function' ? update(readUrlState(base, defaults)) : update;
+    const next = writeUrlState(base, defaults, patch);
+    latest.current = next;
+    setParams(next, { replace: true });
   }, [setParams, defaults]);
 
   return [state, setState];

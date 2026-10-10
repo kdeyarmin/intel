@@ -7,18 +7,18 @@ import { Loader2, Crown, TrendingUp, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
 
-export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = null }) {
+export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = null, leadListId = null, leadListName = null }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   // Results belong to one scope; don't show another state's numbers.
-  useEffect(() => { setData(null); }, [state]);
+  useEffect(() => { setData(null); }, [state, leadListId]);
 
   const handleAnalyze = async () => {
     setLoading(true);
     try {
       const result = await invokeOrThrow('analyzeProviderNetwork', {
         analysis_type: 'influencers',
-        ...(state ? { state } : {}),
+        ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
       });
       setData(result.analysis);
     } catch (error) {
@@ -39,7 +39,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-400 mb-4">
-            Identify key influencers and decision-makers in your provider network. {scopeHint(state)}
+            Identify key influencers and decision-makers in your provider network. {scopeHint(state, leadListName)}
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}

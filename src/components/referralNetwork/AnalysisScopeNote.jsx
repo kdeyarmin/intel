@@ -17,8 +17,9 @@ export default function AnalysisScopeNote({ analysis }) {
   );
 }
 
-export function scopeHint(state) {
+export function scopeHint(state, leadListName = null) {
+  if (leadListName) return `Uses referral data for the providers on the lead list "${leadListName}".`;
   return state
     ? `Uses referral data for providers practicing in ${state}.`
-    : 'Uses a nationwide sample of referral data. Pick a state in the filters above for a complete local picture.';
+    : 'Uses a nationwide sample of referral data. Pick a state or a lead list above for a complete picture.';
 }
