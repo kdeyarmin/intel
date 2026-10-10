@@ -24,7 +24,8 @@ function highlightText(text, term) {
  * topics; while searching, Help passes only the ones that match. A topic with
  * a `page` links to it when the signed-in person may open that page.
  */
-export default function HelpSection({ section, topics = section.content, expanded, onToggle, searchTerm }) {
+/** `locked`: search keeps the section open, so the header doesn't toggle. */
+export default function HelpSection({ section, topics = section.content, expanded, onToggle, searchTerm, locked = false }) {
   const Icon = section.icon;
   const role = useOptionalAuth()?.user?.role;
 
@@ -34,9 +35,10 @@ export default function HelpSection({ section, topics = section.content, expande
         <button
           type="button"
           onClick={onToggle}
+          disabled={locked}
           aria-expanded={expanded}
           aria-controls={expanded ? `${section.id}-content` : undefined}
-          className="w-full flex items-center gap-3 p-4 sm:p-5 text-left hover:bg-slate-800/30 transition-colors"
+          className="w-full flex items-center gap-3 p-4 sm:p-5 text-left hover:bg-slate-800/30 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
         >
           <Icon className={`w-5 h-5 ${section.color} shrink-0`} aria-hidden="true" />
           <span className="flex-1 text-sm sm:text-base font-semibold text-slate-200">{section.title}</span>

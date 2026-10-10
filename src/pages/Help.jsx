@@ -35,7 +35,7 @@ const GUIDE_SECTIONS = [
       { page: 'Providers', heading: 'Searching', text: 'Search (Ctrl+K) and the directory pages search the whole database on the server:\n• **People** by last name — "Smith", "John Smith" or "Smith, John".\n• **Organizations** by any part of the name — "Mercy" finds "Mercy Hospital of Pittsburgh".\n• **NPIs** — the full 10 digits, or the first few.\n• **Places** (Locations page) — a ZIP or ZIP+4, "Pittsburgh, PA", or a state. A city on its own needs a state.\n\nVery common names return the first matches; add a state or more letters to narrow them.' },
       { page: 'Providers', heading: 'Providers and organizations', text: '**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities, outreach history and a printable report. Organizations also show affiliated providers.' },
       { page: 'Locations', heading: 'Locations', text: 'Find practice and mailing addresses by NPI, ZIP, "City, ST" or state. Each location opens its provider and nearby details.' },
-      { page: 'Facilities', heading: 'Facilities', text: 'One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility\'s page shows every imported CMS record for it and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.' },
+      { page: 'Facilities', heading: 'Facilities', text: 'One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility\'s page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.' },
     ],
   },
   {
@@ -68,7 +68,7 @@ const GUIDE_SECTIONS = [
     content: [
       { page: 'ReferralNetworkIntelligence', heading: 'Referral Network', text: 'Maps Medicare shared-patient patterns — how many patients two providers both saw — for a state, a lead list or one provider. These are patterns, not confirmed referrals. The view shows the busiest providers and their strongest connections; hubs are the most connected providers. Large networks are trimmed to the busiest part, and the page says when it is.' },
       { page: 'CMSAnalytics', heading: 'CMS Data', text: 'Summaries of Medicare utilization by service type, the most-referred-to providers and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.' },
-      { page: 'CustomReports', heading: 'Reports and analytics', text: '**Reports** builds reports from your data, saves them and emails them on a schedule. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.' },
+      { page: 'CustomReports', heading: 'Reports and analytics', text: '**Reports** builds reports from your data, saves them and emails them on a schedule to people with an active account (or an address on a domain an admin has approved). **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.' },
     ],
   },
   {
@@ -77,8 +77,8 @@ const GUIDE_SECTIONS = [
     icon: Target,
     color: 'text-green-400',
     content: [
-      { page: 'LeadLists', heading: 'Lead lists', text: 'Lead lists hold the providers you\'re working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses, export it or start a campaign.' },
-      { page: 'LeadListBuilder', heading: 'Lead Builder', text: 'Filter providers by state, city, ZIP, specialty text, score range, Medicare patient volume, Medicare participation and behavioral-health or geriatric focus, then save the matches as a list.\n\nThe builder only filters the 500 most recently added providers, so it can miss matches. To list a specialty or area across the whole database, use the AI Assistant or the Territory map.' },
+      { page: 'LeadLists', heading: 'Lead lists', text: 'Lead lists hold the providers you\'re working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; admins can also start a campaign from it.' },
+      { page: 'LeadListBuilder', heading: 'Lead Builder', text: 'Filter providers by state, city, ZIP, specialty text, score range, Medicare patient volume, Medicare participation and behavioral-health or geriatric focus, then save the matches as a list.\n\nThe builder only filters the 500 most recently added providers, so it can miss matches. To list a specialty or area across the whole database, ask the AI Assistant. The Territory map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.' },
       { page: 'ProviderOutreach', heading: 'Campaigns (admin)', text: 'Create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Sending is admin-only, and every email carries an unsubscribe link that is honoured automatically.' },
       { page: 'ProviderIntelligence', heading: 'Provider intelligence (admin)', text: 'Finds and checks provider contact details: AI-assisted email search, email verification (by checking the domain\'s mail servers), NPI validation and enrichment of provider records. Suggested changes are reviewed before they\'re applied.' },
     ],
@@ -257,7 +257,7 @@ export default function Help() {
         icon={HelpCircle}
         breadcrumbs={[{ label: 'Help' }]}
         actions={
-          <Button onClick={generatePDF} disabled={generating} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
+          <Button onClick={generatePDF} disabled={generating} className="bg-cyan-700 hover:bg-cyan-600 text-white gap-2">
             <Download className="w-4 h-4" aria-hidden="true" />
             {generating ? 'Generating...' : 'Download PDF Guide'}
           </Button>
@@ -275,12 +275,13 @@ export default function Help() {
             aria-label="Search help topics"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-[#141d30] border-slate-700/50 text-slate-200 placeholder:text-slate-500"
+            className="pl-10 bg-[#141d30] border-slate-700/50 text-slate-200 placeholder:text-slate-400"
           />
         </div>
+        {/* While searching every matching section is open, so these do nothing. */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={expandAll} className="text-xs">Expand All</Button>
-          <Button variant="outline" size="sm" onClick={collapseAll} className="text-xs">Collapse All</Button>
+          <Button variant="outline" size="sm" onClick={expandAll} disabled={Boolean(query)} className="text-xs">Expand All</Button>
+          <Button variant="outline" size="sm" onClick={collapseAll} disabled={Boolean(query)} className="text-xs">Collapse All</Button>
         </div>
       </div>
 
@@ -313,6 +314,7 @@ export default function Help() {
             section={section}
             topics={topics}
             expanded={Boolean(query) || expandedSections.has(section.id)}
+            locked={Boolean(query)}
             onToggle={() => toggleSection(section.id)}
             searchTerm={searchTerm}
           />

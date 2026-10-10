@@ -375,7 +375,8 @@ export default function LeadListBuilder() {
             <CardContent>
               <p className="text-xs text-slate-400 mb-3">
                 The builder filters the 500 most recently added providers, so it can miss matches.
-                To find a specialty or area across the whole database, ask the AI Assistant or use the Territory map.
+                To find a specialty or area across the whole database, ask the AI Assistant. The Territory
+                map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.
               </p>
               <LeadResultsTable
                 results={filteredResults}

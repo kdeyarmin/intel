@@ -55,6 +55,10 @@ describe('Help page', () => {
     expect(toggles[0]).toHaveTextContent('1 of 4 topics');
     expect(screen.getByRole('heading', { level: 3, name: 'Campaigns (admin)' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 3, name: 'Lead lists' })).not.toBeInTheDocument();
+    // Search keeps matching sections open, so the open/close controls are off.
+    expect(toggles[0]).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Collapse All' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Expand All' })).toBeDisabled();
   });
 
   it('links topics to their pages, but not to pages the reader cannot open', () => {
