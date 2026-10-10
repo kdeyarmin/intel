@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,7 @@ function toCSV(rows) {
 }
 
 export default function ExportImportData({ open, onOpenChange }) {
+  const uid = useId();
   const [exportTarget, setExportTarget] = useState('history'); // 'history' | 'rules'
   const [format, setFormat] = useState('csv');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -161,9 +162,11 @@ export default function ExportImportData({ open, onOpenChange }) {
         <div className="space-y-4">
           {/* Target selector */}
           <div>
-            <label className="text-xs text-slate-400 mb-1.5 block">What to export</label>
-            <div className="flex gap-2">
+            <p id={`${uid}-target-label`} className="text-xs text-slate-400 mb-1.5 block">What to export</p>
+            <div role="group" aria-labelledby={`${uid}-target-label`} className="flex gap-2">
               <button
+                type="button"
+                aria-pressed={exportTarget === 'history'}
                 onClick={() => { setExportTarget('history'); setStatusFilter('all'); setTypeFilter('all'); }}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   exportTarget === 'history'
@@ -175,6 +178,8 @@ export default function ExportImportData({ open, onOpenChange }) {
                 Import Job History
               </button>
               <button
+                type="button"
+                aria-pressed={exportTarget === 'rules'}
                 onClick={() => { setExportTarget('rules'); setStatusFilter('all'); setTypeFilter('all'); }}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   exportTarget === 'rules'
@@ -190,9 +195,11 @@ export default function ExportImportData({ open, onOpenChange }) {
 
           {/* Format selector */}
           <div>
-            <label className="text-xs text-slate-400 mb-1.5 block">Export format</label>
-            <div className="flex gap-2">
+            <p id={`${uid}-format-label`} className="text-xs text-slate-400 mb-1.5 block">Export format</p>
+            <div role="group" aria-labelledby={`${uid}-format-label`} className="flex gap-2">
               <button
+                type="button"
+                aria-pressed={format === 'csv'}
                 onClick={() => setFormat('csv')}
                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   format === 'csv'
@@ -203,6 +210,8 @@ export default function ExportImportData({ open, onOpenChange }) {
                 <FileText className="w-4 h-4" /> CSV
               </button>
               <button
+                type="button"
+                aria-pressed={format === 'json'}
                 onClick={() => setFormat('json')}
                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
                   format === 'json'
@@ -224,8 +233,9 @@ export default function ExportImportData({ open, onOpenChange }) {
             <div className="grid grid-cols-2 gap-3">
               {exportTarget === 'history' && (
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">Status</label>
+                  <label htmlFor={`${uid}-status`} className="text-[10px] text-slate-400 block mb-1">Status</label>
                   <select
+                    id={`${uid}-status`}
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -241,8 +251,9 @@ export default function ExportImportData({ open, onOpenChange }) {
               )}
 
               <div>
-                <label className="text-[10px] text-slate-400 block mb-1">Import Type</label>
+                <label htmlFor={`${uid}-type`} className="text-[10px] text-slate-400 block mb-1">Import Type</label>
                 <select
+                  id={`${uid}-type`}
                   className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -258,8 +269,10 @@ export default function ExportImportData({ open, onOpenChange }) {
             {exportTarget === 'history' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">From</label>
+                  <label id={`${uid}-from-label`} htmlFor={`${uid}-from`} className="text-[10px] text-slate-400 block mb-1">From</label>
                   <input
+                    id={`${uid}-from`}
+                    aria-labelledby={`${uid}-from-label`}
                     type="date"
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                     value={dateStart}
@@ -267,8 +280,10 @@ export default function ExportImportData({ open, onOpenChange }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">To</label>
+                  <label id={`${uid}-to-label`} htmlFor={`${uid}-to`} className="text-[10px] text-slate-400 block mb-1">To</label>
                   <input
+                    id={`${uid}-to`}
+                    aria-labelledby={`${uid}-to-label`}
                     type="date"
                     className="w-full text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300"
                     value={dateEnd}

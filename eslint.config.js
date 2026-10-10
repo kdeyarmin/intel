@@ -3,6 +3,7 @@ import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
+import pluginJsxA11y from "eslint-plugin-jsx-a11y";
 
 export default [
   {
@@ -69,6 +70,34 @@ export default [
         { ignore: ["cmdk-input-wrapper", "toast-close"] },
       ],
       "react-hooks/rules-of-hooks": "error",
+    },
+  },
+  {
+    // Accessibility. The app's own form and button components count as the
+    // native elements they render, so unlabeled inputs and icon-only buttons
+    // are caught too. Autofocus is allowed (dialogs and inline editors the
+    // user just opened); label-has-for is deprecated.
+    files: ["src/components/**/*.jsx", "src/pages/**/*.jsx", "src/App.jsx", "src/Layout.jsx"],
+    ignores: ["src/components/ui/**/*"],
+    plugins: { "jsx-a11y": pluginJsxA11y },
+    settings: {
+      "jsx-a11y": {
+        components: {
+          Input: "input",
+          Textarea: "textarea",
+          Button: "button",
+          Label: "label",
+          SelectTrigger: "button",
+          Checkbox: "input",
+          Switch: "button",
+        },
+      },
+    },
+    rules: {
+      ...Object.fromEntries(Object.keys(pluginJsxA11y.configs.recommended.rules).map((rule) => [rule, "error"])),
+      "jsx-a11y/label-has-for": "off",
+      "jsx-a11y/no-autofocus": "off",
+      "jsx-a11y/control-has-associated-label": ["error", { ignoreElements: ["td", "th", "tr", "li"], depth: 3 }],
     },
   },
 ];

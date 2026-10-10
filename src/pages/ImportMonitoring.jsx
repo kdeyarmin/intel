@@ -415,15 +415,16 @@ export default function ImportMonitoring() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Link to={createPageUrl('DataCenter')}>
-            <Button
-              variant="outline"
-              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
-            >
+          <Button
+            asChild
+            variant="outline"
+            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+          >
+            <Link to={createPageUrl('DataCenter')}>
               <Upload className="w-4 h-4 mr-2" />
               Manual Upload
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             onClick={() => setShowNewImport(true)}
             className="bg-cyan-600 hover:bg-cyan-700 text-white"
@@ -668,11 +669,12 @@ export default function ImportMonitoring() {
             />
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
+                  aria-label="Search completed jobs"
                   className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
@@ -680,6 +682,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Status"
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed</option>
@@ -690,6 +693,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Category"
               >
                 <option value="all">All Categories</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
@@ -700,6 +704,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={yearFilter}
                 onChange={(e) => setYearFilter(e.target.value)}
+                aria-label="Data year"
               >
                 <option value="all">All Years</option>
                 {allYears.map(y => (
@@ -711,6 +716,7 @@ export default function ImportMonitoring() {
                   className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
+                  aria-label="Tag"
                 >
                   <option value="">All Tags</option>
                   {allTags.map(t => (
@@ -722,6 +728,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={lastNFilter}
                 onChange={(e) => setLastNFilter(Number(e.target.value))}
+                aria-label="Number of imports"
               >
                 <option value={0}>All Imports</option>
                 <option value={5}>Last 5</option>
@@ -734,6 +741,7 @@ export default function ImportMonitoring() {
                   type="checkbox"
                   checked={showOnlyLatest}
                   onChange={(e) => setShowOnlyLatest(e.target.checked)}
+                  aria-label="Latest only"
                   className="rounded bg-slate-800 border-slate-600"
                 />
                 Latest only
@@ -769,6 +777,10 @@ export default function ImportMonitoring() {
                       : 'border-slate-700/50 cursor-pointer'
                     : 'border-slate-700/50'
                 }`}
+                  // In bulk-retry mode a click anywhere on the card is a pointer shortcut for the
+                  // row's checkbox below, which is the keyboard/screen-reader control. A button role
+                  // here would hide the card's own action buttons from assistive technology.
+                  role="presentation"
                   onClick={bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES ? () => toggleSelectForRerun(batch.id) : undefined}
                 >
                   {/* Row 1: Title, status, actions */}
@@ -779,6 +791,7 @@ export default function ImportMonitoring() {
                           type="checkbox"
                           checked={selectedForRerun.has(batch.id)}
                           onChange={() => toggleSelectForRerun(batch.id)}
+                          aria-label={`Select ${IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type} ${batch.file_name || ''} for re-run`.trim()}
                           className="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500/30"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -823,8 +836,9 @@ export default function ImportMonitoring() {
                         className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                         disabled={deletingBatchId === batch.id}
                         onClick={() => setConfirmDeleteBatch(batch)}
+                        aria-label={`Delete import job ${batch.file_name || IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}`}
                       >
-                        {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                        {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3 h-3" aria-hidden="true" />}
                       </Button>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -1105,11 +1119,12 @@ function ImportHistoryView({ batches, formatTimestamp }) {
             <CardTitle className="text-slate-200">Import History</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                 <Input
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   placeholder="Search..."
+                  aria-label="Search import history"
                   className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
@@ -1117,6 +1132,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={historyType}
                 onChange={(e) => setHistoryType(e.target.value)}
+                aria-label="Import type"
               >
                 <option value="all">All Types</option>
                 {uniqueTypes.map(t => (

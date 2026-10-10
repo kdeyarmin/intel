@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ const statusIcons = {
 };
 
 export default function AlertsList({ alerts = [] }) {
+  const uid = useId();
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('new');
@@ -168,10 +169,12 @@ export default function AlertsList({ alerts = [] }) {
         {filtered.length > 0 && filtered.some(a => a.status === 'new' || a.status === 'open') && (
           <div className="flex items-center gap-2">
             <Checkbox
+              id={`${uid}-select-all`}
+              aria-labelledby={`${uid}-select-all-label`}
               checked={filtered.filter(a => a.status === 'new' || a.status === 'open').length > 0 && filtered.filter(a => a.status === 'new' || a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
-            <span className="text-xs text-slate-500">Select all open alerts</span>
+            <label id={`${uid}-select-all-label`} htmlFor={`${uid}-select-all`} className="text-xs text-slate-500">Select all open alerts</label>
           </div>
         )}
 
@@ -211,6 +214,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
             checked={selected}
             onCheckedChange={onSelect}
             onClick={(e) => e.stopPropagation()}
+            aria-label={`Select alert: ${alert.title || alert.summary || 'untitled'}`}
             className="ml-1"
           />
         )}

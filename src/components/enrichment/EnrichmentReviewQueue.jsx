@@ -234,6 +234,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
             <Checkbox
               checked={selected.size === pendingCount && pendingCount > 0}
               onCheckedChange={toggleSelectAll}
+              aria-label="Select all pending records"
               className="border-slate-600"
             />
             <span className="text-[10px] text-slate-500">
@@ -277,6 +278,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                         <Checkbox
                           checked={selected.has(r.id)}
                           onCheckedChange={() => toggleSelect(r.id)}
+                          aria-label={`Select record for ${r.provider_name || r.npi}`}
                           className="border-slate-600 mt-0.5"
                         />
                       )}

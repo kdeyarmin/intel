@@ -408,6 +408,7 @@ export default function Organizations() {
                 value={searchTerm}
                 onChange={setSearchTerm}
                 suggestions={searchSuggestions}
+                ariaLabel="Search organizations"
                 placeholder="Search organizations by any part of the name, or NPI"
                 onSuggestionSelect={handleSuggestionSelect}
                 className="flex-1"

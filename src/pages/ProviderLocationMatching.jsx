@@ -226,9 +226,10 @@ export default function ProviderLocationMatching() {
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
               <Input
                 placeholder="Search providers or locations..."
+                aria-label="Search providers or locations"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pl-9"

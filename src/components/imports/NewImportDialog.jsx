@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,7 @@ const IMPORT_TYPES = SCHEDULABLE_CMS_IMPORT_TYPES.map(type => ({
 }));
 
 export default function NewImportDialog({ open, onOpenChange, onImportStarted }) {
+  const uid = useId();
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
   const [typeSearch, setTypeSearch] = useState('');
@@ -229,11 +230,12 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
         {step === 1 && (
           <div className="flex-1 overflow-hidden flex flex-col space-y-3">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <Input
                 value={typeSearch}
                 onChange={(e) => setTypeSearch(e.target.value)}
                 placeholder="Search import types..."
+                aria-label="Search import types"
                 className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
               />
             </div>
@@ -285,8 +287,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
 
             {/* File upload / URL */}
             <div className="space-y-2">
-              <Label className="text-xs text-slate-400">Data Source</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <span id={`${uid}-source-label`} className="text-xs font-medium leading-none text-slate-400">Data Source</span>
+              <div role="group" aria-labelledby={`${uid}-source-label`} className="grid grid-cols-2 gap-3">
                 <div>
                   {!uploadedFile ? (
                     <FileParser onParsed={handleFileParsed} selectedType={{ requiredColumns: REQUIRED_COLUMNS[selectedType.id] || [] }} />
@@ -299,8 +301,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[10px] text-slate-400">Or use a direct URL:</span>
+                  <label id={`${uid}-url-label`} htmlFor={`${uid}-url`} className="text-[10px] text-slate-400">Or use a direct URL:</label>
                   <Input
+                    id={`${uid}-url`}
+                    aria-labelledby={`${uid}-url-label`}
                     value={!uploadedFile ? fileUrl : ''}
                     onChange={(e) => { setFileUrl(e.target.value); setUploadedFile(null); }}
                     placeholder="https://data.cms.gov/..."
@@ -316,10 +320,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
 
             {/* Year */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Data Year</Label>
+              <Label id={`${uid}-year-label`} htmlFor={`${uid}-year`} className="text-xs text-slate-400">Data Year</Label>
               {getCmsImportTypeYears(selectedType.id) ? (
                 <Select value={year} onValueChange={setYear}>
-                  <SelectTrigger className="h-8 w-36 text-sm bg-slate-800/50 border-slate-700 text-slate-300">
+                  <SelectTrigger id={`${uid}-year`} className="h-8 w-36 text-sm bg-slate-800/50 border-slate-700 text-slate-300">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -330,6 +334,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 </Select>
               ) : (
                 <Input
+                  id={`${uid}-year`}
+                  aria-labelledby={`${uid}-year-label`}
                   type="number"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
@@ -344,17 +350,19 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
 
             {/* Tags */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Tags</Label>
+              <Label id={`${uid}-tags-label`} htmlFor={`${uid}-tags`} className="text-xs text-slate-400">Tags</Label>
               <div className="flex items-center gap-2">
                 <Input
+                  id={`${uid}-tags`}
+                  aria-labelledby={`${uid}-tags-label`}
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                   placeholder="Add a tag..."
                   className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400 flex-1"
                 />
-                <Button variant="outline" size="sm" className="h-8 text-xs bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400" onClick={addTag}>
-                  <Plus className="w-3 h-3" />
+                <Button variant="outline" size="sm" className="h-8 text-xs bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400" onClick={addTag} aria-label="Add tag">
+                  <Plus className="w-3 h-3" aria-hidden="true" />
                 </Button>
               </div>
               {tags.length > 0 && (
@@ -363,8 +371,8 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     <Badge key={t} className="bg-slate-700/50 text-slate-300 text-[10px] gap-1">
                       <Tag className="w-2.5 h-2.5" />
                       {t}
-                      <button onClick={() => setTags(tags.filter(x => x !== t))} className="hover:text-red-400">
-                        <X className="w-2.5 h-2.5" />
+                      <button type="button" onClick={() => setTags(tags.filter(x => x !== t))} aria-label={`Remove tag ${t}`} className="hover:text-red-400">
+                        <X className="w-2.5 h-2.5" aria-hidden="true" />
                       </button>
                     </Badge>
                   ))}
@@ -376,10 +384,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             <div className="space-y-3 border-t border-slate-700/50 pt-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm text-slate-300">Dry Run</Label>
+                  <Label id={`${uid}-dry-run-label`} htmlFor={`${uid}-dry-run`} className="text-sm text-slate-300">Dry Run</Label>
                   <p className="text-[10px] text-slate-400">Validate only — no data will be written</p>
                 </div>
-                <Switch checked={dryRun} onCheckedChange={setDryRun} />
+                <Switch id={`${uid}-dry-run`} aria-labelledby={`${uid}-dry-run-label`} checked={dryRun} onCheckedChange={setDryRun} />
               </div>
             </div>
 
@@ -396,8 +404,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 <div className="space-y-3 bg-slate-800/30 border border-slate-700/50 rounded-lg p-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-400">Row Offset</Label>
+                      <Label id={`${uid}-offset-label`} htmlFor={`${uid}-offset`} className="text-xs text-slate-400">Row Offset</Label>
                       <Input
+                        id={`${uid}-offset`}
+                        aria-labelledby={`${uid}-offset-label`}
                         type="number"
                         value={rowOffset}
                         onChange={(e) => setRowOffset(e.target.value)}
@@ -408,8 +418,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       <p className="text-[10px] text-slate-500">Skip N rows from the start</p>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-400">Row Limit</Label>
+                      <Label id={`${uid}-limit-label`} htmlFor={`${uid}-limit`} className="text-xs text-slate-400">Row Limit</Label>
                       <Input
+                        id={`${uid}-limit`}
+                        aria-labelledby={`${uid}-limit-label`}
                         type="number"
                         value={rowLimit}
                         onChange={(e) => setRowLimit(e.target.value)}
@@ -422,8 +434,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-400">NPI Filter</Label>
+                      <Label id={`${uid}-npi-label`} htmlFor={`${uid}-npi`} className="text-xs text-slate-400">NPI Filter</Label>
                       <Input
+                        id={`${uid}-npi`}
+                        aria-labelledby={`${uid}-npi-label`}
                         value={npiFilter}
                         onChange={(e) => setNpiFilter(e.target.value)}
                         placeholder="1234567890, 0987654321"
@@ -432,8 +446,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       <p className="text-[10px] text-slate-500">Comma-separated NPIs</p>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-400">State Filter</Label>
+                      <Label id={`${uid}-state-label`} htmlFor={`${uid}-state`} className="text-xs text-slate-400">State Filter</Label>
                       <Input
+                        id={`${uid}-state`}
+                        aria-labelledby={`${uid}-state-label`}
                         value={stateFilter}
                         onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
                         placeholder="NY"
@@ -444,8 +460,10 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-400">Sheet Filter</Label>
+                    <Label id={`${uid}-sheet-label`} htmlFor={`${uid}-sheet`} className="text-xs text-slate-400">Sheet Filter</Label>
                     <Input
+                      id={`${uid}-sheet`}
+                      aria-labelledby={`${uid}-sheet-label`}
                       value={sheetFilter}
                       onChange={(e) => setSheetFilter(e.target.value)}
                       placeholder="e.g. MA4, Sheet1"

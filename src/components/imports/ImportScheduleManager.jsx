@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,6 +60,7 @@ function fmt(iso) {
 }
 
 export default function ImportScheduleManager() {
+  const uid = useId();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [running, setRunning] = useState(null);
@@ -271,14 +272,14 @@ export default function ImportScheduleManager() {
                         <div className="text-[10px] text-slate-500">{fmt(s.last_run_at)}</div>
                       </td>
                       <td className="py-2 px-3">
-                        <Switch checked={s.is_active !== false} onCheckedChange={() => toggleActive(s)} />
+                        <Switch checked={s.is_active !== false} onCheckedChange={() => toggleActive(s)} aria-label={`Active: ${s.label || s.name || s.import_type}`} />
                       </td>
                       <td className="py-2 pl-3 text-right whitespace-nowrap">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-cyan-400" onClick={() => openEdit(s)}>
-                          <Pencil className="w-3.5 h-3.5" />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-cyan-400" onClick={() => openEdit(s)} aria-label={`Edit schedule ${s.label || s.name || s.import_type}`}>
+                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => remove(s)} disabled={deletingId === s.id}>
-                          {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => remove(s)} disabled={deletingId === s.id} aria-label={`Delete schedule ${s.label || s.name || s.import_type}`}>
+                          {deletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                         </Button>
                       </td>
                     </tr>
@@ -300,18 +301,19 @@ export default function ImportScheduleManager() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <label className={labelCls}>Label</label>
-              <Input className={inputCls} value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Monthly hospice refresh" />
+              <label id={`${uid}-label-label`} htmlFor={`${uid}-label`} className={labelCls}>Label</label>
+              <Input id={`${uid}-label`} aria-labelledby={`${uid}-label-label`} className={inputCls} value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Monthly hospice refresh" />
             </div>
             <div>
-              <label className={labelCls}>Import type *</label>
-              <Input className={inputCls} value={form.import_type} onChange={(e) => setForm({ ...form, import_type: e.target.value })} placeholder="e.g. hospice_general_info or nppes_registry" />
+              <label id={`${uid}-type-label`} htmlFor={`${uid}-type`} className={labelCls}>Import type *</label>
+              <Input id={`${uid}-type`} aria-labelledby={`${uid}-type-label`} className={inputCls} value={form.import_type} onChange={(e) => setForm({ ...form, import_type: e.target.value })} placeholder="e.g. hospice_general_info or nppes_registry" />
               <p className="text-[10px] text-slate-500 mt-1">Use a dataset id from Data Center, or <code>nppes_registry</code> for a crawler run.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Frequency</label>
+                <label htmlFor={`${uid}-frequency`} className={labelCls}>Frequency</label>
                 <select
+                  id={`${uid}-frequency`}
                   className="w-full bg-slate-900/60 border border-slate-700 rounded-md px-2 py-2 text-sm text-slate-200"
                   value={form.schedule_frequency}
                   onChange={(e) => setForm({ ...form, schedule_frequency: e.target.value })}
@@ -320,8 +322,10 @@ export default function ImportScheduleManager() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Time (UTC, HH:MM)</label>
+                <label id={`${uid}-time-label`} htmlFor={`${uid}-time`} className={labelCls}>Time (UTC, HH:MM)</label>
                 <Input
+                  id={`${uid}-time`}
+                  aria-labelledby={`${uid}-time-label`}
                   className={inputCls}
                   value={form.schedule_time}
                   onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
@@ -332,22 +336,22 @@ export default function ImportScheduleManager() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Data year (optional)</label>
-                <Input className={inputCls} value={form.data_year} onChange={(e) => setForm({ ...form, data_year: e.target.value })} placeholder="defaults to latest" />
+                <label id={`${uid}-year-label`} htmlFor={`${uid}-year`} className={labelCls}>Data year (optional)</label>
+                <Input id={`${uid}-year`} aria-labelledby={`${uid}-year-label`} className={inputCls} value={form.data_year} onChange={(e) => setForm({ ...form, data_year: e.target.value })} placeholder="defaults to latest" />
               </div>
               <div>
-                <label className={labelCls}>Depends on import type (optional)</label>
-                <Input className={inputCls} value={form.depends_on_import_type} onChange={(e) => setForm({ ...form, depends_on_import_type: e.target.value })} placeholder="parent import_type" />
+                <label id={`${uid}-depends-label`} htmlFor={`${uid}-depends`} className={labelCls}>Depends on import type (optional)</label>
+                <Input id={`${uid}-depends`} aria-labelledby={`${uid}-depends-label`} className={inputCls} value={form.depends_on_import_type} onChange={(e) => setForm({ ...form, depends_on_import_type: e.target.value })} placeholder="parent import_type" />
               </div>
             </div>
             <div>
-              <label className={labelCls}>API URL override (optional)</label>
-              <Input className={inputCls} value={form.api_url} onChange={(e) => setForm({ ...form, api_url: e.target.value })} placeholder="leave blank to use the built-in CMS URL" />
+              <label id={`${uid}-url-label`} htmlFor={`${uid}-url`} className={labelCls}>API URL override (optional)</label>
+              <Input id={`${uid}-url`} aria-labelledby={`${uid}-url-label`} className={inputCls} value={form.api_url} onChange={(e) => setForm({ ...form, api_url: e.target.value })} placeholder="leave blank to use the built-in CMS URL" />
               {form.api_url.trim() && <UrlCheckButton url={form.api_url} />}
             </div>
             <div className="flex items-center gap-2 pt-1">
-              <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
-              <span className="text-sm text-slate-300">Active</span>
+              <Switch id={`${uid}-active`} aria-labelledby={`${uid}-active-label`} checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <label id={`${uid}-active-label`} htmlFor={`${uid}-active`} className="text-sm text-slate-300">Active</label>
             </div>
           </div>
           <DialogFooter>

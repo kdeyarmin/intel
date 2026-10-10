@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -319,6 +319,7 @@ export default function AIRuleSuggestions({ importType }) {
         }
 
         function CustomizeRuleForm({ suggestion, config, onConfigChange }) {
+        const uid = useId();
         const ruleType = suggestion.ruleType;
 
         const renderConfig = () => {
@@ -329,8 +330,10 @@ export default function AIRuleSuggestions({ importType }) {
         case 'regex':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Regex Pattern</label>
+            <label id={`${uid}-pattern-label`} htmlFor={`${uid}-pattern`} className="text-xs text-slate-400">Regex Pattern</label>
             <Input
+              id={`${uid}-pattern`}
+              aria-labelledby={`${uid}-pattern-label`}
               value={config.pattern || ''}
               onChange={(e) => onConfigChange({ ...config, pattern: e.target.value })}
               placeholder="e.g., ^\d{10}$"
@@ -344,8 +347,10 @@ export default function AIRuleSuggestions({ importType }) {
         return (
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-slate-400">Minimum Value</label>
+              <label id={`${uid}-min-label`} htmlFor={`${uid}-min`} className="text-xs text-slate-400">Minimum Value</label>
               <Input
+                id={`${uid}-min`}
+                aria-labelledby={`${uid}-min-label`}
                 type="number"
                 value={config.min ?? ''}
                 onChange={(e) => onConfigChange({ ...config, min: e.target.value ? Number(e.target.value) : undefined })}
@@ -354,8 +359,10 @@ export default function AIRuleSuggestions({ importType }) {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400">Maximum Value</label>
+              <label id={`${uid}-max-label`} htmlFor={`${uid}-max`} className="text-xs text-slate-400">Maximum Value</label>
               <Input
+                id={`${uid}-max`}
+                aria-labelledby={`${uid}-max-label`}
                 type="number"
                 value={config.max ?? ''}
                 onChange={(e) => onConfigChange({ ...config, max: e.target.value ? Number(e.target.value) : undefined })}
@@ -369,8 +376,10 @@ export default function AIRuleSuggestions({ importType }) {
         case 'max_length':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Maximum Length</label>
+            <label id={`${uid}-max-length-label`} htmlFor={`${uid}-max-length`} className="text-xs text-slate-400">Maximum Length</label>
             <Input
+              id={`${uid}-max-length`}
+              aria-labelledby={`${uid}-max-length-label`}
               type="number"
               value={config.max_length || 255}
               onChange={(e) => onConfigChange({ ...config, max_length: Number(e.target.value) })}
@@ -382,8 +391,10 @@ export default function AIRuleSuggestions({ importType }) {
         case 'date_format':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Date Format</label>
+            <label id={`${uid}-date-format-label`} htmlFor={`${uid}-date-format`} className="text-xs text-slate-400">Date Format</label>
             <Input
+              id={`${uid}-date-format`}
+              aria-labelledby={`${uid}-date-format-label`}
               value={config.date_format || 'YYYY-MM-DD'}
               onChange={(e) => onConfigChange({ ...config, date_format: e.target.value })}
               placeholder="e.g., YYYY-MM-DD"
@@ -396,8 +407,10 @@ export default function AIRuleSuggestions({ importType }) {
         case 'enum_values':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Allowed Values (comma-separated)</label>
+            <label id={`${uid}-values-label`} htmlFor={`${uid}-values`} className="text-xs text-slate-400">Allowed Values (comma-separated)</label>
             <Input
+              id={`${uid}-values`}
+              aria-labelledby={`${uid}-values-label`}
               value={(config.values || []).join(', ')}
               onChange={(e) => onConfigChange({ ...config, values: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
               placeholder="e.g., active, inactive, pending"

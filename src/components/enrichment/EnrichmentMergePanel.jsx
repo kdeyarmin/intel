@@ -121,6 +121,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                       <Checkbox 
                         checked={!!selectedFields[field.key]}
                         onCheckedChange={() => handleToggleField(field.key)}
+                        aria-label={`Merge ${field.label} from NPI Registry`}
                       />
                     </TableCell>
                     <TableCell className="font-medium text-sm">{field.label}</TableCell>

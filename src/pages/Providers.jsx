@@ -719,6 +719,7 @@ export default function Providers() {
             value={searchTerm}
             onChange={setSearchTerm}
             suggestions={searchSuggestions}
+            ariaLabel="Search providers"
             placeholder="Search by name or NPI, e.g. Smith, John Smith, Mercy Hospital, 1234567890"
             onSuggestionSelect={handleSuggestionSelect}
             className="flex-1"

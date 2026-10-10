@@ -151,11 +151,12 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
               </span>
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <Search className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search className="w-3 h-3 absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                   <Input
                     value={rowSearch}
                     onChange={(e) => setRowSearch(e.target.value)}
                     placeholder="Search rows..."
+                    aria-label="Search affected rows"
                     className="h-6 w-32 pl-5 text-[10px] bg-slate-900/40 border-slate-700/50 text-slate-300 placeholder:text-slate-400"
                   />
                 </div>

@@ -53,9 +53,10 @@ export default function CampaignOutcomesPanel({ campaign }) {
       <CardContent>
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1">
-            <Label htmlFor="campaign-conversions" className="text-xs text-slate-400">Conversions</Label>
+            <Label id="campaign-conversions-label" htmlFor="campaign-conversions" className="text-xs text-slate-400">Conversions</Label>
             <Input
               id="campaign-conversions"
+              aria-labelledby="campaign-conversions-label"
               type="number"
               min="0"
               value={conversions}
@@ -65,9 +66,10 @@ export default function CampaignOutcomesPanel({ campaign }) {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="campaign-revenue" className="text-xs text-slate-400">Revenue ($)</Label>
+            <Label id="campaign-revenue-label" htmlFor="campaign-revenue" className="text-xs text-slate-400">Revenue ($)</Label>
             <Input
               id="campaign-revenue"
+              aria-labelledby="campaign-revenue-label"
               type="number"
               min="0"
               value={revenue}

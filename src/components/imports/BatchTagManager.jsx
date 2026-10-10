@@ -46,8 +46,8 @@ export default function BatchTagManager({ batch, onUpdate }) {
       {tags.map(tag => (
         <Badge key={tag} variant="outline" className="text-xs gap-1 pr-1 border-slate-600 text-slate-300 bg-slate-800/50">
           {tag}
-          <button onClick={() => removeTag(tag)} className="text-slate-400 hover:text-red-400 ml-0.5">
-            <X className="w-3 h-3" />
+          <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`} className="text-slate-400 hover:text-red-400 ml-0.5">
+            <X className="w-3 h-3" aria-hidden="true" />
           </button>
         </Badge>
       ))}
@@ -58,11 +58,12 @@ export default function BatchTagManager({ batch, onUpdate }) {
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="tag name"
+            aria-label="New tag name"
             className="h-6 w-24 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
             autoFocus
           />
-          <Button size="sm" variant="ghost" className="h-6 px-1 text-slate-400 hover:text-cyan-400" onClick={addTag}>
-            <Plus className="w-3 h-3" />
+          <Button size="sm" variant="ghost" className="h-6 px-1 text-slate-400 hover:text-cyan-400" onClick={addTag} aria-label="Save tag">
+            <Plus className="w-3 h-3" aria-hidden="true" />
           </Button>
         </div>
       ) : (

@@ -15,6 +15,7 @@ export default function TypeAheadSearch({
   onChange,
   suggestions = [],
   placeholder = 'Search...',
+  ariaLabel,
   onSuggestionSelect,
   className = '',
 }) {
@@ -63,7 +64,7 @@ export default function TypeAheadSearch({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10" aria-hidden="true" />
       <Input
         ref={inputRef}
         value={value}
@@ -71,6 +72,7 @@ export default function TypeAheadSearch({
         onFocus={() => { if (filtered.length > 0) setOpen(true); }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
+        aria-label={ariaLabel || placeholder}
         className="pl-9"
       />
       {open && filtered.length > 0 && (

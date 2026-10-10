@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +41,7 @@ function useSampleRecipient(listId) {
 }
 
 export default function CampaignBuilder({ onCampaignCreated, initialCampaign = null, initialLeadListId = '' }) {
+  const uid = useId();
   const confirm = useConfirm();
   const [step, setStep] = useState('details');
   const [saving, setSaving] = useState(false);
@@ -161,9 +162,10 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="campaign-name" className="text-sm font-medium">Campaign name *</Label>
+                <Label id="campaign-name-label" htmlFor="campaign-name" className="text-sm font-medium">Campaign name *</Label>
                 <Input
                   id="campaign-name"
+                  aria-labelledby="campaign-name-label"
                   placeholder="e.g., Q1 Network Expansion"
                   value={campaign.name}
                   onChange={(e) => update({ name: e.target.value })}
@@ -171,9 +173,10 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 />
               </div>
               <div>
-                <Label htmlFor="campaign-description" className="text-sm font-medium">Description</Label>
+                <Label id="campaign-description-label" htmlFor="campaign-description" className="text-sm font-medium">Description</Label>
                 <Textarea
                   id="campaign-description"
+                  aria-labelledby="campaign-description-label"
                   placeholder="What is the goal of this campaign?"
                   value={campaign.description}
                   onChange={(e) => update({ description: e.target.value })}
@@ -181,9 +184,9 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium">Send to (lead list) *</Label>
+                <Label htmlFor={`${uid}-lead-list`} className="text-sm font-medium">Send to (lead list) *</Label>
                 <Select value={campaign.lead_list_id} onValueChange={(val) => update({ lead_list_id: val })}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger id={`${uid}-lead-list`} className="mt-1">
                     <SelectValue placeholder="Select a lead list" />
                   </SelectTrigger>
                   <SelectContent>
@@ -210,9 +213,10 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="campaign-subject" className="text-sm font-medium">Subject *</Label>
+                <Label id="campaign-subject-label" htmlFor="campaign-subject" className="text-sm font-medium">Subject *</Label>
                 <Input
                   id="campaign-subject"
+                  aria-labelledby="campaign-subject-label"
                   placeholder="Hello {{first_name}}, we'd like to discuss..."
                   value={campaign.subject_template}
                   onChange={(e) => update({ subject_template: e.target.value })}
@@ -221,9 +225,10 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 <FieldButtons onInsert={(key) => insertField('subject_template', key)} />
               </div>
               <div>
-                <Label htmlFor="campaign-body" className="text-sm font-medium">Message *</Label>
+                <Label id="campaign-body-label" htmlFor="campaign-body" className="text-sm font-medium">Message *</Label>
                 <Textarea
                   id="campaign-body"
+                  aria-labelledby="campaign-body-label"
                   placeholder={'Dear {{provider_name}},\n\nWe work with {{specialty}} practices in {{location_city}}...'}
                   value={campaign.body_template}
                   onChange={(e) => update({ body_template: e.target.value })}

@@ -307,6 +307,7 @@ export default function ScoringRules() {
                          min="0"
                          max="100"
                          value={editingRule.weight}
+                         aria-label={`Weight for ${(rule.name || rule.rule_type)?.replace(/_/g, ' ')} (%)`}
                          onChange={(e) => setEditingRule({
                            ...editingRule,
                            weight: parseFloat(e.target.value)
@@ -324,6 +325,7 @@ export default function ScoringRules() {
                       <Input
                         type="number"
                         value={editingRule.threshold}
+                        aria-label={`Threshold for ${(rule.name || rule.rule_type)?.replace(/_/g, ' ')}`}
                         onChange={(e) => setEditingRule({
                           ...editingRule,
                           threshold: parseFloat(e.target.value)

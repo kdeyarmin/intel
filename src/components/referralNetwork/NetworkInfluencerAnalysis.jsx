@@ -94,9 +94,10 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
             <p className="text-sm text-slate-400">No referral relationships were found for these providers.</p>
           )}
           {topInfluencers.map((influencer, idx) => (
-            <div 
-              key={influencer.npi} 
-              className="p-3 border rounded-lg hover:bg-slate-800/50 cursor-pointer transition-colors"
+            <button
+              type="button"
+              key={influencer.npi}
+              className="block w-full text-left p-3 border rounded-lg hover:bg-slate-800/50 cursor-pointer transition-colors"
               onClick={() => onInfluencerSelect?.(influencer.npi)}
             >
               <div className="flex items-start justify-between mb-2">
@@ -123,7 +124,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
                   <span>{influencer.network_size} active partners</span>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </CardContent>
       </Card>

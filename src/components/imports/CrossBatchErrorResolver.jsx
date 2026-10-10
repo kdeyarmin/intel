@@ -198,16 +198,16 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                   const { sortedCategories: cats } = groupErrors(batch.error_samples || []);
                   const isSelected = selectedBatches.has(batch.id);
                   return (
-                    <div
+                    <label
                       key={batch.id}
                       className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                         isSelected ? 'bg-cyan-900/5 border-cyan-500/30' : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
                       }`}
-                      onClick={() => toggleBatch(batch.id)}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleBatch(batch.id)}
+                        aria-label={`Select ${IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type} batch ${batch.file_name || ''}`.trim()}
                         className="border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
                       />
                       <div className="flex-1 min-w-0">
@@ -231,7 +231,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                           )}
                         </div>
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>
