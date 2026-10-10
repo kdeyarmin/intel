@@ -19,7 +19,9 @@
     "preview": "vite preview",
     "db:push": "drizzle-kit push --force",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:status": "tsx scripts/db/migration-status.ts",
+    "db:seed-demo": "tsx scripts/dev/seed-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

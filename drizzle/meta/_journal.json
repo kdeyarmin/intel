@@ -43,6 +43,13 @@
       "when": 1791611367276,
       "tag": "0006_provider_facility_matches",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791611427276,
+      "tag": "0007_schema_catchup",
+      "breakpoints": true
     }
   ]
 }

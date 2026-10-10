@@ -20,13 +20,15 @@ analytics platform. Three layers:
 ## Commands
 
 ```bash
-npm run dev         # API + Vite together (Vite :5000 proxies /api → :3001)
-npm run typecheck   # tsc -p ./jsconfig.json
-npm run lint        # eslint . --quiet
-npm test            # vitest run
-npm run build       # production SPA build
-npm run db:push     # push schema to DB (dev)
-npm run db:generate # generate a migration after editing server/db/schema.ts
+npm run dev:full     # API + Vite together (Vite :5000 proxies /api → :3001)
+npm run dev          # Vite only; pair with `npm run dev:api`
+npm run typecheck    # tsc -p ./jsconfig.json
+npm run lint         # eslint . --quiet
+npm test             # vitest run
+npm run build        # production SPA build
+npm run db:migrate   # apply drizzle/ migrations (baselines a pushed DB first)
+npm run db:status    # list applied / pending migrations
+npm run db:seed-demo # deterministic demo data (local databases only)
 ```
 
 Before pushing, run `npm run lint && npm run typecheck && npm test && npm run
@@ -41,7 +43,9 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   (`base44.entities.X.list/filter/...`, `base44.functions.invoke(...)`).
 - **Backend functions:** dispatched in `server/routes/functions.ts`; handlers in
   `server/functions/*.ts`.
-- **DB schema:** `server/db/schema.ts` (Drizzle). Migrations in `drizzle/`.
+- **DB schema:** `server/db/schema.ts` (Drizzle). Migrations in `drizzle/`,
+  applied by `server/db/migrate.ts`. Large-table indexes are built at boot by
+  `server/lib/bootIndexes.ts`, not by migrations.
 - **AI models:** centralized in `server/lib/aiModels.ts` — never hardcode model
   IDs. Overridable via `CLAUDE_MODEL_SONNET` / `_HAIKU` / `_OPUS` env vars.
 - **Import health / auto-retry UI:** `src/components/imports/` (`retryStatus.js`,
@@ -71,6 +75,14 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   Use raw `pool.connect()` with `SET statement_timeout`, `pg_class` estimates for
   counts, `LIMIT`-based sampling, and IN-clauses with pre-fetched NPI lists
   instead of JOINs/subqueries. See the DB performance notes in `replit.md`.
+- **Migrations are hand-written.** `drizzle/meta` snapshots stop at 0002, so
+  `db:generate` doesn't produce usable diffs. Write `drizzle/NNNN_name.sql`
+  idempotently (`IF NOT EXISTS`), append a journal entry with a larger `when`
+  (the migrator skips anything older than the last applied entry), and keep
+  `schema.ts` in step. `tests/drizzleMigrations.test.ts` checks the journal.
+  Never run `db:push` against a shared or production database: it drops the
+  boot-built indexes because they aren't in `schema.ts`.
+  `DB_MIGRATE_ON_BOOT=true` makes the server migrate before listening.
 - **Secrets.** `JWT_SECRET` is required in production (server hard-fails without
   it). `ADMIN_EMAIL` + `ADMIN_PASSWORD` seed the first admin.
 - **Maintenance is cron-driven.** `base44/functions/runScheduledImports` fans out

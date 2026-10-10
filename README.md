@@ -60,16 +60,17 @@ In development, Vite (port `5000`) proxies `/api` to the Express server
    See `.env.example` for the full, documented list (admin seed, CORS,
    Anthropic, SendGrid, model overrides).
 
-3. Push the schema to your database:
+3. Apply the migrations, and optionally load demo data (local databases only):
 
    ```bash
-   npm run db:push
+   npm run db:migrate
+   npm run db:seed-demo
    ```
 
 4. Start the app (runs the API and Vite together):
 
    ```bash
-   npm run dev
+   npm run dev:full
    ```
 
    Open http://localhost:5000.
@@ -78,17 +79,19 @@ In development, Vite (port `5000`) proxies `/api` to the Express server
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Run the Express API (`tsx watch`) and Vite dev server together |
+| `npm run dev:full` | Run the Express API (`tsx watch`) and Vite dev server together |
 | `npm run dev:api` | API only |
-| `npm run dev:frontend` | Vite only |
+| `npm run dev` / `dev:frontend` | Vite only |
 | `npm run build` | Production build of the SPA |
 | `npm run preview` | Preview the production build |
 | `npm run lint` / `lint:fix` | ESLint |
 | `npm run typecheck` | TypeScript check (`tsc -p ./jsconfig.json`) |
 | `npm test` | Run the Vitest suite |
-| `npm run db:push` | Push schema directly (development) |
-| `npm run db:generate` | Generate a migration from schema changes |
-| `npm run db:migrate` | Apply migrations (production deploys) |
+| `npm run db:migrate` | Apply `drizzle/` migrations; a database built with `db:push` is baselined first |
+| `npm run db:status` | List applied and pending migrations |
+| `npm run db:seed-demo` | Load deterministic demo data (refuses non-local databases) |
+| `npm run db:push` | Push `schema.ts` directly. Scratch databases only: it drops the indexes the server builds at boot |
+| `npm run db:generate` | Not usable for new migrations (snapshots stop at 0002); write them by hand |
 
 ## Testing & CI
 
