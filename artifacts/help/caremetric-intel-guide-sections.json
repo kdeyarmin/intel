@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "378c714f8f00cf4fee32b795ba6dd171fdfd9400",
+    "ref": "056cbf28f9639e626f3de8c3cd274b8b78858301",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 29,
-    "text_character_count": 9605,
-    "canonical_sha256": "b7bbbb14759de319743011b398da63b6eaf398bf3a90ca361872f3053ac1a215"
+    "text_character_count": 10041,
+    "canonical_sha256": "4498354eed0421b13b387ea6ef1c2f176d9559b32223c849352c645c268a2503"
   },
   "sections": [
     {
@@ -95,8 +95,8 @@
         },
         {
           "heading": "Conversations and limits",
-          "text": "Conversations are saved for you only; rename or delete them from the list. Press **Stop** to end an answer early. Each person can ask a few questions a minute and has a daily usage limit, and a conversation holds up to 40 questions. Answers can be wrong — check important figures on the linked pages.\n\nIf the page says the assistant isn't set up, an admin needs to add the Anthropic API key to the server.",
-          "sha256": "1a5ab0ef216e0a08a6ae9338e65c284d375de993166d685ad5b70a0bd4dc2cc9"
+          "text": "Conversations are saved for you only; rename or delete them from the list, and use **Load older conversations** at the bottom to see earlier ones. Press **Stop** to end an answer early. The assistant answers one of your questions at a time, so wait for an answer to finish before asking in another conversation. Each person can ask a few questions a minute and has a daily usage limit; an answer that reaches the limit stops early. A conversation holds up to 40 questions. Answers can be wrong — check important figures on the linked pages.\n\nIf the page says the assistant isn't set up, an admin needs to add the Anthropic API key to the server.",
+          "sha256": "e1946c883cfaac36a3b3cf5bc63e3f95708d2884aebb43a9073aef656d82bd06"
         }
       ]
     },
@@ -111,8 +111,8 @@
         },
         {
           "heading": "County view",
-          "text": "Pick a state and a county to see providers practicing there, top specialties, the highest-scored providers, Medicare facilities, the strongest shared-patient pairs and top Medicare services. In large counties the details describe a sample; totals marked \"≈\" are estimates.",
-          "sha256": "61a55dbf2534285deae2a4ad4623601dcbc0934750f529568d50401920ccebb4"
+          "text": "Pick a state and a county to see providers practicing there, top specialties, the highest-scored providers, Medicare facilities, the strongest shared-patient pairs and top Medicare services. In large counties the page counts **practice locations** instead of providers (a provider with several offices counts more than once) and the details describe a sample; totals marked \"≈\" are estimates.",
+          "sha256": "f239a0dd28eaee90ba82db2dc29656981fd3df280d4ad6fb97c83604ab7397b3"
         },
         {
           "heading": "About the geography",
@@ -137,8 +137,8 @@
         },
         {
           "heading": "Reports and analytics",
-          "text": "**Reports** builds reports from your data, saves them and emails them on a schedule to people with an active account (or an address on a domain an admin has approved). **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.",
-          "sha256": "1be7915e4e5e557ca0244b847ec3230021b2aab079fe15e8675b381035068a46"
+          "text": "**Reports** builds reports from your data, saves them and emails them on a schedule to up to 25 people with an active account (or an address on a domain an admin has approved); the schedule's preview and its last-run note say who was left out. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.",
+          "sha256": "1fabbcb78b6ecac80554beffd2194d0df6be670135c8dd2dfcd7ef0e21eb5638"
         }
       ]
     },
