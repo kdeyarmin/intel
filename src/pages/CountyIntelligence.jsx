@@ -153,9 +153,17 @@ export default function CountyIntelligence() {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Kpi icon={Users} color="text-cyan-400" label="Providers practicing here"
-              value={`${summary.providersExact ? '' : '≈'}${(summary.totalProviders || 0).toLocaleString()}`}
-              sub={`${(summary.individualProviders || 0).toLocaleString()} individuals · ${(summary.orgProviders || 0).toLocaleString()} organizations${summary.providersExact ? '' : ' (in the sample)'}`} />
+            {summary.providersExact ? (
+              <Kpi icon={Users} color="text-cyan-400" label="Providers practicing here"
+                value={(summary.totalProviders || 0).toLocaleString()}
+                sub={`${(summary.individualProviders || 0).toLocaleString()} individuals · ${(summary.orgProviders || 0).toLocaleString()} organizations`} />
+            ) : (
+              <Kpi icon={Users} color="text-cyan-400" label="Practice locations here"
+                value={summary.practiceLocations != null
+                  ? `≈${summary.practiceLocations.toLocaleString()}`
+                  : `More than ${(summary.locationSample || 0).toLocaleString()}`}
+                sub={`A provider with several locations counts more than once. In the sample: ${(summary.individualProviders || 0).toLocaleString()} individuals · ${(summary.orgProviders || 0).toLocaleString()} organizations`} />
+            )}
             <Kpi icon={Building2} color="text-violet-400" label="Medicare facilities" value={(summary.totalFacilities || 0).toLocaleString()} />
             <Kpi icon={DollarSign} color="text-emerald-400" label="Facility Medicare payments" value={formatCurrency(summary.totalPayments)}
               sub={summary.totalPayments ? null : 'Not reported in the imported facility data'} />

@@ -522,7 +522,8 @@ export default function Providers() {
         provider: p,
         location: loc,
         taxonomy: tax,
-        score: getScore(p.npi) || 0,
+        // null, not 0: an unscored provider draws grey, not as a 0 score.
+        score: getScore(p.npi),
       };
     });
   }, [sortedProviders, locationByNpi, taxonomyByNpi, scores]);

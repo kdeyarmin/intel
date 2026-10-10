@@ -23,7 +23,6 @@ const URL_DEFAULTS = {
   color: true, heat: false, volume: false, tab: 'map',
 };
 
-const BEHAVIORAL = /psycholog|behavioral|mental health|social work|counsel/i;
 
 /** Territory data → the item shape the map, popup and cluster lists use. */
 function toItem(p) {
@@ -84,7 +83,7 @@ export default function TerritoryIntelligence() {
 
   const clusters = useMemo(() => ({
     high: filtered.filter((p) => p.score != null && p.score >= 70).sort((a, b) => b.score - a.score),
-    behavioral: filtered.filter((p) => p.specialtyGroup === 'psychiatry' || BEHAVIORAL.test(p.taxonomy.taxonomy_description || '')),
+    behavioral: filtered.filter((p) => p.specialtyGroup === 'psychiatry' || p.specialtyGroup === 'behavioral_health'),
     geriatric: filtered.filter((p) => {
       if (p.specialtyGroup === 'geriatrics') return true;
       const benes = p.utilization.total_medicare_beneficiaries || 0;
@@ -138,7 +137,7 @@ export default function TerritoryIntelligence() {
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>
                 {data.scope.label}.
-                {data.scope.approx_locations_in_state ? ` About ${data.scope.approx_locations_in_state.toLocaleString()} practice locations in ${data.scope.state} overall.` : ''}
+                {data.scope.approx_locations_in_state ? ` About ${data.scope.approx_locations_in_state.toLocaleString()} provider locations (practice and mailing) in ${data.scope.state} overall.` : ''}
                 {data.geography && !data.geography.loaded && ' Census geography isn’t loaded yet, so providers can’t be placed on the map.'}
                 {isFetching && ' Refreshing…'}
               </span>

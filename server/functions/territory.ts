@@ -5,7 +5,7 @@ import { pool } from "../db";
 import { withTimeoutClient, isStatementTimeout } from "../lib/pgClient";
 import { coordsFor, getGeoIndex, zipToCounty } from "../lib/geo";
 import { normalizeEntityType, specialtyGroupFor, specialtyGroupLabel } from "../lib/specialtyGroups";
-import { normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
+import { ENTITY_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
 import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizationByNpi } from "../lib/territory";
 
 const DEFAULT_LIMIT = 500;
@@ -45,12 +45,19 @@ async function availableStates(client: any) {
   return states;
 }
 
+/** The NPIs among `npis` of the given entity type (all of them when there's no filter). */
+async function ofEntity(client: any, npis: string[], entity: string | null): Promise<Set<string>> {
+  if (!entity || npis.length === 0) return new Set(npis);
+  const { rows } = await client.query(ENTITY_FILTER_SQL, [npis, entity]);
+  return new Set(rows.map((r: any) => r.npi));
+}
+
 /**
  * Highest lead scores first (in the state), then other practice locations in
  * the state. Scores are read in order a page at a time (idx_lead_scores_score_id)
- * and checked against the state, until the sample is full.
+ * and checked against the state and entity type, until the sample is full.
  */
-async function chooseNpis(client: any, state: string | null, limit: number): Promise<{ npis: string[]; scoredFirst: number }> {
+async function chooseNpis(client: any, state: string | null, limit: number, entity: string | null = null): Promise<{ npis: string[]; scoredFirst: number }> {
   const top: string[] = [];
   const seen = new Set<string>();
   let after: { score: number; id: number } | null = null;
@@ -73,6 +80,8 @@ async function chooseNpis(client: any, state: string | null, limit: number): Pro
       const ok = new Set(inState.map((r: any) => r.npi));
       keep = fresh.filter((n: string) => ok.has(n));
     }
+    const ofKind = await ofEntity(client, keep, entity);
+    keep = keep.filter((n: string) => ofKind.has(n));
     for (const n of keep) {
       if (top.length >= limit) break;
       top.push(n);
@@ -86,9 +95,10 @@ async function chooseNpis(client: any, state: string | null, limit: number): Pro
       state ? [limit * 3, state] : [limit * 3],
     );
     const have = new Set(npis);
+    const ofKind = await ofEntity(client, [...new Set(rows.map((r: any) => r.npi).filter(Boolean))] as string[], entity);
     for (const r of rows) {
       if (npis.length >= limit) break;
-      if (r.npi && !have.has(r.npi)) {
+      if (r.npi && !have.has(r.npi) && ofKind.has(r.npi)) {
         have.add(r.npi);
         npis.push(r.npi);
       }
@@ -115,12 +125,12 @@ export async function handleGetTerritoryData(payload: any) {
       let scoredFirst = 0;
       let truncated = true;
       if (group) {
-        const found = await searchBySpecialty(client, { group, state, limit });
+        const found = await searchBySpecialty(client, { group, state, entityType: entity, limit });
         if (!found) throw new HttpError(400, "Unknown specialty.");
         npis = found.providers.map((p: any) => p.npi);
         truncated = found.truncated;
       } else {
-        ({ npis, scoredFirst } = await chooseNpis(client, state, limit));
+        ({ npis, scoredFirst } = await chooseNpis(client, state, limit, entity));
       }
 
       const [provs, taxes, locs, util, scores, zipCounts] = await Promise.all([
@@ -135,7 +145,8 @@ export async function handleGetTerritoryData(payload: any) {
                SELECT npi, location_type, address_1, city, state, zip FROM provider_locations
                 WHERE npi = n.npi
                 ORDER BY (location_type = 'Practice' AND state IS NOT DISTINCT FROM $2) DESC NULLS LAST,
-                         (location_type = 'Practice') DESC NULLS LAST
+                         (location_type = 'Practice') DESC NULLS LAST,
+                         id
                 LIMIT 1
              ) l`, [npis, state]) : { rows: [] },
         // Each provider's latest year, all of its rows.

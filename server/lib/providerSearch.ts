@@ -204,6 +204,7 @@ export function mergeResults(results: Array<{ query: SearchQuery; rows: any[] }>
 
 /** NPIs (from `npis`) with a location in `state`. Bounded by the NPI list. */
 export const STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2";
+export const ENTITY_FILTER_SQL = "SELECT npi FROM providers WHERE npi = ANY($1) AND entity_type = $2";
 
 export interface ProviderSearchResult {
   providers: any[];
@@ -257,32 +258,40 @@ export function specialtyPatterns(input: { group?: string | null; taxonomyCode?:
  */
 export async function searchBySpecialty(
   client: any,
-  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; limit?: number },
+  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; entityType?: string | null; limit?: number },
 ): Promise<{ providers: any[]; truncated: boolean; scanned: number } | null> {
   const patterns = specialtyPatterns(input);
   if (!patterns) return null;
   const limit = clampSearchLimit(input.limit);
   const state = normalizeStateFilter(input.state);
+  const entity = normalizeEntityFilter(input.entityType);
+  const filtered = !!(state || entity);
   const where = patterns.map((_, i) => `taxonomy_code LIKE $${i + 1}`).join(" OR ");
   const { rows: candidates } = await client.query(
     `SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies
       WHERE is_primary = true AND (${where}) LIMIT $${patterns.length + 1}`,
-    [...patterns, state ? SPECIALTY_CANDIDATES : limit + 1],
+    [...patterns, filtered ? SPECIALTY_CANDIDATES : limit + 1],
   );
   const found: Array<{ npi: string; taxonomy_code: string; taxonomy_description: string }> = [];
   let scanned = 0;
+  // The state and entity filters apply while choosing, before the limit, so
+  // the sample is filled with providers that actually match.
   for (let i = 0; i < candidates.length && found.length <= limit; i += SPECIALTY_CHUNK) {
-    const chunk = candidates.slice(i, i + SPECIALTY_CHUNK);
+    let chunk = candidates.slice(i, i + SPECIALTY_CHUNK);
     scanned += chunk.length;
-    if (!state) {
-      found.push(...chunk);
-      continue;
+    if (state) {
+      const { rows: inState } = await client.query(STATE_FILTER_SQL, [chunk.map((r: any) => r.npi), state]);
+      const keep = new Set(inState.map((r: any) => r.npi));
+      chunk = chunk.filter((r: any) => keep.has(r.npi));
     }
-    const { rows: inState } = await client.query(STATE_FILTER_SQL, [chunk.map((r: any) => r.npi), state]);
-    const keep = new Set(inState.map((r: any) => r.npi));
-    found.push(...chunk.filter((r: any) => keep.has(r.npi)));
+    if (entity && chunk.length) {
+      const { rows: ofKind } = await client.query(ENTITY_FILTER_SQL, [chunk.map((r: any) => r.npi), entity]);
+      const keep = new Set(ofKind.map((r: any) => r.npi));
+      chunk = chunk.filter((r: any) => keep.has(r.npi));
+    }
+    found.push(...chunk);
   }
-  const capped = candidates.length >= (state ? SPECIALTY_CANDIDATES : limit + 1);
+  const capped = candidates.length >= (filtered ? SPECIALTY_CANDIDATES : limit + 1);
   const chosen = found.slice(0, limit);
   const tax = new Map(chosen.map((t) => [t.npi, t]));
   const { rows: providers } = chosen.length

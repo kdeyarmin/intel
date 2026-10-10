@@ -17,6 +17,8 @@ export const SPECIALTY_GROUPS = [
   { key: "orthopedics", label: "Orthopedic Surgery", codes: ["207X"], words: /orthop(a)?edic/i },
   { key: "general_surgery", label: "General Surgery", codes: ["2086"], words: /^surgery$|general surgery/i },
   { key: "psychiatry", label: "Psychiatry", codes: ["2084P08", "2084A0401X", "2084F0202X", "2084P0015X"], words: /psychiatr/i },
+  // Counselors, psychoanalysts, behavior analysts, psychologists, social workers, marriage and family therapists.
+  { key: "behavioral_health", label: "Behavioral Health", codes: ["101Y", "102L", "103K", "103T", "1041", "106H"], words: /psycholog|behavior analy|mental health|social work|counsel|marriage|family therap/i },
   { key: "neurology", label: "Neurology", codes: ["2084N04", "2084V0102X", "2084N0600X"], words: /neurolog/i },
   { key: "emergency_medicine", label: "Emergency Medicine", codes: ["207P"], words: /emergency/i },
   { key: "obgyn", label: "Obstetrics & Gynecology", codes: ["207V"], words: /obstetric|gynecolog/i },
