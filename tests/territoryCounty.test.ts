@@ -127,6 +127,23 @@ describe("getCountyIntelligence", () => {
     expect(fac.sql).toContain("facility_type = ANY($1) AND state = $2 AND left(zip, 5) = ANY($3)");
     const ref = db.queries.find((q) => q.sql.includes("FROM cms_referrals"))!;
     expect(ref.sql).toContain("referred_to_npi IS NOT NULL");
+    // Latest year per pair and heaviest first are chosen in SQL, before the cap.
+    expect(ref.sql).toMatch(/DISTINCT ON \(npi, referred_to_npi\)[\s\S]*ORDER BY npi, referred_to_npi, data_year DESC NULLS LAST[\s\S]*ORDER BY total_referrals DESC NULLS LAST LIMIT \$2/);
+    const svc = db.queries.find((q) => q.sql.includes("FROM provider_service_utilization"))!;
+    expect(svc.sql).toContain("max(data_year)");
+    expect(svc.sql).not.toMatch(/LIMIT/);
+    expect(fac.sql).toMatch(/ORDER BY data_year DESC NULLS LAST, id DESC LIMIT \$4/);
+    expect(r.sample.facilities_capped).toBe(false);
+  });
+
+  it("says when the facility list was capped", async () => {
+    const base = db.answer;
+    const fac = { id: 1, facility_type: "hospital_general_info", facility_name: "F", provider_id: "1", city: "X", zip: "15213", total_payments: 1 };
+    db.answer = (sql, params) => (sql.includes("FROM medicare_facilities") ? Array.from({ length: (params[3] as number) }, (_, i) => ({ ...fac, id: i })) : base(sql, params));
+    const { handleGetCountyIntelligence } = await import("../server/functions/countyIntelligence");
+    const r: any = await handleGetCountyIntelligence({ state: "PA", county: "allegheny" });
+    expect(r.sample).toMatchObject({ facilities_capped: true, facility_limit: 2000 });
+    expect(r.summary.totalFacilities).toBe(2000);
   });
 
   it("lists the state's counties when none is chosen", async () => {
@@ -143,12 +160,11 @@ describe("getTerritoryData", () => {
     db.answer = (sql, params) => geoAnswers(sql) ?? (
       sql.includes("FROM pg_stats") ? [{ most_common_vals: "{PA,OH}", most_common_freqs: "{0.6,0.4}" }]
       : sql.includes("FROM pg_class") ? [{ n: "1000" }]
-      : sql.startsWith("SELECT npi FROM lead_scores") ? [{ npi: "1000000001" }, { npi: "1000000009" }]
+      : sql.startsWith("SELECT id, npi, score FROM lead_scores") ? (params.length === 1 ? [{ id: 2, npi: "1000000001", score: 88 }, { id: 1, npi: "1000000009", score: 70 }] : [])
       : sql.includes("SELECT DISTINCT npi FROM provider_locations") ? [{ npi: "1000000001" }]
       : sql.startsWith("SELECT npi FROM provider_locations") ? [{ npi: "1000000001" }, { npi: "1000000003" }]
       : sql.includes("FROM providers WHERE npi = ANY") ? (params[0] as string[]).map((npi) => ({ npi, entity_type: "Individual", first_name: "P", last_name: npi.slice(-1) }))
-      : sql.includes("FROM provider_locations WHERE npi = ANY") ? [
-        { npi: "1000000001", location_type: "Mailing", city: "Nowhere", state: "PA", zip: "16059" },
+      : sql.includes("CROSS JOIN LATERAL") ? [
         { npi: "1000000001", location_type: "Practice", city: "Pittsburgh", state: "PA", zip: "15213-1234" },
         { npi: "1000000003", location_type: "Practice", city: "Pittsburgh", state: "PA", zip: "15299" },
       ]
@@ -169,7 +185,30 @@ describe("getTerritoryData", () => {
     expect(r.availableStates[0]).toEqual({ state: "PA", approx: 600 });
     expect(r.scope).toMatchObject({ state: "PA", sample_size: 2, approx_locations_in_state: 600 });
     // Never a GROUP BY over provider_locations.
-    expect(db.queries.some((q) => /GROUP BY/i.test(q.sql))).toBe(false);
+    expect(db.queries.some((q) => /GROUP BY/i.test(q.sql) && q.sql.includes("provider_locations"))).toBe(false);
+    // One location per provider, practice-in-state first, with no shared cap.
+    const loc = db.queries.find((q) => q.sql.includes("CROSS JOIN LATERAL"))!;
+    expect(loc.sql).toMatch(/ORDER BY \(location_type = 'Practice' AND state IS NOT DISTINCT FROM \$2\) DESC NULLS LAST/);
+    expect(loc.params).toEqual([["1000000001", "1000000003"], "PA"]);
+  });
+
+  it("keeps reading scores in order until the state's highest-scored providers are found", async () => {
+    const base = db.answer;
+    // Page 1 (national top) has nobody in PA; page 2 does.
+    db.answer = (sql, params) => {
+      if (sql.startsWith("SELECT id, npi, score FROM lead_scores")) {
+        if (params.length === 1) return Array.from({ length: 5000 }, (_, i) => ({ id: 10_000 - i, npi: `20000${String(i).padStart(5, "0")}`, score: 99 }));
+        return [{ id: 3, npi: "1000000001", score: 60 }];
+      }
+      if (sql.includes("SELECT DISTINCT npi FROM provider_locations")) return (params[0] as string[]).filter((n) => n === "1000000001").map((npi) => ({ npi }));
+      return base(sql, params);
+    };
+    const { handleGetTerritoryData } = await import("../server/functions/territory");
+    const r: any = await handleGetTerritoryData({ state: "PA", limit: 1, entity_type: "Individual" });
+    expect(r.providers.map((p: any) => p.npi)).toEqual(["1000000001"]);
+    const pages = db.queries.filter((q) => q.sql.startsWith("SELECT id, npi, score FROM lead_scores"));
+    expect(pages[1].sql).toContain("(score, id) < ($2, $3)");
+    expect(pages[1].params).toEqual([5000, 99, 5001]);
   });
 
   it("handles all states", async () => {

@@ -20,6 +20,13 @@ describe("buildLocationSearchPlan", () => {
     expect(plan({ q: "15213", state: "pa" }).values.slice(0, 2)).toEqual(["15213", "PA"]);
   });
 
+  it("orders exact ZIP+4 matches first in SQL, before the cap", () => {
+    const p = plan({ q: "15213-1234", limit: 10 });
+    expect(p.text).toMatch(/ORDER BY \(regexp_replace\(coalesce\(zip, ''\), '\[\^0-9\]', '', 'g'\) = \$2\) DESC, id LIMIT \$3$/);
+    expect(p.values).toEqual(["15213", "152131234", 11]);
+    expect(plan({ q: "15213" }).text).not.toContain("ORDER BY");
+  });
+
   it('understands "City, ST" and "City ST"', () => {
     expect(parseCityState("Pittsburgh, PA")).toEqual({ city: "Pittsburgh", state: "PA" });
     expect(parseCityState("new castle de")).toEqual({ city: "new castle", state: "DE" });
