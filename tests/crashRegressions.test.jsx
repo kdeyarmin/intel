@@ -28,7 +28,8 @@ vi.mock('@/api/base44Client', () => ({
 }));
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => ({ data: [], isLoading: false })),
+  // Disabled queries have no data, as in react-query.
+  useQuery: vi.fn((opts) => ({ data: opts?.enabled === false ? undefined : [], isLoading: false })),
   useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
 }));
@@ -39,11 +40,11 @@ import ImportAgentChat from '../src/components/imports/ImportAgentChat';
 import DQAssistant from '../src/components/dataQuality/DQAssistant';
 
 describe('CampaignBuilder', () => {
-  it('renders the Template step with merge-field hints as text', async () => {
+  it('renders the Message step with merge-field hints as text', async () => {
     render(<CampaignBuilder onCampaignCreated={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: /Next: Create Template/i }));
-    expect(await screen.findByText(/Use \{\{merge_fields\}\} for personalization/)).toBeInTheDocument();
-    expect(screen.getByText(/\{\{provider_name\}\}, \{\{first_name\}\}/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Next: write the message/i }));
+    expect(await screen.findByText(/e\.g\. \{\{first_name\}\} becomes their first name/)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /\+ First name/ }).length).toBeGreaterThan(0);
   });
 });
 
