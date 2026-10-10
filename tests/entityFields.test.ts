@@ -14,13 +14,14 @@ import {
   coerceRowValues,
   _resetReportedDropsForTests,
   buildWhereClause,
+  clearStaleEmailVerification,
   decorateRow,
   expandOverflow,
   reportDroppedFields,
   sanitizeWriteData,
   splitWriteData,
 } from "../server/lib/entityFields";
-import { customReports, importBatches, leadListMembers, providerLocations, scheduledReports, tableMap } from "../server/db/schema";
+import { customReports, importBatches, leadListMembers, providerLocations, providers, scheduledReports, tableMap } from "../server/db/schema";
 
 const dialect = new PgDialect();
 const render = (cond: any) => dialect.sqlToQuery(cond);
@@ -181,5 +182,27 @@ describe("sanitizeWriteData", () => {
   it("keeps ProviderAffiliation.role, which is a provider's role at an organization", () => {
     expect(sanitizeWriteData("ProviderAffiliation", { npi: "1", role: "Medical Director", password_hash: "h" }))
       .toEqual({ npi: "1", role: "Medical Director" });
+  });
+});
+
+describe("clearStaleEmailVerification", () => {
+  it("leaves updates that don't touch the email alone", () => {
+    const data = { phone: "555" };
+    expect(clearStaleEmailVerification(providers, data)).toBe(data);
+  });
+
+  it("clears the verification in SQL only when the stored address differs (ignoring case)", () => {
+    const out = clearStaleEmailVerification(providers, { email: "New@Clinic.org" });
+    expect(out.email).toBe("New@Clinic.org");
+    const q = render(out.email_validation_status);
+    expect(q.sql).toMatch(/CASE WHEN lower\(coalesce\("providers"\."email", ''\)\) IS DISTINCT FROM lower\(coalesce\(\$1::text, ''\)\) THEN NULL ELSE "providers"\."email_validation_status" END/);
+    expect(q.params).toEqual(["New@Clinic.org"]);
+    expect(render(out.email_analyzed_at).sql).toContain('"providers"."email_analyzed_at"');
+  });
+
+  it("keeps verification fields the update sets itself", () => {
+    const out = clearStaleEmailVerification(providers, { email: "a@b.org", email_validation_status: "valid" });
+    expect(out.email_validation_status).toBe("valid");
+    expect(render(out.email_quality_score).sql).toContain("CASE WHEN");
   });
 });

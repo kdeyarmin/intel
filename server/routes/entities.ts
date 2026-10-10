@@ -12,6 +12,7 @@ import {
   coerceRowValues,
   decorateRow,
   reportDroppedFields,
+  clearStaleEmailVerification,
   sanitizeWriteData,
   splitWriteData,
 } from "../lib/entityFields";
@@ -334,10 +335,12 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
 
     const entityName = req.params.entity;
     const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
-    const data: Record<string, any> = coerceRowValues(table, split.data);
+    let data: Record<string, any> = coerceRowValues(table, split.data);
     delete data.id;
     delete data.created_date;
     data.updated_date = new Date();
+    // A new address invalidates the stored verification of the old one.
+    if (entityName === "Provider") data = clearStaleEmailVerification(table, data);
     if (split.overflow) {
       // Merge into the stored settings instead of replacing them, so a partial
       // update (e.g. toggling is_active) doesn't wipe the rest of the config.

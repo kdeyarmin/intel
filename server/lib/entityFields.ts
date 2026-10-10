@@ -39,6 +39,32 @@ export function sanitizeWriteData(entityName: string, data: Record<string, any>)
   return cleaned;
 }
 
+/** A provider's email verification result; it describes one address. */
+export const EMAIL_VERIFICATION_COLUMNS = [
+  "email_validation_status",
+  "email_validation_reason",
+  "email_quality_score",
+  "email_quality_confidence",
+  "email_quality_reasons",
+  "email_quality_risk_flags",
+  "email_analyzed_at",
+];
+
+/**
+ * When an update sets a provider's email, clear the verification result unless
+ * the address is unchanged (ignoring case) or the update sets those fields
+ * itself. Done in SQL against the stored address, so it holds without a read.
+ */
+export function clearStaleEmailVerification(table: any, data: Record<string, any>): Record<string, any> {
+  if (!("email" in data) || !table.email) return data;
+  const next = { ...data };
+  for (const col of EMAIL_VERIFICATION_COLUMNS) {
+    if (col in next || !table[col]) continue;
+    next[col] = sql`CASE WHEN lower(coalesce(${table.email}, '')) IS DISTINCT FROM lower(coalesce(${data.email ?? null}::text, '')) THEN NULL ELSE ${table[col]} END`;
+  }
+  return next;
+}
+
 const FILTER_OPERATORS = new Set(["$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$ne", "$like", "$exists"]);
 
 export class InvalidFieldValueError extends Error {
