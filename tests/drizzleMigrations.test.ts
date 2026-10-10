@@ -358,3 +358,34 @@ describe("migration journal", () => {
     for (const tag of LEGACY_UNJOURNALED) expect(sqlFiles).toContain(`${tag}.sql`);
   });
 });
+
+describe("migration 0008_accounts", () => {
+  const sql = readMigration("0008_accounts.sql");
+  const schema = readSchema();
+
+  it("keeps existing accounts working", () => {
+    // New column defaults must not lock anyone out.
+    expect(sql).toContain(`ADD COLUMN IF NOT EXISTS "status" varchar(20) DEFAULT 'active' NOT NULL`);
+    expect(sql).toContain(`ADD COLUMN IF NOT EXISTS "token_version" integer DEFAULT 0 NOT NULL`);
+    expect(sql).toMatch(/UPDATE "users" SET "approved_at" = COALESCE\("created_date", now\(\)\) WHERE "approved_at" IS NULL AND "status" = 'active'/);
+  });
+
+  it("is idempotent", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(ALTER TABLE "users" ADD COLUMN IF NOT EXISTS|CREATE TABLE IF NOT EXISTS|CREATE INDEX IF NOT EXISTS|UPDATE "users"|DO \$\$)/);
+    }
+  });
+
+  it("only builds the case-insensitive email index when no emails collide", () => {
+    expect(sql).toMatch(/IF NOT EXISTS \(SELECT 1 FROM "users" GROUP BY lower\("email"\) HAVING count\(\*\) > 1\) THEN\s+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_lower_uq"/);
+  });
+
+  it("declares every added column and the token table in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+    expect(schema).toContain('export const authTokens = pgTable("auth_tokens"');
+    expect(schema).toContain('uniqueIndex("users_email_lower_uq")');
+  });
+});

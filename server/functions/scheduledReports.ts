@@ -110,7 +110,8 @@ async function buildReport(row: any) {
 
 async function allowedRecipients(recipients: unknown) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase());
-  const { rows } = await pool.query("SELECT lower(email) AS email FROM users WHERE lower(email) = ANY($1)", [list]);
+  // Only active accounts: not someone awaiting approval, or a disabled account.
+  const { rows } = await pool.query("SELECT lower(email) AS email FROM users WHERE lower(email) = ANY($1) AND status = 'active'", [list]);
   const domains = (process.env.REPORT_RECIPIENT_DOMAINS || "").split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
   return partitionRecipients(recipients, new Set(rows.map((r: any) => r.email)), domains);
 }
@@ -130,7 +131,7 @@ async function runAndSend(row: any) {
     const { allowed, blocked } = await allowedRecipients(row.recipients);
     if (!allowed.length) {
       throw new HttpError(400, blocked.length
-        ? `None of the recipients can receive reports (only app users${process.env.REPORT_RECIPIENT_DOMAINS ? " and allowed domains" : ""}): ${blocked.join(", ")}.`
+        ? `None of the recipients can receive reports (only active app users${process.env.REPORT_RECIPIENT_DOMAINS ? " and allowed domains" : ""}): ${blocked.join(", ")}.`
         : "Add at least one recipient.");
     }
     let sent = 0;
@@ -152,7 +153,7 @@ async function runAndSend(row: any) {
       }
     }
     const parts = [`Sent to ${sent} of ${allowed.length} recipient${allowed.length === 1 ? "" : "s"}`, `${report.rows.length} rows from ${report.sourceRowCount} records`];
-    if (blocked.length) parts.push(`skipped ${blocked.join(", ")} (not app users)`);
+    if (blocked.length) parts.push(`skipped ${blocked.join(", ")} (not active app users)`);
     if (failures.length) parts.push(`failed: ${failures.join("; ")}`);
     const status = sent > 0 ? "success" : "failed";
     await saveRunState(row.id, {
@@ -268,7 +269,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
     return {
       success: true,
       emails_sent: r.emails_sent,
-      message: r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (not app users).` : undefined,
+      message: r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (not active app users).` : undefined,
     };
   }
   throw new HttpError(400, `Unknown action '${action}'.`);

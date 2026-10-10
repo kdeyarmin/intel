@@ -82,16 +82,12 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
         row_limit: maxRow ? (maxRow - minRow + 100) : undefined,
       });
 
-      await base44.entities.AuditEvent.create({
-        event_type: 'import',
-        user_email: (await base44.auth.me()).email,
-        details: {
-          action: 'Bulk error retry',
-          entity: batch.import_type,
-          message: `Retried ${retryableErrors.length} errors across ${selectedCategories.size} categories`,
-          batch_id: batch.id,
-          categories: Array.from(selectedCategories),
-        },
+      await base44.audit.record('import', {
+        action: 'Bulk error retry',
+        entity: batch.import_type,
+        message: `Retried ${retryableErrors.length} errors across ${selectedCategories.size} categories`,
+        batch_id: batch.id,
+        categories: Array.from(selectedCategories),
       });
 
       toast.success(`Retry started for ${retryableErrors.length} errors`);
@@ -121,16 +117,12 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
       tags: [...new Set([...(batch.tags || []), 'errors-triaged'])],
     });
 
-    await base44.entities.AuditEvent.create({
-      event_type: 'user_action',
-      user_email: (await base44.auth.me()).email,
-      details: {
-        action: 'Bulk skip errors',
-        entity: batch.import_type,
-        message: `Skipped ${selectedErrorCount} errors in ${selectedCategories.size} categories`,
-        batch_id: batch.id,
-        categories: Array.from(selectedCategories),
-      },
+    await base44.audit.record('user_action', {
+      action: 'Bulk skip errors',
+      entity: batch.import_type,
+      message: `Skipped ${selectedErrorCount} errors in ${selectedCategories.size} categories`,
+      batch_id: batch.id,
+      categories: Array.from(selectedCategories),
     });
 
     toast.success(`${selectedErrorCount} errors marked as skipped`);

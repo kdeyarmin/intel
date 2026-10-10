@@ -5,12 +5,19 @@
  * renders actions passed as children.
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 afterEach(cleanup);
 
-const authState = { user: { role: 'user', email: 'rep@example.com' }, isAuthenticated: true, isLoadingAuth: false, sessionExpired: false };
+const authState = {
+  user: { role: 'user', email: 'rep@example.com', status: 'active' },
+  isAuthenticated: true,
+  isLoadingAuth: false,
+  sessionExpired: false,
+  checkAppState: vi.fn(),
+  logout: vi.fn(),
+};
 
 vi.mock('@/lib/AuthContext', () => ({
   AuthProvider: ({ children }) => children,
@@ -35,12 +42,14 @@ vi.mock('../src/pages.config.js', () => ({
 
 const listImportBatches = vi.fn(() => Promise.resolve([]));
 const filterAlerts = vi.fn(() => Promise.resolve([]));
+const pendingCount = vi.fn(() => Promise.resolve({ count: 2 }));
 vi.mock('@/api/base44Client', () => ({
   base44: {
     entities: {
       ImportBatch: { list: (...a) => listImportBatches(...a) },
       DataQualityAlert: { filter: (...a) => filterAlerts(...a) },
     },
+    admin: { users: { pendingCount: (...a) => pendingCount(...a) } },
   },
 }));
 
@@ -56,7 +65,7 @@ function renderAt(path) {
 
 describe('ProtectedRoute page access', () => {
   beforeEach(() => {
-    authState.user = { role: 'user', email: 'rep@example.com' };
+    authState.user = { role: 'user', email: 'rep@example.com', status: 'active' };
   });
 
   it('shows Access denied inside the layout for a user on an admin page', async () => {
@@ -74,6 +83,19 @@ describe('ProtectedRoute page access', () => {
   it('lets a user open pages their role allows', async () => {
     renderAt('/Providers');
     expect(await screen.findByText('providers page')).toBeInTheDocument();
+  });
+
+  it('sends an account awaiting approval to the waiting screen from any page', async () => {
+    authState.user = { role: 'user', email: 'new@example.com', status: 'pending' };
+    renderAt('/Providers');
+    expect(await screen.findByText('Waiting for approval')).toBeInTheDocument();
+    expect(screen.queryByText('providers page')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/pending');
+  });
+
+  it('sends an approved account away from the waiting screen', async () => {
+    renderAt('/pending');
+    expect(await screen.findByText('dashboard page')).toBeInTheDocument();
   });
 
   it('lets an admin open admin pages', async () => {
@@ -120,13 +142,23 @@ describe('NotificationBell', () => {
   beforeEach(() => {
     listImportBatches.mockClear();
     filterAlerts.mockClear();
+    pendingCount.mockClear();
   });
 
-  it('does not request admin-only import batches for a regular user', async () => {
+  it('does not request admin-only import batches or account approvals for a regular user', async () => {
     authState.user = { role: 'user' };
     renderBell();
     await vi.waitFor(() => expect(filterAlerts).toHaveBeenCalled());
     expect(listImportBatches).not.toHaveBeenCalled();
+    expect(pendingCount).not.toHaveBeenCalled();
+  });
+
+  it('tells an admin how many accounts are waiting for approval', async () => {
+    authState.user = { role: 'admin' };
+    renderBell();
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(await screen.findByText('2 accounts awaiting approval')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /2 accounts awaiting approval/ })).toHaveAttribute('href', '/AdminSettings');
   });
 
   it('requests import batches for an admin', async () => {

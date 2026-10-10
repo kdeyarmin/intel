@@ -1,4 +1,7 @@
 import sgMail from "@sendgrid/mail";
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 // Single place that talks to SendGrid. Used by the /email/send integration and
 // by campaign sending (server/functions/outreach.ts).
@@ -8,7 +11,23 @@ export interface MailerStatus {
   missing: string[];
 }
 
+// MAIL_TRANSPORT=outbox writes messages to a local JSONL file instead of
+// sending them, so reset/invite links and campaigns can be exercised in
+// development. Refused in production.
+export function mailTransport(): "sendgrid" | "outbox" {
+  return process.env.MAIL_TRANSPORT === "outbox" ? "outbox" : "sendgrid";
+}
+
+export function outboxPath(): string {
+  return process.env.MAIL_OUTBOX_PATH || path.resolve(".data", "mail-outbox.jsonl");
+}
+
 export function getMailerStatus(): MailerStatus {
+  if (mailTransport() === "outbox") {
+    return process.env.NODE_ENV === "production"
+      ? { configured: false, missing: ["MAIL_TRANSPORT=outbox is development-only"] }
+      : { configured: true, missing: [] };
+  }
   const missing = process.env.SENDGRID_API_KEY ? [] : ["SENDGRID_API_KEY"];
   return { configured: missing.length === 0, missing };
 }
@@ -57,6 +76,7 @@ export class MailerNotConfiguredError extends Error {
 export async function sendMail(msg: MailMessage): Promise<{ messageId: string | null }> {
   const status = getMailerStatus();
   if (!status.configured) throw new MailerNotConfiguredError(status.missing);
+  if (mailTransport() === "outbox") return writeToOutbox(msg);
   sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
   const from = resolveFrom(msg.from);
   const [response] = await sgMail.send({
@@ -75,5 +95,21 @@ export async function sendMail(msg: MailMessage): Promise<{ messageId: string | 
     })),
   });
   const messageId = (response?.headers as Record<string, string> | undefined)?.["x-message-id"] ?? null;
+  return { messageId };
+}
+
+async function writeToOutbox(msg: MailMessage): Promise<{ messageId: string }> {
+  const messageId = `outbox-${crypto.randomUUID()}`;
+  const file = outboxPath();
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  const { attachments, ...rest } = msg;
+  const entry = {
+    messageId,
+    at: new Date().toISOString(),
+    ...rest,
+    from: resolveFrom(msg.from),
+    attachments: attachments?.map((a) => ({ filename: a.filename, type: a.type })),
+  };
+  await fs.promises.appendFile(file, JSON.stringify(entry) + "\n");
   return { messageId };
 }

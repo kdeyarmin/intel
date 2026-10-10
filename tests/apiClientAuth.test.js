@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  ACCOUNT_STATUS_EVENT,
   AUTH_EXPIRED_EVENT,
   base44,
   buildErrorMessage,
@@ -56,7 +57,7 @@ describe('401 handling', () => {
     localStorage.clear();
   });
 
-  it('clears the token and fires one event even when many requests fail together', async () => {
+  it('fires one event even when many requests fail together', async () => {
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'Invalid or expired token' })));
     const results = await Promise.allSettled([
       base44.entities.Provider.list(),
@@ -65,7 +66,15 @@ describe('401 handling', () => {
     ]);
     expect(results.every((r) => r.status === 'rejected' && r.reason.status === 401)).toBe(true);
     expect(events).toEqual(['expired']);
-    expect(localStorage.getItem('auth_token')).toBeNull();
+  });
+
+  it('relies on the session cookie, never a stored bearer token', async () => {
+    const fetchMock = vi.fn(() => jsonResponse(200, []));
+    vi.stubGlobal('fetch', fetchMock);
+    await base44.entities.Provider.list();
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.credentials).toBe('include');
+    expect(init.headers.Authorization).toBeUndefined();
   });
 
   it('ignores 401s from the auth endpoints themselves', async () => {
@@ -135,5 +144,31 @@ describe('buildLoginUrl', () => {
 
   it('omits returnUrl for the home page', () => {
     expect(buildLoginUrl({ pathname: '/', search: '' })).toBe('/login');
+  });
+});
+
+describe('account status handling', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('announces a pending or disabled account so the app can re-check it', async () => {
+    const seen = [];
+    const onStatus = (e) => seen.push(e.detail.code);
+    window.addEventListener(ACCOUNT_STATUS_EVENT, onStatus);
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(403, { message: 'Awaiting approval', code: 'account_pending' })));
+    await expect(base44.entities.Provider.list()).rejects.toThrow('Awaiting approval');
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(403, { message: 'Forbidden', detail: 'Admin access required.' })));
+    await expect(base44.functions.invoke('triggerImport')).rejects.toThrow('Forbidden');
+    window.removeEventListener(ACCOUNT_STATUS_EVENT, onStatus);
+    expect(seen).toEqual(['account_pending']);
+  });
+
+  it('records audit events through the server and never throws', async () => {
+    const fetchMock = vi.fn(() => jsonResponse(500, { message: 'down' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(base44.audit.record('export', { action: 'csv_export' })).resolves.toBeUndefined();
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/audit');
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ event_type: 'export', details: { action: 'csv_export' } });
+    warn.mockRestore();
   });
 });

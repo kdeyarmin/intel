@@ -1,10 +1,21 @@
 const API_BASE = "/api";
 
 export const AUTH_EXPIRED_EVENT = "auth:expired";
+// Fired when the server says the account is awaiting approval or disabled, so
+// the auth layer can re-check and route accordingly.
+export const ACCOUNT_STATUS_EVENT = "auth:account-status";
 
 // Endpoints whose 401s are expected and handled by the auth layer itself
-// (bad credentials, the initial session probe, logout).
-const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/me", "/auth/logout"];
+// (bad credentials, the initial session probe, logout, reset links).
+const AUTH_ENDPOINTS = ["/auth/"];
+
+// The session lives in an httpOnly cookie. Older builds also kept the token in
+// localStorage, where any script on the page could read it; drop that copy.
+try {
+  if (typeof localStorage !== "undefined") localStorage.removeItem("auth_token");
+} catch {
+  /* storage unavailable */
+}
 
 let authExpiredHandled = false;
 
@@ -12,17 +23,25 @@ export function resetAuthExpired() {
   authExpiredHandled = false;
 }
 
-// A 401 from any other endpoint means the session expired mid-use. Clear the
-// stale token and tell the app once (many queries can fail at the same time),
-// so it can send the user to the login page instead of rendering empty tables.
+// A 401 from any other endpoint means the session expired mid-use. Tell the
+// app once (many queries can fail at the same time), so it can send the user
+// to the login page instead of rendering empty tables.
 export function handleUnauthorized(url) {
   if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
   if (authExpiredHandled) return;
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
   authExpiredHandled = true;
-  localStorage.removeItem("auth_token");
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
+const ACCOUNT_STATUS_CODES = new Set(["account_pending", "account_disabled"]);
+
+export function handleAccountStatus(url, data) {
+  if (!ACCOUNT_STATUS_CODES.has(data?.code)) return;
+  if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(ACCOUNT_STATUS_EVENT, { detail: { code: data.code } }));
 }
 
 // Server errors carry a short `message` (or `error`) plus an optional
@@ -38,6 +57,7 @@ export function buildErrorMessage(data, status) {
 async function toApiError(res, url) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
   if (res.status === 401) handleUnauthorized(url);
+  if (res.status === 403) handleAccountStatus(url, data);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
   err.status = res.status;
@@ -46,10 +66,8 @@ async function toApiError(res, url) {
 }
 
 async function request(url, options = {}) {
-  const token = localStorage.getItem("auth_token");
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
@@ -153,14 +171,15 @@ export const base44 = {
       return request("/auth/me");
     },
 
+    async options() {
+      return request("/auth/options");
+    },
+
     async login(email, password) {
       const result = await request("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      if (result.token) {
-        localStorage.setItem("auth_token", result.token);
-      }
       resetAuthExpired();
       return result;
     },
@@ -170,20 +189,76 @@ export const base44 = {
         method: "POST",
         body: JSON.stringify({ email, password, full_name }),
       });
-      if (result.token) {
-        localStorage.setItem("auth_token", result.token);
-      }
       resetAuthExpired();
       return result;
     },
 
     async logout() {
-      localStorage.removeItem("auth_token");
       await request("/auth/logout", { method: "POST" }).catch(() => {});
+    },
+
+    async logoutEverywhere() {
+      await request("/auth/logout-all", { method: "POST" });
+    },
+
+    async changePassword(current_password, new_password) {
+      return request("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ current_password, new_password }),
+      });
+    },
+
+    async forgotPassword(email) {
+      return request("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+    },
+
+    async tokenInfo(token) {
+      return request(`/auth/token-info?token=${encodeURIComponent(token)}`);
+    },
+
+    async resetPassword(token, password, full_name) {
+      const result = await request("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password, full_name }),
+      });
+      resetAuthExpired();
+      return result;
     },
 
     redirectToLogin(returnUrl) {
       window.location.href = `/login?returnUrl=${encodeURIComponent(returnUrl || window.location.href)}`;
+    },
+  },
+
+  // Admin user management (server/routes/adminUsers.ts).
+  admin: {
+    users: {
+      list: () => request("/admin/users"),
+      pendingCount: () => request("/admin/users/pending-count"),
+      activity: (limit = 50) => request(`/admin/users/activity?limit=${limit}`),
+      invite: (data) => request("/admin/users/invite", { method: "POST", body: JSON.stringify(data) }),
+      update: (id, data) => request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      approve: (id) => request(`/admin/users/${id}/approve`, { method: "POST" }),
+      disable: (id, reason) => request(`/admin/users/${id}/disable`, { method: "POST", body: JSON.stringify({ reason }) }),
+      enable: (id) => request(`/admin/users/${id}/enable`, { method: "POST" }),
+      resetLink: (id) => request(`/admin/users/${id}/reset-link`, { method: "POST" }),
+      revokeSessions: (id) => request(`/admin/users/${id}/revoke-sessions`, { method: "POST" }),
+      remove: (id) => request(`/admin/users/${id}`, { method: "DELETE" }),
+    },
+  },
+
+  // Best-effort audit trail for the user's own actions (exports, imports,
+  // scoring runs). The server records who and from where; failures are ignored.
+  audit: {
+    async record(event_type, details = {}) {
+      try {
+        await request("/audit", { method: "POST", body: JSON.stringify({ event_type, details }) });
+      } catch (e) {
+        console.warn("Audit logging failed:", e?.message || e);
+      }
     },
   },
 
@@ -207,10 +282,8 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
-        const token = localStorage.getItem("auth_token");
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
           body: formData,
         });

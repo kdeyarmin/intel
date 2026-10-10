@@ -98,18 +98,12 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
       await base44.functions.invoke('triggerImport', invokeParams);
 
-      // Log the retry as an audit event
-      try {
-        await base44.entities.AuditEvent.create({
-          event_type: 'import',
-          user_email: 'system',
-          details: {
-            action: `Retry import: ${batch.import_type} (attempt ${currentRetryCount + 1}/${MAX_RETRIES})`,
-            entity: batch.import_type,
-            message: `Retry mode: ${retryMode}`,
-          },
-        });
-      } catch (_e) { /* audit logging is best-effort */ }
+      // Log the retry as an audit event (best-effort; never throws).
+      await base44.audit.record('import', {
+        action: `Retry import: ${batch.import_type} (attempt ${currentRetryCount + 1}/${MAX_RETRIES})`,
+        entity: batch.import_type,
+        message: `Retry mode: ${retryMode}`,
+      });
 
       toast.success('Retry started successfully');
       onRetryStarted?.();

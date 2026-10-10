@@ -41,13 +41,18 @@ function consumeTokenState(key: string, max: number, windowMs: number): { allowe
   return { allowed: true, retryMs: 0 };
 }
 
+/**
+ * The caller's address. `req.ip` honours Express's "trust proxy" setting
+ * (TRUST_PROXY, see server/index.ts), so a client can only spoof it as far as
+ * that setting allows.
+ */
+export function clientIp(req: { ip?: string; socket?: { remoteAddress?: string } }): string {
+  return req.ip || req.socket?.remoteAddress || "noip";
+}
+
 function clientKey(req: AuthRequest, scope: string): string {
   const userPart = req.user?.id != null ? `u${req.user.id}` : "anon";
-  const ipPart =
-    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    "noip";
-  return `${scope}:${userPart}:${ipPart}`;
+  return `${scope}:${userPart}:${clientIp(req)}`;
 }
 
 /**
@@ -72,11 +77,7 @@ export function rateLimit(scope: string, max: number, windowMs: number) {
 // IP-only key for unauthenticated routes (login/signup).
 export function ipRateLimit(scope: string, max: number, windowMs: number) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    const ipPart =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket?.remoteAddress ||
-      "noip";
-    const key = `${scope}:${ipPart}`;
+    const key = `${scope}:${clientIp(req)}`;
     if (!consumeToken(key, max, windowMs)) {
       return res.status(429).json({
         message: "Too many requests",
@@ -84,5 +85,40 @@ export function ipRateLimit(scope: string, max: number, windowMs: number) {
       });
     }
     next();
+  };
+}
+
+/**
+ * Counts failures per key (e.g. per email address for logins) without
+ * counting successes, so many people behind one address aren't throttled
+ * while a password is being guessed from many addresses.
+ */
+export function createFailureCounter(max: number, windowMs: number) {
+  const failures = new Map<string, Bucket>();
+  const live = (key: string, now: number) => {
+    const b = failures.get(key);
+    if (b && b.resetAt <= now) {
+      failures.delete(key);
+      return undefined;
+    }
+    return b;
+  };
+  return {
+    /** Milliseconds until `key` may try again, or 0 when it isn't locked. */
+    lockedFor(key: string): number {
+      const now = Date.now();
+      const b = live(key, now);
+      return b && b.count >= max ? b.resetAt - now : 0;
+    },
+    fail(key: string) {
+      const now = Date.now();
+      if (failures.size > 50_000) failures.clear();
+      const b = live(key, now);
+      if (b) b.count += 1;
+      else failures.set(key, { count: 1, resetAt: now + windowMs });
+    },
+    clear(key: string) {
+      failures.delete(key);
+    },
   };
 }

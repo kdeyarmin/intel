@@ -63,6 +63,17 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
 - **Entity ACL:** sensitive entities are admin-only for read and write; a
   whitelist of collaborative entities allows non-admin writes. The `User` entity
   is excluded from generic CRUD.
+- **Accounts:** `users.status` is `pending` (signed up, awaiting approval),
+  `invited`, `active` or `disabled`. The JWT carries only `{id, tv}`;
+  `authMiddleware` reads role/status/token_version live (30s cache in
+  `server/lib/sessionUsers.ts`, invalidated on admin changes), so role changes
+  and disabling apply without a new sign-in. Bumping `token_version` ends every
+  session. Accounts are managed through `/api/admin/users`
+  (`server/routes/adminUsers.ts`), not the entity API. Public auth screens live
+  in `src/components/auth/` (anything in `src/pages/` becomes a protected route).
+- **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`). The
+  browser records its own actions with `base44.audit.record(type, details)`
+  (`POST /api/audit`, allowlisted types); it can't write `AuditEvent` directly.
 - **Edge-function helpers are unit-tested from Node:** pure logic lives in
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
