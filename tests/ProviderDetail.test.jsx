@@ -151,7 +151,7 @@ describe('ProviderDetail page – AffiliatedProvidersCard conditional rendering'
   it('shows "Provider not found" message when no provider data is returned', () => {
     setupMocks({ provider: null });
     renderProviderDetail('0000000000');
-    expect(screen.getByText('Provider not found')).toBeInTheDocument();
+    expect(screen.getByText('No provider with NPI 0000000000 was found.')).toBeInTheDocument();
   });
 
   it('does not render AffiliatedProvidersCard when provider is not found', () => {

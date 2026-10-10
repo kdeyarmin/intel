@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +10,15 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Send } from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function CampaignBuilder({ onCampaignCreated, initialCampaign = null }) {
+export default function CampaignBuilder({ onCampaignCreated, initialCampaign = null, initialLeadListId = '' }) {
   const [step, setStep] = useState('details');
   const [loading, setLoading] = useState(false);
   const [campaign, setCampaign] = useState(initialCampaign || {
     name: '',
     description: '',
-    lead_list_id: '',
+    lead_list_id: initialLeadListId ? String(initialLeadListId) : '',
     subject_template: '',
     body_template: '',
     ai_personalization: true,
@@ -32,7 +34,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
 
   const fetchLeadLists = async () => {
     try {
-      const lists = await base44.entities.LeadList.list('-created_date', 50);
+      const lists = await base44.entities.LeadList.list('-created_date', 200);
       setLeadLists(lists);
     } catch (error) {
       console.error('Failed to fetch lead lists:', error);
@@ -41,7 +43,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
 
   const handleSend = async (sendNow = false) => {
     if (!campaign.name || !campaign.subject_template || !campaign.body_template) {
-      alert('Please fill in the campaign name, subject, and message body first.');
+      toast.error('Please fill in the campaign name, subject, and message body first.');
       return;
     }
 
@@ -67,16 +69,20 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
         setCampaign(prev => ({ ...prev, id: campaignId }));
       }
 
-      const result = await base44.functions.invoke('sendCampaignMessages', {
-        campaign_id: campaignId,
-        batch_size: 50,
-        send_now: sendNow,
-      });
-
-      alert(`Campaign ready! ${result.data?.results?.messages_created ?? 0} messages created.`);
+      try {
+        const result = await invokeOrThrow('sendCampaignMessages', {
+          campaign_id: campaignId,
+          batch_size: 50,
+          send_now: sendNow,
+        });
+        toast.success(`Campaign ready: ${result?.results?.messages_created ?? 0} messages created.`);
+      } catch (sendError) {
+        // The campaign itself was saved; report why nothing was sent.
+        toastFunctionError(sendError, 'The campaign was saved, but sending failed.');
+      }
       onCampaignCreated?.({ ...campaign, id: campaignId });
     } catch (error) {
-      alert('Failed to send campaign: ' + error.message);
+      toast.error('Failed to save campaign: ' + error.message);
     } finally {
       setLoading(false);
     }

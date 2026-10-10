@@ -18,6 +18,7 @@ import CurrentStateProgress from '../components/nppes/CurrentStateProgress';
 import CrawlerAnalyticsView from '../components/crawlerDashboard/CrawlerAnalyticsView';
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -26,6 +27,7 @@ const US_STATES = [
 ];
 
 export default function NPPESCrawler() {
+  const confirm = useConfirm();
   const [dryRun, setDryRun] = useState(false);
   const [skipCompleted, setSkipCompleted] = useState(true);
   const [taxonomyFilter] = useState('');
@@ -91,8 +93,14 @@ export default function NPPESCrawler() {
     handleAction('batch_resume', 'Crawler resumed');
   };
 
-  const stopCrawler = () => {
-    handleAction('batch_stop', 'Crawler stopped');
+  const stopCrawler = async () => {
+    const ok = await confirm({
+      title: 'Stop and cancel the crawler?',
+      description: 'The current crawl is cancelled. States already imported are kept; you can start a new crawl later.',
+      confirmLabel: 'Stop crawler',
+      destructive: true,
+    });
+    if (ok) handleAction('batch_stop', 'Crawler stopped');
   };
 
   const handleCrawlerTabKeyDown = (event, tabId) => {

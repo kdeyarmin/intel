@@ -9,6 +9,7 @@ import {
   Sparkles, Loader2, ShieldAlert, CheckCircle2,
   User, MapPin, Stethoscope, AlertTriangle, Lightbulb
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const ENTITY_CONFIGS = [
   { key: 'Provider', icon: User, label: 'Providers', color: 'text-blue-400 bg-blue-900/20' },
@@ -152,7 +153,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
     } catch (err) {
       setProgress({ step: `Error: ${err.message}`, pct: 0 });
-      alert(`Scan failed: ${err.message}`);
+      toast.error(`Scan failed: ${err.message}`);
     } finally {
       setScanning(false);
     }

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { UserPlus, Search, Loader2, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { saveProvidersToLeadList } from './leadListService';
 
 export default function AddProviderDialog({ listId, existingNpis = [], onAdded }) {
   const [open, setOpen] = useState(false);
@@ -45,11 +46,8 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
   const handleAdd = async (npi) => {
     setAdding(npi);
     try {
-      await base44.entities.LeadListMember.create({
-        list_id: listId,
-        npi,
-        status: 'New',
-      });
+      // Shared path: skips duplicates and keeps the list's member_count right.
+      await saveProvidersToLeadList({ listId, npis: [npi] });
       setAdded(prev => new Set([...prev, npi]));
       // Await in case onAdded is async — otherwise its rejection escapes this try/catch.
       await onAdded?.();

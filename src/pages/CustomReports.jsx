@@ -16,10 +16,12 @@ import ScheduledReportsList from '../components/scheduledReports/ScheduledReport
 import ReportTemplateLibrary from '../components/scheduledReports/ReportTemplateLibrary';
 import { DATASET_CONFIG } from '../components/customReports/reportConfig';
 import PageHeader from '../components/shared/PageHeader';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 const EMPTY_CONFIG = { name: '', dataset: '', metrics: [], group_by: '', chart_type: 'bar', filters: {} };
 
 export default function CustomReports() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('builder');
   
@@ -234,7 +236,11 @@ export default function CustomReports() {
                 reports={savedReports}
                 loading={loadingSaved}
                 onLoad={handleLoadCustom}
-                onDelete={(r) => deleteCustomMutation.mutate(r.id)}
+                onDelete={async (r) => {
+                  if (await confirm({ title: `Delete report "${r.name}"?`, confirmLabel: 'Delete', destructive: true })) {
+                    deleteCustomMutation.mutate(r.id);
+                  }
+                }}
                 onToggleFavorite={(r) => favCustomMutation.mutate(r)}
               />
             </div>
@@ -271,7 +277,11 @@ export default function CustomReports() {
               reports={scheduledReports}
               loading={loadingScheduled}
               onEdit={handleEditSchedule}
-              onDelete={(r) => { if(confirm('Delete schedule?')) deleteScheduleMutation.mutate(r.id); }}
+              onDelete={async (r) => {
+                if (await confirm({ title: `Delete schedule "${r.name}"?`, description: 'Recipients will stop receiving this report.', confirmLabel: 'Delete', destructive: true })) {
+                  deleteScheduleMutation.mutate(r.id);
+                }
+              }}
               onToggleActive={(r) => updateScheduleMutation.mutate({ id: r.id, data: { is_active: !r.is_active } })}
               onRunNow={handleRunScheduleNow}
               runningId={runningScheduleId}

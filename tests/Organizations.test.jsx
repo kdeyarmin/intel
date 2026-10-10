@@ -17,7 +17,9 @@ vi.mock('@/api/base44Client', () => ({ base44: { entities: {}, auth: {}, functio
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
   useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+  keepPreviousData: undefined,
 }));
+vi.mock('../src/components/leadlists/AddToLeadListDialog', () => ({ default: () => null }));
 
 // Stub child components that pull in their own heavy deps.
 vi.mock('../src/components/search/TypeAheadSearch', () => ({ default: () => null }));
@@ -93,10 +95,10 @@ describe('Organizations page – link URLs after PR change', () => {
     expect(detailLinks.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('renders "No organizations found" when provider list is empty', () => {
+  it('explains an empty organization list', () => {
     setupMocks({ providers: [] });
     renderOrganizations();
-    expect(screen.getByText('No organizations found')).toBeInTheDocument();
+    expect(screen.getByText('No organizations match the current filters.')).toBeInTheDocument();
   });
 
   it('renders multiple org rows with OrganizationDetail links for each', () => {

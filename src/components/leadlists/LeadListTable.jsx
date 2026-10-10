@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ArrowUpDown, Edit, Eye, UserMinus } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 const _statusColors = {
   'New': 'bg-blue-900/30 text-blue-400',
@@ -16,6 +17,7 @@ const _statusColors = {
 };
 
 export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, onRemove }) {
+  const confirm = useConfirm();
   const [sortField, setSortField] = useState('score');
   const [sortDir, setSortDir] = useState('desc');
   const [editingNotes, setEditingNotes] = useState(null);
@@ -150,8 +152,9 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                     size="sm"
                     variant="outline"
                     className="text-red-400 hover:text-red-300 hover:bg-red-900/10"
-                    onClick={() => {
-                      if (confirm('Remove this provider from the list?')) {
+                    aria-label="Remove from list"
+                    onClick={async () => {
+                      if (await confirm({ title: 'Remove this provider from the list?', confirmLabel: 'Remove', destructive: true })) {
                         onRemove(lead.member.id);
                       }
                     }}

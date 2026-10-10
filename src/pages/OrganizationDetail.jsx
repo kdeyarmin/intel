@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell } from 'recharts';
-import { ArrowLeft, Building2, Users, MapPin, DollarSign, Activity, Stethoscope, GitBranch } from 'lucide-react';
+import { ArrowLeft, Building2, Users, MapPin, DollarSign, Activity, Stethoscope, GitBranch, Phone, Mail, ListPlus } from 'lucide-react';
+import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
+import QueryErrorState from '../components/shared/QueryErrorState';
+import { telHref } from '../components/providers/ProviderHeader';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
 
 const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#06b6d4', '#f97316'];
@@ -19,7 +22,7 @@ export default function OrganizationDetail() {
   const [searchParams] = useSearchParams();
   const npi = searchParams.get('npi');
 
-  const { data: providers = [], isLoading: loadingProv } = useQuery({
+  const { data: providers = [], isLoading: loadingProv, isError: provError, error: provLoadError, refetch: refetchProv } = useQuery({
     queryKey: ['orgProvider', npi],
     queryFn: () => base44.entities.Provider.filter({ npi }),
     enabled: !!npi,
@@ -73,6 +76,8 @@ export default function OrganizationDetail() {
 
   const queryClient = useQueryClient();
   const provider = providers?.[0];
+  const [listOpen, setListOpen] = useState(false);
+  const orgPhone = (locations.find(l => l.is_primary) || locations[0])?.phone || provider?.phone;
   const score = scores?.[0];
 
   // Affiliated providers: others at same address. Skip blank addresses so an
@@ -132,10 +137,18 @@ export default function OrganizationDetail() {
     );
   }
 
+  if (provError) {
+    return (
+      <div className="p-8 max-w-xl mx-auto">
+        <QueryErrorState title="Couldn't load this organization" error={provLoadError} onRetry={refetchProv} />
+      </div>
+    );
+  }
+
   if (!provider) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-slate-400 text-lg mb-4">Organization not found</p>
+        <p className="text-slate-400 text-lg mb-4">{npi ? `No organization with NPI ${npi} was found.` : 'No organization selected.'}</p>
         <Button variant="outline" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" /> Go Back</Button>
       </div>
     );
@@ -158,7 +171,15 @@ export default function OrganizationDetail() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-white">{provider.organization_name || 'Unknown Organization'}</h1>
-                  <p className="text-sm text-slate-400 font-mono">NPI: {provider.npi}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
+                    <span className="font-mono">NPI: {provider.npi}</span>
+                    {telHref(orgPhone) && (
+                      <a href={telHref(orgPhone)} className="flex items-center gap-1 hover:text-cyan-400"><Phone className="w-3.5 h-3.5" /> {orgPhone}</a>
+                    )}
+                    {provider.email && (
+                      <a href={`mailto:${provider.email}`} className="flex items-center gap-1 hover:text-cyan-400"><Mail className="w-3.5 h-3.5" /> {provider.email}</a>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
@@ -169,6 +190,10 @@ export default function OrganizationDetail() {
                 {score && <Badge className="bg-amber-900/20 text-amber-400">Score: {score.score}/100</Badge>}
                 {provider.needs_nppes_enrichment && <Badge className="bg-orange-900/20 text-orange-400">Needs Enrichment</Badge>}
               </div>
+              <Button size="sm" onClick={() => setListOpen(true)} className="mt-3 bg-cyan-600 hover:bg-cyan-700">
+                <ListPlus className="w-4 h-4 mr-2" /> Add to lead list
+              </Button>
+              <AddToLeadListDialog open={listOpen} onOpenChange={setListOpen} npis={[provider.npi]} />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div className="p-3 bg-blue-900/10 rounded-lg border border-blue-500/20">
@@ -296,14 +321,14 @@ export default function OrganizationDetail() {
                     <TableRow key={l.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {l.address_1 || '-'}
+                          <Link to={createPageUrl(`LocationDetail?id=${l.id}`)} className="hover:text-cyan-400 hover:underline">{l.address_1 || '-'}</Link>
                           {l.is_primary && <Badge className="bg-blue-900/20 text-blue-400 text-[10px]">Primary</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>{l.city || '-'}</TableCell>
                       <TableCell>{l.state || '-'}</TableCell>
                       <TableCell className="font-mono text-xs">{l.zip || '-'}</TableCell>
-                      <TableCell>{l.phone || '-'}</TableCell>
+                      <TableCell>{telHref(l.phone) ? <a href={telHref(l.phone)} className="hover:text-cyan-400 hover:underline">{l.phone}</a> : '-'}</TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{l.location_type || '-'}</Badge></TableCell>
                     </TableRow>
                   ))}

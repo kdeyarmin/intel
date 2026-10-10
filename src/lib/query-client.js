@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 // toast for any failed query/mutation, with light de-duplication so a polling
 // query that keeps failing doesn't spam the screen.
 const lastShown = new Map();
-function notifyError(error, { kind }) {
+function notifyError(error, { kind, prefix }) {
         // Auth failures are handled by the auth layer (redirect to login); don't toast.
         if (error?.status === 401) return;
         const status = error?.status ?? error?.response?.status;
@@ -15,10 +15,13 @@ function notifyError(error, { kind }) {
         // FunctionErrors (src/api/functionResult.js) carry a user-facing message
         // from the backend function itself.
         const isFunctionError = error?.name === 'FunctionError';
-        const message =
+        const base =
                 isFunctionError || (status && status >= 400 && status < 500)
                         ? (rawMessage || 'Request failed.')
                         : 'Something went wrong. Please try again.';
+        // Mutations can name the action via meta.errorMessage, e.g.
+        // useMutation({ meta: { errorMessage: 'Failed to save filter' } }).
+        const message = prefix ? `${prefix}: ${base}` : base;
         // Queries refetch/poll, so suppress repeats of the same message for a
         // while; mutations are explicit user actions, so only guard against the
         // double-fire of a single click.
@@ -39,9 +42,9 @@ export const queryClientInstance = new QueryClient({
                 },
         }),
         mutationCache: new MutationCache({
-                onError: (error) => {
+                onError: (error, _variables, _context, mutation) => {
                         console.error('[Mutation Error]', error?.message || error);
-                        notifyError(error, { kind: 'mutation' });
+                        notifyError(error, { kind: 'mutation', prefix: mutation?.meta?.errorMessage });
                 },
         }),
         defaultOptions: {

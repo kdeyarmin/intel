@@ -12,6 +12,7 @@ import {
   Plus, Pencil, Trash2, Loader2, Clock, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 const MAINTENANCE_TASKS = [
   { key: 'runScheduledImports', label: 'Run Scheduled Imports', desc: 'Process all due schedules and fan out the maintenance workers.', icon: PlayCircle, accent: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/20' },
@@ -58,6 +59,7 @@ function fmt(iso) {
 }
 
 export default function ImportScheduleManager() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [running, setRunning] = useState(null);
   const [lastResult, setLastResult] = useState(null);
@@ -145,7 +147,13 @@ export default function ImportScheduleManager() {
   };
 
   const remove = async (s) => {
-    if (!window.confirm(`Delete schedule "${s.label || s.name || s.import_type}"?`)) return;
+    const ok = await confirm({
+      title: `Delete schedule "${s.label || s.name || s.import_type}"?`,
+      description: 'Automatic imports for this dataset will stop. Data already imported is kept.',
+      confirmLabel: 'Delete schedule',
+      destructive: true,
+    });
+    if (!ok) return;
     setDeletingId(s.id);
     try {
       await base44.entities.ImportScheduleConfig.delete(s.id);

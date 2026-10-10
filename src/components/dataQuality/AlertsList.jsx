@@ -9,6 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import BulkAlertActions from './BulkAlertActions';
 import AlertAIAnalysis from './AlertAIAnalysis';
+import { toast } from 'sonner';
 
 const severityColors = {
   low: 'bg-blue-900/30 text-blue-400',
@@ -60,7 +61,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'apply_fix', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
-    onError: (err) => alert(`Failed to apply fix: ${err.message}`),
+    meta: { errorMessage: 'Failed to apply fix' },
   });
 
   const dismissMutation = useMutation({
@@ -68,7 +69,7 @@ export default function AlertsList({ alerts = [] }) {
       return base44.functions.invoke('runDataQualityScan', { action: 'dismiss', alert_id: alertId });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dqAlerts'] }),
-    onError: (err) => alert(`Failed to dismiss alert: ${err.message}`),
+    meta: { errorMessage: 'Failed to dismiss alert' },
   });
 
   const autoFixMutation = useMutation({
@@ -79,10 +80,10 @@ export default function AlertsList({ alerts = [] }) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
       if (data.success) {
-        alert(`Auto-fix complete: Fixed ${data.fixed} alerts, Skipped ${data.skipped}.`);
+        toast.success(`Auto-fix complete: fixed ${data.fixed} alerts, skipped ${data.skipped}.`);
       }
     },
-    onError: (err) => alert(`Auto-fix failed: ${err.message}`),
+    meta: { errorMessage: 'Auto-fix failed' },
   });
 
   const CATEGORY_RULES = {

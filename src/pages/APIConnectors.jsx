@@ -7,8 +7,10 @@ import { Plus, Server } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import ConnectorCard from '@/components/apiConnectors/ConnectorCard';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 export default function APIConnectors() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -38,7 +40,13 @@ export default function APIConnectors() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this connector? Data imports relying on it may fail.')) {
+    const ok = await confirm({
+      title: 'Delete this connector?',
+      description: 'Data imports that rely on it may fail.',
+      confirmLabel: 'Delete connector',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await base44.entities.CMSApiConnector.delete(id);
         queryClient.invalidateQueries({ queryKey: ['cms_api_connectors'] });

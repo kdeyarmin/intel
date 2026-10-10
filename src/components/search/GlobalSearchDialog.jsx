@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { pagesConfig } from '@/pages.config.js';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
-  Stethoscope, ListChecks, FileBarChart2, ArrowUp, ArrowDown
+  ListChecks, FileBarChart2, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 const CATEGORY_CONFIG = {
@@ -18,16 +18,19 @@ const CATEGORY_CONFIG = {
   Location:     { icon: MapPin,       color: 'bg-sky-500/15 text-sky-400' },
   Utilization:  { icon: Activity,     color: 'bg-teal-900/15 text-teal-400' },
   Referral:     { icon: GitBranch,    color: 'bg-violet-900/15 text-violet-400' },
-  Taxonomy:     { icon: Stethoscope,  color: 'bg-emerald-900/15 text-emerald-400' },
   'Lead List':  { icon: ListChecks,   color: 'bg-amber-900/15 text-amber-400' },
   Page:         { icon: FileBarChart2, color: 'bg-slate-500/15 text-slate-400' },
 };
 
-const QUICK_FILTERS = [
-  { label: 'Providers in PA with email', search: 'PA', type: 'shortcut' },
-  { label: 'Failed imports this week', search: 'failed', type: 'shortcut' },
-  { label: 'High-score leads', search: 'high', type: 'shortcut' },
+// Shortcuts into pre-filtered views (the list pages keep filters in the URL).
+const QUICK_LINKS = [
+  { label: 'Providers with an email', url: '/Providers?email=has_email' },
+  { label: 'Highest-scored providers', url: '/Providers?sort=score&dir=desc' },
+  { label: 'Organizations', url: '/Organizations' },
+  { label: 'Lead lists', url: '/LeadLists' },
 ];
+
+const isFullNpi = (q) => /^\d{10}$/.test(q);
 
 function formatPageLabel(page) {
   return page
@@ -46,50 +49,54 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const normalizedQuery = query.trim();
-  const hasSearchTerm = open && normalizedQuery.length >= 2;
-  const hasNpiSearchTerm = hasSearchTerm && /^\d{4,}$/.test(normalizedQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(normalizedQuery), 250);
+    return () => clearTimeout(t);
+  }, [normalizedQuery]);
+  const hasSearchTerm = open && debouncedQuery.length >= 2;
+  const npiQuery = hasSearchTerm && isFullNpi(debouncedQuery) ? debouncedQuery : null;
 
-  const { data: providers = [] } = useQuery({
-    queryKey: ['globalProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 500),
+  // Providers are searched on the server across the whole table (this used to
+  // filter the newest 500 rows in the browser, so most names returned nothing).
+  const { data: providers = [], isFetching: searchingProviders } = useQuery({
+    queryKey: ['globalSearchProviders', debouncedQuery],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('searchProviders', { q: debouncedQuery, limit: 20 });
+      return res.data?.providers || [];
+    },
     enabled: hasSearchTerm,
-    staleTime: 120000,
+    staleTime: 60000,
   });
 
+  // For an exact NPI, also show that provider's locations and CMS records.
   const { data: locations = [] } = useQuery({
-    queryKey: ['globalLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
-    enabled: hasSearchTerm,
-    staleTime: 120000,
-  });
-
-  const { data: taxonomies = [] } = useQuery({
-    queryKey: ['globalTaxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
-    enabled: hasSearchTerm,
-    staleTime: 120000,
+    queryKey: ['globalSearchLocations', npiQuery],
+    queryFn: () => base44.entities.ProviderLocation.filter({ npi: npiQuery }, undefined, 20),
+    enabled: !!npiQuery,
+    staleTime: 60000,
   });
 
   const { data: utilizations = [] } = useQuery({
-    queryKey: ['globalUtil'],
+    queryKey: ['globalSearchUtil', npiQuery],
     queryFn: async () => {
-      const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 300);
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi: npiQuery }, '-data_year', 5);
       return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
     },
-    enabled: hasNpiSearchTerm,
-    staleTime: 120000,
+    enabled: !!npiQuery,
+    staleTime: 60000,
   });
 
   const { data: referrals = [] } = useQuery({
-    queryKey: ['globalRef'],
-    queryFn: () => base44.entities.CMSReferral.list('-created_date', 300),
-    enabled: hasNpiSearchTerm,
-    staleTime: 120000,
+    queryKey: ['globalSearchRef', npiQuery],
+    queryFn: () => base44.entities.CMSReferral.filter({ npi: npiQuery }, undefined, 5),
+    enabled: !!npiQuery,
+    staleTime: 60000,
   });
 
   const { data: leadLists = [] } = useQuery({
     queryKey: ['globalLeadLists'],
-    queryFn: () => base44.entities.LeadList.list('-created_date', 100),
+    queryFn: () => base44.entities.LeadList.list('-created_date', 200),
     enabled: hasSearchTerm,
     staleTime: 120000,
   });
@@ -99,6 +106,9 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   }, [open]);
 
   useEffect(() => { setHighlightIdx(-1); }, [query, activeCategory]);
+  useEffect(() => {
+    listRef.current?.querySelector('[data-highlighted]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [highlightIdx]);
 
   const searchablePages = useMemo(() => (
     Object.keys(pagesConfig.Pages).map((page) => ({
@@ -124,7 +134,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
       const name = p.entity_type === 'Individual'
         ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
         : p.organization_name || '';
-      if (name.toLowerCase().includes(q) || (p.npi || '').includes(q) || (p.credential || '').toLowerCase().includes(q)) {
+      {
         const isOrg = p.entity_type === 'Organization';
         items.push({
           type: isOrg ? 'Organization' : 'Provider',
@@ -138,8 +148,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
     // Locations
     locations.forEach(l => {
-      const addr = `${l.address_1 || ''} ${l.city || ''} ${l.state || ''} ${l.zip || ''}`.toLowerCase();
-      if (addr.includes(q) || (l.npi || '').includes(q)) {
+      {
         items.push({
           type: 'Location',
           label: `${l.address_1 || 'Unknown'}, ${l.city || ''} ${l.state || ''}`,
@@ -150,23 +159,8 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
       }
     });
 
-    // Taxonomies
-    taxonomies.forEach(t => {
-      const desc = (t.taxonomy_description || '').toLowerCase();
-      const code = (t.taxonomy_code || '').toLowerCase();
-      if (desc.includes(q) || code.includes(q)) {
-        items.push({
-          type: 'Taxonomy',
-          label: t.taxonomy_description || t.taxonomy_code,
-          sublabel: `NPI: ${t.npi} • Code: ${t.taxonomy_code || ''}${t.is_primary ? ' • Primary' : ''}`,
-          url: createPageUrl(`ProviderDetail?npi=${t.npi}`),
-          pageName: 'ProviderDetail',
-        });
-      }
-    });
-
     // Utilization (search by NPI)
-    if (/^\d{4,}$/.test(query)) {
+    if (npiQuery) {
       const seen = new Set();
       utilizations.forEach(u => {
         if ((u.npi || '').includes(q) && !seen.has(u.npi)) {
@@ -202,14 +196,14 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           type: 'Lead List',
           label: ll.name,
           sublabel: `${ll.member_count || 0} providers`,
-          url: createPageUrl('LeadLists'),
+          url: `${createPageUrl('LeadLists')}?list=${ll.id}`,
           pageName: 'LeadLists',
         });
       }
     });
 
     return items;
-  }, [query, searchablePages, providers, locations, taxonomies, utilizations, referrals, leadLists]);
+  }, [query, searchablePages, providers, locations, utilizations, referrals, leadLists, npiQuery]);
 
   const categories = useMemo(() => {
     const counts = {};
@@ -253,9 +247,10 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               if (filteredResults.length === 0) return;
               if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIdx(prev => Math.min(prev + 1, filteredResults.length - 1)); }
               else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIdx(prev => Math.max(prev - 1, 0)); }
-              else if (e.key === 'Enter' && highlightIdx >= 0) { e.preventDefault(); goTo(filteredResults[highlightIdx].url); }
+              else if (e.key === 'Enter') { e.preventDefault(); goTo(filteredResults[Math.max(highlightIdx, 0)].url); }
             }}
-            placeholder="Search providers, locations, specialties, NPIs..."
+            placeholder="Search providers, organizations, NPIs, lead lists, pages..."
+            aria-label="Search"
             className="border-0 shadow-none focus-visible:ring-0 text-base h-12"
             autoFocus
           />
@@ -304,11 +299,11 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Quick Filters</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Jump to</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {QUICK_FILTERS.map((qf, i) => (
-                    <button key={i} onClick={() => setQuery(qf.search)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
-                      {qf.label}
+                  {QUICK_LINKS.map((link) => (
+                    <button key={link.url} onClick={() => goTo(link.url)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                      {link.label}
                     </button>
                   ))}
                 </div>
@@ -316,8 +311,10 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               <p className="text-xs text-slate-400 text-center pt-2">Type at least 2 characters to search</p>
             </div>
           ) : filteredResults.length === 0 ? (
-            <div className="py-10 text-center text-sm text-slate-400">
-              No results found for "{query}"
+            <div className="py-10 text-center text-sm text-slate-400" role="status">
+              {searchingProviders || debouncedQuery !== normalizedQuery
+                ? 'Searching…'
+                : `No results found for "${query}"`}
             </div>
           ) : (
             <div className="py-1" ref={listRef}>
@@ -328,6 +325,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 return (
                   <button
                     key={idx}
+                    data-highlighted={isHighlighted || undefined}
                     onClick={() => goTo(item.url)}
                     onFocus={() => preloadResultPage(item)}
                     onMouseEnter={() => { setHighlightIdx(idx); preloadResultPage(item); }}

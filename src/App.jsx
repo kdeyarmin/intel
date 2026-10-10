@@ -8,6 +8,8 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound.jsx';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import Login from '@/pages/Login';
+import { ConfirmProvider } from '@/components/shared/ConfirmDialog';
+import PageErrorBoundary from '@/components/shared/PageErrorBoundary';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -53,7 +55,14 @@ const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
 const LayoutWrapper = ({ children, currentPageName }) => {
-  const content = <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>;
+  const { pathname } = useLocation();
+  // A crash inside one page shouldn't take down the sidebar; keyed on the path
+  // so navigating elsewhere clears it.
+  const content = (
+    <PageErrorBoundary key={pathname}>
+      <Suspense fallback={<PageLoadingFallback />}>{children}</Suspense>
+    </PageErrorBoundary>
+  );
   return Layout ? <Layout currentPageName={currentPageName}>{content}</Layout> : content;
 };
 
@@ -112,10 +121,12 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <QueryClientProvider client={queryClientInstance}>
-          <Router>
-            <NavigationTracker />
-            <AuthenticatedApp />
-          </Router>
+          <ConfirmProvider>
+            <Router>
+              <NavigationTracker />
+              <AuthenticatedApp />
+            </Router>
+          </ConfirmProvider>
           <Toaster richColors closeButton position="top-right" />
         </QueryClientProvider>
       </AuthProvider>

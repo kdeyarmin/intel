@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bookmark, Save, Loader2, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 export default function CampaignTemplatePicker({ onSelect, currentSubject, currentBody }) {
+  const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saveCategory, setSaveCategory] = useState('custom');
@@ -48,6 +50,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
   };
 
   const handleDelete = async (id) => {
+    if (!(await confirm({ title: 'Delete this template?', confirmLabel: 'Delete', destructive: true }))) return;
     try {
       await base44.entities.CampaignTemplate.delete(id);
       toast.success('Template deleted');

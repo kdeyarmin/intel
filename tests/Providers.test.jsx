@@ -81,9 +81,9 @@ function setupMocks({ providers = [], scores = [], locations = [], taxonomies = 
   });
 }
 
-function renderProviders() {
+function renderProviders(path = '/Providers') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <Providers />
     </MemoryRouter>,
   );
@@ -143,10 +143,41 @@ describe('Providers page – removed "Org" button for organizations', () => {
     expect(indViewLink).toBeDefined();
   });
 
-  it('renders "No providers found" when the provider list is empty', () => {
+  it('explains an empty result instead of a bare "not found"', () => {
     setupMocks({ providers: [] });
     renderProviders();
-    expect(screen.getByText('No providers found')).toBeInTheDocument();
+    expect(screen.getByText('No providers match the current filters.')).toBeInTheDocument();
+  });
+
+  it('shows a retryable error instead of an empty table when loading fails', () => {
+    const refetch = vi.fn();
+    useQuery.mockImplementation(({ queryKey }) => {
+      const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+      if (key === 'providersPage') return { data: undefined, isLoading: false, isError: true, error: new Error('timeout'), refetch };
+      return { data: [], isLoading: false };
+    });
+    renderProviders();
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load providers");
+    screen.getByRole('button', { name: /try again/i }).click();
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('applies filters from the URL (so Back restores them)', () => {
+    setupMocks({
+      providers: [
+        { ...makeIndividual('2222222222', 'Jane', 'Doe'), status: 'Active' },
+        { ...makeIndividual('3333333333', 'Old', 'Record'), status: 'Deactivated' },
+      ],
+    });
+    renderProviders('/Providers?status=Deactivated');
+    expect(screen.queryByText('Doe, Jane')).toBeNull();
+    expect(screen.getByText('Record, Old')).toBeInTheDocument();
+  });
+
+  it('describes the default view as the newest providers, not the total', () => {
+    setupMocks({ providers: [makeIndividual('2222222222', 'Jane', 'Doe')] });
+    renderProviders();
+    expect(screen.queryByText(/total providers/)).toBeNull();
   });
 
   it('renders a single "View" link for each of multiple org providers (no extra Org buttons)', () => {
