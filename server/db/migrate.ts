@@ -56,12 +56,21 @@ export async function runMigrations(pool: any, log: Log = console): Promise<Migr
       });
       if (baseline.length) {
         log.log(`[migrate] Database was built with drizzle-kit push; recording ${baseline.map((b) => b.tag).join(", ")} as applied`);
-        await client.query("CREATE SCHEMA IF NOT EXISTS drizzle");
-        await client.query(
-          "CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)",
-        );
-        for (const row of baseline) {
-          await client.query("INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)", [row.hash, row.created_at]);
+        // All or nothing: a partial baseline would count as history, so the
+        // next run would skip baselining and replay the rest from scratch.
+        await client.query("BEGIN");
+        try {
+          await client.query("CREATE SCHEMA IF NOT EXISTS drizzle");
+          await client.query(
+            "CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)",
+          );
+          for (const row of baseline) {
+            await client.query("INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)", [row.hash, row.created_at]);
+          }
+          await client.query("COMMIT");
+        } catch (e) {
+          await client.query("ROLLBACK").catch(() => {});
+          throw e;
         }
       }
       const before = await migrationStatusFor(client, journal);
