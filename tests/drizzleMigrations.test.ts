@@ -389,3 +389,16 @@ describe("migration 0008_accounts", () => {
     expect(schema).toContain('uniqueIndex("users_email_lower_uq")');
   });
 });
+
+describe("migration 0009_pg_trgm", () => {
+  const sql = readMigration("0009_pg_trgm.sql");
+
+  it("installs pg_trgm without failing where extensions are refused", () => {
+    expect(sql).toContain("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
+    expect(sql).toMatch(/EXCEPTION\s+WHEN insufficient_privilege OR undefined_file OR feature_not_supported THEN\s+RAISE NOTICE/);
+  });
+
+  it("builds no index inside the migration transaction (the trigram index is built at boot, concurrently)", () => {
+    expect(sql).not.toMatch(/CREATE (UNIQUE )?INDEX/i);
+  });
+});

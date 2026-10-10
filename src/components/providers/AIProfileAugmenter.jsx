@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { Globe, Loader2, Check, Building2, GraduationCap, Languages, Shield, AlertTriangle, Info, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 function ProfileCard({ profile, applying, applied, onApply }) {
   const hasData = profile.website || profile.affiliations?.length || profile.board_certifications?.length || profile.education || profile.languages?.length;
@@ -109,7 +110,7 @@ export default function AIProfileAugmenter({ providers = [], locations = [], tax
 
     try {
     const batch = providers.slice(0, 15).map(p => {
-      const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+      const loc = pickPrimaryLocation(locations, p.npi);
       const tax = taxonomies.find(t => t.npi === p.npi && t.is_primary) || taxonomies.find(t => t.npi === p.npi);
       return {
         npi: p.npi,

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Network, TrendingUp, Users, Target } from 'lucide-react';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function AINetworkFitCard({ provider, taxonomy = [], utilization, referrals, score, locations = [] }) {
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ export default function AINetworkFitCard({ provider, taxonomy = [], utilization,
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider.organization_name || provider.npi;
     const primaryTax = taxonomy.find(t => t.is_primary) || taxonomy[0];
-    const primaryLoc = locations.find(l => l.is_primary) || locations[0];
+    const primaryLoc = pickPrimaryLocation(locations);
 
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Analyze this healthcare provider's network fit, referral likelihood, and patient demographic alignment.

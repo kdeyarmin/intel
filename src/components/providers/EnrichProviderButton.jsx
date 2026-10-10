@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Sparkles, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function EnrichProviderButton({ providers = [], locations = [], taxonomies = [], onComplete, _mode = 'bulk' }) {
   const [open, setOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function EnrichProviderButton({ providers = [], locations = [], t
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   const enrichProvider = async (provider) => {
-    const loc = locations.find(l => l.npi === provider.npi && l.is_primary) || locations.find(l => l.npi === provider.npi);
+    const loc = pickPrimaryLocation(locations, provider.npi);
     const tax = taxonomies.find(t => t.npi === provider.npi && t.is_primary) || taxonomies.find(t => t.npi === provider.npi);
 
     const name = provider.entity_type === 'Individual'

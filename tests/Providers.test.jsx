@@ -72,7 +72,7 @@ const makeIndividual = (npi, first, last) => ({
 function setupMocks({ providers = [], scores = [], locations = [], taxonomies = [], savedFilters = [] } = {}) {
   useQuery.mockImplementation(({ queryKey }) => {
     const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
-    if (key === 'providersPage') return { data: providers, isLoading: false };
+    if (key === 'providersPage') return { data: { providers }, isLoading: false };
     if (key === 'providersPageScores') return { data: scores, isLoading: false };
     if (key === 'providersPageLocations') return { data: locations, isLoading: false };
     if (key === 'providersPageTaxonomies') return { data: taxonomies, isLoading: false };

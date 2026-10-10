@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function AISummary({ provider, taxonomies, utilization, referral, locations, score }) {
   const [summary, setSummary] = useState(null);
@@ -24,7 +25,7 @@ PROVIDER:
 - Entity Type: ${provider.entity_type}
 - Status: ${provider.status}
 - Specialties: ${(taxonomies || []).map(t => t.taxonomy_description || t.taxonomy_code).join(', ') || 'N/A'}
-- Locations: ${locations?.length || 0} on file, primary in ${locations?.find(l => l.is_primary)?.city || locations?.[0]?.city || 'N/A'}, ${locations?.find(l => l.is_primary)?.state || locations?.[0]?.state || 'N/A'}
+- Locations: ${locations?.length || 0} on file, primary in ${pickPrimaryLocation(locations)?.city || 'N/A'}, ${pickPrimaryLocation(locations)?.state || 'N/A'}
 
 UTILIZATION (most recent):
 - Total Services: ${utilization?.total_services?.toLocaleString() || 'N/A'}

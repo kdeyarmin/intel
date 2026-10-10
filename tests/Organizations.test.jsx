@@ -12,7 +12,8 @@ afterEach(cleanup);
 
 // ─── Minimal stubs for heavy dependencies ────────────────────────────────────
 
-vi.mock('@/api/base44Client', () => ({ base44: { entities: {}, auth: {}, functions: {} } }));
+const { invoke } = vi.hoisted(() => ({ invoke: vi.fn(() => Promise.resolve({ data: { providers: [], truncated: false, mode: 'contains' } })) }));
+vi.mock('@/api/base44Client', () => ({ base44: { entities: {}, auth: {}, functions: { invoke } } }));
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
@@ -50,7 +51,7 @@ const mockOrg = {
 function setupMocks({ providers = [], scores = [], locations = [], taxonomies = [], savedFilters = [] } = {}) {
   useQuery.mockImplementation(({ queryKey }) => {
     const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
-    if (key === 'organizationsPage') return { data: providers, isLoading: false };
+    if (key === 'organizationsPage') return { data: { providers }, isLoading: false };
     if (key === 'organizationsPageScores') return { data: scores, isLoading: false };
     if (key === 'organizationsPageLocations') return { data: locations, isLoading: false };
     if (key === 'organizationsPageTaxonomies') return { data: taxonomies, isLoading: false };
@@ -113,5 +114,23 @@ describe('Organizations page – link URLs after PR change', () => {
     const linkB = screen.getByRole('link', { name: 'Clinic B' });
     expect(linkA.getAttribute('href')).toBe('/OrganizationDetail?npi=1111111111');
     expect(linkB.getAttribute('href')).toBe('/OrganizationDetail?npi=2222222222');
+  });
+});
+describe('Organizations page – server-side search', () => {
+  it('sends the state filter to the server while searching', async () => {
+    const calls = [];
+    useQuery.mockImplementation((opts) => {
+      calls.push(opts);
+      return { data: opts.queryKey[0] === 'organizationsPage' ? { providers: [mockOrg], truncated: true, mode: 'contains' } : [], isLoading: false };
+    });
+    render(
+      <MemoryRouter initialEntries={['/Organizations?q=mercy&state=PA']}>
+        <Organizations />
+      </MemoryRouter>,
+    );
+    const search = calls.find((c) => c.queryKey[0] === 'organizationsPage' && c.queryKey[1] === 'mercy');
+    expect(search.queryKey).toEqual(['organizationsPage', 'mercy', 'PA']);
+    await search.queryFn();
+    expect(invoke).toHaveBeenCalledWith('searchProviders', { q: 'mercy', entity_type: 'Organization', limit: 300, state: 'PA' });
   });
 });

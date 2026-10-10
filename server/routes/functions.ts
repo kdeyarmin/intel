@@ -866,27 +866,14 @@ Be concise and helpful. Use markdown formatting for readability.`;
       }
 
       case "searchProviders": {
-        // Server-side provider search so callers don't have to load a page of
-        // rows and filter client-side (which silently searches only that slice
-        // of a ~6M-row table). See server/lib/providerSearch.ts for matching.
-        const { pool: dbPool } = await import("../db");
-        const { buildProviderSearchQuery } = await import("../lib/providerSearch");
-        const query = buildProviderSearchQuery(String(req.body?.q ?? ""), {
-          limit: req.body?.limit,
-          entityType: req.body?.entity_type ?? null,
-        });
-        if (!query) return res.json({ providers: [] });
-        const client = await dbPool.connect();
-        try {
-          await client.query("SET statement_timeout = '8s'");
-          const result = await client.query(query.text, query.values);
-          return res.json({ providers: result.rows });
-        } finally {
-          // Reset so the 8s timeout doesn't persist on this pooled connection for
-          // the next unrelated query that reuses it.
-          await client.query("RESET statement_timeout").catch(() => {});
-          client.release();
-        }
+        // Server-side provider search (see server/lib/providerSearch.ts).
+        const { handleSearchProviders } = await import("../functions/search");
+        return res.json(await handleSearchProviders(req.body));
+      }
+
+      case "searchLocations": {
+        const { handleSearchLocations } = await import("../functions/search");
+        return res.json(await handleSearchLocations(req.body));
       }
 
       default:

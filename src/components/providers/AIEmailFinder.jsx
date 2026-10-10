@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { Mail, Loader2, Search, AlertTriangle, Copy, Check } from 'lucide-react';
 import EmailValidationBadge from '../emailBot/EmailValidationBadge';
 import { toast } from 'sonner';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function AIEmailFinder({ provider, locations, taxonomies }) {
   const [results, setResults] = useState(null);
@@ -24,7 +25,7 @@ export default function AIEmailFinder({ provider, locations, taxonomies }) {
         ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
         : provider.organization_name || '';
 
-      const primaryLoc = locations?.find(l => l.is_primary) || locations?.[0];
+      const primaryLoc = pickPrimaryLocation(locations);
       const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
 
       const prompt = `Find likely professional email addresses for this healthcare provider. Search the web for any publicly available contact information.

@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -113,17 +114,23 @@ export default function Providers() {
   // behavior only ever loaded the newest 100 rows and filtered client-side, so
   // search silently missed almost everything). With no search term we still show
   // the most recent providers as the default directory view.
-  const { data: providers = [], isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
-    queryKey: ['providersPage', debouncedSearch],
+  // A state filter is applied by the server while searching, so it covers the
+  // whole table rather than just the matches that were returned.
+  const searchState = debouncedSearch.length >= 2 && filters.stateFilter !== 'all' ? filters.stateFilter : null;
+  const { data: providerResult, isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
+    queryKey: ['providersPage', debouncedSearch, searchState],
     queryFn: async () => {
       if (debouncedSearch.length >= 2) {
-        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: SEARCH_LIMIT });
-        return res.data?.providers || [];
+        const res = await base44.functions.invoke('searchProviders', {
+          q: debouncedSearch, limit: SEARCH_LIMIT, ...(searchState ? { state: searchState } : {}),
+        });
+        return { providers: res.data?.providers || [], truncated: !!res.data?.truncated, degraded: !!res.data?.degraded };
       }
-      return base44.entities.Provider.list('-created_date', 100);
+      return { providers: await base44.entities.Provider.list('-created_date', 100), truncated: false, degraded: false };
     },
     placeholderData: keepPreviousData,
   });
+  const providers = useMemo(() => providerResult?.providers ?? [], [providerResult]);
 
   // Stable key of the currently displayed NPIs so the scoped score fetch
   // refetches when the provider list changes.
@@ -458,7 +465,7 @@ export default function Providers() {
   const stateData = useMemo(() => {
     const counts = {};
     sortedProviders.forEach(p => {
-      const loc = locationByNpi[p.npi]?.find(l => l.is_primary) || locationByNpi[p.npi]?.[0];
+      const loc = pickPrimaryLocation(locationByNpi[p.npi]);
       const st = loc?.state || 'Unknown';
       counts[st] = (counts[st] || 0) + 1;
     });
@@ -475,7 +482,7 @@ export default function Providers() {
 
   const mapProviders = useMemo(() => {
     return sortedProviders.map(p => {
-      const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+      const loc = pickPrimaryLocation(locationByNpi[p.npi]);
       const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
       return {
         provider: p,
@@ -502,7 +509,7 @@ export default function Providers() {
           isPlaceholderData
             ? 'Searching…'
             : debouncedSearch.length >= 2
-            ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"`
+            ? `${providers.length.toLocaleString()}${providerResult?.truncated ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${providerResult?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
             : `Showing the ${providers.length.toLocaleString()} most recently added providers — search by name or NPI to find anyone else`
         }
         icon={Users}
@@ -511,7 +518,7 @@ export default function Providers() {
           <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders.map(p => {
-              const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+              const loc = pickPrimaryLocation(locationByNpi[p.npi]);
               const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
               return {
                 npi: p.npi,
@@ -712,7 +719,7 @@ export default function Providers() {
             value={searchTerm}
             onChange={setSearchTerm}
             suggestions={searchSuggestions}
-            placeholder="Search by name, NPI, specialty, credential, city..."
+            placeholder="Search by name or NPI, e.g. Smith, John Smith, Mercy Hospital, 1234567890"
             onSuggestionSelect={handleSuggestionSelect}
             className="flex-1"
           />
@@ -829,7 +836,7 @@ export default function Providers() {
                   sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
                     const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[provider.npi] || [])[0];
-                    const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
+                    const provLoc = pickPrimaryLocation(locationByNpi[provider.npi]);
                     return (
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                         <TableCell>

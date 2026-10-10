@@ -26,6 +26,7 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getDMEProviders",
   "dmeEmailSearchStatus",
   "searchProviders",
+  "searchLocations",
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);
   // the "run_all_due" action is admin-only inside the handler. Recipients are

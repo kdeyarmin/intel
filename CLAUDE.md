@@ -91,6 +91,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   Use raw `pool.connect()` with `SET statement_timeout`, `pg_class` estimates for
   counts, `LIMIT`-based sampling, and IN-clauses with pre-fetched NPI lists
   instead of JOINs/subqueries. See the DB performance notes in `replit.md`.
+  Search goes through `server/lib/providerSearch.ts` / `locationSearch.ts`;
+  their expression indexes live in `server/lib/searchIndexes.ts`, and a query
+  only uses one when it repeats the expression exactly (`lower(last_name)`,
+  `left(zip, 5)`, …). `ILIKE` on these tables can't use an index.
 - **Migrations are hand-written.** `drizzle/meta` snapshots stop at 0002, so
   `db:generate` doesn't produce usable diffs. Write `drizzle/NNNN_name.sql`
   idempotently (`IF NOT EXISTS`), append a journal entry with a larger `when`

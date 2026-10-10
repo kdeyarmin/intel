@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,17 +16,27 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import PageHeader from '../components/shared/PageHeader';
 import QueryErrorState from '../components/shared/QueryErrorState';
 import { useUrlState } from '@/hooks/useUrlState';
+import { US_STATES } from '@/lib/usStates';
 
 const PAGE_SIZE = 50;
 const RECENT_LIMIT = 200;
+const SEARCH_LIMIT = 500;
 
 // Filters and paging live in the URL so Back from a location restores them.
-const URL_DEFAULTS = { q: '', state: 'all', type: 'all', primary: 'all', page: 0 };
+const URL_DEFAULTS = { q: '', state: 'all', type: 'all', page: 0 };
+const STATE_OPTIONS = US_STATES.map((st) => ({ value: st, label: st }));
 
 export default function Locations() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
-  const { q: search, state: stateFilter, type: typeFilter, primary: primaryFilter, page } = url;
-  const setSearch = useCallback((q) => setUrl({ q, page: 0 }), [setUrl]);
+  const { q: search, state: stateFilter, type: typeFilter, page } = url;
+  const [searchBox, setSearchBox] = useState(search);
+  const setSearch = useCallback((q) => setSearchBox(q), []);
+  // Debounce typing into the URL (which drives the server search).
+  useEffect(() => {
+    const t = setTimeout(() => { if (searchBox.trim() !== search) setUrl({ q: searchBox.trim(), page: 0 }); }, 350);
+    return () => clearTimeout(t);
+  }, [searchBox, search, setUrl]);
+  useEffect(() => { setSearchBox((cur) => (cur.trim() === search ? cur : search)); }, [search]);
   const setPage = useCallback((update) => setUrl((cur) => ({ page: typeof update === 'function' ? update(cur.page) : update })), [setUrl]);
 
   const { data: savedFilters = [] } = useQuery({
@@ -50,65 +60,56 @@ export default function Locations() {
       q: filters.search || '',
       state: filters.stateFilter || 'all',
       type: filters.typeFilter || 'all',
-      primary: filters.primaryFilter || 'all',
       page: 0,
     });
   };
 
-  const currentFilters = { search, stateFilter, typeFilter, primaryFilter };
+  const currentFilters = { search, stateFilter, typeFilter };
 
-  // provider_locations has ~12M rows. A full NPI is looked up on the server
-  // (indexed); otherwise we browse the newest rows and filter those, and the
-  // header says so rather than calling them "total locations".
-  const npiLookup = /^\d{10}$/.test(search.trim()) ? search.trim() : null;
-  const { data: locations = [], isLoading, isError, error: loadError, refetch } = useQuery({
-    queryKey: ['locationsPage', npiLookup],
-    queryFn: () => (npiLookup
-      ? base44.entities.ProviderLocation.filter({ npi: npiLookup }, undefined, 200)
-      : base44.entities.ProviderLocation.list('-created_date', RECENT_LIMIT)),
+  // provider_locations has ~12M rows. Searches (NPI, ZIP, "City, ST", or a
+  // state) run on the server against indexes; with nothing to search, browse
+  // the newest rows and say so.
+  const state = stateFilter !== 'all' ? stateFilter : null;
+  const type = typeFilter !== 'all' ? typeFilter : null;
+  const searching = !!search || !!state;
+  const { data: result, isLoading, isError, error: loadError, refetch, isPlaceholderData } = useQuery({
+    queryKey: ['locationsPage', search, state, type],
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      if (searching) {
+        const res = await base44.functions.invoke('searchLocations', {
+          q: search, ...(state ? { state } : {}), ...(type ? { location_type: type } : {}), limit: SEARCH_LIMIT,
+        });
+        return res.data;
+      }
+      return { locations: await base44.entities.ProviderLocation.list('-created_date', RECENT_LIMIT), recent: true };
+    },
     staleTime: 60000,
   });
+  const locations = useMemo(() => result?.locations ?? [], [result]);
 
-  const states = useMemo(() => {
-    const s = new Set(locations.map(l => l.state).filter(Boolean));
-    return [...s].sort().map(st => ({ value: st, label: st }));
-  }, [locations]);
+  // Browsing recent rows: the type filter applies here. Searches filter on the server.
+  const filtered = useMemo(
+    () => (searching || !type ? locations : locations.filter((l) => l.location_type === type)),
+    [locations, searching, type],
+  );
 
-  const filtered = useMemo(() => {
-    return locations.filter(loc => {
-      if (search) {
-        const q = search.toLowerCase();
-        const match = (loc.npi || '').includes(q) ||
-          (loc.city || '').toLowerCase().includes(q) ||
-          (loc.address_1 || '').toLowerCase().includes(q) ||
-          (loc.zip || '').includes(q) ||
-          (loc.phone || '').includes(q);
-        if (!match) return false;
-      }
-      if (stateFilter !== 'all' && loc.state !== stateFilter) return false;
-      if (typeFilter !== 'all' && loc.location_type !== typeFilter) return false;
-      if (primaryFilter !== 'all') {
-        if (primaryFilter === 'yes' && !loc.is_primary) return false;
-        if (primaryFilter === 'no' && loc.is_primary) return false;
-      }
-      return true;
-    });
-  }, [locations, search, stateFilter, typeFilter, primaryFilter]);
+  let subtitle;
+  if (isPlaceholderData) subtitle = 'Searching…';
+  else if (result?.needsState) subtitle = result.message;
+  else if (searching) subtitle = `${filtered.length.toLocaleString()}${result?.truncated ? '+' : ''} location${filtered.length === 1 && !result?.truncated ? '' : 's'} · ${result?.label || 'search'}${result?.degraded ? ' (search indexes are still being built, so this may be slow)' : ''}`;
+  else subtitle = `Browsing the ${locations.length.toLocaleString()} most recently added locations. Search by NPI, ZIP, or "City, ST" to find any location.`;
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedLocations = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const resetFilters = () => setUrl({ q: '', state: 'all', type: 'all', primary: 'all', page: 0 });
+  const resetFilters = () => { setSearchBox(''); setUrl({ q: '', state: 'all', type: 'all', page: 0 }); };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Locations"
-        subtitle={
-          npiLookup
-            ? `${locations.length} location${locations.length === 1 ? '' : 's'} for NPI ${npiLookup}`
-            : `Browsing the ${locations.length.toLocaleString()} most recently added locations — enter a 10-digit NPI to look up any provider's locations`
-        }
+        subtitle={subtitle}
         icon={MapPin}
         breadcrumbs={[{ label: 'Providers', page: 'Providers' }, { label: 'Locations' }]}
       />
@@ -118,12 +119,12 @@ export default function Locations() {
           data={filtered.map(l => ({
             npi: l.npi, address: l.address_1 || '', city: l.city || '', state: l.state || '',
             zip: l.zip || '', phone: l.phone || '', fax: l.fax || '',
-            type: l.location_type || '', primary: l.is_primary ? 'Yes' : 'No', created_date: l.created_date || '',
+            type: l.location_type || '', created_date: l.created_date || '',
           }))}
           fields={[
             { key: 'npi', label: 'NPI' }, { key: 'address', label: 'Address' }, { key: 'city', label: 'City' },
             { key: 'state', label: 'State' }, { key: 'zip', label: 'ZIP' }, { key: 'phone', label: 'Phone' },
-            { key: 'fax', label: 'Fax' }, { key: 'type', label: 'Type' }, { key: 'primary', label: 'Primary' },
+            { key: 'fax', label: 'Fax' }, { key: 'type', label: 'Type' },
           ]}
           fileName="locations"
           title="Locations"
@@ -140,13 +141,13 @@ export default function Locations() {
             onApplyFilter={applyFilter}
           />
           <SearchFilterBar
-            searchTerm={search}
+            searchTerm={searchBox}
             onSearchChange={setSearch}
+            placeholder='NPI, ZIP, or "City, ST"'
             onReset={resetFilters}
             filters={[
-              { key: 'state', type: 'select', label: 'State', value: stateFilter, onChange: v => setUrl({ state: v, page: 0 }), options: states },
+              { key: 'state', type: 'select', label: 'State', value: stateFilter, onChange: v => setUrl({ state: v, page: 0 }), options: STATE_OPTIONS },
               { key: 'type', type: 'select', label: 'Type', value: typeFilter, onChange: v => setUrl({ type: v, page: 0 }), options: [{ value: 'Practice', label: 'Practice' }, { value: 'Mailing', label: 'Mailing' }] },
-              { key: 'primary', type: 'select', label: 'Primary', value: primaryFilter, onChange: v => setUrl({ primary: v, page: 0 }), options: [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }] },
             ]}
           />
         </CardContent>
@@ -156,7 +157,7 @@ export default function Locations() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-slate-200">
             <span className="flex items-center gap-2"><MapPin className="w-5 h-5 text-cyan-400" /> Location Directory</span>
-            <span className="text-sm font-normal text-slate-500">{filtered.length} results</span>
+            <span className="text-sm font-normal text-slate-400">{filtered.length}{result?.truncated ? '+' : ''} results</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -171,7 +172,6 @@ export default function Locations() {
                   <TableHead>ZIP</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Primary</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -179,14 +179,14 @@ export default function Locations() {
                 {isLoading ? (
                   Array(5).fill(0).map((_, i) => (
                    <TableRow key={i}>
-                     {Array(9).fill(0).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}
+                     {Array(8).fill(0).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>)}
                    </TableRow>
                   ))
                 ) : isError ? (
-                  <TableRow><TableCell colSpan={9} className="py-6"><QueryErrorState title="Couldn't load locations" error={loadError} onRetry={refetch} /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="py-6"><QueryErrorState title="Couldn't load locations" error={loadError} onRetry={refetch} /></TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-slate-500">
-                   {npiLookup ? `No locations on file for NPI ${npiLookup}.` : 'No locations match the current filters.'}
+                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                   {result?.needsState ? result.message : searching ? `No locations found for ${result?.label || 'this search'}.` : 'No locations match the current filters.'}
                  </TableCell></TableRow>
                 ) : (
                   paginatedLocations.map(loc => (
@@ -204,7 +204,6 @@ export default function Locations() {
                          {loc.phone ? <a href={`tel:${loc.phone.replace(/[^\d+]/g, '')}`} className="hover:text-cyan-400 hover:underline">{loc.phone}</a> : '-'}
                        </TableCell>
                        <TableCell><Badge variant="outline" className="text-slate-300">{loc.location_type || '-'}</Badge></TableCell>
-                       <TableCell>{loc.is_primary ? <Badge className="bg-blue-900/15 text-blue-400 border border-blue-500/20">Primary</Badge> : <span className="text-slate-500">-</span>}</TableCell>
                       <TableCell>
                         <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>
                           <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View</Button>
