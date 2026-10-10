@@ -2,6 +2,7 @@
 // read from the background rollups (server/lib/rollups) so the page never
 // aggregates the big tables itself. Each section says when it was computed.
 import { rollupStatus } from "../lib/rollups/runner";
+import { ALL_SERVICE_TYPES } from "../lib/rollups/core";
 
 // Facility "datasets" that are aggregate files rather than facilities.
 export const AGGREGATE_DATASETS = [
@@ -52,9 +53,15 @@ export async function handleGetCMSAnalytics(pool: any) {
 
   const [services, [summary = {}], referred] = await Promise.all([
     serviceYear ? q(`SELECT service_type, provider_count, total_services, total_payments, total_beneficiaries
-                       FROM rollup_cms_service_types WHERE data_year = $1 ORDER BY total_payments DESC LIMIT 20`, [serviceYear]) : [],
-    serviceYear ? q(`SELECT count(*)::int AS types, sum(provider_count)::bigint AS providers, sum(total_payments) AS payments,
-                       sum(total_services) AS services FROM rollup_cms_service_types WHERE data_year = $1`, [serviceYear]) : [{}],
+                       FROM rollup_cms_service_types WHERE data_year = $1 AND service_type <> $2
+                      ORDER BY total_payments DESC LIMIT 20`, [serviceYear, ALL_SERVICE_TYPES]) : [],
+    // Distinct providers come from the year's all-types row: summing the
+    // per-type counts would count a provider once per service type.
+    serviceYear ? q(`SELECT count(*) FILTER (WHERE service_type <> $2)::int AS types,
+                            max(provider_count) FILTER (WHERE service_type = $2)::bigint AS providers,
+                            sum(total_payments) FILTER (WHERE service_type <> $2) AS payments,
+                            sum(total_services) FILTER (WHERE service_type <> $2) AS services
+                       FROM rollup_cms_service_types WHERE data_year = $1`, [serviceYear, ALL_SERVICE_TYPES]) : [{}],
     referralYear ? q(`SELECT referred_to_npi, total_referrals, referring_providers FROM rollup_cms_top_referred
                         WHERE data_year = $1 ORDER BY total_referrals DESC LIMIT 15`, [referralYear]) : [],
   ]);

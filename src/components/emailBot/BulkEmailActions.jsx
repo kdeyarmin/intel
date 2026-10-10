@@ -11,6 +11,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Matches the per-request limit in bulkVerifyEmails (server/functions/verification.ts).
+const VERIFY_CHUNK = 100;
+
 const statusFilters = [
   { value: 'all', label: 'All', icon: Filter, color: 'text-slate-300' },
   { value: 'valid', label: 'Valid', icon: ShieldCheck, color: 'text-emerald-400' },
@@ -90,18 +93,22 @@ export default function BulkEmailActions({ providers, onRefresh }) {
     if (toVerify.length === 0) { toast.error('No emails selected for re-verification'); return; }
 
     setIsReverifying(true);
+    // The server checks at most VERIFY_CHUNK addresses per request, so a
+    // larger selection goes in chunks rather than being cut short.
+    const npis = toVerify.map(p => p.npi);
+    let verified = 0;
     try {
-      const data = await invokeOrThrow('bulkVerifyEmails', {
-        mode: 'specific_npis',
-        npis: toVerify.map(p => p.npi),
-        batch_size: toVerify.length,
-      });
-      toast.success(`Re-verified ${data.verified || 0} emails`);
-      onRefresh?.();
+      for (let i = 0; i < npis.length; i += VERIFY_CHUNK) {
+        const chunk = npis.slice(i, i + VERIFY_CHUNK);
+        const data = await invokeOrThrow('bulkVerifyEmails', { mode: 'specific_npis', npis: chunk, batch_size: chunk.length });
+        verified += data.verified || 0;
+      }
+      toast.success(`Re-verified ${verified} emails`);
     } catch (err) {
-      toastFunctionError(err, 'Re-verification failed');
+      toastFunctionError(err, verified ? `Re-verification stopped after ${verified} emails` : 'Re-verification failed');
     } finally {
       setIsReverifying(false);
+      onRefresh?.();
     }
   };
 

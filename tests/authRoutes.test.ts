@@ -62,6 +62,14 @@ describe("login", () => {
     expect(wrong.body).toEqual(unknown.body);
   });
 
+  it("doesn't accept a 72-byte password with extra characters appended", async () => {
+    const exact = "p".repeat(72);
+    await h.seed({ email: "long@example.com", password: exact });
+    expect((await h.client().call("POST", "/api/auth/login", { email: "long@example.com", password: exact })).status).toBe(200);
+    const padded = await h.client().call("POST", "/api/auth/login", { email: "long@example.com", password: `${exact}extra` });
+    expect(padded.status).toBe(401);
+  });
+
   it("locks an email after repeated failures, from any address", async () => {
     await h.seed({ email: "rep@example.com" });
     for (let i = 0; i < 10; i += 1) {
