@@ -777,6 +777,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const { handleTrackCampaignMetrics } = await import("../functions/outreach");
         return res.json(await handleTrackCampaignMetrics(req.body));
       }
+      case "saveCampaignOutcomes": {
+        // Admin-only (not in PUBLIC_FUNCTIONS), like the rest of campaigns.
+        const { handleSaveCampaignOutcomes } = await import("../functions/outreach");
+        return res.json(await handleSaveCampaignOutcomes(req.body));
+      }
       case "prepareCampaignMessages": {
         // Admin-only (not in PUBLIC_FUNCTIONS): builds the recipient list.
         const { handlePrepareCampaignMessages } = await import("../functions/outreach");
@@ -793,7 +798,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           return res.status(429).json({ message: "Too many score calculations. Try again in a minute." });
         }
         const { handleCalculateOutreachScore } = await import("../functions/outreach");
-        return res.json(await handleCalculateOutreachScore(req.body));
+        return res.json(await handleCalculateOutreachScore(req.body, req.user));
       }
       case "analyzeImportedDataset": {
         const { handleAnalyzeImportedDataset } = await import("../functions/stubs");

@@ -105,13 +105,21 @@ async function prepareLocked(client: any, campaignId: number) {
 
   let npis: string[] = [];
   if (campaign.target_list_id) {
+    // One over the cap, to tell "exactly the cap" from "too many".
     const { rows } = await client.query(
       "SELECT DISTINCT npi FROM lead_list_members WHERE list_id = $1 AND npi IS NOT NULL LIMIT $2",
-      [campaign.target_list_id, MAX_RECIPIENTS],
+      [campaign.target_list_id, MAX_RECIPIENTS + 1],
     );
     npis = rows.map((r: any) => r.npi);
   } else if (Array.isArray(campaign.target_npis)) {
-    npis = campaign.target_npis.map(String).slice(0, MAX_RECIPIENTS);
+    npis = [...new Set<string>(campaign.target_npis.map(String))];
+  }
+  // Refuse rather than silently send to an arbitrary part of the list.
+  if (npis.length > MAX_RECIPIENTS) {
+    throw new HttpError(
+      400,
+      `This campaign targets more than ${MAX_RECIPIENTS.toLocaleString()} providers. Split the lead list into smaller lists and send a campaign to each.`,
+    );
   }
   if (npis.length === 0) {
     throw new HttpError(400, "This campaign has no recipients. Choose a lead list with providers in it.");
@@ -388,6 +396,31 @@ export async function handleTrackCampaignMetrics(payload: any) {
   });
 }
 
+/**
+ * Record a campaign's conversions and revenue. Merged into metrics in one
+ * statement, so it can't overwrite the delivery counts that
+ * trackCampaignMetrics keeps in the same column.
+ */
+export async function handleSaveCampaignOutcomes(payload: any) {
+  const campaignId = Number(payload?.campaign_id);
+  if (!Number.isInteger(campaignId) || campaignId <= 0) throw new HttpError(400, "campaign_id is required");
+  const conversions = Number(payload?.conversions ?? 0);
+  const revenue = Number(payload?.revenue ?? 0);
+  if (!Number.isFinite(conversions) || conversions < 0 || !Number.isFinite(revenue) || revenue < 0) {
+    throw new HttpError(400, "Conversions and revenue must be zero or more.");
+  }
+  const { rows } = await pool.query(
+    `UPDATE outreach_campaigns
+        SET metrics = COALESCE(metrics, '{}'::jsonb) || jsonb_build_object('conversions', $2::numeric, 'revenue', $3::numeric),
+            updated_date = now()
+      WHERE id = $1
+      RETURNING metrics`,
+    [campaignId, conversions, revenue],
+  );
+  if (!rows[0]) throw new HttpError(404, "Campaign not found");
+  return { success: true, metrics: rows[0].metrics };
+}
+
 // ─── Unsubscribe ─────────────────────────────────────────────────────────────
 
 export async function handleUnsubscribeToken(token: string): Promise<string | null> {
@@ -424,7 +457,14 @@ async function aiStrategy(summary: Record<string, unknown>): Promise<string | nu
   }
 }
 
-export async function handleCalculateOutreachScore(payload: any) {
+/**
+ * Outreach score for one provider. Public, so for regular users it's read-only:
+ * the deterministic score, no AI strategy (which costs tokens) and nothing
+ * saved. Admins also get the AI strategy and the score is stored on the
+ * provider.
+ */
+export async function handleCalculateOutreachScore(payload: any, user?: { role?: string }) {
+  const isAdmin = user?.role === "admin";
   const npi = String(payload?.npi || "").trim();
   if (!/^\d{10}$/.test(npi)) throw new HttpError(400, "A 10-digit npi is required");
 
@@ -433,12 +473,20 @@ export async function handleCalculateOutreachScore(payload: any) {
       client.query("SELECT npi, status, email, email_validation_status, phone, credential FROM providers WHERE npi = $1 LIMIT 1", [npi]),
       client.query("SELECT 1 FROM provider_taxonomies WHERE npi = $1 LIMIT 1", [npi]),
       client.query("SELECT phone FROM provider_locations WHERE npi = $1 LIMIT 20", [npi]),
+      // Medicare volume: every service row of the provider's latest year (one
+      // row is one HCPCS code), summed the same way as the provider report.
       client.query(
-        "SELECT total_unique_benes FROM provider_service_utilization WHERE npi = $1 ORDER BY data_year DESC NULLS LAST LIMIT 1",
+        `SELECT count(*)::int AS n,
+                COALESCE(SUM(CASE WHEN total_unique_benes ~ '^[0-9]+(\\.[0-9]+)?$' THEN total_unique_benes::numeric END), 0) AS benes
+           FROM provider_service_utilization
+          WHERE npi = $1
+            AND data_year = (SELECT MAX(data_year) FROM provider_service_utilization WHERE npi = $1)`,
         [npi],
       ),
+      // Partners, not rows: a pair has one row per data year.
       client.query(
-        "SELECT count(*)::int AS n FROM (SELECT 1 FROM cms_referrals WHERE npi = $1 AND referred_to_npi IS NOT NULL LIMIT 1000) x",
+        `SELECT count(DISTINCT referred_to_npi)::int AS n
+           FROM (SELECT referred_to_npi FROM cms_referrals WHERE npi = $1 AND referred_to_npi IS NOT NULL LIMIT 1000) x`,
         [npi],
       ),
       client.query(
@@ -455,7 +503,7 @@ export async function handleCalculateOutreachScore(payload: any) {
       email: provider.email,
       emailValidationStatus: provider.email_validation_status,
       hasPhone: !!provider.phone || l.rows.some((row: any) => !!row.phone),
-      beneficiaries: u.rows[0] ? Number(u.rows[0].total_unique_benes) || 0 : null,
+      beneficiaries: u.rows[0]?.n ? Number(u.rows[0].benes) || 0 : null,
       referralPartners: r.rows[0]?.n || 0,
       messagesSent: m.rows[0]?.sent || 0,
       opened: m.rows[0]?.opened || 0,
@@ -470,13 +518,17 @@ export async function handleCalculateOutreachScore(payload: any) {
   if (features.email) features.emailSuppressed = await isSuppressed(features.email);
 
   const result = computeOutreachScore(features);
-  const strategy = payload?.with_ai ? (await aiStrategy({ score: result.score, factors: result.factors })) || result.strategy : result.strategy;
+  const strategy = isAdmin && payload?.with_ai
+    ? (await aiStrategy({ score: result.score, factors: result.factors })) || result.strategy
+    : result.strategy;
 
-  await pool.query(
-    `UPDATE providers SET ai_outreach_score = $2, ai_outreach_strategy = $3, ai_engagement_factors = $4::jsonb,
-            ai_outreach_scored_at = now(), updated_date = now() WHERE npi = $1`,
-    [npi, result.score, strategy, JSON.stringify({ components: result.components, factors: result.factors })],
-  );
+  if (isAdmin) {
+    await pool.query(
+      `UPDATE providers SET ai_outreach_score = $2, ai_outreach_strategy = $3, ai_engagement_factors = $4::jsonb,
+              ai_outreach_scored_at = now(), updated_date = now() WHERE npi = $1`,
+      [npi, result.score, strategy, JSON.stringify({ components: result.components, factors: result.factors })],
+    );
+  }
 
-  return { success: true, npi, ...result, strategy };
+  return { success: true, npi, ...result, strategy, saved: isAdmin };
 }
