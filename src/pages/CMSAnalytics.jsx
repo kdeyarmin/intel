@@ -9,6 +9,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import PageHeader from '../components/shared/PageHeader';
+import { RefreshRollupsButton, RollupFreshness } from '../components/analytics/RollupFreshness';
 
 const COLORS = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#f97316', '#14b8a6', '#a855f7', '#6366f1', '#84cc16', '#e879f9', '#22d3ee', '#fbbf24'];
 
@@ -134,6 +135,7 @@ export default function CMSAnalytics() {
         subtitle="Visualize Medicare datasets across programs and years"
         icon={BarChart3}
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'CMS Data' }]}
+        actions={<RefreshRollupsButton invalidateKey={['cmsAnalytics']} />}
       />
 
       {isLoading ? (
@@ -183,7 +185,11 @@ export default function CMSAnalytics() {
                   <div className="w-2 h-2 bg-cyan-500 rounded-full" />
                   Top Specialties by Medicare Payment
                 </CardTitle>
-                <CardDescription>Provider service utilization across {formatNumber(summary.unique_providers || 0)} providers</CardDescription>
+                <CardDescription>
+                  Provider service utilization across {formatNumber(summary.unique_providers || 0)} providers
+                  {utilization.data_year ? ` (${utilization.data_year} data)` : ''}
+                </CardDescription>
+                <RollupFreshness rollup={utilization.rollup} />
               </CardHeader>
               <CardContent>
                 {topServices.length === 0 ? (
@@ -279,20 +285,23 @@ export default function CMSAnalytics() {
                   <div className="w-2 h-2 bg-amber-500 rounded-full" />
                   Top Referred-To Providers
                 </CardTitle>
-                <CardDescription>Providers receiving the most referrals ({formatNumber(referrals.totalRecords || 0)} total referral records)</CardDescription>
+                <CardDescription>
+                  Providers others share the most patients with{referrals.data_year ? ` in ${referrals.data_year}` : ''} ({formatNumber(referrals.totalRecords || 0)} referral records in all)
+                </CardDescription>
+                <RollupFreshness rollup={referrals.rollup} />
               </CardHeader>
               <CardContent>
                 {topReferred.length === 0 ? (
                   <div className="text-center py-12 text-slate-400 text-sm">No referral data available</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={360}>
-                    <BarChart data={topReferred.map(r => ({ ...r, label: `...${r.npi.slice(-4)}` }))} layout="vertical" margin={{ left: 50, right: 20 }}>
+                    <BarChart data={topReferred.map(r => ({ ...r, label: r.name ? (r.name.length > 20 ? `${r.name.slice(0, 19)}…` : r.name) : `NPI …${r.npi.slice(-4)}` }))} layout="vertical" margin={{ left: 10, right: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis type="number" fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={formatNumber} />
-                      <YAxis type="category" dataKey="label" fontSize={10} tick={{ fill: '#94a3b8' }} width={45} />
+                      <YAxis type="category" dataKey="label" fontSize={10} tick={{ fill: '#94a3b8' }} width={130} interval={0} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-                        labelFormatter={(_, payload) => payload?.[0]?.payload?.npi || ''}
+                        labelFormatter={(_, payload) => { const p = payload?.[0]?.payload; return p ? `${p.name || 'NPI'} (${p.npi})` : ''; }}
                         formatter={(v) => [formatNumber(v), 'Referral Records']}
                       />
                       <Bar dataKey="referral_records" fill="#f59e0b" radius={[0,4,4,0]} />
@@ -309,6 +318,7 @@ export default function CMSAnalytics() {
                   Medicare Facility Data by Type
                 </CardTitle>
                 <CardDescription>Distribution of {formatNumber(tableCounts.medicare_facilities || 0)} facility records across dataset types</CardDescription>
+                <RollupFreshness rollup={facilities.rollup} />
               </CardHeader>
               <CardContent>
                 {facilityTypes.length === 0 ? (

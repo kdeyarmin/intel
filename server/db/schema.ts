@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -27,6 +27,54 @@ export const users = pgTable("users", {
   // existing rows differ only by case).
   uniqueIndex("users_email_lower_uq").on(sql`lower(${table.email})`),
 ]);
+
+// Background rollups (server/lib/rollups). Not exposed via tableMap.
+export const rollupRuns = pgTable("rollup_runs", {
+  job: varchar("job", { length: 64 }).primaryKey(),
+  status: varchar("status", { length: 20 }).notNull().default("idle"),
+  started_at: timestamp("started_at"),
+  finished_at: timestamp("finished_at"),
+  last_success_at: timestamp("last_success_at"),
+  rows_scanned: bigint("rows_scanned", { mode: "number" }),
+  rows_skipped: bigint("rows_skipped", { mode: "number" }),
+  result_rows: integer("result_rows"),
+  duration_ms: integer("duration_ms"),
+  progress: jsonb("progress"),
+  error: text("error"),
+});
+
+export const rollupZipLocations = pgTable("rollup_zip_locations", {
+  zip5: varchar("zip5", { length: 5 }).primaryKey(),
+  practice_locations: integer("practice_locations").notNull(),
+  all_locations: integer("all_locations").notNull(),
+});
+
+export const rollupCmsServiceTypes = pgTable("rollup_cms_service_types", {
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  service_type: varchar("service_type", { length: 255 }).notNull(),
+  provider_count: integer("provider_count").notNull(),
+  total_services: doublePrecision("total_services").notNull(),
+  total_payments: doublePrecision("total_payments").notNull(),
+  total_beneficiaries: doublePrecision("total_beneficiaries").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.service_type] }),
+]);
+
+export const rollupCmsTopReferred = pgTable("rollup_cms_top_referred", {
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  referred_to_npi: varchar("referred_to_npi", { length: 10 }).notNull(),
+  total_referrals: doublePrecision("total_referrals").notNull(),
+  referring_providers: integer("referring_providers").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.referred_to_npi] }),
+]);
+
+export const rollupFacilityTypes = pgTable("rollup_facility_types", {
+  facility_type: varchar("facility_type", { length: 100 }).primaryKey(),
+  record_count: bigint("record_count", { mode: "number" }).notNull(),
+  state_count: integer("state_count").notNull(),
+  latest_year: varchar("latest_year", { length: 10 }),
+});
 
 // Census geography (2020), loaded from server/data/census. Not exposed via tableMap.
 export const geoCounties = pgTable("geo_counties", {

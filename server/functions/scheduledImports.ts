@@ -197,6 +197,10 @@ async function runMaintenanceWorkers() {
     run("cancelStalledImports", handleCancelStalledImports),
     run("manageCrawlerRetries", () => handleNppesCrawler({ action: "batch_resume" }, ADMIN)),
     run("runDueScheduledReports", async () => (await import("./scheduledReports")).handleRunDueScheduledReports()),
+    run("refreshRollups", async () => {
+      const { pool } = await import("../db");
+      return (await import("../lib/rollups/runner")).startDueRollups(pool);
+    }),
   ]);
   return out;
 }

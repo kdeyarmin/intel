@@ -79,6 +79,11 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
   mirrors `autoRetryFailedImports/helpers.ts`) — keep the two in sync.
+- **Analytics over the big tables come from rollups.** `server/lib/rollups`
+  scans a source table in primary-key chunks (each its own short query under a
+  statement timeout), accumulates in memory, and swaps a small `rollup_*` table
+  in one transaction; `refreshRollups` (fan-out worker, daily per job) queues
+  due jobs one at a time. Add a job there instead of a `GROUP BY` in a request.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
@@ -113,7 +118,8 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   it). `ADMIN_EMAIL` + `ADMIN_PASSWORD` seed the first admin.
 - **Maintenance is cron-driven.** `base44/functions/runScheduledImports` fans out
   the maintenance workers (`autoResumePausedImports`, `autoRetryFailedImports`,
-  `manageCrawlerRetries`, `cancelStalledImports`) each tick and writes a
+  `manageCrawlerRetries`, `cancelStalledImports`, `runDueScheduledReports`,
+  `refreshRollups`) each tick and writes a
   `maintenance_fanout` `AuditEvent` heartbeat that `MaintenanceHealthPanel`
   surfaces. If the cron isn't wired, those workers don't run.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top

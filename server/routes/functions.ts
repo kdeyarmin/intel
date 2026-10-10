@@ -8,8 +8,6 @@ const router = Router();
 
 let dashboardStatsCache: { data: any; timestamp: number } | null = null;
 const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
-let cmsAnalyticsCache: { data: any; timestamp: number } | null = null;
-const CMS_CACHE_TTL = 10 * 60 * 1000;
 // Sample size for the dashboard's no-phone extrapolation. Used for both the
 // LIMIT and the scale-up divisor so the two can never drift apart.
 const PHONE_SAMPLE_SIZE = 2000;
@@ -237,121 +235,10 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       }
 
       case "getCMSAnalytics": {
-        if (cmsAnalyticsCache && (Date.now() - cmsAnalyticsCache.timestamp < CMS_CACHE_TTL)) {
-          return res.json(cmsAnalyticsCache.data);
-        }
-        const { db, pool } = await import("../db");
-        const { sql } = await import("drizzle-orm");
-
-        const safeMvQuery = async (queryFn: () => Promise<any>, fallback: any = []) => {
-          try { return await queryFn(); }
-          catch (e: any) { console.warn(`[getCMSAnalytics] View query failed: ${e.message?.slice(0, 150)}`); return fallback; }
-        };
-
-        // The medicare_facilities aggregate is a GROUP BY + count(DISTINCT state)
-        // over a ~46M-row table. Run it on a dedicated connection under a
-        // statement_timeout so a slow scan can't pin a pooled connection (the
-        // whole result set is cached for 10 minutes).
-        const timedFacilityAggregate = async () => {
-          const client = await pool.connect();
-          try {
-            await client.query("SET statement_timeout = '20s'");
-            return await client.query(`
-              SELECT facility_type, count(*) AS record_count,
-                count(DISTINCT state) AS state_count,
-                max(data_year) AS latest_year
-              FROM medicare_facilities
-              WHERE facility_type IN (
-                'market_saturation_county', 'market_saturation_cbsa',
-                'medicare_fee_for_service_enrollment', 'medicare_monthly_enrollment',
-                'nppes_registry', 'provider_taxonomy_crosswalk'
-              )
-              GROUP BY facility_type
-            `);
-          } finally {
-            try { await client.query("RESET statement_timeout"); } catch { /* ignore */ }
-            client.release();
-          }
-        };
-
-        const [
-          topServicesResult,
-          topReferredResult,
-          facilityTypesResult,
-          tableEstimates,
-          utilSummaryResult,
-          aggregateDatasetsResult,
-        ] = await Promise.all([
-          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_util_by_type ORDER BY total_payments DESC NULLS LAST LIMIT 20`)),
-          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_top_referrals ORDER BY referral_records DESC LIMIT 15`)),
-          safeMvQuery(() => db.execute(sql`SELECT * FROM mv_cms_facility_types ORDER BY record_count DESC LIMIT 15`)),
-          safeMvQuery(() => db.execute(sql`
-            SELECT relname, reltuples::bigint AS est
-            FROM pg_class
-            WHERE relname IN ('provider_service_utilization','cms_referrals','medicare_facilities')
-          `)),
-          safeMvQuery(() => db.execute(sql`
-            SELECT count(*) AS types,
-              sum(provider_count) AS providers,
-              sum(total_payments) AS total_payments,
-              sum(total_services) AS total_services
-            FROM mv_cms_util_by_type
-          `)),
-          safeMvQuery(timedFacilityAggregate),
-        ]);
-
-        const topServices = ((topServicesResult as any).rows || topServicesResult) || [];
-        const topReferred = ((topReferredResult as any).rows || topReferredResult) || [];
-        const facilityTypes = ((facilityTypesResult as any).rows || facilityTypesResult) || [];
-        const estRows = ((tableEstimates as any).rows || tableEstimates) || [];
-        const estMap: any = {};
-        estRows.forEach((r: any) => { estMap[r.relname] = Number(r.est || 0); });
-        const utilSummary = (((utilSummaryResult as any).rows || utilSummaryResult) || [])[0] || {};
-        const aggregateDatasets = ((aggregateDatasetsResult as any).rows || aggregateDatasetsResult) || [];
-
-        const cmsResult = {
-          utilization: {
-            topServices: topServices.map((r: any) => ({
-              service_type: r.service_type,
-              provider_count: Number(r.provider_count || 0),
-              total_services: Number(r.total_services || 0),
-              total_payments: Number(r.total_payments || 0),
-              total_beneficiaries: Number(r.total_beneficiaries || 0),
-            })),
-            summary: {
-              unique_service_types: Number(utilSummary.types || 0),
-              unique_providers: Number(utilSummary.providers || 0),
-              total_payments: Number(utilSummary.total_payments || 0),
-              total_services: Number(utilSummary.total_services || 0),
-            },
-          },
-          referrals: {
-            topReferred: topReferred.map((r: any) => ({
-              npi: r.referred_npi,
-              referral_records: Number(r.referral_records || 0),
-            })),
-            totalRecords: estMap.cms_referrals || 0,
-          },
-          facilities: {
-            byType: facilityTypes.map((r: any) => ({
-              type: r.facility_type,
-              count: Number(r.record_count || 0),
-            })),
-          },
-          tableCounts: {
-            provider_service_utilization: estMap.provider_service_utilization || 0,
-            cms_referrals: estMap.cms_referrals || 0,
-            medicare_facilities: estMap.medicare_facilities || 0,
-          },
-          aggregateDatasets: aggregateDatasets.map((r: any) => ({
-            facility_type: r.facility_type,
-            record_count: Number(r.record_count || 0),
-            state_count: Number(r.state_count || 0),
-            latest_year: r.latest_year || null,
-          })),
-        };
-        cmsAnalyticsCache = { data: cmsResult, timestamp: Date.now() };
-        return res.json(cmsResult);
+        // Reads the background rollups (server/lib/rollups); never aggregates the big tables here.
+        const { pool: dbPool } = await import("../db");
+        const { handleGetCMSAnalytics } = await import("../functions/cmsAnalytics");
+        return res.json(await handleGetCMSAnalytics(dbPool));
       }
 
       case "getReferralNetworkData": {
@@ -869,6 +756,16 @@ Be concise and helpful. Use markdown formatting for readability.`;
         // Server-side provider search (see server/lib/providerSearch.ts).
         const { handleSearchProviders } = await import("../functions/search");
         return res.json(await handleSearchProviders(req.body));
+      }
+
+      case "getRollupStatus": {
+        const { handleGetRollupStatus } = await import("../functions/rollups");
+        return res.json(await handleGetRollupStatus());
+      }
+
+      case "refreshRollups": {
+        const { handleRefreshRollups } = await import("../functions/rollups");
+        return res.json(await handleRefreshRollups(req.body));
       }
 
       case "getGeoStatus": {

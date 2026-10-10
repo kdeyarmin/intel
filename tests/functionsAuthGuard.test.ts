@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 31 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(31);
+  it("contains exactly the 32 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(32);
   });
 
   it("all listed functions are individually verified", () => {
@@ -79,7 +79,7 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getIntelCandidateCount", "enrichmentJobStatus", "intelJobStatus",
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
-      "searchProviders", "searchLocations", "getGeoCounties", "getGeoStatus", "calculateOutreachScore", "analyzeReferralPathways",
+      "searchProviders", "searchLocations", "getGeoCounties", "getGeoStatus", "getRollupStatus", "calculateOutreachScore", "analyzeReferralPathways",
       "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
       "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
     ];
@@ -101,6 +101,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "testCMSUrl",
       "testCMSApiConnector",
       "runDueScheduledReports",
+      "refreshRollups",
+      "loadCensusGeography",
       "matchProvidersToLocations",
       "runScheduledImports",
       "cleanupAllImports",

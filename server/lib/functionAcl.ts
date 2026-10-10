@@ -30,6 +30,8 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   // Census geography lookups (read-only). loadCensusGeography stays admin-only.
   "getGeoCounties",
   "getGeoStatus",
+  // When each analytics rollup last refreshed (read-only). refreshRollups is admin-only.
+  "getRollupStatus",
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);
   // the "run_all_due" action is admin-only inside the handler. Recipients are
