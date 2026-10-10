@@ -13,12 +13,14 @@ function aggregateData(rawData, config) {
 
   const groupKey = config.group_by;
   const metrics = config.metrics || [];
+  const counts = new Set(dsConfig.countMetrics || []);
+  const value = (row, m) => (counts.has(m) ? 1 : Number(row[m]) || 0);
 
   // Apply filters
   let filtered = [...rawData];
   const filters = config.filters || {};
   const yearField = dsConfig.yearField;
-  if (filters.year && yearField) filtered = filtered.filter(r => r[yearField] === filters.year);
+  if (filters.year && yearField) filtered = filtered.filter(r => String(r[yearField]) === String(filters.year));
   if (filters.state) filtered = filtered.filter(r => r.state === filters.state);
   if (filters.hospital_type) filtered = filtered.filter(r => (r.hospital_type || '').toLowerCase().includes(filters.hospital_type.toLowerCase()));
   if (filters.table_name) filtered = filtered.filter(r => r.table_name === filters.table_name);
@@ -26,7 +28,7 @@ function aggregateData(rawData, config) {
   if (!groupKey) {
     // No grouping — single total row
     const totals = { group: 'Total' };
-    metrics.forEach(m => { totals[m] = filtered.reduce((s, r) => s + (Number(r[m]) || 0), 0); });
+    metrics.forEach(m => { totals[m] = filtered.reduce((s, r) => s + value(r, m), 0); });
     return [totals];
   }
 
@@ -39,7 +41,7 @@ function aggregateData(rawData, config) {
       groups[gv] = { group: gv };
       metrics.forEach(m => { groups[gv][m] = 0; });
     }
-    metrics.forEach(m => { groups[gv][m] += Number(row[m]) || 0; });
+    metrics.forEach(m => { groups[gv][m] += value(row, m); });
   }
 
   return Object.values(groups)
