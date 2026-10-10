@@ -88,7 +88,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
   `server/lib/geo.ts` (`resolveCounty`, `countyZctas`, `zipToCounty`,
-  `coordsFor`). Don't hardcode coordinates or county lists.
+  `coordsFor`). Don't hardcode coordinates or county lists. Browser code gets
+  map positions from `getZipCoordinates` (`useProviderCoords`) and a
+  provider's county from `getGeoContext`.
+- **Scores are never invented.** Territory and County Intel show a provider's
+  `lead_scores` score, else `ai_outreach_score`, else "Unscored" (`null`,
+  never 0); see `pickScore()` in `server/lib/territory.ts`.
 - **Specialty groups:** match specialties by NUCC code with
   `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
   `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by

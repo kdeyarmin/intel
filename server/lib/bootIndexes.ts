@@ -46,6 +46,8 @@ export const BOOT_INDEXES: BootIndex[] = [
   // Search (server/lib/providerSearch.ts, locationSearch.ts). The expressions
   // must match SEARCH_EXPR exactly or the planner won't use them.
   ...SEARCH_INDEXES.map(idx),
+  // Territory samples start from the highest lead scores.
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lead_scores_score ON lead_scores (score DESC) WHERE score IS NOT NULL"),
 ];
 
 // A CONCURRENTLY build that fails (or is interrupted) leaves an INVALID index
@@ -58,6 +60,7 @@ export const SWEEP_TABLES = [
   "provider_locations",
   "provider_taxonomies",
   "providers",
+  "lead_scores",
 ];
 
 // Still-valid indexes whose natural key changed and must be rebuilt under a

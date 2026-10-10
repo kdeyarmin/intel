@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 
 export default function ProviderMapPopup({ item }) {
   const navigate = useNavigate();
-  const { provider, location, taxonomy, score, utilization } = item;
+  const { provider, location, taxonomy, score, utilization, county, coordPrecision } = item;
 
   const name = provider.entity_type === 'Organization'
     ? provider.organization_name
@@ -24,7 +24,7 @@ export default function ProviderMapPopup({ item }) {
     <div className="min-w-[220px] max-w-[280px]">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="font-semibold text-sm text-white leading-tight">{name || 'Unknown'}</div>
-        <Badge className={`shrink-0 text-[10px] ${getScoreColor(score)}`}>{score}</Badge>
+        <Badge className={`shrink-0 text-[10px] ${score == null ? 'bg-slate-700 text-slate-300' : getScoreColor(score)}`}>{score == null ? 'Unscored' : score}</Badge>
       </div>
 
       <div className="space-y-1 text-xs text-slate-400">
@@ -40,10 +40,16 @@ export default function ProviderMapPopup({ item }) {
             <span>{location.city}{location.state ? `, ${location.state}` : ''} {location.zip || ''}</span>
           </div>
         )}
+        {county && <div className="pl-4">{county}</div>}
+        {coordPrecision && coordPrecision !== 'zcta' && (
+          <div className="pl-4 text-[10px] text-amber-400">
+            Placed at the {coordPrecision === 'zip3' ? 'ZIP area' : 'state'} centre (exact ZIP not found)
+          </div>
+        )}
         {utilization && (
           <div className="flex items-center gap-1">
             <Users className="w-3 h-3 shrink-0" />
-            <span>{(utilization.total_medicare_beneficiaries || 0).toLocaleString()} beneficiaries</span>
+            <span>{utilization.total_medicare_beneficiaries == null ? 'No Medicare data' : `${Number(utilization.total_medicare_beneficiaries).toLocaleString()} beneficiaries`}</span>
           </div>
         )}
       </div>
