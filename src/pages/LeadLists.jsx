@@ -14,6 +14,7 @@ import LeadListTable from '../components/leadlists/LeadListTable';
 import AddProviderDialog from '../components/leadlists/AddProviderDialog';
 import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
 import LeadListStatusExport from '../components/leadlists/LeadListStatusExport';
+import { listMembers } from '../components/leadlists/leadListService';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -205,7 +206,8 @@ function ViewListDialog({ listId, listName }) {
     setLoading(true);
     setLoadError(null);
     try {
-      const members = await base44.entities.LeadListMember.filter({ list_id: listId }, '-created_date', 5000);
+      // Every member, newest first: a list can outgrow any single page.
+      const members = (await listMembers(listId)).reverse();
       if (members.length === 0) { setLeads([]); return; }
 
       const npis = [...new Set(members.map(m => m.npi))];
