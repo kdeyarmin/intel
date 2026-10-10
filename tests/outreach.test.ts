@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import crypto from "crypto";
 import {
+  advancedStatusSql,
   appendComplianceFooter,
   buildCampaignMetrics,
   buildMergeVars,
   buildUnsubscribeToken,
   classifyRecipient,
   computeOutreachScore,
+  foldMessageEvents,
   isRetryableSendError,
   renderTemplate,
   sendErrorReason,
@@ -101,6 +103,28 @@ describe("campaign metrics", () => {
     expect(shouldAdvanceStatus("opened", "delivered")).toBe(false);
     expect(shouldAdvanceStatus("delivered", "bounced")).toBe(true);
     expect(shouldAdvanceStatus("bounced", "opened")).toBe(false);
+  });
+
+  it("folds a batch into one update per message: furthest status, earliest times, last error", () => {
+    const t = (s: number) => new Date(s * 1000);
+    const out = foldMessageEvents([
+      { messageId: 1, status: "opened", timestampColumn: "opened_at", at: t(20), error: null },
+      { messageId: 1, status: "delivered", timestampColumn: null, at: t(10), error: null },
+      { messageId: 1, status: "opened", timestampColumn: "opened_at", at: t(15), error: null },
+      { messageId: 2, status: "delivered", timestampColumn: null, at: t(5), error: null },
+      { messageId: 2, status: "bounced", timestampColumn: "bounced_at", at: t(6), error: "550 no such user" },
+    ]);
+    expect(out).toEqual([
+      { messageId: 1, status: "opened", openedAt: t(15), clickedAt: null, bouncedAt: null, error: null },
+      { messageId: 2, status: "bounced", openedAt: null, clickedAt: null, bouncedAt: t(6), error: "550 no such user" },
+    ]);
+  });
+
+  it("puts the same status rule into SQL for the atomic webhook update", () => {
+    const sql = advancedStatusSql("m.status", "e.status");
+    expect(sql).toContain("WHEN m.status IN ('bounced', 'failed', 'suppressed') THEN m.status");
+    expect(sql).toContain("WHEN e.status = 'bounced' THEN 'bounced'");
+    expect(sql).toContain("WHEN 'clicked' THEN 5");
   });
 });
 

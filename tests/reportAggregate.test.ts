@@ -79,6 +79,16 @@ describe("computeNextReportRun (US Eastern)", () => {
     expect(computeNextReportRun({}, new Date("2026-01-20T00:00:00Z")).getUTCDay()).toBe(1); // weekly, Monday
   });
 
+  it("moves a time in the spring-forward gap to after the gap, and picks the first of a repeated time", () => {
+    // 2026-03-08 02:30 ET doesn't exist (clocks jump 02:00 → 03:00): run at 03:30 EDT.
+    expect(zonedTime(2026, 3, 8, 2, 30).toISOString()).toBe("2026-03-08T07:30:00.000Z");
+    expect(zonedTime(2026, 3, 8, 8, 0).toISOString()).toBe("2026-03-08T12:00:00.000Z");
+    // 2026-11-01 01:30 ET happens twice: the first (EDT) one.
+    expect(zonedTime(2026, 11, 1, 1, 30).toISOString()).toBe("2026-11-01T05:30:00.000Z");
+    expect(computeNextReportRun({ frequency: "daily", schedule_time: "02:30" }, new Date("2026-03-08T05:00:00Z")).toISOString())
+      .toBe("2026-03-08T07:30:00.000Z");
+  });
+
   it("changes signature when the schedule changes", () => {
     expect(scheduleSignature({ frequency: "weekly", schedule_day: "Monday", schedule_time: "08:00" }))
       .not.toBe(scheduleSignature({ frequency: "daily", schedule_day: "Monday", schedule_time: "08:00" }));
@@ -100,6 +110,9 @@ describe("report email", () => {
 
   it("writes a CSV that spreadsheets can't execute", () => {
     expect(buildReportCsv({ groupLabel: "Service", metrics, rows })).toBe("Service,Total Services\r\n<b>Echo</b>,30\r\n'=cmd(),10.25\r\n");
+    // Text that starts like a formula is escaped even when it starts like a number; numbers stay numbers.
+    expect(buildReportCsv({ groupLabel: "G", metrics, rows: [{ group: "-1+2", total_services: -5 }, { group: "+1", total_services: 1 }] }))
+      .toBe("G,Total Services\r\n'-1+2,-5\r\n'+1,1\r\n");
   });
 
   it("summarizes the leading group", () => {
