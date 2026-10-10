@@ -456,12 +456,16 @@ export default function Providers() {
       await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
     }
 
-    await base44.entities.AuditEvent.create({
-      event_type: 'user_action',
-      user_email: user.email,
-      details: { action: 'Created Lead List', entity: 'LeadList', message: listName },
-      timestamp: new Date().toISOString(),
-    });
+    // Audit events are admin-only, and the list is already saved: a regular
+    // user's failed audit write mustn't turn this into an error.
+    if (user?.role === 'admin') {
+      await base44.entities.AuditEvent.create({
+        event_type: 'user_action',
+        user_email: user.email,
+        details: { action: 'Created Lead List', entity: 'LeadList', message: listName },
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     alert('Lead list saved!');
   };
