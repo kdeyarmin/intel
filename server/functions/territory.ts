@@ -10,7 +10,10 @@ import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizati
 
 const DEFAULT_LIMIT = 500;
 const MAX_LIMIT = 1000;
-const SCORED_CANDIDATES = 5000;
+// Lead scores are walked in score order, a page at a time, until the state's
+// sample is full; at most this many are read per request.
+const SCORED_PAGE = 5000;
+const SCORED_SCAN_MAX = 100_000;
 const STATES_TTL_MS = 60 * 60 * 1000;
 const RESULT_TTL_MS = 5 * 60 * 1000;
 
@@ -42,22 +45,40 @@ async function availableStates(client: any) {
   return states;
 }
 
-/** Highest lead scores first (in the state), then other practice locations in the state. */
+/**
+ * Highest lead scores first (in the state), then other practice locations in
+ * the state. Scores are read in order a page at a time (idx_lead_scores_score_id)
+ * and checked against the state, until the sample is full.
+ */
 async function chooseNpis(client: any, state: string | null, limit: number): Promise<{ npis: string[]; scoredFirst: number }> {
-  const { rows: scored } = await client.query(
-    "SELECT npi FROM lead_scores WHERE npi IS NOT NULL AND score IS NOT NULL ORDER BY score DESC LIMIT $1",
-    [SCORED_CANDIDATES],
-  );
-  let top = [...new Set(scored.map((r: any) => r.npi as string))];
-  if (state && top.length) {
+  const top: string[] = [];
+  const seen = new Set<string>();
+  let after: { score: number; id: number } | null = null;
+  for (let scanned = 0; top.length < limit && scanned < SCORED_SCAN_MAX;) {
     const { rows } = await client.query(
-      "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'",
-      [top, state],
+      `SELECT id, npi, score FROM lead_scores WHERE score IS NOT NULL AND npi IS NOT NULL${after ? " AND (score, id) < ($2, $3)" : ""}
+        ORDER BY score DESC, id DESC LIMIT $1`,
+      after ? [SCORED_PAGE, after.score, after.id] : [SCORED_PAGE],
     );
-    const inState = new Set(rows.map((r: any) => r.npi));
-    top = top.filter((n) => inState.has(n));
+    if (!rows.length) break;
+    scanned += rows.length;
+    after = { score: rows[rows.length - 1].score, id: rows[rows.length - 1].id };
+    const fresh = rows.map((r: any) => r.npi as string).filter((n: string) => !seen.has(n) && seen.add(n));
+    let keep = fresh;
+    if (state && fresh.length) {
+      const { rows: inState } = await client.query(
+        "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'",
+        [fresh, state],
+      );
+      const ok = new Set(inState.map((r: any) => r.npi));
+      keep = fresh.filter((n: string) => ok.has(n));
+    }
+    for (const n of keep) {
+      if (top.length >= limit) break;
+      top.push(n);
+    }
+    if (rows.length < SCORED_PAGE) break;
   }
-  top = top.slice(0, limit);
   const npis = [...top];
   if (npis.length < limit) {
     const { rows } = await client.query(
@@ -105,10 +126,25 @@ export async function handleGetTerritoryData(payload: any) {
       const [provs, taxes, locs, util, scores, zipCounts] = await Promise.all([
         npis.length ? client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential, ai_outreach_score FROM providers WHERE npi = ANY($1)", [npis]) : { rows: [] },
         npis.length ? client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]) : { rows: [] },
-        npis.length ? client.query("SELECT npi, location_type, address_1, city, state, zip FROM provider_locations WHERE npi = ANY($1) LIMIT $2", [npis, npis.length * 4]) : { rows: [] },
+        // One location per provider: the practice one in the state, else any
+        // practice one, else any (an index probe each; no shared cap).
         npis.length ? client.query(
-          `SELECT npi, data_year, total_services, total_unique_benes, total_medicare_payment_amt, average_medicare_payment_amt
-             FROM provider_service_utilization WHERE npi = ANY($1) LIMIT $2`, [npis, npis.length * 60]) : { rows: [] },
+          `SELECT l.npi, l.location_type, l.address_1, l.city, l.state, l.zip
+             FROM unnest($1::varchar[]) AS n(npi)
+             CROSS JOIN LATERAL (
+               SELECT npi, location_type, address_1, city, state, zip FROM provider_locations
+                WHERE npi = n.npi
+                ORDER BY (location_type = 'Practice' AND state IS NOT DISTINCT FROM $2) DESC NULLS LAST,
+                         (location_type = 'Practice') DESC NULLS LAST
+                LIMIT 1
+             ) l`, [npis, state]) : { rows: [] },
+        // Each provider's latest year, all of its rows.
+        npis.length ? client.query(
+          `WITH latest AS (
+             SELECT npi, max(data_year) AS data_year FROM provider_service_utilization WHERE npi = ANY($1) GROUP BY npi
+           )
+           SELECT u.npi, u.data_year, u.total_services, u.total_unique_benes, u.total_medicare_payment_amt, u.average_medicare_payment_amt
+             FROM latest l JOIN provider_service_utilization u ON u.npi = l.npi AND u.data_year = l.data_year`, [npis]) : { rows: [] },
         npis.length ? client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1)", [npis]) : { rows: [] },
         state ? client.query(
           "SELECT zip5, practice_locations FROM rollup_zip_locations WHERE zip5 = ANY($1)",

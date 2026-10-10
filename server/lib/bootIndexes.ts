@@ -24,6 +24,8 @@ export const BOOT_INDEXES: BootIndex[] = [
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)"),
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)"),
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_state ON medicare_facilities (facility_type, state)"),
+  // County Intel: facilities in a state's ZIP areas (left(zip, 5), as queried).
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_state_zip5 ON medicare_facilities (state, left(zip, 5), facility_type)"),
   // Unique backstops enforcing each table's natural key. Best-effort: a build
   // FAILS (and is logged) while duplicate rows still exist, so run
   // scripts/dedupe-existing-imports.sql once first. The importers use
@@ -47,7 +49,7 @@ export const BOOT_INDEXES: BootIndex[] = [
   // must match SEARCH_EXPR exactly or the planner won't use them.
   ...SEARCH_INDEXES.map(idx),
   // Territory samples start from the highest lead scores.
-  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lead_scores_score ON lead_scores (score DESC) WHERE score IS NOT NULL"),
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lead_scores_score_id ON lead_scores (score DESC, id DESC) WHERE score IS NOT NULL"),
   // Recent events of one type, newest first: account activity on Admin
   // Settings and the maintenance heartbeat. audit_events only grows.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_type_created ON audit_events (event_type, created_date DESC)"),
@@ -74,8 +76,9 @@ export const SWEEP_TABLES = [
 
 // Still-valid indexes whose natural key changed and must be rebuilt under a
 // new name. cms_referrals moved from one row per (npi, year) to provider
-// pairs, so its uniqueness now includes referred_to_npi.
-export const OBSOLETE_INDEXES = ["uq_cms_referrals_npi_year"];
+// pairs, so its uniqueness now includes referred_to_npi; the lead-score index
+// gained id so territory samples can page through scores.
+export const OBSOLETE_INDEXES = ["uq_cms_referrals_npi_year", "idx_lead_scores_score"];
 
 type Log = Pick<Console, "log" | "warn">;
 

@@ -129,9 +129,11 @@ function ResetViewButton({ center, zoom }) {
   );
 }
 
-// Unscored providers (no lead or outreach score) are grey, never "0".
-function getScoreColor(score, colorByScore) {
-  if (!colorByScore || score == null) return '#94a3b8';
+// Unscored providers (no lead or outreach score) are grey, never "0"; with
+// score colouring off every marker is teal.
+export function getScoreColor(score, colorByScore) {
+  if (!colorByScore) return '#0d9488';
+  if (score == null) return '#94a3b8';
   if (score >= 80) return '#16a34a'; // green
   if (score >= 60) return '#0d9488'; // teal
   if (score >= 40) return '#eab308'; // yellow
