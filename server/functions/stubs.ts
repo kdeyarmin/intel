@@ -935,18 +935,6 @@ export async function handleGenerateHyperPersonalizedMessages(_payload: any) {
   return notConfigured("Personalized message generation isn't available yet.");
 }
 
-export async function handleTrackCampaignMetrics(_payload: any) {
-  return notConfigured("Campaign delivery metrics aren't available yet.");
-}
-
-export async function handleSendCampaignMessages(_payload: any) {
-  return notConfigured("Sending campaign email isn't available yet. The campaign was saved as a draft.");
-}
-
-export async function handleCalculateOutreachScore(payload: any) {
-  return notConfigured("Outreach scoring isn't available yet.", { npi: payload.npi });
-}
-
 export async function handleAnalyzeImportedDataset(payload: any) {
   return notConfigured("AI dataset analysis isn't available yet.", { batch_id: payload.batch_id });
 }

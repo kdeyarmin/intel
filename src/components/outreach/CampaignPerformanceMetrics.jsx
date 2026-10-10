@@ -1,234 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { RefreshCw, Loader2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { RefreshCw, Loader2, Info } from 'lucide-react';
+import { invokeOrThrow } from '@/api/functionResult';
+import QueryErrorState from '../shared/QueryErrorState';
 
-const _COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
-const STATUS_COLORS = {
-  pending: '#6b7280',
-  sent: '#3b82f6',
-  opened: '#10b981',
-  responded: '#8b5cf6',
-  bounced: '#ef4444'
-};
+const STATUS_ROWS = [
+  { key: 'pending', label: 'Queued', color: '#6b7280' },
+  { key: 'sent', label: 'Sent', color: '#3b82f6' },
+  { key: 'delivered', label: 'Delivered', color: '#06b6d4' },
+  { key: 'opened', label: 'Opened', color: '#10b981' },
+  { key: 'clicked', label: 'Clicked', color: '#22c55e' },
+  { key: 'responded', label: 'Responded', color: '#8b5cf6' },
+  { key: 'bounced', label: 'Bounced', color: '#ef4444' },
+  { key: 'failed', label: 'Failed', color: '#f97316' },
+  { key: 'suppressed', label: 'Unsubscribed (skipped)', color: '#a855f7' },
+];
 
-export default function CampaignPerformanceMetrics({ campaign_id }) {
-  const [metrics, setMetrics] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const { data: _campaign = {} } = useQuery({
-    queryKey: ['campaign', campaign_id],
-    queryFn: () => base44.entities.OutreachCampaign.filter({ id: campaign_id }, '-created_date', 1),
-    enabled: !!campaign_id
-  });
-
-  const { data: messages = [] } = useQuery({
-    queryKey: ['campaignMessages', campaign_id],
-    queryFn: () => base44.entities.OutreachMessage.filter({ campaign_id }, '-created_date', 2000),
+/**
+ * Delivery metrics rolled up on the server from outreach_messages (one count
+ * query). Refreshes every 30s while the campaign is sending.
+ */
+export default function CampaignPerformanceMetrics({ campaign_id, status }) {
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['campaignMetrics', campaign_id],
+    queryFn: () => invokeOrThrow('trackCampaignMetrics', { campaign_id }),
     enabled: !!campaign_id,
-    refetchInterval: 5000
+    refetchInterval: status === 'sending' ? 30000 : false,
   });
 
-  const handleRefreshMetrics = async () => {
-    setLoading(true);
-    try {
-      const result = await invokeOrThrow('trackCampaignMetrics', {
-        campaign_id
-      });
-      setMetrics(result.metrics);
-    } catch (error) {
-      toastFunctionError(error, 'Failed to refresh metrics');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Auto-calculate metrics from messages
-  useEffect(() => {
-    if (messages.length > 0) {
-      const sent = messages.filter(m => ['sent', 'opened', 'responded', 'bounced'].includes(m.status)).length;
-      const opened = messages.filter(m => m.opened_at).length;
-      const responded = messages.filter(m => m.responded_at).length;
-      const bounced = messages.filter(m => m.status === 'bounced').length;
-
-      setMetrics({
-        campaign_id,
-        total_recipients: messages.length,
-        sent_count: sent,
-        pending_count: messages.filter(m => m.status === 'pending').length,
-        open_rate: sent > 0 ? ((opened / sent) * 100).toFixed(1) : 0,
-        response_rate: sent > 0 ? ((responded / sent) * 100).toFixed(1) : 0,
-        bounce_rate: sent > 0 ? ((bounced / sent) * 100).toFixed(1) : 0,
-        conversion_count: responded,
-        messages_by_status: {
-          pending: messages.filter(m => m.status === 'pending').length,
-          generated: messages.filter(m => m.status === 'generated').length,
-          sent: messages.filter(m => m.status === 'sent').length,
-          opened,
-          responded,
-          bounced,
-          failed: messages.filter(m => m.status === 'failed').length
-        }
-      });
-    }
-  }, [messages]);
-
-  if (!metrics) {
-    return (
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle>Campaign Performance</CardTitle>
-          <Button size="sm" variant="outline" disabled>Loading...</Button>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-slate-500">No data available yet</div>
-        </CardContent>
-      </Card>
-    );
+  if (isLoading) {
+    return <Card className="bg-[#141d30] border-slate-700/50"><CardContent className="py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading metrics…</CardContent></Card>;
+  }
+  if (isError) {
+    return <QueryErrorState title="Couldn't load campaign metrics" error={error} onRetry={refetch} />;
   }
 
-  const statusData = Object.entries(metrics.messages_by_status).map(([key, value]) => ({
-    name: key.charAt(0).toUpperCase() + key.slice(1),
-    value,
-    fill: STATUS_COLORS[key] || '#666'
-  }));
-
-  const progressData = [
-    { name: 'Sent', value: metrics.sent_count },
-    // Use the raw opened count, not sent_count * open_rate — open_rate is a
-    // rounded .toFixed(1) string, so re-deriving introduces rounding error.
+  const metrics = data.metrics;
+  const funnel = [
+    { name: 'Sent', value: metrics.sent },
+    { name: 'Delivered', value: metrics.delivered },
     { name: 'Opened', value: metrics.opened },
-    { name: 'Responded', value: metrics.conversion_count }
+    { name: 'Clicked', value: metrics.clicked },
+    { name: 'Responded', value: metrics.responded },
+  ];
+  const kpis = [
+    { label: 'Recipients', value: metrics.total_recipients.toLocaleString(), cls: 'text-slate-100' },
+    { label: 'Sent', value: metrics.sent.toLocaleString(), cls: 'text-blue-400' },
+    { label: 'Open rate', value: `${metrics.open_rate}%`, cls: 'text-emerald-400' },
+    { label: 'Response rate', value: `${metrics.response_rate}%`, cls: 'text-purple-400' },
+    { label: 'Bounce rate', value: `${metrics.bounce_rate}%`, cls: 'text-red-400' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-slate-400">Total Recipients</p>
-            <p className="text-2xl font-bold mt-1">{metrics.total_recipients}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-slate-400">Sent</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{metrics.sent_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-slate-400">Open Rate</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{metrics.open_rate}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-slate-400">Response Rate</p>
-            <p className="text-2xl font-bold text-purple-600 mt-1">{metrics.response_rate}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs text-slate-400">Converted</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{metrics.conversion_count}</p>
-          </CardContent>
-        </Card>
+        {kpis.map(k => (
+          <Card key={k.label} className="bg-[#141d30] border-slate-700/50">
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-400">{k.label}</p>
+              <p className={`text-2xl font-bold mt-1 ${k.cls}`}>{k.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Message Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Message Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={statusData.filter(d => d.value > 0)}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {!data.tracking?.webhookConfigured && metrics.sent > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-900/20 p-3 text-sm text-amber-300">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
+          Opens, clicks and bounces appear once the SendGrid event webhook is connected (SENDGRID_WEBHOOK_PUBLIC_KEY). Until then only sends are counted.
+        </div>
+      )}
 
-        {/* Engagement Funnel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Engagement Funnel</CardTitle>
-          </CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardHeader><CardTitle className="text-base text-slate-200">Engagement funnel</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={progressData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#3b82f6" />
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={funnel}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: '#0f1729', border: '1px solid #334155' }} />
+                <Bar dataKey="value" fill="#06b6d4" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Detailed Status Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Status Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {statusData.map((status) => (
-              status.value > 0 && (
-                <div key={status.name} className="flex items-center justify-between p-3 bg-slate-800/60 rounded">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: status.fill }}
-                    />
-                    <span className="text-sm font-medium">{status.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{status.value}</p>
-                    <p className="text-xs text-slate-400">
-                      {((status.value / metrics.total_recipients) * 100).toFixed(1)}% of total
-                    </p>
-                  </div>
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base text-slate-200">Status breakdown</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} className="h-7 gap-1 text-xs">
+              {isFetching ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Refresh
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {STATUS_ROWS.filter(r => metrics[r.key] > 0).map(r => (
+                <div key={r.key} className="flex items-center justify-between rounded bg-slate-800/60 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-slate-300">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: r.color }} />
+                    {r.label}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-100">
+                    {metrics[r.key].toLocaleString()}
+                    <span className="ml-2 text-xs font-normal text-slate-500">
+                      {metrics.total_recipients ? `${((metrics[r.key] / metrics.total_recipients) * 100).toFixed(1)}%` : ''}
+                    </span>
+                  </span>
                 </div>
-              )
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Refresh Button */}
-      <Button 
-        onClick={handleRefreshMetrics}
-        disabled={loading}
-        className="w-full gap-2"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-        Refresh Metrics
-      </Button>
+              ))}
+              {metrics.total_recipients === 0 && (
+                <p className="text-sm text-slate-500">No messages yet. Send the campaign to build its recipient list.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

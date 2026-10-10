@@ -774,15 +774,25 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleGenerateHyperPersonalizedMessages(req.body));
       }
       case "trackCampaignMetrics": {
-        const { handleTrackCampaignMetrics } = await import("../functions/stubs");
+        const { handleTrackCampaignMetrics } = await import("../functions/outreach");
         return res.json(await handleTrackCampaignMetrics(req.body));
       }
+      case "prepareCampaignMessages": {
+        // Admin-only (not in PUBLIC_FUNCTIONS): builds the recipient list.
+        const { handlePrepareCampaignMessages } = await import("../functions/outreach");
+        return res.json(await handlePrepareCampaignMessages(req.body));
+      }
       case "sendCampaignMessages": {
-        const { handleSendCampaignMessages } = await import("../functions/stubs");
-        return res.json(await handleSendCampaignMessages(req.body));
+        // Admin-only (not in PUBLIC_FUNCTIONS): sends real email.
+        const { handleSendCampaignMessages } = await import("../functions/outreach");
+        return res.json(await handleSendCampaignMessages(req.body, req.user));
       }
       case "calculateOutreachScore": {
-        const { handleCalculateOutreachScore } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`outreachScore:${req.user?.id ?? "anon"}`, 30, 60_000)) {
+          return res.status(429).json({ message: "Too many score calculations. Try again in a minute." });
+        }
+        const { handleCalculateOutreachScore } = await import("../functions/outreach");
         return res.json(await handleCalculateOutreachScore(req.body));
       }
       case "analyzeImportedDataset": {

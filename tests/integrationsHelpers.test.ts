@@ -1,9 +1,8 @@
 /**
  * Tests for the allowedFromAddresses() and resolveFrom() helpers introduced in
- * server/routes/integrations.ts.
+ * server/lib/mailer.ts (used by /email/send and campaign sending).
  *
- * These functions are module-private (not exported), so the logic is replicated
- * here verbatim. If the production code changes, update this test to match.
+ * They live in server/lib/mailer.ts and are imported directly.
  *
  * allowedFromAddresses() reads SENDGRID_FROM_EMAIL and ALLOWED_FROM_EMAILS from
  * the environment, normalises them to lowercase, and falls back to a hardcoded
@@ -14,23 +13,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-// ─── Replicated helpers (kept in sync with server/routes/integrations.ts) ────
-
-function allowedFromAddresses(): string[] {
-  const list = [
-    process.env.SENDGRID_FROM_EMAIL,
-    ...(process.env.ALLOWED_FROM_EMAILS || "").split(","),
-  ]
-    .map((s) => (s || "").trim().toLowerCase())
-    .filter(Boolean);
-  return list.length > 0 ? list : ["noreply@caremetric.com"];
-}
-
-function resolveFrom(requested?: string): string {
-  const allowed = allowedFromAddresses();
-  if (requested && allowed.includes(requested.trim().toLowerCase())) return requested.trim();
-  return allowed[0];
-}
+import { allowedFromAddresses, resolveFrom } from "../server/lib/mailer";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
