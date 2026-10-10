@@ -39,7 +39,14 @@ export default function LeadLists() {
     queryFn: () => base44.entities.LeadList.list('-created_date', 500),
   });
 
-  const openList = url.list ? lists.find(l => String(l.id) === url.list) : null;
+  // A linked list older than the 500 loaded above is fetched on its own.
+  const listedOpen = url.list ? lists.find(l => String(l.id) === url.list) : null;
+  const { data: fetchedOpen = null } = useQuery({
+    queryKey: ['leadLists', 'one', url.list],
+    queryFn: async () => (await base44.entities.LeadList.filter({ id: Number(url.list) }, undefined, 1))[0] || null,
+    enabled: !!url.list && /^\d+$/.test(url.list) && !isLoading && !listedOpen,
+  });
+  const openList = listedOpen || fetchedOpen;
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeadList.delete(id),
@@ -123,12 +130,12 @@ export default function LeadLists() {
                             <span className="hidden sm:inline">View</span>
                           </Button>
                           {canStartCampaign && (
-                            <Link to={`${createPageUrl('ProviderOutreach')}?leadList=${list.id}`}>
-                              <Button size="sm" variant="outline" title="Start a campaign for this list">
+                            <Button asChild size="sm" variant="outline" title="Start a campaign for this list">
+                              <Link to={`${createPageUrl('ProviderOutreach')}?leadList=${list.id}`}>
                                 <Megaphone className="w-4 h-4 mr-1" />
                                 <span className="hidden sm:inline">Start campaign</span>
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                           )}
                           <Button
                             size="sm"

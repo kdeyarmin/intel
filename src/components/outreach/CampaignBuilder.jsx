@@ -34,7 +34,13 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
 
   const fetchLeadLists = async () => {
     try {
-      const lists = await base44.entities.LeadList.list('-created_date', 200);
+      // Same set the Lead Lists page shows, plus the list a "Start campaign"
+      // link preselected if it's older than that.
+      let lists = await base44.entities.LeadList.list('-created_date', 500);
+      if (initialLeadListId && !lists.some((l) => String(l.id) === String(initialLeadListId))) {
+        const [linked] = await base44.entities.LeadList.filter({ id: Number(initialLeadListId) }, undefined, 1);
+        if (linked) lists = [linked, ...lists];
+      }
       setLeadLists(lists);
     } catch (error) {
       console.error('Failed to fetch lead lists:', error);

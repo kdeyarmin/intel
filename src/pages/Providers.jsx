@@ -56,7 +56,22 @@ const URL_DEFAULTS = {
   sort: 'default',
   dir: 'asc',
   tab: 'directory',
+  // Date range on created_date, and text-match filters (JSON).
+  range: 'all',
+  from: '',
+  to: '',
+  tf: '',
 };
+
+function parseTextFilters(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 const FILTER_KEYS = {
   entityTypeFilter: 'type',
@@ -89,8 +104,17 @@ export default function Providers() {
   const [saveListOpen, setSaveListOpen] = useState(false);
   // Set when a single row's "add to list" button opened the dialog.
   const [listDialogNpis, setListDialogNpis] = useState(null);
-  const [textFilters, setTextFilters] = useState([]);
-  const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
+  const textFilters = useMemo(() => parseTextFilters(url.tf), [url.tf]);
+  const setTextFilters = useCallback((next) => {
+    setUrl({ tf: next?.length ? JSON.stringify(next) : '' });
+  }, [setUrl]);
+  const dateRange = useMemo(
+    () => ({ preset: url.range, startDate: url.from, endDate: url.to }),
+    [url.range, url.from, url.to],
+  );
+  const setDateRange = useCallback((next) => {
+    setUrl({ range: next?.preset || 'all', from: next?.startDate || '', to: next?.endDate || '' });
+  }, [setUrl]);
   const [activePresetId, setActivePresetId] = useState(null);
 
   const queryClient = useQueryClient();
