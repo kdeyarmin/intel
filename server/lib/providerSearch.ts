@@ -29,7 +29,7 @@ export interface SearchQuery extends SqlQuery {
 export interface ProviderSearchPlan {
   queries: SearchQuery[];
   /** "contains": organization names match anywhere; "prefix": from the start. */
-  mode: "contains" | "prefix";
+  mode: SearchMode;
   /** An index the query relies on is still building, so it may be slow. */
   degraded: boolean;
   term: string;
@@ -46,6 +46,9 @@ const STATE_CANDIDATES = 500;
 export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (m) => `\\${m}`);
 }
+
+/** How the term was matched: a name containing it, a name starting with it, or an NPI (or NPI prefix). */
+export type SearchMode = "contains" | "prefix" | "npi";
 
 export function normalizeQuery(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
@@ -98,7 +101,7 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
         ? { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 AND npi < $2${entityWhere(3)} ORDER BY npi LIMIT $${entity ? 4 : 3}`, values: [low, high, ...entityValue, cap] }
         : { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1${entityWhere(2)} ORDER BY npi LIMIT $${entity ? 3 : 2}`, values: [low, ...entityValue, cap] });
     }
-    return { queries, mode: caps.trigram ? "contains" : "prefix", degraded: false, term: compact };
+    return { queries, mode: "npi", degraded: false, term: compact };
   }
 
   const lower = q.toLowerCase();
@@ -124,7 +127,7 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
     if (!caps.lastName) degraded = true;
   }
 
-  let mode: "contains" | "prefix" = "prefix";
+  let mode: SearchMode = "prefix";
   if (entity !== "Individual") {
     // Names starting with the term, in order (the prefix index), so exact and
     // starts-with matches always reach the ranking.
@@ -205,7 +208,7 @@ export const STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHE
 export interface ProviderSearchResult {
   providers: any[];
   truncated: boolean;
-  mode: "contains" | "prefix";
+  mode: SearchMode;
   degraded: boolean;
 }
 

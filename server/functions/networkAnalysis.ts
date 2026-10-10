@@ -109,7 +109,9 @@ async function loadProviderInfo(client: any, npis: string[]): Promise<Map<string
 }
 
 const analysisCache = new Map<string, { at: number; analysis: NetworkAnalysis }>();
-const aiCache = new Map<string, { at: number; recommendations: NetworkRecommendations }>();
+// Each AI entry remembers which analysis it was written from, so a rebuilt
+// analysis never comes back with recommendations from the old metrics.
+const aiCache = new Map<string, { at: number; analysisAt: number; recommendations: NetworkRecommendations }>();
 
 function cacheKey(payload: any) {
   const listId = Number(payload?.lead_list_id);
@@ -184,12 +186,15 @@ export async function handleAnalyzeProviderNetwork(payload: any) {
   const rules = ruleRecommendations(analysis.analysis);
   if (payload?.analysis_type === "full") {
     const cached = fresh ? aiCache.get(key) : undefined;
-    if (cached && Date.now() - cached.at < AI_TTL_MS) {
+    if (cached && cached.analysisAt === analysis.at && Date.now() - cached.at < AI_TTL_MS) {
       result.recommendations = cached.recommendations;
       result.recommendations_source = "ai";
     } else {
       const { recommendations, source } = await aiRecommendations(analysis.analysis, rules);
-      if (source === "ai") aiCache.set(key, { at: Date.now(), recommendations });
+      if (source === "ai") {
+        if (aiCache.size > 50) aiCache.delete(aiCache.keys().next().value as string);
+        aiCache.set(key, { at: Date.now(), analysisAt: analysis.at, recommendations });
+      }
       result.recommendations = recommendations;
       result.recommendations_source = source;
     }

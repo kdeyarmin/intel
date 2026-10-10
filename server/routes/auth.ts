@@ -4,6 +4,7 @@ import {
   cleanName,
   hashToken,
   looksLikeToken,
+  MAX_PASSWORD_BYTES,
   newToken,
   normalizeEmail,
   passwordProblem,
@@ -54,6 +55,12 @@ export function createAuthRouter(deps: AccountDeps) {
   // email takes as long as one with a wrong password.
   let dummyHash: Promise<string> | null = null;
   const timingDummy = () => (dummyHash ??= deps.hashPassword(crypto.randomBytes(16).toString("hex")));
+
+  // bcrypt reads only the first 72 bytes, so without this a stored 72-byte
+  // password would also accept itself plus anything appended. The hash is
+  // still checked first, so an over-long attempt takes the usual time.
+  const passwordMatches = async (password: string, hash: string) =>
+    (await deps.verifyPassword(password, hash)) && Buffer.byteLength(password, "utf8") <= MAX_PASSWORD_BYTES;
 
   const audit = (req: Request, action: string, actorEmail: string | null, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) =>
     deps.audit({
@@ -124,7 +131,7 @@ export function createAuthRouter(deps: AccountDeps) {
       const candidates = await repo.findByEmail(email);
       let user: UserRow | null = null;
       for (const c of candidates) {
-        if (await deps.verifyPassword(password, c.password_hash)) {
+        if (await passwordMatches(password, c.password_hash)) {
           user = c;
           break;
         }
@@ -177,7 +184,7 @@ export function createAuthRouter(deps: AccountDeps) {
       if (!user) return res.status(401).json({ message: "Your session has ended. Please log in again." });
       const wait = loginFailures.lockedFor(user.email);
       if (wait > 0) return res.status(429).json({ message: "Too many failed attempts", detail: "Wait a few minutes and try again." });
-      if (typeof req.body?.current_password !== "string" || !(await deps.verifyPassword(req.body.current_password, user.password_hash))) {
+      if (typeof req.body?.current_password !== "string" || !(await passwordMatches(req.body.current_password, user.password_hash))) {
         loginFailures.fail(user.email);
         return res.status(400).json({ message: "Your current password is incorrect" });
       }
