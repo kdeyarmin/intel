@@ -22,6 +22,8 @@ vi.mock('@/api/base44Client', () => ({
   },
 }));
 
+vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: { role: 'admin' } }) }));
+
 vi.mock('@/pages.config.js', () => ({
   pagesConfig: { Pages: { Dashboard: () => null, Providers: () => null }, preloadPage: () => {} },
 }));
