@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Clock, Loader2, RefreshCw } from 'lucide-react';
@@ -36,8 +36,16 @@ export function RefreshRollupsButton({ invalidateKey }) {
     refetchInterval: (q) => (q.state.data?.jobs?.some((j) => BUSY.has(j.status)) ? 5000 : false),
   });
   const busy = status?.jobs?.some((j) => BUSY.has(j.status));
+  // Reload the page's numbers once, when a refresh finishes (busy → idle);
+  // not on every render, which would refetch in a loop.
+  const wasBusy = useRef(false);
   useEffect(() => {
-    if (status && !busy) queryClient.invalidateQueries({ queryKey: invalidateKey });
+    if (busy) {
+      wasBusy.current = true;
+    } else if (wasBusy.current && status) {
+      wasBusy.current = false;
+      queryClient.invalidateQueries({ queryKey: invalidateKey });
+    }
   }, [busy, status, queryClient, invalidateKey]);
 
   const refresh = useMutation({
