@@ -76,8 +76,9 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   };
 
   async function load(r: UserRepo, idParam: string): Promise<UserRow> {
-    const id = Number(idParam);
-    const user = Number.isInteger(id) && id > 0 ? await r.findById(id) : null;
+    // Plain decimal only: Number() would also read "1e3" or "0x10" as an id.
+    const id = /^\d{1,15}$/.test(idParam) ? Number(idParam) : NaN;
+    const user = Number.isSafeInteger(id) && id > 0 ? await r.findById(id) : null;
     if (!user) throw new HttpError(404, "User not found");
     return user;
   }
@@ -95,11 +96,11 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   async function issueLink(req: AuthRequest, user: UserRow, purpose: TokenPurpose) {
     const base = deps.baseUrl();
     if (!base) throw new HttpError(409, "Set PUBLIC_APP_URL so links point at this app.");
-    await repo.revokeTokens(user.id, purpose);
     const token = newToken();
     const ttl = purpose === "invite" ? INVITE_TOKEN_TTL_MS : ADMIN_RESET_TOKEN_TTL_MS;
     const expires_at = new Date(Date.now() + ttl);
-    await repo.createToken({ user_id: user.id, purpose, token_hash: token.hash, expires_at, created_by: req.user!.email });
+    // Replaces any earlier link of this kind in one step.
+    await repo.replaceToken({ user_id: user.id, purpose, token_hash: token.hash, expires_at, created_by: req.user!.email });
     return { link: tokenLink(base, token.raw), expires_at };
   }
 
@@ -109,7 +110,8 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   }));
 
   router.get("/pending-count", handle(async (_req, res) => {
-    res.json({ count: await repo.countPending() });
+    // latest_id lets the notification bell tell a new signup from ones already seen.
+    res.json(await repo.pendingSummary());
   }));
 
   // Recent account activity for the admin screen.

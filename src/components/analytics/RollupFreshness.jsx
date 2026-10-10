@@ -41,6 +41,7 @@ export function RefreshRollupsButton({ invalidateKey }) {
   }, [busy, status, queryClient, invalidateKey]);
 
   const refresh = useMutation({
+    // admin-only: the button renders only for admins (returns null otherwise).
     mutationFn: async () => (await base44.functions.invoke('refreshRollups', {})).data,
     onSuccess: (r) => {
       toast.success(r.started?.length ? 'Refreshing analytics in the background' : 'A refresh is already running');

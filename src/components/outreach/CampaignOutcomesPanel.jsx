@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow } from '@/api/functionResult';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Target } from 'lucide-react';
 
-// Conversions/revenue are stored in the OutreachCampaign.metrics jsonb column
-// (no schema change), preserving any other keys already present there.
+// Conversions/revenue are stored in the OutreachCampaign.metrics jsonb column.
+// The server merges them in, so the delivery counts kept in the same column
+// (by trackCampaignMetrics) aren't overwritten by this form's older copy.
 export default function CampaignOutcomesPanel({ campaign }) {
   const queryClient = useQueryClient();
   const [conversions, setConversions] = useState('');
@@ -27,12 +28,11 @@ export default function CampaignOutcomesPanel({ campaign }) {
   const save = async () => {
     setSaving(true);
     try {
-      const metrics = {
-        ...(campaign.metrics || {}),
+      await invokeOrThrow('saveCampaignOutcomes', {
+        campaign_id: campaign.id,
         conversions: Number(conversions) || 0,
         revenue: Number(revenue) || 0,
-      };
-      await base44.entities.OutreachCampaign.update(campaign.id, { metrics });
+      });
       toast.success('Outcomes saved');
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
     } catch (e) {

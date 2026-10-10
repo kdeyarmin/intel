@@ -16,6 +16,7 @@ import {
   humanize,
   partitionRecipients,
   REPORT_DATASETS,
+  reportFields,
   scheduleSignature,
   summarizeReport,
   type ReportRow,
@@ -37,8 +38,9 @@ async function loadRows(entity: string, fields: string[], limit: number): Promis
   const table = tableMap[entity];
   if (!table) throw new HttpError(400, `Unknown dataset table ${entity}`);
   const columns = getTableColumns(table) as Record<string, { name: string }>;
-  const wanted = [...new Set(fields.filter((f) => f && columns[f]))].map((f) => columns[f].name);
-  if (!wanted.length) return [];
+  const missing = fields.filter((f) => !columns[f]);
+  if (missing.length) throw new HttpError(400, `This dataset has no ${missing.join(", ")} column.`);
+  const wanted = fields.map((f) => columns[f].name);
   const tableName = getTableName(table);
   // Same basis as the report page: the newest rows (by id, which is indexed on every table).
   const client = await pool.connect();
@@ -81,15 +83,19 @@ async function buildReport(row: any) {
   const ds = REPORT_DATASETS[cfg.dataset];
   if (!ds) throw new HttpError(400, `This schedule's dataset "${cfg.dataset || "none"}" can't be emailed. Edit the schedule and pick a dataset.`);
   const metricKeys: string[] = Array.isArray(cfg.metrics) ? cfg.metrics.filter((m: unknown) => typeof m === "string") : [];
-  if (!metricKeys.length) throw new HttpError(400, "Pick at least one metric for this schedule.");
   const limit = Math.min(Math.max(Number(cfg.max_rows) || DEFAULT_ROWS, 1), MAX_ROWS);
   const filters = cfg.filters && typeof cfg.filters === "object" ? cfg.filters : {};
-  const fields = [...metricKeys, cfg.group_by, ds.yearField, filters.state ? "state" : null, filters.hospital_type ? "hospital_type" : null, filters.table_name ? "table_name" : null]
-    .filter(Boolean) as string[];
+  const config = { metrics: metricKeys, group_by: cfg.group_by || undefined, filters };
+  let fields: string[];
+  try {
+    fields = reportFields(ds, config);
+  } catch (e: any) {
+    throw new HttpError(400, e.message);
+  }
   const source = await loadRows(ds.entity, fields, limit);
-  const rows = aggregateReport(source, { metrics: metricKeys, group_by: cfg.group_by || undefined, filters }, ds);
-  const metrics = metricKeys.map((key) => ({ key, label: ds.countMetrics?.includes(key) ? "Count" : humanize(key) }));
-  const groupLabel = cfg.group_by ? humanize(cfg.group_by) : "Group";
+  const rows = aggregateReport(source, config, ds);
+  const metrics = metricKeys.map((key) => ({ key, label: ds.metrics.find((m) => m.key === key)?.label || humanize(key) }));
+  const groupLabel = cfg.group_by ? ds.groupOptions.find((g) => g.key === cfg.group_by)?.label || humanize(cfg.group_by) : "Group";
   const summary = cfg.include_summary === false
     ? null
     : (await aiSummary(row.name, rows, metrics, groupLabel)) || summarizeReport(rows, metrics, groupLabel);
@@ -108,12 +114,19 @@ async function buildReport(row: any) {
   return { cfg, rows, metrics, groupLabel, email, csv: cfg.include_csv === false ? null : buildReportCsv({ groupLabel, metrics, rows }), sourceRowCount: source.length };
 }
 
+// Why a recipient was skipped: reports go to active app users, plus any
+// address on a REPORT_RECIPIENT_DOMAINS domain.
+const BLOCKED_REASON = () => (process.env.REPORT_RECIPIENT_DOMAINS ? "not active app users or on an approved domain" : "not active app users");
+
 async function allowedRecipients(recipients: unknown) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase());
-  // Only active accounts: not someone awaiting approval, or a disabled account.
-  const { rows } = await pool.query("SELECT lower(email) AS email FROM users WHERE lower(email) = ANY($1) AND status = 'active'", [list]);
+  // Only active accounts: not someone awaiting approval, or a disabled account
+  // (who stays blocked even on an allowed domain).
+  const { rows } = await pool.query("SELECT lower(email) AS email, status FROM users WHERE lower(email) = ANY($1)", [list]);
   const domains = (process.env.REPORT_RECIPIENT_DOMAINS || "").split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
-  return partitionRecipients(recipients, new Set(rows.map((r: any) => r.email)), domains);
+  const active = new Set<string>(rows.filter((r: any) => r.status === "active").map((r: any) => r.email));
+  const inactive = new Set<string>(rows.filter((r: any) => r.status !== "active").map((r: any) => r.email));
+  return partitionRecipients(recipients, active, domains, inactive);
 }
 
 async function saveRunState(id: number, patch: Record<string, unknown>) {
@@ -131,7 +144,7 @@ async function runAndSend(row: any) {
     const { allowed, blocked } = await allowedRecipients(row.recipients);
     if (!allowed.length) {
       throw new HttpError(400, blocked.length
-        ? `None of the recipients can receive reports (only active app users${process.env.REPORT_RECIPIENT_DOMAINS ? " and allowed domains" : ""}): ${blocked.join(", ")}.`
+        ? `None of the recipients can receive reports (${BLOCKED_REASON()}): ${blocked.join(", ")}.`
         : "Add at least one recipient.");
     }
     let sent = 0;
@@ -153,7 +166,7 @@ async function runAndSend(row: any) {
       }
     }
     const parts = [`Sent to ${sent} of ${allowed.length} recipient${allowed.length === 1 ? "" : "s"}`, `${report.rows.length} rows from ${report.sourceRowCount} records`];
-    if (blocked.length) parts.push(`skipped ${blocked.join(", ")} (not active app users)`);
+    if (blocked.length) parts.push(`skipped ${blocked.join(", ")} (${BLOCKED_REASON()})`);
     if (failures.length) parts.push(`failed: ${failures.join("; ")}`);
     const status = sent > 0 ? "success" : "failed";
     await saveRunState(row.id, {
@@ -201,17 +214,37 @@ function mailerMissing() {
  */
 export async function handleRunDueScheduledReports() {
   if (!getMailerStatus().configured) return { success: true, details: { checked: 0, ran: 0, skipped: "email not configured" } };
-  const { rows } = await pool.query(
-    "SELECT * FROM scheduled_reports WHERE COALESCE(config->>'is_active', 'true') <> 'false' ORDER BY id LIMIT 500",
-  );
+  // Every active schedule, a page at a time (keyset on id), so none is starved.
+  const rows: any[] = [];
+  for (let lastId = 0; ;) {
+    const page = await pool.query(
+      "SELECT * FROM scheduled_reports WHERE COALESCE(config->>'is_active', 'true') <> 'false' AND id > $1 ORDER BY id LIMIT 500",
+      [lastId],
+    );
+    rows.push(...page.rows);
+    if (page.rows.length < 500) break;
+    lastId = page.rows[page.rows.length - 1].id;
+  }
   const now = new Date();
   const results: Array<{ id: number; status: string; error?: string }> = [];
   for (const row of rows) {
     const cfg = settings(row);
     const signatureChanged = cfg.schedule_signature && cfg.schedule_signature !== scheduleSignature(cfg);
     const anchor = new Date(cfg.last_run_at || row.created_date || now);
-    const next = cfg.next_run_at && !signatureChanged ? new Date(cfg.next_run_at) : computeNextReportRun(cfg, anchor);
-    if (Number.isNaN(next.getTime()) || next > now) continue;
+    const recompute = !cfg.next_run_at || signatureChanged;
+    const next = recompute ? computeNextReportRun(cfg, anchor) : new Date(cfg.next_run_at);
+    if (Number.isNaN(next.getTime())) continue;
+    if (next > now) {
+      // A new or edited schedule: store its next run so the list shows it.
+      if (recompute) {
+        await pool.query(
+          `UPDATE scheduled_reports SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('next_run_at', $2::text, 'schedule_signature', $3::text)
+            WHERE id = $1 AND (config->>'next_run_at') IS NOT DISTINCT FROM $4::text`,
+          [row.id, next.toISOString(), scheduleSignature(cfg), cfg.next_run_at ?? null],
+        );
+      }
+      continue;
+    }
 
     const lease = new Date(now.getTime() + RUN_LEASE_MS).toISOString();
     const claimed = await pool.query(
@@ -254,6 +287,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
         source_row_count: report.sourceRowCount,
         recipients: allowed,
         blocked_recipients: blocked,
+        blocked_reason: BLOCKED_REASON(),
         next_run_at: computeNextReportRun(report.cfg, new Date()).toISOString(),
       },
     };
@@ -269,7 +303,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
     return {
       success: true,
       emails_sent: r.emails_sent,
-      message: r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (not active app users).` : undefined,
+      message: r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (${BLOCKED_REASON()}).` : undefined,
     };
   }
   throw new HttpError(400, `Unknown action '${action}'.`);

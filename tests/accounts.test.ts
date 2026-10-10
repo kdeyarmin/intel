@@ -103,6 +103,14 @@ describe("createFailureCounter", () => {
     c.fail("b");
     expect(c.lockedFor("b")).toBe(0);
   });
+
+  it("keeps lockouts when a spray of new keys fills the map", () => {
+    const c = createFailureCounter(3, 60_000, 100);
+    for (let i = 0; i < 3; i += 1) c.fail("victim@example.com");
+    expect(c.lockedFor("victim@example.com")).toBeGreaterThan(0);
+    for (let i = 0; i < 1000; i += 1) c.fail(`spray-${i}@example.com`);
+    expect(c.lockedFor("victim@example.com")).toBeGreaterThan(0);
+  });
 });
 
 describe("parseTrustProxy", () => {

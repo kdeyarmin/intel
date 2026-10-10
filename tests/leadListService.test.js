@@ -45,9 +45,23 @@ describe('saveProvidersToLeadList', () => {
 
     const result = await saveProvidersToLeadList({ listId: '4', npis: ['1', '2'] });
 
-    expect(LeadListMember.filter).toHaveBeenCalledWith({ list_id: 4 }, '-created_date', 10000);
+    expect(LeadListMember.filter).toHaveBeenCalledWith({ list_id: 4, id: { $gt: 0 } }, 'id', 5000);
     expect(LeadListMember.bulkCreate).toHaveBeenCalledWith([{ list_id: 4, npi: '2', status: 'New' }]);
     expect(LeadList.update).toHaveBeenCalledWith(4, { member_count: 3 });
+    expect(result).toMatchObject({ added: 1, skipped: 1 });
+  });
+
+  it('reads every page of a long list, so older members are not re-added and the count is exact', async () => {
+    LeadList.filter.mockResolvedValue([{ id: 4, name: 'Long', member_count: 0 }]);
+    const page1 = Array.from({ length: 5000 }, (_, i) => ({ id: i + 1, npi: String(i) }));
+    const page2 = [{ id: 5001, npi: 'old' }];
+    LeadListMember.filter.mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
+
+    const result = await saveProvidersToLeadList({ listId: 4, npis: ['old', 'new'] });
+
+    expect(LeadListMember.filter).toHaveBeenLastCalledWith({ list_id: 4, id: { $gt: 5000 } }, 'id', 5000);
+    expect(LeadListMember.bulkCreate).toHaveBeenCalledWith([{ list_id: 4, npi: 'new', status: 'New' }]);
+    expect(LeadList.update).toHaveBeenCalledWith(4, { member_count: 5002 });
     expect(result).toMatchObject({ added: 1, skipped: 1 });
   });
 
