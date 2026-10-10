@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { appBaseUrl, normalizeEmail } from "./accounts";
 import { recordAudit, type AuditWriter } from "./audit";
 import { getMailerStatus, sendMail, type MailMessage } from "./mailer";
-import { invalidateSessionUser } from "./sessionUsers";
+import { publishSessionUserChange } from "./sessionUsers";
 import { pgUserRepo, type UserRepo } from "./userRepo";
 
 export interface AccountDeps {
@@ -34,7 +34,7 @@ export function defaultAccountDeps(pool: any): AccountDeps {
     verifyPassword: (password, hash) => bcrypt.compare(password, hash),
     reservedEmail: () => normalizeEmail(process.env.ADMIN_EMAIL || "admin@caremetric.local"),
     baseUrl: () => appBaseUrl(),
-    onUserChanged: invalidateSessionUser,
+    onUserChanged: (id) => publishSessionUserChange(id),
   };
 }
 

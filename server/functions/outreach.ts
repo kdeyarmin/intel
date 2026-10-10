@@ -406,8 +406,8 @@ export async function handleSaveCampaignOutcomes(payload: any) {
   if (!Number.isInteger(campaignId) || campaignId <= 0) throw new HttpError(400, "campaign_id is required");
   const conversions = Number(payload?.conversions ?? 0);
   const revenue = Number(payload?.revenue ?? 0);
-  if (!Number.isFinite(conversions) || conversions < 0 || !Number.isFinite(revenue) || revenue < 0) {
-    throw new HttpError(400, "Conversions and revenue must be zero or more.");
+  if (!Number.isInteger(conversions) || conversions < 0 || !Number.isFinite(revenue) || revenue < 0) {
+    throw new HttpError(400, "Conversions must be a whole number and revenue zero or more.");
   }
   const { rows } = await pool.query(
     `UPDATE outreach_campaigns

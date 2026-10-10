@@ -36,7 +36,7 @@ function renderAt(path, Page, route) {
 const TERRITORY = {
   providers: [
     { npi: '1000000001', name: 'Ann Chen, MD', entityType: 'Individual', city: 'Pittsburgh', state: 'PA', zip: '15213', county: 'Allegheny County', countyFips: '42003', lat: 40.44, lng: -79.95, specialty: 'Internal Medicine, Cardiovascular Disease', specialtyGroup: 'cardiology', score: 88, scoreSource: 'lead_score', totalBeneficiaries: 300, totalServices: 3000 },
-    { npi: '1000000003', name: 'Rex Reed, PhD', entityType: 'Individual', city: 'Pittsburgh', state: 'PA', zip: '15299', county: 'Allegheny County', countyFips: '42003', lat: 40.4, lng: -79.9, specialty: 'Psychologist', specialtyGroup: 'other', score: null, scoreSource: null, totalBeneficiaries: null },
+    { npi: '1000000003', name: 'Rex Reed, PhD', entityType: 'Individual', city: 'Pittsburgh', state: 'PA', zip: '15299', county: 'Allegheny County', countyFips: '42003', lat: 40.4, lng: -79.9, specialty: 'Psychologist', specialtyGroup: 'behavioral_health', score: null, scoreSource: null, totalBeneficiaries: null },
   ],
   availableStates: [{ state: 'PA', approx: 600 }],
   scope: { state: 'PA', label: '2 providers in PA: the 1 highest-scored first, then others', sample_size: 2, approx_locations_in_state: 600, truncated: true },
@@ -83,7 +83,7 @@ const COUNTY = {
   state: 'PA',
   county: { fips: '42003', name: 'Allegheny County' },
   zip_areas: 2,
-  summary: { totalProviders: 4200, providersExact: false, sampledProviders: 5000, individualProviders: 4000, orgProviders: 1000, totalFacilities: 1, totalPayments: 0, totalDischarges: 0 },
+  summary: { totalProviders: null, providersExact: false, practiceLocations: 6200, locationSample: 5000, sampledProviders: 5000, individualProviders: 4000, orgProviders: 1000, totalFacilities: 1, totalPayments: 0, totalDischarges: 0 },
   sample: { sampled: true, detail_limit: 1000, details_cover_all: false },
   topSpecialties: [{ name: 'Cardiology', count: 11 }],
   facilitySummary: [{ type: 'hospital', count: 1, totalPayments: 0, avgRating: 4 }],
@@ -110,7 +110,10 @@ describe('CountyIntelligence', () => {
     renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
     expect(await screen.findByRole('heading', { name: 'Allegheny County, PA' })).toBeInTheDocument();
     expect(invoke).toHaveBeenCalledWith('getCountyIntelligence', { state: 'PA', county_fips: '42003' });
-    expect(screen.getByText('≈4,200')).toBeInTheDocument();
+    // Past the sample it reports practice locations, not a provider count.
+    expect(screen.getByText('Practice locations here')).toBeInTheDocument();
+    expect(screen.getByText('≈6,200')).toBeInTheDocument();
+    expect(screen.queryByText('Providers practicing here')).toBeNull();
     expect(screen.getByText(/describe 5,000 of them/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Mercy\s*Hospitals · Pittsburgh/ })).toHaveAttribute('href', '/FacilityDetail?id=390001&group=hospital');
     expect(screen.getByText('Unscored')).toBeInTheDocument();

@@ -30,8 +30,13 @@ export interface GeoIndex {
 export type CoordPrecision = "zcta" | "zip3" | "state";
 
 const TTL_MS = 60 * 60 * 1000;
-let cache: { at: number; index: GeoIndex } | null = null;
+// How often a cached index re-checks geo_meta.loaded_at, so a reload by this
+// instance's autoload, another instance or `npm run geo:load` shows up fast.
+const RECHECK_MS = 60 * 1000;
+let cache: { at: number; checkedAt: number; stamp: string | null; index: GeoIndex } | null = null;
 let loading: Promise<GeoIndex> | null = null;
+// Bumped by resetGeoCache: a load that started before a reset isn't cached.
+let generation = 0;
 
 function mean(points: Array<{ lat: number; lng: number }>) {
   const n = points.length || 1;
@@ -83,22 +88,39 @@ export function buildGeoIndex(rows: {
   return { counties, countiesByState, zctas, zctaCounties, countyZctas, zip3, stateCenters, vintage: rows.vintage ?? null };
 }
 
-async function loadIndex(pool: any): Promise<GeoIndex> {
-  const [counties, zctas, rels, meta] = await Promise.all([
+const STAMP_SQL = "SELECT vintage, loaded_at::text AS stamp FROM geo_meta WHERE key = 'census'";
+
+async function loadIndex(pool: any): Promise<{ index: GeoIndex; stamp: string | null }> {
+  // The stamp is read first: if the data changes mid-load, the next check
+  // sees a newer stamp and loads again.
+  const meta = await pool.query(STAMP_SQL);
+  const [counties, zctas, rels] = await Promise.all([
     pool.query("SELECT fips, state, name, lat, lng FROM geo_counties"),
     pool.query("SELECT zcta, lat, lng, primary_county_fips, state FROM geo_zctas"),
     pool.query("SELECT zcta, county_fips, land_share FROM geo_zcta_counties"),
-    pool.query("SELECT vintage FROM geo_meta WHERE key = 'census'"),
   ]);
-  return buildGeoIndex({ counties: counties.rows, zctas: zctas.rows, zctaCounties: rels.rows, vintage: meta.rows[0]?.vintage ?? null });
+  return {
+    index: buildGeoIndex({ counties: counties.rows, zctas: zctas.rows, zctaCounties: rels.rows, vintage: meta.rows[0]?.vintage ?? null }),
+    stamp: meta.rows[0]?.stamp ?? null,
+  };
 }
 
 /** The in-memory geography, loaded on first use. Empty (not an error) before the data is loaded. */
 export async function getGeoIndex(pool: any): Promise<GeoIndex> {
-  if (cache && Date.now() - cache.at < TTL_MS && cache.index.counties.size > 0) return cache.index;
+  const now = Date.now();
+  if (cache && now - cache.at < TTL_MS && cache.index.counties.size > 0) {
+    if (now - cache.checkedAt < RECHECK_MS) return cache.index;
+    const current = cache;
+    const stamp = await pool.query(STAMP_SQL).then((r: any) => r.rows[0]?.stamp ?? null, () => current.stamp);
+    if (stamp === current.stamp) {
+      current.checkedAt = Date.now();
+      return current.index;
+    }
+  }
+  const gen = generation;
   loading ??= loadIndex(pool)
-    .then((index) => {
-      cache = { at: Date.now(), index };
+    .then(({ index, stamp }) => {
+      if (gen === generation) cache = { at: Date.now(), checkedAt: Date.now(), stamp, index };
       return index;
     })
     .finally(() => {
@@ -107,8 +129,11 @@ export async function getGeoIndex(pool: any): Promise<GeoIndex> {
   return loading;
 }
 
+/** Forget the cached index, including one still loading (after a reload). */
 export function resetGeoCache() {
   cache = null;
+  loading = null;
+  generation += 1;
 }
 
 export function countiesForState(index: GeoIndex, state: string): County[] {
@@ -116,19 +141,27 @@ export function countiesForState(index: GeoIndex, state: string): County[] {
 }
 
 const COUNTY_SUFFIX = /\s+(county|parish|borough|census area|city and borough|municipality|municipio|city)$/i;
-const normalizeCountyName = (s: string) => s.trim().toLowerCase().replace(/^st\.?\s/, "saint ").replace(COUNTY_SUFFIX, "").replace(/\s+/g, " ");
+// "St. Louis" / "St Louis" / "Saint Louis" alike; the suffix is kept.
+const canonicalName = (s: string) => s.trim().toLowerCase().replace(/^st\.?\s/, "saint ").replace(/\s+/g, " ");
+const baseName = (s: string) => canonicalName(s).replace(COUNTY_SUFFIX, "");
 
-/** A county by FIPS, or by state + name ("Allegheny", "Allegheny County", "St. Louis city"). */
+/** A county by FIPS, or by state + name ("Allegheny", "Allegheny County", "St Louis city"). */
 export function resolveCounty(index: GeoIndex, input: { fips?: string | null; state?: string | null; name?: string | null }): County | null {
   if (input.fips && /^\d{5}$/.test(input.fips)) return index.counties.get(input.fips) || null;
   if (!input.state || !input.name) return null;
   const list = countiesForState(index, input.state);
-  const exact = list.find((c) => c.name.toLowerCase() === input.name!.trim().toLowerCase());
+  // The name as given, suffix and all ("Saint Louis city" is the city, not the county).
+  const wanted = canonicalName(input.name);
+  const exact = list.find((c) => canonicalName(c.name) === wanted);
   if (exact) return exact;
-  const wanted = normalizeCountyName(input.name);
-  const matches = list.filter((c) => normalizeCountyName(c.name) === wanted);
-  // "Baltimore" matches both Baltimore County and Baltimore city; prefer the county.
-  return matches.find((c) => / county$/i.test(c.name)) || matches[0] || null;
+  const base = baseName(input.name);
+  const matches = list.filter((c) => baseName(c.name) === base);
+  // A suffix that didn't match exactly ("Anchorage Borough" for the
+  // municipality) still narrows to its own kind when there is one; with no
+  // suffix ("Baltimore" is both a county and a city), prefer the county.
+  const suffix = input.name.trim().match(COUNTY_SUFFIX)?.[1]?.toLowerCase();
+  const sameKind = suffix ? matches.find((c) => c.name.toLowerCase().endsWith(` ${suffix}`)) : null;
+  return sameKind || matches.find((c) => / county$/i.test(c.name)) || matches[0] || null;
 }
 
 /** ZCTAs with at least `minShare` of their land in the county. */

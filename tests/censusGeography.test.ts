@@ -169,6 +169,11 @@ describe("geo lookups", () => {
     expect(resolveCounty(index, { state: "NM", name: "Doña Ana" })!.fips).toBe("35013");
     expect(resolveCounty(index, { state: "MO", name: "St. Louis city" })!.fips).toBe("29510");
     expect(resolveCounty(index, { state: "MO", name: "St Louis" })!.fips).toBe("29189");
+    // An explicit "city" keeps its meaning however "St." is spelled.
+    expect(resolveCounty(index, { state: "MO", name: "St Louis city" })!.fips).toBe("29510");
+    expect(resolveCounty(index, { state: "MO", name: "Saint Louis city" })!.fips).toBe("29510");
+    expect(resolveCounty(index, { state: "MO", name: "Saint Louis County" })!.fips).toBe("29189");
+    expect(resolveCounty(index, { state: "MD", name: "Baltimore City" })!.fips).toBe("24510");
     expect(resolveCounty(index, { state: "MD", name: "Baltimore" })!.fips).toBe("24005");
     expect(resolveCounty(index, { state: "PA", name: "Nowhere" })).toBeNull();
   });

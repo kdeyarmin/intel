@@ -72,6 +72,9 @@ export async function runMigrations(pool: any, log: Log = console): Promise<Migr
           await client.query("ROLLBACK").catch(() => {});
           throw e;
         }
+        if (baseline.some((b) => b.tag === "0002_medicare_facilities_raw")) {
+          log.log("[migrate] 0002's medicare_facilities_raw backfill was not run; readers fall back to medicare_facilities.raw_data. Run `npm run db:backfill-facilities-raw` before that column is dropped.");
+        }
       }
       const before = await migrationStatusFor(client, journal);
       await migrate(drizzle(client), { migrationsFolder: MIGRATIONS_FOLDER });

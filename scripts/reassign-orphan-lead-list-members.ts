@@ -8,7 +8,12 @@
 //   npx tsx scripts/reassign-orphan-lead-list-members.ts --apply
 // Options: --window-seconds=300  (max gap between list and member creation)
 import pg from "pg";
-import { planOrphanReassignment, type ListRow, type OrphanRow } from "../server/lib/leadListOrphans";
+import {
+  planOrphanReassignment,
+  type ExistingMember,
+  type ListRow,
+  type OrphanRow,
+} from "../server/lib/leadListOrphans";
 
 const apply = process.argv.includes("--apply");
 const windowArg = process.argv.find((a) => a.startsWith("--window-seconds="));
@@ -34,7 +39,15 @@ async function main() {
     console.log(`Lists: ${lists.length}. Members with no list: ${orphans.length}.`);
     if (orphans.length === 0) return;
 
-    const plan = planOrphanReassignment(lists, orphans, windowSeconds * 1000);
+    // NPIs already linked to a list, so an orphan never duplicates a member
+    // that was added correctly later. Bounded by the orphans' NPIs (indexed).
+    const orphanNpis = [...new Set(orphans.map((o) => o.npi).filter((n): n is string => !!n))];
+    const existing = (await client.query<ExistingMember>(
+      "SELECT list_id, npi FROM lead_list_members WHERE list_id IS NOT NULL AND npi = ANY($1::text[])",
+      [orphanNpis],
+    )).rows;
+
+    const plan = planOrphanReassignment(lists, orphans, windowSeconds * 1000, existing);
     const listById = new Map(lists.map((l) => [l.id, l]));
     console.log(`\nProposed links (window ${windowSeconds}s):`);
     for (const { listId, memberIds } of plan.assignments) {
@@ -43,7 +56,13 @@ async function main() {
       const flag = recorded !== memberIds.length ? `  <-- list says ${recorded}` : "";
       console.log(`  #${listId} "${list.name}": ${memberIds.length} member(s)${flag}`);
     }
-    console.log(`\nLeft unlinked (no list created just before them): ${plan.unmatched.length}`);
+    console.log(`\nLeft unlinked:`);
+    console.log(`  no list created within the window before them: ${plan.unmatched.length}`);
+    console.log(`  more than one list created in that window (ambiguous): ${plan.ambiguous.length}`);
+    console.log(`  NPI already on the list: ${plan.duplicates.length}`);
+    if (plan.ambiguous.length > 0) {
+      console.log("  (Saves insert members within seconds of the list; a smaller --window-seconds resolves most ambiguity.)");
+    }
 
     if (!apply) {
       console.log("\nDry run only. Re-run with --apply to write these links.");

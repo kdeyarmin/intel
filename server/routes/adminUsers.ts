@@ -47,6 +47,7 @@ const ACCOUNT_ACTIONS = [
   "revoke_sessions",
   "logout_all",
   "delete",
+  "recover_admin", // scripts/admin-recover.ts
 ];
 
 export function createAdminUsersRouter(deps: AccountDeps) {

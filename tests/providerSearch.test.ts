@@ -27,6 +27,8 @@ describe("buildProviderSearchPlan", () => {
     const partial = buildProviderSearchPlan("12345", { limit: 20 }, ALL)!.queries[0];
     expect(partial.text).toContain("npi >= $1 AND npi < $2");
     expect(partial.values).toEqual(["12345", "12346", 20]);
+    // Reported as an NPI search whatever the trigram index's state.
+    expect(buildProviderSearchPlan("12345", {}, ALL)!.mode).toBe("npi");
   });
 
   it("computes NPI prefix ranges with carries", () => {

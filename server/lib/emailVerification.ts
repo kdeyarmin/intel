@@ -57,8 +57,11 @@ export async function checkDomain(domain: string, resolver: DnsResolver = dns.pr
   };
   const [a, aaaa] = await Promise.all([settle(resolver.resolve4(domain)), settle(resolver.resolve6(domain))]);
   if (a === "nx" || aaaa === "nx") return { ...base, hasMX: false, hasAddress: false, nxdomain: true };
-  if (a === null && aaaa === null) return { ...base, hasMX: false, error: "DNS lookup failed" };
-  return { ...base, hasMX: false, hasAddress: a === true || aaaa === true };
+  if (a === true || aaaa === true) return { ...base, hasMX: false, hasAddress: true };
+  // "No address" needs both families to have answered: one timing out leaves
+  // the question open, and that's "couldn't check", not "invalid".
+  if (a === null || aaaa === null) return { ...base, hasMX: false, error: "DNS lookup failed" };
+  return { ...base, hasMX: false, hasAddress: false };
 }
 
 const domainCache = new Map<string, { at: number; check: DomainCheck }>();

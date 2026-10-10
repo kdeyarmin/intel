@@ -190,7 +190,14 @@ export interface RunResult {
 /** Runs one job to completion on its own connection. Never throws. */
 export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console, "log" | "warn"> = console): Promise<RunResult> {
   const started = Date.now();
-  const client = await pool.connect();
+  let client: any;
+  try {
+    client = await pool.connect();
+  } catch (e: any) {
+    const error = `couldn't get a database connection: ${String(e?.message || e).slice(0, 300)}`;
+    log.warn(`[rollups] ${job.name} failed:`, error);
+    return { job: job.name, status: "failed", error };
+  }
   const staging = pgStaging(client);
   let locked = false;
   try {
@@ -255,19 +262,53 @@ export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console,
 // Jobs queued or running in this process. They run one at a time, in the
 // background: a scan of the 46M-row facilities table takes minutes, far
 // longer than a maintenance tick, and running them together would multiply
-// the memory each chunk needs.
-const queued: RollupJob[] = [];
+// the memory each chunk needs. Across instances, a drain holds DRAIN_LOCK, so
+// only one instance runs rollups at a time; another waits its turn and then
+// skips any (unforced) job that has since been run.
+const queued: Array<{ job: RollupJob; force: boolean }> = [];
 const pending = new Set<string>();
 let draining: Promise<void> | null = null;
+const DRAIN_LOCK = lockKey("__drain__");
+let drainRetryMs = 30_000;
 
-function drain(pool: any): Promise<void> {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function stillDue(pool: any, job: RollupJob): Promise<boolean> {
+  const { rows } = await pool.query("SELECT job, status, started_at, last_success_at FROM rollup_runs WHERE job = $1", [job.name]);
+  return dueJobs(rows, Date.now(), [job]).length > 0;
+}
+
+function drain(pool: any, log: Pick<Console, "log" | "warn"> = console): Promise<void> {
   draining ??= (async () => {
     while (queued.length) {
-      const job = queued.shift()!;
+      let lockClient: any = null;
       try {
-        await runRollupJob(pool, job);
+        lockClient = await pool.connect();
+        const { rows: [lock] } = await lockClient.query("SELECT pg_try_advisory_lock($1) AS ok", [DRAIN_LOCK]);
+        if (!lock?.ok) {
+          lockClient.release();
+          lockClient = null;
+          await sleep(drainRetryMs); // another instance is running its rollups
+          continue;
+        }
+        while (queued.length) {
+          const { job, force } = queued.shift()!;
+          try {
+            if (force || (await stillDue(pool, job))) await runRollupJob(pool, job, log);
+          } catch (e: any) {
+            log.warn(`[rollups] ${job.name} wasn't run:`, e?.message || e);
+          } finally {
+            pending.delete(job.name);
+          }
+        }
+      } catch (e: any) {
+        log.warn("[rollups] Couldn't take the rollup lock; retrying:", e?.message || e);
+        await sleep(drainRetryMs);
       } finally {
-        pending.delete(job.name);
+        if (lockClient) {
+          await lockClient.query("SELECT pg_advisory_unlock($1)", [DRAIN_LOCK]).catch(() => {});
+          lockClient.release();
+        }
       }
     }
   })().finally(() => {
@@ -276,10 +317,16 @@ function drain(pool: any): Promise<void> {
   return draining;
 }
 
+/** Tests: how long a drain waits before retrying a busy lock. */
+export function setDrainRetryMs(ms: number) {
+  drainRetryMs = ms;
+}
+
 /** Queues the due jobs (or the named ones, when forced) and returns right away. */
 export async function startDueRollups(pool: any, opts: { jobs?: string[]; force?: boolean } = {}): Promise<{ started: string[]; running: string[]; notDue: string[] }> {
   const { rows } = await pool.query("SELECT job, status, started_at, last_success_at FROM rollup_runs");
-  const wanted = opts.jobs?.length ? ROLLUP_JOBS.filter((j) => opts.jobs!.includes(j.name)) : ROLLUP_JOBS;
+  // An explicit list means exactly those jobs (an empty one means none).
+  const wanted = opts.jobs ? ROLLUP_JOBS.filter((j) => opts.jobs!.includes(j.name)) : ROLLUP_JOBS;
   const due = opts.force ? wanted : dueJobs(rows, Date.now(), wanted);
   const started: string[] = [];
   const running: string[] = [];
@@ -289,7 +336,7 @@ export async function startDueRollups(pool: any, opts: { jobs?: string[]; force?
       continue;
     }
     pending.add(job.name);
-    queued.push(job);
+    queued.push({ job, force: !!opts.force });
     started.push(job.name);
   }
   if (started.length) void drain(pool);

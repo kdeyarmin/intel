@@ -96,6 +96,24 @@ describe('UserManagement', () => {
     expect(within(dialog).getByText(/Send this to ivy@example.com yourself/)).toBeInTheDocument();
   });
 
+  it('starts the disable dialog fresh for each account', async () => {
+    renderIt();
+    await screen.findByRole('table');
+    fireEvent.click(screen.getByRole('button', { name: /^All 4/ }));
+    const openDisable = async (email) => {
+      fireEvent.keyDown(screen.getByRole('button', { name: `More actions for ${email}` }), { key: 'Enter' });
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Disable account' }));
+      return screen.findByRole('dialog');
+    };
+    let dialog = await openDisable('rep@example.com');
+    fireEvent.change(within(dialog).getByLabelText(/Reason/), { target: { value: 'Left the team' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    dialog = await openDisable('new@example.com');
+    expect(within(dialog).getByLabelText(/Reason/)).toHaveValue('');
+  });
+
   it('lists recent account activity', async () => {
     renderIt();
     expect(await screen.findByText(/signed up/)).toBeInTheDocument();

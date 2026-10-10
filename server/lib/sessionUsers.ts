@@ -1,7 +1,8 @@
 // The signed-in user's live role, status and token version, looked up on every
 // authenticated request. A short cache keeps that off the database for most
-// requests; admin changes invalidate it immediately on this instance, and
-// other instances catch up within SESSION_CACHE_MS.
+// requests. A change (role, status, sign out everywhere) is published with
+// Postgres NOTIFY, so every instance listening drops its entry at once; if an
+// instance's listener is down, its entries still expire after SESSION_CACHE_MS.
 
 export interface SessionUser {
   id: number;
@@ -42,6 +43,81 @@ export async function getSessionUser(id: number): Promise<SessionUser | null> {
 
 export function invalidateSessionUser(id: number) {
   cache.delete(id);
+}
+
+const CHANNEL = "session_user_changed";
+
+/** Drop a user's cached session data here and on every other instance. */
+export function publishSessionUserChange(id: number, notify: (id: number) => Promise<unknown> = pgNotify) {
+  invalidateSessionUser(id);
+  notify(id).catch((e: any) => {
+    console.warn(`[sessionUsers] Couldn't notify other instances (they catch up within ${SESSION_CACHE_MS / 1000}s):`, e?.message);
+  });
+}
+
+async function pgNotify(id: number) {
+  const { pool } = await import("../db");
+  await pool.query("SELECT pg_notify($1, $2)", [CHANNEL, String(id)]);
+}
+
+export interface ListenerClient {
+  connect(): Promise<unknown>;
+  query(sql: string): Promise<unknown>;
+  on(event: "notification", fn: (msg: { channel: string; payload?: string }) => void): unknown;
+  on(event: "error" | "end", fn: (err?: Error) => void): unknown;
+  end(): Promise<unknown>;
+}
+
+/**
+ * Listen for other instances' changes on a dedicated connection (not a pool
+ * client), reconnecting after `retryMs` if it fails or drops. Returns a stop
+ * function.
+ */
+export function startSessionUserListener(makeClient: () => ListenerClient, retryMs = 5_000): () => void {
+  let stopped = false;
+  let current: ListenerClient | null = null;
+  let timer: NodeJS.Timeout | null = null;
+
+  const retry = () => {
+    if (stopped || timer) return;
+    current = null;
+    timer = setTimeout(() => { timer = null; void connect(); }, retryMs);
+    timer.unref?.();
+  };
+
+  const connect = async () => {
+    const client = makeClient();
+    current = client;
+    client.on("notification", (msg) => {
+      if (msg.channel !== CHANNEL) return;
+      const id = Number(msg.payload);
+      if (Number.isInteger(id)) cache.delete(id);
+      else cache.clear();
+    });
+    client.on("error", (err) => {
+      console.warn("[sessionUsers] Listener connection error:", err?.message);
+      client.end().catch(() => {});
+      retry();
+    });
+    client.on("end", () => retry());
+    try {
+      await client.connect();
+      await client.query(`LISTEN ${CHANNEL}`);
+      // Changes made while we weren't listening were missed: start clean.
+      cache.clear();
+    } catch (e: any) {
+      console.warn("[sessionUsers] Couldn't start the listener:", e?.message);
+      client.end().catch(() => {});
+      retry();
+    }
+  };
+
+  void connect();
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+    current?.end().catch(() => {});
+  };
 }
 
 /** Tests: swap the database lookup and start from an empty cache. */
