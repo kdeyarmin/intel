@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "8ed10a04121cdf95698d186b366ea5f780622162",
+    "ref": "89f97e1ddad7e161ab80622f15a034c01b276b47",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 29,
-    "text_character_count": 9157,
-    "canonical_sha256": "def3c082dafd022a3e78923ee1917537cb1aba256deb96679396c1b20b5661f8"
+    "text_character_count": 9425,
+    "canonical_sha256": "3e41398ff196dcd201b5212a75d29aaad592d11f570ce05d0a81d6010cb2525c"
   },
   "sections": [
     {
@@ -74,8 +74,8 @@
         },
         {
           "heading": "Facilities",
-          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page shows every imported CMS record for it and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
-          "sha256": "41c19426a8c2fda7556db9acbac4978edc1667dba0cec82ce982f57bcc23da6f"
+          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
+          "sha256": "333a8bf031d4a0353c3f9a62ed32cd40e1df77f1b8141f796bb5709ce95b4675"
         }
       ]
     },
@@ -137,8 +137,8 @@
         },
         {
           "heading": "Reports and analytics",
-          "text": "**Reports** builds reports from your data, saves them and emails them on a schedule. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.",
-          "sha256": "b047972cb3d5a11819a11ad58ef34bad67dc434cf6fa449ea50b6fae221c9c56"
+          "text": "**Reports** builds reports from your data, saves them and emails them on a schedule to people with an active account (or an address on a domain an admin has approved). **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.",
+          "sha256": "1be7915e4e5e557ca0244b847ec3230021b2aab079fe15e8675b381035068a46"
         }
       ]
     },
@@ -148,13 +148,13 @@
       "topics": [
         {
           "heading": "Lead lists",
-          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses, export it or start a campaign.",
-          "sha256": "6f27380b81dec070a6e0646c927eb6868d8c88a9641070f21480592538ab4ae6"
+          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; admins can also start a campaign from it.",
+          "sha256": "e5bf4a7bc75aeee6650c48d285ddc6262982947096b9713e078354a8face6347"
         },
         {
           "heading": "Lead Builder",
-          "text": "Filter providers by state, city, ZIP, specialty text, score range, Medicare patient volume, Medicare participation and behavioral-health or geriatric focus, then save the matches as a list.\n\nThe builder only filters the 500 most recently added providers, so it can miss matches. To list a specialty or area across the whole database, use the AI Assistant or the Territory map.",
-          "sha256": "f15f02467a45e7615549f3bcc2010549e422b0b9363a4ac4a2751f628e248ffc"
+          "text": "Filter providers by state, city, ZIP, specialty text, score range, Medicare patient volume, Medicare participation and behavioral-health or geriatric focus, then save the matches as a list.\n\nThe builder only filters the 500 most recently added providers, so it can miss matches. To list a specialty or area across the whole database, ask the AI Assistant. The Territory map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.",
+          "sha256": "e85e323a3b876335565e256e69b5f2fd4da40c5fa58f6652622df88036f01f18"
         },
         {
           "heading": "Campaigns (admin)",
