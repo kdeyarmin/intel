@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "89f97e1ddad7e161ab80622f15a034c01b276b47",
+    "ref": "378c714f8f00cf4fee32b795ba6dd171fdfd9400",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 29,
-    "text_character_count": 9425,
-    "canonical_sha256": "3e41398ff196dcd201b5212a75d29aaad592d11f570ce05d0a81d6010cb2525c"
+    "text_character_count": 9605,
+    "canonical_sha256": "b7bbbb14759de319743011b398da63b6eaf398bf3a90ca361872f3053ac1a215"
   },
   "sections": [
     {
@@ -48,8 +48,8 @@
         },
         {
           "heading": "Finding your way",
-          "text": "The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. Filters, tabs and selections are kept in the page address, so you can bookmark or share a view and Back returns to it. Old links to pages that moved still work.",
-          "sha256": "6e3a8bc91ad2e95e46960bde304a8f4d3647601f8dc53c319e6ec2a081a0bdbc"
+          "text": "The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. On the directory pages (Providers, Organizations, Locations, Facilities), Territory & County, Referral Network and Lead Lists, filters and tabs are kept in the page address, so you can bookmark or share the view and Back returns to it. Other pages, such as the Lead Builder, start fresh each visit. Old links to pages that moved still work.",
+          "sha256": "f93da2a09e37aba894725f56942aa3da995c415de737283d689c9b341cae33cc"
         }
       ]
     },
