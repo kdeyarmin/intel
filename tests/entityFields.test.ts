@@ -8,17 +8,20 @@ import { getTableColumns } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import {
   InvalidFieldValueError,
+  InvalidFilterError,
   JSONB_OVERFLOW,
   UnknownFieldError,
   coerceRowValues,
   _resetReportedDropsForTests,
   buildWhereClause,
+  clearStaleEmailVerification,
   decorateRow,
   expandOverflow,
   reportDroppedFields,
+  sanitizeWriteData,
   splitWriteData,
 } from "../server/lib/entityFields";
-import { customReports, importBatches, leadListMembers, providerLocations, scheduledReports, tableMap } from "../server/db/schema";
+import { customReports, importBatches, leadListMembers, providerLocations, providers, scheduledReports, tableMap } from "../server/db/schema";
 
 const dialect = new PgDialect();
 const render = (cond: any) => dialect.sqlToQuery(cond);
@@ -62,6 +65,22 @@ describe("buildWhereClause", () => {
 
   it("returns undefined for an empty filter", () => {
     expect(buildWhereClause(leadListMembers, {}, "LeadListMember")).toBeUndefined();
+  });
+
+  it("matches nothing for an empty $in or an empty $or", () => {
+    expect(render(buildWhereClause(leadListMembers, { npi: { $in: [] } }, "LeadListMember")).sql).toBe("false");
+    expect(render(buildWhereClause(leadListMembers, { $or: [] }, "LeadListMember")).sql).toBe("false");
+  });
+
+  it("treats an $or with a match-everything branch as matching everything", () => {
+    expect(buildWhereClause(leadListMembers, { $or: [{}, { npi: "1" }] }, "LeadListMember")).toBeUndefined();
+  });
+
+  it("rejects malformed and unsupported operators instead of dropping them", () => {
+    for (const bad of [{ $in: "1" }, { $nin: 1 }, { $typo: 1 }, {}, { $regex: "x" }]) {
+      expect(() => buildWhereClause(leadListMembers, { npi: bad }, "LeadListMember"), JSON.stringify(bad))
+        .toThrow(InvalidFilterError);
+    }
   });
 });
 
@@ -152,5 +171,38 @@ describe("timestamp coercion", () => {
     const q = render(buildWhereClause(importBatches, { created_date: { $gte: "2026-01-01T00:00:00.000Z" } }, "ImportBatch"));
     expect(q.sql).toContain('"import_batches"."created_date" >= $1');
     expect(q.params[0]).toBe("2026-01-01T00:00:00.000Z");
+  });
+});
+
+describe("sanitizeWriteData", () => {
+  it("strips account roles and password hashes from ordinary entities", () => {
+    expect(sanitizeWriteData("LeadList", { name: "x", role: "admin", password_hash: "h" })).toEqual({ name: "x" });
+  });
+
+  it("keeps ProviderAffiliation.role, which is a provider's role at an organization", () => {
+    expect(sanitizeWriteData("ProviderAffiliation", { npi: "1", role: "Medical Director", password_hash: "h" }))
+      .toEqual({ npi: "1", role: "Medical Director" });
+  });
+});
+
+describe("clearStaleEmailVerification", () => {
+  it("leaves updates that don't touch the email alone", () => {
+    const data = { phone: "555" };
+    expect(clearStaleEmailVerification(providers, data)).toBe(data);
+  });
+
+  it("clears the verification in SQL only when the stored address differs (ignoring case)", () => {
+    const out = clearStaleEmailVerification(providers, { email: "New@Clinic.org" });
+    expect(out.email).toBe("New@Clinic.org");
+    const q = render(out.email_validation_status);
+    expect(q.sql).toMatch(/CASE WHEN lower\(coalesce\("providers"\."email", ''\)\) IS DISTINCT FROM lower\(coalesce\(\$1::text, ''\)\) THEN NULL ELSE "providers"\."email_validation_status" END/);
+    expect(q.params).toEqual(["New@Clinic.org"]);
+    expect(render(out.email_analyzed_at).sql).toContain('"providers"."email_analyzed_at"');
+  });
+
+  it("keeps verification fields the update sets itself", () => {
+    const out = clearStaleEmailVerification(providers, { email: "a@b.org", email_validation_status: "valid" });
+    expect(out.email_validation_status).toBe("valid");
+    expect(render(out.email_quality_score).sql).toContain("CASE WHEN");
   });
 });

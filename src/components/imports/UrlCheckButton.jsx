@@ -12,15 +12,17 @@ const STYLES = {
 /** Checks that a data URL is reachable (server-side, SSRF-guarded) and shows the verdict inline. */
 export default function UrlCheckButton({ url }) {
   const [checking, setChecking] = useState(false);
-  const [check, setCheck] = useState(null);
+  // The verdict is kept with the URL it was for, so editing the field hides it.
+  const [result, setResult] = useState(null);
   const trimmed = (url || '').trim();
+  const check = result?.url === trimmed ? result.check : null;
 
   const run = async () => {
     setChecking(true);
-    setCheck(null);
+    setResult(null);
     try {
       const data = await invokeOrThrow('testCMSUrl', { url: trimmed });
-      setCheck(data.check);
+      setResult({ url: trimmed, check: data.check });
     } catch (err) {
       toastFunctionError(err, "Couldn't check the URL");
     } finally {
