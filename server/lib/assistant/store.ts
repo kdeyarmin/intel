@@ -61,13 +61,18 @@ export interface NewAction {
 }
 
 export interface AssistantStore {
-  listConversations(userId: number, limit: number): Promise<ConversationRow[]>;
+  /** Newest first; `before` continues after the last row of the previous page. */
+  listConversations(userId: number, limit: number, before?: { updatedAt: string; id: number } | null): Promise<ConversationRow[]>;
   createConversation(userId: number, title?: string | null): Promise<ConversationRow>;
   getConversation(id: number, userId: number): Promise<ConversationRow | null>;
   renameConversation(id: number, userId: number, title: string): Promise<ConversationRow | null>;
   deleteConversation(id: number, userId: number): Promise<boolean>;
   loadTranscript(conversationId: number): Promise<{ turns: TurnRow[]; messages: MessageRow[]; actions: ActionRow[] }>;
-  /** Starts a turn unless one is already running (stale ones count as interrupted). Null when busy. */
+  /**
+   * Starts a turn unless the user already has one running in any conversation
+   * (stale ones count as interrupted), so one person's turns, and the usage
+   * they spend, never overlap. Null when busy.
+   */
   startTurn(conversationId: number, model: string, staleMs: number): Promise<TurnRow | null>;
   countTurns(conversationId: number): Promise<number>;
   appendMessage(conversationId: number, turnId: number, role: string, content: unknown[]): Promise<void>;
@@ -92,8 +97,10 @@ export function createPgAssistantStore(pool: any): AssistantStore {
   }
 
   return {
-    listConversations: (userId, limit) =>
-      q("SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations WHERE user_id = $1 ORDER BY updated_at DESC, id DESC LIMIT $2", [userId, limit]),
+    listConversations: (userId, limit, before) => before
+      ? q(`SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations
+            WHERE user_id = $1 AND (updated_at, id) < ($3::timestamptz, $4) ORDER BY updated_at DESC, id DESC LIMIT $2`, [userId, limit, before.updatedAt, before.id])
+      : q("SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations WHERE user_id = $1 ORDER BY updated_at DESC, id DESC LIMIT $2", [userId, limit]),
 
     async createConversation(userId, title) {
       return (await q("INSERT INTO assistant_conversations (user_id, title) VALUES ($1, $2) RETURNING *", [userId, title || null]))[0];
@@ -124,18 +131,25 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        // Serialises turn starts for this conversation across requests and processes.
-        const conv = await client.query("SELECT id FROM assistant_conversations WHERE id = $1 FOR UPDATE", [conversationId]);
+        const conv = await client.query("SELECT id, user_id FROM assistant_conversations WHERE id = $1", [conversationId]);
         if (!conv.rows.length) {
           await client.query("ROLLBACK");
           return null;
         }
+        const userId = conv.rows[0].user_id;
+        // Serialises turn starts for this user across requests and processes.
+        await client.query("SELECT pg_advisory_xact_lock(hashtext('assistant_user_turn:' || $1))", [String(userId)]);
         await client.query(
           `UPDATE assistant_turns SET status = 'interrupted', finished_at = now(), error = 'The server stopped before this answer finished.'
-            WHERE conversation_id = $1 AND status = 'running' AND created_at < now() - ($2 || ' milliseconds')::interval`,
-          [conversationId, String(staleMs)],
+            WHERE conversation_id IN (SELECT id FROM assistant_conversations WHERE user_id = $1)
+              AND status = 'running' AND created_at < now() - ($2 || ' milliseconds')::interval`,
+          [userId, String(staleMs)],
         );
-        const running = await client.query("SELECT 1 FROM assistant_turns WHERE conversation_id = $1 AND status = 'running' LIMIT 1", [conversationId]);
+        const running = await client.query(
+          `SELECT 1 FROM assistant_turns WHERE status = 'running'
+              AND conversation_id IN (SELECT id FROM assistant_conversations WHERE user_id = $1) LIMIT 1`,
+          [userId],
+        );
         if (running.rows.length) {
           await client.query("ROLLBACK");
           return null;

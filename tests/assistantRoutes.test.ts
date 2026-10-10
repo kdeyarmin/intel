@@ -156,6 +156,40 @@ describe("assistant routes", () => {
     await vi.waitFor(() => expect(store.turns[0].status).toBe("interrupted"));
   });
 
+  it("allows one answer at a time per person, across conversations", async () => {
+    script([{ hang: true }]);
+    const a = (await call(me, "POST", "/conversations")).body.conversation;
+    const b = (await call(me, "POST", "/conversations")).body.conversation;
+    const controller = new AbortController();
+    const first = fetch(`${base}/conversations/${a.id}/messages`, {
+      method: "POST", signal: controller.signal,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${generateToken({ id: me, token_version: 0 })}` },
+      body: JSON.stringify({ text: "Long question" }),
+    }).then((r) => r.body?.getReader().read()).catch(() => null);
+    await vi.waitFor(() => expect(store.turns[0]?.status).toBe("running"));
+    const elsewhere = await call(me, "POST", `/conversations/${b.id}/messages`, { text: "Meanwhile" });
+    expect(elsewhere.status).toBe(409);
+    expect(elsewhere.body.message).toMatch(/one of your questions/);
+    await first;
+    controller.abort();
+    await vi.waitFor(() => expect(store.turns[0].status).toBe("interrupted"));
+  });
+
+  it("pages through conversations, newest first", async () => {
+    for (let i = 0; i < 55; i += 1) {
+      const c = (await call(me, "POST", "/conversations", { title: `c${i}` })).body.conversation;
+      store.conversations.find((x) => x.id === c.id)!.updated_at = new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString();
+    }
+    const page1 = (await call(me, "GET", "/conversations")).body;
+    expect(page1.conversations).toHaveLength(50);
+    expect(page1.conversations[0].title).toBe("c54");
+    expect(page1.next_cursor).toBeTruthy();
+    const page2 = (await call(me, "GET", `/conversations?before=${encodeURIComponent(page1.next_cursor)}`)).body;
+    expect(page2.conversations.map((c: any) => c.title)).toEqual(["c4", "c3", "c2", "c1", "c0"]);
+    expect(page2.next_cursor).toBeNull();
+    expect((await call(me, "GET", "/conversations?before=nonsense")).status).toBe(400);
+  });
+
   it("never leaves a conversation blocked when something fails mid-turn", async () => {
     script([text("Second try works.")]);
     const conv = (await call(me, "POST", "/conversations")).body.conversation;

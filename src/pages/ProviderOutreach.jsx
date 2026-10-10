@@ -244,7 +244,7 @@ export default function ProviderOutreach() {
                 </p>
               )}
 
-              <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} status={liveCampaign.status} />
+              <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} status={sending ? 'sending' : liveCampaign.status} />
 
               <CampaignOutcomesPanel campaign={selectedCampaign} />
 

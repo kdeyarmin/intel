@@ -144,6 +144,36 @@ describe("runAssistantTurn", () => {
     expect(persisted.at(-1)).toEqual({ role: "assistant", content: [{ type: "text", text: "Looking at Allegheny" }] });
   });
 
+  it("stops waiting for a slow tool when the turn is stopped, and proposes nothing afterwards", async () => {
+    let release!: () => void;
+    const slow = new Promise<string[]>((r) => { release = () => r(["1000000001"]); });
+    const createProposal = vi.fn();
+    const { input, controller } = setup([
+      toolCall([{ id: "toolu_1", name: "propose_lead_list", input: { name: "Cardiology", npis: ["1000000001"] } }]),
+      text("never sent"),
+    ]);
+    input.toolContext = { ...input.toolContext, deps: deps({ existingNpis: vi.fn(() => slow), createProposal }) };
+    const running = runAssistantTurn(input);
+    await new Promise((r) => setTimeout(r, 10));
+    controller.abort(); // e.g. the 150-second hard stop
+    expect((await running).status).toBe("interrupted");
+    release(); // the lookup finishes late
+    await new Promise((r) => setTimeout(r, 10));
+    expect(createProposal).not.toHaveBeenCalled();
+  });
+
+  it("re-checks the budget before each further model request", async () => {
+    const beforeRequest = vi.fn().mockResolvedValueOnce("You've reached today's assistant usage limit.");
+    const { input, calls } = setup([
+      toolCall([{ id: "toolu_1", name: "list_lead_lists", input: {} }]),
+      text("never sent"),
+    ], { beforeRequest });
+    const result = await runAssistantTurn(input);
+    expect(result).toMatchObject({ status: "error", error: "You've reached today's assistant usage limit." });
+    expect(calls).toHaveLength(1);
+    expect(beforeRequest).toHaveBeenCalledTimes(1); // not before the first request
+  });
+
   it("charges a stopped request for what the API already billed", async () => {
     const onUsage = vi.fn();
     const { input, controller } = setup([{ hang: true, partial: "Looking", usage: { input_tokens: 5000, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, outputSoFar: 900 }], { onUsage });

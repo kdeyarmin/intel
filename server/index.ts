@@ -113,6 +113,14 @@ app.listen(PORT, "0.0.0.0", async () => {
     console.warn(`[CareMetric API] WARNING: ALLOWED_ORIGINS is not configured in production — cross-origin requests will be rejected. Set ALLOWED_ORIGINS to enable access from your frontend domain.`);
   }
 
+  // Session changes (disable, role, sign out everywhere) reach this instance
+  // from the others at once (see server/lib/sessionUsers.ts).
+  {
+    const { startSessionUserListener } = await import("./lib/sessionUsers");
+    const pg = (await import("pg")).default;
+    startSessionUserListener(() => new pg.Client({ connectionString: process.env.DATABASE_URL }));
+  }
+
   async function safeStartupQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {

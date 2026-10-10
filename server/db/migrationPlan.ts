@@ -25,6 +25,11 @@ export function migrationHash(migrationsFolder: string, tag: string): string {
  * proves each one is already applied. Every later migration is written to be
  * idempotent (IF NOT EXISTS), so these are the only ones a database that was
  * built with `drizzle-kit push` must have recorded before migrating.
+ *
+ * Baselining 0002 records it without its data backfill (db:push creates the
+ * side table empty). Readers fall back to medicare_facilities.raw_data, and
+ * `npm run db:backfill-facilities-raw` fills the table in short batches; it
+ * isn't run here because copying ~46M rows would hold boot for hours.
  */
 export const NON_IDEMPOTENT_MARKERS: Record<string, string> = {
   "0000_cute_nemesis": "users",

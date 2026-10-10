@@ -3,6 +3,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { isFunctionAuthorized } from "../lib/functionAcl";
+import { publicErrorMessage } from "../lib/publicError";
 
 const router = Router();
 
@@ -585,7 +586,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
   } catch (e: any) {
     const statusCode = e.status || 500;
     console.error(`[Function ${functionName} Error]`, e.message);
-    res.status(statusCode).json({ message: e.message });
+    res.status(statusCode).json({ message: publicErrorMessage(e) });
   }
 });
 

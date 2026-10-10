@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useUrlState } from '@/hooks/useUrlState';
@@ -63,7 +63,14 @@ export default function AIAssistantPage() {
   const pinnedRef = useRef(true);
 
   const status = useQuery({ queryKey: ['assistantStatus'], queryFn: () => base44.assistant.status(), staleTime: 60000 });
-  const conversations = useQuery({ queryKey: ['assistantConversations'], queryFn: () => base44.assistant.listConversations() });
+  // Newest first, a page at a time; older ones load on request.
+  const conversations = useInfiniteQuery({
+    queryKey: ['assistantConversations'],
+    queryFn: ({ pageParam }) => base44.assistant.listConversations(pageParam),
+    initialPageParam: null,
+    getNextPageParam: (last) => last?.next_cursor ?? null,
+  });
+  const conversationList = useMemo(() => conversations.data?.pages.flatMap((p) => p.conversations) ?? [], [conversations.data]);
   const conversation = useQuery({
     queryKey: ['assistantConversation', selectedId],
     queryFn: () => base44.assistant.getConversation(selectedId),
@@ -162,8 +169,11 @@ export default function AIAssistantPage() {
 
   const list = (
     <ConversationList
-      conversations={conversations.data?.conversations || []}
+      conversations={conversationList}
       loading={conversations.isLoading}
+      hasMore={!!conversations.hasNextPage}
+      loadingMore={conversations.isFetchingNextPage}
+      onLoadMore={() => conversations.fetchNextPage()}
       selectedId={selectedId}
       onSelect={(id) => { setUrl({ c: String(id) }); setShowList(false); }}
       onNew={() => { setUrl({ c: '' }); setShowList(false); }}

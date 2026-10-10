@@ -196,6 +196,18 @@ describe('GlobalSearchDialog', () => {
     expect(navigated.at(-1)).toBe('/ProviderDetail?npi=1234567890');
   });
 
+  it('hides the previous query\'s results until the new search has caught up', async () => {
+    const navigated = renderSearch();
+    const input = screen.getByRole('textbox', { name: 'Search' });
+    fireEvent.change(input, { target: { value: 'ann car' } });
+    expect(await screen.findByText('Ann Cardio')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'zzq' } });
+    expect(screen.queryByText('Ann Cardio')).not.toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(navigated.at(-1)).toBe('/');
+  });
+
   it('says it is searching rather than "no results" while waiting', async () => {
     invoke.mockReturnValue(new Promise(() => {}));
     renderSearch();

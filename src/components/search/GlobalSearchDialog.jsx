@@ -111,8 +111,11 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     staleTime: 120000,
   });
 
+  // While the debounce catches up, the server results still belong to the
+  // previous query: hide them so Enter can't open an unrelated provider.
+  const settled = debouncedQuery === normalizedQuery;
   // "No results" only once every search that's running has answered.
-  const searching = searchingProviders || fetchingLocations || fetchingUtil || fetchingReferrals || fetchingLists;
+  const searching = !settled || searchingProviders || fetchingLocations || fetchingUtil || fetchingReferrals || fetchingLists;
 
   useEffect(() => {
     if (!open) { setQuery(''); setActiveCategory('all'); setHighlightIdx(-1); }
@@ -143,7 +146,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     });
 
     // Providers
-    providers.forEach(p => {
+    (settled ? providers : []).forEach(p => {
       const name = p.entity_type === 'Individual'
         ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
         : p.organization_name || '';
@@ -160,7 +163,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     });
 
     // Locations
-    locations.forEach(l => {
+    (settled ? locations : []).forEach(l => {
       {
         items.push({
           type: 'Location',
@@ -173,7 +176,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     });
 
     // Utilization (search by NPI)
-    if (npiQuery) {
+    if (npiQuery && settled) {
       const seen = new Set();
       utilizations.forEach(u => {
         if ((u.npi || '').includes(q) && !seen.has(u.npi)) {
@@ -216,7 +219,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     });
 
     return items;
-  }, [query, searchablePages, providers, locations, utilizations, referrals, leadLists, npiQuery]);
+  }, [query, settled, searchablePages, providers, locations, utilizations, referrals, leadLists, npiQuery]);
 
   const categories = useMemo(() => {
     const counts = {};

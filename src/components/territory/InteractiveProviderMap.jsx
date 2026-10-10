@@ -74,17 +74,21 @@ function HeatmapLayer({ points }) {
     const cellSize = 0.15; // ~10 mile grid cells
     points.forEach(p => {
       const key = `${Math.round(p.lat / cellSize)}_${Math.round(p.lng / cellSize)}`;
-      if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, totalScore: 0 };
+      if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, totalScore: 0, scored: 0 };
       grid[key].lat += p.lat;
       grid[key].lng += p.lng;
       grid[key].count++;
-      grid[key].totalScore += p.score;
+      // Unscored providers don't pull the average towards 0.
+      if (p.score != null) {
+        grid[key].totalScore += p.score;
+        grid[key].scored++;
+      }
     });
     return Object.values(grid).map(c => ({
       lat: c.lat / c.count,
       lng: c.lng / c.count,
       count: c.count,
-      avgScore: Math.round(c.totalScore / c.count),
+      avgScore: c.scored ? Math.round(c.totalScore / c.scored) : null,
     }));
   }, [points]);
 
@@ -106,7 +110,7 @@ function HeatmapLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.count} providers</div>
-            <div className="text-slate-400">Avg Score: {cluster.avgScore}</div>
+            <div className="text-slate-400">Avg Score: {cluster.avgScore ?? 'Unscored'}</div>
           </div>
         </Popup>
       </CircleMarker>

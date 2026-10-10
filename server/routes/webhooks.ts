@@ -3,7 +3,7 @@ import { pool } from "../db";
 import { rateLimit } from "../middleware/rateLimit";
 import { mapSendgridEvent, verifySendgridSignature } from "../lib/sendgridEvents";
 import { advancedStatusSql, foldMessageEvents } from "../functions/outreachHelpers";
-import { addSuppression } from "../lib/suppressions";
+import { addSuppressions } from "../lib/suppressions";
 
 const router = Router();
 
@@ -41,17 +41,18 @@ router.post(
       .map((raw) => mapSendgridEvent(raw as Record<string, any>))
       .filter((u): u is NonNullable<typeof u> => u !== null);
 
-    // Suppressions: once per address and reason.
-    const suppressions = new Map<string, { email: string; reason: NonNullable<(typeof updates)[number]["suppressReason"]> }>();
-    for (const u of updates) {
-      if (u.suppressReason && u.email) suppressions.set(`${u.email.toLowerCase()}|${u.suppressReason}`, { email: u.email, reason: u.suppressReason });
-    }
-    for (const { email, reason } of suppressions.values()) {
-      try {
-        await addSuppression(email, reason, "sendgrid");
-      } catch (e: any) {
-        console.error("[sendgrid webhook] failed to record suppression:", e?.message);
-      }
+    // Suppressions (bounces, spam reports, unsubscribes) in one statement. If
+    // it fails, answer 5xx so SendGrid retries the batch: a dropped
+    // suppression means the address could be emailed again. Re-applying the
+    // message updates on a retry is harmless (they only move forward).
+    const suppressions = updates
+      .filter((u) => u.suppressReason && u.email)
+      .map((u) => ({ email: u.email as string, reason: u.suppressReason as string }));
+    try {
+      await addSuppressions(suppressions, "sendgrid");
+    } catch (e: any) {
+      console.error("[sendgrid webhook] failed to record suppressions:", e?.message);
+      return res.status(500).json({ message: "Failed to record suppressions" });
     }
 
     // Message updates: one set-based statement for the whole batch. The

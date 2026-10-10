@@ -3,12 +3,13 @@ import { Navigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import AuthShell from './AuthShell';
+import SessionUnavailable from './SessionUnavailable';
 
 const POLL_MS = 30_000;
 
 /** Where a new account waits until an admin approves it. */
 export default function PendingApproval() {
-  const { user, isAuthenticated, isLoadingAuth, checkAppState, logout } = useAuth();
+  const { user, isAuthenticated, isLoadingAuth, authError, checkAppState, logout } = useAuth();
 
   // Check back periodically so approval lets the person straight in.
   useEffect(() => {
@@ -17,6 +18,10 @@ export default function PendingApproval() {
   }, [checkAppState]);
 
   if (isLoadingAuth && !user) return null;
+  // An outage isn't a sign-out: offer a retry rather than the login page.
+  if (!isAuthenticated && authError?.type === 'unavailable') {
+    return <SessionUnavailable message={authError.message} onRetry={checkAppState} />;
+  }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.status !== 'pending') return <Navigate to="/" replace />;
 

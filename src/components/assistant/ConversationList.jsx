@@ -28,13 +28,13 @@ function RenameForm({ conversation, onRename, onDone }) {
         aria-label="Conversation name"
         className="h-7 text-xs bg-slate-900 border-slate-600"
       />
-      <Button type="submit" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-emerald-400" aria-label="Save name"><Check className="h-3.5 w-3.5" aria-hidden="true" /></Button>
-      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-slate-400" aria-label="Cancel renaming" onClick={onDone}><X className="h-3.5 w-3.5" aria-hidden="true" /></Button>
+      <Button type="submit" size="icon" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 shrink-0 text-emerald-400" aria-label="Save name"><Check className="h-3.5 w-3.5" aria-hidden="true" /></Button>
+      <Button type="button" size="icon" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 shrink-0 text-slate-400" aria-label="Cancel renaming" onClick={onDone}><X className="h-3.5 w-3.5" aria-hidden="true" /></Button>
     </form>
   );
 }
 
-export default function ConversationList({ conversations, selectedId, onSelect, onNew, onRename, onDelete, loading }) {
+export default function ConversationList({ conversations, selectedId, onSelect, onNew, onRename, onDelete, loading, hasMore, loadingMore, onLoadMore }) {
   const [renaming, setRenaming] = useState(null);
   return (
     <nav aria-label="Conversations" className="flex h-full flex-col">
@@ -73,6 +73,11 @@ export default function ConversationList({ conversations, selectedId, onSelect, 
             </li>
           ))}
         </ul>
+        {hasMore && (
+          <Button type="button" variant="ghost" onClick={onLoadMore} disabled={loadingMore} className="mt-1 w-full text-xs text-slate-300 hover:bg-slate-800">
+            {loadingMore ? 'Loading…' : 'Load older conversations'}
+          </Button>
+        )}
       </div>
     </nav>
   );

@@ -253,13 +253,15 @@ export default function Organizations() {
         if (filters.emailFilter === 'has_email' && !p.email) return false;
         if (filters.emailFilter === 'no_email' && p.email) return false;
       }
-      if (filters.stateFilter !== 'all') {
+      // A search already filtered by state on the server, across every
+      // location; the loaded locations here are a capped sample.
+      if (filters.stateFilter !== 'all' && !searchState) {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
       return true;
     });
-  }, [providers, filters, locationByNpi]);
+  }, [providers, filters, locationByNpi, searchState]);
 
   const sortedProviders = useMemo(() => {
     if (sortField === 'default') return filteredProviders;
@@ -313,7 +315,7 @@ export default function Organizations() {
           isPlaceholderData
             ? 'Searching…'
             : isSearching
-            ? `${providers.length.toLocaleString()}${result?.truncated ? '+' : ''} organization${providers.length === 1 ? '' : 's'} ${result?.mode === 'contains' ? 'containing' : 'starting with'} "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${result?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
+            ? `${providers.length.toLocaleString()}${result?.truncated ? '+' : ''} organization${providers.length === 1 ? '' : 's'} ${result?.mode === 'npi' ? 'with an NPI starting with' : result?.mode === 'contains' ? 'containing' : 'starting with'} "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${result?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
             : `Showing the ${providers.length.toLocaleString()} most recently added organizations — search by name or NPI to find others`
         }
         icon={Building2}
