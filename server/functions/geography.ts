@@ -5,9 +5,15 @@ import { loadCensusGeography } from "../lib/census/load";
 import { normalizeStateFilter } from "../lib/providerSearch";
 
 export async function handleGetGeoStatus() {
-  const { rows } = await pool.query("SELECT vintage, row_counts, loaded_at FROM geo_meta WHERE key = 'census'").catch(() => ({ rows: [] as any[] }));
+  // geo_meta alone isn't proof: a table emptied since the load would still
+  // leave its row behind (the loader repairs that on its next run).
+  const { rows } = await pool.query(
+    `SELECT vintage, row_counts, loaded_at,
+            EXISTS (SELECT 1 FROM geo_counties) AND EXISTS (SELECT 1 FROM geo_zctas) AND EXISTS (SELECT 1 FROM geo_zcta_counties) AS complete
+       FROM geo_meta WHERE key = 'census'`,
+  ).catch(() => ({ rows: [] as any[] }));
   const meta = rows[0];
-  return meta
+  return meta?.complete
     ? { loaded: true, vintage: meta.vintage, counts: meta.row_counts, loaded_at: meta.loaded_at, source: "U.S. Census Bureau, 2020 Gazetteer and ZCTA-to-county relationship files" }
     : { loaded: false, message: "Census geography isn't loaded yet. It loads automatically at start-up, or an admin can run npm run geo:load." };
 }
