@@ -198,7 +198,7 @@ describe('GlobalSearchDialog', () => {
 
   it('hides the previous query\'s results until the new search has caught up', async () => {
     const navigated = renderSearch();
-    const input = screen.getByRole('textbox', { name: 'Search' });
+    const input = screen.getByRole('combobox', { name: 'Search' });
     fireEvent.change(input, { target: { value: 'ann car' } });
     expect(await screen.findByText('Ann Cardio')).toBeInTheDocument();
 
