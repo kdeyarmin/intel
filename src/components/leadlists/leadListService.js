@@ -9,18 +9,23 @@ function uniqueNpis(npis) {
 
 const MEMBER_PAGE = 5000;
 
-/** Every member NPI on a list (one entry per stored row), read in id order. */
-export async function listMemberNpis(listId) {
-  const npis = [];
+/** Every member row on a list, however long it is, read in id order. */
+export async function listMembers(listId) {
+  const rows = [];
   let lastId = 0;
   for (;;) {
     const page = await base44.entities.LeadListMember.filter(
       { list_id: listId, id: { $gt: lastId } }, 'id', MEMBER_PAGE,
     );
-    for (const m of page) npis.push(String(m.npi));
-    if (page.length < MEMBER_PAGE) return npis;
+    rows.push(...page);
+    if (page.length < MEMBER_PAGE) return rows;
     lastId = page[page.length - 1].id;
   }
+}
+
+/** Every member NPI on a list (one entry per stored row), read in id order. */
+export async function listMemberNpis(listId) {
+  return (await listMembers(listId)).map((m) => String(m.npi));
 }
 
 /**
