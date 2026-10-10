@@ -1,5 +1,9 @@
 // Central configuration for datasets, their metrics, grouping options, and filters
 
+// Every metric and group is a real column of the dataset's table (a parity
+// test checks this against server/db/schema.ts). The scheduled-report runner
+// keeps the same list in server/lib/reportAggregate.ts (REPORT_DATASETS) and
+// rejects anything else. countMetrics count rows instead of summing values.
 export const DATASET_CONFIG = {
   cms_utilization: {
     label: 'Provider Service Utilization',
@@ -7,7 +11,6 @@ export const DATASET_CONFIG = {
     metrics: [
       { key: 'total_services', label: 'Total Services' },
       { key: 'total_unique_benes', label: 'Medicare Beneficiaries' },
-      { key: 'average_submitted_chrg_amt', label: 'Avg Submitted Charge ($)' },
       { key: 'total_medicare_payment_amt', label: 'Medicare Payment ($)' },
     ],
     groupOptions: [
@@ -15,7 +18,7 @@ export const DATASET_CONFIG = {
       { key: 'npi', label: 'Provider NPI' },
       { key: 'service_type', label: 'Service Type' },
     ],
-    filters: ['data_year'],
+    filters: ['year'],
     yearField: 'data_year',
   },
   cms_referrals: {
@@ -23,116 +26,85 @@ export const DATASET_CONFIG = {
     entity: 'CMSReferral',
     metrics: [
       { key: 'total_referrals', label: 'Total Referrals' },
-      { key: 'home_health_referrals', label: 'Home Health Referrals' },
-      { key: 'hospice_referrals', label: 'Hospice Referrals' },
-      { key: 'snf_referrals', label: 'SNF Referrals' },
-      { key: 'dme_referrals', label: 'DME Referrals' },
-      { key: 'imaging_referrals', label: 'Imaging Referrals' },
+      { key: 'total_beneficiaries', label: 'Beneficiaries' },
     ],
     groupOptions: [
-      { key: 'year', label: 'Year' },
+      { key: 'data_year', label: 'Year' },
       { key: 'npi', label: 'Provider NPI' },
     ],
     filters: ['year'],
-    yearField: 'year',
+    yearField: 'data_year',
   },
   ma_inpatient: {
     label: 'Medicare Facilities',
     entity: 'MedicareFacility',
     metrics: [
       { key: 'total_discharges', label: 'Total Discharges' },
-      { key: 'total_covered_days', label: 'Covered Days' },
-      { key: 'total_stays', label: 'Total Stays' },
-      { key: 'persons_served', label: 'Persons Served' },
-      { key: 'avg_length_of_stay', label: 'Avg Length of Stay' },
-      { key: 'covered_days_per_1000', label: 'Covered Days per 1K' },
-      { key: 'discharges_per_1000', label: 'Discharges per 1K' },
-      { key: 'total_enrollees', label: 'Total Enrollees' },
-    ],
-    groupOptions: [
-      { key: 'data_year', label: 'Year' },
-      { key: 'table_name', label: 'Table' },
-      { key: 'hospital_type', label: 'Hospital Type' },
-      { key: 'state', label: 'State' },
-      { key: 'entitlement_type', label: 'Entitlement Type' },
-    ],
-    filters: ['year', 'state', 'hospital_type', 'table_name'],
-    yearField: 'data_year',
-  },
-  hha_stats: {
-    label: 'Home Health Agency Stats',
-    entity: 'MedicareFacility',
-    metrics: [
-      { key: 'persons_served', label: 'Persons Served' },
-      { key: 'total_visits', label: 'Total Visits' },
-      { key: 'total_episodes', label: 'Total Episodes' },
+      { key: 'total_days_of_care', label: 'Days of Care' },
       { key: 'total_charges', label: 'Total Charges ($)' },
-      { key: 'program_payments', label: 'Program Payments ($)' },
-      { key: 'payment_per_person', label: 'Payment per Person ($)' },
-      { key: 'visits_per_person', label: 'Visits per Person' },
-      { key: 'skilled_nursing_visits', label: 'Skilled Nursing Visits' },
-      { key: 'pt_visits', label: 'PT Visits' },
-    ],
-    groupOptions: [
-      { key: 'data_year', label: 'Year' },
-      { key: 'table_name', label: 'Table' },
-      { key: 'state', label: 'State' },
-      { key: 'agency_type', label: 'Agency Type' },
-    ],
-    filters: ['year', 'state', 'table_name'],
-    yearField: 'data_year',
-  },
-  inpatient_drg: {
-    label: 'Inpatient DRG',
-    entity: 'MedicareFacility',
-    metrics: [
-      { key: 'total_discharges', label: 'Total Discharges' },
-      { key: 'avg_covered_charges', label: 'Avg Covered Charges ($)' },
-      { key: 'avg_total_payments', label: 'Avg Total Payments ($)' },
-      { key: 'avg_medicare_payments', label: 'Avg Medicare Payments ($)' },
+      { key: 'total_payments', label: 'Total Payments ($)' },
     ],
     groupOptions: [
       { key: 'data_year', label: 'Year' },
       { key: 'state', label: 'State' },
-      { key: 'drg_code', label: 'DRG Code' },
+      { key: 'facility_type', label: 'Facility Type' },
     ],
     filters: ['year', 'state'],
     yearField: 'data_year',
   },
-  snf_stats: {
-    label: 'Medicare SNF',
-    entity: 'MedicareFacility',
+  hha_stats: {
+    label: 'Home Health Agency Stats',
+    entity: 'MedicareHHAStats',
     metrics: [
-      { key: 'persons_served', label: 'Persons Served' },
-      { key: 'total_stays', label: 'Total Stays' },
-      { key: 'total_covered_days', label: 'Covered Days' },
-      { key: 'program_payments', label: 'Program Payments ($)' },
-      { key: 'beneficiary_payments', label: 'Beneficiary Payments ($)' },
-      { key: 'payment_per_stay', label: 'Payment per Stay ($)' },
-      { key: 'avg_length_of_stay', label: 'Avg Length of Stay' },
-      { key: 'covered_days_per_1000', label: 'Covered Days per 1K' },
-      { key: 'stays_per_1000', label: 'Stays per 1K' },
+      { key: 'npi', label: 'Agencies' },
+    ],
+    countMetrics: ['npi'],
+    groupOptions: [
+      { key: 'data_year', label: 'Year' },
+      { key: 'state', label: 'State' },
+    ],
+    filters: ['year', 'state'],
+    yearField: 'data_year',
+  },
+  inpatient_drg: {
+    label: 'Inpatient DRG',
+    entity: 'InpatientDRG',
+    metrics: [
+      { key: 'total_discharges', label: 'Total Discharges' },
     ],
     groupOptions: [
       { key: 'data_year', label: 'Year' },
-      { key: 'table_name', label: 'Table' },
-      { key: 'state', label: 'State' },
-      { key: 'facility_type', label: 'Facility Type' },
-      { key: 'entitlement_type', label: 'Entitlement Type' },
+      { key: 'drg_code', label: 'DRG Code' },
+      { key: 'npi', label: 'Provider NPI' },
     ],
-    filters: ['year', 'state', 'table_name'],
+    filters: ['year'],
+    yearField: 'data_year',
+  },
+  snf_stats: {
+    label: 'Medicare SNF',
+    entity: 'MedicareSNFStats',
+    metrics: [
+      { key: 'npi', label: 'Facilities' },
+    ],
+    countMetrics: ['npi'],
+    groupOptions: [
+      { key: 'data_year', label: 'Year' },
+      { key: 'state', label: 'State' },
+    ],
+    filters: ['year', 'state'],
     yearField: 'data_year',
   },
   providers: {
     label: 'Providers',
     entity: 'Provider',
     metrics: [
-      { key: 'completeness_score', label: 'Completeness Score' },
-      { key: 'email_quality_score', label: 'Email Quality Score' },
+      { key: 'npi', label: 'Providers' },
     ],
+    countMetrics: ['npi'],
     groupOptions: [
       { key: 'entity_type', label: 'Entity Type' },
       { key: 'status', label: 'Status' },
+      { key: 'gender', label: 'Gender' },
       { key: 'email_validation_status', label: 'Email Validation' },
       { key: 'ai_enrichment_status', label: 'Enrichment Status' },
     ],
@@ -141,9 +113,13 @@ export const DATASET_CONFIG = {
   reconciliation_discrepancies: {
     label: 'Reconciliation Discrepancies',
     entity: 'ProviderReconciliation',
-    metrics: [],
+    metrics: [
+      { key: 'npi', label: 'Discrepancies' },
+    ],
+    countMetrics: ['npi'],
     groupOptions: [
-      { key: 'source', label: 'Source' },
+      { key: 'source_a', label: 'Source' },
+      { key: 'field_name', label: 'Field' },
       { key: 'status', label: 'Status' },
       { key: 'resolution_status', label: 'Resolution Status' },
     ],
@@ -153,20 +129,37 @@ export const DATASET_CONFIG = {
     label: 'Outreach Metrics',
     entity: 'OutreachCampaign',
     metrics: [
-      { key: 'emails_sent', label: 'Emails Sent' },
-      { key: 'emails_opened', label: 'Emails Opened' },
-      { key: 'emails_responded', label: 'Emails Responded' },
-      { key: 'emails_bounced', label: 'Emails Bounced' },
-      { key: 'conversions', label: 'Conversions' },
-      { key: 'budget', label: 'Budget ($)' },
-      { key: 'revenue_generated', label: 'Revenue Generated ($)' },
+      { key: 'id', label: 'Campaigns' },
+      { key: 'total_recipients', label: 'Recipients' },
     ],
+    countMetrics: ['id'],
     groupOptions: [
       { key: 'status', label: 'Campaign Status' },
+      { key: 'campaign_type', label: 'Campaign Type' },
     ],
     filters: [],
   },
 };
+
+// Datasets only the schedule form offers (too large to load in the browser).
+export const SCHEDULE_ONLY_DATASETS = {
+  locations: {
+    label: 'Provider Locations',
+    entity: 'ProviderLocation',
+    metrics: [
+      { key: 'npi', label: 'Locations' },
+    ],
+    countMetrics: ['npi'],
+    groupOptions: [
+      { key: 'state', label: 'State' },
+      { key: 'location_type', label: 'Location Type' },
+      { key: 'city', label: 'City' },
+    ],
+    filters: [],
+  },
+};
+
+export const SCHEDULE_DATASETS = { ...DATASET_CONFIG, ...SCHEDULE_ONLY_DATASETS };
 
 export const CHART_COLORS = [
   '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',

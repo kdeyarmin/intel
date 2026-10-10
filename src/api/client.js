@@ -6,8 +6,14 @@ export const AUTH_EXPIRED_EVENT = "auth:expired";
 export const ACCOUNT_STATUS_EVENT = "auth:account-status";
 
 // Endpoints whose 401s are expected and handled by the auth layer itself
-// (bad credentials, the initial session probe, logout, reset links).
-const AUTH_ENDPOINTS = ["/auth/"];
+// (bad credentials, logout, reset links). Exact paths: /auth/logout-all and
+// /auth/change-password need a session, so their 401 means it expired. The
+// startup session probe opts out per call (base44.auth.me({ probe: true })).
+const AUTH_ENDPOINTS = new Set([
+  "/auth/options", "/auth/login", "/auth/signup", "/auth/logout",
+  "/auth/forgot-password", "/auth/token-info", "/auth/reset-password",
+]);
+const isAuthEndpoint = (url) => AUTH_ENDPOINTS.has(url.split("?")[0]);
 
 // The session lives in an httpOnly cookie. Older builds also kept the token in
 // localStorage, where any script on the page could read it; drop that copy.
@@ -18,16 +24,22 @@ try {
 }
 
 let authExpiredHandled = false;
+// Bumped whenever a new session starts. A request remembers the generation it
+// was sent under, so a 401 for the old session that arrives after signing in
+// again (or changing the password) can't sign the user out of the new one.
+let authGeneration = 0;
 
 export function resetAuthExpired() {
   authExpiredHandled = false;
+  authGeneration += 1;
 }
 
-// A 401 from any other endpoint means the session expired mid-use. Tell the
+// A 401 from any other request means the session expired mid-use. Tell the
 // app once (many queries can fail at the same time), so it can send the user
 // to the login page instead of rendering empty tables.
-export function handleUnauthorized(url) {
-  if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+export function handleUnauthorized(url, { generation = authGeneration, expected = false } = {}) {
+  if (expected || isAuthEndpoint(url)) return;
+  if (generation !== authGeneration) return;
   if (authExpiredHandled) return;
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
@@ -39,7 +51,7 @@ const ACCOUNT_STATUS_CODES = new Set(["account_pending", "account_disabled"]);
 
 export function handleAccountStatus(url, data) {
   if (!ACCOUNT_STATUS_CODES.has(data?.code)) return;
-  if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (isAuthEndpoint(url)) return;
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(ACCOUNT_STATUS_EVENT, { detail: { code: data.code } }));
 }
@@ -54,9 +66,9 @@ export function buildErrorMessage(data, status) {
   return primary || detail || `Request failed: ${status}`;
 }
 
-async function toApiError(res, url) {
+async function toApiError(res, url, auth) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
-  if (res.status === 401) handleUnauthorized(url);
+  if (res.status === 401) handleUnauthorized(url, auth);
   if (res.status === 403) handleAccountStatus(url, data);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
@@ -65,7 +77,9 @@ async function toApiError(res, url) {
   return err;
 }
 
-async function request(url, options = {}) {
+// `expectUnauthorized`: a 401 is an answer for the caller, not an expired session.
+async function request(url, options = {}, { expectUnauthorized = false } = {}) {
+  const generation = authGeneration;
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -77,7 +91,7 @@ async function request(url, options = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) throw await toApiError(res, url);
+  if (!res.ok) throw await toApiError(res, url, { generation, expected: expectUnauthorized });
 
   return res.json();
 }
@@ -167,8 +181,10 @@ export const base44 = {
   entities: new Proxy({}, entityHandler),
 
   auth: {
-    async me() {
-      return request("/auth/me");
+    // `probe`: checking whether there is a session at all (app startup), so a
+    // 401 just means "signed out". Everywhere else it means the session expired.
+    async me({ probe = false } = {}) {
+      return request("/auth/me", {}, { expectUnauthorized: probe });
     },
 
     async options() {
@@ -202,10 +218,12 @@ export const base44 = {
     },
 
     async changePassword(current_password, new_password) {
-      return request("/auth/change-password", {
+      const result = await request("/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
       });
+      resetAuthExpired(); // a fresh session; the old one's requests may still 401
+      return result;
     },
 
     async forgotPassword(email) {
@@ -282,12 +300,13 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
+        const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
           credentials: "include",
           body: formData,
         });
-        if (!res.ok) throw await toApiError(res, "/integrations/file/upload");
+        if (!res.ok) throw await toApiError(res, "/integrations/file/upload", { generation });
         return res.json();
       },
 

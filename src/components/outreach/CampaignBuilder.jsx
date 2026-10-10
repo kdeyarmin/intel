@@ -50,9 +50,18 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
   });
   const { send, sending, progress } = useCampaignSender();
 
+  // Same set the Lead Lists page shows, plus the list a "Start campaign" link
+  // preselected if it's older than that, so the selected target has an option.
   const { data: leadLists = [] } = useQuery({
-    queryKey: ['leadLists', 'campaignBuilder'],
-    queryFn: () => base44.entities.LeadList.list('-created_date', 200),
+    queryKey: ['leadLists', 'campaignBuilder', String(initialLeadListId || '')],
+    queryFn: async () => {
+      const lists = await base44.entities.LeadList.list('-created_date', 500);
+      if (initialLeadListId && !lists.some((l) => String(l.id) === String(initialLeadListId))) {
+        const [linked] = await base44.entities.LeadList.filter({ id: Number(initialLeadListId) }, undefined, 1);
+        if (linked) return [linked, ...lists];
+      }
+      return lists;
+    },
   });
   const selectedList = leadLists.find(l => String(l.id) === String(campaign.lead_list_id));
   const { data: sample } = useSampleRecipient(campaign.lead_list_id);

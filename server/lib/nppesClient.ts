@@ -59,7 +59,13 @@ export async function lookupNpi(npi: string, options: Parameters<typeof requestN
   if (status >= 400 && status !== 404) {
     throw new NppesUnavailableError(body?.Errors?.[0]?.description || `The NPI Registry rejected the request (HTTP ${status}).`);
   }
-  const result = body?.result_count > 0 && Array.isArray(body.results) ? body.results[0] : null;
+  // Only a well-formed answer is cached: an error body or a garbled response
+  // isn't "not in the registry", and caching it would hide the NPI for a day.
+  if (body?.Errors?.length) throw new NppesUnavailableError(body.Errors[0]?.description || "The NPI Registry rejected the request.");
+  if (status !== 404 && (typeof body?.result_count !== "number" || (body.result_count > 0 && !Array.isArray(body.results)))) {
+    throw new NppesUnavailableError("The NPI Registry sent an unexpected response. Try again in a minute.");
+  }
+  const result = body?.result_count > 0 ? body.results[0] ?? null : null;
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
   cache.set(npi, { at: now, result });
   return result;

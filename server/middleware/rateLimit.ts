@@ -93,8 +93,24 @@ export function ipRateLimit(scope: string, max: number, windowMs: number) {
  * counting successes, so many people behind one address aren't throttled
  * while a password is being guessed from many addresses.
  */
-export function createFailureCounter(max: number, windowMs: number) {
+export function createFailureCounter(max: number, windowMs: number, maxKeys = 50_000) {
   const failures = new Map<string, Bucket>();
+  // Keep the map bounded without ever forgetting a lockout while anything else
+  // can go: expired entries first, then the oldest keys that aren't locked
+  // (spraying new keys only evicts other unlocked keys), and only then, if
+  // every entry is a lockout, the oldest lockouts.
+  const prune = (now: number) => {
+    for (const [k, b] of failures) if (b.resetAt <= now) failures.delete(k);
+    const target = Math.floor(maxKeys * 0.9);
+    for (const [k, b] of failures) {
+      if (failures.size <= target) return;
+      if (b.count < max) failures.delete(k);
+    }
+    for (const k of failures.keys()) {
+      if (failures.size <= target) return;
+      failures.delete(k);
+    }
+  };
   const live = (key: string, now: number) => {
     const b = failures.get(key);
     if (b && b.resetAt <= now) {
@@ -112,7 +128,7 @@ export function createFailureCounter(max: number, windowMs: number) {
     },
     fail(key: string) {
       const now = Date.now();
-      if (failures.size > 50_000) failures.clear();
+      if (failures.size >= maxKeys && !failures.has(key)) prune(now);
       const b = live(key, now);
       if (b) b.count += 1;
       else failures.set(key, { count: 1, resetAt: now + windowMs });

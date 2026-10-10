@@ -46,30 +46,42 @@ export async function handleValidateProviderNPI(payload: any) {
   const local = await withClient("10s", async (client) => {
     const [p, l, t] = await Promise.all([
       client.query("SELECT entity_type, first_name, last_name, organization_name, credential, status FROM providers WHERE npi = $1 LIMIT 1", [npi]),
-      client.query("SELECT address_1, city, state, zip, phone, location_type FROM provider_locations WHERE npi = $1 LIMIT 10", [npi]),
+      // The practice location if there is one (a provider can have many rows).
+      client.query(
+        "SELECT address_1, address_2, city, state, zip, phone, location_type FROM provider_locations WHERE npi = $1 ORDER BY (location_type = 'Practice') DESC NULLS LAST LIMIT 1",
+        [npi],
+      ),
       client.query("SELECT taxonomy_code FROM provider_taxonomies WHERE npi = $1 AND is_primary = true LIMIT 1", [npi]),
     ]);
-    const location = l.rows.find((r: any) => r.location_type === "Practice") || l.rows[0] || null;
+    const location = l.rows[0] || null;
     return { provider: p.rows[0] || null, location, primaryTaxonomyCode: t.rows[0]?.taxonomy_code || null };
   });
   const record = buildNpiValidationRecord(npi, result, payload?.checkDiscrepancies === false ? {} : local);
 
   // One stored record per NPI (the details live in the jsonb column, which the
-  // entity API spreads back onto the row).
+  // entity API spreads back onto the row). The update-or-insert runs under a
+  // per-NPI transaction lock so two concurrent checks can't both insert.
   const row = await withClient("10s", async (client) => {
     const values = [npi, record.status, JSON.stringify(record)];
-    const updated = await client.query(
-      `UPDATE provider_npi_validations SET validation_status = $2, validation_details = $3::jsonb, validated_at = now(), updated_date = now()
-        WHERE id = (SELECT id FROM provider_npi_validations WHERE npi = $1 ORDER BY id LIMIT 1) RETURNING *`,
-      values,
-    );
-    if (updated.rows[0]) return updated.rows[0];
-    const inserted = await client.query(
-      `INSERT INTO provider_npi_validations (npi, validation_status, validation_details, validated_at)
-       VALUES ($1, $2, $3::jsonb, now()) RETURNING *`,
-      values,
-    );
-    return inserted.rows[0];
+    await client.query("BEGIN");
+    try {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('provider_npi_validation:' || $1))", [npi]);
+      const updated = await client.query(
+        `UPDATE provider_npi_validations SET validation_status = $2, validation_details = $3::jsonb, validated_at = now(), updated_date = now()
+          WHERE id = (SELECT id FROM provider_npi_validations WHERE npi = $1 ORDER BY id LIMIT 1) RETURNING *`,
+        values,
+      );
+      const saved = updated.rows[0] ?? (await client.query(
+        `INSERT INTO provider_npi_validations (npi, validation_status, validation_details, validated_at)
+         VALUES ($1, $2, $3::jsonb, now()) RETURNING *`,
+        values,
+      )).rows[0];
+      await client.query("COMMIT");
+      return saved;
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw e;
+    }
   });
 
   return { success: true, validation: decorateRow("ProviderNPIValidation", row) };
@@ -97,12 +109,14 @@ const displayName = (p: any) =>
 
 async function saveEmailResult(providerId: number, r: Omit<VerifiedEmail, "npi" | "name">) {
   if (r.status === "unknown") return; // a DNS hiccup shouldn't overwrite a real result
+  // Only if the provider still has the address that was checked: an edit
+  // during the check would otherwise get the old address's verdict.
   await pool.query(
     `UPDATE providers SET email_validation_status = $2, email_validation_reason = $3, email_quality_score = $4,
             email_quality_confidence = $5, email_quality_reasons = $6::jsonb, email_quality_risk_flags = $7::jsonb,
             email_analyzed_at = now(), updated_date = now()
-      WHERE id = $1`,
-    [providerId, r.status, r.reasons[0] || null, r.score, r.confidence, JSON.stringify(r.reasons), JSON.stringify(r.riskFlags)],
+      WHERE id = $1 AND lower(email) = lower($8)`,
+    [providerId, r.status, r.reasons[0] || null, r.score, r.confidence, JSON.stringify(r.reasons), JSON.stringify(r.riskFlags), r.email],
   );
 }
 
