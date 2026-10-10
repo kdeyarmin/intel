@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  ALL_SERVICE_TYPES,
   cmsServiceTypes,
   cmsTopReferred,
   facilityTypes,
@@ -8,7 +9,7 @@ import {
   planChunks,
   zipLocationCounts,
 } from "../server/lib/rollups/core";
-import { dueJobs, jobByName, ROLLUP_JOBS, runRollupJob, startDueRollups, waitForRollups } from "../server/lib/rollups/runner";
+import { dueJobs, jobByName, ROLLUP_JOBS, runRollupJob, setDrainRetryMs, startDueRollups, waitForRollups } from "../server/lib/rollups/runner";
 import { AGGREGATE_DATASETS, clearCmsAnalyticsCache, handleGetCMSAnalytics } from "../server/functions/cmsAnalytics";
 import { FANOUT_WORKERS } from "../server/lib/maintenance";
 
@@ -54,11 +55,27 @@ describe("accumulators", () => {
       { npi: "1000000003", service_type: "", data_year: "2023", total_services: "1", total_unique_benes: "1", total_medicare_payment_amt: "1", average_medicare_payment_amt: null },
     ]);
     const results = await acc.results();
-    const r = results.find((x) => x.data_year === "2023")!;
+    const r = results.find((x) => x.data_year === "2023" && x.service_type === "Cardiology")!;
     // 1000 + 25.5 × 4; the unparseable payment adds nothing.
     expect(r).toEqual({ data_year: "2023", service_type: "Cardiology", provider_count: 2, total_services: 14, total_payments: 1102, total_beneficiaries: 8 });
-    expect(results).toHaveLength(2);
+    // Two service types per year plus one all-types row per year.
+    expect(results.filter((x) => x.service_type !== ALL_SERVICE_TYPES)).toHaveLength(2);
+    expect(results.filter((x) => x.service_type === ALL_SERVICE_TYPES).map((x) => x.data_year).sort()).toEqual(["2022", "2023"]);
     expect(acc.skipped()).toBe(2);
+  });
+
+  it("counts a provider once per year across service types", async () => {
+    const acc = cmsServiceTypes();
+    acc.add([
+      { npi: "1000000001", service_type: "Cardiology", data_year: "2023", total_services: "1", total_unique_benes: "1", total_medicare_payment_amt: "10", average_medicare_payment_amt: null },
+      { npi: "1000000001", service_type: "Imaging", data_year: "2023", total_services: "2", total_unique_benes: "1", total_medicare_payment_amt: "20", average_medicare_payment_amt: null },
+      { npi: "1000000002", service_type: "Imaging", data_year: "2023", total_services: "3", total_unique_benes: "1", total_medicare_payment_amt: "30", average_medicare_payment_amt: null },
+    ]);
+    const results = await acc.results();
+    const perType = results.filter((x) => x.service_type !== ALL_SERVICE_TYPES).reduce((n, x) => n + x.provider_count, 0);
+    const all = results.find((x) => x.service_type === ALL_SERVICE_TYPES)!;
+    expect(perType).toBe(3); // what summing the types would report
+    expect(all).toMatchObject({ provider_count: 2, total_services: 6, total_payments: 60 });
   });
 
   it("keeps the most-referred-to providers per year", async () => {
@@ -88,7 +105,10 @@ describe("accumulators", () => {
     acc.add([row("1000000002"), row("1000000003")]);
     await acc.flush!();
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy.mock.calls[1][0]).toEqual([["2023|Cardiology", 1000000002], ["2023|Cardiology", 1000000003]]);
+    expect(spy.mock.calls[1][0]).toEqual([
+      ["2023|Cardiology", 1000000002], ["2023|Cardiology", 1000000003],
+      [`2023|${ALL_SERVICE_TYPES}`, 1000000002], [`2023|${ALL_SERVICE_TYPES}`, 1000000003],
+    ]);
     expect((await acc.results())[0]).toMatchObject({ provider_count: 3, total_services: 4 });
 
     const top = cmsTopReferred(1, memoryStaging());
@@ -181,9 +201,56 @@ describe("startDueRollups", () => {
     expect(second.started).toEqual([]);
     expect(second.running).toEqual(ROLLUP_JOBS.map((j) => j.name));
     await waitForRollups();
-    // Sequential: each job's lock is released before the next one's is taken.
+    // One drain lock around the queue; inside it each job's lock is released
+    // before the next one's is taken.
     const locks = statements.filter((s) => /advisory_(un)?lock/.test(s.sql)).map((s) => (s.sql.includes("unlock") ? "unlock" : "lock"));
-    expect(locks).toEqual(ROLLUP_JOBS.flatMap(() => ["lock", "unlock"]));
+    expect(locks).toEqual(["lock", ...ROLLUP_JOBS.flatMap(() => ["lock", "unlock"]), "unlock"]);
+  });
+
+  it("waits for another instance's drain, then skips jobs that ran meanwhile", async () => {
+    setDrainRetryMs(5);
+    let busy = true;
+    const ran: string[] = [];
+    const client = {
+      async query(sql: string, params: any[] = []) {
+        if (sql.startsWith("SELECT pg_try_advisory_lock")) {
+          // The first call is the drain lock: busy once, then free.
+          if (busy) { busy = false; return { rows: [{ ok: false }] }; }
+          return { rows: [{ ok: true }] };
+        }
+        if (sql.startsWith("SELECT job, status, started_at, last_success_at FROM rollup_runs WHERE job")) {
+          // The other instance finished everything but the first job meanwhile.
+          return { rows: params[0] === ROLLUP_JOBS[0].name ? [] : [{ job: params[0], status: "success", last_success_at: new Date() }] };
+        }
+        if (sql.startsWith("SELECT min(id)")) { ran.push("scan"); return { rows: [{ lo: null, hi: null }] }; }
+        return { rows: [] };
+      },
+      release() {},
+    };
+    const pool = { connect: async () => client, query: client.query };
+    await startDueRollups(pool, { force: false });
+    await waitForRollups();
+    expect(ran).toHaveLength(1);
+    setDrainRetryMs(30_000);
+  });
+
+  it("keeps draining when a connection can't be had", async () => {
+    let calls = 0;
+    const client = { async query(sql: string) { return sql.startsWith("SELECT pg_try") ? { rows: [{ ok: true }] } : { rows: [] }; }, release() {} };
+    const pool = {
+      connect: async () => { calls += 1; if (calls === 2) throw new Error("pool exhausted"); return client; },
+      query: client.query,
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await runRollupJob({ connect: async () => { throw new Error("pool exhausted"); } }, ROLLUP_JOBS[0], { log() {}, warn() {} });
+    expect(r).toMatchObject({ status: "failed", error: expect.stringMatching(/pool exhausted/) });
+    const out = await startDueRollups(pool);
+    await waitForRollups();
+    expect(out.started).toHaveLength(ROLLUP_JOBS.length);
+    // Every job left the queue, so the next tick can queue them again.
+    expect((await startDueRollups(pool)).started).toHaveLength(ROLLUP_JOBS.length);
+    await waitForRollups();
+    warn.mockRestore();
   });
 
   it("is part of the maintenance fan-out", () => {
@@ -204,7 +271,7 @@ describe("getCMSAnalytics from rollups", () => {
         { facility_type: AGGREGATE_DATASETS[0], record_count: "9", state_count: 50, latest_year: "2024" },
       ]],
       [/SELECT service_type, provider_count/, [{ service_type: "Cardiology", provider_count: 2, total_services: 14, total_payments: 1102, total_beneficiaries: 8 }]],
-      [/SELECT count\(\*\)::int AS types/, [{ types: 1, providers: "2", payments: 1102, services: 14 }]],
+      [/SELECT count\(\*\) FILTER \(WHERE service_type <> \$2\)::int AS types/, [{ types: 1, providers: "2", payments: 1102, services: 14 }]],
     ];
     const queries: string[] = [];
     const pool = {
@@ -241,5 +308,13 @@ describe("getCMSAnalytics from rollups", () => {
     version = "cms_service_types:success:2026-10-11";
     await handleGetCMSAnalytics(pool);
     expect(built).toBe(2);
+  });
+});
+
+describe("refreshRollups", () => {
+  it("refuses unknown job names instead of running every job", async () => {
+    const { handleRefreshRollups } = await import("../server/functions/rollups");
+    await expect(handleRefreshRollups({ jobs: ["typo"] })).rejects.toMatchObject({ status: 400, message: expect.stringMatching(/typo/) });
+    await expect(handleRefreshRollups({ jobs: [] })).rejects.toMatchObject({ status: 400 });
   });
 });

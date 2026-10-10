@@ -123,6 +123,13 @@ interface PsuRow {
  * beneficiaries and payments (the payment total, or average × services when
  * only the average was imported).
  */
+/**
+ * The service_type of each year's all-types row: its provider_count is the
+ * number of distinct providers that year (a provider billing several service
+ * types counts once), which summing the per-type rows would overstate.
+ */
+export const ALL_SERVICE_TYPES = "(all)";
+
 export function cmsServiceTypes(staging: Staging = memoryStaging()): Accumulator<PsuRow, { data_year: string; service_type: string; provider_count: number; total_services: number; total_payments: number; total_beneficiaries: number }> {
   const m = new Map<string, { year: string; type: string; services: number; payments: number; benes: number }>();
   // This chunk's (group, provider) pairs; the distinct count is kept in staging.
@@ -145,9 +152,11 @@ export function cmsServiceTypes(staging: Staging = memoryStaging()): Accumulator
         }
         const npi = npiKey(r.npi);
         if (npi != null) {
-          let set = pairs.get(key);
-          if (!set) pairs.set(key, (set = new Set()));
-          set.add(npi);
+          for (const k of [key, `${year}|${ALL_SERVICE_TYPES}`]) {
+            let set = pairs.get(k);
+            if (!set) pairs.set(k, (set = new Set()));
+            set.add(npi);
+          }
         }
         const services = parseCount(r.total_services) ?? 0;
         const total = parseMoney(r.total_medicare_payment_amt);
@@ -168,14 +177,26 @@ export function cmsServiceTypes(staging: Staging = memoryStaging()): Accumulator
     async results() {
       await this.flush!();
       const providers = await staging.distinctCounts();
-      return [...m].map(([key, e]) => ({
-        data_year: e.year,
-        service_type: e.type.slice(0, 255),
+      const row = (year: string, type: string, key: string, e: { services: number; payments: number; benes: number }) => ({
+        data_year: year,
+        service_type: type.slice(0, 255),
         provider_count: providers.get(key) ?? 0,
         total_services: Math.round(e.services),
         total_payments: Math.round(e.payments * 100) / 100,
         total_beneficiaries: Math.round(e.benes),
-      }));
+      });
+      const years = new Map<string, { services: number; payments: number; benes: number }>();
+      for (const e of m.values()) {
+        const t = years.get(e.year) ?? { services: 0, payments: 0, benes: 0 };
+        t.services += e.services;
+        t.payments += e.payments;
+        t.benes += e.benes;
+        years.set(e.year, t);
+      }
+      return [
+        ...[...m].map(([key, e]) => row(e.year, e.type, key, e)),
+        ...[...years].map(([year, t]) => row(year, ALL_SERVICE_TYPES, `${year}|${ALL_SERVICE_TYPES}`, t)),
+      ];
     },
     skipped: () => skipped,
   };
