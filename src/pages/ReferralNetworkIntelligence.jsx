@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { US_STATES } from '@/lib/usStates';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -147,7 +148,7 @@ export default function ReferralNetworkIntelligence() {
             state={stateFilter} onStateChange={setStateFilter}
             specialty={specialty} onSpecialtyChange={setSpecialty}
             minVolume={minVolume} onMinVolumeChange={setMinVolume}
-            states={availableStates} specialties={availableSpecialties}
+            states={availableStates.length ? availableStates : US_STATES} specialties={availableSpecialties}
             onReset={resetFilters} totalNodes={allNodes.length} filteredNodes={filteredNodes.length}
           />
 

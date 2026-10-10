@@ -600,7 +600,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleAnalyzeReferralPathways(req.body));
       }
       case "matchProvidersToLocations": {
-        const { handleMatchProvidersToLocations } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`providerMatching:${req.user?.id ?? "anon"}`, 3, 60_000)) {
+          return res.status(429).json({ message: "Matching is already running often. Try again in a minute." });
+        }
+        const { handleMatchProvidersToLocations } = await import("../functions/providerMatching");
         return res.json(await handleMatchProvidersToLocations(req.body));
       }
       case "generateScheduledReport": {

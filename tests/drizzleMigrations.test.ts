@@ -290,3 +290,30 @@ describe.each([
     }
   });
 });
+
+describe("migration 0006_provider_facility_matches", () => {
+  const sql = readMigration("0006_provider_facility_matches.sql");
+  const schema = readSchema();
+  const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+
+  it("is registered after 0005", () => {
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0006_provider_facility_matches");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0005_email_verification");
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("only touches provider_location_matches, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) {
+      expect(stmt).toContain('"provider_location_matches"');
+      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS|ALTER TABLE "\w+" ALTER COLUMN "status" SET DEFAULT|UPDATE |CREATE INDEX IF NOT EXISTS)/);
+    }
+  });
+
+  it("declares every added column in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+});

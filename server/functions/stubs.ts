@@ -559,10 +559,6 @@ export async function handleAnalyzeReferralPathways(_payload: any) {
   return notConfigured("Referral pathway analysis isn't available yet.");
 }
 
-export async function handleMatchProvidersToLocations(_payload: any) {
-  return notConfigured("Automatic provider-to-facility matching isn't available yet.");
-}
-
 export async function handlePredictImportFormat(_payload: any) {
   return notConfigured("Import format prediction isn't available yet.");
 }

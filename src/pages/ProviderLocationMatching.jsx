@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { invokeOrThrow } from '@/api/functionResult';
+import { toast } from 'sonner';
+import { US_STATES } from '@/lib/usStates';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +10,24 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Search, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Sparkles, Search, Loader2, CheckCircle, XCircle, Clock, Building2 } from 'lucide-react';
 import MatchCard from '../components/matching/MatchCard';
 import BulkActionsBar from '../components/matching/BulkActionsBar';
 import FeedbackStatsCard from '../components/matching/FeedbackStatsCard';
 
+const FACILITY_TYPES = [
+  { key: 'hospital', label: 'Hospitals' },
+  { key: 'snf', label: 'Skilled nursing' },
+  { key: 'home_health', label: 'Home health' },
+  { key: 'hospice', label: 'Hospice' },
+  { key: 'irf', label: 'Inpatient rehab' },
+  { key: 'ltch', label: 'Long-term care' },
+  { key: 'community_health', label: 'Community health' },
+];
+
 export default function ProviderLocationMatching() {
+  const [matchState, setMatchState] = useState('');
+  const [facilityTypes, setFacilityTypes] = useState(['hospital', 'snf', 'home_health', 'hospice']);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('confidence');
@@ -27,11 +41,20 @@ export default function ProviderLocationMatching() {
 
   const runMatchingMutation = useMutation({
     // Failures (including "not available yet") surface via the global mutation toast.
-    mutationFn: () => invokeOrThrow('matchProvidersToLocations', {}),
-    onSuccess: () => {
+    mutationFn: () => invokeOrThrow('matchProvidersToLocations', { state: matchState, facility_types: facilityTypes }),
+    onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
+      toast.success(
+        `Checked ${r.providers_checked.toLocaleString()} providers in ${r.state} against ${r.facilities_considered.toLocaleString()} facilities: `
+        + `${r.suggestions_created.toLocaleString()} suggestions for ${r.matched.toLocaleString()} providers.`
+        + (r.capped ? ' (Capped at 500 providers per run.)' : ''),
+      );
     },
   });
+
+  const toggleFacilityType = (key) => {
+    setFacilityTypes(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]));
+  };
 
   const handleUpdateStatus = async (id, status, notes) => {
     try {
@@ -40,7 +63,7 @@ export default function ProviderLocationMatching() {
       await base44.entities.ProviderLocationMatch.update(id, updateData);
       queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
     } catch (err) {
-      console.error('Failed to update match status:', err);
+      toast.error(`Couldn't update the match: ${err.message}`);
     }
   };
 
@@ -53,10 +76,6 @@ export default function ProviderLocationMatching() {
     });
   }, []);
 
-  const _handleSelectAll = useCallback(() => {
-    setSelectedIds(new Set(filtered.map(m => m.id)));
-  }, [filtered]);
-
   const handleBulkAction = async (status) => {
     const ids = [...selectedIds];
     try {
@@ -66,7 +85,8 @@ export default function ProviderLocationMatching() {
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
     } catch (err) {
-      console.error('Bulk action failed:', err);
+      toast.error(`Bulk update failed: ${err.message}`);
+      queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
     }
   };
 
@@ -111,22 +131,55 @@ export default function ProviderLocationMatching() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Provider-Location Matching</h1>
-          <p className="text-slate-400 mt-1">AI-powered matching with feedback learning &amp; bulk controls</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Provider-Facility Matching</h1>
+          <p className="text-slate-400 mt-1">
+            Suggests which Medicare facilities each provider likely works with, from address, location, specialty and referral ties. Review each suggestion.
+          </p>
         </div>
-        <Button
-          onClick={() => runMatchingMutation.mutate()}
-          disabled={runMatchingMutation.isPending}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          {runMatchingMutation.isPending ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4 mr-2" />
-          )}
-          {runMatchingMutation.isPending ? 'Matching...' : 'Run AI Matching'}
-        </Button>
       </div>
+
+      <Card className="bg-slate-800/40 mb-6">
+        <CardContent className="p-4 flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="space-y-1.5">
+            <label htmlFor="match-state" className="text-xs font-medium text-slate-400">State</label>
+            <Select value={matchState} onValueChange={setMatchState}>
+              <SelectTrigger id="match-state" className="w-32" aria-label="State to match in">
+                <SelectValue placeholder="Choose…" />
+              </SelectTrigger>
+              <SelectContent>
+                {US_STATES.map(st => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <fieldset className="space-y-1.5 flex-1">
+            <legend className="text-xs font-medium text-slate-400 mb-1.5">Facility types</legend>
+            <div className="flex flex-wrap gap-2">
+              {FACILITY_TYPES.map(t => {
+                const on = facilityTypes.includes(t.key);
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleFacilityType(t.key)}
+                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${on ? 'border-blue-500/50 bg-blue-900/30 text-blue-300' : 'border-slate-600 text-slate-400 hover:border-slate-500'}`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+          <Button
+            onClick={() => runMatchingMutation.mutate()}
+            disabled={runMatchingMutation.isPending || !matchState || facilityTypes.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 shrink-0"
+          >
+            {runMatchingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Building2 className="w-4 h-4 mr-2" />}
+            {runMatchingMutation.isPending ? 'Matching…' : 'Find matches'}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -238,7 +291,7 @@ export default function ProviderLocationMatching() {
           <CardContent className="py-16 text-center">
             <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
             <p className="text-slate-400 font-medium">No matches found</p>
-            <p className="text-sm text-slate-500 mt-1">Click "Run AI Matching" to generate provider-location suggestions</p>
+            <p className="text-sm text-slate-500 mt-1">Choose a state and click &quot;Find matches&quot; to get suggestions.</p>
           </CardContent>
         </Card>
       ) : (

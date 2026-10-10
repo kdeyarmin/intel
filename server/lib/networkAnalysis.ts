@@ -203,7 +203,7 @@ export function ruleRecommendations(a: NetworkAnalysis): NetworkRecommendations 
 
   const influence = m.total_relationships === 0
     ? "No referral relationships were found in this scope yet. Import the CMS shared-patient (referral) data to analyse the network."
-    : `${fmt(m.total_providers)} providers and ${fmt(m.total_relationships)} referral relationships in scope; ${fmt(m.reciprocal_relationships)} pairs refer to each other. `
+    : `${fmt(m.total_providers)} providers and ${fmt(m.total_relationships)} referral relationships in scope; ${fmt(m.reciprocal_relationships)} ${m.reciprocal_relationships === 1 ? "pair refers" : "pairs refer"} to each other. `
       + (top[0] ? `${top[0].name} is the most influential provider here; relationships with the top influencers reach the most partners.` : "");
 
   return { expansion_opportunities: expansion, partnership_recommendations: partnership, gap_filling_strategies: gapStrategies, influence_strategy: influence };

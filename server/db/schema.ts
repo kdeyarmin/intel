@@ -139,13 +139,27 @@ export const providerLocationMatches = pgTable("provider_location_matches", {
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }),
   location_id: integer("location_id"),
+  // match_type 'facility': a medicare_facilities row (location_id stays null,
+  // since it means a provider_locations row elsewhere in the app).
+  facility_id: integer("facility_id"),
   confidence_score: doublePrecision("confidence_score"),
   match_type: varchar("match_type", { length: 50 }),
-  status: varchar("status", { length: 50 }).default("pending"),
+  status: varchar("status", { length: 50 }).default("suggested"),
+  provider_name: text("provider_name"),
+  location_display: text("location_display"),
+  match_reasons: jsonb("match_reasons"),
+  address_match_score: doublePrecision("address_match_score"),
+  proximity_score: doublePrecision("proximity_score"),
+  specialization_score: doublePrecision("specialization_score"),
+  referral_score: doublePrecision("referral_score"),
+  name_match_score: doublePrecision("name_match_score"),
+  override_notes: text("override_notes"),
   matched_at: timestamp("matched_at"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
-});
+}, (table) => [
+  index("provider_location_matches_npi_idx").on(table.npi),
+]);
 
 export const importBatches = pgTable("import_batches", {
   id: serial("id").primaryKey(),
