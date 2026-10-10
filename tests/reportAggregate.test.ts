@@ -131,4 +131,26 @@ describe("partitionRecipients", () => {
     expect(allowed).toEqual(["admin@example.com", "boss@caremetric.ai"]);
     expect(blocked).toEqual(["stranger@gmail.com"]);
   });
+
+  it("returns allowed addresses beyond the cap instead of dropping them", () => {
+    const many = Array.from({ length: 27 }, (_, i) => `u${i}@caremetric.ai`);
+    const { allowed, overflow } = partitionRecipients(many, new Set(), ["caremetric.ai"]);
+    expect(allowed).toHaveLength(25);
+    expect(overflow).toEqual(["u25@caremetric.ai", "u26@caremetric.ai"]);
+  });
+});
+
+describe("report grouping", () => {
+  it("keeps long values that share a 30-character prefix as separate groups, in both aggregators", () => {
+    const a = "Established patient office or other outpatient visit, 30 minutes";
+    const b = "Established patient office or other outpatient visit, 20 minutes";
+    const rows = [
+      { hcpcs_description: a, total_services: 5 },
+      { hcpcs_description: b, total_services: 7 },
+    ];
+    const config = { dataset: "cms_utilization", group_by: "hcpcs_description", metrics: ["total_services"] } as any;
+    const ds = REPORT_DATASETS.cms_utilization;
+    expect(aggregateReport(rows, config, ds).map((r) => r.group)).toEqual([b, a]);
+    expect(aggregateData(rows, config).map((r: any) => r.group)).toEqual([b, a]);
+  });
 });
