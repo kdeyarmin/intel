@@ -64,7 +64,8 @@ export function buildLocationSearchPlan(input: LocationSearchInput): LocationPla
 
   const digits = q.replace(/[\s-]/g, "");
   if (/^\d{10}$/.test(digits) && !/^\d{5}-?\d{4}$/.test(q)) {
-    return finish("npi", `NPI ${digits}`, `npi = ${p(digits)}`);
+    // The state filter applies here too (the page sends it with every search).
+    return finish("npi", `NPI ${digits}`, `npi = ${p(digits)}${stateFilter ? ` AND state = ${p(stateFilter)}` : ""}`);
   }
   const zip = q.match(/^(\d{5})(?:-?(\d{4}))?$/);
   if (zip) {

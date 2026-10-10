@@ -397,8 +397,12 @@ export default function Providers() {
 
   // Filtering
   const filteredProviders = useMemo(() => {
+    // While the server is searching it has already matched the text (names in
+    // any order, "Smith, John", NPIs) and the state, across every location;
+    // re-checking either here would drop valid matches.
+    const serverSearch = debouncedSearch.length >= 2;
     const basic = providers.filter(p => {
-      if (searchTerm) {
+      if (searchTerm && !serverSearch) {
         const q = searchTerm.toLowerCase();
         const locs = locationByNpi[p.npi] || [];
         const locMatch = locs.some(l =>
@@ -427,7 +431,7 @@ export default function Providers() {
         if (filters.emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
         if (filters.emailFilter === 'not_searched' && p.email_searched_at) return false;
       }
-      if (filters.stateFilter !== 'all') {
+      if (filters.stateFilter !== 'all' && !searchState) {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
@@ -443,7 +447,7 @@ export default function Providers() {
 
     // Apply text match filters
     return applyTextFilters(dateFiltered, textFilters);
-  }, [providers, searchTerm, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
+  }, [providers, searchTerm, debouncedSearch, searchState, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
 
   // Sorting
   const sortedProviders = useMemo(() => {

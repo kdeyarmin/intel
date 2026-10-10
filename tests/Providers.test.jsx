@@ -229,3 +229,13 @@ describe('Providers page – row selection labels', () => {
     expect(screen.getByRole('checkbox', { name: 'Select NPI 5555555555' })).toBeInTheDocument();
   });
 });
+
+describe('Providers page – server search results', () => {
+  it("keeps the server's matches instead of re-filtering them in the browser", () => {
+    // "John Smith" matches no single name column, and the provider's PA
+    // location isn't among the capped locations loaded for the page.
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [] });
+    renderProviders('/Providers?q=john%20smith&state=PA');
+    expect(screen.getByText('Smith, John')).toBeInTheDocument();
+  });
+});
