@@ -402,3 +402,19 @@ describe("migration 0009_pg_trgm", () => {
     expect(sql).not.toMatch(/CREATE (UNIQUE )?INDEX/i);
   });
 });
+
+describe("migration 0010_census_geography", () => {
+  const sql = readMigration("0010_census_geography.sql");
+  const schema = readSchema();
+
+  it("only creates tables and indexes, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) expect(stmt).toMatch(/^CREATE (TABLE|INDEX) IF NOT EXISTS "geo_/);
+  });
+
+  it("declares every geo table in the Drizzle schema", () => {
+    for (const [, table] of sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+    }
+  });
+});

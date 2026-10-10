@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 29 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(29);
+  it("contains exactly the 31 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(31);
   });
 
   it("all listed functions are individually verified", () => {
@@ -79,7 +79,7 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getIntelCandidateCount", "enrichmentJobStatus", "intelJobStatus",
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
-      "searchProviders", "searchLocations", "calculateOutreachScore", "analyzeReferralPathways",
+      "searchProviders", "searchLocations", "getGeoCounties", "getGeoStatus", "calculateOutreachScore", "analyzeReferralPathways",
       "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
       "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
     ];

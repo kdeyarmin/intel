@@ -21,7 +21,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db/migrate.ts",
     "db:status": "tsx scripts/db/migration-status.ts",
-    "db:seed-demo": "tsx scripts/dev/seed-demo.ts"
+    "db:seed-demo": "tsx scripts/dev/seed-demo.ts",
+    "geo:load": "tsx scripts/census/load-census-geo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

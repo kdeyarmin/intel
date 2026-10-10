@@ -871,6 +871,21 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleSearchProviders(req.body));
       }
 
+      case "getGeoStatus": {
+        const { handleGetGeoStatus } = await import("../functions/geography");
+        return res.json(await handleGetGeoStatus());
+      }
+
+      case "getGeoCounties": {
+        const { handleGetGeoCounties } = await import("../functions/geography");
+        return res.json(await handleGetGeoCounties(req.body));
+      }
+
+      case "loadCensusGeography": {
+        const { handleLoadCensusGeography } = await import("../functions/geography");
+        return res.json(await handleLoadCensusGeography(req.body));
+      }
+
       case "searchLocations": {
         const { handleSearchLocations } = await import("../functions/search");
         return res.json(await handleSearchLocations(req.body));
