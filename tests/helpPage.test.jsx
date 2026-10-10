@@ -74,3 +74,13 @@ describe('Help page', () => {
     expect(within(section).getByRole('link', { name: 'Go to Admin Settings › Scoring rules' })).toHaveAttribute('href', '/ScoringRules');
   });
 });
+
+describe('topic text', () => {
+  it('renders "• item" lines as a list', () => {
+    renderHelp('user');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search help topics' }), { target: { value: 'Summarize Franklin' } });
+    const items = within(screen.getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(4);
+    expect(items[1]).toHaveTextContent('"Summarize Franklin County, OH."');
+  });
+});

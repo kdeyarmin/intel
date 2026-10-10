@@ -69,7 +69,23 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
 
 - **Dark theme only:** `text-slate-300/400`, `bg-slate-800/900`; accents
   `bg-*-900/30 text-*-400 border-*-500/30`. Page wrappers:
-  `p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto`.
+  `p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto`. For contrast, text is slate-400
+  or lighter (never slate-500) and accent text is -400; white text needs a
+  -700 fill on cyan/teal/emerald/green (-600 is fine for blue/violet/red), and
+  a coloured `Button` fill needs `text-white` (the default text is dark).
+- **Accessibility:** every control has a name: `aria-label`, or a `<Label
+  htmlFor>` plus `aria-labelledby` on the control (jsx-a11y doesn't count
+  `htmlFor`). Icon-only buttons get `aria-label` and `aria-hidden` icons.
+  Clickable things are `<button>`s or `<Link>`s (`Button asChild` around a
+  Link, never a Link around a Button). jsx-a11y runs in lint, and
+  `tests/a11yStatic.test.ts` covers what it can't see (Select triggers, native
+  selects, `Progress`, `size="icon"` buttons); `tests/a11y.test.jsx` runs axe.
+- **Help:** `GUIDE_SECTIONS` in `src/pages/Help.jsx` is the user guide; keep it
+  true when a feature changes. Each topic names its `page` (Help links there
+  for people who may open it). After editing, commit, run
+  `SOURCE_COMMIT=$(git rev-parse HEAD) node scripts/generate-help-inventory.mjs`,
+  commit the regenerated `artifacts/help/` file and update the counts in
+  `tests/helpInventory.test.ts`.
 - **Function authorization is default-deny:** `server/routes/functions.ts` keeps
   a `PUBLIC_FUNCTIONS` allowlist; any function not on it is admin-only. Adding a
   function is an explicit security decision — only list it as public if it is

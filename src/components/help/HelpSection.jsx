@@ -7,6 +7,12 @@ import { createPageUrl } from '@/utils';
 import { useOptionalAuth } from '@/lib/AuthContext';
 import { canAccessPage, getPageLabel } from '@/components/layout/navConfig';
 
+// Guide text writes list items as "• item" lines (they also read well in the
+// PDF); turn them into Markdown list items so they render as a list.
+function toMarkdown(text) {
+  return text.replace(/^• /gm, '- ');
+}
+
 function highlightText(text, term) {
   if (!term) return text;
   const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -55,7 +61,7 @@ export default function HelpSection({ section, topics = section.content, expande
                 [&_li]:text-slate-400
                 [&_p]:my-1.5
               ">
-                <ReactMarkdown>{searchTerm ? highlightText(item.text, searchTerm) : item.text}</ReactMarkdown>
+                <ReactMarkdown>{toMarkdown(searchTerm ? highlightText(item.text, searchTerm) : item.text)}</ReactMarkdown>
               </div>
               {item.page && canAccessPage(item.page, role) && (
                 <Link
