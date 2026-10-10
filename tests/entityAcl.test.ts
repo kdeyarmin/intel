@@ -6,7 +6,7 @@ import { USER_WRITABLE_ENTITIES } from "../server/routes/entities";
 
 describe("entity ACL", () => {
   it("keeps campaigns admin-only to change, like the Campaigns page and sending", () => {
-    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignSequenceStep", "CampaignTask"]) {
+    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignSequenceStep", "CampaignTask", "CampaignTemplate"]) {
       expect(USER_WRITABLE_ENTITIES.has(entity), entity).toBe(false);
     }
   });
