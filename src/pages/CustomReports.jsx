@@ -290,8 +290,8 @@ export default function CustomReports() {
               onPreview={setPreviewReport}
               runningId={runningScheduleId}
             />
-            <ScheduledReportPreviewDialog report={previewReport} onClose={() => setPreviewReport(null)} />
           )}
+          <ScheduledReportPreviewDialog report={previewReport} onClose={() => setPreviewReport(null)} />
         </TabsContent>
 
         {/* TEMPLATES TAB */}
