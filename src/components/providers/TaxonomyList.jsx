@@ -10,7 +10,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Stethoscope className="w-4 h-4 text-teal-600" />
+          <Stethoscope className="w-4 h-4 text-teal-400" />
           Specialties & Taxonomies
           <Badge variant="outline" className="ml-auto text-xs">{taxonomies.length}</Badge>
         </CardTitle>

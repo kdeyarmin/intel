@@ -24,7 +24,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
     setSaving(false);
   };
 
-  const confidenceColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
+  const confidenceColor = match.confidence_score >= 75 ? 'text-green-400' : match.confidence_score >= 50 ? 'text-yellow-400' : 'text-red-400';
 
   return (
     <Card className={`border shadow-sm transition-colors ${selected ? 'bg-blue-900/15 border-blue-500/30' : 'bg-slate-800/40'}`}>
@@ -37,7 +37,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
                 aria-label={`Select match for ${match.provider_name || match.npi}`}
                 checked={!!selected}
                 onChange={() => onToggleSelect(match.id)}
-                className="mt-1.5 h-4 w-4 rounded border-slate-600/50 text-blue-600 cursor-pointer"
+                className="mt-1.5 h-4 w-4 rounded border-slate-600/50 text-blue-400 cursor-pointer"
               />
             )}
           <div className="flex-1 min-w-0">
@@ -55,12 +55,12 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {match.status !== 'approved' && (
-              <Button size="sm" variant="ghost" className="text-green-600 hover:bg-green-900/20" onClick={() => handleAction('approved')} disabled={saving} aria-label="Approve match">
+              <Button size="sm" variant="ghost" className="text-green-400 hover:bg-green-900/20" onClick={() => handleAction('approved')} disabled={saving} aria-label="Approve match">
                 <Check className="w-4 h-4" aria-hidden="true" />
               </Button>
             )}
             {match.status !== 'rejected' && (
-              <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-900/20" onClick={() => handleAction('rejected')} disabled={saving} aria-label="Reject match">
+              <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-900/20" onClick={() => handleAction('rejected')} disabled={saving} aria-label="Reject match">
                 <X className="w-4 h-4" aria-hidden="true" />
               </Button>
             )}
@@ -114,7 +114,7 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
                 rows={2}
                 className="text-sm"
               />
-              <Button size="sm" className="mt-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleAction('override')} disabled={saving || !notes.trim()}>
+              <Button size="sm" className="text-white mt-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleAction('override')} disabled={saving || !notes.trim()}>
                 Save Override
               </Button>
             </div>

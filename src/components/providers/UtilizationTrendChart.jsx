@@ -22,7 +22,7 @@ export default function UtilizationTrendChart({ utilizations = [] }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-blue-600" />
+          <TrendingUp className="w-4 h-4 text-blue-400" />
           Utilization Trends
         </CardTitle>
       </CardHeader>

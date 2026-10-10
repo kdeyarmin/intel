@@ -135,7 +135,7 @@ Be very specific about locations, specialties, and organizational types.`,
             AI Strategic Partner Discovery
           </CardTitle>
           <Button size="sm" onClick={findPartners} disabled={loading}
-            className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700">
+            className="text-white h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700">
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             {loading ? 'Finding Partners...' : 'Find Partners'}
           </Button>

@@ -207,6 +207,8 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                             variant="ghost" size="sm"
                             className="h-5 w-5 p-0 text-slate-400 hover:text-cyan-400"
                             onClick={() => setInspectedRow(inspectedRow === rowKey ? null : rowKey)}
+                            aria-label={inspectedRow === rowKey ? 'Hide row details' : 'Show row details'}
+                            aria-expanded={inspectedRow === rowKey}
                           >
                             <Eye className="w-3 h-3" />
                           </Button>

@@ -289,7 +289,7 @@ export default function SingleProviderPathway() {
               <div className="space-y-2">
                 {selectedAnalysis.recommendations?.map((rec, idx) => (
                   <div key={idx} className="flex items-start gap-3 p-3 bg-gradient-to-r from-teal-500/15 to-blue-500/15 rounded-lg">
-                    <ArrowRight className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <ArrowRight className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-slate-300">{rec}</p>
                   </div>
                 ))}

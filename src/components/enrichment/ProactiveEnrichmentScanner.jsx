@@ -139,7 +139,7 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
         )}
 
         <Button onClick={handleScan} disabled={running || enabledPoints.size === 0}
-          className="w-full bg-violet-600 hover:bg-violet-700 gap-2">
+          className="text-white w-full bg-violet-600 hover:bg-violet-700 gap-2">
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
           {running ? 'Scanning...' : `Scan ${batchSize} Providers`}
         </Button>

@@ -93,7 +93,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                            <span>Progress</span>
                            <span>{progressPct}%</span>
                          </div>
-                         <Progress value={progressPct} className="h-1.5 bg-slate-700 [&>div]:bg-teal-500" />
+                         <Progress value={progressPct} className="h-1.5 bg-slate-700 [&>div]:bg-teal-500" aria-label="Items processed" />
                       </div>
                     </div>
                   </div>

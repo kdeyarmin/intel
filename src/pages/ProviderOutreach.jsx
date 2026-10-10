@@ -161,7 +161,7 @@ export default function ProviderOutreach() {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold text-sm text-slate-200">{campaign.name}</h3>
+                          <h2 className="font-semibold text-sm text-slate-200">{campaign.name}</h2>
                           <p className="text-xs text-slate-400 mt-1">{campaign.description}</p>
                         </div>
                         <Badge className={getStatusColor(campaign.status)}>

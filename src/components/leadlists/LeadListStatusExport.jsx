@@ -49,7 +49,7 @@ export default function LeadListStatusExport({ leads, listName }) {
   return (
     <div className="flex items-center gap-2">
       <Select value={statusFilter} onValueChange={setStatusFilter}>
-        <SelectTrigger className="w-36 h-8 text-xs">
+        <SelectTrigger aria-label="Filter by status" className="w-36 h-8 text-xs">
           <SelectValue placeholder="Filter status" />
         </SelectTrigger>
         <SelectContent>

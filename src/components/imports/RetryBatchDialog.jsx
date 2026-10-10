@@ -157,11 +157,11 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           {/* Retry mode tabs */}
           <Tabs value={retryMode} onValueChange={setRetryMode}>
             <TabsList className="grid grid-cols-5 h-8 bg-slate-800/80 border border-slate-700/50">
-              <TabsTrigger value="full" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Full</TabsTrigger>
-              <TabsTrigger value="row_range" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Row Range</TabsTrigger>
-              <TabsTrigger value="criteria" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Criteria</TabsTrigger>
-              <TabsTrigger value="failed_only" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Failed Only</TabsTrigger>
-              <TabsTrigger value="resume" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white" disabled={!batch.imported_rows}>Resume</TabsTrigger>
+              <TabsTrigger value="full" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Full</TabsTrigger>
+              <TabsTrigger value="row_range" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Row Range</TabsTrigger>
+              <TabsTrigger value="criteria" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Criteria</TabsTrigger>
+              <TabsTrigger value="failed_only" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Failed Only</TabsTrigger>
+              <TabsTrigger value="resume" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white" disabled={!batch.imported_rows}>Resume</TabsTrigger>
             </TabsList>
 
             <TabsContent value="full" className="mt-3">
@@ -308,7 +308,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-          <Button onClick={handleRetry} disabled={isRetrying || retryLimitReached} className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50">
+          <Button onClick={handleRetry} disabled={isRetrying || retryLimitReached} className="bg-cyan-700 hover:bg-cyan-800 text-white disabled:opacity-50">
             {isRetrying ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
             {retryLimitReached ? 'Retry Limit Reached' : isRetrying ? 'Starting...' : retryMode === 'resume' ? 'Resume Import' : `Start Retry (${currentRetryCount + 1}/${MAX_RETRIES})`}
           </Button>

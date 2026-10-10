@@ -128,7 +128,7 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-slate-200">{label}</span>
-                      <Badge className={`text-[10px] border ${statusColor[batch.status] || 'bg-slate-700 text-slate-400'}`}>
+                      <Badge className={`text-[10px] border ${statusColor[batch.status] || 'bg-slate-700 text-slate-300'}`}>
                         {batch.status}
                       </Badge>
                     </div>

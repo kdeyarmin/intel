@@ -160,7 +160,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
               <span className="text-xs font-medium text-slate-400">Widgets</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-violet-600">
+                  <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-violet-400">
                     <Plus className="w-3 h-3" /> Add Widget
                   </Button>
                 </DropdownMenuTrigger>

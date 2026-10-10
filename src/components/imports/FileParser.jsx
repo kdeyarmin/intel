@@ -182,12 +182,12 @@ export default function FileParser({ onParsed, selectedType }) {
       {uploading && (
         <div className="space-y-2 pt-2">
           <div className="flex items-center gap-3">
-            <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+            <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
             <span className="text-sm text-slate-400">
               Parsing {fileName}...
             </span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2" aria-label="Parsing progress" />
         </div>
       )}
 

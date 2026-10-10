@@ -189,7 +189,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
               </Button>
             )}
             {compact && (
-              <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)} className="h-6 w-6 p-0 text-slate-400">
+              <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)} className="h-6 w-6 p-0 text-slate-400" aria-label={expanded ? 'Hide analysis' : 'Show analysis'} aria-expanded={expanded}>
                 {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </Button>
             )}
@@ -280,7 +280,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                           </div>
                         )}
                       </div>
-                      <Button onClick={handleSmartRetry} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 h-8 text-xs">
+                      <Button onClick={handleSmartRetry} size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 h-8 text-xs">
                         <Zap className="w-3.5 h-3.5 mr-1.5"/> Execute Retry
                       </Button>
                     </div>
@@ -345,7 +345,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                         <Button
                           size="sm"
                           onClick={handleSmartRetry}
-                          className="bg-cyan-600 hover:bg-cyan-700 text-white h-8 text-xs gap-1.5 shrink-0"
+                          className="bg-cyan-700 hover:bg-cyan-800 text-white h-8 text-xs gap-1.5 shrink-0"
                         >
                           <Zap className="w-3.5 h-3.5" /> Smart Retry
                         </Button>

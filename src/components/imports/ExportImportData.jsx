@@ -312,7 +312,7 @@ export default function ExportImportData({ open, onOpenChange }) {
           <Button
             onClick={handleExport}
             disabled={exporting || previewCount === 0}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="bg-cyan-700 hover:bg-cyan-800 text-white"
           >
             {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
             Export {format.toUpperCase()}

@@ -57,7 +57,7 @@ export default function ProcessingTimeChart({ batches = [] }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="vertical" margin={{ left: 70, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={v => `${v}s`} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => `${v}s`} />
               <YAxis type="category" dataKey="type" tick={{ fontSize: 10, fill: '#94a3b8' }} width={65} />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v, name, props) => [`${v}s (${props.payload.count} imports)`, 'Avg Time']} />
               <Bar dataKey="Avg Time (s)" fill="#fbbf24" radius={[0, 4, 4, 0]} barSize={16} />

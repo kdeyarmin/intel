@@ -379,7 +379,7 @@ function LinkedProviderCard({ linked, navigate, config }) {
               </div>
             )}
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+              className="bg-cyan-700 hover:bg-cyan-800 text-white text-xs"
               onClick={() => navigate(createPageUrl('ProviderDetail') + `?npi=${linked.npi}`)}
             >
               <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Full Provider Profile

@@ -130,7 +130,7 @@ export default function DQAssistant() {
     <Card className="border-indigo-200 flex flex-col" style={{ maxHeight: '700px' }}>
       <CardHeader className="pb-2 border-b flex-shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
-          <Bot className="w-5 h-5 text-indigo-600" />
+          <Bot className="w-5 h-5 text-indigo-400" />
           AI Data Quality Assistant
           <Badge variant="outline" className="text-[9px] ml-1">Beta</Badge>
         </CardTitle>
@@ -201,7 +201,7 @@ export default function DQAssistant() {
             className="text-xs h-8"
             disabled={loading}
           />
-          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="h-8 w-8 bg-indigo-600 hover:bg-indigo-700" aria-label="Send message">
+          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="text-white h-8 w-8 bg-indigo-600 hover:bg-indigo-700" aria-label="Send message">
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
           </Button>
         </form>
@@ -290,20 +290,20 @@ function AutoFixSummary({ data }) {
   return (
     <div className="mt-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-2.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
         <span className="text-[11px] font-semibold text-emerald-300">Auto-Fix Results</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-emerald-400">{data.fixed || 0}</p>
-          <p className="text-[9px] text-emerald-600">Fixed</p>
+          <p className="text-[9px] text-emerald-400">Fixed</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-slate-400">{data.skipped || 0}</p>
           <p className="text-[9px] text-slate-400">Skipped</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
-          <p className="text-lg font-bold text-blue-600">{data.total_eligible || 0}</p>
+          <p className="text-lg font-bold text-blue-400">{data.total_eligible || 0}</p>
           <p className="text-[9px] text-blue-500">Eligible</p>
         </div>
       </div>
@@ -311,7 +311,7 @@ function AutoFixSummary({ data }) {
         <div className="mt-2 space-y-0.5">
           <p className="text-[9px] text-emerald-400 font-medium">Applied fixes:</p>
           {data.fix_log.filter(f => !f.skipped && !f.error).slice(0, 5).map((f, i) => (
-            <p key={i} className="text-[9px] text-emerald-600">
+            <p key={i} className="text-[9px] text-emerald-400">
               • {f.npi}: {f.field} "{f.old}" → "{f.new}" ({f.confidence}% confidence)
             </p>
           ))}
@@ -377,7 +377,7 @@ function PatternResultsPanel({ result, onClose }) {
         <div className="mt-2 bg-amber-900/10 border border-amber-500/20 rounded p-2">
           <p className="text-[9px] font-semibold text-amber-400 mb-0.5">⚠ Predictions</p>
           {result.predictions.slice(0, 2).map((p, i) => (
-            <p key={i} className="text-[9px] text-amber-600">• {p}</p>
+            <p key={i} className="text-[9px] text-amber-400">• {p}</p>
           ))}
         </div>
       )}

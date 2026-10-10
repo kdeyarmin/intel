@@ -26,7 +26,7 @@ export default function RelatedLocations({ npi }) {
     <Card className="bg-slate-700/40">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-indigo-600" />
+          <MapPin className="w-4 h-4 text-indigo-400" />
           AI-Matched Locations
           {sorted.length > 0 && (
             <Badge variant="outline" className="text-xs ml-auto">{sorted.length} match{sorted.length !== 1 ? 'es' : ''}</Badge>
@@ -46,7 +46,7 @@ export default function RelatedLocations({ npi }) {
           <div className="space-y-2">
             {sorted.map(match => {
               const status = STATUS_CONFIG[match.status] || STATUS_CONFIG.suggested;
-              const confColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
+              const confColor = match.confidence_score >= 75 ? 'text-green-400' : match.confidence_score >= 50 ? 'text-yellow-400' : 'text-red-400';
               return (
                 <div key={match.id} className="bg-slate-800/40 rounded-lg border border-slate-700/50 p-3">
                   <div className="flex items-start justify-between gap-2">

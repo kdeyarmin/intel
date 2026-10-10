@@ -172,7 +172,7 @@ export default function Locations() {
                   <TableHead>ZIP</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead><span className="sr-only">Open</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

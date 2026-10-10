@@ -16,7 +16,7 @@ const STATUS_COLORS = {
   completed:  { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
   failed:     { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
   processing: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
-  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#64748b', border: 'rgba(51, 65, 85, 0.5)' },
+  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#94a3b8', border: 'rgba(51, 65, 85, 0.5)' },
 };
 
 export default function StateMap({ status, currentState, running, autoMode, onStateClick }) {
@@ -80,6 +80,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
                 color: colors.text 
               }}
               title={`${st}: ${stStatus}${count ? ` (${count.toLocaleString()} providers)` : ''}`}
+              aria-label={`${st}: ${stStatus}${count ? `, ${count.toLocaleString()} providers` : ''}`}
             >
               <span className="text-[10px] sm:text-xs font-bold leading-none">{st}</span>
               {count != null && count > 0 && (

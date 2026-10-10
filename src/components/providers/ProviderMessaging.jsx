@@ -179,7 +179,7 @@ Do NOT include subject line, just the body.`,
                 ) : providerEmail ? (
                   <a
                     href={`mailto:${providerEmail}?subject=${encodeURIComponent(`Following up — ${providerName}`)}&body=${encodeURIComponent(newMessage)}`}
-                    className="inline-flex h-7 items-center gap-1 rounded-md bg-cyan-600 px-3 text-[10px] font-medium text-white hover:bg-cyan-700"
+                    className="inline-flex h-7 items-center gap-1 rounded-md bg-cyan-700 px-3 text-[10px] font-medium text-white hover:bg-cyan-800"
                   >
                     <Send className="w-3 h-3" /> Open in email app
                   </a>
@@ -237,7 +237,7 @@ Do NOT include subject line, just the body.`,
                     {e.notes && <p className="text-[9px] text-slate-400">{e.notes}</p>}
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => removeEvent(e.id)}
-                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400">
+                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400" aria-label="Remove event">
                     <X className="w-3 h-3" />
                   </Button>
                 </div>

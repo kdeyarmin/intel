@@ -34,7 +34,7 @@ export default function AIDatasetAnalysis({ batch }) {
             Analyze the imported data to identify quality issues, anomalies, and summarize key metrics.
           </p>
         </div>
-        <Button onClick={handleAnalyze} className="bg-cyan-600 hover:bg-cyan-700 text-white h-8 text-xs">
+        <Button onClick={handleAnalyze} className="bg-cyan-700 hover:bg-cyan-800 text-white h-8 text-xs">
           Generate Analysis
         </Button>
       </div>

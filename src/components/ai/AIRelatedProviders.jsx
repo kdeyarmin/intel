@@ -89,7 +89,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
     }
   };
 
-  const strengthColors = { strong: 'bg-green-900/30 text-green-400', moderate: 'bg-blue-900/30 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
+  const strengthColors = { strong: 'bg-green-900/30 text-green-400', moderate: 'bg-blue-900/30 text-blue-400', exploratory: 'bg-slate-700 text-slate-300' };
 
   return (
     <Card>
@@ -98,7 +98,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
           <Users className="w-4 h-4 text-blue-500" />
           AI Suggested Connections
         </CardTitle>
-        <Button size="sm" onClick={analyze} disabled={loading} className="bg-blue-600 hover:bg-blue-700 h-7 text-xs">
+        <Button size="sm" onClick={analyze} disabled={loading} className="text-white bg-blue-600 hover:bg-blue-700 h-7 text-xs">
           {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
           {loading ? 'Analyzing...' : results ? 'Re-analyze' : 'Find Connections'}
         </Button>
@@ -128,12 +128,12 @@ Suggest 5 types of providers/organizations this provider should connect with, an
                   </div>
                   {s.matched_npi && (
                     <Link to={createPageUrl(`ProviderDetail?npi=${s.matched_npi}`)}>
-                      <ExternalLink className="w-3.5 h-3.5 text-blue-400 hover:text-blue-600" />
+                      <ExternalLink className="w-3.5 h-3.5 text-blue-400 hover:text-blue-300" />
                     </Link>
                   )}
                 </div>
                 {s.matched_name && (
-                  <p className="text-xs text-blue-600 font-medium mb-0.5 flex items-center gap-1">
+                  <p className="text-xs text-blue-400 font-medium mb-0.5 flex items-center gap-1">
                     <ArrowRight className="w-3 h-3" /> {s.matched_name}
                   </p>
                 )}

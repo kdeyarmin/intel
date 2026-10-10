@@ -213,7 +213,7 @@ export default function ValidationRulesManager() {
             </div>
             <Button
               onClick={() => { setEditingRule(null); setEditorOpen(true); }}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              className="bg-cyan-700 hover:bg-cyan-800 text-white"
               size="sm"
             >
               <Plus className="w-4 h-4 mr-1" />

@@ -72,7 +72,7 @@ export default function ImportAgentChat() {
                             )}
                             <div className={`max-w-[80%] rounded-lg p-3 ${
                                 m.role === 'user' 
-                                ? 'bg-cyan-600 text-white' 
+                                ? 'bg-cyan-700 text-white' 
                                 : 'bg-slate-800 border border-slate-700 text-slate-200'
                             }`}>
                                 <div className="prose prose-sm prose-invert max-w-none [&>p]:mb-1">

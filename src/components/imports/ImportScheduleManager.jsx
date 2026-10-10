@@ -219,7 +219,7 @@ export default function ImportScheduleManager() {
           <CardTitle className="text-slate-200 text-base flex items-center gap-2">
             <Clock className="w-4 h-4 text-cyan-400" /> Import Schedules
           </CardTitle>
-          <Button size="sm" onClick={openCreate} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Button size="sm" onClick={openCreate} className="bg-cyan-700 hover:bg-cyan-800 text-white">
             <Plus className="w-4 h-4 mr-1" /> New Schedule
           </Button>
         </CardHeader>
@@ -356,7 +356,7 @@ export default function ImportScheduleManager() {
           </div>
           <DialogFooter>
             <Button variant="ghost" className="text-slate-400" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
-            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white" onClick={save} disabled={saving}>
+            <Button className="bg-cyan-700 hover:bg-cyan-800 text-white" onClick={save} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
               {editing ? 'Save' : 'Create'}
             </Button>

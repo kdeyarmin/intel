@@ -184,7 +184,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
             onClick={runProactiveScan}
             disabled={scanning}
             size="sm"
-            className="bg-violet-600 hover:bg-violet-700 gap-1.5"
+            className="text-white bg-violet-600 hover:bg-violet-700 gap-1.5"
           >
             {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             {scanning ? 'Scanning...' : 'Run AI Scan'}
@@ -201,7 +201,7 @@ Return up to 10 most important issues, prioritized by severity and affected coun
               <span>{progress.step}</span>
               <span>{progress.pct}%</span>
             </div>
-            <Progress value={progress.pct} className="h-2" />
+            <Progress value={progress.pct} className="h-2" aria-label="Scan progress" />
           </div>
         )}
 

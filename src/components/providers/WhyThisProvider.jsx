@@ -92,7 +92,7 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
               <div className="pt-3 border-t border-teal-500/30">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-teal-400">Overall Assessment</span>
-                  <Badge className="bg-teal-600 text-white">
+                  <Badge className="bg-teal-700 text-white">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     {score.score >= 80 ? 'Excellent Fit' : score.score >= 60 ? 'Good Fit' : 'Potential Fit'}
                   </Badge>

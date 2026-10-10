@@ -142,7 +142,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                       <span>Processing...</span>
                       <span>{batch.total_rows || '?'} rows</span>
                     </div>
-                    <Progress value={100} className="h-1 animate-pulse" />
+                    <Progress value={100} className="h-1 animate-pulse" aria-label="Processing" />
                   </div>
                 )}
 

@@ -198,7 +198,7 @@ export default function CMSAnalytics() {
                   <ResponsiveContainer width="100%" height={360}>
                     <BarChart data={topServices.slice(0, 12)} layout="vertical" margin={{ left: 120, right: 20, top: 5, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis type="number" fontSize={10} tick={{ fill: '#64748b' }}
+                      <XAxis type="number" fontSize={10} tick={{ fill: '#94a3b8' }}
                         tickFormatter={formatCurrency}
                       />
                       <YAxis type="category" dataKey="service_type" fontSize={10} tick={{ fill: '#94a3b8' }} width={115} />
@@ -266,8 +266,8 @@ export default function CMSAnalytics() {
                   <ResponsiveContainer width="100%" height={360}>
                     <BarChart data={topServices.slice(0, 12)} margin={{ top: 5, right: 10, left: 10, bottom: 80 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="service_type" fontSize={9} tick={{ fill: '#64748b', angle: -45, textAnchor: 'end' }} interval={0} height={80} />
-                      <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={formatNumber} />
+                      <XAxis dataKey="service_type" fontSize={9} tick={{ fill: '#94a3b8', angle: -45, textAnchor: 'end' }} interval={0} height={80} />
+                      <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} tickFormatter={formatNumber} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                         formatter={(v) => [formatNumber(v), 'Providers']}
@@ -297,7 +297,7 @@ export default function CMSAnalytics() {
                   <ResponsiveContainer width="100%" height={360}>
                     <BarChart data={topReferred.map(r => ({ ...r, label: r.name ? (r.name.length > 20 ? `${r.name.slice(0, 19)}…` : r.name) : `NPI …${r.npi.slice(-4)}` }))} layout="vertical" margin={{ left: 10, right: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis type="number" fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={formatNumber} />
+                      <XAxis type="number" fontSize={10} tick={{ fill: '#94a3b8' }} tickFormatter={formatNumber} />
                       <YAxis type="category" dataKey="label" fontSize={10} tick={{ fill: '#94a3b8' }} width={130} interval={0} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
@@ -327,8 +327,8 @@ export default function CMSAnalytics() {
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={facilityTypes} margin={{ top: 5, right: 10, left: 10, bottom: 80 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="type" fontSize={9} tick={{ fill: '#64748b', angle: -45, textAnchor: 'end' }} interval={0} height={80} />
-                      <YAxis fontSize={10} tick={{ fill: '#64748b' }} tickFormatter={formatNumber} />
+                      <XAxis dataKey="type" fontSize={9} tick={{ fill: '#94a3b8', angle: -45, textAnchor: 'end' }} interval={0} height={80} />
+                      <YAxis fontSize={10} tick={{ fill: '#94a3b8' }} tickFormatter={formatNumber} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
                         formatter={(v) => [formatNumber(v), 'Records']}

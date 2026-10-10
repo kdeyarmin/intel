@@ -108,7 +108,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                 value={lead.member.status || 'New'}
                 onValueChange={(value) => onUpdateStatus(lead.member.id, value)}
               >
-                <SelectTrigger className="w-32">
+                <SelectTrigger aria-label={`Status for ${lead.provider?.entity_type === 'Individual' ? `${lead.provider.first_name} ${lead.provider.last_name}` : lead.provider?.organization_name || lead.provider?.npi}`} className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

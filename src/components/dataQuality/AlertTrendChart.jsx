@@ -45,7 +45,7 @@ export default function AlertTrendChart({ alerts = [] }) {
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="vertical" margin={{ left: 80, right: 20 }}>
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} />
               <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: '#94a3b8' }} width={75} />
               <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }} />
               <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>

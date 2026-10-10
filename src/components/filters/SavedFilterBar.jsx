@@ -111,7 +111,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
 
       {/* Save current filter */}
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 text-blue-600 hover:text-blue-400" onClick={() => setSaveOpen(true)}>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 text-blue-400 hover:text-blue-400" onClick={() => setSaveOpen(true)}>
           <Plus className="w-3.5 h-3.5" />
           Save Filter
         </Button>

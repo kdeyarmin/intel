@@ -90,7 +90,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
     <Card className="border-amber-500/30 bg-amber-900/20">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          <Merge className="w-5 h-5 text-amber-600" />
+          <Merge className="w-5 h-5 text-amber-400" />
           <CardTitle className="text-base text-white">Data Comparison & Merge</CardTitle>
         </div>
         <CardDescription>
@@ -105,8 +105,8 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                 <TableHead className="w-[50px] text-center">Merge</TableHead>
                 <TableHead>Field</TableHead>
                 <TableHead className="text-slate-400">Current Value</TableHead>
-                <TableHead className="w-[30px]"></TableHead>
-                <TableHead className="text-blue-600 font-medium">NPI Registry Value</TableHead>
+                <TableHead className="w-[30px]"><span className="sr-only">Replaced by</span></TableHead>
+                <TableHead className="text-blue-400 font-medium">NPI Registry Value</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,7 +127,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
                     <TableCell className="font-medium text-sm">{field.label}</TableCell>
                     <TableCell className="text-sm text-slate-400">{currentVal}</TableCell>
                     <TableCell>
-                      <ArrowRight className="w-4 h-4 text-slate-400" />
+                      <ArrowRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
                     </TableCell>
                     <TableCell className="text-sm font-medium text-blue-400">
                       {externalVal || <span className="text-slate-400 italic">Empty</span>}

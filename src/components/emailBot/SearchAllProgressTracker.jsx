@@ -58,7 +58,7 @@ export default function SearchAllProgressTracker({ allRunProgress, remainingForR
     <div className="space-y-3">
       {/* Progress bar */}
       <div className="space-y-1.5">
-        <Progress value={progressPct} className="h-2.5" />
+        <Progress value={progressPct} className="h-2.5" aria-label="Email search progress" />
         <div className="flex items-center justify-between text-xs">
           <span className="text-slate-400">
             Batch {batchNumber} • {totalSearched.toLocaleString()} searched • {totalFound.toLocaleString()} emails found

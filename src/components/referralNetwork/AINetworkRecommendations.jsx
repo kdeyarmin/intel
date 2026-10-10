@@ -39,7 +39,7 @@ export default function AINetworkRecommendations({ state = null, leadListId = nu
           <p className="text-sm text-violet-400 mb-4">
             Recommendations for growing and strengthening the referral network, based on its influencers and specialty gaps. {scopeHint(state, leadListName)}
           </p>
-          <Button onClick={handleGetRecommendations} disabled={loading} className="gap-2 bg-violet-600 hover:bg-violet-700">
+          <Button onClick={handleGetRecommendations} disabled={loading} className="text-white gap-2 bg-violet-600 hover:bg-violet-700">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
             Generate Recommendations
           </Button>
@@ -70,7 +70,7 @@ export default function AINetworkRecommendations({ state = null, leadListId = nu
             {recommendations.expansion_opportunities.map((opp, i) => (
               <div key={i} className="p-3 bg-slate-800/60 rounded-lg border border-emerald-500/30">
                 <div className="flex items-start gap-2 mb-1">
-                  <ArrowRight className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
                   <h4 className="font-semibold text-sm text-emerald-400">{opp.opportunity}</h4>
                 </div>
                 <p className="text-xs text-slate-400 ml-6 mb-2">{opp.rationale}</p>
@@ -122,7 +122,7 @@ export default function AINetworkRecommendations({ state = null, leadListId = nu
             {recommendations.gap_filling_strategies.map((strategy, i) => (
               <div key={i} className="p-3 bg-slate-800/60 rounded-lg border border-amber-500/30">
                 <div className="flex items-start gap-2 mb-1">
-                  <span className="font-bold text-amber-600">{strategy.specialty}</span>
+                  <span className="font-bold text-amber-400">{strategy.specialty}</span>
                 </div>
                 <p className="text-xs text-slate-400 mb-2">{strategy.strategy}</p>
                 <Badge variant="outline" className="text-xs bg-amber-900/30 text-amber-400 border-amber-500/30">

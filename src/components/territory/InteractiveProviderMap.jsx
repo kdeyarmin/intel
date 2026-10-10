@@ -206,7 +206,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <Map className="w-4 h-4 text-teal-600" />
+            <Map className="w-4 h-4 text-teal-400" />
             Provider Map
           </span>
           <div className="flex items-center gap-2">

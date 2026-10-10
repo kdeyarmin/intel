@@ -554,7 +554,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               {csvHeaders && csvHeaders.length > 0 ? (
                 <Button
                   onClick={() => setStep(3)}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="bg-cyan-700 hover:bg-cyan-800 text-white"
                 >
                   Next: Map Columns
                 </Button>
@@ -562,7 +562,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 <Button
                   onClick={handleSubmit}
                   disabled={isSubmitting || (!fileUrl && !selectedType.hasUrl)}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="bg-cyan-700 hover:bg-cyan-800 text-white"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                   {isSubmitting ? 'Starting...' : dryRun ? 'Validate Only' : 'Start Import'}
@@ -578,7 +578,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting || aiLoading}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                className="bg-cyan-700 hover:bg-cyan-800 text-white"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                 {isSubmitting ? 'Starting...' : dryRun ? 'Validate Only' : 'Start Import'}
@@ -586,7 +586,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             </>
           )}
           {step === 4 && (
-            <Button onClick={() => handleClose(false)} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+            <Button onClick={() => handleClose(false)} className="bg-cyan-700 hover:bg-cyan-800 text-white">
               Done
             </Button>
           )}

@@ -32,7 +32,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
             <div key={filter.key} className="min-w-[140px]">
               {filter.type === 'select' ? (
                 <Select value={filter.value || 'all'} onValueChange={(v) => filter.onChange(v)}>
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger aria-label={filter.label} className="h-9 text-sm">
                     <SelectValue placeholder={filter.label} />
                   </SelectTrigger>
                   <SelectContent>

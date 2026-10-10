@@ -73,7 +73,7 @@ export default function EmailBotControls({
               <Button
                 onClick={onRunAll}
                 disabled={isRunning || remainingForRun === 0}
-                className="flex-1 bg-violet-600 hover:bg-violet-700"
+                className="text-white flex-1 bg-violet-600 hover:bg-violet-700"
               >
                 <Zap className="w-4 h-4 mr-2" /> Search All Providers
               </Button>

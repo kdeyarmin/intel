@@ -73,16 +73,17 @@ export default function QuickImportFlow({ category, onClose, onComplete }) {
                   else onClose();
                 }}
                 className="h-8 w-8 text-slate-400 hover:text-white"
+                aria-label="Back"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               </Button>
             )}
             <CardTitle className="text-lg text-slate-200">
               {step === 'pickType' ? `Import ${actualCategory.label}` : selectedType?.name || 'Import'}
             </CardTitle>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-slate-400 hover:text-white">
-            <X className="w-4 h-4" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-slate-400 hover:text-white" aria-label="Close">
+            <X className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
       </CardHeader>

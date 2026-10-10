@@ -61,6 +61,7 @@ export default function BatchFilterSort({
       {/* Import Type Filter */}
       {importTypes.length > 0 && (
         <select
+          aria-label="Filter by import type"
           className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
           value={currentImportTypeFilter || ''}
           onChange={(e) => onFilterTypeChange(e.target.value)}

@@ -214,7 +214,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   {Array.from(selectedCategories).some(c => retryableCategories.has(c)) && (
                     <Button
                       size="sm"
-                      className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white gap-1"
+                      className="h-7 text-xs bg-cyan-700 hover:bg-cyan-800 text-white gap-1"
                       onClick={handleBulkRetry}
                       disabled={!!actionInProgress}
                     >

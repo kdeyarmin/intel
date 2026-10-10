@@ -90,7 +90,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
           <CardTitle className="text-base">Comparative Analysis</CardTitle>
           <div className="flex gap-2 flex-wrap">
             <Select value={compareBy} onValueChange={setCompareBy}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Compare by" className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="entity_type">Provider Type</SelectItem>
                 <SelectItem value="state">State</SelectItem>
@@ -99,13 +99,13 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
               </SelectContent>
             </Select>
             <Select value={metric} onValueChange={setMetric}>
-              <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Metric" className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {METRICS.map(m => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={viewMode} onValueChange={setViewMode}>
-              <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Chart type" className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="bar">Bar</SelectItem>
                 <SelectItem value="radar">Radar</SelectItem>

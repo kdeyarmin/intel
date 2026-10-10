@@ -81,7 +81,7 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <BookTemplate className="w-4 h-4 text-violet-600" />
+          <BookTemplate className="w-4 h-4 text-violet-400" />
           Report Templates
         </CardTitle>
       </CardHeader>

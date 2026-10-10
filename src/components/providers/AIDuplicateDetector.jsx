@@ -13,7 +13,7 @@ function DuplicateGroupCard({ group }) {
   const confStyle = {
     high: { bg: 'bg-red-900/20 border-red-500/30', badge: 'bg-red-900/30 text-red-400 border-red-500/30', icon: 'text-red-500' },
     medium: { bg: 'bg-amber-900/20 border-amber-500/30', badge: 'bg-amber-900/30 text-amber-400 border-amber-500/30', icon: 'text-amber-500' },
-    low: { bg: 'bg-slate-800/60 border-slate-700/50', badge: 'bg-slate-700 text-slate-400 border-slate-700/50', icon: 'text-slate-400' },
+    low: { bg: 'bg-slate-800/60 border-slate-700/50', badge: 'bg-slate-700 text-slate-300 border-slate-700/50', icon: 'text-slate-400' },
   };
   const style = confStyle[group.confidence] || confStyle.low;
 
@@ -32,7 +32,7 @@ function DuplicateGroupCard({ group }) {
             <div className="flex items-center gap-2 min-w-0">
               <div className={`w-2 h-2 rounded-full shrink-0 ${j === 0 ? 'bg-blue-900/20' : 'bg-slate-300'}`} />
               <span className="text-xs font-medium text-slate-300 truncate">{rec.name}</span>
-              <span className="text-[10px] text-slate-400 font-mono bg-slate-700 px-1.5 py-0.5 rounded shrink-0">{rec.npi}</span>
+              <span className="text-[10px] text-slate-300 font-mono bg-slate-700 px-1.5 py-0.5 rounded shrink-0">{rec.npi}</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               {rec.detail && <span className="text-[10px] text-slate-400 hidden sm:inline">{rec.detail}</span>}
@@ -183,9 +183,9 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
       {loading && (
         <Card className="border-amber-500/30 bg-amber-900/20">
           <CardContent className="py-8 flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 text-amber-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
             <p className="text-sm font-medium text-amber-300">Analyzing {scanCount} provider records...</p>
-            <p className="text-xs text-amber-600">Comparing names, addresses, phone numbers, and emails</p>
+            <p className="text-xs text-amber-400">Comparing names, addresses, phone numbers, and emails</p>
           </CardContent>
         </Card>
       )}
@@ -211,7 +211,7 @@ Return groups of potential duplicates. Each group should have 2+ records that mi
             </div>
           ) : (
             <div className="flex items-center gap-2 p-3 bg-green-900/20 rounded-lg border border-green-500/30">
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
               <span className="text-sm font-medium text-green-400">No potential duplicates found</span>
             </div>
           )}

@@ -91,7 +91,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Clock className="w-4 h-4 text-blue-600" />
+          <Clock className="w-4 h-4 text-blue-400" />
           {initialData?.id ? 'Edit Scheduled Report' : 'Create Scheduled Report'}
         </CardTitle>
       </CardHeader>

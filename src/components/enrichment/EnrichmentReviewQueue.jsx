@@ -301,7 +301,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                     <div className="flex items-center gap-1 shrink-0">
                       {isPending && (
                         <>
-                          <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                          <Button size="sm" className="h-7 text-[10px] bg-emerald-700 hover:bg-emerald-800 text-white"
                             disabled={reviewMutation.isPending}
                             onClick={() => reviewMutation.mutate({ id: r.id, status: 'approved', npi: r.npi, enrichment_details: r.enrichmentDetails || r.enrichment_details })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
@@ -314,7 +314,8 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                         </>
                       )}
                       <Button variant="ghost" size="sm" className="h-7 w-7 text-slate-400"
-                        onClick={() => setExpandedId(isExpanded ? null : r.id)}>
+                        onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                        aria-label={isExpanded ? 'Hide details' : 'Show details'} aria-expanded={isExpanded}>
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </Button>
                     </div>

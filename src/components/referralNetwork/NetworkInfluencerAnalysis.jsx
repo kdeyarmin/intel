@@ -102,7 +102,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-amber-600 w-6">#{idx + 1}</span>
+                  <span className="font-bold text-lg text-amber-400 w-6">#{idx + 1}</span>
                   <div>
                     <p className="font-semibold text-sm">{influencer.name || influencer.npi}</p>
                     <p className="text-xs text-slate-400">

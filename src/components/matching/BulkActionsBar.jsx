@@ -20,7 +20,7 @@ export default function BulkActionsBar({ selectedCount, onBulkAction, onClearSel
         <Button
           size="sm"
           variant="secondary"
-          className="bg-green-900/20 hover:bg-green-600 text-white border-0"
+          className="bg-green-900/20 hover:bg-green-700 text-white border-0"
           onClick={() => handleAction('approved')}
           disabled={!!loading}
         >

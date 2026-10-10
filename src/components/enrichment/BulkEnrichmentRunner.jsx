@@ -136,7 +136,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
           </div>
           {!loadingStats && displayTotal > 0 && (
             <div className="mt-1">
-              <Progress value={(enrichedCount / displayTotal) * 100} className="h-1.5" />
+              <Progress value={(enrichedCount / displayTotal) * 100} className="h-1.5" aria-label="Providers enriched" />
               <p className="text-[10px] text-slate-400 mt-1 text-right">
                 {((enrichedCount / displayTotal) * 100).toFixed(2)}% complete
               </p>
@@ -219,7 +219,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
             <Button
               onClick={handleStart}
               disabled={loadingStats || needsWorkCount === 0}
-              className="flex-1 bg-violet-600 hover:bg-violet-700 gap-2"
+              className="text-white flex-1 bg-violet-600 hover:bg-violet-700 gap-2"
             >
               <Brain className="w-4 h-4" />
               {loadingStats ? 'Loading...' : 'Start Intelligence Bot'}

@@ -122,7 +122,7 @@ Provide:
               <div className="flex items-center gap-2">
                 <Target className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-xs text-slate-300">Priority</span>
-                <Badge className={`text-[9px] ${analysis.overall_priority === 'high' ? 'bg-emerald-900/15 text-emerald-400' : analysis.overall_priority === 'medium' ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>
+                <Badge className={`text-[9px] ${analysis.overall_priority === 'high' ? 'bg-emerald-900/15 text-emerald-400' : analysis.overall_priority === 'medium' ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700 text-slate-300'}`}>
                   {analysis.overall_priority}
                 </Badge>
               </div>

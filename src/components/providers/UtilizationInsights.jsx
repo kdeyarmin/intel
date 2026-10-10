@@ -61,8 +61,8 @@ export default function UtilizationInsights({ utilization }) {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 bg-blue-900/20 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Users className="h-4 w-4 text-blue-600" />
-              <p className="text-xs text-blue-600 font-medium">Patient Volume</p>
+              <Users className="h-4 w-4 text-blue-400" />
+              <p className="text-xs text-blue-400 font-medium">Patient Volume</p>
             </div>
             <p className="text-2xl font-bold text-blue-400">
               {patientVolume === '<11' ? '<11' : patientVolume.toLocaleString()}
@@ -72,8 +72,8 @@ export default function UtilizationInsights({ utilization }) {
 
           <div className="p-3 bg-teal-900/20 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-teal-600" />
-              <p className="text-xs text-teal-600 font-medium">Service Intensity</p>
+              <Activity className="h-4 w-4 text-teal-400" />
+              <p className="text-xs text-teal-400 font-medium">Service Intensity</p>
             </div>
             <p className="text-2xl font-bold text-teal-400">{servicesPerPatient}</p>
             <p className="text-xs text-teal-400">Services per patient</p>

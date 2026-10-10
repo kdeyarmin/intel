@@ -427,7 +427,7 @@ export default function ImportMonitoring() {
           </Button>
           <Button
             onClick={() => setShowNewImport(true)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="bg-cyan-700 hover:bg-cyan-800 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Auto-Import
@@ -619,7 +619,7 @@ export default function ImportMonitoring() {
               <Button
                 size="sm"
                 disabled={selectedForRerun.size === 0 || isBulkRetrying}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                className="bg-cyan-700 hover:bg-cyan-800 text-white"
                 onClick={handleBulkRetry}
               >
                 {isBulkRetrying ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
@@ -800,9 +800,9 @@ export default function ImportMonitoring() {
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-slate-200">
+                          <h2 className="font-semibold text-slate-200">
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
-                          </h3>
+                          </h2>
                           {batch.retry_of && (
                             <Badge className="text-xs gap-1 bg-amber-900/15 text-amber-400 border border-amber-500/20">
                               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}

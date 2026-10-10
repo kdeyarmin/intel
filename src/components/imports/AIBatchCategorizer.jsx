@@ -157,7 +157,7 @@ Based on the file name and column headers, determine:
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                  className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   onClick={handleAccept}
                 >
                   <CheckCircle2 className="w-3 h-3" /> Accept

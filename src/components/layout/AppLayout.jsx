@@ -115,7 +115,7 @@ export default function AppLayout({ children, currentPageName }) {
       <a
         href="#main-content"
         onClick={skipToMain}
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-cyan-600 focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-cyan-700 focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
       >
         Skip to main content
       </a>
@@ -293,7 +293,7 @@ export default function AppLayout({ children, currentPageName }) {
               />
               <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
               <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-500/70 hover:text-cyan-400 hover:underline">www.CareMetric.ai</a>
+              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
           <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">

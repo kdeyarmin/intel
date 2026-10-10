@@ -317,6 +317,8 @@ export default function NPPESCrawler() {
                       size="sm"
                       onClick={() => setViewMode('map')}
                       className="rounded-none h-7 px-2"
+                      aria-label="Map view"
+                      aria-pressed={viewMode === 'map'}
                     >
                       <Map className="w-3.5 h-3.5" />
                     </Button>
@@ -325,6 +327,8 @@ export default function NPPESCrawler() {
                       size="sm"
                       onClick={() => setViewMode('grid')}
                       className="rounded-none h-7 px-2"
+                      aria-label="Grid view"
+                      aria-pressed={viewMode === 'grid'}
                     >
                       <LayoutGrid className="w-3.5 h-3.5" />
                     </Button>
@@ -344,7 +348,7 @@ export default function NPPESCrawler() {
                   <span>{completedCount + failedCount} / {totalStates} states</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 bg-slate-700" />
+                <Progress value={progress} className="h-3 bg-slate-700" aria-label="States crawled" />
               </div>
 
               {viewMode === 'map' ? (

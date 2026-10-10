@@ -171,7 +171,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
                 {isTesting ? 'Testing…' : 'Test connection'}
               </Button>
             </div>
-            <Button variant="ghost" size="icon" aria-label={`Delete ${connector.name}`} className="text-red-500 hover:text-red-600 hover:bg-red-900/20" onClick={() => onDelete(connector.id)}>
+            <Button variant="ghost" size="icon" aria-label={`Delete ${connector.name}`} className="text-red-500 hover:text-red-300 hover:bg-red-900/20" onClick={() => onDelete(connector.id)}>
               <Trash2 className="w-4 h-4" aria-hidden="true" />
             </Button>
           </>

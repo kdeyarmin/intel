@@ -257,7 +257,7 @@ export default function AIRuleSuggestions({ importType }) {
                            </Button>
                            <Button
                              size="sm"
-                             className="h-7 text-xs gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                             className="h-7 text-xs gap-1 bg-cyan-700 hover:bg-cyan-800 text-white"
                              onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate({ suggestion: s }); }}
                              disabled={isAdding}
                            >
@@ -299,7 +299,7 @@ export default function AIRuleSuggestions({ importType }) {
               Cancel
             </Button>
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              className="bg-cyan-700 hover:bg-cyan-800 text-white"
               onClick={() => {
                 const sug = suggestions.find(s => s.id === customizing);
                 if (sug) {

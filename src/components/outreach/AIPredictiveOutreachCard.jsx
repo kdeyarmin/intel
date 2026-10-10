@@ -72,7 +72,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
           <div className="space-y-5">
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center justify-center bg-slate-800/60 rounded-full w-16 h-16 shadow-sm border border-indigo-50">
-                <span className="text-2xl font-bold text-indigo-600">{Math.round(score)}</span>
+                <span className="text-2xl font-bold text-indigo-400">{Math.round(score)}</span>
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
@@ -81,7 +81,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
                     {score > 75 ? 'High' : score > 40 ? 'Medium' : 'Low'}
                   </Badge>
                 </div>
-                <Progress value={score} className="h-2 bg-slate-700" />
+                <Progress value={score} className="h-2 bg-slate-700" aria-label="Engagement likelihood" />
               </div>
             </div>
 

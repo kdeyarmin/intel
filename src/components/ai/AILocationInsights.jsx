@@ -97,8 +97,8 @@ Provide:
     setLoading(false);
   };
 
-  const strColors = { strong: 'bg-green-900/30 text-green-400', moderate: 'bg-blue-900/30 text-blue-400', exploratory: 'bg-slate-700 text-slate-400' };
-  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+  const strColors = { strong: 'bg-green-900/30 text-green-400', moderate: 'bg-blue-900/30 text-blue-400', exploratory: 'bg-slate-700 text-slate-300' };
+  const prioColors = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-300' };
 
   return (
     <Card>
@@ -151,7 +151,7 @@ Provide:
                       <span className="text-xs font-semibold text-emerald-300">{g.title}</span>
                       <Badge className={`text-[9px] ${prioColors[g.priority]}`}>{g.priority}</Badge>
                     </div>
-                    <p className="text-[10px] text-emerald-600 mt-0.5">{g.description}</p>
+                    <p className="text-[10px] text-emerald-400 mt-0.5">{g.description}</p>
                   </div>
                 ))}
               </div>
@@ -165,7 +165,7 @@ Provide:
                 {results.competitive_threats.map((t, i) => (
                   <div key={i} className="bg-red-900/20 rounded-lg p-2.5 mb-1.5 border border-red-500/30">
                     <span className="text-xs font-semibold text-red-300">{t.title}</span>
-                    <p className="text-[10px] text-red-600 mt-0.5">{t.description}</p>
+                    <p className="text-[10px] text-red-400 mt-0.5">{t.description}</p>
                   </div>
                 ))}
               </div>

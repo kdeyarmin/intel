@@ -87,8 +87,8 @@ export default function SuccessVsFailureChart({ batches }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barData} margin={{ left: 0, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="Completed" fill="#10b981" radius={[2, 2, 0, 0]} stackId="a" />
                 <Bar dataKey="Failed" fill="#ef4444" radius={[2, 2, 0, 0]} stackId="a" />

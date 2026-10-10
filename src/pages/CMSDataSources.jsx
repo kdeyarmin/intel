@@ -251,8 +251,9 @@ export default function CMSDataSources() {
         </select>
 
         <div className="flex items-center gap-2">
-          <ArrowUpDown className="w-4 h-4 text-slate-400" />
+          <ArrowUpDown className="w-4 h-4 text-slate-400" aria-hidden="true" />
           <select
+            aria-label="Sort datasets"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -400,7 +401,7 @@ export default function CMSDataSources() {
                                   ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                                   : isProcessing
                                   ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
-                                  : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                  : 'bg-cyan-700 hover:bg-cyan-800 text-white'
                               }`}
                               title={ds.unavailable ? 'CMS API endpoint unavailable (404)' : ''}
                             >

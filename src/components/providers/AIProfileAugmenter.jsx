@@ -25,7 +25,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-white">{profile.name}</span>
-            <span className="text-[10px] text-slate-400 font-mono bg-slate-700 px-1.5 py-0.5 rounded">{profile.npi}</span>
+            <span className="text-[10px] text-slate-300 font-mono bg-slate-700 px-1.5 py-0.5 rounded">{profile.npi}</span>
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
             {dataPoints.map((dp, i) => (
@@ -50,7 +50,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
         {profile.website && (
           <div className="flex items-center gap-2 p-2 bg-blue-900/20 rounded-lg">
             <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate text-[11px]">{profile.website}</a>
+            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline truncate text-[11px]">{profile.website}</a>
           </div>
         )}
         {profile.affiliations?.length > 0 && (
@@ -69,7 +69,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Board Certifications</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {profile.board_certifications.map((c, j) => (
-                  <Badge key={j} className="bg-violet-900/20 text-violet-700 border-violet-500/30 text-[9px]">{c}</Badge>
+                  <Badge key={j} className="bg-violet-900/20 text-violet-400 border-violet-500/30 text-[9px]">{c}</Badge>
                 ))}
               </div>
             </div>
@@ -246,7 +246,7 @@ Only return information you find with reasonable confidence from public sources.
       {/* Description */}
       <div className="flex items-start gap-3 p-4 bg-teal-900/20 rounded-xl border border-teal-500/30">
         <div className="p-2 rounded-lg bg-teal-900/30">
-          <Globe className="w-4 h-4 text-teal-600" />
+          <Globe className="w-4 h-4 text-teal-400" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-300">Augment Provider Profiles</h3>
@@ -280,9 +280,9 @@ Only return information you find with reasonable confidence from public sources.
       {loading && (
         <Card className="border-teal-500/30 bg-teal-900/20">
           <CardContent className="py-8 flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
             <p className="text-sm font-medium text-teal-400">Researching {providerCount} providers...</p>
-            <p className="text-xs text-teal-600">Searching websites, directories, and public registries</p>
+            <p className="text-xs text-teal-400">Searching websites, directories, and public registries</p>
           </CardContent>
         </Card>
       )}
@@ -299,7 +299,7 @@ Only return information you find with reasonable confidence from public sources.
 
           {applied.size > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-green-900/20 rounded-lg border border-green-500/30">
-              <Check className="w-3.5 h-3.5 text-green-600" />
+              <Check className="w-3.5 h-3.5 text-green-400" />
               <span className="text-xs font-medium text-green-400">{applied.size} profile{applied.size !== 1 ? 's' : ''} saved</span>
             </div>
           )}

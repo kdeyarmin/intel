@@ -108,20 +108,20 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
           </div>
           <div className="flex gap-2 flex-wrap">
             <Select value={dataset} onValueChange={(v) => { setDataset(v); setMetric(v === 'utilization' ? 'total_medicare_payment' : 'total_referrals'); }}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Dataset" className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="utilization">Utilization</SelectItem>
                 <SelectItem value="referrals">Referrals</SelectItem>
               </SelectContent>
             </Select>
             <Select value={metric} onValueChange={setMetric}>
-              <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Metric" className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {metricOptions.map(m => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={String(forecastYears)} onValueChange={(v) => setForecastYears(Number(v))}>
-              <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Forecast horizon" className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">+1 Year</SelectItem>
                 <SelectItem value="2">+2 Years</SelectItem>

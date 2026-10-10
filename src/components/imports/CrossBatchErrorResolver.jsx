@@ -171,7 +171,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white gap-1"
+                    className="h-7 text-xs bg-cyan-700 hover:bg-cyan-800 text-white gap-1"
                     onClick={handleBulkRetryBatches}
                     disabled={actionInProgress}
                   >

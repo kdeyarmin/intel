@@ -175,7 +175,7 @@ Provide data-driven predictions with confidence levels.`,
 
   return (
     <div className="space-y-4">
-      <Button onClick={runAnalysis} disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700 gap-2">
+      <Button onClick={runAnalysis} disabled={loading} className="text-white w-full bg-violet-600 hover:bg-violet-700 gap-2">
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
         {loading ? 'Running Predictive Analysis...' : 'Run AI Predictive Network Analysis'}
       </Button>
@@ -262,7 +262,7 @@ Provide data-driven predictions with confidence levels.`,
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analysis.care_gap_forecast.slice(0, 8)} layout="vertical">
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                       <YAxis type="category" dataKey={(d) => `${d.state} ${d.specialty?.slice(0, 12)}`} tick={{ fontSize: 9, fill: '#94a3b8' }} width={100} />
                       <Tooltip contentStyle={tooltipStyle} />
                       <Bar dataKey="current_gap_score" fill="#64748b" name="Current" barSize={10} radius={[0, 2, 2, 0]} />

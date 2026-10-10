@@ -59,14 +59,14 @@ Summarize who this provider is, their practice characteristics, notable utilizat
     <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-purple-600" />
+          <Sparkles className="w-4 h-4 text-purple-400" />
           AI Provider Summary
         </CardTitle>
         <Button
           size="sm"
           onClick={generate}
           disabled={loading}
-          className="bg-purple-600 hover:bg-purple-700"
+          className="text-white bg-purple-600 hover:bg-purple-700"
         >
           {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
           {loading ? 'Generating...' : summary ? 'Refresh' : 'Generate'}

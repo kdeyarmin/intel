@@ -62,8 +62,8 @@ export default function ImportTrendCharts({ batches = [] }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={successRateData} margin={{ left: 0, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={v => `${v}%`} />
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => `${v}%`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v, name, props) => [`${v}% (${props.payload.completed}✓ ${props.payload.failed}✗)`, name]} />
                 <Bar dataKey="Success Rate" fill="#22d3ee" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
@@ -85,8 +85,8 @@ export default function ImportTrendCharts({ batches = [] }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processingTimeData} margin={{ left: 0, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={v => `${v}s`} />
+                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => `${v}s`} />
                   <Tooltip contentStyle={tooltipStyle} formatter={v => [`${v}s`, 'Avg Time']} />
                   <Line type="monotone" dataKey="Avg Time" stroke="#22d3ee" strokeWidth={2} dot={{ fill: '#22d3ee', r: 3 }} />
                 </LineChart>

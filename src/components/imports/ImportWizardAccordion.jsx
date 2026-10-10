@@ -408,6 +408,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                                 : liveStatus.status === 'validating' ? 20 : 50
                             }
                             className="h-1.5"
+                            aria-label="Import progress"
                           />
                           <div className="flex gap-4 text-[10px] text-slate-400">
                             {liveStatus.total_rows > 0 && <span>Total: {liveStatus.total_rows.toLocaleString()}</span>}
@@ -417,7 +418,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                           </div>
                         </>
                       ) : (
-                        <Progress value={15} className="h-1.5" />
+                        <Progress value={15} className="h-1.5" aria-label="Import progress" />
                       )}
                       <p className="text-[10px] text-slate-400">Processing runs in the background — feel free to navigate away</p>
                     </div>

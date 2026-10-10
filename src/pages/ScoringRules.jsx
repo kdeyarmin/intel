@@ -258,7 +258,7 @@ export default function ScoringRules() {
         <CardContent className="pt-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-cyan-300 mb-1">Scoring Methodology</h3>
+              <h2 className="font-semibold text-cyan-300 mb-1">Scoring Methodology</h2>
               <p className="text-sm text-slate-300">
                 Each provider receives a score based on weighted factors. Adjust weights to match your targeting strategy.
               </p>

@@ -398,7 +398,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
           <Button
             onClick={handleSave}
             disabled={isSaving || !form.rule_name || !form.column}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="bg-cyan-700 hover:bg-cyan-800 text-white"
           >
             {isSaving ? <Save className="w-4 h-4 mr-2 animate-pulse" /> : <Save className="w-4 h-4 mr-2" />}
             {isEdit ? 'Update Rule' : 'Create Rule'}

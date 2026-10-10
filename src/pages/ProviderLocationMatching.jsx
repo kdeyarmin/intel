@@ -173,7 +173,7 @@ export default function ProviderLocationMatching() {
           <Button
             onClick={() => runMatchingMutation.mutate()}
             disabled={runMatchingMutation.isPending || !matchState || facilityTypes.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 shrink-0"
+            className="text-white bg-blue-600 hover:bg-blue-700 shrink-0"
           >
             {runMatchingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Building2 className="w-4 h-4 mr-2" />}
             {runMatchingMutation.isPending ? 'Matching…' : 'Find matches'}
@@ -236,7 +236,7 @@ export default function ProviderLocationMatching() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger aria-label="Filter by status" className="w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -248,7 +248,7 @@ export default function ProviderLocationMatching() {
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger aria-label="Sort by" className="w-40">
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>

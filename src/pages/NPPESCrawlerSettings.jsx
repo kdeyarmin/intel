@@ -387,7 +387,7 @@ export default function NPPESCrawlerSettings() {
                       type="button"
                       key={state}
                       aria-pressed={Boolean(isSelected)}
-                      className={`${badgeVariants({ variant: isSelected ? 'default' : 'outline' })} cursor-pointer ${isSelected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-slate-200'}`}
+                      className={`${badgeVariants({ variant: isSelected ? 'default' : 'outline' })} cursor-pointer ${isSelected ? 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-600' : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-slate-200'}`}
                       onClick={() => {
                         const newStates = isSelected
                           ? form.selected_states.filter(s => s !== state)

@@ -260,7 +260,7 @@ Return up to 10 results, ordered by relevance.`,
             </div>
           </div>
 
-          <Button onClick={handleSearch} disabled={loading || !name.trim()} className="w-full bg-blue-600 hover:bg-blue-700 h-9">
+          <Button onClick={handleSearch} disabled={loading || !name.trim()} className="text-white w-full bg-blue-600 hover:bg-blue-700 h-9">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Searching NPPES Registry...</> : <><Search className="w-4 h-4 mr-2" /> Search for NPI</>}
           </Button>
         </CardContent>
@@ -270,9 +270,9 @@ Return up to 10 results, ordered by relevance.`,
       {loading && (
         <Card className="border-blue-500/30 bg-blue-900/20">
           <CardContent className="py-8 flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
             <p className="text-sm font-medium text-blue-300">Searching the NPPES registry...</p>
-            <p className="text-xs text-blue-600">This uses AI-powered web search to find matching NPIs</p>
+            <p className="text-xs text-blue-400">This uses AI-powered web search to find matching NPIs</p>
           </CardContent>
         </Card>
       )}

@@ -271,23 +271,23 @@ export default function ProviderIntelligence() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-2 sm:grid-cols-5 h-auto min-h-10 bg-slate-800/50 p-1 mb-5 gap-1">
-          <TabsTrigger value="intelligence" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+          <TabsTrigger value="intelligence" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-300">
             <Brain className="w-3.5 h-3.5" /> Intelligence Bot
           </TabsTrigger>
-          <TabsTrigger value="email" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+          <TabsTrigger value="email" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-300">
             <Mail className="w-3.5 h-3.5" /> Email Search
           </TabsTrigger>
-          <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+          <TabsTrigger value="providers" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-300">
             <Users className="w-3.5 h-3.5" /> Providers
             {emailStats.withEmail > 0 && <Badge className="bg-violet-900/20 text-violet-400 text-[9px] ml-1">{emailStats.withEmail}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+          <TabsTrigger value="verify" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-300">
             <ShieldCheck className="w-3.5 h-3.5" /> Verify
             {emailStats.risky + emailStats.invalid > 0 && (
               <Badge className="bg-amber-900/20 text-amber-400 text-[9px] ml-1">{emailStats.risky + emailStats.invalid}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-400">
+          <TabsTrigger value="outreach" className="gap-1.5 h-8 text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-violet-300">
             <Send className="w-3.5 h-3.5" /> Outreach
             {selectedNpis.size > 0 && <Badge className="bg-emerald-900/20 text-emerald-400 text-[9px] ml-1">{selectedNpis.size}</Badge>}
           </TabsTrigger>
@@ -446,7 +446,7 @@ export default function ProviderIntelligence() {
           {selectedNpis.size > 0 && (
             <div className="flex items-center gap-3 p-3 bg-violet-900/10 border border-violet-500/20 rounded-lg">
               <span className="text-xs text-violet-300">{selectedNpis.size} selected</span>
-              <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1">
+              <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="text-white h-7 text-xs bg-violet-600 hover:bg-violet-700 gap-1">
                 <Send className="w-3 h-3" /> Launch Campaign
               </Button>
               <Button onClick={() => setSelectedNpis(new Set())} variant="ghost" size="sm" className="h-7 text-xs text-slate-400 ml-auto">
@@ -513,7 +513,7 @@ export default function ProviderIntelligence() {
                   <Send className="w-4 h-4 text-violet-400" />
                   <span className="text-sm font-medium text-slate-200">{selectedNpis.size} providers selected for outreach</span>
                 </div>
-                <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="bg-violet-600 hover:bg-violet-700 gap-1.5">
+                <Button onClick={() => setShowCampaignLauncher(true)} size="sm" className="text-white bg-violet-600 hover:bg-violet-700 gap-1.5">
                   <Send className="w-3.5 h-3.5" /> Create Campaign
                 </Button>
               </div>

@@ -101,7 +101,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
           <Sparkles className="w-4 h-4 text-violet-500" />
           AI Contact Enrichment
         </CardTitle>
-        <Button size="sm" onClick={enrich} disabled={loading} className="bg-violet-600 hover:bg-violet-700 h-7 text-xs">
+        <Button size="sm" onClick={enrich} disabled={loading} className="text-white bg-violet-600 hover:bg-violet-700 h-7 text-xs">
           {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
           {loading ? 'Enriching...' : results ? 'Re-enrich' : 'Enrich'}
         </Button>
@@ -133,7 +133,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
                 </p>
                 <a href={results.website.value.startsWith('http') ? results.website.value : `https://${results.website.value}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline">{results.website.value}</a>
+                  className="text-xs text-blue-400 hover:underline">{results.website.value}</a>
               </div>
             )}
             {results.social_profiles?.length > 0 && (

@@ -107,7 +107,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
               <span>Verification Coverage</span>
               <span>{stats.analyzed} / {stats.withEmail} ({stats.withEmail > 0 ? Math.round(stats.analyzed / stats.withEmail * 100) : 0}%)</span>
             </div>
-            <Progress value={stats.withEmail > 0 ? (stats.analyzed / stats.withEmail) * 100 : 0} className="h-2" />
+            <Progress value={stats.withEmail > 0 ? (stats.analyzed / stats.withEmail) * 100 : 0} className="h-2" aria-label="Verification coverage" />
             <div className="flex gap-4 mt-2 text-[10px] text-slate-400">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Valid: {stats.valid}</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Risky: {stats.risky}</span>

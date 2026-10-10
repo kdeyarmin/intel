@@ -15,7 +15,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
     signals.push({
       label: 'High E/M Visit Pattern',
       icon: TrendingUp,
-      color: 'text-green-600',
+      color: 'text-green-400',
       description: `${servicesPerPatient.toFixed(1)} services per patient suggests frequent patient encounters`,
       strength: servicesPerPatient >= 12 ? 'Strong' : 'Moderate'
     });
@@ -27,7 +27,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
     signals.push({
       label: 'Medicare-Heavy Patient Base',
       icon: CheckCircle,
-      color: 'text-blue-600',
+      color: 'text-blue-400',
       description: `${patientVolume} Medicare beneficiaries (est. ${medicarePercentage}% of practice)`,
       strength: patientVolume >= 500 ? 'Strong' : 'Moderate'
     });
@@ -47,7 +47,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
     signals.push({
       label: 'Office-Based Practice',
       icon: Building2,
-      color: 'text-teal-600',
+      color: 'text-teal-400',
       description: 'Primary care or outpatient specialty indicates office-based workflow',
       strength: 'Strong'
     });
@@ -55,7 +55,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
     signals.push({
       label: 'Facility-Based Practice',
       icon: Building2,
-      color: 'text-orange-600',
+      color: 'text-orange-400',
       description: 'Hospital-based specialty may have different referral patterns',
       strength: 'Moderate'
     });

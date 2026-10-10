@@ -204,7 +204,7 @@ export default function AlertNotificationSettings() {
 
         {/* Save */}
         {isDirty && (
-          <Button onClick={handleSave} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white">
+          <Button onClick={handleSave} className="w-full bg-cyan-700 hover:bg-cyan-800 text-white">
             <Save className="w-4 h-4 mr-2" />
             Save Alert Settings
           </Button>

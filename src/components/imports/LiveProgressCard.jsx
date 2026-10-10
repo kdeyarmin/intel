@@ -142,7 +142,7 @@ export default function LiveProgressCard({ activeBatches, onAction }) {
                 </div>
 
                 {/* Main progress bar */}
-                <Progress value={progress} className="h-2 bg-slate-700" />
+                <Progress value={progress} className="h-2 bg-slate-700" aria-label="Import progress" />
 
                 {/* Row-level breakdowns */}
                 {total > 0 && (

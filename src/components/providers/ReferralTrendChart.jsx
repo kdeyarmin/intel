@@ -40,7 +40,7 @@ export default function ReferralTrendChart({ referrals = [] }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-violet-600" />
+          <GitBranch className="w-4 h-4 text-violet-400" />
           Referral Breakdown by Year
         </CardTitle>
       </CardHeader>

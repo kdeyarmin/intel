@@ -85,7 +85,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
                   {parseFloat(data.yoy) >= 0
                     ? <TrendingUp className="w-3 h-3 text-green-500" />
                     : <TrendingDown className="w-3 h-3 text-red-500" />}
-                  <span className={`text-xs font-medium ${parseFloat(data.yoy) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-medium ${parseFloat(data.yoy) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {data.yoy > 0 ? '+' : ''}{data.yoy}% YoY
                   </span>
                 </div>

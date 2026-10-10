@@ -19,7 +19,7 @@ export default function EmailResultFilters({ filters, onFiltersChange, counts })
       </div>
 
       <Select value={filters.validation} onValueChange={(v) => onFiltersChange({ ...filters, validation: v })}>
-        <SelectTrigger className="h-7 w-[130px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
+        <SelectTrigger aria-label="Filter by validation" className="h-7 w-[130px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
           <SelectValue placeholder="Validation" />
         </SelectTrigger>
         <SelectContent>
@@ -40,7 +40,7 @@ export default function EmailResultFilters({ filters, onFiltersChange, counts })
       </Select>
 
       <Select value={filters.confidence} onValueChange={(v) => onFiltersChange({ ...filters, confidence: v })}>
-        <SelectTrigger className="h-7 w-[130px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
+        <SelectTrigger aria-label="Filter by confidence" className="h-7 w-[130px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
           <SelectValue placeholder="Confidence" />
         </SelectTrigger>
         <SelectContent>
@@ -58,7 +58,7 @@ export default function EmailResultFilters({ filters, onFiltersChange, counts })
       </Select>
 
       <Select value={filters.source} onValueChange={(v) => onFiltersChange({ ...filters, source: v })}>
-        <SelectTrigger className="h-7 w-[150px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
+        <SelectTrigger aria-label="Filter by source" className="h-7 w-[150px] text-xs bg-slate-800/50 border-slate-700 text-slate-300">
           <SelectValue placeholder="Source" />
         </SelectTrigger>
         <SelectContent>

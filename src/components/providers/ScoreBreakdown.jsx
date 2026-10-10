@@ -23,7 +23,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
       <CardContent className="space-y-4">
         {score && (
           <div className="flex items-center gap-4 pb-4 border-b">
-            <div className="text-5xl font-bold text-teal-600">{score}</div>
+            <div className="text-5xl font-bold text-teal-400">{score}</div>
             <div className="text-slate-400">
               <p className="text-sm">Out of 100</p>
             </div>
@@ -45,7 +45,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Progress value={percentage} className="h-2 flex-1" />
+                <Progress value={percentage} className="h-2 flex-1" aria-label={componentLabels[key] || key} />
                 <span className="text-xs text-slate-400 w-12 text-right">
                   {data.weight}% wt
                 </span>
@@ -60,7 +60,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
             <ul className="space-y-1">
               {reasons.map((reason, idx) => (
                 <li key={idx} className="text-sm text-slate-300 flex items-start gap-2">
-                  <span className="text-teal-600 mt-1">•</span>
+                  <span className="text-teal-400 mt-1">•</span>
                   <span>{reason}</span>
                 </li>
               ))}

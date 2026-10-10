@@ -20,7 +20,7 @@ export default function RuleResultsTable({ results = [] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-8"></TableHead>
+            <TableHead className="w-8"><span className="sr-only">Status</span></TableHead>
             <TableHead>Rule</TableHead>
             <TableHead>Category</TableHead>
             <TableHead className="text-right">Pass Rate</TableHead>
@@ -33,8 +33,8 @@ export default function RuleResultsTable({ results = [] }) {
             <TableRow key={r.rule_id}>
               <TableCell>
                 {r.pct >= 90
-                  ? <CheckCircle className="w-4 h-4 text-green-500" />
-                  : <XCircle className="w-4 h-4 text-red-500" />
+                  ? <CheckCircle className="w-4 h-4 text-green-500" role="img" aria-label="Passing" />
+                  : <XCircle className="w-4 h-4 text-red-500" role="img" aria-label="Failing" />
                 }
               </TableCell>
               <TableCell className="font-medium text-sm">{r.rule_name}</TableCell>
@@ -45,7 +45,7 @@ export default function RuleResultsTable({ results = [] }) {
               </TableCell>
               <TableCell className="text-right font-mono text-sm">{r.pct}%</TableCell>
               <TableCell>
-                <Progress value={r.pct} className="h-2" />
+                <Progress value={r.pct} className="h-2" aria-label={`${r.rule_name} failure rate`} />
               </TableCell>
               <TableCell className="text-right text-sm text-red-400 font-medium">
                 {r.failing > 0 ? r.failing.toLocaleString() : '—'}

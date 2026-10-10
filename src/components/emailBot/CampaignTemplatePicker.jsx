@@ -109,7 +109,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
             className="h-7 text-xs bg-slate-800/50 border-slate-700 text-slate-200 flex-1"
           />
           <Select value={saveCategory} onValueChange={setSaveCategory}>
-            <SelectTrigger className="h-7 w-[100px] text-[10px] bg-slate-800/50 border-slate-700 text-slate-300">
+            <SelectTrigger aria-label="Template category" className="h-7 w-[100px] text-[10px] bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
