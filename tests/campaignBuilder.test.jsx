@@ -41,6 +41,14 @@ describe('CampaignBuilder', () => {
     expect(screen.getByText(/As Dr\. Ann Cardio will see it/)).toBeInTheDocument();
   });
 
+  it("won't send to a preselected list until it has loaded", async () => {
+    entities.LeadList.list.mockReturnValueOnce(new Promise(() => {}));
+    renderBuilder({ initialLeadListId: '7' });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Send' }), { button: 0 });
+    expect(await screen.findByText('Loading…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Send now/ })).toBeDisabled();
+  });
+
   it('shows placeholders when no list is chosen', () => {
     renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /Next: write the message/i }));
