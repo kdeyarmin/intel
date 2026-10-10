@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin, ShieldBan, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import PageHeader from '../components/shared/PageHeader';
+import PageTabs from '@/components/layout/PageTabs';
 
 const ALL_STATES = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"];
 
@@ -169,6 +170,7 @@ export default function NPPESCrawlerSettings() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <PageTabs current="NPPESCrawlerSettings" />
         <PageHeader
           title="Crawler Settings"
           subtitle="Configure NPPES crawler parameters"

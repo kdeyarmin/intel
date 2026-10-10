@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Tests for the Organizations page. Organization rows link to the dedicated
- * OrganizationDetail page (org-specific KPIs, utilization, referrals, affiliated
- * providers) rather than the individual-oriented ProviderDetail page.
+ * Tests for the Organizations page. Organization rows link to ProviderDetail,
+ * which renders organizations with their org-specific cards (affiliated
+ * providers, referral partners, enrichment); the old OrganizationDetail URL
+ * redirects there.
  */
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -73,23 +74,23 @@ describe('Organizations page – link URLs after PR change', () => {
     setupMocks({ providers: [mockOrg] });
   });
 
-  it('organization name link points to OrganizationDetail', () => {
+  it('organization name link points to ProviderDetail (organizations use the provider page)', () => {
     renderOrganizations();
     const orgNameLink = screen.getByRole('link', { name: 'City Health Clinic' });
-    expect(orgNameLink.getAttribute('href')).toBe(`/OrganizationDetail?npi=${ORG_NPI}`);
+    expect(orgNameLink.getAttribute('href')).toBe(`/ProviderDetail?npi=${ORG_NPI}`);
   });
 
-  it('"View Details" button link points to OrganizationDetail', () => {
+  it('"View Details" button link points to ProviderDetail (organizations use the provider page)', () => {
     renderOrganizations();
     const viewDetailsLink = screen.getByRole('link', { name: /view details/i });
-    expect(viewDetailsLink.getAttribute('href')).toBe(`/OrganizationDetail?npi=${ORG_NPI}`);
+    expect(viewDetailsLink.getAttribute('href')).toBe(`/ProviderDetail?npi=${ORG_NPI}`);
   });
 
-  it('both links for the same org share the same OrganizationDetail URL', () => {
+  it('both links for the same org share the same ProviderDetail URL', () => {
     renderOrganizations();
     const links = screen.getAllByRole('link');
     const detailLinks = links.filter(l =>
-      l.getAttribute('href')?.includes('OrganizationDetail') &&
+      l.getAttribute('href')?.includes('ProviderDetail') &&
       l.getAttribute('href')?.includes(ORG_NPI),
     );
     // org name link + "View Details" link = 2
@@ -102,7 +103,7 @@ describe('Organizations page – link URLs after PR change', () => {
     expect(screen.getByText('No organizations match the current filters.')).toBeInTheDocument();
   });
 
-  it('renders multiple org rows with OrganizationDetail links for each', () => {
+  it('renders multiple org rows with ProviderDetail links for each', () => {
     const orgs = [
       { ...mockOrg, id: 'org-1', npi: '1111111111', organization_name: 'Clinic A' },
       { ...mockOrg, id: 'org-2', npi: '2222222222', organization_name: 'Clinic B' },
@@ -112,8 +113,8 @@ describe('Organizations page – link URLs after PR change', () => {
 
     const linkA = screen.getByRole('link', { name: 'Clinic A' });
     const linkB = screen.getByRole('link', { name: 'Clinic B' });
-    expect(linkA.getAttribute('href')).toBe('/OrganizationDetail?npi=1111111111');
-    expect(linkB.getAttribute('href')).toBe('/OrganizationDetail?npi=2222222222');
+    expect(linkA.getAttribute('href')).toBe('/ProviderDetail?npi=1111111111');
+    expect(linkB.getAttribute('href')).toBe('/ProviderDetail?npi=2222222222');
   });
 });
 describe('Organizations page – server-side search', () => {

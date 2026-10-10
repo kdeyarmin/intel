@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import PageTabs from '@/components/layout/PageTabs';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { invokeOrThrow } from '@/api/functionResult';
@@ -77,6 +78,7 @@ export default function CountyIntelligence() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <PageTabs current="CountyIntelligence" />
       <div>
         <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
           <MapPin className="w-6 h-6 text-cyan-400" aria-hidden="true" />

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '../components/shared/PageHeader';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { toast } from 'sonner';
+import PageTabs from '@/components/layout/PageTabs';
 
 // rule_type identifies which scoring signal a rule weights (see the score
 // calculation below); threshold lives in the conditions jsonb column.
@@ -234,6 +235,7 @@ export default function ScoringRules() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      <PageTabs current="ScoringRules" />
       <PageHeader
         title="Scoring Configuration"
         subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"

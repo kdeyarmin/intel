@@ -137,6 +137,9 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+/** The auth context, or undefined outside an AuthProvider (for optional UI such as tab strips). */
+export const useOptionalAuth = () => useContext(AuthContext);
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -42,9 +42,12 @@ import EnhancedErrorReport from '../components/imports/EnhancedErrorReport';
 import AIFailureAnalysis from '../components/imports/AIFailureAnalysis';
 import CrossBatchErrorResolver from '../components/imports/CrossBatchErrorResolver';
 import PageHeader from '../components/shared/PageHeader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUrlState } from '@/hooks/useUrlState';
 import ImportAgentChat from '../components/imports/ImportAgentChat';
 import ImportScheduleManager from '../components/imports/ImportScheduleManager';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+import PageTabs from '@/components/layout/PageTabs';
 
 const CATEGORY_LABELS = {
   nppes: 'NPPES',
@@ -58,6 +61,20 @@ const CATEGORY_LABELS = {
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   provider_service_utilization: 'Provider Service Utilization',
 });
+
+const IMPORT_TABS = [
+  { value: 'monitoring', label: 'Monitor', icon: Activity },
+  { value: 'history', label: 'History', icon: History },
+  { value: 'rules', label: 'Rules', icon: ShieldCheck },
+  { value: 'alerts', label: 'Alerts', icon: Bell },
+  { value: 'ai_quality', label: 'AI', icon: Sparkles },
+  { value: 'agent', label: 'AI Manager', icon: Bot },
+  { value: 'performance', label: 'Performance', icon: TrendingUp },
+  { value: 'health', label: 'Health', icon: HeartPulse },
+  { value: 'automation', label: 'Automation', icon: CalendarClock },
+];
+// The open tab lives in ?importsTab= so links (e.g. from notifications) and Back land on it.
+const IMPORTS_URL_DEFAULTS = { importsTab: 'monitoring' };
 
 export default function ImportMonitoring() {
   const [showOnlyLatest, setShowOnlyLatest] = useState(true);
@@ -75,7 +92,8 @@ export default function ImportMonitoring() {
   const [deletingBatchId, setDeletingBatchId] = useState(null);
   const [confirmDeleteBatch, setConfirmDeleteBatch] = useState(null);
   const [showNewImport, setShowNewImport] = useState(false);
-  const [activeTab, setActiveTab] = useState('monitoring');
+  const [importsUrl, setImportsUrl] = useUrlState(IMPORTS_URL_DEFAULTS);
+  const activeTab = IMPORT_TABS.some((t) => t.value === importsUrl.importsTab) ? importsUrl.importsTab : 'monitoring';
   const [selectedForRerun, setSelectedForRerun] = useState(new Set());
   const [bulkRetryMode, setBulkRetryMode] = useState(false);
   const [isBulkRetrying, setIsBulkRetrying] = useState(false);
@@ -379,6 +397,7 @@ export default function ImportMonitoring() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+      <PageTabs current="ImportMonitoring" />
       <PageHeader
         title="Import Monitoring"
         subtitle="Real-time monitoring, validation rules, and alert notifications"
@@ -424,132 +443,56 @@ export default function ImportMonitoring() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('monitoring')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'monitoring' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Activity className="w-3.5 h-3.5 inline mr-1" />
-          <span className="hidden sm:inline">Live </span>Monitor
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <History className="w-3.5 h-3.5 inline mr-1" />
-          History
-        </button>
-        <button
-          onClick={() => setActiveTab('rules')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'rules' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5 inline mr-1" />
-          Rules
-        </button>
-        <button
-          onClick={() => setActiveTab('alerts')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'alerts' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Bell className="w-3.5 h-3.5 inline mr-1" />
-          Alerts
-        </button>
-        <button
-          onClick={() => setActiveTab('ai_quality')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'ai_quality' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5 inline mr-1" />
-          AI
-        </button>
-        <button
-          onClick={() => setActiveTab('agent')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'agent' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Bot className="w-3.5 h-3.5 inline mr-1" />
-          AI Manager
-        </button>
-        <button
-          onClick={() => setActiveTab('performance')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'performance' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5 inline mr-1" />
-          Performance
-        </button>
-        <button
-          onClick={() => setActiveTab('health')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'health' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <HeartPulse className="w-3.5 h-3.5 inline mr-1" />
-          Health
-        </button>
-        <button
-          onClick={() => setActiveTab('automation')}
-          className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-            activeTab === 'automation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <CalendarClock className="w-3.5 h-3.5 inline mr-1" />
-          Automation
-        </button>
-      </div>
+      <Tabs value={activeTab} onValueChange={(value) => setImportsUrl({ importsTab: value })} className="space-y-6">
+      <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-slate-800/50 p-1">
+        {IMPORT_TABS.map(({ value, label, icon: Icon }) => (
+          <TabsTrigger key={value} value={value} className="gap-1 whitespace-nowrap px-3 sm:px-4 text-xs sm:text-sm data-[state=active]:bg-slate-700">
+            <Icon className="w-3.5 h-3.5" aria-hidden="true" /> {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
 
-      {activeTab === 'history' && (
+      <TabsContent value="history" className="mt-0">
         <ImportHistoryView batches={batches} formatTimestamp={formatTimestamp} />
-      )}
+      </TabsContent>
 
-      {activeTab === 'rules' && (
+      <TabsContent value="rules" className="mt-0">
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-6" style={{ minHeight: '500px' }}>
             <ValidationRulesManager />
           </CardContent>
         </Card>
-      )}
+      </TabsContent>
 
-      {activeTab === 'alerts' && (
+      <TabsContent value="alerts" className="mt-0">
         <div className="max-w-2xl">
           <AlertNotificationSettings />
         </div>
-      )}
+      </TabsContent>
 
-      {activeTab === 'ai_quality' && (
+      <TabsContent value="ai_quality" className="mt-0">
         <AIImportQualityAnalysis />
-      )}
+      </TabsContent>
 
-      {activeTab === 'agent' && (
+      <TabsContent value="agent" className="mt-0">
         <div className="h-[600px] border border-slate-700/50 rounded-xl overflow-hidden bg-[#141d30]">
           <ImportAgentChat />
         </div>
-      )}
+      </TabsContent>
 
-      {activeTab === 'performance' && (
+      <TabsContent value="performance" className="mt-0">
         <ImportSpeedView batches={batches} onRefresh={refreshBatches} />
-      )}
+      </TabsContent>
 
-      {activeTab === 'health' && (
+      <TabsContent value="health" className="mt-0">
         <ImportHealthView />
-      )}
+      </TabsContent>
 
-      {activeTab === 'automation' && (
+      <TabsContent value="automation" className="mt-0">
         <ImportScheduleManager />
-      )}
+      </TabsContent>
 
-      {activeTab === 'monitoring' && <>
+      <TabsContent value="monitoring" className="mt-0 space-y-6">
       {/* Overview KPIs */}
       <ImportOverviewKPIs batches={batches} onFilterChange={setStatusFilter} />
 
@@ -1044,7 +987,8 @@ export default function ImportMonitoring() {
         onRetryStarted={refreshBatches}
         presets={retryPresets}
       />
-      </>}
+      </TabsContent>
+      </Tabs>
 
       {/* New Import Dialog */}
       <NewImportDialog

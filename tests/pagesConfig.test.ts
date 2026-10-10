@@ -12,8 +12,10 @@
  *   - ProjectManagement
  *   - Campaigns (page file; the "Campaigns" route remains, aliased to ProviderOutreach)
  *
- * And OrganizationDetail was RE-ADDED (organization rows now link to a dedicated
- * org detail page instead of ProviderDetail).
+ * Navigation consolidation then replaced the eight facility list pages with
+ * Facilities (?type=), folded OrganizationDetail into ProviderDetail, and turned
+ * the Campaigns / EmailSearchBot / EnrichmentHub aliases into redirects; those
+ * old names are now LEGACY_REDIRECTS in navConfig, not pages.
  *
  * We mock all page imports (vi.mock is hoisted before static imports by
  * vitest) so we never pull in the full React component tree, then assert
@@ -39,26 +41,19 @@ vi.mock('../src/pages/CustomReports.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Dashboard.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/DataCenter.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/DataQuality.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/CommunityHealthCenters.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/DMESuppliers.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderIntelligence.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/FacilityDetail.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/Facilities.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/DMEProviderReport.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Help.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/HomeHealthAgencies.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/Hospices.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/Hospitals.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/InpatientRehab.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ImportMonitoring.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LeadListBuilder.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LeadLists.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LocationDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Locations.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/LongTermCare.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/NursingHomes.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawler.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/NPPESCrawlerSettings.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Organizations.jsx', () => ({ default: () => null }));
-vi.mock('../src/pages/OrganizationDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderLocationMatching.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ProviderOutreach.jsx', () => ({ default: () => null }));
@@ -110,6 +105,13 @@ describe('pages.config.js – PAGES registry', () => {
     it('does not contain ImportHealthDashboard (file deleted)', () => {
       expect('ImportHealthDashboard' in PAGES).toBe(false);
     });
+
+    it('does not register merged or renamed pages: they redirect instead', () => {
+      for (const name of ['Hospitals', 'HomeHealthAgencies', 'Hospices', 'NursingHomes', 'InpatientRehab', 'LongTermCare',
+        'DMESuppliers', 'CommunityHealthCenters', 'OrganizationDetail', 'Campaigns', 'EmailSearchBot', 'EnrichmentHub', 'OAuthConsent']) {
+        expect(name in PAGES, name).toBe(false);
+      }
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -123,32 +125,24 @@ describe('pages.config.js – PAGES registry', () => {
       'AdvancedAnalytics',
       'CMSAnalytics',
       'CMSDataSources',
-      'Campaigns',
       'CountyIntelligence',
       'CustomReports',
       'Dashboard',
       'DataCenter',
       'DataQuality',
-      'CommunityHealthCenters',
-      'DMESuppliers',
       'ProviderIntelligence',
+      'Facilities',
       'FacilityDetail',
+      'DMEProviderReport',
       'Help',
-      'HomeHealthAgencies',
-      'Hospices',
-      'Hospitals',
-      'InpatientRehab',
       'ImportMonitoring',
       'LeadListBuilder',
       'LeadLists',
       'LocationDetail',
       'Locations',
-      'LongTermCare',
-      'NursingHomes',
       'NPPESCrawler',
       'NPPESCrawlerSettings',
       'Organizations',
-      'OrganizationDetail',
       'ProviderDetail',
       'ProviderLocationMatching',
       'ProviderOutreach',

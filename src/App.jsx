@@ -14,7 +14,7 @@ import ResetPassword from '@/components/auth/ResetPassword';
 import { ConfirmProvider } from '@/components/shared/ConfirmDialog';
 import PageErrorBoundary from '@/components/shared/PageErrorBoundary';
 import { buildLoginUrl } from '@/lib/returnUrl';
-import { canAccessPage } from '@/components/layout/navConfig';
+import { canAccessPage, LEGACY_REDIRECTS, resolveLegacyRedirect } from '@/components/layout/navConfig';
 import AccessDenied from '@/components/shared/AccessDenied';
 
 class ErrorBoundary extends Component {
@@ -109,6 +109,13 @@ const DeniedPage = ({ pageName }) => (
   </LayoutWrapper>
 );
 
+// Old page URLs (merged or renamed pages) forward to where the page lives now,
+// keeping the query string and hash so bookmarks and shared links still work.
+const LegacyRedirect = ({ page }) => {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${resolveLegacyRedirect(page, search)}${hash}`} replace />;
+};
+
 const AuthenticatedApp = () => {
   return (
     <Routes>
@@ -123,6 +130,9 @@ const AuthenticatedApp = () => {
           </LayoutWrapper>
         </ProtectedRoute>
       } />
+      {Object.keys(LEGACY_REDIRECTS).map((page) => (
+        <Route key={`legacy-${page}`} path={`/${page}`} element={<LegacyRedirect page={page} />} />
+      ))}
       {Object.entries(Pages).map(([path, Page]) => (
         <Route
           key={path}

@@ -19,6 +19,7 @@ import CrawlerAnalyticsView from '../components/crawlerDashboard/CrawlerAnalytic
 import PageHeader from '../components/shared/PageHeader';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import PageTabs from '@/components/layout/PageTabs';
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS',
@@ -159,6 +160,7 @@ export default function NPPESCrawler() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+      <PageTabs current="NPPESCrawler" />
       <PageHeader
         title="NPPES Crawler Control Panel"
         subtitle="Manage the robust, queue-based crawler system"

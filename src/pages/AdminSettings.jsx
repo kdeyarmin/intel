@@ -1,11 +1,13 @@
 import { Settings } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import UserManagement from '../components/admin/UserManagement';
+import PageTabs from '@/components/layout/PageTabs';
 
 // Admin-only (roles: ['admin'] in navConfig); ProtectedRoute enforces it.
 export default function AdminSettings() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <PageTabs current="AdminSettings" />
       <PageHeader
         title="Admin Settings"
         subtitle="Approve new accounts, invite people, and manage roles and access"

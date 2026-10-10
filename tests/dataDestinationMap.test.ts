@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { DATA_DESTINATION_MAP } from '../src/components/dataCenter/DataDestinationMap.jsx';
+import { readFileSync } from 'node:fs';
+import { DATA_DESTINATION_MAP, destinationHref } from '../src/components/dataCenter/DataDestinationMap.jsx';
+import { LEGACY_REDIRECTS } from '../src/components/layout/navConfig';
 
 // ---------------------------------------------------------------------------
 // DATA_DESTINATION_MAP – central routing configuration for import types
@@ -10,8 +12,8 @@ describe('DATA_DESTINATION_MAP', () => {
   // Hospitals so it is co-located with the other hospital/inpatient datasets.
   // -----------------------------------------------------------------------
   describe('medicare_ma_inpatient routing change', () => {
-    it('routes medicare_ma_inpatient to Hospitals page', () => {
-      expect(DATA_DESTINATION_MAP.medicare_ma_inpatient.page).toBe('Hospitals');
+    it('routes medicare_ma_inpatient to the hospital facilities view', () => {
+      expect(destinationHref(DATA_DESTINATION_MAP.medicare_ma_inpatient)).toBe('/Facilities?type=hospital');
     });
 
     it('labels medicare_ma_inpatient as Hospitals', () => {
@@ -38,7 +40,7 @@ describe('DATA_DESTINATION_MAP', () => {
 
     hospitalTypes.forEach(type => {
       it(`${type} maps to Hospitals`, () => {
-        expect(DATA_DESTINATION_MAP[type]?.page).toBe('Hospitals');
+        expect(destinationHref(DATA_DESTINATION_MAP[type])).toBe('/Facilities?type=hospital');
       });
     });
   });
@@ -60,31 +62,31 @@ describe('DATA_DESTINATION_MAP', () => {
     });
 
     it('routes home_health_enrollments to HomeHealthAgencies', () => {
-      expect(DATA_DESTINATION_MAP.home_health_enrollments.page).toBe('HomeHealthAgencies');
+      expect(destinationHref(DATA_DESTINATION_MAP.home_health_enrollments)).toBe('/Facilities?type=home_health');
     });
 
     it('routes hospice_enrollments to Hospices', () => {
-      expect(DATA_DESTINATION_MAP.hospice_enrollments.page).toBe('Hospices');
+      expect(destinationHref(DATA_DESTINATION_MAP.hospice_enrollments)).toBe('/Facilities?type=hospice');
     });
 
     it('routes snf_provider_measures to NursingHomes', () => {
-      expect(DATA_DESTINATION_MAP.snf_provider_measures.page).toBe('NursingHomes');
+      expect(destinationHref(DATA_DESTINATION_MAP.snf_provider_measures)).toBe('/Facilities?type=snf');
     });
 
     it('routes medicare_dme_by_supplier to DMESuppliers', () => {
-      expect(DATA_DESTINATION_MAP.medicare_dme_by_supplier.page).toBe('DMESuppliers');
+      expect(destinationHref(DATA_DESTINATION_MAP.medicare_dme_by_supplier)).toBe('/Facilities?type=dme');
     });
 
     it('routes fqhc_enrollments to CommunityHealthCenters', () => {
-      expect(DATA_DESTINATION_MAP.fqhc_enrollments.page).toBe('CommunityHealthCenters');
+      expect(destinationHref(DATA_DESTINATION_MAP.fqhc_enrollments)).toBe('/Facilities?type=community_health');
     });
 
     it('routes inpatient_rehab_general_info to InpatientRehab', () => {
-      expect(DATA_DESTINATION_MAP.inpatient_rehab_general_info.page).toBe('InpatientRehab');
+      expect(destinationHref(DATA_DESTINATION_MAP.inpatient_rehab_general_info)).toBe('/Facilities?type=irf');
     });
 
     it('routes long_term_care_general_info to LongTermCare', () => {
-      expect(DATA_DESTINATION_MAP.long_term_care_general_info.page).toBe('LongTermCare');
+      expect(destinationHref(DATA_DESTINATION_MAP.long_term_care_general_info)).toBe('/Facilities?type=ltch');
     });
 
     it('routes medicare_fee_for_service_enrollment to CMSAnalytics', () => {
@@ -131,6 +133,19 @@ describe('DATA_DESTINATION_MAP', () => {
         expect(typeof val.page, `${key}.page`).toBe('string');
         expect(val.page.length, `${key}.page non-empty`).toBeGreaterThan(0);
       }
+    });
+
+    it('every entry links to a real page, never to an old one that only redirects', () => {
+      const config = readFileSync('src/pages.config.js', 'utf8');
+      for (const [key, val] of Object.entries(DATA_DESTINATION_MAP)) {
+        expect(config, `${key} -> ${val.page}`).toContain(`${val.page}: pageLoaders.${val.page},`);
+        expect(val.page in LEGACY_REDIRECTS, key).toBe(false);
+      }
+    });
+
+    it('builds links with the view parameters', () => {
+      expect(destinationHref({ page: 'Utilization' })).toBe('/Utilization');
+      expect(destinationHref(DATA_DESTINATION_MAP.pa_home_health)).toBe('/Facilities?type=home_health');
     });
 
     it('every entry has a non-empty label string', () => {
