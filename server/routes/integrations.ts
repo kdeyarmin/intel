@@ -10,8 +10,9 @@ import { getMailerStatus, sendMail } from "../lib/mailer";
 import { isSuppressed } from "../lib/suppressions";
 
 // Only models the app actually uses may be requested. Prevents a caller from
-// forcing the most expensive model or an arbitrary/invalid one.
-const ALLOWED_MODELS = new Set<string>(Object.values(CLAUDE_MODELS));
+// forcing the most expensive model or an arbitrary/invalid one. The assistant's
+// model is left out: it is only reachable through the quota-checked assistant.
+const ALLOWED_MODELS = new Set<string>([CLAUDE_MODELS.SONNET, CLAUDE_MODELS.HAIKU, CLAUDE_MODELS.OPUS]);
 const MAX_OUTPUT_TOKENS = 8192;
 const MAX_PROMPT_CHARS = 200_000;
 

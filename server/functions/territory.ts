@@ -48,7 +48,7 @@ async function chooseNpis(client: any, state: string | null, limit: number): Pro
     "SELECT npi FROM lead_scores WHERE npi IS NOT NULL AND score IS NOT NULL ORDER BY score DESC LIMIT $1",
     [SCORED_CANDIDATES],
   );
-  let top = [...new Set(scored.map((r: any) => r.npi as string))];
+  let top: string[] = [...new Set<string>(scored.map((r: any) => r.npi as string))];
   if (state && top.length) {
     const { rows } = await client.query(
       "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'",
@@ -58,7 +58,7 @@ async function chooseNpis(client: any, state: string | null, limit: number): Pro
     top = top.filter((n) => inState.has(n));
   }
   top = top.slice(0, limit);
-  const npis = [...top];
+  const npis: string[] = [...top];
   if (npis.length < limit) {
     const { rows } = await client.query(
       `SELECT npi FROM provider_locations WHERE location_type = 'Practice'${state ? " AND state = $2" : ""} LIMIT $1`,
