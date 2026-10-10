@@ -228,9 +228,9 @@ function MessageBubble({ message }) {
           {isUser ? (
             <p>{message.content}</p>
           ) : (
-            <ReactMarkdown className="prose prose-xs max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5">
-              {message.content}
-            </ReactMarkdown>
+            <div className="prose prose-xs max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
           )}
         </div>
 

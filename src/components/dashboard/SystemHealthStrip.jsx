@@ -3,8 +3,10 @@ import { Clock, Upload, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { formatDateET } from '../utils/dateUtils';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function SystemHealthStrip({ stats, loading }) {
+  const { canOpen } = usePageAccess();
   if (loading || !stats) return null;
 
   const items = [
@@ -60,7 +62,7 @@ export default function SystemHealthStrip({ stats, loading }) {
             <span className={`text-[11px] font-medium ${item.color} ${item.link ? 'group-hover:text-cyan-400' : ''}`}>{item.value}</span>
           </div>
         );
-        if (item.link) {
+        if (item.link && canOpen(item.link)) {
           return <Link key={i} to={createPageUrl(item.link)}>{content}</Link>;
         }
         return <React.Fragment key={i}>{content}</React.Fragment>;

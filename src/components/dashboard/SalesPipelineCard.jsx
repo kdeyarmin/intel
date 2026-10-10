@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Megaphone, ListChecks, Users, Send } from 'lucide-react';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 const ACTIVE_STATUSES = ['active', 'sending', 'scheduled', 'running'];
 
 export default function SalesPipelineCard() {
+  const { canOpen } = usePageAccess();
   const { data: leadLists = [], isLoading: loadingLists } = useQuery({
     queryKey: ['dashLeadLists'],
     queryFn: () => base44.entities.LeadList.list('-created_date', 200),
@@ -44,17 +46,29 @@ export default function SalesPipelineCard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {tiles.map(t => {
             const Icon = t.icon;
+            const body = (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className={`w-3.5 h-3.5 ${t.cls}`} />
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{t.label}</p>
+                </div>
+                <p className="text-2xl font-bold text-white">{loading ? '—' : t.value.toLocaleString()}</p>
+              </>
+            );
+            if (!canOpen(t.link)) {
+              return (
+                <div key={t.label} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/40">
+                  {body}
+                </div>
+              );
+            }
             return (
               <Link
                 key={t.label}
                 to={createPageUrl(t.link)}
                 className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/40 hover:border-cyan-500/40 transition-colors"
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon className={`w-3.5 h-3.5 ${t.cls}`} />
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{t.label}</p>
-                </div>
-                <p className="text-2xl font-bold text-white">{loading ? '—' : t.value.toLocaleString()}</p>
+                {body}
               </Link>
             );
           })}

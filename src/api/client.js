@@ -1,5 +1,50 @@
 const API_BASE = "/api";
 
+export const AUTH_EXPIRED_EVENT = "auth:expired";
+
+// Endpoints whose 401s are expected and handled by the auth layer itself
+// (bad credentials, the initial session probe, logout).
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/me", "/auth/logout"];
+
+let authExpiredHandled = false;
+
+export function resetAuthExpired() {
+  authExpiredHandled = false;
+}
+
+// A 401 from any other endpoint means the session expired mid-use. Clear the
+// stale token and tell the app once (many queries can fail at the same time),
+// so it can send the user to the login page instead of rendering empty tables.
+export function handleUnauthorized(url) {
+  if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (authExpiredHandled) return;
+  if (typeof window === "undefined") return;
+  if (window.location.pathname.startsWith("/login")) return;
+  authExpiredHandled = true;
+  localStorage.removeItem("auth_token");
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
+// Server errors carry a short `message` (or `error`) plus an optional
+// human-readable `detail`; show both so users see "Forbidden: Admin access is
+// required..." rather than a bare "Forbidden" or "Request failed: 409".
+export function buildErrorMessage(data, status) {
+  const primary = data?.message || data?.error;
+  const detail = typeof data?.detail === "string" ? data.detail : "";
+  if (primary && detail && detail !== primary) return `${primary}: ${detail}`;
+  return primary || detail || `Request failed: ${status}`;
+}
+
+async function toApiError(res, url) {
+  const data = await res.json().catch(() => ({ message: res.statusText }));
+  if (res.status === 401) handleUnauthorized(url);
+  const err = new Error(buildErrorMessage(data, res.status));
+  err.name = "ApiError";
+  err.status = res.status;
+  err.data = data;
+  return err;
+}
+
 async function request(url, options = {}) {
   const token = localStorage.getItem("auth_token");
   const headers = {
@@ -14,14 +59,7 @@ async function request(url, options = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({ message: res.statusText }));
-    const err = new Error(data.message || `Request failed: ${res.status}`);
-    err.name = "ApiError";
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
+  if (!res.ok) throw await toApiError(res, url);
 
   return res.json();
 }
@@ -123,6 +161,7 @@ export const base44 = {
       if (result.token) {
         localStorage.setItem("auth_token", result.token);
       }
+      resetAuthExpired();
       return result;
     },
 
@@ -134,6 +173,7 @@ export const base44 = {
       if (result.token) {
         localStorage.setItem("auth_token", result.token);
       }
+      resetAuthExpired();
       return result;
     },
 
@@ -174,13 +214,7 @@ export const base44 = {
           credentials: "include",
           body: formData,
         });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({ message: res.statusText }));
-          const err = new Error(data.message || `Upload failed: ${res.status}`);
-          err.name = "ApiError";
-          err.status = res.status;
-          throw err;
-        }
+        if (!res.ok) throw await toApiError(res, "/integrations/file/upload");
         return res.json();
       },
 

@@ -8,11 +8,16 @@ import { ChevronRight, Home } from 'lucide-react';
  *   title: string;
  *   subtitle?: string;
  *   icon?: React.ComponentType<{ className?: string }>;
- *   breadcrumbs?: Array<{ label: string; page?: string; path?: string }>;
+ *   breadcrumbs?: Array<{ label: string; page?: string }>;
  *   actions?: React.ReactNode;
+ *   children?: React.ReactNode;
  * }} props
+ *
+ * Header actions can be passed as `actions` or as children (several pages do
+ * the latter); both render in the right-hand slot.
  */
-export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, actions }) {
+export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, actions, children }) {
+  const headerActions = actions ?? children;
   return (
     <div className="mb-6">
       {/* Breadcrumbs */}
@@ -49,7 +54,7 @@ export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, a
             {subtitle && <p className="text-sm text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {headerActions && <div className="flex flex-wrap gap-2">{headerActions}</div>}
       </div>
     </div>
   );

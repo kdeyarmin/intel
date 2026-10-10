@@ -75,9 +75,9 @@ export default function ImportAgentChat() {
                                 ? 'bg-cyan-600 text-white' 
                                 : 'bg-slate-800 border border-slate-700 text-slate-200'
                             }`}>
-                                <ReactMarkdown className="prose prose-sm prose-invert max-w-none [&>p]:mb-1">
-                                    {m.content}
-                                </ReactMarkdown>
+                                <div className="prose prose-sm prose-invert max-w-none [&>p]:mb-1">
+                                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                                </div>
                             </div>
                             {m.role === 'user' && (
                                 <div className="w-8 h-8 rounded-full bg-cyan-700 flex items-center justify-center flex-shrink-0">

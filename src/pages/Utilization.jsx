@@ -56,7 +56,7 @@ export default function Utilization() {
         subtitle="View and analyze provider service utilization and Medicare payment metrics"
         icon={Activity}
         breadcrumbs={[
-          { label: "Analytics", path: "/advanced-analytics" },
+          { label: "Analytics", page: "AdvancedAnalytics" },
           { label: "Utilization" }
         ]}
       />

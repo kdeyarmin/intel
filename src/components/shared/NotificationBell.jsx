@@ -4,8 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Bell, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function NotificationBell() {
+  const { isAdmin, canOpen } = usePageAccess();
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     try { return JSON.parse(localStorage.getItem('dismissedNotifs') || '[]'); } catch { return []; }
@@ -22,6 +24,8 @@ export default function NotificationBell() {
     queryKey: ['notifBatches'],
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 10),
     staleTime: 30000,
+    // Import batches are admin-only; regular users would just get a 403.
+    enabled: isAdmin,
   });
 
   useEffect(() => {
@@ -33,10 +37,12 @@ export default function NotificationBell() {
   }, []);
 
   const batchNotifs = recentBatches
-    .filter(b => (b.status === 'completed' || b.status === 'failed') && !dismissed.includes(b.id))
+    .filter(b => (b.status === 'completed' || b.status === 'failed') && !dismissed.includes(`batch:${b.id}`))
     .slice(0, 5)
     .map(b => ({
-      id: b.id,
+      // Alerts and batches come from different tables, so their numeric ids
+      // can collide; namespace them so dismissing one doesn't hide the other.
+      id: `batch:${b.id}`,
       type: b.status === 'completed' ? 'success' : 'error',
       icon: b.status === 'completed' ? CheckCircle2 : XCircle,
       title: `Import ${b.status}`,
@@ -46,10 +52,10 @@ export default function NotificationBell() {
     }));
 
   const alertNotifs = alerts
-    .filter(a => !dismissed.includes(a.id))
+    .filter(a => !dismissed.includes(`alert:${a.id}`))
     .slice(0, 5)
     .map(a => ({
-      id: a.id,
+      id: `alert:${a.id}`,
       type: 'warning',
       icon: AlertTriangle,
       title: a.title,
@@ -93,6 +99,8 @@ export default function NotificationBell() {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setOpen(!open)}
+        aria-label="Notifications"
+        aria-expanded={open}
         className="relative p-1.5 rounded-lg text-slate-500 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
       >
         <Bell className="w-4 h-4" />
@@ -130,12 +138,20 @@ export default function NotificationBell() {
                 return (
                   <div key={n.id} className="flex items-start gap-2.5 px-4 py-3 hover:bg-slate-800/40 border-b border-slate-800/30 group">
                     <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${iconColors[n.type]}`} />
-                    <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)} className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-200">{n.title}</p>
-                      {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
-                      <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
-                    </Link>
-                    <button onClick={() => dismiss(n.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-400">
+                    {canOpen(n.page) ? (
+                      <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)} className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-200">{n.title}</p>
+                        {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
+                        <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
+                      </Link>
+                    ) : (
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-200">{n.title}</p>
+                        {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
+                        <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
+                      </div>
+                    )}
+                    <button onClick={() => dismiss(n.id)} aria-label="Dismiss notification" className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-slate-200">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
