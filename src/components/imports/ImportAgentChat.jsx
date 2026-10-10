@@ -57,7 +57,7 @@ export default function ImportAgentChat() {
             <CardContent className="flex-1 p-0 flex flex-col min-h-0">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
                     {messages.length === 0 && !loading && (
-                        <div className="text-center text-slate-500 mt-10">
+                        <div className="text-center text-slate-400 mt-10">
                             <Bot className="w-12 h-12 mx-auto mb-2 opacity-50" />
                             <p>Hi! I am the Import Manager Agent.</p>
                             <p className="text-sm">I can monitor jobs, restart stalled imports, and fix issues.</p>

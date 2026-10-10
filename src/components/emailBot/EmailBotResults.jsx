@@ -36,12 +36,12 @@ export default function EmailBotResults({ results }) {
                 ) : r.best_email ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-slate-500" />
+                  <XCircle className="w-4 h-4 text-slate-400" />
                 )}
               </TableCell>
               <TableCell className="font-mono text-xs text-slate-300">{r.npi}</TableCell>
               <TableCell className="text-sm max-w-[180px] truncate text-slate-200">{r.name}</TableCell>
-              <TableCell className="text-sm text-slate-300">{r.best_email || <span className="text-slate-500">—</span>}</TableCell>
+              <TableCell className="text-sm text-slate-300">{r.best_email || <span className="text-slate-400">—</span>}</TableCell>
               <TableCell>
                 {r.confidence && (
                   <Badge className={`${confColors[r.confidence]} text-[10px]`}>{r.confidence}</Badge>

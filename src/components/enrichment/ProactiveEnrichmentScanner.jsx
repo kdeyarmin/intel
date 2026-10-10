@@ -75,11 +75,11 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
         </p>
 
         <div className="space-y-2" role="group" aria-labelledby={`${uid}-data-points`}>
-          <span id={`${uid}-data-points`} className="font-medium leading-none text-[10px] text-slate-500 uppercase tracking-wide">Data Points to Discover</span>
+          <span id={`${uid}-data-points`} className="font-medium leading-none text-[10px] text-slate-400 uppercase tracking-wide">Data Points to Discover</span>
           {DATA_POINTS.map(dp => (
             <div key={dp.key} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <dp.icon className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                <dp.icon className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
                 <span className="text-xs text-slate-300">{dp.label}</span>
               </div>
               <Switch aria-label={dp.label} checked={enabledPoints.has(dp.key)} onCheckedChange={() => togglePoint(dp.key)} disabled={running} />
@@ -106,7 +106,7 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-slate-400">
                 Scanning providers with AI... this may take a moment
               </p>
             </div>
@@ -119,17 +119,17 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
               <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-emerald-400">{results.enriched}</p>
-                <p className="text-[9px] text-slate-500">Found Data</p>
+                <p className="text-[9px] text-slate-400">Found Data</p>
               </div>
               <div className="bg-slate-500/10 rounded-lg p-2 text-center">
                 <AlertTriangle className="w-4 h-4 text-slate-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-slate-400">{results.no_data}</p>
-                <p className="text-[9px] text-slate-500">No Data</p>
+                <p className="text-[9px] text-slate-400">No Data</p>
               </div>
               <div className="bg-red-900/10 rounded-lg p-2 text-center">
                 <XCircle className="w-4 h-4 text-red-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-red-400">{results.errors}</p>
-                <p className="text-[9px] text-slate-500">Errors</p>
+                <p className="text-[9px] text-slate-400">Errors</p>
               </div>
             </div>
             {results.message && (

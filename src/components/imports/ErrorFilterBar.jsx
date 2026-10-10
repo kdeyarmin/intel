@@ -31,7 +31,7 @@ export default function ErrorFilterBar({ filters, onFilterChange, errorCategorie
           Filter Errors
         </div>
         {hasFilters && (
-          <Button variant="ghost" size="sm" className="h-5 text-[10px] text-slate-500 hover:text-slate-300 px-1" onClick={clearAll}>
+          <Button variant="ghost" size="sm" className="h-5 text-[10px] text-slate-400 hover:text-slate-300 px-1" onClick={clearAll}>
             <X className="w-3 h-3 mr-0.5" /> Clear
           </Button>
         )}
@@ -39,7 +39,7 @@ export default function ErrorFilterBar({ filters, onFilterChange, errorCategorie
 
       {/* Severity row */}
       <div>
-        <p className="text-[10px] text-slate-500 mb-1.5">By Severity</p>
+        <p className="text-[10px] text-slate-400 mb-1.5">By Severity</p>
         <div className="flex gap-1.5 flex-wrap">
           {SEVERITY_OPTIONS.map(s => (
             <button
@@ -48,7 +48,7 @@ export default function ErrorFilterBar({ filters, onFilterChange, errorCategorie
               className={`px-2 py-0.5 rounded-md text-[10px] font-medium border transition-all ${
                 filters.severity === s.key
                   ? s.color + ' ring-1 ring-offset-1 ring-offset-slate-900'
-                  : 'border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                  : 'border-slate-700/50 text-slate-400 hover:text-slate-300 hover:border-slate-600'
               }`}
             >
               {s.label}
@@ -60,7 +60,7 @@ export default function ErrorFilterBar({ filters, onFilterChange, errorCategorie
       {/* Category row */}
       {errorCategories.length > 0 && (
         <div>
-          <p className="text-[10px] text-slate-500 mb-1.5">By Type</p>
+          <p className="text-[10px] text-slate-400 mb-1.5">By Type</p>
           <div className="flex gap-1.5 flex-wrap">
             {errorCategories.map(cat => {
               const config = ERROR_CATEGORIES[cat];
@@ -72,7 +72,7 @@ export default function ErrorFilterBar({ filters, onFilterChange, errorCategorie
                   className={`px-2 py-0.5 rounded-md text-[10px] font-medium border transition-all ${
                     filters.category === cat
                       ? config.badgeColor + ' ring-1 ring-offset-1 ring-offset-slate-900'
-                      : 'border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                      : 'border-slate-700/50 text-slate-400 hover:text-slate-300 hover:border-slate-600'
                   }`}
                 >
                   {config.label}

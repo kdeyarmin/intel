@@ -13,7 +13,7 @@ const StatCard = ({ label, value, icon: Icon, colorClass, description }) => (
       {Icon && <Icon className={`w-4 h-4 ${colorClass}`} />}
     </div>
     <div className="text-xl font-bold text-slate-200">{value || 'N/A'}</div>
-    {description && <div className="text-[10px] text-slate-500 mt-1">{description}</div>}
+    {description && <div className="text-[10px] text-slate-400 mt-1">{description}</div>}
   </div>
 );
 
@@ -146,17 +146,17 @@ export default function ProviderComparison({ providerIds = [] }) {
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-900/10 text-cyan-400 font-bold text-sm border border-cyan-500/20">
                       {provider.metrics.performanceScore ?? '—'}
                     </div>
-                    <div className="text-[9px] text-slate-500 uppercase tracking-wider mt-1">Score</div>
+                    <div className="text-[9px] text-slate-400 uppercase tracking-wider mt-1">Score</div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
-                  <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
                   {provider.organization_name || 'Independent Practice'}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
                   {provider.firmographics?.city || 'City'}, {provider.firmographics?.state || 'State'}
                 </div>
               </CardContent>

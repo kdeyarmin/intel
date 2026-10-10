@@ -82,7 +82,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
           <TabsContent value="current">
             {batchLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
               </div>
             ) : !batch ? (
               <div className="text-center py-12 text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700/50">
@@ -119,7 +119,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                     { label: 'Skipped', value: batch.skipped_rows, color: 'text-slate-400' },
                   ].map(item => (
                     <div key={item.label} className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 shadow-sm">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{item.label}</div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{item.label}</div>
                       <div className={`text-2xl font-bold ${item.color}`}>
                         {item.value != null ? item.value.toLocaleString() : '—'}
                       </div>
@@ -128,7 +128,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                 </div>
 
                 {((batch.api_requests_count || 0) > 0 || (batch.rate_limit_count || 0) > 0) && (
-                  <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                  <div className="flex items-center justify-between text-xs text-slate-400 px-1">
                     {(batch.api_requests_count || 0) > 0 && <span>{batch.api_requests_count} API requests</span>}
                     {(batch.rate_limit_count || 0) > 0 && (
                       <span className="text-amber-500">{batch.rate_limit_count} rate limits hit</span>
@@ -138,7 +138,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
 
                 {batch.status === 'processing' && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-slate-500">
+                    <div className="flex justify-between text-xs text-slate-400">
                       <span>Processing...</span>
                       <span>{batch.total_rows || '?'} rows</span>
                     </div>
@@ -170,7 +170,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                           <div key={err.id} className="bg-slate-800/50 p-2.5 rounded border border-slate-700/50 space-y-1">
                             <div className="flex items-start justify-between gap-2">
                               <div className="font-medium text-xs text-red-400">{err.title || err.error_type || 'Error'}</div>
-                              <div className="text-[10px] text-slate-500 whitespace-nowrap">
+                              <div className="text-[10px] text-slate-400 whitespace-nowrap">
                                 {new Date(err.created_date).toLocaleTimeString()}
                               </div>
                             </div>
@@ -188,7 +188,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-slate-500 text-sm">
+                      <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm">
                         <CheckCircle2 className="w-6 h-6 mb-2 opacity-20" />
                         <p>No errors</p>
                       </div>
@@ -196,7 +196,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                   </ScrollArea>
                 </div>
                 
-                <div className="text-[10px] text-center text-slate-500">
+                <div className="text-[10px] text-center text-slate-400">
                   Batch ID: {batch.id}
                 </div>
               </div>

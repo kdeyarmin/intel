@@ -5,7 +5,7 @@ import { Calendar } from 'lucide-react';
 export default function DateRangeFilter({ startDate, endDate, onStartChange, onEndChange }) {
   return (
     <div className="flex items-center gap-1.5">
-      <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
+      <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
       <Input
         type="date"
         value={startDate}
@@ -14,7 +14,7 @@ export default function DateRangeFilter({ startDate, endDate, onStartChange, onE
         placeholder="From"
         aria-label="Start date"
       />
-      <span className="text-xs text-slate-500" aria-hidden="true">–</span>
+      <span className="text-xs text-slate-400" aria-hidden="true">–</span>
       <Input
         type="date"
         value={endDate}

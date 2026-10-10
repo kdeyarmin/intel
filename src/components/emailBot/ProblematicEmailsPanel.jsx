@@ -55,7 +55,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
         <CardContent className="p-8 text-center">
           <ShieldCheck className="w-12 h-12 text-emerald-400/50 mx-auto mb-3" />
           <p className="text-slate-300">No problematic emails found!</p>
-          <p className="text-sm text-slate-500 mt-1">All your searched emails look good or haven't been verified yet.</p>
+          <p className="text-sm text-slate-400 mt-1">All your searched emails look good or haven't been verified yet.</p>
         </CardContent>
       </Card>
     );

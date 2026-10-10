@@ -136,7 +136,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
             {crossBatchAnalysis.reduce((s, c) => s + c.errorCount, 0)} total errors
           </Badge>
           <div className="ml-auto">
-            {expanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+            {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
           </div>
         </button>
 
@@ -145,7 +145,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
             {/* Common error patterns across batches */}
             {crossBatchAnalysis.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold text-slate-500">Common Errors Across Batches</p>
+                <p className="text-[10px] font-semibold text-slate-400">Common Errors Across Batches</p>
                 <div className="flex flex-wrap gap-1.5">
                   {crossBatchAnalysis.slice(0, 6).map(item => (
                     <div key={item.category} className="flex items-center gap-1.5 bg-slate-800/50 rounded-md px-2 py-1 border border-slate-700/30">
@@ -215,7 +215,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                           <span className="text-xs font-medium text-slate-300">
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
                           </span>
-                          <span className="text-[10px] text-slate-500 truncate">{batch.file_name}</span>
+                          <span className="text-[10px] text-slate-400 truncate">{batch.file_name}</span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <Badge className="bg-red-900/15 text-red-400 text-[8px]">
@@ -227,7 +227,7 @@ export default function CrossBatchErrorResolver({ batches, onActionComplete }) {
                             </Badge>
                           ))}
                           {cats.length > 3 && (
-                            <span className="text-[9px] text-slate-500">+{cats.length - 3} more</span>
+                            <span className="text-[9px] text-slate-400">+{cats.length - 3} more</span>
                           )}
                         </div>
                       </div>

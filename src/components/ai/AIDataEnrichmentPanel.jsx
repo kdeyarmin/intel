@@ -286,7 +286,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         {showGaps && gaps.length > 0 && (
           <div className="space-y-1 pl-3">
             {gaps.map((g, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-slate-500">
+              <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                 <span>{g.label}</span>
                 <span className="text-slate-300">({g.entity})</span>
@@ -327,7 +327,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             )}
 
             {suggestions.summary && (
-              <p className="text-[10px] text-slate-500 italic">{suggestions.summary}</p>
+              <p className="text-[10px] text-slate-400 italic">{suggestions.summary}</p>
             )}
 
             {accepted.size > 0 && (
@@ -351,7 +351,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             {/* New field suggestions */}
             {newFieldSuggestions.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Missing Fields</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Missing Fields</p>
                 <div className="space-y-1.5">
                   {newFieldSuggestions.map(s => (
                     <SuggestionRow

@@ -11,7 +11,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
     <div className="space-y-3">
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" aria-hidden="true" />
           <Input
             placeholder={placeholder}
             aria-label={placeholder}

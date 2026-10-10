@@ -152,7 +152,7 @@ export default function AddToLeadListDialog({ open, onOpenChange, npis, defaultN
                 </SelectContent>
               </Select>
               {!loadingLists && lists.length === 0 && (
-                <p className="text-xs text-slate-500">No lists yet — create a new one instead.</p>
+                <p className="text-xs text-slate-400">No lists yet — create a new one instead.</p>
               )}
             </div>
           )}

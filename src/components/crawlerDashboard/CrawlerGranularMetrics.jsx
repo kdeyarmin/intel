@@ -39,7 +39,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
               <Activity className="w-5 h-5 text-teal-500" />
               Granular Operations Monitoring
             </CardTitle>
-            <CardDescription className="mt-1 text-slate-500">
+            <CardDescription className="mt-1 text-slate-400">
               Live metrics for current crawler tasks, performance, and API health
             </CardDescription>
           </div>
@@ -59,7 +59,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
         {processing_states.length === 0 ? (
           <div className="p-8 text-center flex flex-col items-center justify-center">
             <Zap className="w-10 h-10 text-slate-300 mb-3" />
-            <p className="text-slate-500 font-medium">No states currently processing</p>
+            <p className="text-slate-400 font-medium">No states currently processing</p>
             <p className="text-sm text-slate-400 mt-1">Start a new crawl to see real-time granular metrics.</p>
           </div>
         ) : (
@@ -85,11 +85,11 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Items Processed</p>
+                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Items Processed</p>
                         <p className="text-sm font-medium text-slate-300">{completed} / {total}</p>
                       </div>
                       <div className="w-32">
-                         <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                         <div className="flex justify-between text-[10px] text-slate-400 mb-1">
                            <span>Progress</span>
                            <span>{progressPct}%</span>
                          </div>
@@ -101,7 +101,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-blue-500" />
                           Avg. Time per Prefix
                         </span>
@@ -113,7 +113,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
 
                     <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
                           <Activity className="w-3.5 h-3.5 text-violet-500" />
                           Est. Time Remaining
                         </span>
@@ -125,7 +125,7 @@ export default function CrawlerGranularMetrics({ crawlStatus, loading }) {
 
                     <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
                           <AlertTriangle className={rateLimits > 0 ? "w-3.5 h-3.5 text-amber-500" : "w-3.5 h-3.5 text-emerald-500"} />
                           API Rate Limits Hit
                         </span>

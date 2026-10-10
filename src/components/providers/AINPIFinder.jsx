@@ -28,7 +28,7 @@ function ResultCard({ match, importing, imported, onImport }) {
           <Badge className={`text-[9px] border ${confColor[match.confidence] || confColor.low}`}>{match.confidence}</Badge>
           <Badge variant="outline" className="text-[9px]">{match.entity_type}</Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
           <span className="font-mono bg-slate-700 px-1.5 py-0.5 rounded text-[11px]">{match.npi}</span>
           {match.credential && <span className="text-slate-400 font-medium">{match.credential}</span>}
           {match.specialty && <span>{match.specialty}</span>}
@@ -199,7 +199,7 @@ Return up to 10 results, ordered by relevance.`,
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-300">Find Missing Provider NPIs</h3>
-          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
             Search the NPPES registry by name, location, and specialty to discover provider NPI numbers. 
             Import matches directly into your database with location and taxonomy records created automatically.
           </p>
@@ -283,7 +283,7 @@ Return up to 10 results, ordered by relevance.`,
           {results.search_summary && (
             <div className="flex items-start gap-2 px-3 py-2 bg-slate-800/60 rounded-lg">
               <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-slate-500">{results.search_summary}</p>
+              <p className="text-xs text-slate-400">{results.search_summary}</p>
             </div>
           )}
 
@@ -301,7 +301,7 @@ Return up to 10 results, ordered by relevance.`,
             <Card className="bg-slate-800/60 border-dashed">
               <CardContent className="py-8 text-center">
                 <Search className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No matching providers found</p>
+                <p className="text-sm text-slate-400">No matching providers found</p>
                 <p className="text-xs text-slate-400 mt-1">Try broadening your search — remove the city or specialty filter</p>
               </CardContent>
             </Card>

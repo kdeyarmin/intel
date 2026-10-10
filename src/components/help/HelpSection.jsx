@@ -20,10 +20,10 @@ export default function HelpSection({ section, expanded, onToggle, searchTerm })
       >
         <Icon className={`w-5 h-5 ${section.color} shrink-0`} />
         <span className="flex-1 text-sm sm:text-base font-semibold text-slate-200">{section.title}</span>
-        <span className="text-[10px] text-slate-500 mr-2">{section.content.length} topics</span>
+        <span className="text-[10px] text-slate-400 mr-2">{section.content.length} topics</span>
         {expanded
-          ? <ChevronDown className="w-4 h-4 text-slate-500" />
-          : <ChevronRight className="w-4 h-4 text-slate-500" />
+          ? <ChevronDown className="w-4 h-4 text-slate-400" />
+          : <ChevronRight className="w-4 h-4 text-slate-400" />
         }
       </button>
       {expanded && (

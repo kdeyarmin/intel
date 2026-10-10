@@ -58,7 +58,7 @@ function VolumeDensityLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.totalVolume.toLocaleString()} Patients</div>
-            <div className="text-slate-500">Across {cluster.count} providers</div>
+            <div className="text-slate-400">Across {cluster.count} providers</div>
           </div>
         </Popup>
       </CircleMarker>
@@ -106,7 +106,7 @@ function HeatmapLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.count} providers</div>
-            <div className="text-slate-500">Avg Score: {cluster.avgScore}</div>
+            <div className="text-slate-400">Avg Score: {cluster.avgScore}</div>
           </div>
         </Popup>
       </CircleMarker>

@@ -83,7 +83,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
                     <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
                     <div>
                       <p className="text-sm font-semibold text-slate-200">{state}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-400">
                         {batch.total_rows != null ? `${batch.total_rows.toLocaleString()} rows found` : 'Fetching data...'}
                         {batch.valid_rows != null ? ` • ${batch.valid_rows.toLocaleString()} valid` : ''}
                       </p>
@@ -94,7 +94,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
                       <Timer className="w-3 h-3" />
                       {elapsed < 60 ? `${elapsed}s elapsed` : `${Math.floor(elapsed / 60)}m elapsed`}
                     </div>
-                    <p className="text-[10px] text-slate-500">ETA: {eta}</p>
+                    <p className="text-[10px] text-slate-400">ETA: {eta}</p>
                   </div>
                 </div>
               );

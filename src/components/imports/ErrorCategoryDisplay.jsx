@@ -26,7 +26,7 @@ function ErrorGroup({ categoryKey, errors }) {
           <Badge className={config.badgeColor}>{config.label}</Badge>
           <span className="text-xs text-slate-400">{errors.length} error{errors.length !== 1 ? 's' : ''}</span>
         </div>
-        {expanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+        {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
       </button>
 
       {expanded && (
@@ -38,9 +38,9 @@ function ErrorGroup({ categoryKey, errors }) {
           <div className="space-y-1.5 max-h-40 overflow-y-auto">
             {errors.map((err, idx) => (
               <div key={idx} className="text-sm bg-slate-800/50 rounded p-2">
-                {err.row != null && <span className="text-xs font-medium text-slate-500 mr-1">Row {err.row}:</span>}
+                {err.row != null && <span className="text-xs font-medium text-slate-400 mr-1">Row {err.row}:</span>}
                 <span className={config.color}>{err.message}</span>
-                {err.npi && <span className="text-slate-500 text-xs ml-1">(NPI: {err.npi})</span>}
+                {err.npi && <span className="text-slate-400 text-xs ml-1">(NPI: {err.npi})</span>}
               </div>
             ))}
           </div>
@@ -54,7 +54,7 @@ function ErrorGroup({ categoryKey, errors }) {
             <ol className="space-y-1.5">
               {config.solutions.map((step, i) => (
                 <li key={i} className="text-xs text-slate-400 flex gap-2">
-                  <span className="font-semibold text-slate-500 flex-shrink-0">{i + 1}.</span>
+                  <span className="font-semibold text-slate-400 flex-shrink-0">{i + 1}.</span>
                   {step}
                 </li>
               ))}

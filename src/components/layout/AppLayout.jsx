@@ -145,7 +145,7 @@ export default function AppLayout({ children, currentPageName }) {
             />
             <div>
               <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Intelligence</p>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Intelligence</p>
             </div>
           </div>
           <Button
@@ -155,7 +155,7 @@ export default function AppLayout({ children, currentPageName }) {
             onClick={toggleSidebar}
             aria-label="Collapse sidebar"
             aria-expanded="true"
-            className="text-slate-500 hover:text-white hover:bg-slate-800/60 h-7 w-7"
+            className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-7 w-7"
           >
             <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
           </Button>
@@ -168,11 +168,11 @@ export default function AppLayout({ children, currentPageName }) {
             onClick={openSearch}
             onMouseEnter={loadGlobalSearchDialog}
             onFocus={loadGlobalSearchDialog}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
           >
             <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-[10px] text-slate-500 border border-slate-700 rounded px-1 py-0.5" aria-hidden="true">⌘K</kbd>
+            <kbd className="text-[10px] text-slate-400 border border-slate-700 rounded px-1 py-0.5" aria-hidden="true">⌘K</kbd>
           </button>
         </div>
 
@@ -189,7 +189,7 @@ export default function AppLayout({ children, currentPageName }) {
                   onClick={() => toggleSection(section.label)}
                   aria-expanded={!isCollapsed}
                   aria-controls={listId}
-                  className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                  className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-300 transition-colors"
                 >
                   {section.label}
                   {isCollapsed ? <ChevronRight className="w-3 h-3" aria-hidden="true" /> : <ChevronDown className="w-3 h-3" aria-hidden="true" />}
@@ -210,7 +210,7 @@ export default function AppLayout({ children, currentPageName }) {
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
-                          : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
                       <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} aria-hidden="true" />
@@ -229,7 +229,7 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="mb-2 px-2 flex items-center justify-between">
             <div>
               {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
-              {user && <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>}
+              {user && <p className="text-[10px] text-slate-400 capitalize">{user.role?.replace('_', ' ')}</p>}
             </div>
             <NotificationBell />
           </div>
@@ -237,7 +237,7 @@ export default function AppLayout({ children, currentPageName }) {
             <Button
               variant="ghost"
               onClick={() => setAccountOpen(true)}
-              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+              className="flex-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
             >
               <UserCog className="w-4 h-4" aria-hidden="true" />
               <span className="ml-2">Account</span>
@@ -245,7 +245,7 @@ export default function AppLayout({ children, currentPageName }) {
             <Button
               variant="ghost"
               onClick={logout}
-              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+              className="flex-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
             >
               <LogOut className="w-4 h-4" aria-hidden="true" />
               <span className="ml-2">Sign Out</span>
@@ -270,7 +270,7 @@ export default function AppLayout({ children, currentPageName }) {
           </Button>
           <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
           <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></p>
-          <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
+          <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-400 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" aria-hidden="true" />
           </button>
           <NotificationBell />
@@ -291,12 +291,12 @@ export default function AppLayout({ children, currentPageName }) {
                 className="w-4 h-4 rounded"
                 style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
-              <span className="text-[11px] text-slate-500 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-500">•</span>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-400">•</span>
               <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-500/70 hover:text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-500 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
             Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>

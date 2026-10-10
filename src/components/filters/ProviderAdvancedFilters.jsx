@@ -59,7 +59,7 @@ export default function ProviderAdvancedFilters({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="text-slate-500 hover:text-slate-300 h-9 text-xs gap-1"
+          className="text-slate-400 hover:text-slate-300 h-9 text-xs gap-1"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           More
@@ -67,7 +67,7 @@ export default function ProviderAdvancedFilters({
         </Button>
 
         {activeCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-400 h-9 text-xs gap-1">
+          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-200 h-9 text-xs gap-1">
             <X className="w-3 h-3" /> Clear ({activeCount})
           </Button>
         )}

@@ -307,7 +307,7 @@ export default function NPPESCrawlerSettings() {
            <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
               <div className="space-y-0.5">
                 <Label id={`${uid}-auto-retry-label`} htmlFor={`${uid}-auto-retry`} className="text-base text-slate-200">Enable Auto-Retry</Label>
-                <p className="text-xs text-slate-500">Automatically re-queue failed states after delay</p>
+                <p className="text-xs text-slate-400">Automatically re-queue failed states after delay</p>
               </div>
               <Switch
                 id={`${uid}-auto-retry`}
@@ -343,7 +343,7 @@ export default function NPPESCrawlerSettings() {
                     onChange={(e) => updateField('escalation_tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
                   />
-                  <p className="text-xs text-slate-500">Comma-separated tags to add on escalation</p>
+                  <p className="text-xs text-slate-400">Comma-separated tags to add on escalation</p>
                 </div>
                </div>
             )}
@@ -363,7 +363,7 @@ export default function NPPESCrawlerSettings() {
           <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
             <div className="space-y-0.5">
               <Label id={`${uid}-crawl-all-states-label`} htmlFor={`${uid}-crawl-all-states`} className="text-base text-slate-200">Crawl All States</Label>
-              <p className="text-xs text-slate-500">Disable to manually select specific states to crawl</p>
+              <p className="text-xs text-slate-400">Disable to manually select specific states to crawl</p>
             </div>
             <Switch
               id={`${uid}-crawl-all-states`}
@@ -451,7 +451,7 @@ export default function NPPESCrawlerSettings() {
       {existingConfig && (
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-4">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Last updated: {new Date(existingConfig.updated_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
               <Badge variant="outline">Config ID: {existingConfig.id}</Badge>
             </div>
@@ -477,7 +477,7 @@ function SettingField({ label, description, value, onChange, min, max }) {
         max={max}
         className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
       />
-      <p className="text-xs text-slate-500">{description}</p>
+      <p className="text-xs text-slate-400">{description}</p>
     </div>
   );
 }
@@ -493,7 +493,7 @@ function EntityTypeToggle({ type, label, description, icon, enabled, onToggle })
             <p id={`${uid}-label`} className="text-sm font-medium text-slate-200">{label}</p>
             <Badge variant="outline" className="text-[10px]">{type}</Badge>
           </div>
-          <p className="text-xs text-slate-500">{description}</p>
+          <p className="text-xs text-slate-400">{description}</p>
         </div>
       </div>
       <Switch checked={enabled} onCheckedChange={onToggle} aria-labelledby={`${uid}-label`} />
@@ -622,7 +622,7 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
                         className={`${badgeVariants({ variant: 'outline' })} text-xs cursor-pointer transition-colors ${
                           isExcluded
                             ? 'bg-red-900/30 text-red-400 border-red-500/30 hover:bg-red-900/50'
-                            : 'text-slate-500 border-slate-700/50 border-dashed hover:border-slate-500 hover:text-slate-300'
+                            : 'text-slate-400 border-slate-700/50 border-dashed hover:border-slate-500 hover:text-slate-300'
                         }`}
                         onClick={() => {
                           if (isExcluded) {
@@ -649,12 +649,12 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
 
         {excluded.length > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               {excluded.length} credential{excluded.length !== 1 ? 's' : ''} excluded
             </span>
             <button
               onClick={() => onChange([])}
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-xs text-slate-400 hover:text-slate-300 transition-colors"
             >
               Clear all
             </button>

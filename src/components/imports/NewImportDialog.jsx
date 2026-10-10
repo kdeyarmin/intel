@@ -230,7 +230,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
         {step === 1 && (
           <div className="flex-1 overflow-hidden flex flex-col space-y-3">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <Input
                 value={typeSearch}
                 onChange={(e) => setTypeSearch(e.target.value)}
@@ -265,7 +265,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                 );
               })}
               {filteredTypes.length === 0 && (
-                <p className="text-center text-slate-500 py-8 text-sm">No import types match "{typeSearch}"</p>
+                <p className="text-center text-slate-400 py-8 text-sm">No import types match "{typeSearch}"</p>
               )}
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
               <span className="text-sm font-medium text-slate-200">{selectedType.name}</span>
 
               <ActiveRulesBadge importType={selectedType.id} />
-              <Button variant="ghost" size="sm" className="ml-auto text-xs text-slate-500 hover:text-slate-300 h-6" onClick={() => setStep(1)}>
+              <Button variant="ghost" size="sm" className="ml-auto text-xs text-slate-400 hover:text-slate-300 h-6" onClick={() => setStep(1)}>
                 Change
               </Button>
             </div>
@@ -296,7 +296,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     <div className="w-full h-20 flex flex-col items-center justify-center gap-1.5 bg-slate-800/50 border border-emerald-500/30 rounded-lg p-3">
                       <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       <span className="text-[10px] text-emerald-400 truncate max-w-[150px] text-center" title={uploadedFile}>{uploadedFile}</span>
-                      <Button variant="ghost" size="sm" className="h-4 text-[9px] text-slate-500" onClick={() => { setUploadedFile(null); setCsvHeaders([]); }}>Change</Button>
+                      <Button variant="ghost" size="sm" className="h-4 text-[9px] text-slate-400" onClick={() => { setUploadedFile(null); setCsvHeaders([]); }}>Change</Button>
                     </div>
                   )}
                 </div>
@@ -312,7 +312,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                     disabled={!!uploadedFile}
                   />
                   {selectedType.hasUrl && (
-                    <p className="text-[10px] text-slate-500">Leave blank to use the default CMS API endpoint</p>
+                    <p className="text-[10px] text-slate-400">Leave blank to use the default CMS API endpoint</p>
                   )}
                 </div>
               </div>
@@ -395,7 +395,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
             <div className="border-t border-slate-700/50 pt-3">
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 mb-3"
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-300 mb-3"
               >
                 <Settings className="w-3 h-3" />
                 {showAdvanced ? 'Hide' : 'Show'} Advanced Parameters
@@ -415,7 +415,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="0 (start)"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
-                      <p className="text-[10px] text-slate-500">Skip N rows from the start</p>
+                      <p className="text-[10px] text-slate-400">Skip N rows from the start</p>
                     </div>
                     <div className="space-y-1">
                       <Label id={`${uid}-limit-label`} htmlFor={`${uid}-limit`} className="text-xs text-slate-400">Row Limit</Label>
@@ -429,7 +429,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="All rows"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
-                      <p className="text-[10px] text-slate-500">Max rows to process</p>
+                      <p className="text-[10px] text-slate-400">Max rows to process</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -443,7 +443,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         placeholder="1234567890, 0987654321"
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
-                      <p className="text-[10px] text-slate-500">Comma-separated NPIs</p>
+                      <p className="text-[10px] text-slate-400">Comma-separated NPIs</p>
                     </div>
                     <div className="space-y-1">
                       <Label id={`${uid}-state-label`} htmlFor={`${uid}-state`} className="text-xs text-slate-400">State Filter</Label>
@@ -456,7 +456,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                         maxLength={2}
                         className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                       />
-                      <p className="text-[10px] text-slate-500">2-letter state code</p>
+                      <p className="text-[10px] text-slate-400">2-letter state code</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -469,7 +469,7 @@ export default function NewImportDialog({ open, onOpenChange, onImportStarted })
                       placeholder="e.g. MA4, Sheet1"
                       className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                     />
-                    <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
+                    <p className="text-[10px] text-slate-400">For multi-sheet ZIP/Excel imports — filter to a specific sheet</p>
                   </div>
                 </div>
               )}

@@ -57,7 +57,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
           <div className="flex items-start gap-2 p-2 bg-slate-800/60 rounded-lg">
             <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
             <div>
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Affiliations</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Affiliations</span>
               <p className="text-xs text-slate-300 mt-0.5">{profile.affiliations.join(' · ')}</p>
             </div>
           </div>
@@ -66,7 +66,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
           <div className="flex items-start gap-2 p-2 bg-slate-800/60 rounded-lg">
             <Shield className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
             <div>
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Board Certifications</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Board Certifications</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {profile.board_certifications.map((c, j) => (
                   <Badge key={j} className="bg-violet-900/20 text-violet-700 border-violet-500/30 text-[9px]">{c}</Badge>
@@ -79,7 +79,7 @@ function ProfileCard({ profile, applying, applied, onApply }) {
           <div className="flex items-start gap-2 p-2 bg-slate-800/60 rounded-lg">
             <GraduationCap className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
             <div>
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Education</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Education</span>
               <p className="text-xs text-slate-300 mt-0.5">{profile.education}</p>
             </div>
           </div>
@@ -250,7 +250,7 @@ Only return information you find with reasonable confidence from public sources.
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-300">Augment Provider Profiles</h3>
-          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
             AI researches public sources to find practice websites, hospital affiliations, board certifications, 
             education, and languages for your providers. Select providers in the Directory tab first, or it will use the top 15.
           </p>
@@ -261,7 +261,7 @@ Only return information you find with reasonable confidence from public sources.
       <Card className="bg-slate-800/40">
         <CardContent className="pt-5 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-400">
               {providerCount} provider{providerCount !== 1 ? 's' : ''} will be researched
             </div>
             {enrichedProfiles.length > 0 && unappliedCount > 0 && (
@@ -293,7 +293,7 @@ Only return information you find with reasonable confidence from public sources.
           {results.summary && (
             <div className="flex items-start gap-2 px-3 py-2 bg-slate-800/60 rounded-lg">
               <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-slate-500">{results.summary}</p>
+              <p className="text-xs text-slate-400">{results.summary}</p>
             </div>
           )}
 
@@ -314,7 +314,7 @@ Only return information you find with reasonable confidence from public sources.
             <Card className="bg-slate-800/60 border-dashed">
               <CardContent className="py-8 text-center">
                 <Globe className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No additional data found for these providers</p>
+                <p className="text-sm text-slate-400">No additional data found for these providers</p>
                 <p className="text-xs text-slate-400 mt-1">Try selecting different providers from the directory</p>
               </CardContent>
             </Card>

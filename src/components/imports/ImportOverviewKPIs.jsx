@@ -106,7 +106,7 @@ export default function ImportOverviewKPIs({ batches, onFilterChange }) {
         label="Active Now"
         value={stats.active}
         icon={stats.active > 0 ? Loader2 : Clock}
-        iconColor={stats.active > 0 ? 'bg-blue-900/20 text-blue-400' : 'bg-slate-800 text-slate-500'}
+        iconColor={stats.active > 0 ? 'bg-blue-900/20 text-blue-400' : 'bg-slate-800 text-slate-400'}
         onClick={() => onFilterChange?.('active')}
       />
       <KPICard

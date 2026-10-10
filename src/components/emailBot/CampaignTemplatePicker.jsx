@@ -143,7 +143,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
                     <span className="text-xs text-slate-200 truncate font-medium">{t.name}</span>
                     {t.ai_generated && <Sparkles className="w-2.5 h-2.5 text-violet-400 shrink-0" />}
                   </div>
-                  <p className="text-[10px] text-slate-500 truncate">{t.subject_template}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{t.subject_template}</p>
                 </div>
                 <Badge className={`text-[8px] shrink-0 border ${categoryColors[t.category] || categoryColors.custom}`}>
                   {t.category}
@@ -153,7 +153,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
                 onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 mr-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-500 hover:text-red-400"
+                className="h-5 w-5 p-0 mr-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-red-400"
                 aria-label={`Delete template ${t.name}`}
               >
                 <Trash2 className="w-3 h-3" aria-hidden="true" />
@@ -164,7 +164,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
       )}
 
       {templates.length === 0 && !isLoading && (
-        <p className="text-[10px] text-slate-500 text-center py-2">No saved templates yet</p>
+        <p className="text-[10px] text-slate-400 text-center py-2">No saved templates yet</p>
       )}
     </div>
   );

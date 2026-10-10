@@ -61,7 +61,7 @@ export default function AIDatasetAnalysis({ batch }) {
           <div className="flex gap-4">
             {analysis.quality_score !== undefined && (
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Quality</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Quality</p>
                 <p className={`text-lg font-bold leading-none ${analysis.quality_score >= 80 ? 'text-emerald-400' : analysis.quality_score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                   {analysis.quality_score}
                 </p>
@@ -69,7 +69,7 @@ export default function AIDatasetAnalysis({ batch }) {
             )}
             {analysis.completeness_score !== undefined && (
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Completeness</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Completeness</p>
                 <p className={`text-lg font-bold leading-none ${analysis.completeness_score >= 80 ? 'text-blue-400' : analysis.completeness_score >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
                   {analysis.completeness_score}%
                 </p>
@@ -113,7 +113,7 @@ export default function AIDatasetAnalysis({ batch }) {
                 </li>
               ))}
               {(!analysis.trends_anomalies || analysis.trends_anomalies.length === 0) && (
-                <li className="text-xs text-slate-500 italic">No significant trends or anomalies identified.</li>
+                <li className="text-xs text-slate-400 italic">No significant trends or anomalies identified.</li>
               )}
             </ul>
           </div>
@@ -130,7 +130,7 @@ export default function AIDatasetAnalysis({ batch }) {
                 </li>
               ))}
               {(!analysis.quality_issues || analysis.quality_issues.length === 0) && (
-                <li className="text-xs text-slate-500 italic flex items-center gap-1">
+                <li className="text-xs text-slate-400 italic flex items-center gap-1">
                   <CheckCircle className="w-3 h-3 text-emerald-500" /> No obvious data quality issues.
                 </li>
               )}

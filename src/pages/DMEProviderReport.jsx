@@ -38,7 +38,7 @@ function StatusBadge({ status }) {
   if (status === 'not_found') {
     return <Badge className="bg-slate-700/40 text-slate-400 border-slate-600/30 text-xs">No email</Badge>;
   }
-  return <Badge className="bg-slate-700/30 text-slate-500 border-slate-600/20 text-xs">Not searched</Badge>;
+  return <Badge className="bg-slate-700/30 text-slate-400 border-slate-600/20 text-xs">Not searched</Badge>;
 }
 
 export default function DMEProviderReport() {
@@ -299,7 +299,7 @@ export default function DMEProviderReport() {
                 <Package className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{p.name || p.provider_id}</p>
-                  {p.npi ? <p className="text-[10px] text-slate-500">NPI {p.npi}</p> : null}
+                  {p.npi ? <p className="text-[10px] text-slate-400">NPI {p.npi}</p> : null}
                 </div>
               </div>
               <div className="md:col-span-3 flex items-start gap-1 text-sm text-slate-400 min-w-0">
@@ -322,7 +322,7 @@ export default function DMEProviderReport() {
                     )}
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-500">—</span>
+                  <span className="text-sm text-slate-400">—</span>
                 )}
               </div>
               <div className="md:col-span-2 flex md:justify-end">

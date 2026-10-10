@@ -35,8 +35,8 @@ const RETRY_STATE_TONES = {
   never_tried: 'text-slate-300',
   disabled: 'text-slate-400',
   max_reached: 'text-orange-400',
-  too_old: 'text-slate-500',
-  out_of_scope: 'text-slate-500',
+  too_old: 'text-slate-400',
+  out_of_scope: 'text-slate-400',
 };
 
 function KpiTile({ label, value, sublabel, icon: Icon, tone = 'text-slate-200' }) {
@@ -48,7 +48,7 @@ function KpiTile({ label, value, sublabel, icon: Icon, tone = 'text-slate-200' }
           <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
         </div>
         <p className={`text-2xl font-bold ${tone}`}>{value ?? '—'}</p>
-        {sublabel && <p className="text-xs text-slate-500 mt-1">{sublabel}</p>}
+        {sublabel && <p className="text-xs text-slate-400 mt-1">{sublabel}</p>}
       </CardContent>
     </Card>
   );
@@ -82,7 +82,7 @@ function DailyChart({ buckets }) {
 
 function ErrorBreakdown({ rows }) {
   if (!rows.length) {
-    return <p className="text-xs text-slate-500">No error samples in the window.</p>;
+    return <p className="text-xs text-slate-400">No error samples in the window.</p>;
   }
   const max = Math.max(...rows.map(r => r.count));
   return (
@@ -112,7 +112,7 @@ function ErrorBreakdown({ rows }) {
 function RetryPipeline({ buckets }) {
   const total = Object.values(buckets).reduce((a, b) => a + b, 0);
   if (total === 0) {
-    return <p className="text-xs text-slate-500">No failed batches in the window.</p>;
+    return <p className="text-xs text-slate-400">No failed batches in the window.</p>;
   }
   const order = ['pending', 'eligible', 'never_tried', 'disabled', 'max_reached', 'too_old', 'out_of_scope'];
   return (
@@ -131,7 +131,7 @@ function RetryPipeline({ buckets }) {
 
 function ScheduleHealthTable({ schedules }) {
   if (!schedules.length) {
-    return <p className="text-xs text-slate-500">No schedules with consecutive failures.</p>;
+    return <p className="text-xs text-slate-400">No schedules with consecutive failures.</p>;
   }
   return (
     <div className="space-y-1.5">
@@ -144,7 +144,7 @@ function ScheduleHealthTable({ schedules }) {
           <div key={s.id} className={`flex items-center justify-between text-xs px-3 py-2 rounded border ${tone}`}>
             <div className="flex-1 min-w-0">
               <p className="text-slate-200 font-medium truncate">{s.label || IMPORT_TYPE_LABELS[s.import_type] || s.import_type}</p>
-              <p className="text-slate-500 truncate">
+              <p className="text-slate-400 truncate">
                 {s.last_run_status && <span className="mr-2">last: <span className="text-slate-400">{s.last_run_status}</span></span>}
                 {s.next_run_at && <span>next: <span className="text-slate-400">{new Date(s.next_run_at).toLocaleString()}</span></span>}
               </p>
@@ -192,7 +192,7 @@ export default function ImportHealthView() {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-400">
         30-day overview of import outcomes, error patterns, schedule health, and the auto-retry pipeline.
       </p>
 

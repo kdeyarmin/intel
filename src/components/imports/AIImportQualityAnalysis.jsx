@@ -38,13 +38,13 @@ function AnomalyCard({ anomaly }) {
       </div>
       {anomaly.affected_providers?.length > 0 && (
         <div className="pl-6">
-          <p className="text-[10px] text-slate-500 mb-1">Affected Providers ({anomaly.affected_providers.length}):</p>
+          <p className="text-[10px] text-slate-400 mb-1">Affected Providers ({anomaly.affected_providers.length}):</p>
           <div className="flex flex-wrap gap-1">
             {anomaly.affected_providers.slice(0, 8).map((p, i) => (
               <Badge key={i} className="bg-slate-700/50 text-slate-300 text-[9px] font-mono">{p}</Badge>
             ))}
             {anomaly.affected_providers.length > 8 && (
-              <span className="text-[9px] text-slate-500">+{anomaly.affected_providers.length - 8} more</span>
+              <span className="text-[9px] text-slate-400">+{anomaly.affected_providers.length - 8} more</span>
             )}
           </div>
         </div>

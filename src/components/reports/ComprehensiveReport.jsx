@@ -33,7 +33,7 @@ function SectionCard({ icon: Icon, iconColor, title, children, count, defaultOpe
           {count != null && (
             <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/50 text-[10px] ml-auto mr-2">{count}</Badge>
           )}
-          {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+          {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
         </CardTitle>
       </CardHeader>
       {open && <CardContent>{children}</CardContent>}
@@ -113,7 +113,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
         </div>
       </div>
 
-      <div className="text-[10px] text-slate-500 print:text-gray-500">
+      <div className="text-[10px] text-slate-400 print:text-gray-500">
         Generated: {new Date(report.generatedAt).toLocaleString()}
       </div>
 
@@ -318,7 +318,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
                   <p className="text-xs text-slate-200 truncate">{f.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge className="bg-blue-900/30 text-blue-400 border-blue-500/30 text-[9px]">{f.facilityType}</Badge>
-                    <span className="text-[10px] text-slate-500">{f.city}, {f.state}</span>
+                    <span className="text-[10px] text-slate-400">{f.city}, {f.state}</span>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-3">
@@ -356,7 +356,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
               <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-900/30 border border-slate-700/30 text-xs">
                 <div>
                   <span className="text-slate-300">{e.fieldName}</span>
-                  <span className="text-slate-500 ml-2">from {e.source}</span>
+                  <span className="text-slate-400 ml-2">from {e.source}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {e.confidence && <Badge className="text-[9px] bg-slate-700/50 text-slate-400 border-slate-600/50">{e.confidence}</Badge>}

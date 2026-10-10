@@ -162,12 +162,12 @@ Be very specific about locations, specialties, and organizational types.`,
               <div className="bg-slate-800/40 rounded-lg p-3 flex items-center gap-4">
                 <div className="text-center">
                   <p className="text-xl font-bold text-slate-300">{partners.network_coverage_current}%</p>
-                  <p className="text-[10px] text-slate-500">Current</p>
+                  <p className="text-[10px] text-slate-400">Current</p>
                 </div>
                 <TrendingUp className="w-5 h-5 text-emerald-400" />
                 <div className="text-center">
                   <p className="text-xl font-bold text-emerald-400">{partners.network_coverage_projected}%</p>
-                  <p className="text-[10px] text-slate-500">Projected</p>
+                  <p className="text-[10px] text-slate-400">Projected</p>
                 </div>
                 <p className="text-xs text-slate-400 flex-1">{partners.summary}</p>
               </div>
@@ -194,9 +194,9 @@ Be very specific about locations, specialties, and organizational types.`,
                   </div>
 
                   <div className="space-y-1.5 ml-6">
-                    <p className="text-[11px] text-slate-300"><span className="text-slate-500">Gap:</span> {p.gap_addressed}</p>
-                    <p className="text-[11px] text-slate-300"><span className="text-slate-500">Evidence:</span> {p.referral_evidence}</p>
-                    <p className="text-[11px] text-emerald-400"><span className="text-slate-500">Impact:</span> {p.expected_impact}</p>
+                    <p className="text-[11px] text-slate-300"><span className="text-slate-400">Gap:</span> {p.gap_addressed}</p>
+                    <p className="text-[11px] text-slate-300"><span className="text-slate-400">Evidence:</span> {p.referral_evidence}</p>
+                    <p className="text-[11px] text-emerald-400"><span className="text-slate-400">Impact:</span> {p.expected_impact}</p>
 
                     {p.populations_served?.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -213,7 +213,7 @@ Be very specific about locations, specialties, and organizational types.`,
                       </p>
                       <p className="text-[10px] text-slate-300">{p.outreach_strategy}</p>
                       {p.campaign_subject && (
-                        <p className="text-[9px] text-slate-500 mt-0.5 italic">Subject: "{p.campaign_subject}"</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 italic">Subject: "{p.campaign_subject}"</p>
                       )}
                       <Link to={createPageUrl('ProviderOutreach')}>
                         <Button size="sm" variant="outline" className="h-5 text-[9px] gap-1 mt-1.5 bg-transparent border-slate-600 text-cyan-400 hover:bg-slate-800">

@@ -132,7 +132,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               autoFocus
             />
-            <div className="text-xs text-slate-500 space-y-1">
+            <div className="text-xs text-slate-400 space-y-1">
               <p className="font-medium">Current filters:</p>
               {Object.entries(currentFilters)
                 .filter(([, v]) => v && v !== 'all' && v !== '')

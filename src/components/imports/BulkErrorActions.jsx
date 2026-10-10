@@ -182,7 +182,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
           <Badge className="bg-cyan-900/15 text-cyan-400 text-[9px]">{selectedErrorCount} selected</Badge>
         )}
         <div className="ml-auto">
-          {showPanel ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+          {showPanel ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
         </div>
       </button>
 
@@ -201,7 +201,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   {selectedCategories.size === sortedCategories.length ? 'Deselect All' : 'Select All'}
                 </Button>
                 {selectedCategories.size > 0 && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     {selectedErrorCount} errors across {selectedCategories.size} categories
                   </span>
                 )}
@@ -245,7 +245,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-300"
+                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-300"
                     onClick={() => setSelectedCategories(new Set())}
                     aria-label="Clear selected categories"
                   >

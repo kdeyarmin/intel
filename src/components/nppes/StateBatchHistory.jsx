@@ -10,8 +10,8 @@ const statusConfig = {
   failed:     { icon: XCircle, color: 'text-red-500', bg: 'bg-red-950/30 border-red-900/30', badge: 'bg-red-900/20 text-red-400' },
   processing: { icon: Loader2, color: 'text-amber-500', bg: 'bg-amber-950/30 border-amber-900/30', badge: 'bg-amber-900/20 text-amber-400', spin: true },
   validating: { icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-950/30 border-blue-900/30', badge: 'bg-blue-900/20 text-blue-400', spin: true },
-  cancelled:  { icon: XCircle, color: 'text-slate-500', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
-  paused:     { icon: Clock, color: 'text-slate-500', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
+  cancelled:  { icon: XCircle, color: 'text-slate-400', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
+  paused:     { icon: Clock, color: 'text-slate-400', bg: 'bg-slate-800/30 border-slate-700/30', badge: 'bg-slate-500/20 text-slate-400' },
 };
 
 function formatDate(dateStr) {
@@ -52,14 +52,14 @@ export default function StateBatchHistory({ stateCode }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
       </div>
     );
   }
 
   if (batches.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-500 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
+      <div className="text-center py-8 text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
         <Clock className="w-6 h-6 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No crawl history for {stateCode}</p>
       </div>
@@ -87,7 +87,7 @@ export default function StateBatchHistory({ stateCode }) {
                     </Badge>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-slate-400">
                   {formatDuration(batch.created_date, batch.completed_at || batch.cancelled_at)}
                 </span>
               </div>
@@ -95,23 +95,23 @@ export default function StateBatchHistory({ stateCode }) {
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
                   <div className="text-lg font-bold text-slate-300">{batch.valid_rows != null ? batch.valid_rows.toLocaleString() : '—'}</div>
-                  <div className="text-[10px] text-slate-500">Fetched</div>
+                  <div className="text-[10px] text-slate-400">Fetched</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-green-400">{batch.imported_rows != null ? batch.imported_rows.toLocaleString() : '—'}</div>
-                  <div className="text-[10px] text-slate-500">Imported</div>
+                  <div className="text-[10px] text-slate-400">Imported</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-blue-400">{batch.updated_rows != null ? batch.updated_rows.toLocaleString() : '—'}</div>
-                  <div className="text-[10px] text-slate-500">Updated</div>
+                  <div className="text-[10px] text-slate-400">Updated</div>
                 </div>
                 <div>
                   <div className="text-lg font-bold text-slate-400">{batch.skipped_rows != null ? batch.skipped_rows.toLocaleString() : '—'}</div>
-                  <div className="text-[10px] text-slate-500">Skipped</div>
+                  <div className="text-[10px] text-slate-400">Skipped</div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-700/50">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-700/50">
                 <span>{formatDate(batch.created_date)}</span>
                 {batch.api_requests_count > 0 && (
                   <span>{batch.api_requests_count} API calls</span>

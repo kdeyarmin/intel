@@ -79,7 +79,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
           <div className="flex items-end gap-6">
             <div>
               <p className="text-3xl font-bold text-white">{data.total.toLocaleString()}</p>
-              <p className="text-xs text-slate-500">total referrals</p>
+              <p className="text-xs text-slate-400">total referrals</p>
               {data.yoy && (
                 <div className="flex items-center gap-1 mt-1">
                   {parseFloat(data.yoy) >= 0
@@ -94,11 +94,11 @@ export default function ReferralSummaryCard({ referrals = [] }) {
             <div className="space-y-2">
               <div>
                 <p className="text-lg font-bold text-slate-200">{data.partners.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-500">referral partners</p>
+                <p className="text-[10px] text-slate-400">referral partners</p>
               </div>
               <div>
                 <p className="text-lg font-bold text-slate-200">{data.benes.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-500">beneficiaries</p>
+                <p className="text-[10px] text-slate-400">beneficiaries</p>
               </div>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xs text-slate-500 mb-3">
+        <p className="text-xs text-slate-400 mb-3">
           Medicare services this provider is approved to order or refer ({eligibleCount} of {data.flags.length})
         </p>
         <div className="flex flex-wrap gap-2">
@@ -128,7 +128,7 @@ export default function ReferralSummaryCard({ referrals = [] }) {
               key={f.key}
               className={f.eligible
                 ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/30 gap-1'
-                : 'bg-slate-800/50 text-slate-500 border border-slate-700/50'}
+                : 'bg-slate-800/50 text-slate-400 border border-slate-700/50'}
             >
               {f.eligible && <Check className="w-3 h-3" />}
               {f.label}

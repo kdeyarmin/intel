@@ -76,7 +76,7 @@ export default function DetailedErrorRows({ errors, maxVisible = 10 }) {
                   )}
                   <Badge className={`${config.color} text-[9px]`}>{severity}</Badge>
                   {err.sheet && (
-                    <span className="text-[9px] text-slate-500">Sheet: {err.sheet}</span>
+                    <span className="text-[9px] text-slate-400">Sheet: {err.sheet}</span>
                   )}
                 </div>
                 <p className="text-[11px] text-slate-400 truncate">
@@ -85,8 +85,8 @@ export default function DetailedErrorRows({ errors, maxVisible = 10 }) {
               </div>
               {resolution && (
                 isRowExpanded
-                  ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 mt-1 flex-shrink-0" />
-                  : <ChevronRight className="w-3.5 h-3.5 text-slate-500 mt-1 flex-shrink-0" />
+                  ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 mt-1 flex-shrink-0" />
+                  : <ChevronRight className="w-3.5 h-3.5 text-slate-400 mt-1 flex-shrink-0" />
               )}
             </button>
 
@@ -100,10 +100,10 @@ export default function DetailedErrorRows({ errors, maxVisible = 10 }) {
                   </div>
                 </div>
                 {err.field && (
-                  <p className="text-[10px] text-slate-500 mt-1.5">Field: <span className="text-slate-300 font-mono">{err.field}</span></p>
+                  <p className="text-[10px] text-slate-400 mt-1.5">Field: <span className="text-slate-300 font-mono">{err.field}</span></p>
                 )}
                 {err.first_record_category && (
-                  <p className="text-[10px] text-slate-500 mt-0.5">Category: <span className="text-slate-300">{err.first_record_category}</span></p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Category: <span className="text-slate-300">{err.first_record_category}</span></p>
                 )}
               </div>
             )}

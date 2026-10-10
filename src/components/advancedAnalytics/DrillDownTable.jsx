@@ -109,7 +109,7 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b text-slate-500">
+              <tr className="border-b text-slate-400">
                 <th className="text-left py-2 font-medium">Provider</th>
                 <th className="text-left py-2 font-medium w-12">State</th>
                 {cols.map(c => (
@@ -140,7 +140,7 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
                       <span className="text-slate-400 ml-1.5">{r.npi}</span>
                     </div>
                   </td>
-                  <td className="text-slate-500">{r.state || '-'}</td>
+                  <td className="text-slate-400">{r.state || '-'}</td>
                   {cols.map(c => (
                     <td key={c.key} className="text-right text-slate-400 font-mono">{fv(r[c.key])}</td>
                   ))}

@@ -54,7 +54,7 @@ export default function AINetworkRecommendations({ state = null, leadListId = nu
     <div className="space-y-4">
       <div className="space-y-1">
         <AnalysisScopeNote analysis={data} />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           {data.recommendations_source === 'ai'
             ? 'Written by AI from the computed network numbers.'
             : 'Derived directly from the computed network numbers.'}

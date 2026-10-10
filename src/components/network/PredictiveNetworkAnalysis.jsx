@@ -202,11 +202,11 @@ Provide data-driven predictions with confidence levels.`,
                   ].map(f => (
                     <div key={f.label} className="text-center">
                       <p className={`text-2xl font-bold ${f.value >= 70 ? 'text-emerald-400' : f.value >= 40 ? 'text-amber-400' : 'text-red-400'}`}>{f.value}</p>
-                      <p className="text-[10px] text-slate-500">{f.label}</p>
+                      <p className="text-[10px] text-slate-400">{f.label}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-500 mt-2 text-center">{analysis.network_health_forecast.key_driver}</p>
+                <p className="text-[10px] text-slate-400 mt-2 text-center">{analysis.network_health_forecast.key_driver}</p>
               </CardContent>
             </Card>
           )}
@@ -224,7 +224,7 @@ Provide data-driven predictions with confidence levels.`,
                         <span className="text-xs text-slate-300 flex-1">{p.pattern}</span>
                         <Badge className={`text-[8px] ${SEVERITY_COLORS[p.confidence]}`}>{p.confidence}</Badge>
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">{p.implication}</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{p.implication}</p>
                     </div>
                   ))}
                 </CardContent>
@@ -242,7 +242,7 @@ Provide data-driven predictions with confidence levels.`,
                         <span className="text-xs font-medium text-slate-200">{p.area}</span>
                         <Badge className={`text-[8px] ${SEVERITY_COLORS[p.severity]}`}>{p.severity}</Badge>
                       </div>
-                      <p className="text-[9px] text-slate-500">{p.socioeconomic_factor}</p>
+                      <p className="text-[9px] text-slate-400">{p.socioeconomic_factor}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {p.affected_specialties?.map(s => <Badge key={s} className="bg-red-900/10 text-red-400 text-[8px]">{s}</Badge>)}
                       </div>
@@ -284,7 +284,7 @@ Provide data-driven predictions with confidence levels.`,
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs font-medium text-slate-200">{p.partner_type}</p>
-                        <p className="text-[10px] text-slate-500">{p.location}</p>
+                        <p className="text-[10px] text-slate-400">{p.location}</p>
                       </div>
                       <Badge className={`text-[8px] ${SEVERITY_COLORS[p.priority]}`}>{p.priority} priority</Badge>
                     </div>
@@ -306,8 +306,8 @@ Provide data-driven predictions with confidence levels.`,
                     <Badge className={`text-[8px] shrink-0 mt-0.5 ${SEVERITY_COLORS[n.priority]}`}>{n.priority}</Badge>
                     <div>
                       <p className="text-xs text-slate-200">{n.need}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{n.action}</p>
-                      <Badge variant="outline" className="text-[8px] text-slate-500 mt-1">{n.timeline}</Badge>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{n.action}</p>
+                      <Badge variant="outline" className="text-[8px] text-slate-400 mt-1">{n.timeline}</Badge>
                     </div>
                   </div>
                 ))}

@@ -30,7 +30,7 @@ export default function DataQualityInsightsCard({ npi, provider }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Shield className="w-4 h-4 text-slate-500" />
+          <Shield className="w-4 h-4 text-slate-400" />
           Data Quality
           {isClean ? (
             <Badge className="bg-green-900/30 text-green-400 text-[10px] ml-auto gap-1">

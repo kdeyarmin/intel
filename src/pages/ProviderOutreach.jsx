@@ -100,7 +100,7 @@ export default function ProviderOutreach() {
               <p className={`text-2xl font-bold mt-1 ${k.cls}`}>
                 {loadingCampaigns ? '—' : (typeof k.value === 'number' ? k.value.toLocaleString() : k.value)}
               </p>
-              <p className="text-[10px] text-slate-500 mt-0.5">{k.sub}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{k.sub}</p>
             </CardContent>
           </Card>
         ))}
@@ -171,19 +171,19 @@ export default function ProviderOutreach() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-slate-700/50">
                         <div className="text-center">
-                          <p className="text-xs text-slate-500">Recipients</p>
+                          <p className="text-xs text-slate-400">Recipients</p>
                           <p className="font-bold text-lg text-slate-200 mt-1">{campaign.total_recipients || 0}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-500">Sent</p>
+                          <p className="text-xs text-slate-400">Sent</p>
                           <p className="font-bold text-lg text-blue-400 mt-1">{(delivery(campaign).sent || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-500">Opened</p>
+                          <p className="text-xs text-slate-400">Opened</p>
                           <p className="font-bold text-lg text-emerald-400 mt-1">{(delivery(campaign).opened || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs text-slate-500">Responded</p>
+                          <p className="text-xs text-slate-400">Responded</p>
                           <p className="font-bold text-lg text-purple-400 mt-1">{(delivery(campaign).responded || 0).toLocaleString()}</p>
                         </div>
                       </div>
@@ -262,7 +262,7 @@ export default function ProviderOutreach() {
                         <div key={msg.id} className="flex items-center justify-between p-2 bg-slate-800/40 rounded text-sm">
                           <div>
                             <p className="font-medium text-slate-200">{msg.recipient_name}</p>
-                            <p className="text-xs text-slate-500">{msg.npi}</p>
+                            <p className="text-xs text-slate-400">{msg.npi}</p>
                           </div>
                           <Badge variant="outline">{msg.status}</Badge>
                         </div>

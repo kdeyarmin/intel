@@ -215,7 +215,7 @@ export default function ScoringRules() {
   if (!user) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 flex justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
       </div>
     );
   }

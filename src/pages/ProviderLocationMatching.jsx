@@ -226,7 +226,7 @@ export default function ProviderLocationMatching() {
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
               <Input
                 placeholder="Search providers or locations..."
                 aria-label="Search providers or locations"
@@ -290,9 +290,9 @@ export default function ProviderLocationMatching() {
       ) : filtered.length === 0 ? (
         <Card className="bg-slate-800/40">
           <CardContent className="py-16 text-center">
-            <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+            <Sparkles className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-400 font-medium">No matches found</p>
-            <p className="text-sm text-slate-500 mt-1">Choose a state and click &quot;Find matches&quot; to get suggestions.</p>
+            <p className="text-sm text-slate-400 mt-1">Choose a state and click &quot;Find matches&quot; to get suggestions.</p>
           </CardContent>
         </Card>
       ) : (
@@ -307,7 +307,7 @@ export default function ProviderLocationMatching() {
             />
           ))}
           {filtered.length < matches.length && (
-            <p className="text-xs text-slate-500 text-center pt-2">
+            <p className="text-xs text-slate-400 text-center pt-2">
               Showing {filtered.length} of {matches.length} matches
             </p>
           )}

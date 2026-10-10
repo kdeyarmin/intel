@@ -112,7 +112,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
             <div className="space-y-2">
               <Label htmlFor={`connector-header-${connector.id}`}>API key header</Label>
               <Input id={`connector-header-${connector.id}`} aria-label="API key header" value={formData.api_key_header} onChange={e => setFormData({...formData, api_key_header: e.target.value})} placeholder="Authorization (sent as Bearer token)" />
-              <p className="text-xs text-slate-500">Leave blank to send the key as a Bearer token, or name the header the API expects (e.g. X-API-Key).</p>
+              <p className="text-xs text-slate-400">Leave blank to send the key as a Bearer token, or name the header the API expects (e.g. X-API-Key).</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -145,7 +145,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
                 {connector.test_status === 'warning' && <Badge className="bg-amber-900/30 text-amber-300 hover:bg-amber-900/30">Check</Badge>}
                 {connector.test_status === 'failed' && <Badge variant="destructive">Failed</Badge>}
               </div>
-              {connector.test_message && <p className="text-xs mt-1 text-slate-500 break-words">{connector.test_message}</p>}
+              {connector.test_message && <p className="text-xs mt-1 text-slate-400 break-words">{connector.test_message}</p>}
             </div>
           </div>
         )}

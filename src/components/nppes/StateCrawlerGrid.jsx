@@ -25,7 +25,7 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
     completed: 'bg-green-900/15 border-green-500/30 text-green-400',
     failed: 'bg-red-900/15 border-red-500/30 text-red-400',
     processing: 'bg-amber-900/15 border-amber-500/30 text-amber-400',
-    pending: 'bg-slate-800/50 border-slate-700/50 text-slate-500',
+    pending: 'bg-slate-800/50 border-slate-700/50 text-slate-400',
   };
 
   const statusIcons = {

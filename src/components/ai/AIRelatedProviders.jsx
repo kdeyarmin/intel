@@ -137,7 +137,7 @@ Suggest 5 types of providers/organizations this provider should connect with, an
                     <ArrowRight className="w-3 h-3" /> {s.matched_name}
                   </p>
                 )}
-                <p className="text-[10px] text-slate-500 leading-relaxed">{s.rationale}</p>
+                <p className="text-[10px] text-slate-400 leading-relaxed">{s.rationale}</p>
               </div>
             ))}
           </div>

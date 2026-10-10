@@ -105,7 +105,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
                   <span className="font-bold text-lg text-amber-600 w-6">#{idx + 1}</span>
                   <div>
                     <p className="font-semibold text-sm">{influencer.name || influencer.npi}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                       NPI {influencer.npi}{influencer.specialty ? ` · ${influencer.specialty}` : ''} · Influence {Number(influencer.influence_score ?? 0).toFixed(0)}/100
                     </p>
                   </div>

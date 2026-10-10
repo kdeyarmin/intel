@@ -76,10 +76,10 @@ export default function ScheduledReportsList({
                 </div>
 
                 {report.description && (
-                  <p className="text-xs text-slate-500 mb-2 truncate">{report.description}</p>
+                  <p className="text-xs text-slate-400 mb-2 truncate">{report.description}</p>
                 )}
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3 h-3" />
                     {report.recipients?.length || 0} recipient{(report.recipients?.length || 0) !== 1 ? 's' : ''}

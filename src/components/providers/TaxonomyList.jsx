@@ -24,7 +24,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
                   {t.taxonomy_description || t.taxonomy_code}
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-slate-500 font-mono">{t.taxonomy_code}</span>
+                  <span className="text-xs text-slate-400 font-mono">{t.taxonomy_code}</span>
                   {t.license_number && <span className="text-xs text-slate-400">Lic: {t.license_number}</span>}
                   {t.state && <span className="text-xs text-slate-400">{t.state}</span>}
                 </div>

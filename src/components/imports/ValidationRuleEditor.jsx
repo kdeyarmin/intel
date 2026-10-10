@@ -179,7 +179,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
             <p className="text-xs font-medium text-slate-400">Rule Configuration</p>
 
             {form.rule_type === 'required' && (
-              <p className="text-xs text-slate-500">No additional config needed — checks that the column is not empty.</p>
+              <p className="text-xs text-slate-400">No additional config needed — checks that the column is not empty.</p>
             )}
 
             {form.rule_type === 'regex' && (
@@ -319,7 +319,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
             )}
 
             {form.rule_type === 'unique' && (
-              <p className="text-xs text-slate-500">No additional config needed — ensures no duplicate values in this column within the import batch.</p>
+              <p className="text-xs text-slate-400">No additional config needed — ensures no duplicate values in this column within the import batch.</p>
             )}
 
             {form.rule_type === 'custom_expression' && (
@@ -360,7 +360,7 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                     <Icon className={`w-3.5 h-3.5 ${s.color.split(' ')[0]}`} />
                     <div className="text-left">
                       <p className="font-medium text-slate-200">{s.label}</p>
-                      <p className="text-[9px] text-slate-500">{s.desc}</p>
+                      <p className="text-[9px] text-slate-400">{s.desc}</p>
                     </div>
                   </button>
                 );

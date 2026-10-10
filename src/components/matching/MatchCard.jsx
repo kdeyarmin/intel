@@ -43,13 +43,13 @@ export default function MatchCard({ match, onUpdateStatus, selected, onToggleSel
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-white">{match.provider_name || match.npi}</span>
-              <span className="text-slate-500">→</span>
+              <span className="text-slate-400">→</span>
               <span className="text-sm text-slate-400 truncate">{match.location_display || match.location_id}</span>
             </div>
             <div className="flex items-center gap-2 mt-2">
               <Badge className={STATUS_STYLES[match.status]}>{match.status}</Badge>
               <span className={`text-lg font-bold ${confidenceColor}`}>{match.confidence_score}%</span>
-              <span className="text-xs text-slate-500">confidence</span>
+              <span className="text-xs text-slate-400">confidence</span>
             </div>
           </div>
           </div>

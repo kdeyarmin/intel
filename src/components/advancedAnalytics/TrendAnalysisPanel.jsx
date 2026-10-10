@@ -118,7 +118,7 @@ export default function TrendAnalysisPanel({ utilization = [], referrals = [] })
               <div key={g.key} className="flex items-center gap-1.5 text-xs bg-slate-800/50 rounded-lg px-3 py-1.5">
                 {g.pct > 0 ? <TrendingUp className="w-3.5 h-3.5 text-green-500" /> : g.pct < 0 ? <TrendingDown className="w-3.5 h-3.5 text-red-500" /> : <Minus className="w-3.5 h-3.5 text-slate-400" />}
                 <span className="text-slate-400">{g.label}:</span>
-                <span className={g.pct > 0 ? 'text-green-600 font-semibold' : g.pct < 0 ? 'text-red-600 font-semibold' : 'text-slate-500'}>
+                <span className={g.pct > 0 ? 'text-green-600 font-semibold' : g.pct < 0 ? 'text-red-600 font-semibold' : 'text-slate-400'}>
                   {g.pct > 0 ? '+' : ''}{g.pct}% YoY
                 </span>
               </div>

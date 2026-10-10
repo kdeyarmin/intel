@@ -39,25 +39,25 @@ export default function DuplicateStatsWidget({ batches = [] }) {
           <div className="bg-slate-800/40 rounded-lg p-3 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
             <p className="text-xl font-bold text-emerald-400">{stats.totalCreated.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-500">New Records</p>
+            <p className="text-[10px] text-slate-400">New Records</p>
           </div>
           <div className="bg-slate-800/40 rounded-lg p-3 text-center">
             <GitMerge className="w-4 h-4 text-violet-400 mx-auto mb-1" />
             <p className="text-xl font-bold text-violet-400">{stats.totalUpdated.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-500">Merged / Updated</p>
+            <p className="text-[10px] text-slate-400">Merged / Updated</p>
           </div>
           <div className="bg-slate-800/40 rounded-lg p-3 text-center">
             <TrendingDown className="w-4 h-4 text-slate-400 mx-auto mb-1" />
             <p className="text-xl font-bold text-slate-300">{stats.totalSkipped.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-500">Duplicates Skipped</p>
+            <p className="text-[10px] text-slate-400">Duplicates Skipped</p>
           </div>
           <div className="bg-slate-800/40 rounded-lg p-3 text-center">
             <Copy className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
             <p className="text-xl font-bold text-cyan-400">{stats.deduplicationRate}%</p>
-            <p className="text-[10px] text-slate-500">Dedup Rate</p>
+            <p className="text-[10px] text-slate-400">Dedup Rate</p>
           </div>
         </div>
-        <div className="text-[10px] text-slate-500 text-center">
+        <div className="text-[10px] text-slate-400 text-center">
           Based on last {stats.batchCount} completed imports · {stats.totalProcessed.toLocaleString()} records processed
         </div>
       </CardContent>

@@ -9,7 +9,7 @@ export default function ColumnSelector({ fields, selectedFields, onToggle, onSel
         <span id={`${uid}-columns`} className="font-medium leading-none text-xs text-slate-400 uppercase tracking-wider">Columns</span>
         <div className="flex gap-2">
           <button onClick={onSelectAll} className="text-xs text-cyan-400 hover:underline">Select All</button>
-          <button onClick={onSelectNone} className="text-xs text-slate-500 hover:underline">Clear</button>
+          <button onClick={onSelectNone} className="text-xs text-slate-400 hover:underline">Clear</button>
         </div>
       </div>
       <div role="group" aria-labelledby={`${uid}-columns`} className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-2 border border-slate-700 rounded-lg bg-slate-800/50">

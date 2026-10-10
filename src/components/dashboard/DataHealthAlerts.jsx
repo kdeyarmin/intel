@@ -30,7 +30,7 @@ export default function DataHealthAlerts() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-20 flex items-center justify-center text-sm text-slate-500">Scanning data health...</div>
+          <div className="h-20 flex items-center justify-center text-sm text-slate-400">Scanning data health...</div>
         </CardContent>
       </Card>
     );
@@ -66,7 +66,7 @@ export default function DataHealthAlerts() {
                   <Badge className="bg-slate-800 text-slate-300 text-[10px] h-5 border-slate-700">Score: {alert.score}</Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">Missing:</span>
+                  <span className="text-xs text-slate-400">Missing:</span>
                   {alert.missing.map(m => (
                     <span key={m} className="flex items-center gap-1 text-[10px] text-amber-400/90 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">
                       {m === 'Email' && <Mail className="w-3 h-3" />}

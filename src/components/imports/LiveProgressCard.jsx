@@ -129,7 +129,7 @@ export default function LiveProgressCard({ activeBatches, onAction }) {
                       {getPhaseLabel(batch.status)}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <div className="flex items-center gap-3 text-xs text-slate-400">
                     {elapsed && (
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" /> {elapsed}

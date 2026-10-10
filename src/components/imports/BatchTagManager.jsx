@@ -42,7 +42,7 @@ export default function BatchTagManager({ batch, onUpdate }) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Tag className="w-3.5 h-3.5 text-slate-500" />
+      <Tag className="w-3.5 h-3.5 text-slate-400" />
       {tags.map(tag => (
         <Badge key={tag} variant="outline" className="text-xs gap-1 pr-1 border-slate-600 text-slate-300 bg-slate-800/50">
           {tag}

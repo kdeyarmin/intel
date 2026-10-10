@@ -143,7 +143,7 @@ split_nppes_csv("npidata_pfile_20050523-20240107.csv")
                 <FileText className="w-4 h-4 mr-2" /> {streaming ? 'Starting...' : 'Start Distributed Stream'}
               </Button>
               {streamResult && <p className="text-xs text-cyan-400 mt-2">{streamResult}</p>}
-              <p className="text-[10px] text-center text-slate-500">
+              <p className="text-[10px] text-center text-slate-400">
                 Requires the CSV to be accessible via URL and server to support Range headers.
               </p>
             </div>

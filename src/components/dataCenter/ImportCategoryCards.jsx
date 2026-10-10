@@ -236,14 +236,14 @@ export default function ImportCategoryCards({ onSelectCategory, batches = [] }) 
                 <Icon className="w-5 h-5" />
                 <h3 className="text-sm font-semibold text-slate-200">{cat.label}</h3>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">{cat.description}</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">{cat.description}</p>
               {dates ? (
                 <div className="mt-2 space-y-0.5">
                   <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                    <Clock className="w-3 h-3 text-slate-500" />
+                    <Clock className="w-3 h-3 text-slate-400" />
                     <span>Updated {formatDistanceToNow(dates.lastUpdate, { addSuffix: true })}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
                     <CalendarClock className="w-3 h-3 text-slate-400" />
                     <span>Next: {format(dates.nextExpected, 'MMM d, yyyy')}</span>
                   </div>

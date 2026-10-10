@@ -73,7 +73,7 @@ export default function ReferralPartnersCard({ npi, referrals = [] }) {
       </CardHeader>
       <CardContent>
         {displayList.length === 0 ? (
-          <p className="text-xs text-slate-500">No {tab} referrals found</p>
+          <p className="text-xs text-slate-400">No {tab} referrals found</p>
         ) : (
           <div className="space-y-2">
             {displayList.map((r, i) => {
@@ -100,7 +100,7 @@ export default function ReferralPartnersCard({ npi, referrals = [] }) {
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-2">
                       <span className="text-xs font-medium text-slate-200">{refCount.toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500">{beneCount.toLocaleString()} bene</span>
+                      <span className="text-[10px] text-slate-400">{beneCount.toLocaleString()} bene</span>
                     </div>
                   </div>
                   <div className="h-1 bg-slate-700/50 rounded-full overflow-hidden">

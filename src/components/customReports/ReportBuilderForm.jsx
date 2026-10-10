@@ -112,7 +112,7 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               <span id={`${uid}-filters`} className="text-xs font-semibold leading-none">Filters</span>
               {dsConfig.filters.includes('year') && (
                 <div>
-                  <Label htmlFor={`${uid}-filter-year`} className="text-[11px] text-slate-500">Year</Label>
+                  <Label htmlFor={`${uid}-filter-year`} className="text-[11px] text-slate-400">Year</Label>
                   <Input
                     id={`${uid}-filter-year`}
                     aria-label="Year"
@@ -126,7 +126,7 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('state') && (
                 <div>
-                  <Label htmlFor={`${uid}-filter-state`} className="text-[11px] text-slate-500">State (2-letter)</Label>
+                  <Label htmlFor={`${uid}-filter-state`} className="text-[11px] text-slate-400">State (2-letter)</Label>
                   <Input
                     id={`${uid}-filter-state`}
                     aria-label="State (2-letter)"
@@ -140,7 +140,7 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('hospital_type') && (
                 <div>
-                  <Label htmlFor={`${uid}-filter-hospital_type`} className="text-[11px] text-slate-500">Hospital Type</Label>
+                  <Label htmlFor={`${uid}-filter-hospital_type`} className="text-[11px] text-slate-400">Hospital Type</Label>
                   <Input
                     id={`${uid}-filter-hospital_type`}
                     aria-label="Hospital Type"
@@ -153,7 +153,7 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('table_name') && (
                 <div>
-                  <Label htmlFor={`${uid}-filter-table_name`} className="text-[11px] text-slate-500">Table Name</Label>
+                  <Label htmlFor={`${uid}-filter-table_name`} className="text-[11px] text-slate-400">Table Name</Label>
                   <Input
                     id={`${uid}-filter-table_name`}
                     aria-label="Table Name"

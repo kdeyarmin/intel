@@ -92,7 +92,7 @@ export default function CurrentStateProgress({ status }) {
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
                     done
                       ? 'bg-teal-900/30 text-teal-400 border-teal-500/30'
-                      : 'bg-slate-800/50 text-slate-500 border-slate-700/50'
+                      : 'bg-slate-800/50 text-slate-400 border-slate-700/50'
                   }`}
                 >
                   {prefix}

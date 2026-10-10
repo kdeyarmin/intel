@@ -202,7 +202,7 @@ For each email assign:
       </CardHeader>
       <CardContent>
         {!results && !loading && (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-slate-400 text-center py-4">
             Click "Find Emails" to search for this provider's contact information
           </p>
         )}

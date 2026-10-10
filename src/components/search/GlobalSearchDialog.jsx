@@ -287,7 +287,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
               type="button"
               aria-pressed={activeCategory === 'all'}
               onClick={() => setActiveCategory('all')}
-              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-400 border-slate-700 hover:border-slate-500'}`}
             >
               All ({allResults.length})
             </button>
@@ -297,7 +297,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 key={cat}
                 aria-pressed={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-400 border-slate-700 hover:border-slate-500'}`}
               >
                 {cat} ({count})
               </button>
@@ -324,7 +324,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Jump to</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_LINKS.map((link) => (
-                    <button type="button" key={link.url} onClick={() => goTo(link.url)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                    <button type="button" key={link.url} onClick={() => goTo(link.url)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
                       {link.label}
                     </button>
                   ))}
@@ -363,7 +363,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-200 truncate">{item.label}</p>
-                      <p className="text-xs text-slate-500 truncate">{item.sublabel}</p>
+                      <p className="text-xs text-slate-400 truncate">{item.sublabel}</p>
                     </div>
                     <Badge variant="outline" className="text-[10px] shrink-0">{item.type}</Badge>
                   </button>

@@ -80,7 +80,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
         <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
           <Check className="w-12 h-12 text-green-500 mb-2" />
           <h3 className="font-medium text-white">Data is Synchronized</h3>
-          <p className="text-sm text-slate-500 mt-1">Provider record matches NPI Registry data.</p>
+          <p className="text-sm text-slate-400 mt-1">Provider record matches NPI Registry data.</p>
         </CardContent>
       </Card>
     );
@@ -104,7 +104,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
               <TableRow>
                 <TableHead className="w-[50px] text-center">Merge</TableHead>
                 <TableHead>Field</TableHead>
-                <TableHead className="text-slate-500">Current Value</TableHead>
+                <TableHead className="text-slate-400">Current Value</TableHead>
                 <TableHead className="w-[30px]"></TableHead>
                 <TableHead className="text-blue-600 font-medium">NPI Registry Value</TableHead>
               </TableRow>
@@ -140,7 +140,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t border-amber-500/30 bg-amber-900/20 pt-4">
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-400">
           {Object.keys(selectedFields).filter(k => selectedFields[k]).length} fields selected
         </div>
         <div className="flex gap-2">

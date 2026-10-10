@@ -75,7 +75,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                   <TableCell className="text-sm">
                     {location?.phone ? (
                       <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-slate-500" />
+                        <Phone className="h-3 w-3 text-slate-400" />
                         <span>{location.phone}</span>
                       </div>
                     ) : '-'}

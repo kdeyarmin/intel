@@ -85,7 +85,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
           <div key={i} className="flex items-center gap-2 bg-slate-800/40 rounded-lg px-3 py-1.5 border border-slate-700/50">
             <span className="text-xs font-medium text-slate-300 flex-1 truncate">{item.value}</span>
             <Badge className={`text-[9px] ${confColor[item.confidence] || confColor.low}`}>{item.confidence}</Badge>
-            <button onClick={() => copyValue(item.value, `${label}-${i}`)} className="text-slate-400 hover:text-slate-400">
+            <button onClick={() => copyValue(item.value, `${label}-${i}`)} className="text-slate-400 hover:text-slate-200">
               {copiedField === `${label}-${i}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
             </button>
           </div>
@@ -148,7 +148,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
                 </div>
               </div>
             )}
-            {results.summary && <p className="text-[10px] text-slate-500 italic">{results.summary}</p>}
+            {results.summary && <p className="text-[10px] text-slate-400 italic">{results.summary}</p>}
             <div className="flex items-start gap-1.5 bg-amber-900/20 border border-amber-500/30 rounded px-2.5 py-1.5">
               <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
               <p className="text-[10px] text-amber-400">AI-generated suggestions. Verify before outreach.</p>

@@ -88,7 +88,7 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
       case 'completed': return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
       case 'failed': return <XCircle className="w-4 h-4 text-red-400" />;
       case 'processing': case 'validating': return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />;
-      default: return <Clock className="w-4 h-4 text-slate-500" />;
+      default: return <Clock className="w-4 h-4 text-slate-400" />;
     }
   };
 
@@ -104,7 +104,7 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
     return (
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardContent className="py-12 text-center">
-          <p className="text-slate-500">No imports yet — upload your first file above</p>
+          <p className="text-slate-400">No imports yet — upload your first file above</p>
         </CardContent>
       </Card>
     );
@@ -132,8 +132,8 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
                         {batch.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{batch.file_name}</p>
-                    <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500 flex-wrap">
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{batch.file_name}</p>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400 flex-wrap">
                       {batch.total_rows > 0 && <span>{batch.total_rows.toLocaleString()} rows</span>}
                       {batch.imported_rows > 0 && <span className="text-emerald-400">{batch.imported_rows.toLocaleString()} imported</span>}
                       {batch.invalid_rows > 0 && <span className="text-red-400">{batch.invalid_rows.toLocaleString()} invalid</span>}
@@ -159,7 +159,7 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
             variant="ghost"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="w-full text-xs text-slate-500 hover:text-slate-300"
+            className="w-full text-xs text-slate-400 hover:text-slate-300"
           >
             {expanded ? <><ChevronUp className="w-3 h-3 mr-1" /> Show Less</> : <><ChevronDown className="w-3 h-3 mr-1" /> Show All ({batches.length})</>}
           </Button>

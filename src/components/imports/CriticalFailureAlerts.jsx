@@ -85,7 +85,7 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
                     </Badge>
                   )}
                   <ResumeImportButton batch={batch} onResumed={onViewErrors ? () => onViewErrors(null) : undefined} />
-                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 </div>
               </div>
             );

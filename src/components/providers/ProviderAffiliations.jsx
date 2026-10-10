@@ -206,7 +206,7 @@ Only return affiliations you can verify. Be specific with names.`,
 
         {/* Confirmed affiliations */}
         {confirmed.length === 0 && pending.length === 0 && !isLoading && (
-          <p className="text-xs text-slate-500 text-center py-4">No affiliations yet. Add manually or use AI suggestions.</p>
+          <p className="text-xs text-slate-400 text-center py-4">No affiliations yet. Add manually or use AI suggestions.</p>
         )}
         {confirmed.map(a => (
           <div key={a.id} className="flex items-center justify-between p-2 rounded-lg border border-slate-700/30 hover:bg-slate-800/30 group">
@@ -218,7 +218,7 @@ Only return affiliations you can verify. Be specific with names.`,
                   {a.is_primary && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
                 </div>
                 {(a.role || a.city) && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     {a.role}{a.role && a.city ? ' · ' : ''}{a.city}{a.state ? `, ${a.state}` : ''}
                   </span>
                 )}
@@ -228,11 +228,11 @@ Only return affiliations you can verify. Be specific with names.`,
               )}
             </div>
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-500 hover:text-slate-300"
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-300"
                 onClick={() => setEditAff(a)} aria-label={`Edit affiliation ${a.organization_name}`}>
                 <Pencil className="w-3 h-3" aria-hidden="true" />
               </Button>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-500 hover:text-red-400"
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-400 hover:text-red-400"
                 onClick={() => deleteMut.mutate(a.id)} aria-label={`Delete affiliation ${a.organization_name}`}>
                 <Trash2 className="w-3 h-3" aria-hidden="true" />
               </Button>

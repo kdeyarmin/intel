@@ -184,12 +184,12 @@ Be specific and actionable. Reference actual error details from the samples.`,
           </CardTitle>
           <div className="flex items-center gap-2">
             {analysis && !loading && (
-              <Button variant="ghost" size="sm" onClick={runAnalysis} className="h-6 text-[10px] text-slate-500 hover:text-slate-300 px-2">
+              <Button variant="ghost" size="sm" onClick={runAnalysis} className="h-6 text-[10px] text-slate-400 hover:text-slate-300 px-2">
                 <RefreshCw className="w-3 h-3 mr-1" /> Re-analyze
               </Button>
             )}
             {compact && (
-              <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)} className="h-6 w-6 p-0 text-slate-500">
+              <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)} className="h-6 w-6 p-0 text-slate-400">
                 {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </Button>
             )}
@@ -227,7 +227,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
                     </div>
                     <p className="text-xs text-slate-400 leading-relaxed">{analysis.root_cause}</p>
                     {analysis.affected_area && (
-                      <p className="text-[11px] text-slate-500 mt-1">Affected: {analysis.affected_area}</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Affected: {analysis.affected_area}</p>
                     )}
                     {analysis.data_cleaning_suggestions && (
                       <div className="mt-2 p-2 bg-slate-900/50 rounded border border-slate-700/50">
@@ -365,7 +365,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
           )}
 
           {analysis?.error && !loading && (
-            <div className="text-xs text-slate-500 p-3 bg-slate-800/30 rounded-lg">
+            <div className="text-xs text-slate-400 p-3 bg-slate-800/30 rounded-lg">
               {analysis.root_cause}
               <Button variant="ghost" size="sm" onClick={runAnalysis} className="h-6 text-[10px] text-cyan-500 hover:text-cyan-400 px-2 mt-2">
                 <RefreshCw className="w-3 h-3 mr-1" /> Try Again

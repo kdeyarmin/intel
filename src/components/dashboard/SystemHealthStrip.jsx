@@ -20,7 +20,7 @@ export default function SystemHealthStrip({ stats, loading }) {
       label: 'Active Imports',
       value: stats.imports?.active || 0,
       icon: Upload,
-      color: stats.imports?.active > 0 ? 'text-blue-400' : 'text-slate-500',
+      color: stats.imports?.active > 0 ? 'text-blue-400' : 'text-slate-400',
       link: 'ImportMonitoring',
     },
     {
@@ -33,7 +33,7 @@ export default function SystemHealthStrip({ stats, loading }) {
       label: 'Failed Imports',
       value: stats.imports?.failed || 0,
       icon: AlertTriangle,
-      color: stats.imports?.failed > 0 ? 'text-red-400' : 'text-slate-500',
+      color: stats.imports?.failed > 0 ? 'text-red-400' : 'text-slate-400',
     },
     {
       label: 'Data Quality',
@@ -58,7 +58,7 @@ export default function SystemHealthStrip({ stats, loading }) {
         const content = (
           <div key={i} className="flex items-center gap-1.5 group cursor-default">
             <Icon className={`w-3 h-3 ${item.color}`} />
-            <span className="text-[11px] text-slate-500">{item.label}:</span>
+            <span className="text-[11px] text-slate-400">{item.label}:</span>
             <span className={`text-[11px] font-medium ${item.color} ${item.link ? 'group-hover:text-cyan-400' : ''}`}>{item.value}</span>
           </div>
         );

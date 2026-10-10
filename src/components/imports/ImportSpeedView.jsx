@@ -70,7 +70,7 @@ export default function ImportSpeedView({ batches, onRefresh }) {
         </CardHeader>
         <CardContent>
           {speedData.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">No speed data available yet.</div>
+            <div className="text-center py-8 text-slate-400">No speed data available yet.</div>
           ) : (
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -103,7 +103,7 @@ export default function ImportSpeedView({ batches, onRefresh }) {
         </CardHeader>
         <CardContent>
           {failedBatches.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">No failed batches found.</div>
+            <div className="text-center py-8 text-slate-400">No failed batches found.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">

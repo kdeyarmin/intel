@@ -152,7 +152,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
         </div>
 
         {!analysis && !isAnalyzing && (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-400">
             AI will prioritize errors, identify root causes, and suggest bulk fixes across {errors.length} errors.
           </p>
         )}
@@ -225,18 +225,18 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
                               {group.recommended_action === 'fix_data' && <><Lightbulb className="w-3 h-3 mr-0.5" /> Fix</>}
                             </Button>
                           )}
-                          {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                         </div>
                       </button>
 
                       {isExpanded && (
                         <div className="border-t border-slate-700/30 p-3 space-y-2.5">
                           <div>
-                            <p className="text-[10px] font-semibold text-slate-500 mb-1">Root Cause</p>
+                            <p className="text-[10px] font-semibold text-slate-400 mb-1">Root Cause</p>
                             <p className="text-[11px] text-slate-400">{group.root_cause}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] font-semibold text-slate-500 mb-1">Impact</p>
+                            <p className="text-[10px] font-semibold text-slate-400 mb-1">Impact</p>
                             <p className="text-[11px] text-slate-400">{group.estimated_impact}</p>
                           </div>
                           {group.fix_steps?.length > 0 && (
@@ -247,7 +247,7 @@ ${JSON.stringify(summaryForAI, null, 2)}`,
                               <ol className="space-y-0.5">
                                 {group.fix_steps.map((step, i) => (
                                   <li key={i} className="text-[11px] text-slate-400 flex gap-1.5">
-                                    <span className="text-slate-500 flex-shrink-0">{i + 1}.</span>
+                                    <span className="text-slate-400 flex-shrink-0">{i + 1}.</span>
                                     {step}
                                   </li>
                                 ))}

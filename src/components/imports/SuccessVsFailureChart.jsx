@@ -73,7 +73,7 @@ export default function SuccessVsFailureChart({ batches }) {
                   key={p}
                   onClick={() => setPeriod(p)}
                   className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                    period === p ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                    period === p ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
                   {p}
@@ -133,7 +133,7 @@ export default function SuccessVsFailureChart({ batches }) {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
                 No data for this period
               </div>
             )}

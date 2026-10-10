@@ -89,7 +89,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
 
           <div className="max-h-64 overflow-y-auto space-y-1">
             {results.length === 0 && !searching && (
-              <p className="text-sm text-slate-500 text-center py-4">Search for providers to add</p>
+              <p className="text-sm text-slate-400 text-center py-4">Search for providers to add</p>
             )}
             {results.map(p => {
               const name = p.entity_type === 'Individual'

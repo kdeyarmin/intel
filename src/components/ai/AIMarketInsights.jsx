@@ -135,7 +135,7 @@ Also provide an overall market position assessment.`,
             {/* Market position header */}
             <div className="bg-gradient-to-r from-slate-800/40 to-emerald-900/20 rounded-lg p-3 border border-emerald-500/30">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-medium text-slate-500 uppercase">Market Position</span>
+                <span className="text-[10px] font-medium text-slate-400 uppercase">Market Position</span>
                 {results.market_score != null && (
                   <Badge className={`text-[10px] ${results.market_score >= 70 ? 'bg-emerald-900/30 text-emerald-400' : results.market_score >= 40 ? 'bg-amber-900/30 text-amber-400' : 'bg-red-900/30 text-red-400'}`}>
                     Score: {results.market_score}/100

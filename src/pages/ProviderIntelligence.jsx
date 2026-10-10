@@ -324,7 +324,7 @@ export default function ProviderIntelligence() {
             <Card className="bg-[#141d30] border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold text-white">{emailStats.total.toLocaleString()}</div>
-                <div className="text-xs text-slate-500">Total Providers</div>
+                <div className="text-xs text-slate-400">Total Providers</div>
               </CardContent>
             </Card>
             <Card className="bg-[#141d30] border-slate-700/50">
@@ -350,13 +350,13 @@ export default function ProviderIntelligence() {
                 <Button onClick={downloadFullEmailCSV} disabled={emailStats.withEmail === 0} size="sm" className="bg-cyan-600 hover:bg-cyan-700 gap-2">
                   <Download className="w-3.5 h-3.5" /> Export CSV
                 </Button>
-                <div className="text-[10px] text-slate-500 mt-1.5">{emailStats.withEmail.toLocaleString()} ready</div>
+                <div className="text-[10px] text-slate-400 mt-1.5">{emailStats.withEmail.toLocaleString()} ready</div>
               </CardContent>
             </Card>
           </div>
 
           {emailStats.isEstimated && (
-            <p className="text-[10px] text-slate-500 text-center -mt-2">~ counts are estimated</p>
+            <p className="text-[10px] text-slate-400 text-center -mt-2">~ counts are estimated</p>
           )}
 
           <EmailBotControls
@@ -416,7 +416,7 @@ export default function ProviderIntelligence() {
                       <div key={p.id || idx} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
-                          <div className="text-xs text-slate-500">{p.email}</div>
+                          <div className="text-xs text-slate-400">{p.email}</div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {p.email_validation_status && p.email_validation_status !== '' && (
@@ -459,7 +459,7 @@ export default function ProviderIntelligence() {
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
                 onChange={toggleSelectAll} aria-label="Select all providers" className="rounded border-slate-600" />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-400">
                 {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} with email
               </span>
             </div>
@@ -486,15 +486,15 @@ export default function ProviderIntelligence() {
               );
             })}
             {filteredProviders.length > 50 && (
-              <p className="text-center text-xs text-slate-500 py-2">
+              <p className="text-center text-xs text-slate-400 py-2">
                 Showing 50 of {filteredProviders.length} providers. Use filters to narrow results.
               </p>
             )}
             {filteredProviders.length === 0 && (
               <div className="text-center py-12">
-                <Users className="w-8 h-8 text-slate-500 mx-auto mb-3" />
+                <Users className="w-8 h-8 text-slate-400 mx-auto mb-3" />
                 <p className="text-sm text-slate-400">No providers with emails match the current filters</p>
-                <p className="text-xs text-slate-500 mt-1">Try adjusting filters or run the Email Search bot first</p>
+                <p className="text-xs text-slate-400 mt-1">Try adjusting filters or run the Email Search bot first</p>
               </div>
             )}
           </div>
@@ -526,13 +526,13 @@ export default function ProviderIntelligence() {
                     <div key={p.id} className="flex items-center justify-between p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/30">
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-slate-200 truncate">{name}</div>
-                        <div className="text-xs text-slate-500">{p.email || 'No email'}</div>
+                        <div className="text-xs text-slate-400">{p.email || 'No email'}</div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {p.email_validation_status && (
                           <EmailValidationBadge status={p.email_validation_status} reason={p.email_validation_reason} source={p.email_source} size="sm" />
                         )}
-                        <Button onClick={() => toggleSelectProvider(p.npi)} variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-500 hover:text-red-400">×</Button>
+                        <Button onClick={() => toggleSelectProvider(p.npi)} variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-400 hover:text-red-400">×</Button>
                       </div>
                     </div>
                   );
@@ -541,9 +541,9 @@ export default function ProviderIntelligence() {
             </div>
           ) : (
             <div className="text-center py-16">
-              <Send className="w-10 h-10 text-slate-500 mx-auto mb-4" />
+              <Send className="w-10 h-10 text-slate-400 mx-auto mb-4" />
               <p className="text-base font-medium text-slate-300 mb-2">No providers selected</p>
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="text-sm text-slate-400 mb-4">
                 Go to the Providers tab, select providers with emails, then come back here to launch a campaign.
               </p>
               <Button onClick={() => setActiveTab('providers')} variant="outline" size="sm" className="border-slate-700 text-slate-300 gap-1.5">

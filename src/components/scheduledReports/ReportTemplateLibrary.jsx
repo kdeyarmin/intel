@@ -105,7 +105,7 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
                       <h4 className="text-xs font-semibold text-slate-300 truncate">{template.name}</h4>
                       <Badge variant="outline" className="text-[9px] shrink-0">{template.frequency}</Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{template.description}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{template.description}</p>
                   </div>
                 </div>
               </button>

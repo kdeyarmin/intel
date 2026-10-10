@@ -93,7 +93,7 @@ Provide:
         {loading && (
           <div className="text-center py-6">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-400 mx-auto mb-1" />
-            <p className="text-xs text-slate-500">Analyzing network fit...</p>
+            <p className="text-xs text-slate-400">Analyzing network fit...</p>
           </div>
         )}
 

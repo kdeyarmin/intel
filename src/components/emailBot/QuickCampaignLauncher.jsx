@@ -179,7 +179,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
                 onChange={(e) => setCampaign({ ...campaign, subject_template: e.target.value })}
                 className="mt-1 bg-slate-800/50 border-slate-700 text-slate-200 font-mono text-xs"
               />
-              <p className="text-[10px] text-slate-500 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
+              <p className="text-[10px] text-slate-400 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
             </div>
 
             <div>
@@ -197,7 +197,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
             <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
               <div>
                 <Label id={`${uid}-ai-personalization-label`} htmlFor={`${uid}-ai-personalization`} className="text-xs text-slate-300">AI Personalization</Label>
-                <p className="text-[10px] text-slate-500">Customize each message with provider context</p>
+                <p className="text-[10px] text-slate-400">Customize each message with provider context</p>
               </div>
               <Switch
                 id={`${uid}-ai-personalization`}
@@ -210,7 +210,7 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
             <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
               <div>
                 <Label id={`${uid}-schedule-label`} htmlFor={`${uid}-schedule`} className="text-xs text-slate-300">Schedule for Later</Label>
-                <p className="text-[10px] text-slate-500">Choose a date/time to send</p>
+                <p className="text-[10px] text-slate-400">Choose a date/time to send</p>
               </div>
               <Switch
                 id={`${uid}-schedule`}

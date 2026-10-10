@@ -47,7 +47,7 @@ export default function EmailBotControls({
                 onChange={e => setBatchSize(Math.min(50, parseInt(e.target.value) || 5))}
                 className="h-8 text-sm bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500" disabled={isRunning}
               />
-              <p className="text-[10px] text-slate-500 mt-1">Providers per API call (max 50)</p>
+              <p className="text-[10px] text-slate-400 mt-1">Providers per API call (max 50)</p>
             </div>
             <div className="flex items-center gap-2 pt-5">
               <Switch

@@ -157,7 +157,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
         {activeDashboard && (
           <div className="pt-3 border-t mt-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Widgets</span>
+              <span className="text-xs font-medium text-slate-400">Widgets</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-violet-600">

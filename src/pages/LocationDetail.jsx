@@ -194,7 +194,7 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Activity className="w-4 h-4 text-blue-500" /> Provider Utilization
                 </CardTitle>
-                <p className="text-[11px] text-slate-500">Provider-wide totals (NPI-level) — not specific to this location</p>
+                <p className="text-[11px] text-slate-400">Provider-wide totals (NPI-level) — not specific to this location</p>
               </CardHeader>
               <CardContent>
                 {latestUtil ? (
@@ -226,7 +226,7 @@ export default function LocationDetail() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <GitBranch className="w-4 h-4 text-violet-500" /> Referral Summary
                 </CardTitle>
-                <p className="text-[11px] text-slate-500">Provider-wide totals (NPI-level) — not specific to this location</p>
+                <p className="text-[11px] text-slate-400">Provider-wide totals (NPI-level) — not specific to this location</p>
               </CardHeader>
               <CardContent>
                 {latestRef ? (

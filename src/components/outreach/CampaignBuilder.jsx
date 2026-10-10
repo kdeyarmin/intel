@@ -260,7 +260,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                 <p className="font-semibold text-sm text-slate-100">{renderTemplate(campaign.subject_template, vars) || 'No subject'}</p>
                 <div className="border-t border-slate-700 mt-3 pt-3">
                   <div className="text-sm whitespace-pre-wrap text-slate-300">{renderTemplate(campaign.body_template, vars) || 'No message'}</div>
-                  <p className="mt-4 border-t border-slate-700 pt-2 text-[11px] text-slate-500">
+                  <p className="mt-4 border-t border-slate-700 pt-2 text-[11px] text-slate-400">
                     Every email ends with an unsubscribe link and your organization&apos;s postal address.
                   </p>
                 </div>

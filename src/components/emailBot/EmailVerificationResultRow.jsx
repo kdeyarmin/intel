@@ -25,10 +25,10 @@ export default function EmailVerificationResultRow({ result }) {
           <span className="text-sm font-medium text-slate-200 truncate">{result.name || result.npi}</span>
           <Badge className={`text-[10px] ${config.bg} ${config.color} border`}>{config.label}</Badge>
           {result.score != null && (
-            <span className="text-[10px] text-slate-500">Score: {result.score}/100</span>
+            <span className="text-[10px] text-slate-400">Score: {result.score}/100</span>
           )}
         </div>
-        <div className="text-xs text-slate-500 truncate">{result.email}</div>
+        <div className="text-xs text-slate-400 truncate">{result.email}</div>
         {result.recommendation && (
           <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{result.recommendation}</p>
         )}
@@ -47,7 +47,7 @@ export default function EmailVerificationResultRow({ result }) {
           </Badge>
         )}
         {hasDetails && (
-          expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+          expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
         )}
       </div>
     </>

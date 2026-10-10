@@ -170,7 +170,7 @@ export default function AIRuleSuggestions({ importType }) {
     return (
       <div className="text-center py-4">
         <ShieldCheck className="w-6 h-6 mx-auto mb-2 text-emerald-400/40" />
-        <p className="text-xs text-slate-500">No rule suggestions — error patterns are already covered or insufficient data.</p>
+        <p className="text-xs text-slate-400">No rule suggestions — error patterns are already covered or insufficient data.</p>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export default function AIRuleSuggestions({ importType }) {
           {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
         </Badge>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-400">
         Based on {recentBatches.length} recent failed import{recentBatches.length !== 1 ? 's' : ''}, these rules could prevent recurring errors.
       </p>
 
@@ -207,7 +207,7 @@ export default function AIRuleSuggestions({ importType }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium text-slate-200">{s.ruleName}</span>
-                      <Badge className="bg-slate-700/50 text-slate-500 text-[8px]">
+                      <Badge className="bg-slate-700/50 text-slate-400 text-[8px]">
                         {RULE_TYPE_LABELS[s.ruleType]}
                       </Badge>
                       <Badge className={`text-[8px] ${
@@ -218,11 +218,11 @@ export default function AIRuleSuggestions({ importType }) {
                         {s.confidence} confidence
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       {s.errorCount} error{s.errorCount !== 1 ? 's' : ''} across {s.batchCount} batch{s.batchCount !== 1 ? 'es' : ''}
                     </p>
                   </div>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                 </button>
 
                 {isExpanded && (
@@ -231,7 +231,7 @@ export default function AIRuleSuggestions({ importType }) {
                     
                     {/* Sample errors */}
                     <div>
-                      <p className="text-[10px] text-slate-500 mb-1">Sample errors that triggered this suggestion:</p>
+                      <p className="text-[10px] text-slate-400 mb-1">Sample errors that triggered this suggestion:</p>
                       {s.samples.map((sample, i) => (
                         <div key={i} className="text-[11px] text-slate-400 bg-slate-900/50 rounded px-2 py-1 mb-1 truncate">
                           {sample}
@@ -280,7 +280,7 @@ export default function AIRuleSuggestions({ importType }) {
         <DialogContent className="max-w-lg bg-[#141d30] border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-slate-200">Customize Validation Rule</DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-400">
               Adjust the rule configuration before applying it to future imports.
             </DialogDescription>
           </DialogHeader>
@@ -339,7 +339,7 @@ export default function AIRuleSuggestions({ importType }) {
               placeholder="e.g., ^\d{10}$"
               className="text-xs bg-slate-800/50 border-slate-700"
             />
-            <p className="text-[10px] text-slate-500">Default: {buildRuleConfig('regex').pattern}</p>
+            <p className="text-[10px] text-slate-400">Default: {buildRuleConfig('regex').pattern}</p>
           </div>
         );
 
@@ -400,7 +400,7 @@ export default function AIRuleSuggestions({ importType }) {
               placeholder="e.g., YYYY-MM-DD"
               className="text-xs bg-slate-800/50 border-slate-700"
             />
-            <p className="text-[10px] text-slate-500">Common formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY</p>
+            <p className="text-[10px] text-slate-400">Common formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY</p>
           </div>
         );
 

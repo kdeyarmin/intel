@@ -185,7 +185,7 @@ export default function Locations() {
                 ) : isError ? (
                   <TableRow><TableCell colSpan={8} className="py-6"><QueryErrorState title="Couldn't load locations" error={loadError} onRetry={refetch} /></TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-400">
                    {result?.needsState ? result.message : searching ? `No locations found for ${result?.label || 'this search'}.` : 'No locations match the current filters.'}
                  </TableCell></TableRow>
                 ) : (
@@ -217,7 +217,7 @@ export default function Locations() {
           </div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-3">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
               </p>
               <div className="flex gap-2">

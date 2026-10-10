@@ -134,15 +134,15 @@ Based on the file name and column headers, determine:
           <div className="space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-500">Type:</span>
+                <span className="text-[10px] text-slate-400">Type:</span>
                 <Badge className="bg-cyan-900/15 text-cyan-400 text-[10px]">{typeLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-500">Category:</span>
+                <span className="text-[10px] text-slate-400">Category:</span>
                 <Badge className="bg-violet-900/15 text-violet-400 text-[10px]">{catLabel}</Badge>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-500">Confidence:</span>
+                <span className="text-[10px] text-slate-400">Confidence:</span>
                 <Badge className={`text-[10px] ${
                   confidence >= 80 ? 'bg-emerald-900/15 text-emerald-400' :
                   confidence >= 50 ? 'bg-amber-900/15 text-amber-400' :
@@ -151,7 +151,7 @@ Based on the file name and column headers, determine:
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500">{suggestion.reason}</p>
+            <p className="text-[11px] text-slate-400">{suggestion.reason}</p>
 
             {!accepted ? (
               <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ Based on the file name and column headers, determine:
 
             {showOverride && (
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 space-y-2">
-                <p className="text-[10px] text-slate-500 font-semibold">Select import type:</p>
+                <p className="text-[10px] text-slate-400 font-semibold">Select import type:</p>
                 <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
                   {IMPORT_TYPE_OPTIONS.map(t => (
                     <button

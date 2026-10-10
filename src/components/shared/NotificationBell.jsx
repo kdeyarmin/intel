@@ -124,7 +124,7 @@ export default function NotificationBell() {
         onClick={() => setOpen(!open)}
         aria-label="Notifications"
         aria-expanded={open}
-        className="relative p-1.5 rounded-lg text-slate-500 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
+        className="relative p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800/60 transition-colors"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
@@ -146,7 +146,7 @@ export default function NotificationBell() {
                   setDismissed(next);
                   localStorage.setItem('dismissedNotifs', JSON.stringify(next));
                 }}
-                className="text-[10px] text-slate-500 hover:text-cyan-400"
+                className="text-[10px] text-slate-400 hover:text-cyan-400"
               >
                 Clear all
               </button>
@@ -164,13 +164,13 @@ export default function NotificationBell() {
                     {canOpen(n.page) ? (
                       <Link to={createPageUrl(n.page)} onClick={() => setOpen(false)} className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-slate-200">{n.title}</p>
-                        {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
+                        {n.desc && <p className="text-[10px] text-slate-400 truncate">{n.desc}</p>}
                         <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
                       </Link>
                     ) : (
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-slate-200">{n.title}</p>
-                        {n.desc && <p className="text-[10px] text-slate-500 truncate">{n.desc}</p>}
+                        {n.desc && <p className="text-[10px] text-slate-400 truncate">{n.desc}</p>}
                         <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(n.time)}</p>
                       </div>
                     )}

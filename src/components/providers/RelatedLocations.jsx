@@ -39,7 +39,7 @@ export default function RelatedLocations({ npi }) {
             {[1, 2].map(i => <Skeleton key={i} className="h-16" />)}
           </div>
         ) : sorted.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-slate-400 text-center py-4">
             No AI-matched locations for this provider yet
           </p>
         ) : (
@@ -67,7 +67,7 @@ export default function RelatedLocations({ npi }) {
                       ))}
                     </div>
                   )}
-                  <div className="mt-2 flex gap-3 text-xs text-slate-500">
+                  <div className="mt-2 flex gap-3 text-xs text-slate-400">
                     <span>Spec: {match.specialization_score || 0}</span>
                     <span>Prox: {match.proximity_score || 0}</span>
                     <span>Ref: {match.referral_score || 0}</span>

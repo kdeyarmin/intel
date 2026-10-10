@@ -190,14 +190,14 @@ Return up to 10 most important issues, prioritized by severity and affected coun
             {scanning ? 'Scanning...' : 'Run AI Scan'}
           </Button>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           Uses AI to proactively identify data quality issues across Providers, Locations, and Taxonomies
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {scanning && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-400">
               <span>{progress.step}</span>
               <span>{progress.pct}%</span>
             </div>

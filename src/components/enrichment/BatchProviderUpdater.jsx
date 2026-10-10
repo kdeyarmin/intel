@@ -163,7 +163,7 @@ export default function BatchProviderUpdater() {
                   <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">{items.length}</Badge>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500 ml-6 mb-2">{gc.desc}</p>
+              <p className="text-[10px] text-slate-400 ml-6 mb-2">{gc.desc}</p>
               <div className="ml-6 space-y-1 max-h-32 overflow-y-auto">
                 {items.slice(0, 10).map(r => (
                   <div key={r.id} className="flex items-center gap-2">

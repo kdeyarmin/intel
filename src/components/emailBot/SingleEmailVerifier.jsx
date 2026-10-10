@@ -89,7 +89,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
       {displayResult && displayResult.reasons?.length > 0 && (
         <div className="pl-2 border-l-2 border-slate-700 space-y-0.5">
           {displayResult.reasons.slice(0, 4).map((r, i) => (
-            <p key={i} className="text-[10px] text-slate-500">{r}</p>
+            <p key={i} className="text-[10px] text-slate-400">{r}</p>
           ))}
         </div>
       )}
@@ -103,7 +103,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
       )}
 
       {displayResult && displayResult.status !== 'unknown' && verifiedAt && (
-        <p className="text-[10px] text-slate-500">
+        <p className="text-[10px] text-slate-400">
           {result?.recommendation ? `${result.recommendation} · ` : ''}Checked {verifiedAt.toLocaleDateString()} (DNS only; the mailbox itself isn't probed)
         </p>
       )}

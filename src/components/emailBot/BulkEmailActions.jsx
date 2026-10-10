@@ -152,7 +152,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
 
         {/* Search */}
         <div className="relative">
-          <Search aria-hidden="true" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <Search aria-hidden="true" className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <Input
             aria-label="Search emails by name, email, or NPI"
             placeholder="Search by name, email, or NPI..."
@@ -195,7 +195,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
         {/* List */}
         <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
           {filtered.length === 0 && (
-            <p className="text-xs text-slate-500 text-center py-6">No emails match current filters</p>
+            <p className="text-xs text-slate-400 text-center py-6">No emails match current filters</p>
           )}
           {filtered.map(p => {
             const name = p.entity_type === 'Individual'
@@ -224,7 +224,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                 <StatusIcon className={`w-3.5 h-3.5 shrink-0 ${statusColor}`} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium text-slate-200 truncate">{name}</div>
-                  <div className="text-[10px] text-slate-500 truncate">{p.email}</div>
+                  <div className="text-[10px] text-slate-400 truncate">{p.email}</div>
                 </div>
                 <Badge className={`text-[9px] shrink-0 ${
                   status === 'valid' ? 'bg-emerald-900/15 text-emerald-400 border-emerald-500/20' :
@@ -234,7 +234,7 @@ export default function BulkEmailActions({ providers, onRefresh }) {
                 } border`}>
                   {status}
                 </Badge>
-                <span className="text-[10px] text-slate-500 font-mono shrink-0">{p.npi}</span>
+                <span className="text-[10px] text-slate-400 font-mono shrink-0">{p.npi}</span>
               </label>
             );
           })}

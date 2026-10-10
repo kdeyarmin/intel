@@ -51,7 +51,7 @@ export default function FeedbackStatsCard({ matches }) {
             </div>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-3">
+        <p className="text-xs text-slate-400 mt-3">
           These {decided.length} decisions are kept: rejected matches won't be suggested again on the next run.
         </p>
       </CardContent>

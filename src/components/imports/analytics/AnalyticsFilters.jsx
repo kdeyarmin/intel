@@ -15,12 +15,12 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+      <div className="flex items-center gap-1.5 text-xs text-slate-400">
         <Filter className="w-3.5 h-3.5" />
         Filters:
       </div>
       <div className="flex items-center gap-2">
-        <label htmlFor={`${uid}-from`} className="text-[10px] text-slate-500">From:</label>
+        <label htmlFor={`${uid}-from`} className="text-[10px] text-slate-400">From:</label>
         <Input
           id={`${uid}-from`}
           aria-label="From date"
@@ -31,7 +31,7 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
         />
       </div>
       <div className="flex items-center gap-2">
-        <label htmlFor={`${uid}-to`} className="text-[10px] text-slate-500">To:</label>
+        <label htmlFor={`${uid}-to`} className="text-[10px] text-slate-400">To:</label>
         <Input
           id={`${uid}-to`}
           aria-label="To date"

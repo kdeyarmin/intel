@@ -74,7 +74,7 @@ Summarize who this provider is, their practice characteristics, notable utilizat
       </CardHeader>
       <CardContent>
         {!summary && !loading && (
-          <p className="text-sm text-slate-500 text-center py-6">
+          <p className="text-sm text-slate-400 text-center py-6">
             Click "Generate" to create an AI-powered executive summary of this provider
           </p>
         )}

@@ -147,19 +147,19 @@ export default function ReconciliationDashboard() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-xs text-slate-500">Total Providers</p>
+                <p className="text-xs text-slate-400">Total Providers</p>
                 <p className="text-2xl font-bold text-white">{recentJob.total_providers || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Matched</p>
+                <p className="text-xs text-slate-400">Matched</p>
                 <p className="text-2xl font-bold text-green-400">{recentJob.matched || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Discrepancies</p>
+                <p className="text-xs text-slate-400">Discrepancies</p>
                 <p className="text-2xl font-bold text-red-400">{recentJob.discrepancies_found || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">AI Suggestions</p>
+                <p className="text-xs text-slate-400">AI Suggestions</p>
                 <p className="text-2xl font-bold text-blue-400">{recentJob.ai_suggestions_generated || 0}</p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function ReconciliationDashboard() {
                         <p className="text-sm text-slate-400">{recon.discrepancies?.length || 0} field(s) differ</p>
                       </div>
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${expandedId === recon.id ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedId === recon.id ? 'rotate-180' : ''}`} />
                   </button>
 
                   {expandedId === recon.id && (

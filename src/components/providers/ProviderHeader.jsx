@@ -51,7 +51,7 @@ export default function ProviderHeader({ provider, specialty, location }) {
               onClick={copyNpi}
               aria-label="Copy NPI"
               title="Copy NPI"
-              className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-cyan-400"
+              className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-cyan-400"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
             </button>

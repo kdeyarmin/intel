@@ -93,9 +93,9 @@ function ProgressBreakdown({ batch }) {
       </div>
       {(skipped > 0 || duplicates > 0 || invalid > 0) && (
         <div className="flex gap-4 mt-3 text-xs">
-          {skipped > 0 && <span className="text-slate-500">Skipped: <span className="text-slate-400 font-medium">{skipped.toLocaleString()}</span></span>}
-          {duplicates > 0 && <span className="text-slate-500">Duplicates: <span className="text-amber-400 font-medium">{duplicates.toLocaleString()}</span></span>}
-          {invalid > 0 && <span className="text-slate-500">Invalid: <span className="text-red-400 font-medium">{invalid.toLocaleString()}</span></span>}
+          {skipped > 0 && <span className="text-slate-400">Skipped: <span className="text-slate-400 font-medium">{skipped.toLocaleString()}</span></span>}
+          {duplicates > 0 && <span className="text-slate-400">Duplicates: <span className="text-amber-400 font-medium">{duplicates.toLocaleString()}</span></span>}
+          {invalid > 0 && <span className="text-slate-400">Invalid: <span className="text-red-400 font-medium">{invalid.toLocaleString()}</span></span>}
         </div>
       )}
     </div>
@@ -223,7 +223,7 @@ function FilteredErrors({ errors, filters, batchName }) {
   return (
     <>
       {hasFilters && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           Showing {filtered.length} of {errors.length} error{errors.length !== 1 ? 's' : ''}
         </p>
       )}
@@ -277,7 +277,7 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
             </Badge>
           )}
         </div>
-        {duration && <span className="text-xs text-slate-500">Duration: {duration}</span>}
+        {duration && <span className="text-xs text-slate-400">Duration: {duration}</span>}
       </div>
 
       {/* Auto-retry banner for failed batches: surfaces worker state + per-batch toggle. */}
@@ -303,14 +303,14 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
       )}
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <div><span className="text-slate-500">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>
-        <div><span className="text-slate-500">Status:</span><p className="font-medium text-slate-200">{batch.status}</p></div>
-        <div><span className="text-slate-500">Created:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.created_date)}</p></div>
-        <div><span className="text-slate-500">Completed:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.completed_at)}</p></div>
-        {batch.paused_at && <div><span className="text-slate-500">Paused:</span><p className="font-medium text-amber-400">{formatTimestamp(batch.paused_at)}</p></div>}
-        {batch.cancelled_at && <div><span className="text-slate-500">Cancelled:</span><p className="font-medium text-slate-400">{formatTimestamp(batch.cancelled_at)}</p></div>}
-        {batch.retry_of && <div><span className="text-slate-500">Retry Of:</span><p className="font-medium text-xs font-mono text-slate-300">{batch.retry_of}</p></div>}
-        {batch.cancel_reason && <div className="col-span-2"><span className="text-slate-500">Reason:</span><p className="font-medium text-red-400 text-xs">{batch.cancel_reason}</p></div>}
+        <div><span className="text-slate-400">Import Type:</span><p className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</p></div>
+        <div><span className="text-slate-400">Status:</span><p className="font-medium text-slate-200">{batch.status}</p></div>
+        <div><span className="text-slate-400">Created:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.created_date)}</p></div>
+        <div><span className="text-slate-400">Completed:</span><p className="font-medium text-slate-200">{formatTimestamp(batch.completed_at)}</p></div>
+        {batch.paused_at && <div><span className="text-slate-400">Paused:</span><p className="font-medium text-amber-400">{formatTimestamp(batch.paused_at)}</p></div>}
+        {batch.cancelled_at && <div><span className="text-slate-400">Cancelled:</span><p className="font-medium text-slate-400">{formatTimestamp(batch.cancelled_at)}</p></div>}
+        {batch.retry_of && <div><span className="text-slate-400">Retry Of:</span><p className="font-medium text-xs font-mono text-slate-300">{batch.retry_of}</p></div>}
+        {batch.cancel_reason && <div className="col-span-2"><span className="text-slate-400">Reason:</span><p className="font-medium text-red-400 text-xs">{batch.cancel_reason}</p></div>}
       </div>
 
       {/* File & Source */}
@@ -320,7 +320,7 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         </h4>
         <p className="text-sm text-slate-300 break-all">{batch.file_name}</p>
         {batch.file_url && (
-          <p className="text-xs text-slate-500 flex items-center gap-1 break-all">
+          <p className="text-xs text-slate-400 flex items-center gap-1 break-all">
             <Link2 className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{batch.file_url}</span>
           </p>
@@ -368,14 +368,14 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
         </h4>
         <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-            <div className="flex justify-between"><span className="text-slate-500">Import Type</span><span className="text-slate-300">{batch.import_type}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Dry Run</span><span className={batch.dry_run ? 'text-violet-400' : 'text-slate-400'}>{batch.dry_run ? 'Yes' : 'No'}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Category</span><span className="text-slate-300">{batch.category || 'None'}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">Retry Count</span><span className="text-slate-300">{batch.retry_count || 0}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Import Type</span><span className="text-slate-300">{batch.import_type}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Dry Run</span><span className={batch.dry_run ? 'text-violet-400' : 'text-slate-400'}>{batch.dry_run ? 'Yes' : 'No'}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Category</span><span className="text-slate-300">{batch.category || 'None'}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Retry Count</span><span className="text-slate-300">{batch.retry_count || 0}</span></div>
           </div>
           {batch.tags?.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-700/50">
-              <span className="text-slate-500">Tags:</span>
+              <span className="text-slate-400">Tags:</span>
               {batch.tags.map(t => <Badge key={t} className="bg-slate-700/50 text-slate-300 text-[10px]">{t}</Badge>)}
             </div>
           )}
@@ -410,7 +410,7 @@ export default function BatchDetailPanel({ batch, onUpdated }) {
                 {(Array.isArray(columnFields) ? columnFields : []).map(([key, val], i) => (
                   <div key={i} className="flex justify-between py-0.5 border-b border-slate-700/30">
                     <span className="font-medium text-slate-300">{key}</span>
-                    <span className="text-slate-500">{typeof val === 'string' ? val : JSON.stringify(val)}</span>
+                    <span className="text-slate-400">{typeof val === 'string' ? val : JSON.stringify(val)}</span>
                   </div>
                 ))}
               </div>

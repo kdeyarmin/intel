@@ -55,7 +55,7 @@ export default function ScheduledReportPreviewDialog({ report, onClose }) {
                 </table>
               </div>
             )}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-400">
               Based on the latest {fmt(p.source_row_count)} records.
               {' '}Goes to: {p.recipients.length ? p.recipients.join(', ') : 'nobody yet'}
               {p.blocked_recipients.length > 0 && ` · Won't send to ${p.blocked_recipients.join(', ')} (reports go only to active app users)`}

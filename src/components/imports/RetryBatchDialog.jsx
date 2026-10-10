@@ -252,7 +252,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                   placeholder="e.g. MA4, Sheet1"
                   className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                 />
-                <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports</p>
+                <p className="text-[10px] text-slate-400">For multi-sheet ZIP/Excel imports</p>
               </div>
             </TabsContent>
 
@@ -293,7 +293,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                 placeholder="e.g. MA4, Sheet1"
                 className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
               />
-              <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
+              <p className="text-[10px] text-slate-400">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
             </div>
           )}
 

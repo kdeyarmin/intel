@@ -137,7 +137,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
           {!loadingStats && displayTotal > 0 && (
             <div className="mt-1">
               <Progress value={(enrichedCount / displayTotal) * 100} className="h-1.5" />
-              <p className="text-[10px] text-slate-500 mt-1 text-right">
+              <p className="text-[10px] text-slate-400 mt-1 text-right">
                 {((enrichedCount / displayTotal) * 100).toFixed(2)}% complete
               </p>
             </div>
@@ -175,29 +175,29 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
               <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-emerald-400">{job.enriched}</p>
-                <p className="text-[9px] text-slate-500">Enriched</p>
+                <p className="text-[9px] text-slate-400">Enriched</p>
               </div>
               <div className="bg-cyan-900/10 rounded-lg p-2 text-center">
                 <Mail className="w-3.5 h-3.5 text-cyan-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-cyan-400">{job.emailsFound || 0}</p>
-                <p className="text-[9px] text-slate-500">Emails</p>
+                <p className="text-[9px] text-slate-400">Emails</p>
               </div>
               <div className="bg-slate-500/10 rounded-lg p-2 text-center">
                 <AlertTriangle className="w-3.5 h-3.5 text-slate-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-slate-400">{job.noData}</p>
-                <p className="text-[9px] text-slate-500">No Data</p>
+                <p className="text-[9px] text-slate-400">No Data</p>
               </div>
               <div className="bg-red-900/10 rounded-lg p-2 text-center">
                 <XCircle className="w-3.5 h-3.5 text-red-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-red-400">{job.errors}</p>
-                <p className="text-[9px] text-slate-500">Errors</p>
+                <p className="text-[9px] text-slate-400">Errors</p>
               </div>
             </div>
             {job.message && (
               <p className="text-xs text-slate-400 text-center">{job.message}</p>
             )}
             {job.startedAt && (
-              <p className="text-[10px] text-slate-500 text-center">
+              <p className="text-[10px] text-slate-400 text-center">
                 Started: {new Date(job.startedAt).toLocaleTimeString()}
                 {job.lastBatchAt && ` | Last batch: ${new Date(job.lastBatchAt).toLocaleTimeString()}`}
               </p>
@@ -208,7 +208,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
         {isRunning && (
           <div className="flex items-center gap-2 justify-center">
             <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[10px] text-slate-400">
               {job?.status === 'stopping' ? 'Stopping after current batch...' : `Processing... ${job?.total || 0} providers done`}
             </p>
           </div>

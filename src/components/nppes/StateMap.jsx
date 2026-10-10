@@ -110,7 +110,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               style={{ backgroundColor: STATUS_COLORS[item.key].bg, border: `1px solid ${STATUS_COLORS[item.key].border}` }} 
             />
             <span className="text-slate-400">{item.label}</span>
-            <span className="text-slate-500 font-medium">({item.count})</span>
+            <span className="text-slate-400 font-medium">({item.count})</span>
           </div>
         ))}
       </div>

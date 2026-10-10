@@ -67,7 +67,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
           Provider Profile
         </CardTitle>
         <Button variant="ghost" size="sm" onClick={handleEditClick} className="h-8 w-8 p-0">
-          <Edit className="h-4 w-4 text-slate-500" />
+          <Edit className="h-4 w-4 text-slate-400" />
         </Button>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
@@ -119,7 +119,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
         {primaryLocation && (
           <div className="space-y-2 pt-3 border-t">
             <div className="flex items-start gap-2">
-              <MapPin className="h-5 w-5 text-slate-500 mt-0.5" />
+              <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-white">Primary Practice Location</p>
                 {primaryLocation.address_1 && <p className="text-sm text-slate-400">{primaryLocation.address_1}</p>}
@@ -131,14 +131,14 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
             {primaryLocation.phone && (
               <div className="flex items-center gap-2 ml-7">
-                <Phone className="h-3.5 w-3.5 text-slate-500" />
+                <Phone className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-xs text-slate-400">{primaryLocation.phone}</p>
               </div>
             )}
 
             {primaryLocation.fax && (
               <div className="flex items-center gap-2 ml-7">
-                <Printer className="h-3.5 w-3.5 text-slate-500" />
+                <Printer className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-xs text-slate-400">{primaryLocation.fax}</p>
               </div>
             )}

@@ -239,7 +239,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
           {/* Recipients */}
           <div className="border-t pt-3 space-y-2">
             <Label htmlFor={`${uid}-recipient`} id={`${uid}-recipient-label`} className="text-xs font-semibold text-slate-300">Recipients *</Label>
-            <p id={`${uid}-recipient-hint`} className="text-[11px] text-slate-500">Reports are only emailed to people who have an account in this app.</p>
+            <p id={`${uid}-recipient-hint`} className="text-[11px] text-slate-400">Reports are only emailed to people who have an account in this app.</p>
             <div className="flex gap-2">
               <Input
                 id={`${uid}-recipient`}

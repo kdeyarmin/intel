@@ -33,20 +33,20 @@ function RowInspector({ error, onClose }) {
         <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
           <Eye className="w-3 h-3 text-cyan-400" /> Row Detail
         </span>
-        <Button variant="ghost" size="sm" className="h-5 text-[10px] text-slate-500 px-1" onClick={onClose}>
+        <Button variant="ghost" size="sm" className="h-5 text-[10px] text-slate-400 px-1" onClick={onClose}>
           Close
         </Button>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {fields.map(f => (
           <div key={f.label} className="bg-slate-800/60 rounded px-2 py-1">
-            <span className="text-[9px] text-slate-500 block">{f.label}</span>
+            <span className="text-[9px] text-slate-400 block">{f.label}</span>
             <span className="text-[11px] text-slate-200 font-mono break-all">{f.value}</span>
           </div>
         ))}
       </div>
       <div className="bg-red-900/5 border border-red-500/15 rounded px-2.5 py-2">
-        <span className="text-[9px] text-slate-500 block mb-0.5">Error Message</span>
+        <span className="text-[9px] text-slate-400 block mb-0.5">Error Message</span>
         <p className="text-[11px] text-red-300 break-words">{msg}</p>
       </div>
     </div>
@@ -108,7 +108,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
           <Badge className={`${config.badgeColor} text-[10px]`}>{config.label}</Badge>
           <span className="text-xs font-semibold text-slate-300">{count} error{count !== 1 ? 's' : ''}</span>
-          <span className="text-[10px] text-slate-500">{patterns.length} unique pattern{patterns.length !== 1 ? 's' : ''}</span>
+          <span className="text-[10px] text-slate-400">{patterns.length} unique pattern{patterns.length !== 1 ? 's' : ''}</span>
         </div>
         {/* Mini distribution bar */}
         <div className="hidden sm:block w-20 h-1.5 bg-slate-700 rounded-full overflow-hidden flex-shrink-0">
@@ -117,13 +117,13 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
             style={{ width: '100%', opacity: 0.7 }}
           />
         </div>
-        {expanded ? <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+        {expanded ? <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />}
       </button>
 
       {expanded && (
         <div className="border-t border-slate-700/30 p-3 space-y-3">
           {/* Description */}
-          <p className="text-[11px] text-slate-500">{config.description}</p>
+          <p className="text-[11px] text-slate-400">{config.description}</p>
 
           {/* Error Patterns */}
           <div className="space-y-1.5">
@@ -172,7 +172,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
 
             {/* Table-style row listing */}
             <div className="bg-slate-900/30 rounded-lg border border-slate-700/30 overflow-hidden">
-              <div className="grid grid-cols-[60px_80px_1fr_40px] text-[9px] font-semibold text-slate-500 px-2.5 py-1.5 border-b border-slate-700/20 bg-slate-800/30">
+              <div className="grid grid-cols-[60px_80px_1fr_40px] text-[9px] font-semibold text-slate-400 px-2.5 py-1.5 border-b border-slate-700/20 bg-slate-800/30">
                 <span>Row</span>
                 <span>Phase</span>
                 <span>Message</span>
@@ -205,7 +205,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
                         <span className="text-right">
                           <Button
                             variant="ghost" size="sm"
-                            className="h-5 w-5 p-0 text-slate-500 hover:text-cyan-400"
+                            className="h-5 w-5 p-0 text-slate-400 hover:text-cyan-400"
                             onClick={() => setInspectedRow(inspectedRow === rowKey ? null : rowKey)}
                           >
                             <Eye className="w-3 h-3" />
@@ -243,7 +243,7 @@ function ErrorTypeGroup({ categoryKey, errors, batchName, defaultExpanded = fals
             <ol className="space-y-1">
               {config.solutions.map((step, i) => (
                 <li key={i} className="text-[11px] text-slate-400 flex gap-1.5">
-                  <span className="font-semibold text-slate-500 flex-shrink-0">{i + 1}.</span>
+                  <span className="font-semibold text-slate-400 flex-shrink-0">{i + 1}.</span>
                   {step}
                 </li>
               ))}
@@ -282,7 +282,7 @@ export default function ValidationErrorBreakdown({ errors, batchName, compact = 
               <span className="text-xs font-semibold text-slate-200">
                 {totalErrors} Validation Error{totalErrors !== 1 ? 's' : ''}
               </span>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-slate-400">
                 {sortedCategories.length} type{sortedCategories.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -324,7 +324,7 @@ export default function ValidationErrorBreakdown({ errors, batchName, compact = 
                 <div key={d.key} className="flex items-center gap-1">
                   <div className={`w-2 h-2 rounded-full ${d.config.color.replace('text-', 'bg-')} opacity-70`} />
                   <span className="text-[10px] text-slate-400">{d.config.label}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">{d.count}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{d.count}</span>
                 </div>
               );
             })}
@@ -408,7 +408,7 @@ export default function ValidationErrorBreakdown({ errors, batchName, compact = 
             <div className={`w-2.5 h-2.5 rounded-full ${d.config.color.replace('text-', 'bg-')} opacity-70`} />
             <span className="text-xs text-slate-400">{d.config.label}</span>
             <span className="text-xs text-slate-300 font-semibold">{d.count}</span>
-            <span className="text-[10px] text-slate-500">({d.pct}%)</span>
+            <span className="text-[10px] text-slate-400">({d.pct}%)</span>
           </div>
         ))}
       </div>

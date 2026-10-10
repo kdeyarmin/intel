@@ -45,7 +45,7 @@ export default function QualityRadialChart({ score, label, size = 80 }) {
           <span className="text-sm font-bold" style={{ color }}>{score}%</span>
         </div>
       </div>
-      <span className="text-[10px] text-slate-500 mt-1 text-center leading-tight">{label}</span>
+      <span className="text-[10px] text-slate-400 mt-1 text-center leading-tight">{label}</span>
     </div>
   );
 }

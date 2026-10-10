@@ -111,7 +111,7 @@ export default function AlertNotificationSettings() {
         {/* Master toggle */}
         <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700/30 rounded-lg">
           <div className="flex items-center gap-2">
-            {settings.enabled ? <Bell className="w-4 h-4 text-cyan-400" /> : <BellOff className="w-4 h-4 text-slate-500" />}
+            {settings.enabled ? <Bell className="w-4 h-4 text-cyan-400" /> : <BellOff className="w-4 h-4 text-slate-400" />}
             <div>
               <p id={`${uid}-enabled`} className="text-sm font-medium text-slate-200">Import Alerts</p>
               <p className="text-[10px] text-slate-400">Get notified about import job status changes</p>

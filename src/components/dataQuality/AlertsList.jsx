@@ -29,9 +29,9 @@ const statusIcons = {
   new: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   open: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   resolved: <CheckCircle className="w-4 h-4 text-green-500" />,
-  dismissed: <XCircle className="w-4 h-4 text-slate-500" />,
+  dismissed: <XCircle className="w-4 h-4 text-slate-400" />,
   accepted: <CheckCircle className="w-4 h-4 text-green-500" />,
-  rejected: <XCircle className="w-4 h-4 text-slate-500" />,
+  rejected: <XCircle className="w-4 h-4 text-slate-400" />,
   auto_fixed: <CheckCircle className="w-4 h-4 text-blue-500" />,
 };
 
@@ -174,7 +174,7 @@ export default function AlertsList({ alerts = [] }) {
               checked={filtered.filter(a => a.status === 'new' || a.status === 'open').length > 0 && filtered.filter(a => a.status === 'new' || a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
-            <label id={`${uid}-select-all-label`} htmlFor={`${uid}-select-all`} className="text-xs text-slate-500">Select all open alerts</label>
+            <label id={`${uid}-select-all-label`} htmlFor={`${uid}-select-all`} className="text-xs text-slate-400">Select all open alerts</label>
           </div>
         )}
 
@@ -230,7 +230,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
             <Badge variant="secondary" className={`text-[10px] ${severityColors[alert.severity] || ''}`}>{alert.severity}</Badge>
           </div>
           {alert.description && (
-            <p className="text-xs text-slate-500 mt-1 truncate">{alert.description}</p>
+            <p className="text-xs text-slate-400 mt-1 truncate">{alert.description}</p>
           )}
         </div>
         {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}

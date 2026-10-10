@@ -134,7 +134,7 @@ export default function DQAssistant() {
           AI Data Quality Assistant
           <Badge variant="outline" className="text-[9px] ml-1">Beta</Badge>
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-xs text-slate-400 mt-0.5">
           Ask questions, auto-fix issues, or analyze patterns
         </p>
       </CardHeader>
@@ -247,7 +247,7 @@ function MessageBubble({ message }) {
                 )}
                 <div>
                   <p className="text-[10px] font-semibold text-slate-300">{a.action}</p>
-                  <p className="text-[10px] text-slate-500">{a.description}</p>
+                  <p className="text-[10px] text-slate-400">{a.description}</p>
                 </div>
               </div>
             ))}
@@ -299,8 +299,8 @@ function AutoFixSummary({ data }) {
           <p className="text-[9px] text-emerald-600">Fixed</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
-          <p className="text-lg font-bold text-slate-500">{data.skipped || 0}</p>
-          <p className="text-[9px] text-slate-500">Skipped</p>
+          <p className="text-lg font-bold text-slate-400">{data.skipped || 0}</p>
+          <p className="text-[9px] text-slate-400">Skipped</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-blue-600">{data.total_eligible || 0}</p>
@@ -327,7 +327,7 @@ function PatternResultsPanel({ result, onClose }) {
   return (
     <div className="border-t max-h-56 overflow-y-auto px-3 py-2 bg-slate-800/30 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1">
           <TrendingUp className="w-3 h-3" /> Pattern Analysis
         </span>
         <Button variant="ghost" size="sm" onClick={onClose} className="h-5 text-[9px] px-1.5">Hide</Button>
@@ -359,13 +359,13 @@ function PatternResultsPanel({ result, onClose }) {
       {/* Action plan */}
       {result.action_plan?.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-semibold text-slate-500 uppercase">Priority Actions</p>
+          <p className="text-[9px] font-semibold text-slate-400 uppercase">Priority Actions</p>
           {result.action_plan.slice(0, 3).map((a, i) => (
             <div key={i} className="flex items-start gap-1.5">
               <Badge className="text-[7px] bg-indigo-900/30 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
               <div>
                 <p className="text-[9px] font-medium text-slate-300">{a.action}</p>
-                <p className="text-[9px] text-slate-500">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
+                <p className="text-[9px] text-slate-400">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
               </div>
             </div>
           ))}

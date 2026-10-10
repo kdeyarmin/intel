@@ -194,7 +194,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
               for <strong>{providers.length}</strong> selected provider{providers.length !== 1 ? 's' : ''}.
             </p>
 
-            <div className="text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 space-y-1">
+            <div className="text-xs text-slate-400 bg-slate-800/60 rounded-lg p-3 space-y-1">
               <p className="font-medium text-slate-300">Fields that will be enriched:</p>
               <p>• Credential (MD, DO, NP, etc.)</p>
               <p>• Organization name</p>
@@ -205,7 +205,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
             {loading && (
               <div className="space-y-2">
                 <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" />
-                <p className="text-xs text-slate-500 text-center">
+                <p className="text-xs text-slate-400 text-center">
                   Processing {progress.current} of {progress.total}...
                 </p>
               </div>

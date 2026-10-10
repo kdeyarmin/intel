@@ -61,7 +61,7 @@ export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) 
         {preset === 'custom' && (
           <>
             <div className="space-y-0.5">
-              <Label htmlFor={`${uid}-from`} className="text-[10px] text-slate-500">From</Label>
+              <Label htmlFor={`${uid}-from`} className="text-[10px] text-slate-400">From</Label>
               <Input
                 id={`${uid}-from`}
                 aria-label="From date"
@@ -72,7 +72,7 @@ export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) 
               />
             </div>
             <div className="space-y-0.5">
-              <Label htmlFor={`${uid}-to`} className="text-[10px] text-slate-500">To</Label>
+              <Label htmlFor={`${uid}-to`} className="text-[10px] text-slate-400">To</Label>
               <Input
                 id={`${uid}-to`}
                 aria-label="To date"

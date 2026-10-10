@@ -220,7 +220,7 @@ export default function NPPESCrawler() {
                   {isRunning ? 'Running' : isPaused ? 'Paused' : 'Idle'}
                 </Badge>
               </CardTitle>
-              <CardDescription className="text-slate-500">Queue-based architecture guarantees no timeouts and full state completion.</CardDescription>
+              <CardDescription className="text-slate-400">Queue-based architecture guarantees no timeouts and full state completion.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -438,7 +438,7 @@ export default function NPPESCrawler() {
                     {isRunning ? (estimatedMins > 60 ? `~${Math.round(estimatedMins/60)} hrs` : `~${estimatedMins} mins`) : '-'}
                   </p>
                 </div>
-                <Clock className="w-8 h-8 text-slate-500" />
+                <Clock className="w-8 h-8 text-slate-400" />
               </div>
 
               {failedCount > 0 && (

@@ -134,7 +134,7 @@ Provide:
                       <span className="text-xs font-medium text-slate-300">{c.name}</span>
                       <Badge className={`text-[9px] ${strColors[c.relationship_strength] || strColors.exploratory}`}>{c.relationship_strength}</Badge>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-0.5">{c.rationale}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{c.rationale}</p>
                   </div>
                 ))}
               </div>

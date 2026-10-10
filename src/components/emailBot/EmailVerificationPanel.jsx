@@ -67,7 +67,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="p-3 text-center">
             <div className="text-xl font-bold text-white">{stats.withEmail}</div>
-            <div className="text-[10px] text-slate-500">Have Email</div>
+            <div className="text-[10px] text-slate-400">Have Email</div>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-emerald-500/20">
@@ -108,7 +108,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
               <span>{stats.analyzed} / {stats.withEmail} ({stats.withEmail > 0 ? Math.round(stats.analyzed / stats.withEmail * 100) : 0}%)</span>
             </div>
             <Progress value={stats.withEmail > 0 ? (stats.analyzed / stats.withEmail) * 100 : 0} className="h-2" />
-            <div className="flex gap-4 mt-2 text-[10px] text-slate-500">
+            <div className="flex gap-4 mt-2 text-[10px] text-slate-400">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> Valid: {stats.valid}</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Risky: {stats.risky}</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /> Invalid: {stats.invalid}</span>
@@ -138,10 +138,10 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
                   }`}
                 >
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <Icon className={`w-3.5 h-3.5 ${mode === opt.value ? 'text-cyan-400' : 'text-slate-500'}`} />
+                    <Icon className={`w-3.5 h-3.5 ${mode === opt.value ? 'text-cyan-400' : 'text-slate-400'}`} />
                     <span className={`text-xs font-medium ${mode === opt.value ? 'text-cyan-300' : 'text-slate-300'}`}>{opt.label}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500">{opt.desc}</p>
+                  <p className="text-[10px] text-slate-400">{opt.desc}</p>
                 </button>
               );
             })}
@@ -209,7 +209,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
 
       {/* Info */}
       <div className="flex items-start gap-2 bg-slate-800/40 border border-slate-700/30 rounded-lg p-3">
-        <Info className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+        <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
         <p className="text-[11px] text-slate-400">
           Each check looks at the address format, whether the domain exists and accepts mail (DNS/MX records), and flags
           disposable, no-reply, shared (info@) and free-mail addresses, plus anyone who bounced or opted out. It doesn't contact

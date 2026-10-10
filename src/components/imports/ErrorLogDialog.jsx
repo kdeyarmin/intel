@@ -47,11 +47,11 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
         <div className="flex items-center gap-4 py-2 border-b border-slate-700/50">
           <div className="flex gap-4 text-sm">
             <div>
-              <span className="text-slate-500">Failed Rows:</span>
+              <span className="text-slate-400">Failed Rows:</span>
               <span className="ml-1 font-medium text-red-400">{batch.invalid_rows?.toLocaleString() || 0}</span>
             </div>
             <div>
-              <span className="text-slate-500">Total Errors:</span>
+              <span className="text-slate-400">Total Errors:</span>
               <span className="ml-1 font-medium text-slate-200">{errors.length}{errors.length >= 50 ? '+' : ''}</span>
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
                         </Badge>
                       )}
                       {error.timestamp && (
-                        <span className="text-xs text-slate-500 ml-auto">
+                        <span className="text-xs text-slate-400 ml-auto">
                           {new Date(error.timestamp).toLocaleTimeString()}
                         </span>
                       )}
@@ -112,7 +112,7 @@ export default function ErrorLogDialog({ batch, open, onOpenChange }) {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500">
+            <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
                 <AlertTriangle className="w-6 h-6 opacity-50" />
               </div>

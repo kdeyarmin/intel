@@ -37,7 +37,7 @@ const CATEGORY_COLORS = {
 const PRIORITY_CONFIG = {
   high: { label: "High Priority", className: "bg-cyan-900/30 text-cyan-400 border-cyan-800/50" },
   medium: { label: "Medium", className: "bg-slate-800/50 text-slate-400 border-slate-700/50" },
-  low: { label: "Low", className: "bg-slate-900/50 text-slate-500 border-slate-800/50" },
+  low: { label: "Low", className: "bg-slate-900/50 text-slate-400 border-slate-800/50" },
 };
 
 export default function CMSDataSources() {
@@ -213,7 +213,7 @@ export default function CMSDataSources() {
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[250px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
           <Input
             aria-label="Search datasets"
             placeholder="Search datasets..."
@@ -224,7 +224,7 @@ export default function CMSDataSources() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-500" />
+          <Filter className="w-4 h-4 text-slate-400" />
           <select
             aria-label="Category"
             value={selectedCategory}
@@ -251,7 +251,7 @@ export default function CMSDataSources() {
         </select>
 
         <div className="flex items-center gap-2">
-          <ArrowUpDown className="w-4 h-4 text-slate-500" />
+          <ArrowUpDown className="w-4 h-4 text-slate-400" />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -313,7 +313,7 @@ export default function CMSDataSources() {
                 className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors rounded-t-lg"
               >
                 <div className="flex items-center gap-3">
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                   <IconComp className="w-5 h-5 text-cyan-400" />
                   <span className="font-semibold text-slate-200">{category}</span>
                   <Badge variant="outline" className="border-slate-700 text-slate-400 text-xs">
@@ -355,8 +355,8 @@ export default function CMSDataSources() {
                                 {priorityCfg.label}
                               </Badge>
                             </div>
-                            <p className="text-sm text-slate-500 line-clamp-2 mb-2">{ds.description}</p>
-                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                            <p className="text-sm text-slate-400 line-clamp-2 mb-2">{ds.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-slate-400">
                               <span className="font-mono">{ds.records} records</span>
                               <span className="text-slate-300">|</span>
                               <span className="font-mono text-slate-400">{ds.id}</span>
@@ -369,7 +369,7 @@ export default function CMSDataSources() {
                                 <CheckCircle2 className="w-4 h-4 text-green-400" />
                                 <div className="text-right">
                                   <div className="text-green-400 font-medium">Imported</div>
-                                  <div className="text-slate-500">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
+                                  <div className="text-slate-400">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
                                 </div>
                               </div>
                             )}
@@ -378,7 +378,7 @@ export default function CMSDataSources() {
                                 <Clock className="w-4 h-4 text-cyan-400 animate-pulse" />
                                 <div className="text-right">
                                   <div className="text-cyan-400 font-medium">Importing...</div>
-                                  <div className="text-slate-500">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
+                                  <div className="text-slate-400">{(statusBatch.imported_rows || 0).toLocaleString()} rows</div>
                                 </div>
                               </div>
                             )}
@@ -399,7 +399,7 @@ export default function CMSDataSources() {
                                   : isCompleted
                                   ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                                   : isProcessing
-                                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                  ? 'bg-slate-800 text-slate-400 cursor-not-allowed'
                                   : 'bg-cyan-600 hover:bg-cyan-700 text-white'
                               }`}
                               title={ds.unavailable ? 'CMS API endpoint unavailable (404)' : ''}
@@ -438,7 +438,7 @@ export default function CMSDataSources() {
       </div>
 
       {filteredDatasets.length === 0 && (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-slate-400">
           <Database className="w-12 h-12 mx-auto mb-4 opacity-30" />
           <p className="text-lg">No datasets match your filters</p>
           <p className="text-sm mt-1">Try adjusting your search or filter criteria</p>

@@ -68,7 +68,7 @@ function MappingRow({ fieldName, isRequired, csvColumns, mapping, confidence, sc
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 flex-shrink-0 text-slate-500 hover:text-red-400"
+            className="h-8 w-8 flex-shrink-0 text-slate-400 hover:text-red-400"
             onClick={() => onClear(fieldName)}
           >
             <X className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ export default function ColumnMapper({
           </CardHeader>
           {showOptional && (
             <CardContent className="space-y-3 pt-0">
-              <p className="text-xs text-slate-500 mb-2">
+              <p className="text-xs text-slate-400 mb-2">
                 These fields are optional but importing them will enrich your data. AI has suggested mappings where possible.
               </p>
               {optionalColumns.map(col => (

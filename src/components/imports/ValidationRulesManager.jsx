@@ -178,7 +178,7 @@ export default function ValidationRulesManager() {
             >
               <span className="truncate">{IMPORT_TYPE_LABELS[t] || t}</span>
               {count > 0 && (
-                <Badge className={`${isActive ? 'bg-cyan-900/20 text-cyan-400' : 'bg-slate-700/50 text-slate-500'} text-[9px] ml-2`}>
+                <Badge className={`${isActive ? 'bg-cyan-900/20 text-cyan-400' : 'bg-slate-700/50 text-slate-400'} text-[9px] ml-2`}>
                   {count}
                 </Badge>
               )}
@@ -202,7 +202,7 @@ export default function ValidationRulesManager() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <Input
                 aria-label="Search rules"
                 value={searchQuery}
@@ -260,7 +260,7 @@ export default function ValidationRulesManager() {
                <Button
                  size="sm"
                  variant="ghost"
-                 className="mb-3 text-xs text-slate-500 hover:text-slate-400"
+                 className="mb-3 text-xs text-slate-400 hover:text-slate-200"
                  onClick={() => setShowAISuggestions(false)}
                >
                  ← Back to rules
@@ -274,15 +274,15 @@ export default function ValidationRulesManager() {
          {!showAISuggestions && (
          <>
          {isLoading ? (
-           <div className="text-center py-12 text-slate-500">
+           <div className="text-center py-12 text-slate-400">
              <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
              <p>Loading rules...</p>
            </div>
          ) : displayRules.length === 0 ? (
-           <div className="text-center py-16 text-slate-500">
+           <div className="text-center py-16 text-slate-400">
              <ShieldCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
              <p className="font-medium">No validation rules</p>
-             <p className="text-xs mt-1 text-slate-500">Add rules to automatically validate data before import</p>
+             <p className="text-xs mt-1 text-slate-400">Add rules to automatically validate data before import</p>
            </div>
          ) : (
           <div className="space-y-2">
@@ -296,7 +296,7 @@ export default function ValidationRulesManager() {
                     rule.enabled ? 'border-slate-700/50 hover:bg-slate-800/30' : 'border-slate-800/50 opacity-50'
                   }`}
                 >
-                  <GripVertical className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                  <GripVertical className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-slate-200">{rule.rule_name}</span>
@@ -318,13 +318,13 @@ export default function ValidationRulesManager() {
                       checked={rule.enabled !== false}
                       onCheckedChange={() => handleToggle(rule)}
                     />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => { setEditingRule(rule); setEditorOpen(true); }} aria-label={`Edit ${rule.rule_name}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => { setEditingRule(rule); setEditorOpen(true); }} aria-label={`Edit ${rule.rule_name}`}>
                       <Pencil className="w-3 h-3" aria-hidden="true" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => handleDuplicate(rule)} aria-label={`Duplicate ${rule.rule_name}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => handleDuplicate(rule)} aria-label={`Duplicate ${rule.rule_name}`}>
                       <Copy className="w-3 h-3" aria-hidden="true" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => setDeleteRule(rule)} aria-label={`Delete ${rule.rule_name}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-400" onClick={() => setDeleteRule(rule)} aria-label={`Delete ${rule.rule_name}`}>
                       <Trash2 className="w-3 h-3" aria-hidden="true" />
                     </Button>
                   </div>
@@ -351,14 +351,14 @@ export default function ValidationRulesManager() {
         <DialogContent className="bg-[#141d30] border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-slate-200">Delete Validation Rule</DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-400">
               This will permanently remove this validation rule. Data already imported won't be affected.
             </DialogDescription>
           </DialogHeader>
           {deleteRule && (
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 text-sm space-y-1">
               <p className="font-medium text-slate-200">{deleteRule.rule_name}</p>
-              <p className="text-xs text-slate-500">Column: {deleteRule.column} — {getRuleSummary(deleteRule)}</p>
+              <p className="text-xs text-slate-400">Column: {deleteRule.column} — {getRuleSummary(deleteRule)}</p>
             </div>
           )}
           <DialogFooter>

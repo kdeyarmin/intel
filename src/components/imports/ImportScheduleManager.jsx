@@ -207,7 +207,7 @@ export default function ImportScheduleManager() {
           </div>
           {lastResult && (
             <div className="mt-3 text-xs text-slate-300 bg-slate-900/60 border border-slate-700/50 rounded-md p-2">
-              <span className="text-slate-500">{fmt(lastResult.at)} · {lastResult.key}:</span> {lastResult.summary}
+              <span className="text-slate-400">{fmt(lastResult.at)} · {lastResult.key}:</span> {lastResult.summary}
             </div>
           )}
         </CardContent>
@@ -229,7 +229,7 @@ export default function ImportScheduleManager() {
               <Loader2 className="w-4 h-4 animate-spin" /> Loading schedules…
             </div>
           ) : schedules.length === 0 ? (
-            <div className="text-center text-slate-500 text-sm py-8">
+            <div className="text-center text-slate-400 text-sm py-8">
               No schedules yet. Create one and wire an external cron to <code className="px-1 rounded bg-slate-800">/api/maintenance/runScheduledImports</code> to run them.
             </div>
           ) : (
@@ -250,9 +250,9 @@ export default function ImportScheduleManager() {
                     <tr key={s.id} className="border-b border-slate-800/60 hover:bg-slate-800/30">
                       <td className="py-2 pr-3">
                         <div className="text-slate-200">{s.label || s.name || '(unnamed)'}</div>
-                        <div className="text-xs text-slate-500 font-mono">{s.import_type}</div>
+                        <div className="text-xs text-slate-400 font-mono">{s.import_type}</div>
                         {s.depends_on_import_type && (
-                          <div className="text-[10px] text-slate-500">depends on {s.depends_on_import_type}</div>
+                          <div className="text-[10px] text-slate-400">depends on {s.depends_on_import_type}</div>
                         )}
                       </td>
                       <td className="py-2 px-3 text-slate-300">
@@ -265,11 +265,11 @@ export default function ImportScheduleManager() {
                           <Badge variant="outline" className={STATUS_STYLES[s.last_run_status] || 'bg-slate-800 text-slate-300 border-slate-600'}>
                             {s.last_run_status}
                           </Badge>
-                        ) : <span className="text-slate-500">—</span>}
+                        ) : <span className="text-slate-400">—</span>}
                         {(s.consecutive_failures || 0) > 0 && (
                           <span className="ml-1 text-[10px] text-rose-400">×{s.consecutive_failures}</span>
                         )}
-                        <div className="text-[10px] text-slate-500">{fmt(s.last_run_at)}</div>
+                        <div className="text-[10px] text-slate-400">{fmt(s.last_run_at)}</div>
                       </td>
                       <td className="py-2 px-3">
                         <Switch checked={s.is_active !== false} onCheckedChange={() => toggleActive(s)} aria-label={`Active: ${s.label || s.name || s.import_type}`} />
@@ -307,7 +307,7 @@ export default function ImportScheduleManager() {
             <div>
               <label id={`${uid}-type-label`} htmlFor={`${uid}-type`} className={labelCls}>Import type *</label>
               <Input id={`${uid}-type`} aria-labelledby={`${uid}-type-label`} className={inputCls} value={form.import_type} onChange={(e) => setForm({ ...form, import_type: e.target.value })} placeholder="e.g. hospice_general_info or nppes_registry" />
-              <p className="text-[10px] text-slate-500 mt-1">Use a dataset id from Data Center, or <code>nppes_registry</code> for a crawler run.</p>
+              <p className="text-[10px] text-slate-400 mt-1">Use a dataset id from Data Center, or <code>nppes_registry</code> for a crawler run.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

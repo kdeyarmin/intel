@@ -64,7 +64,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
       </CardHeader>
       <CardContent>
         {!hasScore ? (
-          <div className="text-center py-6 text-slate-500 text-sm">
+          <div className="text-center py-6 text-slate-400 text-sm">
             <Target className="w-8 h-8 mx-auto mb-2 opacity-20" />
             <p>Score how reachable and valuable this provider is to contact, from their contact details, Medicare volume, referral network and past outreach.</p>
           </div>
@@ -109,7 +109,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
 
             {factors.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5" /> Key Factors
                 </p>
                 <ul className="space-y-1.5">
