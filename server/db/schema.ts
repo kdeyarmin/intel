@@ -353,6 +353,8 @@ export const outreachMessages = pgTable("outreach_messages", {
   index("messages_campaign_idx").on(table.campaign_id),
   index("messages_npi_idx").on(table.npi),
   index("messages_status_idx").on(table.status),
+  // Unsubscribes and bounces suppress pending messages by address.
+  index("messages_pending_email_idx").on(sql`lower(${table.recipient_email})`).where(sql`${table.status} = 'pending'`),
 ]);
 
 export const campaignTemplates = pgTable("campaign_templates", {

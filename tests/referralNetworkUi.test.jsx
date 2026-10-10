@@ -14,6 +14,7 @@ vi.mock('../src/components/compliance/DataSourcesFooter', () => ({ default: () =
 import HubAnalysisTable from '../src/components/referralNetwork/HubAnalysisTable';
 import NodeDetailPanel from '../src/components/referralNetwork/NodeDetailPanel';
 import ReferralNetworkIntelligence, { graphNote } from '../src/pages/ReferralNetworkIntelligence';
+import { coverageNote } from '../src/components/network/NetworkInsightsDashboard';
 
 describe('network tables with missing fields', () => {
   it("HubAnalysisTable doesn't crash on providers without volumes or names", () => {
@@ -58,6 +59,25 @@ describe('graphNote', () => {
       .toBe('Showing 200 of 300 relationships; the graph draws the busiest 60.');
     expect(graphNote({ network_nodes: 90, network_edges: 100, shown_edges: 100 }, 90)).toBe('The graph draws the busiest 60.');
     expect(graphNote({ network_nodes: 20, network_edges: 30, shown_edges: 30 }, 20)).toBeNull();
+  });
+
+  it('says when the graph draws fewer relationships than the server sent', () => {
+    expect(graphNote({ network_nodes: 40, network_edges: 300, shown_edges: 300 }, 40, { edgesBetween: 300 }))
+      .toBe('The graph draws 200 of 300 relationships.');
+    expect(graphNote({ network_nodes: 90, network_edges: 400, shown_edges: 400 }, 90, { edgesBetween: 250 }))
+      .toBe('The graph draws the busiest 60 and 200 of 250 relationships between them.');
+  });
+});
+
+describe('coverageNote', () => {
+  it('describes the providers the figures actually cover', () => {
+    expect(coverageNote({ network_nodes: 900, shown_nodes: 150 }, 5))
+      .toBe('These figures cover the 5 providers shown after your filters, from the busiest 150 of 900 in this network.');
+    expect(coverageNote({ network_nodes: 900, shown_nodes: 150 }, 150))
+      .toBe('These figures cover the 150 providers shown, from the busiest 150 of 900 in this network.');
+    expect(coverageNote({ network_nodes: 40, shown_nodes: 40 }, 12)).toBe('These figures cover the 12 providers that match your filters.');
+    // Only edges were capped: nothing to say about providers.
+    expect(coverageNote({ network_nodes: 150, shown_nodes: 150, display_capped: true }, 150)).toBeNull();
   });
 });
 

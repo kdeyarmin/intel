@@ -154,6 +154,13 @@ describe('safeReturnUrl', () => {
     expect(safeReturnUrl('//evil.example/phish', origin)).toBe('/');
   });
 
+  it('never sends a signed-in user back to the login page', () => {
+    expect(safeReturnUrl('/login', origin)).toBe('/');
+    expect(safeReturnUrl('/Login?returnUrl=%2Flogin', origin)).toBe('/');
+    expect(safeReturnUrl(`${origin}/login#x`, origin)).toBe('/');
+    expect(safeReturnUrl('/LoginHistory', origin)).toBe('/LoginHistory');
+  });
+
   it('defaults to the home page', () => {
     expect(safeReturnUrl(null, origin)).toBe('/');
     expect(safeReturnUrl('', origin)).toBe('/');

@@ -1,14 +1,18 @@
+const isLoginPath = (path) => /^\/login(?:[/?#]|$)/i.test(path);
+
 // Only same-origin paths are allowed as post-login redirect targets, so a
-// crafted `?returnUrl=https://evil.example` can't bounce users off-site.
+// crafted `?returnUrl=https://evil.example` can't bounce users off-site. The
+// login page itself is never a target: a signed-in user would land back on it.
 export function safeReturnUrl(raw, origin = window.location.origin) {
   const value = raw || '/';
+  let path;
   try {
     const u = new URL(value, origin);
-    if (u.origin === origin) return u.pathname + u.search + u.hash;
-    return '/';
+    path = u.origin === origin ? u.pathname + u.search + u.hash : '/';
   } catch {
-    return value.startsWith('/') && !value.startsWith('//') ? value : '/';
+    path = value.startsWith('/') && !value.startsWith('//') ? value : '/';
   }
+  return isLoginPath(path) ? '/' : path;
 }
 
 export function buildLoginUrl(location, { reason } = {}) {
