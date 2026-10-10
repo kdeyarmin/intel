@@ -7,10 +7,13 @@ import {
   InvalidFieldValueError,
   JSONB_OVERFLOW,
   UnknownFieldError,
+  InvalidFilterError,
   buildWhereClause,
   coerceRowValues,
   decorateRow,
   reportDroppedFields,
+  clearStaleEmailVerification,
+  sanitizeWriteData,
   splitWriteData,
 } from "../lib/entityFields";
 
@@ -18,7 +21,6 @@ const router = Router();
 
 // Entirely off-limits to the entity router (handled via dedicated routes only).
 const BLOCKED_ENTITIES = new Set(["User"]);
-const SENSITIVE_WRITE_FIELDS = new Set(["password_hash", "role"]);
 
 // Sensitive entities that may contain credentials, secrets, audit logs, request payloads,
 // or system configuration. Only admins may read or modify these.
@@ -42,14 +44,14 @@ const ADMIN_ONLY_ENTITIES = new Set([
 
 // Entities that any authenticated user may write/modify (collaborative work product).
 // Anything not in this set requires the admin role for write/delete operations.
-const USER_WRITABLE_ENTITIES = new Set([
+// Campaigns (OutreachCampaign, OutreachMessage, CampaignSequenceStep,
+// CampaignTask) are admin-only to change, like the Campaigns page and sending;
+// everyone can still read them (the dashboard pipeline, a provider's outreach
+// history).
+export const USER_WRITABLE_ENTITIES = new Set([
   "LeadList",
   "LeadListMember",
-  "OutreachCampaign",
-  "OutreachMessage",
   "CampaignTemplate",
-  "CampaignSequenceStep",
-  "CampaignTask",
   "CustomReport",
   "ScheduledReport",
   "ScheduledExport",
@@ -68,14 +70,6 @@ function getTable(entityName: string) {
     return null;
   }
   return table;
-}
-
-function sanitizeWriteData(data: Record<string, any>): Record<string, any> {
-  const cleaned = { ...data };
-  for (const field of SENSITIVE_WRITE_FIELDS) {
-    delete cleaned[field];
-  }
-  return cleaned;
 }
 
 const columnCache = new WeakMap<object, Set<string>>();
@@ -249,7 +243,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const rows = await (query as any).orderBy(...orderBy).limit(limit);
     res.json(rows.map((r: any) => decorateRow(req.params.entity, r)));
   } catch (e: any) {
-    if (e instanceof UnknownFieldError || e instanceof InvalidFieldValueError) {
+    if (e instanceof UnknownFieldError || e instanceof InvalidFieldValueError || e instanceof InvalidFilterError) {
       return res.status(400).json({ message: e.message });
     }
     return safeError(res, e, `POST /${req.params.entity}/filter`);
@@ -280,7 +274,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     if (!requireWriteAccess(req, res, req.params.entity)) return;
 
     const entityName = req.params.entity;
-    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(toSnakeKeys(req.body)));
+    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
     const data = coerceRowValues(table, split.data);
     delete data.id;
     delete data.created_date;
@@ -311,7 +305,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const columns = columnsOf(table);
     const dropped = new Set<string>();
     const cleaned = items.map((item: any) => {
-      const split = splitWriteData(entityName, columns, sanitizeWriteData(toSnakeKeys(item)));
+      const split = splitWriteData(entityName, columns, sanitizeWriteData(entityName, toSnakeKeys(item)));
       const data = coerceRowValues(table, split.data);
       delete data.id;
       delete data.created_date;
@@ -340,11 +334,13 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
     const entityName = req.params.entity;
-    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(toSnakeKeys(req.body)));
-    const data: Record<string, any> = coerceRowValues(table, split.data);
+    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
+    let data: Record<string, any> = coerceRowValues(table, split.data);
     delete data.id;
     delete data.created_date;
     data.updated_date = new Date();
+    // A new address invalidates the stored verification of the old one.
+    if (entityName === "Provider") data = clearStaleEmailVerification(table, data);
     if (split.overflow) {
       // Merge into the stored settings instead of replacing them, so a partial
       // update (e.g. toggling is_active) doesn't wipe the rest of the config.

@@ -19,6 +19,15 @@ class HttpError extends Error {
 const zip5 = (z: string | null) => String(z || "").replace(/\D/g, "").slice(0, 5);
 const city = (c: string | null) => String(c || "").trim().toLowerCase();
 
+// A facility's identity across data years (each yearly import is a new row):
+// its type and CMS provider number, else its name and ZIP.
+const facilityKey = (f: { facility_type: string; provider_id: string | null; facility_name: string | null; zip: string | null }) =>
+  `${f.facility_type}|${f.provider_id || `${String(f.facility_name || "").toLowerCase()}|${zip5(f.zip)}`}`;
+
+// One matching run at a time: a run replaces the suggestions of the providers
+// it checks, and two overlapping runs would both insert theirs.
+const MATCHING_LOCK = "hashtext('provider_location_matching')";
+
 function groupFor(facilityType: string): string {
   return Object.entries(LISTING_PRIMARY_TYPES).find(([, t]) => t === facilityType)?.[0] || "hospital";
 }
@@ -32,7 +41,10 @@ export async function handleMatchProvidersToLocations(payload: any) {
   const listId = Number(payload?.lead_list_id);
 
   const client = await pool.connect();
+  let locked = false;
   try {
+    locked = (await client.query(`SELECT pg_try_advisory_lock(${MATCHING_LOCK}) AS ok`)).rows[0]?.ok === true;
+    if (!locked) return { success: false, error: "Another matching run is in progress. Try again when it finishes." };
     await client.query("SET statement_timeout = '20s'");
 
     // Providers practicing in the state (optionally only those on a lead list).
@@ -77,12 +89,14 @@ export async function handleMatchProvidersToLocations(payload: any) {
     ]);
 
     // One row per facility (several data years can repeat it); newest wins.
-    const seen = new Set<string>();
+    const keyById = new Map<number, string>();
     const facilities: MatchFacility[] = [];
+    const seen = new Set<string>();
     for (const f of facs.rows) {
-      const key = `${f.facility_type}|${f.provider_id || `${String(f.facility_name || "").toLowerCase()}|${zip5(f.zip)}`}`;
+      const key = facilityKey(f);
       if (seen.has(key) || !f.facility_name) continue;
       seen.add(key);
+      keyById.set(f.id, key);
       facilities.push({ id: f.id, group: groupFor(f.facility_type), provider_id: f.provider_id, name: f.facility_name, address: f.address, city: f.city, zip: f.zip });
     }
     if (!facilities.length) {
@@ -107,7 +121,14 @@ export async function handleMatchProvidersToLocations(payload: any) {
     }
     const specialty = new Map<string, string>(tax.rows.map((t: any) => [t.npi, t.taxonomy_description]));
     const info = new Map<string, any>(prov.rows.map((p: any) => [p.npi, p]));
-    const decidedPairs = new Set(decided.rows.map((d: any) => `${d.npi}|${d.facility_id}`));
+    // Reviewed pairs, by facility identity rather than row id, so a facility
+    // re-imported for a new year isn't suggested again.
+    const decidedIds = [...new Set(decided.rows.map((d: any) => d.facility_id).filter((id: any) => id != null))];
+    const decidedFacs = decidedIds.length
+      ? await client.query("SELECT id, facility_type, provider_id, facility_name, zip FROM medicare_facilities WHERE id = ANY($1)", [decidedIds])
+      : { rows: [] };
+    const decidedKey = new Map<number, string>(decidedFacs.rows.map((f: any) => [f.id, facilityKey(f)]));
+    const decidedPairs = new Set(decided.rows.map((d: any) => `${d.npi}|${decidedKey.get(d.facility_id) ?? `id:${d.facility_id}`}`));
 
     const suggestions: FacilityMatch[] = [];
     let matchedProviders = 0;
@@ -129,12 +150,14 @@ export async function handleMatchProvidersToLocations(payload: any) {
       const candidates = new Map<number, MatchFacility>();
       for (const f of [...(byZip.get(z) || []), ...(byCity.get(city(loc.city)) || []), ...(z.length === 5 ? byZip3.get(z.slice(0, 3)) || [] : [])]) {
         if (candidates.size >= 400) break;
+        // Leave out facilities already reviewed for this provider before
+        // ranking, so the best remaining ones are suggested.
+        if (decidedPairs.has(`${npi}|${keyById.get(f.id)}`)) continue;
         candidates.set(f.id, f);
       }
       const referrals = sent.get(npi);
       const matches = scoreProviderMatches(provider, [...candidates.values()], (f) =>
-        (f.provider_id && /^\d{10}$/.test(f.provider_id) ? referrals?.get(f.provider_id) || 0 : 0))
-        .filter((m) => !decidedPairs.has(`${m.npi}|${m.facility_id}`));
+        (f.provider_id && /^\d{10}$/.test(f.provider_id) ? referrals?.get(f.provider_id) || 0 : 0));
       if (matches.length) matchedProviders += 1;
       suggestions.push(...matches);
     }
@@ -180,6 +203,7 @@ export async function handleMatchProvidersToLocations(payload: any) {
     };
   } finally {
     await client.query("RESET statement_timeout").catch(() => {});
+    if (locked) await client.query(`SELECT pg_advisory_unlock(${MATCHING_LOCK})`).catch(() => {});
     client.release();
   }
 }

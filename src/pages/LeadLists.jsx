@@ -39,7 +39,14 @@ export default function LeadLists() {
     queryFn: () => base44.entities.LeadList.list('-created_date', 500),
   });
 
-  const openList = url.list ? lists.find(l => String(l.id) === url.list) : null;
+  // A linked list older than the 500 loaded above is fetched on its own.
+  const listedOpen = url.list ? lists.find(l => String(l.id) === url.list) : null;
+  const { data: fetchedOpen = null } = useQuery({
+    queryKey: ['leadLists', 'one', url.list],
+    queryFn: async () => (await base44.entities.LeadList.filter({ id: Number(url.list) }, undefined, 1))[0] || null,
+    enabled: !!url.list && /^\d+$/.test(url.list) && !isLoading && !listedOpen,
+  });
+  const openList = listedOpen || fetchedOpen;
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeadList.delete(id),
@@ -123,12 +130,12 @@ export default function LeadLists() {
                             <span className="hidden sm:inline">View</span>
                           </Button>
                           {canStartCampaign && (
-                            <Link to={`${createPageUrl('ProviderOutreach')}?leadList=${list.id}`}>
-                              <Button size="sm" variant="outline" title="Start a campaign for this list">
+                            <Button asChild size="sm" variant="outline" title="Start a campaign for this list">
+                              <Link to={`${createPageUrl('ProviderOutreach')}?leadList=${list.id}`}>
                                 <Megaphone className="w-4 h-4 mr-1" />
                                 <span className="hidden sm:inline">Start campaign</span>
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                           )}
                           <Button
                             size="sm"
@@ -161,6 +168,29 @@ export default function LeadLists() {
   );
 }
 
+// Detail lookups go in NPI chunks with a row budget per NPI; one capped
+// $in over thousands of NPIs left most members without details.
+const NPI_CHUNK = 200;
+async function fetchByNpis(entity, npis, rowsPerNpi) {
+  const rows = [];
+  for (let i = 0; i < npis.length; i += NPI_CHUNK) {
+    const chunk = npis.slice(i, i + NPI_CHUNK);
+    rows.push(...await entity.filter({ npi: { $in: chunk } }, undefined, chunk.length * rowsPerNpi));
+  }
+  return rows;
+}
+
+/** First row per NPI, preferring rows that pass `prefer`. */
+function firstByNpi(rows, prefer) {
+  const preferred = new Map();
+  const any = new Map();
+  for (const r of rows) {
+    if (!any.has(r.npi)) any.set(r.npi, r);
+    if (prefer && !preferred.has(r.npi) && prefer(r)) preferred.set(r.npi, r);
+  }
+  return (npi) => preferred.get(npi) || any.get(npi);
+}
+
 function ViewListDialog({ listId, listName }) {
   const [leads, setLeads] = useState([]);
   const [loadError, setLoadError] = useState(null);
@@ -178,24 +208,30 @@ function ViewListDialog({ listId, listName }) {
       const members = await base44.entities.LeadListMember.filter({ list_id: listId }, '-created_date', 5000);
       if (members.length === 0) { setLeads([]); return; }
 
-      const npis = members.map(m => m.npi);
+      const npis = [...new Set(members.map(m => m.npi))];
       const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
-        base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
-        base44.entities.ProviderServiceUtilization.filter({ npi: { $in: npis } }, undefined, 1000).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
-        base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
+        fetchByNpis(base44.entities.Provider, npis, 1),
+        fetchByNpis(base44.entities.LeadScore, npis, 2),
+        fetchByNpis(base44.entities.ProviderLocation, npis, 5),
+        fetchByNpis(base44.entities.ProviderServiceUtilization, npis, 10).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
+        fetchByNpis(base44.entities.CMSReferral, npis, 5),
+        fetchByNpis(base44.entities.ProviderTaxonomy, npis, 5),
       ]);
 
+      const providerOf = firstByNpi(providers);
+      const scoreOf = firstByNpi(scores);
+      const locationOf = firstByNpi(locations, l => l.is_primary);
+      const utilizationOf = firstByNpi(utilizations);
+      const referralsOf = firstByNpi(referrals);
+      const taxonomyOf = firstByNpi(taxonomies, t => t.is_primary);
       const enriched = members.map(member => ({
         member,
-        provider: providers.find(p => p.npi === member.npi),
-        score: scores.find(s => s.npi === member.npi),
-        location: locations.find(l => l.npi === member.npi && l.is_primary),
-        utilization: utilizations.find(u => u.npi === member.npi),
-        referrals: referrals.find(r => r.npi === member.npi),
-        taxonomy: taxonomies.find(t => t.npi === member.npi && t.is_primary),
+        provider: providerOf(member.npi),
+        score: scoreOf(member.npi),
+        location: locationOf(member.npi),
+        utilization: utilizationOf(member.npi),
+        referrals: referralsOf(member.npi),
+        taxonomy: taxonomyOf(member.npi),
       }));
 
       setLeads(enriched);

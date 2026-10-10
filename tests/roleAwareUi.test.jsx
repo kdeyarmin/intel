@@ -56,6 +56,7 @@ vi.mock('@/api/base44Client', () => ({
 import App from '../src/App';
 import PageHeader from '../src/components/shared/PageHeader';
 import NotificationBell from '../src/components/shared/NotificationBell';
+import ProviderImportHistory from '../src/components/providers/ProviderImportHistory';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 function renderAt(path) {
@@ -164,6 +165,35 @@ describe('NotificationBell', () => {
   it('requests import batches for an admin', async () => {
     authState.user = { role: 'admin' };
     renderBell();
+    await vi.waitFor(() => expect(listImportBatches).toHaveBeenCalled());
+  });
+});
+
+describe('ProviderImportHistory', () => {
+  function renderHistory() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ProviderImportHistory npi="1234567890" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  beforeEach(() => listImportBatches.mockClear());
+
+  it('does not request admin-only import batches for a regular user', async () => {
+    authState.user = { role: 'user' };
+    const { container } = renderHistory();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(listImportBatches).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('loads import batches for an admin', async () => {
+    authState.user = { role: 'admin' };
+    renderHistory();
     await vi.waitFor(() => expect(listImportBatches).toHaveBeenCalled());
   });
 });
