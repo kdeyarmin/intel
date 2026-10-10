@@ -48,14 +48,29 @@ export default function NetworkInsightsDashboard({ nodes = [], edges = [], summa
           ))}
         </div>
       )}
-      {summary?.display_capped && (
-        <p className="text-xs text-slate-400">
-          These figures cover the {summary.shown_nodes} busiest of {summary.network_nodes.toLocaleString()} providers in this network.
-        </p>
+      {coverageNote(summary, nodes.length) && (
+        <p className="text-xs text-slate-400">{coverageNote(summary, nodes.length)}</p>
       )}
 
       <StrategicPartnerFinder nodes={nodes} edges={edges} locations={locations} />
       <PredictiveNetworkAnalysis nodes={nodes} edges={edges} locations={locations} />
     </div>
   );
+}
+
+/**
+ * Which providers the figures above describe: the ones passed in (after any
+ * specialty or search filter), out of the busiest the server returned when
+ * the network has more providers than that.
+ */
+export function coverageNote(summary, count) {
+  if (!summary) return null;
+  const providerCapped = summary.network_nodes > summary.shown_nodes;
+  const filtered = count < summary.shown_nodes;
+  if (!providerCapped && !filtered) return null;
+  const n = count.toLocaleString();
+  if (providerCapped) {
+    return `These figures cover the ${n} provider${count === 1 ? '' : 's'} shown${filtered ? ' after your filters' : ''}, from the busiest ${summary.shown_nodes.toLocaleString()} of ${summary.network_nodes.toLocaleString()} in this network.`;
+  }
+  return `These figures cover the ${n} provider${count === 1 ? '' : 's'} that match your filters.`;
 }
