@@ -31,6 +31,8 @@ async function main() {
       { endSessions: true },
     );
     await repo.revokeTokens(existing.id);
+    // Running servers drop their cached copy of this account at once.
+    await pool.query("SELECT pg_notify('session_user_changed', $1)", [String(existing.id)]);
     console.log(`[admin-recover] ${existing.email} is now an active admin.`);
   } else {
     await repo.create({ email, password_hash: hash, full_name: null, role: "admin", status: "active", approved_at: now, approved_by: "admin-recover" });

@@ -76,7 +76,7 @@ export default function ProviderIntelligence() {
     retry: 1,
   });
 
-  const { data: providers = [] } = useQuery({
+  const { data: providers = [], refetch: refetchProviders } = useQuery({
     queryKey: ['emailBotProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 60000,
@@ -498,8 +498,8 @@ export default function ProviderIntelligence() {
         </TabsContent>
 
         <TabsContent value="verify" className="space-y-5">
-          <EmailVerificationPanel providers={providers} />
-          <ProblematicEmailsPanel providers={providers} />
+          <EmailVerificationPanel providers={providers} onRefresh={refetchProviders} />
+          <ProblematicEmailsPanel providers={providers} onRefresh={refetchProviders} />
         </TabsContent>
 
         <TabsContent value="outreach" className="space-y-5">

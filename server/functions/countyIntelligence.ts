@@ -187,9 +187,14 @@ export async function handleGetCountyIntelligence(payload: any) {
         county: { fips: county.fips, name: county.name, lat: county.lat, lng: county.lng },
         zip_areas: zctas.length,
         summary: {
-          // Exact when every practice location was read; otherwise the ZIP rollup's count.
-          totalProviders: sampled ? rollupCount ?? npis.length : npis.length,
+          // Distinct providers, exact when every practice location was read.
+          // Past the sample there's no provider count to give: the ZIP rollup
+          // counts practice locations (a provider with two counts twice), so
+          // that is reported as what it is.
+          totalProviders: sampled ? null : npis.length,
           providersExact: !sampled,
+          practiceLocations: sampled ? rollupCount : null,
+          locationSample: LOCATION_SAMPLE,
           sampledProviders: npis.length,
           individualProviders: individuals,
           orgProviders: organizations,

@@ -90,6 +90,14 @@ const filtersFromUrl = (url) =>
 const urlFromFilters = (filters) =>
   Object.fromEntries(Object.entries(FILTER_KEYS).map(([filterKey, urlKey]) => [urlKey, filters[filterKey] ?? 'all']));
 
+// Names are nullable on incomplete records; the NPI always identifies the row.
+const selectLabelName = (provider) => {
+  const name = provider.entity_type === 'Individual'
+    ? [provider.first_name, provider.last_name].filter(Boolean).join(' ')
+    : provider.organization_name;
+  return name?.trim() || `NPI ${provider.npi}`;
+};
+
 export default function Providers() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
   const [searchTerm, setSearchTerm] = useState(url.q);
@@ -237,9 +245,7 @@ export default function Providers() {
 
   const resetFilters = () => {
     setSearchTerm('');
-    setUrl({ ...urlFromFilters({}), sort: 'default', dir: 'asc' });
-    setTextFilters([]);
-    setDateRange({ preset: 'all', startDate: '', endDate: '' });
+    setUrl({ ...urlFromFilters({}), sort: 'default', dir: 'asc', tf: '', range: 'all', from: '', to: '' });
     setActivePresetId(null);
   };
 
@@ -391,8 +397,12 @@ export default function Providers() {
 
   // Filtering
   const filteredProviders = useMemo(() => {
+    // While the server is searching it has already matched the text (names in
+    // any order, "Smith, John", NPIs) and the state, across every location;
+    // re-checking either here would drop valid matches.
+    const serverSearch = debouncedSearch.length >= 2;
     const basic = providers.filter(p => {
-      if (searchTerm) {
+      if (searchTerm && !serverSearch) {
         const q = searchTerm.toLowerCase();
         const locs = locationByNpi[p.npi] || [];
         const locMatch = locs.some(l =>
@@ -421,7 +431,7 @@ export default function Providers() {
         if (filters.emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
         if (filters.emailFilter === 'not_searched' && p.email_searched_at) return false;
       }
-      if (filters.stateFilter !== 'all') {
+      if (filters.stateFilter !== 'all' && !searchState) {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
@@ -437,7 +447,7 @@ export default function Providers() {
 
     // Apply text match filters
     return applyTextFilters(dateFiltered, textFilters);
-  }, [providers, searchTerm, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
+  }, [providers, searchTerm, debouncedSearch, searchState, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
 
   // Sorting
   const sortedProviders = useMemo(() => {
@@ -512,7 +522,8 @@ export default function Providers() {
         provider: p,
         location: loc,
         taxonomy: tax,
-        score: getScore(p.npi) || 0,
+        // null, not 0: an unscored provider draws grey, not as a 0 score.
+        score: getScore(p.npi),
       };
     });
   }, [sortedProviders, locationByNpi, taxonomyByNpi, scores]);
@@ -868,7 +879,7 @@ export default function Providers() {
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                         <TableCell>
                           <input type="checkbox"
-                            aria-label={`Select ${provider.entity_type === 'Individual' ? `${provider.first_name} ${provider.last_name}` : provider.organization_name}`}
+                            aria-label={`Select ${selectLabelName(provider)}`}
                             checked={selectedNpis.has(provider.npi)}
                             onChange={() => toggleSelect(provider.npi)}
                             className="rounded border-slate-600 bg-slate-800"

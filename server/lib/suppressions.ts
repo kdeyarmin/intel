@@ -35,3 +35,23 @@ export async function addSuppression(email: string, reason: string, source: stri
   await db.insert(emailSuppressions).values({ email: e, reason, source })
     .onConflictDoUpdate({ target: emailSuppressions.email, set: { reason, source, created_date: sql`now()` } });
 }
+
+/**
+ * Record many suppressions in one statement: one row per address (the last
+ * reason given for it wins). Throws if the write fails, so a webhook can ask
+ * its sender to retry instead of dropping the suppression.
+ */
+export async function addSuppressions(entries: { email: string; reason: string }[], source: string): Promise<number> {
+  const byEmail = new Map<string, string>();
+  for (const { email, reason } of entries) {
+    const e = normalizeEmail(email);
+    if (e) byEmail.set(e, reason);
+  }
+  if (byEmail.size === 0) return 0;
+  const values = [...byEmail].map(([email, reason]) => ({ email, reason, source }));
+  await db.insert(emailSuppressions).values(values).onConflictDoUpdate({
+    target: emailSuppressions.email,
+    set: { reason: sql`excluded.reason`, source: sql`excluded.source`, created_date: sql`now()` },
+  });
+  return values.length;
+}

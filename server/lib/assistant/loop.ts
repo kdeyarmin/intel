@@ -56,6 +56,11 @@ export interface RunTurnInput {
   toolContext: Omit<ToolContext, "toolUseId">;
   signal: AbortSignal;
   onUsage?: (usage: Anthropic.Beta.BetaUsage) => Promise<void> | void;
+  /**
+   * Checked before every model request after the first (the route checks the
+   * first): a message stops the turn there, e.g. the daily budget ran out.
+   */
+  beforeRequest?: () => Promise<string | null>;
   now?: () => number;
   config?: Partial<Pick<typeof ASSISTANT_CONFIG, "maxToolRounds" | "turnBudgetMs">>;
 }
@@ -132,8 +137,14 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
     await input.onUsage?.(u as Anthropic.Beta.BetaUsage);
   };
 
+  let requested = false;
   for (;;) {
     if (input.signal.aborted) return done("interrupted");
+    if (requested && input.beforeRequest) {
+      const stop = await input.beforeRequest();
+      if (stop) return done("error", stop);
+    }
+    requested = true;
     const final = toolRounds >= maxToolRounds || now() - started > turnBudgetMs;
     let partialText = "";
     let message: Message;
@@ -212,9 +223,16 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
     if (toolUses.length === 0) return done("complete");
 
     toolRounds += 1;
-    const results = await Promise.all(toolUses.map(async (block) => {
+    // Stop and the hard timeout end the wait for tools too; a lookup still
+    // running finishes on its own under its statement timeout, and nothing it
+    // returns is used (proposals check the signal before writing).
+    const aborted = new Promise<"aborted">((resolve) => {
+      if (input.signal.aborted) resolve("aborted");
+      else input.signal.addEventListener("abort", () => resolve("aborted"), { once: true });
+    });
+    const results = await Promise.race([aborted, Promise.all(toolUses.map(async (block) => {
       input.emit("tool_call", { id: block.id, name: block.name, label: toolLabel(block.name, block.input) });
-      const outcome = await runTool(block.name, block.input, { ...input.toolContext, toolUseId: block.id });
+      const outcome = await runTool(block.name, block.input, { ...input.toolContext, toolUseId: block.id, signal: input.signal });
       input.emit("tool_result", { id: block.id, ok: !outcome.isError });
       // Same shape as a saved card (renderTranscript), so the UI renders both alike.
       if (outcome.action) input.emit("action", { tool_use_id: block.id, action: uiAction({ ...outcome.action, result: null }) });
@@ -225,7 +243,8 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
         ...(outcome.isError ? { is_error: true } : {}),
       };
       return result;
-    }));
+    }))]);
+    if (results === "aborted" || input.signal.aborted) return done("interrupted");
     // All results go back in one user message, in the order the calls were made.
     await input.persist("user", results);
     messages.push({ role: "user", content: results });

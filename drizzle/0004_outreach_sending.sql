@@ -17,3 +17,6 @@ ALTER TABLE "providers" ADD COLUMN IF NOT EXISTS "ai_outreach_strategy" text;
 ALTER TABLE "providers" ADD COLUMN IF NOT EXISTS "ai_engagement_factors" jsonb;
 --> statement-breakpoint
 ALTER TABLE "providers" ADD COLUMN IF NOT EXISTS "ai_outreach_scored_at" timestamp;
+--> statement-breakpoint
+-- Unsubscribes and bounces suppress pending messages by lower(recipient_email).
+CREATE INDEX IF NOT EXISTS "messages_pending_email_idx" ON "outreach_messages" (lower("recipient_email")) WHERE "status" = 'pending';

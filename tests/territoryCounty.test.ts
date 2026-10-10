@@ -211,6 +211,24 @@ describe("getTerritoryData", () => {
     expect(pages[1].params).toEqual([5000, 99, 5001]);
   });
 
+  it("applies the entity filter while choosing, so a filtered sample isn't empty", async () => {
+    const base = db.answer;
+    // 1000000001 (the top score) is an individual; only 1000000003 is an organization.
+    db.answer = (sql, params) => {
+      if (sql.includes("AND entity_type = $2")) return (params[0] as string[]).filter((n) => n === "1000000003").map((npi) => ({ npi }));
+      if (sql.includes("FROM providers WHERE npi = ANY")) {
+        return (params[0] as string[]).map((npi) => ({ npi, entity_type: npi === "1000000003" ? "Organization" : "Individual", organization_name: "Mercy", last_name: "X" }));
+      }
+      return base(sql, params);
+    };
+    const { handleGetTerritoryData } = await import("../server/functions/territory");
+    const r: any = await handleGetTerritoryData({ state: "PA", limit: 2, entity_type: "Organization" });
+    expect(r.providers.map((p: any) => p.npi)).toEqual(["1000000003"]);
+    expect(r.scope.label).toMatch(/the 0 highest-scored first/);
+    // Stable ZIP choice when several practice addresses tie.
+    expect(db.queries.find((q) => q.sql.includes("CROSS JOIN LATERAL"))!.sql).toMatch(/DESC NULLS LAST,\s+id\s+LIMIT 1/);
+  });
+
   it("handles all states", async () => {
     const { handleGetTerritoryData } = await import("../server/functions/territory");
     const r: any = await handleGetTerritoryData({ state: "ALL", limit: 3 });
