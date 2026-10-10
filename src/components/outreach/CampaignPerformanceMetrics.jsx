@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -24,9 +24,16 @@ const STATUS_ROWS = [
  * query). Refreshes every 30s while the campaign is sending.
  */
 export default function CampaignPerformanceMetrics({ campaign_id, status }) {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['campaignMetrics', campaign_id],
-    queryFn: () => invokeOrThrow('trackCampaignMetrics', { campaign_id }),
+    queryFn: async () => {
+      const result = await invokeOrThrow('trackCampaignMetrics', { campaign_id });
+      // The rollup is also written to the campaign row, which the campaign
+      // cards and totals read from their own query.
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      return result;
+    },
     enabled: !!campaign_id,
     refetchInterval: status === 'sending' ? 30000 : false,
   });
