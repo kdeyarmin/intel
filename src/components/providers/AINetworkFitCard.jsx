@@ -15,7 +15,7 @@ export default function AINetworkFitCard({ provider, taxonomy = [], utilization,
     const name = provider.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider.organization_name || provider.npi;
-    const primaryTax = taxonomy.find(t => t.primary_flag) || taxonomy[0];
+    const primaryTax = taxonomy.find(t => t.is_primary) || taxonomy[0];
     const primaryLoc = locations.find(l => l.is_primary) || locations[0];
 
     const res = await base44.integrations.Core.InvokeLLM({

@@ -3,6 +3,14 @@ import { providers, providerLocations, providerTaxonomies, dataQualityAlerts, da
 import { sql, desc, eq, and, lt, isNotNull } from "drizzle-orm";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 
+// Features that exist in the UI but have no server implementation yet. They
+// used to return `success: true` with empty data, which the UI presented as a
+// real (empty) result — e.g. "Campaign ready! 0 messages". Returning an
+// explicit not-configured failure lets the UI say so instead.
+export function notConfigured(error: string, extra: Record<string, unknown> = {}) {
+  return { success: false as const, notConfigured: true as const, error, ...extra };
+}
+
 const activeEnrichmentTaskIds = new Set<number>();
 
 async function getActiveEnrichmentTask() {
@@ -542,50 +550,33 @@ export async function handleRunDataQualityScan(payload: any) {
 }
 
 export async function handleEnrichProviderWithAI(payload: any) {
-  return {
-    success: true,
+  return notConfigured("Single-provider AI enrichment isn't available yet. Use the bulk enrichment job on the Intelligence page instead.", {
     provider_id: payload.provider_id,
-    message: "AI enrichment is not yet configured. Please set up the ANTHROPIC_API_KEY to enable AI-powered provider enrichment.",
-    enrichment_status: "pending",
-  };
+  });
 }
 
-export async function handleEmailSearchBot(payload: any) {
-  return {
-    success: true,
-    message: "Email search bot requires external API configuration.",
-    results: [],
-  };
-}
-
-export async function handleAnalyzeReferralPathways(payload: any) {
-  return {
-    success: true,
-    pathways: [],
-    message: "Referral pathway analysis requires provider relationship data.",
-  };
+export async function handleAnalyzeReferralPathways(_payload: any) {
+  return notConfigured("Referral pathway analysis isn't available yet.");
 }
 
 export async function handleMatchProvidersToLocations(_payload: any) {
-  return { success: true, matched: 0, unmatched: 0, message: "Provider-location matching completed." };
+  return notConfigured("Automatic provider-to-facility matching isn't available yet.");
 }
 
-export async function handleGenerateScheduledReport(payload: any) {
-  return { success: true, report_id: null, message: "Report generation requires AI configuration." };
+export async function handleGenerateScheduledReport(_payload: any) {
+  return notConfigured("Emailing scheduled reports isn't available yet. Run the report on this page and export it instead.");
 }
 
-export async function handleTestCMSUrl(payload: any) {
-  const { id } = payload;
-  if (!id) return { success: false, error: "Missing connector ID" };
-  return { success: true, status: "reachable", message: "URL test completed." };
+export async function handleTestCMSUrl(_payload: any) {
+  return notConfigured("URL checks aren't available yet.");
 }
 
-export async function handlePredictImportFormat(payload: any) {
-  return { success: true, predicted_format: "csv", columns: [], message: "Format prediction completed." };
+export async function handlePredictImportFormat(_payload: any) {
+  return notConfigured("Import format prediction isn't available yet.");
 }
 
-export async function handleTestCMSApiConnector(payload: any) {
-  return { success: true, status: "connected", message: "Connector test completed." };
+export async function handleTestCMSApiConnector(_payload: any) {
+  return notConfigured("Connector tests aren't available yet.");
 }
 
 export async function handleEnrichProviderThirdParty(payload: any) {
@@ -912,51 +903,51 @@ Only return the JSON object.`
   };
 }
 
-export async function handleVerifyProviderEmail(payload: any) {
-  return { success: true, verified: false, message: "Email verification requires external API configuration." };
+export async function handleVerifyProviderEmail(_payload: any) {
+  return notConfigured("Email verification isn't available yet.");
 }
 
-export async function handleBulkVerifyEmails(payload: any) {
-  return { success: true, verified: 0, failed: 0, message: "Bulk email verification requires external API configuration." };
+export async function handleBulkVerifyEmails(_payload: any) {
+  return notConfigured("Bulk email verification isn't available yet.");
 }
 
 export async function handleEnrichProviderMedicareData(payload: any) {
-  return { success: true, npi: payload.npi, data: null, message: "Medicare data enrichment completed." };
+  return notConfigured("Medicare data enrichment isn't available yet.", { npi: payload.npi });
 }
 
 export async function handleValidateProviderNPI(payload: any) {
-  return { success: true, npi: payload.npi, valid: true, discrepancies: [] };
+  return notConfigured("NPI registry validation isn't available yet.", { npi: payload.npi });
 }
 
 export async function handleEnrichProviderDEAData(payload: any) {
-  return { success: true, npi: payload.npi, data: null, message: "DEA data enrichment completed." };
+  return notConfigured("DEA data enrichment isn't available (no DEA data source is connected).", { npi: payload.npi });
 }
 
-export async function handleCleanProviderData(payload: any) {
-  return { success: true, cleaned: 0, message: "Data cleaning completed." };
+export async function handleCleanProviderData(_payload: any) {
+  return notConfigured("Automatic data cleaning isn't available yet.");
 }
 
-export async function handleAnalyzeProviderNetwork(payload: any) {
-  return { success: true, network: [], influencers: [], gaps: [], recommendations: [] };
+export async function handleAnalyzeProviderNetwork(_payload: any) {
+  return notConfigured("Network analysis isn't available yet.");
 }
 
-export async function handleGenerateHyperPersonalizedMessages(payload: any) {
-  return { success: true, messages: [], message: "Message generation requires AI configuration." };
+export async function handleGenerateHyperPersonalizedMessages(_payload: any) {
+  return notConfigured("Personalized message generation isn't available yet.");
 }
 
-export async function handleTrackCampaignMetrics(payload: any) {
-  return { success: true, metrics: {}, message: "Campaign metrics tracked." };
+export async function handleTrackCampaignMetrics(_payload: any) {
+  return notConfigured("Campaign delivery metrics aren't available yet.");
 }
 
-export async function handleSendCampaignMessages(payload: any) {
-  return { success: true, sent: 0, failed: 0, message: "Campaign message sending requires SendGrid configuration." };
+export async function handleSendCampaignMessages(_payload: any) {
+  return notConfigured("Sending campaign email isn't available yet. The campaign was saved as a draft.");
 }
 
 export async function handleCalculateOutreachScore(payload: any) {
-  return { success: true, npi: payload.npi, score: 0, message: "Outreach score calculation completed." };
+  return notConfigured("Outreach scoring isn't available yet.", { npi: payload.npi });
 }
 
 export async function handleAnalyzeImportedDataset(payload: any) {
-  return { success: true, batch_id: payload.batch_id, analysis: null, message: "Dataset analysis requires AI configuration." };
+  return notConfigured("AI dataset analysis isn't available yet.", { batch_id: payload.batch_id });
 }
 

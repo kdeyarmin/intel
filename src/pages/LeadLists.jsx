@@ -34,11 +34,10 @@ export default function LeadLists() {
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
-      await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
-      deleteMutation.mutate(listId);
-    } catch (error) {
-      alert('Failed to delete list: ' + error.message);
+      // The server removes the list's members together with the list.
+      await deleteMutation.mutateAsync(listId);
+    } catch {
+      // Already surfaced by the global mutation error toast.
     }
   };
 
@@ -138,7 +137,7 @@ function ViewListDialog({ listId, listName }) {
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
+      const members = await base44.entities.LeadListMember.filter({ list_id: listId }, '-created_date', 5000);
       if (members.length === 0) { setLeads([]); return; }
 
       const npis = members.map(m => m.npi);
@@ -158,7 +157,7 @@ function ViewListDialog({ listId, listName }) {
         location: locations.find(l => l.npi === member.npi && l.is_primary),
         utilization: utilizations.find(u => u.npi === member.npi),
         referrals: referrals.find(r => r.npi === member.npi),
-        taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
+        taxonomy: taxonomies.find(t => t.npi === member.npi && t.is_primary),
       }));
 
       setLeads(enriched);

@@ -15,7 +15,7 @@ export default function EnrichProviderButton({ providers = [], locations = [], t
 
   const enrichProvider = async (provider) => {
     const loc = locations.find(l => l.npi === provider.npi && l.is_primary) || locations.find(l => l.npi === provider.npi);
-    const tax = taxonomies.find(t => t.npi === provider.npi && t.primary_flag) || taxonomies.find(t => t.npi === provider.npi);
+    const tax = taxonomies.find(t => t.npi === provider.npi && t.is_primary) || taxonomies.find(t => t.npi === provider.npi);
 
     const name = provider.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
@@ -94,7 +94,6 @@ Search the NPI registry and healthcare directories to find accurate data for the
         await base44.entities.ProviderLocation.create({
           npi: provider.npi,
           location_type: 'Practice',
-          is_primary: true,
           ...locUpdate,
         });
       }
@@ -109,7 +108,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
       } else {
         await base44.entities.ProviderTaxonomy.create({
           npi: provider.npi,
-          primary_flag: true,
+          is_primary: true,
           ...taxUpdate,
         });
       }

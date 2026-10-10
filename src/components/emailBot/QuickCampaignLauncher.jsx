@@ -76,11 +76,12 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
     try {
       const newCampaign = await base44.entities.OutreachCampaign.create({
         name: campaign.name,
-        subject_template: campaign.subject_template,
-        body_template: campaign.body_template,
+        subject: campaign.subject_template,
+        body: campaign.body_template,
         status: 'draft',
         total_recipients: eligibleProviders.length,
-        source_criteria: 'custom',
+        campaign_type: 'custom',
+        target_npis: eligibleProviders.map(p => p.npi),
       });
 
       const messages = eligibleProviders.map(p => ({

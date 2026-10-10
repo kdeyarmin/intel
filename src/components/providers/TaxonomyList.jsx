@@ -29,7 +29,7 @@ export default function TaxonomyList({ taxonomies = [] }) {
                   {t.state && <span className="text-xs text-slate-400">{t.state}</span>}
                 </div>
               </div>
-              {t.primary_flag && (
+              {t.is_primary && (
                 <Badge className="bg-teal-900/30 text-teal-400 text-[10px] ml-2">Primary</Badge>
               )}
             </div>

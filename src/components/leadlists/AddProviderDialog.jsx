@@ -46,7 +46,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
     setAdding(npi);
     try {
       await base44.entities.LeadListMember.create({
-        lead_list_id: listId,
+        list_id: listId,
         npi,
         status: 'New',
       });

@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Globe, Stethoscope, MapPin, Sparkles, Loader2, ExternalLink } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { toast } from 'sonner';
 import EmailValidationBadge from './EmailValidationBadge';
 
@@ -26,16 +26,11 @@ export default function EnrichedProviderCard({ provider, location, taxonomy, onE
   const handleEnrich = async () => {
     setEnriching(true);
     try {
-      const res = await base44.functions.invoke('enrichProviderWithAI', { provider_id: provider.id });
-      const data = res.data;
-      if (data.success) {
-        toast.success(`Enriched ${data.enriched_fields.length} fields for ${name}`);
-        onEnriched?.();
-      } else {
-        toast.error(data.error || 'Enrichment failed');
-      }
+      const data = await invokeOrThrow('enrichProviderWithAI', { provider_id: provider.id });
+      toast.success(`Enriched ${data.enriched_fields?.length ?? 0} fields for ${name}`);
+      onEnriched?.();
     } catch (error) {
-      toast.error('Enrichment failed: ' + error.message);
+      toastFunctionError(error, 'Enrichment failed');
     } finally {
       setEnriching(false);
     }

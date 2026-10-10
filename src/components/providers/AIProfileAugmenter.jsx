@@ -110,7 +110,7 @@ export default function AIProfileAugmenter({ providers = [], locations = [], tax
     try {
     const batch = providers.slice(0, 15).map(p => {
       const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
-      const tax = taxonomies.find(t => t.npi === p.npi && t.primary_flag) || taxonomies.find(t => t.npi === p.npi);
+      const tax = taxonomies.find(t => t.npi === p.npi && t.is_primary) || taxonomies.find(t => t.npi === p.npi);
       return {
         npi: p.npi,
         name: p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}`.trim() : p.organization_name || '',

@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { isFunctionAuthorized } from "../lib/functionAcl";
 
 const router = Router();
 
@@ -17,44 +18,11 @@ const PHONE_SAMPLE_SIZE = 2000;
 let territoryStatesCache: { data: any[]; timestamp: number } | null = null;
 const TERRITORY_STATES_TTL = 10 * 60 * 1000;
 
-// Default-deny authorization for the function dispatcher. Only the read-only /
-// analytics / status functions below are callable by any authenticated user.
-// Everything else (imports, crawler control, AI enrichment that spends tokens or
-// writes provider data, email sending, and destructive maintenance) requires the
-// admin role. Adding a new function therefore requires an explicit decision: if
-// it is safe and read-only, list it here; otherwise it is admin-only by default.
-const PUBLIC_FUNCTIONS = new Set<string>([
-  "getDashboardStats",
-  "getDataHealthAlerts",
-  "getCMSAnalytics",
-  "getReferralNetworkData",
-  "getTerritoryData",
-  "getDataHealthMetrics",
-  "getCMSDatasetCatalog",
-  "validateDataQuality",
-  "getEnrichmentCandidateCount",
-  "getIntelCandidateCount",
-  "enrichmentJobStatus",
-  "intelJobStatus",
-  "getFacilityDetail",
-  "listFacilities",
-  "getProviderCMSData",
-  "getCountyIntelligence",
-  "getAvailableStatesCounties",
-  "getComprehensiveReport",
-  "getDMEProviders",
-  "dmeEmailSearchStatus",
-  "searchProviders",
-  "calculateOutreachScore",
-  "analyzeReferralPathways",
-  "analyzeProviderNetwork",
-  "trackCampaignMetrics",
-]);
 
 router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000), async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
 
-  if (!PUBLIC_FUNCTIONS.has(functionName) && req.user?.role !== "admin") {
+  if (!isFunctionAuthorized(functionName, req.user?.role)) {
     return res.status(403).json({
       message: "Forbidden",
       detail: "Admin access is required to invoke this function.",
@@ -772,6 +740,17 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const result = await runCancelStalledImports();
         await writeMaintenanceHeartbeat([result], "admin_ui", { userEmail: req.user?.email });
         return res.json({ success: result.ok, worker: result });
+      }
+      case "runScheduledImports": {
+        // Same task the external cron hits at /api/maintenance/runScheduledImports:
+        // start every due schedule, then fan out to the maintenance workers.
+        // Admin-only (not in PUBLIC_FUNCTIONS).
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:runScheduledImports:${req.user?.id ?? "anon"}`, 2, 60_000)) {
+          return res.status(429).json({ message: "Scheduled imports were just run. Try again in a minute." });
+        }
+        const { handleRunScheduledImports } = await import("../functions/scheduledImports");
+        return res.json(await handleRunScheduledImports(req.body, req.user));
       }
       case "runScheduledImportsFanout":
       case "runMaintenanceFanout": {

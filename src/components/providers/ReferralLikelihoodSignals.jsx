@@ -37,7 +37,7 @@ export default function ReferralLikelihoodSignals({ utilization, _referrals, tax
   const facilitySpecialties = ['hospitalist', 'emergency', 'anesthesiology', 'radiology', 'pathology'];
   const officeSpecialties = ['family medicine', 'internal medicine', 'pediatrics', 'psychiatry'];
   
-  const primaryTaxonomy = taxonomy?.find(t => t.primary_flag) || taxonomy?.[0];
+  const primaryTaxonomy = taxonomy?.find(t => t.is_primary) || taxonomy?.[0];
   const taxonomyDesc = (primaryTaxonomy?.taxonomy_description || '').toLowerCase();
   
   const isFacilityBased = facilitySpecialties.some(s => taxonomyDesc.includes(s));

@@ -10,6 +10,18 @@ import { Calculator, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '../components/shared/PageHeader';
 
+// rule_type identifies which scoring signal a rule weights (see the score
+// calculation below); threshold lives in the conditions jsonb column.
+const DEFAULT_RULES = [
+  { name: 'Specialty Match', rule_type: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
+  { name: 'Medicare Participation', rule_type: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
+  { name: 'Patient Volume', rule_type: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
+  { name: 'Service Intensity', rule_type: 'service_intensity', weight: 15, description: 'Service-per-patient intensity indicators' },
+  { name: 'Geographic Priority', rule_type: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
+  { name: 'Practice Type', rule_type: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
+  { name: 'Behavioral Health Potential', rule_type: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' },
+];
+
 export default function ScoringRules() {
   const [user, setUser] = useState(null);
   const [editingRule, setEditingRule] = useState(null);
@@ -28,22 +40,27 @@ export default function ScoringRules() {
     queryKey: ['scoringRules'],
     queryFn: async () => {
       const existing = await base44.entities.ScoringRule.list('-created_date', 200);
-      
+
       if (existing.length === 0) {
-        const defaultRules = [
-          { rule_name: 'Specialty Match', category: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
-          { rule_name: 'Medicare Participation', category: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
-          { rule_name: 'Patient Volume', category: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
-          { rule_name: 'Service Intensity', category: 'service_intensity', weight: 15, description: 'Service-per-patient intensity indicators' },
-          { rule_name: 'Geographic Priority', category: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
-          { rule_name: 'Practice Type', category: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
-          { rule_name: 'Behavioral Health Potential', category: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' }
-        ];
-        
-        await Promise.all(defaultRules.map(rule => base44.entities.ScoringRule.create(rule)));
+        await Promise.all(DEFAULT_RULES.map(rule => base44.entities.ScoringRule.create({ ...rule, enabled: true })));
         return await base44.entities.ScoringRule.list('-created_date', 200);
       }
-      
+
+      // Rules seeded before the field fix were saved without name/rule_type
+      // (the UI wrote rule_name/category, which aren't columns), so scoring
+      // could never match a rule and every score came out 0. Repair them by
+      // their description, which did persist.
+      const broken = existing.filter(r => !r.rule_type);
+      if (broken.length > 0) {
+        await Promise.all(broken.map(r => {
+          const match = DEFAULT_RULES.find(d => d.description === r.description);
+          return match
+            ? base44.entities.ScoringRule.update(r.id, { name: match.name, rule_type: match.rule_type })
+            : null;
+        }));
+        return await base44.entities.ScoringRule.list('-created_date', 200);
+      }
+
       return existing;
     },
   });
@@ -57,7 +74,11 @@ export default function ScoringRules() {
   });
 
   const handleSave = (rule) => {
-    updateMutation.mutate({ id: rule.id, data: editingRule });
+    const { weight, threshold } = editingRule;
+    updateMutation.mutate({
+      id: rule.id,
+      data: { weight, conditions: { ...(rule.conditions || {}), threshold } },
+    });
   };
 
   const handleRecalculate = async () => {
@@ -83,7 +104,7 @@ export default function ScoringRules() {
         const util = utilizations.find(u => u.npi === provider.npi);
         const providerLocs = locations.filter(l => l.npi === provider.npi);
         const providerTax = taxonomies.filter(t => t.npi === provider.npi);
-        const primaryTax = providerTax.find(t => t.primary_flag) || providerTax[0];
+        const primaryTax = providerTax.find(t => t.is_primary) || providerTax[0];
 
         const scores = {};
         const breakdown = {};
@@ -130,7 +151,7 @@ export default function ScoringRules() {
         // Calculate final score
         let finalScore = 0;
         Object.keys(scores).forEach(category => {
-          const rule = currentRules.find(r => r.category === category);
+          const rule = currentRules.find(r => r.rule_type === category);
           if (!rule) return;
 
           const weight = rule.weight / 100;
@@ -151,6 +172,8 @@ export default function ScoringRules() {
         const scoreData = {
           npi: provider.npi,
           score: finalScore,
+          last_calculated: new Date().toISOString(),
+          // Stored in LeadScore.details (jsonb) by the entity API.
           score_date: new Date().toISOString(),
           score_breakdown: breakdown,
           reasons,
@@ -173,7 +196,6 @@ export default function ScoringRules() {
           row_count: batch.length,
           message: 'Scores recalculated (latest 100 providers)',
         },
-        timestamp: new Date().toISOString(),
       });
 
       alert(`Scoring complete for ${batch.length} providers (latest 100).`);
@@ -266,7 +288,7 @@ export default function ScoringRules() {
               {rules.map(rule => (
                 <TableRow key={rule.id}>
                   <TableCell className="font-medium capitalize text-slate-200">
-                    {rule.rule_name?.replace(/_/g, ' ')}
+                    {(rule.name || rule.rule_type)?.replace(/_/g, ' ')}
                   </TableCell>
                   <TableCell className="text-sm text-slate-400">
                     {rule.description || '-'}
@@ -303,7 +325,7 @@ export default function ScoringRules() {
                         className="w-24"
                       />
                     ) : (
-                      rule.threshold || '-'
+                      rule.conditions?.threshold ?? '-'
                     )}
                   </TableCell>
                   <TableCell>
@@ -334,7 +356,7 @@ export default function ScoringRules() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setEditingRule({ ...rule, id: rule.id })}
+                        onClick={() => setEditingRule({ id: rule.id, weight: rule.weight, threshold: rule.conditions?.threshold ?? '' })}
                       >
                         Edit
                       </Button>

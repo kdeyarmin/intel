@@ -17,7 +17,7 @@ const MAINTENANCE_TASKS = [
   { key: 'runScheduledImports', label: 'Run Scheduled Imports', desc: 'Process all due schedules and fan out the maintenance workers.', icon: PlayCircle, accent: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/20' },
   { key: 'autoRetryFailedImports', label: 'Retry Failed', desc: 'Re-dispatch failed batches whose error looks transient.', icon: RotateCcw, accent: 'text-amber-400 border-amber-500/30 hover:bg-amber-900/20' },
   { key: 'autoResumePausedImports', label: 'Resume Paused', desc: 'Resume paused batches from their saved offset.', icon: ResumeIcon, accent: 'text-sky-400 border-sky-500/30 hover:bg-sky-900/20' },
-  { key: 'cancelStalledImports', label: 'Cancel Stalled', desc: 'Fail batches stuck processing for over 2 hours.', icon: AlertTriangle, accent: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20' },
+  { key: 'cancelStalledImports', label: 'Cancel Stalled', desc: 'Fail batches with no progress for over an hour.', icon: AlertTriangle, accent: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20' },
 ];
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly', 'on_completion'];
@@ -40,9 +40,13 @@ function summarizeResult(task, data) {
     const m = (data.maintenance || []).filter((w) => w.ok).length;
     return `Checked ${data.checked ?? 0}, ran ${data.processed ?? 0}, ${m}/${(data.maintenance || []).length} maintenance workers ok`;
   }
-  if (task === 'autoRetryFailedImports') return `Scanned ${data.scanned ?? 0}, retried ${data.retried_count ?? 0}`;
-  if (task === 'autoResumePausedImports') return `Resumed ${data.resumed_count ?? 0}`;
-  if (task === 'cancelStalledImports') return `Cancelled ${data.cancelled_count ?? 0}`;
+  // The per-worker functions answer { success, worker: { ok, error, details } }.
+  const worker = data.worker || {};
+  if (worker.ok === false) return `Failed: ${worker.error || 'unknown error'}`;
+  const details = worker.details || {};
+  if (task === 'autoRetryFailedImports') return `Scanned ${details.scanned ?? 0}, retried ${details.retried_count ?? 0}`;
+  if (task === 'autoResumePausedImports') return `Scanned ${details.scanned ?? 0}, resumed ${details.resumed_count ?? 0}`;
+  if (task === 'cancelStalledImports') return `Scanned ${details.scanned ?? 0}, cancelled ${details.cancelled ?? 0}`;
   return data.message || 'Done';
 }
 
@@ -75,7 +79,8 @@ export default function ImportScheduleManager() {
       const { data } = await base44.functions.invoke(key);
       const summary = summarizeResult(key, data);
       setLastResult({ key, summary, at: new Date().toISOString() });
-      toast.success(summary);
+      if (data?.success === false || data?.worker?.ok === false) toast.error(summary);
+      else toast.success(summary);
       queryClient.invalidateQueries({ queryKey: ['importSchedules'] });
     } catch (e) {
       toast.error(e?.data?.detail || e?.message || 'Task failed');

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import {
   ShieldCheck, ShieldAlert, ShieldX, Download, RefreshCw,
   Loader2, Search, CheckSquare, Square, Filter
@@ -91,15 +91,15 @@ export default function BulkEmailActions({ providers, onRefresh }) {
 
     setIsReverifying(true);
     try {
-      const resp = await base44.functions.invoke('bulkVerifyEmails', {
+      const data = await invokeOrThrow('bulkVerifyEmails', {
         mode: 'specific_npis',
         npis: toVerify.map(p => p.npi),
         batch_size: toVerify.length,
       });
-      toast.success(`Re-verified ${resp.data.verified || 0} emails`);
+      toast.success(`Re-verified ${data.verified || 0} emails`);
       onRefresh?.();
     } catch (err) {
-      toast.error('Re-verification failed: ' + (err.response?.data?.error || err.message));
+      toastFunctionError(err, 'Re-verification failed');
     } finally {
       setIsReverifying(false);
     }

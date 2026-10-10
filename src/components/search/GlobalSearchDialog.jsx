@@ -158,7 +158,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
         items.push({
           type: 'Taxonomy',
           label: t.taxonomy_description || t.taxonomy_code,
-          sublabel: `NPI: ${t.npi} • Code: ${t.taxonomy_code || ''}${t.primary_flag ? ' • Primary' : ''}`,
+          sublabel: `NPI: ${t.npi} • Code: ${t.taxonomy_code || ''}${t.is_primary ? ' • Primary' : ''}`,
           url: createPageUrl(`ProviderDetail?npi=${t.npi}`),
           pageName: 'ProviderDetail',
         });

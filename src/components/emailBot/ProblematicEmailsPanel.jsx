@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { ShieldAlert, ShieldX, RefreshCw, Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailValidationBadge from './EmailValidationBadge';
@@ -21,11 +21,11 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const handleReverifySingle = async (providerId) => {
     setVerifyingId(providerId);
     try {
-      await base44.functions.invoke('verifyProviderEmail', { provider_id: providerId });
+      await invokeOrThrow('verifyProviderEmail', { provider_id: providerId });
       toast.success('Email re-verified successfully');
       onRefresh?.();
-    } catch (_e) {
-      toast.error('Failed to re-verify email');
+    } catch (e) {
+      toastFunctionError(e, 'Failed to re-verify email');
     } finally {
       setVerifyingId(null);
     }
@@ -34,14 +34,14 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const handleReverifyGroup = async (status) => {
     setIsVerifying(true);
     try {
-      const _resp = await base44.functions.invoke('bulkVerifyEmails', {
+      await invokeOrThrow('bulkVerifyEmails', {
         mode: status, // 'risky' or 'invalid'
         batch_size: 20
       });
       toast.success(`Re-verification started for ${status} emails`);
       onRefresh?.();
-    } catch (_e) {
-      toast.error(`Failed to re-verify ${status} emails`);
+    } catch (e) {
+      toastFunctionError(e, `Failed to re-verify ${status} emails`);
     } finally {
       setIsVerifying(false);
     }

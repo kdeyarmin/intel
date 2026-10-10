@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { toast } from 'sonner';
 import { Loader2, Settings2, ShieldCheck, ShieldAlert, Key, Activity, Clock, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,15 +27,11 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
   const handleTestConnection = async () => {
     setIsTesting(true);
     try {
-      const response = await base44.functions.invoke('testCMSApiConnector', { connector_id: connector.id });
-      if (response.data?.success) {
-        onUpdate(response.data.connector);
-        toast.success(response.data.connector.test_message || 'Connection test successful');
-      } else {
-        toast.error(response.data?.error || 'Test failed');
-      }
+      const data = await invokeOrThrow('testCMSApiConnector', { connector_id: connector.id });
+      if (data.connector) onUpdate(data.connector);
+      toast.success(data.connector?.test_message || data.message || 'Connection test successful');
     } catch (error) {
-      toast.error('Test error: ' + error.message);
+      toastFunctionError(error, 'Connection test failed');
     } finally {
       setIsTesting(false);
     }

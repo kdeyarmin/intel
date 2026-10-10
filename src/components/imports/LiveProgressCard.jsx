@@ -7,6 +7,7 @@ import {
   FileText, Activity
 } from 'lucide-react';
 import ResumeImportButton from './ResumeImportButton';
+import BatchActionButtons from './BatchActionButtons';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
@@ -80,7 +81,7 @@ function RowProgressBar({ label, current, total, color }) {
   );
 }
 
-export default function LiveProgressCard({ activeBatches }) {
+export default function LiveProgressCard({ activeBatches, onAction }) {
   const [_elapsedTick, setElapsedTick] = useState(0);
 
   // Tick every second for elapsed time
@@ -135,6 +136,8 @@ export default function LiveProgressCard({ activeBatches }) {
                       </span>
                     )}
                     <span className="font-semibold text-slate-300">{progress}%</span>
+                    {/* Paused jobs get Resume below; running ones can be paused or cancelled here. */}
+                    {!isPaused && <BatchActionButtons batch={batch} onAction={onAction} />}
                   </div>
                 </div>
 
@@ -171,7 +174,7 @@ export default function LiveProgressCard({ activeBatches }) {
                 {/* Resume button for paused */}
                 {isPaused && (
                   <div className="flex items-center gap-2 pt-1">
-                    <ResumeImportButton batch={batch} onResumed={() => {}} />
+                    <ResumeImportButton batch={batch} onResumed={onAction} />
                     {batch.cancel_reason && (
                       <span className="text-[10px] text-amber-400/70 truncate">{batch.cancel_reason}</span>
                     )}

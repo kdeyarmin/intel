@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, Zap, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailVerificationResultRow from './EmailVerificationResultRow';
@@ -32,18 +32,17 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
     setProgress({ processed: 0, total: batchSize, status: 'running' });
 
     try {
-      const resp = await base44.functions.invoke('bulkVerifyEmails', {
+      const data = await invokeOrThrow('bulkVerifyEmails', {
         mode,
         batch_size: batchSize,
       });
-      const data = resp.data;
       setResults(data);
       setProgress({ processed: data.batch_processed, total: data.total_candidates, status: 'done' });
       const smtpChecked = (data.results || []).filter(r => r.smtp?.reachable != null).length;
       toast.success(`Verified ${data.verified} emails (${data.remaining} remaining)${smtpChecked > 0 ? ` — ${smtpChecked} SMTP-probed` : ''}`);
       onRefresh?.();
     } catch (err) {
-      toast.error('Verification failed: ' + (err.response?.data?.error || err.message));
+      toastFunctionError(err, 'Verification failed');
       setProgress(null);
     } finally {
       setIsRunning(false);

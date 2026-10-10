@@ -1,0 +1,59 @@
+import { base44 } from '@/api/base44Client';
+
+export const MAX_MEMBERS_PER_SAVE = 5000;
+const CHUNK_SIZE = 500;
+
+function uniqueNpis(npis) {
+  return [...new Set((npis || []).filter(Boolean).map(String))];
+}
+
+/**
+ * Add providers to a lead list, creating the list first when `listId` is not
+ * given. Skips NPIs already on the list and keeps `member_count` equal to the
+ * number of members actually stored.
+ *
+ * @returns {Promise<{ list: object, added: number, skipped: number, truncated: number }>}
+ */
+export async function saveProvidersToLeadList({
+  listId,
+  name,
+  description = '',
+  filterCriteria = null,
+  npis,
+}) {
+  const unique = uniqueNpis(npis);
+  const capped = unique.slice(0, MAX_MEMBERS_PER_SAVE);
+  const truncated = unique.length - capped.length;
+
+  let list;
+  let existing = new Set();
+  if (listId) {
+    const [found] = await base44.entities.LeadList.filter({ id: Number(listId) }, undefined, 1);
+    if (!found) throw new Error('That lead list no longer exists.');
+    list = found;
+    const members = await base44.entities.LeadListMember.filter({ list_id: list.id }, '-created_date', 10000);
+    existing = new Set(members.map((m) => String(m.npi)));
+  } else {
+    if (!name?.trim()) throw new Error('Please name the list.');
+    list = await base44.entities.LeadList.create({
+      name: name.trim(),
+      description,
+      filter_criteria: filterCriteria,
+      member_count: 0,
+    });
+  }
+
+  const toAdd = capped.filter((npi) => !existing.has(npi));
+  for (let i = 0; i < toAdd.length; i += CHUNK_SIZE) {
+    await base44.entities.LeadListMember.bulkCreate(
+      toAdd.slice(i, i + CHUNK_SIZE).map((npi) => ({ list_id: list.id, npi, status: 'New' })),
+    );
+  }
+
+  const memberCount = existing.size + toAdd.length;
+  if (memberCount !== list.member_count) {
+    list = await base44.entities.LeadList.update(list.id, { member_count: memberCount });
+  }
+
+  return { list, added: toAdd.length, skipped: capped.length - toAdd.length, truncated };
+}

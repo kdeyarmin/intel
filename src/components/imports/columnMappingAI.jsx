@@ -125,7 +125,7 @@ export async function saveLearnedMapping(importType, targetField, csvColumn) {
       target_field: targetField,
     });
 
-    const matchingRule = existing.find(r => r.csv_column === csvColumn);
+    const matchingRule = existing.find(r => r.source_column === csvColumn);
     if (matchingRule) {
       // Increment usage count
       await base44.entities.ColumnMappingRule.update(matchingRule.id, {
@@ -138,7 +138,7 @@ export async function saveLearnedMapping(importType, targetField, csvColumn) {
       await base44.entities.ColumnMappingRule.create({
         import_type: importType,
         target_field: targetField,
-        csv_column: csvColumn,
+        source_column: csvColumn,
         times_used: 1,
         last_used_at: new Date().toISOString(),
         source: 'user_correction',
@@ -242,11 +242,11 @@ export async function generateAIMapping(csvColumns, requiredColumns, importType,
   for (const target of allTargets) {
     const key = `${importType}::${target}`;
     const rule = learned[key];
-    if (rule && csvColumns.includes(rule.csv_column) && !usedCsvCols.has(rule.csv_column)) {
-      mapping[target] = rule.csv_column;
+    if (rule && csvColumns.includes(rule.source_column) && !usedCsvCols.has(rule.source_column)) {
+      mapping[target] = rule.source_column;
       confidence[target] = 'learned';
       scores[target] = 99;
-      usedCsvCols.add(rule.csv_column);
+      usedCsvCols.add(rule.source_column);
     }
   }
 

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
   Activity, CheckCircle2, XCircle, Clock, AlertCircle,
   FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
-  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, HeartPulse, CalendarClock
+  Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, HeartPulse, CalendarClock, StopCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -290,8 +290,11 @@ export default function ImportMonitoring() {
       filtered = Array.from(seen.values());
     }
 
-    // Only show completed/failed jobs (active ones are in Live Progress)
-    filtered = filtered.filter(b => b.status === 'completed' || b.status === 'failed' || b.status === 'cancelled');
+    // With no status filter, list finished jobs only (active ones are in Live
+    // Progress). An explicit filter (e.g. "active" from a KPI card) is honoured.
+    if (statusFilter === 'all') {
+      filtered = filtered.filter(b => b.status === 'completed' || b.status === 'failed' || b.status === 'cancelled');
+    }
 
     // Apply sorting
     filtered.sort((a, b) => {
@@ -563,7 +566,7 @@ export default function ImportMonitoring() {
       <MaintenanceHealthPanel />
 
       {/* Live Progress for Active Jobs */}
-      <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} />
+      <LiveProgressCard activeBatches={[...runningBatches, ...pausedBatches]} onAction={refreshBatches} />
 
       {/* Success vs Failure Charts */}
       <SuccessVsFailureChart batches={batches} />
@@ -595,7 +598,7 @@ export default function ImportMonitoring() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated in over 15 minutes. They may resume automatically after a server restart, or you can manually mark them as failed.
+              These jobs haven't updated in over 15 minutes. They may resume on their own after a server restart. Cancel stops a job for good; Mark Failed lets automatic retry pick it up.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (
@@ -605,23 +608,45 @@ export default function ImportMonitoring() {
                     <span className="text-sm font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</span>
                     <span className="text-xs text-slate-500">{batch.file_name}</span>
                   </div>
-                  <Button
-                    size="sm" variant="outline"
-                    className="text-red-400 border-red-500/30 hover:bg-red-900/10"
-                    onClick={async () => {
-                      try {
-                        await base44.entities.ImportBatch.update(batch.id, {
-                          status: 'failed',
-                          error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
-                        });
-                        refreshBatches();
-                      } catch (err) {
-                        console.error('Failed to mark batch as failed:', err);
-                      }
-                    }}
-                  >
-                    <XCircle className="w-3 h-3 mr-1" /> Mark Failed
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm" variant="outline"
+                      className="text-slate-300 border-slate-600 hover:bg-slate-800"
+                      title="Stop this job; it can be re-run later"
+                      onClick={async () => {
+                        try {
+                          await base44.entities.ImportBatch.update(batch.id, {
+                            status: 'cancelled',
+                            cancelled_at: new Date().toISOString(),
+                            cancel_reason: 'Cancelled from Import Monitoring — job was stalled',
+                          });
+                          refreshBatches();
+                        } catch (err) {
+                          toast.error(`Could not cancel the job: ${err.message}`);
+                        }
+                      }}
+                    >
+                      <StopCircle className="w-3 h-3 mr-1" /> Cancel
+                    </Button>
+                    <Button
+                      size="sm" variant="outline"
+                      className="text-red-400 border-red-500/30 hover:bg-red-900/10"
+                      title="Record this job as failed so auto-retry can pick it up"
+                      onClick={async () => {
+                        try {
+                          await base44.entities.ImportBatch.update(batch.id, {
+                            status: 'failed',
+                            error_samples: [{ row: 0, message: 'Manually marked as failed — job was stalled' }]
+                          });
+                          refreshBatches();
+                        } catch (err) {
+                          toast.error(`Could not mark the job as failed: ${err.message}`);
+                        }
+                      }}
+                    >
+                      <XCircle className="w-3 h-3 mr-1" /> Mark Failed
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

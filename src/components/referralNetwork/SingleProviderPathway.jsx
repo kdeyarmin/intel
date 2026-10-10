@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,11 @@ export default function SingleProviderPathway() {
 
   const { data: analyses = [], isLoading: loadingAnalyses } = useQuery({
     queryKey: ['referralAnalyses'],
-    queryFn: () => base44.entities.ReferralPathwayAnalysis.list('-analysis_date', 50),
+    queryFn: async () => {
+      const rows = await base44.entities.ReferralPathwayAnalysis.list('-created_date', 50);
+      // Analysis details are stored in the analysis_data jsonb column.
+      return rows.map(r => ({ ...(r.analysis_data || {}), ...r }));
+    },
   });
 
   const { data: preferredAgencies = [] } = useQuery({
@@ -42,16 +47,15 @@ export default function SingleProviderPathway() {
 
   const analyzeMutation = useMutation({
     mutationFn: async (npi) => {
-      const response = await base44.functions.invoke('analyzeReferralPathways', {
+      return invokeOrThrow('analyzeReferralPathways', {
         provider_npi: npi,
         force_refresh: true
       });
-      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referralAnalyses'] });
     },
-    onError: (err) => alert(`Analysis failed: ${err.message}`),
+    // Errors are shown by the global mutation error toast.
   });
 
   const handleAnalyze = async () => {

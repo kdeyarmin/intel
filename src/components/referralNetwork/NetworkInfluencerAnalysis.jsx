@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,12 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const response = await base44.functions.invoke('analyzeProviderNetwork', {
+      const result = await invokeOrThrow('analyzeProviderNetwork', {
         analysis_type: 'influencers'
       });
-      setData(response.data.analysis);
+      setData(result.analysis);
     } catch (error) {
-      console.error('Failed to analyze network:', error);
+      toastFunctionError(error, 'Failed to analyze network');
     } finally {
       setLoading(false);
     }

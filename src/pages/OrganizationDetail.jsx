@@ -258,9 +258,9 @@ export default function OrganizationDetail() {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {taxonomies.map((t) => (
-                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.primary_flag ? 'bg-teal-900/15 border-teal-500/30 text-teal-400' : ''}>
+                <Badge key={t.id || t.taxonomy_code} variant="outline" className={t.is_primary ? 'bg-teal-900/15 border-teal-500/30 text-teal-400' : ''}>
                   {t.taxonomy_description || t.taxonomy_code}
-                  {t.primary_flag && ' (Primary)'}
+                  {t.is_primary && ' (Primary)'}
                 </Badge>
               ))}
             </div>

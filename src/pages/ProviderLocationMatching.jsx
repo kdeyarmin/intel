@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow } from '@/api/functionResult';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,8 @@ export default function ProviderLocationMatching() {
   });
 
   const runMatchingMutation = useMutation({
-    mutationFn: () => base44.functions.invoke('matchProvidersToLocations', {}),
+    // Failures (including "not available yet") surface via the global mutation toast.
+    mutationFn: () => invokeOrThrow('matchProvidersToLocations', {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
     },

@@ -71,10 +71,10 @@ export default function BatchProviderUpdater() {
           if (d.hospital_affiliations?.length > 0) {
             const existing = await base44.entities.ProviderAffiliation.filter({ npi: r.npi }, '-created_date', 200);
             for (const aff of d.hospital_affiliations) {
-              const alreadyExists = existing.some(e => (e.affiliation_name || '').toLowerCase() === aff.toLowerCase());
+              const alreadyExists = existing.some(e => (e.organization_name || '').toLowerCase() === aff.toLowerCase());
               if (!alreadyExists) {
                 await base44.entities.ProviderAffiliation.create({
-                  npi: r.npi, affiliation_name: aff, affiliation_type: 'hospital',
+                  npi: r.npi, organization_name: aff, affiliation_type: 'hospital',
                   source: 'enrichment', status: 'confirmed', is_active: true,
                   confidence: r.confidence,
                 });

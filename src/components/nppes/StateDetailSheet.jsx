@@ -30,7 +30,7 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
     queryKey: ['stateErrors', batch?.id],
     queryFn: async () => {
       if (!batch?.id) return [];
-      return await base44.entities.ErrorReport.filter({ source: batch.id }, '-timestamp', 50);
+      return await base44.entities.ErrorReport.filter({ batch_id: batch.id }, '-created_date', 50);
     },
     enabled: !!batch?.id && isOpen,
   });
@@ -169,12 +169,12 @@ export default function StateDetailSheet({ stateCode, isOpen, onClose }) {
                         {errors.map((err) => (
                           <div key={err.id} className="bg-slate-800/50 p-2.5 rounded border border-slate-700/50 space-y-1">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="font-medium text-xs text-red-400">{err.title || 'Error'}</div>
+                              <div className="font-medium text-xs text-red-400">{err.title || err.error_type || 'Error'}</div>
                               <div className="text-[10px] text-slate-500 whitespace-nowrap">
-                                {new Date(err.timestamp).toLocaleTimeString()}
+                                {new Date(err.created_date).toLocaleTimeString()}
                               </div>
                             </div>
-                            <p className="text-[11px] text-slate-400 line-clamp-2">{err.description}</p>
+                            <p className="text-[11px] text-slate-400 line-clamp-2">{err.description || err.message}</p>
                           </div>
                         ))}
                       </div>

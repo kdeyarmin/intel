@@ -12,8 +12,11 @@ function notifyError(error, { kind }) {
         if (error?.status === 401) return;
         const status = error?.status ?? error?.response?.status;
         const rawMessage = error?.message;
+        // FunctionErrors (src/api/functionResult.js) carry a user-facing message
+        // from the backend function itself.
+        const isFunctionError = error?.name === 'FunctionError';
         const message =
-                status && status >= 400 && status < 500
+                isFunctionError || (status && status >= 400 && status < 500)
                         ? (rawMessage || 'Request failed.')
                         : 'Something went wrong. Please try again.';
         // Queries refetch/poll, so suppress repeats of the same message for a
@@ -24,7 +27,8 @@ function notifyError(error, { kind }) {
         const key = `${kind}:${message}`;
         if (now - (lastShown.get(key) || 0) < windowMs) return;
         lastShown.set(key, now);
-        toast.error(message);
+        if (error?.notConfigured) toast.info(message);
+        else toast.error(message);
 }
 
 export const queryClientInstance = new QueryClient({

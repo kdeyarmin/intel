@@ -156,14 +156,12 @@ Return up to 10 results, ordered by relevance.`,
         organization_name: isOrg ? match.name : '',
         credential: match.credential || '',
         status: 'Active',
-        needs_nppes_enrichment: true,
       });
 
       if (match.city || match.state) {
         await base44.entities.ProviderLocation.create({
           npi: match.npi,
           location_type: 'Practice',
-          is_primary: true,
           city: match.city || '',
           state: match.state || '',
         });
@@ -173,7 +171,7 @@ Return up to 10 results, ordered by relevance.`,
         await base44.entities.ProviderTaxonomy.create({
           npi: match.npi,
           taxonomy_description: match.specialty,
-          primary_flag: true,
+          is_primary: true,
         });
       }
 
