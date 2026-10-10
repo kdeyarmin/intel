@@ -286,7 +286,7 @@ export const base44 = {
   // signed-in user; answers stream back as server-sent events.
   assistant: {
     status: () => request("/assistant/status"),
-    listConversations: () => request("/assistant/conversations"),
+    listConversations: (before) => request(`/assistant/conversations${before ? `?before=${encodeURIComponent(before)}` : ""}`),
     createConversation: (title) => request("/assistant/conversations", { method: "POST", body: JSON.stringify({ title }) }),
     getConversation: (id) => request(`/assistant/conversations/${id}`),
     renameConversation: (id, title) => request(`/assistant/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),

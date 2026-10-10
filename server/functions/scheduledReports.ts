@@ -14,6 +14,7 @@ import {
   buildReportEmail,
   computeNextReportRun,
   humanize,
+  MAX_REPORT_RECIPIENTS,
   partitionRecipients,
   REPORT_DATASETS,
   reportFields,
@@ -117,6 +118,7 @@ async function buildReport(row: any) {
 // Why a recipient was skipped: reports go to active app users, plus any
 // address on a REPORT_RECIPIENT_DOMAINS domain.
 const BLOCKED_REASON = () => (process.env.REPORT_RECIPIENT_DOMAINS ? "not active app users or on an approved domain" : "not active app users");
+const OVERFLOW_REASON = `a report goes to at most ${MAX_REPORT_RECIPIENTS} recipients`;
 
 async function allowedRecipients(recipients: unknown) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase());
@@ -141,7 +143,7 @@ async function runAndSend(row: any) {
   const now = new Date();
   try {
     const report = await buildReport(row);
-    const { allowed, blocked } = await allowedRecipients(row.recipients);
+    const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
     if (!allowed.length) {
       throw new HttpError(400, blocked.length
         ? `None of the recipients can receive reports (${BLOCKED_REASON()}): ${blocked.join(", ")}.`
@@ -167,6 +169,7 @@ async function runAndSend(row: any) {
     }
     const parts = [`Sent to ${sent} of ${allowed.length} recipient${allowed.length === 1 ? "" : "s"}`, `${report.rows.length} rows from ${report.sourceRowCount} records`];
     if (blocked.length) parts.push(`skipped ${blocked.join(", ")} (${BLOCKED_REASON()})`);
+    if (overflow.length) parts.push(`skipped ${overflow.join(", ")} (${OVERFLOW_REASON})`);
     if (failures.length) parts.push(`failed: ${failures.join("; ")}`);
     const status = sent > 0 ? "success" : "failed";
     await saveRunState(row.id, {
@@ -176,7 +179,7 @@ async function runAndSend(row: any) {
       next_run_at: computeNextReportRun(report.cfg, now).toISOString(),
       schedule_signature: scheduleSignature(report.cfg),
     });
-    return { status, emails_sent: sent, skipped_recipients: blocked, failures, rows: report.rows.length };
+    return { status, emails_sent: sent, skipped_recipients: blocked, overflow_recipients: overflow, failures, rows: report.rows.length };
   } catch (e: any) {
     const cfg = settings(row);
     await saveRunState(row.id, {
@@ -230,7 +233,9 @@ export async function handleRunDueScheduledReports() {
   for (const row of rows) {
     const cfg = settings(row);
     const signatureChanged = cfg.schedule_signature && cfg.schedule_signature !== scheduleSignature(cfg);
-    const anchor = new Date(cfg.last_run_at || row.created_date || now);
+    // An edited timing starts counting from now: counting from the last run
+    // could land on a time that has already passed and send straight away.
+    const anchor = signatureChanged ? now : new Date(cfg.last_run_at || row.created_date || now);
     const recompute = !cfg.next_run_at || signatureChanged;
     const next = recompute ? computeNextReportRun(cfg, anchor) : new Date(cfg.next_run_at);
     if (Number.isNaN(next.getTime())) continue;
@@ -275,7 +280,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
   if (action === "preview") {
     const row = await loadSchedule(payload?.report_id);
     const report = await buildReport(row);
-    const { allowed, blocked } = await allowedRecipients(row.recipients);
+    const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
     return {
       success: true,
       preview: {
@@ -288,6 +293,8 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
         recipients: allowed,
         blocked_recipients: blocked,
         blocked_reason: BLOCKED_REASON(),
+        overflow_recipients: overflow,
+        overflow_reason: OVERFLOW_REASON,
         next_run_at: computeNextReportRun(report.cfg, new Date()).toISOString(),
       },
     };
@@ -300,11 +307,11 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
     if (r.emails_sent === 0) {
       return { success: false, error: `The report ran but no email was delivered. ${r.failures.join("; ")}`.trim() };
     }
-    return {
-      success: true,
-      emails_sent: r.emails_sent,
-      message: r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (${BLOCKED_REASON()}).` : undefined,
-    };
+    const skipped = [
+      r.skipped_recipients.length ? `Skipped ${r.skipped_recipients.join(", ")} (${BLOCKED_REASON()}).` : "",
+      r.overflow_recipients.length ? `Skipped ${r.overflow_recipients.join(", ")} (${OVERFLOW_REASON}).` : "",
+    ].filter(Boolean).join(" ");
+    return { success: true, emails_sent: r.emails_sent, message: skipped || undefined };
   }
   throw new HttpError(400, `Unknown action '${action}'.`);
 }

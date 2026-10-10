@@ -228,6 +228,17 @@ describe("email verification", () => {
     expect((await checkDomain("slow.org", slow, 20)).error).toMatch(/timed out/);
   });
 
+  it("doesn't call a domain address-less when one address lookup timed out", async () => {
+    const halfSlow = resolver({ resolve4: () => new Promise(() => {}) }); // AAAA answers ENODATA
+    const check = await checkDomain("half.org", halfSlow, 20);
+    expect(check.error).toBeTruthy();
+    expect(check.hasAddress).toBeNull();
+    expect(scoreEmail("ann@half.org", check).status).toBe("unknown");
+    // ...but one family answering with an address is enough.
+    const v6only = resolver({ resolve4: () => new Promise(() => {}), resolve6: async () => ["2001:db8::1"] });
+    expect(await checkDomain("v6.org", v6only, 20)).toMatchObject({ hasAddress: true });
+  });
+
   const mxOk: DomainCheck = { domain: "clinic.org", hasMX: true, mxCount: 1, mxHosts: ["mx"], nullMx: false, hasAddress: null, nxdomain: false };
 
   it("scores a normal address as valid with medium confidence", () => {

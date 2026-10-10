@@ -393,8 +393,10 @@ export default function UserManagement() {
         <AccountActivity />
       </div>
 
-      <LinkDialog result={linkResult} onClose={() => setLinkResult(null)} />
-      <DisableDialog user={disabling} busy={busy} onCancel={() => setDisabling(null)} onConfirm={disable} />
+      {/* Keyed by what they show, so a new link or a different user always
+          starts fresh ("Copy", empty reason) however the last one closed. */}
+      <LinkDialog key={linkResult?.link ?? 'none'} result={linkResult} onClose={() => setLinkResult(null)} />
+      <DisableDialog key={disabling?.id ?? 'none'} user={disabling} busy={busy} onCancel={() => setDisabling(null)} onConfirm={disable} />
     </div>
   );
 }
@@ -418,6 +420,7 @@ const ACTIVITY_LABELS = {
   revoke_sessions: 'signed out everywhere (admin)',
   logout_all: 'signed out everywhere',
   delete: 'deleted',
+  recover_admin: 'restored admin access for',
 };
 
 function AccountActivity() {

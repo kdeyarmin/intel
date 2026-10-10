@@ -28,6 +28,8 @@ function parseId(raw: string): number | null {
   return /^\d{1,9}$/.test(raw) ? Number(raw) : null;
 }
 
+const CONVERSATION_PAGE = 50;
+
 const NOT_CONFIGURED = {
   code: "assistant_not_configured",
   message: "The AI Assistant isn't set up on this server. An admin needs to set ANTHROPIC_API_KEY.",
@@ -57,8 +59,17 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     });
   });
 
+  // A page at a time, newest first; next_cursor fetches the older ones.
   router.get("/conversations", async (req: AuthRequest, res: Response) => {
-    res.json({ conversations: await store.listConversations(req.user!.id, 100) });
+    const raw = typeof req.query.before === "string" ? req.query.before : "";
+    const m = raw.match(/^(.+)~(\d{1,9})$/);
+    const before = m && !Number.isNaN(Date.parse(m[1])) ? { updatedAt: m[1], id: Number(m[2]) } : null;
+    if (raw && !before) return res.status(400).json({ message: "Invalid cursor." });
+    const rows = await store.listConversations(req.user!.id, CONVERSATION_PAGE + 1, before);
+    const page = rows.slice(0, CONVERSATION_PAGE);
+    const last = page[page.length - 1];
+    const lastAt = last ? new Date(last.updated_at as any).toISOString() : null;
+    res.json({ conversations: page, next_cursor: rows.length > CONVERSATION_PAGE && last ? `${lastAt}~${last.id}` : null });
   });
 
   router.post("/conversations", async (req: AuthRequest, res: Response) => {
@@ -112,7 +123,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
       return res.status(quota.status).json({ code: "assistant_quota", message: quota.message });
     }
     const turn = await store.startTurn(conv.id, ASSISTANT_CONFIG.model, ASSISTANT_CONFIG.staleTurnMs);
-    if (!turn) return res.status(409).json({ code: "turn_running", message: "The assistant is still answering in this conversation." });
+    if (!turn) return res.status(409).json({ code: "turn_running", message: "The assistant is still answering one of your questions. Wait for it to finish, then ask again." });
 
     const controller = new AbortController();
     const sse = openSse(res, ASSISTANT_CONFIG.heartbeatMs);
@@ -144,6 +155,10 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
         toolContext: { userId: user.id, conversationId: conv.id, turnId: turn.id, deps: deps.toolDeps },
         signal: controller.signal,
         onUsage: (u) => store.addUsage(user.id, usageUnits(u)),
+        // Each further model call re-checks the daily budget.
+        beforeRequest: async () => ((await store.usageToday(user.id)) >= ASSISTANT_CONFIG.dailyTokenBudget
+          ? "You've reached today's assistant usage limit, so this answer stopped early. It resets at midnight UTC."
+          : null),
       });
     } catch (e: any) {
       console.error("[assistant] turn failed:", e?.message || e);

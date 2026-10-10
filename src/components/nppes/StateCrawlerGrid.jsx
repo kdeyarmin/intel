@@ -47,6 +47,7 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
             onClick={() => onStateClick && onStateClick(st)}
             className={`flex items-center justify-center gap-0.5 px-1.5 py-1 rounded border text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-teal-500 ${statusStyles[stStatus]}`}
             title={`${st}: ${stStatus} (Click for details)`}
+            aria-label={`${st}: ${stStatus}`}
           >
             {statusIcons[stStatus]}
             {st}

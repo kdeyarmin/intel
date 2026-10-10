@@ -9,6 +9,15 @@ import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 
+// What screen readers hear for this row's controls: the provider's name, else the NPI.
+export function leadName(provider) {
+  if (!provider) return 'this provider';
+  const name = provider.entity_type === 'Individual'
+    ? [provider.first_name, provider.last_name].filter(Boolean).join(' ')
+    : provider.organization_name;
+  return name || (provider.npi ? `NPI ${provider.npi}` : 'this provider');
+}
+
 const _statusColors = {
   'New': 'bg-blue-900/30 text-blue-400',
   'Contacted': 'bg-yellow-900/30 text-yellow-400',
@@ -80,7 +89,9 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sortedLeads.map(lead => (
+        {sortedLeads.map(lead => {
+          const name = leadName(lead.provider);
+          return (
           <TableRow key={lead.member.id}>
             <TableCell>
               <div className="text-lg font-bold text-teal-400">
@@ -108,7 +119,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                 value={lead.member.status || 'New'}
                 onValueChange={(value) => onUpdateStatus(lead.member.id, value)}
               >
-                <SelectTrigger aria-label={`Status for ${lead.provider?.entity_type === 'Individual' ? `${lead.provider.first_name} ${lead.provider.last_name}` : lead.provider?.organization_name || lead.provider?.npi}`} className="w-32">
+                <SelectTrigger aria-label={`Status for ${name}`} className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -122,13 +133,13 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
             <TableCell>
               <div className="flex gap-1.5">
                 <Button asChild size="sm" variant="outline">
-                  <Link to={createPageUrl('ProviderDetail') + `?npi=${lead.provider.npi}`} aria-label="View provider">
+                  <Link to={createPageUrl('ProviderDetail') + `?npi=${lead.provider.npi}`} aria-label={`View ${name}`}>
                     <Eye className="w-4 h-4" aria-hidden="true" />
                   </Link>
                 </Button>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(lead)} aria-label="Edit notes">
+                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(lead)} aria-label={`Edit notes for ${name}`}>
                       <Edit className="w-4 h-4" aria-hidden="true" />
                     </Button>
                   </DialogTrigger>
@@ -137,7 +148,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                       <DialogTitle>Notes</DialogTitle>
                     </DialogHeader>
                     <Textarea
-                      aria-label="Lead notes"
+                      aria-label={`Notes for ${name}`}
                       placeholder="Add notes about this lead..."
                       defaultValue={lead.member.notes || ''}
                       rows={5}
@@ -153,7 +164,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                     size="sm"
                     variant="outline"
                     className="text-red-400 hover:text-red-300 hover:bg-red-900/10"
-                    aria-label="Remove from list"
+                    aria-label={`Remove ${name} from list`}
                     onClick={async () => {
                       if (await confirm({ title: 'Remove this provider from the list?', confirmLabel: 'Remove', destructive: true })) {
                         onRemove(lead.member.id);
@@ -166,7 +177,8 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
               </div>
             </TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
       </Table>
     </div>

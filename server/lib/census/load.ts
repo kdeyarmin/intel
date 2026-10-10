@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import { COUNTY_COLUMNS, fromCsv, ZCTA_COLUMNS, ZCTA_COUNTY_COLUMNS } from "./parse";
+import { resetGeoCache } from "../geo";
 
 export const CENSUS_DIR = path.resolve(import.meta.dirname, "..", "..", "data", "census");
 const META_KEY = "census";
@@ -119,7 +120,9 @@ export async function autoloadCensusGeography(pool: any, log: Pick<Console, "log
       log.warn("[census] geo tables don't exist yet; run npm run db:migrate");
       return;
     }
-    await loadCensusGeography(pool, { log });
+    const result = await loadCensusGeography(pool, { log });
+    // Requests served while this ran may have cached the old data.
+    if (result.status === "loaded") resetGeoCache();
   } catch (e: any) {
     log.warn("[census] Couldn't load Census geography:", e?.message || e);
   }

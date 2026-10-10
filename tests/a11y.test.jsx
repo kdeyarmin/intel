@@ -4,6 +4,7 @@
  * keyboard behaviour of the sidebar and global search. Colour contrast is
  * left out: jsdom doesn't compute styles.
  */
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -52,6 +53,9 @@ import Login from '../src/pages/Login';
 import UserManagement from '../src/components/admin/UserManagement';
 import DashboardBuilder from '../src/components/advancedAnalytics/DashboardBuilder';
 import CriticalFailureAlerts from '../src/components/imports/CriticalFailureAlerts';
+import TypeAheadSearch from '../src/components/search/TypeAheadSearch';
+import LeadListTable from '../src/components/leadlists/LeadListTable';
+import StateCrawlerGrid from '../src/components/nppes/StateCrawlerGrid';
 
 function wrap(ui, path = '/Dashboard') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -191,6 +195,86 @@ describe('global search', () => {
     expect(document.getElementById(active)).toHaveAttribute('aria-selected', 'true');
     expect(box).toHaveAttribute('aria-expanded', 'true');
     expect(await violations()).toEqual([]);
+  });
+});
+
+describe('type-ahead search', () => {
+  function TypeAhead({ onSelect }) {
+    const [value, setValue] = React.useState('');
+    return (
+      <TypeAheadSearch
+        value={value}
+        onChange={setValue}
+        ariaLabel="Search providers"
+        onSuggestionSelect={onSelect}
+        suggestions={[
+          { type: 'provider', label: 'Ann Chen', text: 'Ann Chen' },
+          { type: 'provider', label: 'Bo Chen', text: 'Bo Chen' },
+        ]}
+      />
+    );
+  }
+
+  it('is a combobox whose highlighted suggestion is announced', async () => {
+    const onSelect = vi.fn();
+    const { container } = render(<main><TypeAhead onSelect={onSelect} /></main>);
+    const box = screen.getByRole('combobox', { name: 'Search providers' });
+    expect(box).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.change(box, { target: { value: 'ch' } });
+    const list = screen.getByRole('listbox', { name: 'Search providers suggestions' });
+    expect(box).toHaveAttribute('aria-expanded', 'true');
+    expect(box).toHaveAttribute('aria-controls', list.id);
+    expect(box).not.toHaveAttribute('aria-activedescendant');
+    fireEvent.keyDown(box, { key: 'ArrowDown' });
+    fireEvent.keyDown(box, { key: 'ArrowDown' });
+    const active = document.getElementById(box.getAttribute('aria-activedescendant'));
+    expect(active).toHaveAttribute('role', 'option');
+    expect(active).toHaveAttribute('aria-selected', 'true');
+    expect(active).toHaveTextContent('Bo Chen');
+    expect(await violations(container)).toEqual([]);
+    fireEvent.keyDown(box, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ label: 'Bo Chen' }));
+    expect(box).toHaveAttribute('aria-expanded', 'false');
+    expect(box).not.toHaveAttribute('aria-activedescendant');
+  });
+
+  it('gives each instance its own listbox', () => {
+    render(<main><TypeAhead /><TypeAhead /></main>);
+    const boxes = screen.getAllByRole('combobox');
+    for (const box of boxes) fireEvent.change(box, { target: { value: 'ch' } });
+    const ids = screen.getAllByRole('listbox').map((l) => l.id);
+    expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe('row controls name their row', () => {
+  it('lead list actions say which provider they act on', async () => {
+    const leads = [
+      { member: { id: 1, status: 'New' }, provider: { npi: '1000000001', entity_type: 'Individual', first_name: 'Ann', last_name: 'Chen' } },
+      { member: { id: 2, status: 'New' }, provider: { npi: '1000000002', entity_type: 'Organization', organization_name: 'Valley Clinic' } },
+      { member: { id: 3, status: 'New' }, provider: { npi: '1000000003', entity_type: 'Organization' } },
+    ];
+    const { container } = wrap(<main><LeadListTable leads={leads} onUpdateStatus={() => {}} onUpdateNotes={() => {}} onRemove={() => {}} /></main>);
+    expect(screen.getByRole('link', { name: 'View Ann Chen' })).toHaveAttribute('href', expect.stringContaining('npi=1000000001'));
+    expect(screen.getByRole('link', { name: 'View Valley Clinic' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View NPI 1000000003' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit notes for Ann Chen' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Valley Clinic from list' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Status for NPI 1000000003' })).toBeInTheDocument();
+    expect(await violations(container)).toEqual([]);
+  });
+
+  it('state crawler buttons include the state\'s status', async () => {
+    const { container } = render(
+      <main>
+        <StateCrawlerGrid status={{ completed_states: ['AL'], failed_states: ['AK'] }} currentState="AZ" running onStateClick={() => {}} />
+      </main>,
+    );
+    expect(screen.getByRole('button', { name: 'AL: completed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AK: failed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AZ: active' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'WY: pending' })).toBeInTheDocument();
+    expect(await violations(container)).toEqual([]);
   });
 });
 

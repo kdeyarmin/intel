@@ -17,8 +17,16 @@ export function memoryAssistantStore(): AssistantStore & {
 
   const store = {
     conversations, turns, messages, actions, usage,
-    async listConversations(userId: number, limit: number) {
-      return conversations.filter((c) => c.user_id === userId).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)) || b.id - a.id).slice(0, limit).map(clone);
+    async listConversations(userId: number, limit: number, before?: { updatedAt: string; id: number } | null) {
+      const key = (c: ConversationRow) => [new Date(c.updated_at as any).getTime(), c.id] as const;
+      const older = (c: ConversationRow) => {
+        if (!before) return true;
+        const [t, id] = key(c);
+        const bt = new Date(before.updatedAt).getTime();
+        return t < bt || (t === bt && id < before.id);
+      };
+      return conversations.filter((c) => c.user_id === userId && older(c))
+        .sort((a, b) => key(b)[0] - key(a)[0] || b.id - a.id).slice(0, limit).map(clone);
     },
     async createConversation(userId: number, title?: string | null) {
       const row = { id: ids.conv++, user_id: userId, title: title || null, created_at: nowIso(), updated_at: nowIso() };
@@ -51,8 +59,11 @@ export function memoryAssistantStore(): AssistantStore & {
       };
     },
     async startTurn(conversationId: number, model: string) {
-      if (!conversations.some((c) => c.id === conversationId)) return null;
-      if (turns.some((t) => t.conversation_id === conversationId && t.status === "running")) return null;
+      const conv = conversations.find((c) => c.id === conversationId);
+      if (!conv) return null;
+      // One running turn per user, across their conversations.
+      const mine = new Set(conversations.filter((c) => c.user_id === conv.user_id).map((c) => c.id));
+      if (turns.some((t) => mine.has(t.conversation_id) && t.status === "running")) return null;
       const row: TurnRow = { id: ids.turn++, conversation_id: conversationId, status: "running", error: null, model, usage: null, created_at: nowIso(), finished_at: null };
       turns.push(row);
       return clone(row);

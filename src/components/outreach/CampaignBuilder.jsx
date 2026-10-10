@@ -53,7 +53,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
 
   // Same set the Lead Lists page shows, plus the list a "Start campaign" link
   // preselected if it's older than that, so the selected target has an option.
-  const { data: leadLists = [] } = useQuery({
+  const { data: leadLists = [], isLoading: listsLoading } = useQuery({
     queryKey: ['leadLists', 'campaignBuilder', String(initialLeadListId || '')],
     queryFn: async () => {
       const lists = await base44.entities.LeadList.list('-created_date', 500);
@@ -65,6 +65,9 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
     },
   });
   const selectedList = leadLists.find(l => String(l.id) === String(campaign.lead_list_id));
+  // The confirmation states how many providers will be emailed, so it waits
+  // until the chosen list (and its count) has actually loaded.
+  const listPending = !!campaign.lead_list_id && !selectedList;
   const { data: sample } = useSampleRecipient(campaign.lead_list_id);
 
   const previewVars = useMemo(
@@ -131,7 +134,11 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
       toast.error('Choose a lead list to send to.');
       return;
     }
-    const count = selectedList?.member_count || 0;
+    if (!selectedList) {
+      toast.error(listsLoading ? 'The lead list is still loading.' : "Couldn't load the selected lead list. Reload the page and try again.");
+      return;
+    }
+    const count = selectedList.member_count || 0;
     const ok = await confirm({
       title: `Send "${campaign.name}" to ${count.toLocaleString()} provider${count === 1 ? '' : 's'}?`,
       description: 'Providers without a valid email, and anyone who has unsubscribed or bounced, are skipped automatically. Each email includes an unsubscribe link.',
@@ -290,7 +297,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
             <CardContent className="space-y-4">
               <div className="p-4 bg-slate-800/60 border border-slate-700 rounded space-y-1 text-sm text-slate-300">
                 <p>Campaign: <strong className="text-slate-100">{campaign.name || '—'}</strong></p>
-                <p>Lead list: <strong className="text-slate-100">{selectedList ? `${selectedList.name} (${(selectedList.member_count || 0).toLocaleString()} providers)` : 'None selected'}</strong></p>
+                <p>Lead list: <strong className="text-slate-100">{selectedList ? `${selectedList.name} (${(selectedList.member_count || 0).toLocaleString()} providers)` : listPending ? (listsLoading ? 'Loading…' : "Couldn't load this list") : 'None selected'}</strong></p>
               </div>
               <div className="flex items-start gap-2 rounded border border-blue-500/30 bg-blue-900/20 p-3 text-xs text-blue-300">
                 <Info className="w-4 h-4 shrink-0" />
@@ -310,7 +317,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
                   {saving && !sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save draft
                 </Button>
-                <Button onClick={handleSendNow} disabled={busy} className="flex-1 gap-2">
+                <Button onClick={handleSendNow} disabled={busy || listPending} className="flex-1 gap-2">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   Send now
                 </Button>

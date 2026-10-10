@@ -32,9 +32,11 @@ const GRAPH_EDGES = 200;
 
 /**
  * What the view leaves out: the server returns the busiest providers (and the
- * heaviest relationships between them), and the graph draws the busiest of those.
+ * heaviest relationships between them), and the graph draws the busiest of
+ * those and at most `edgeMax` of the relationships among the ones it draws
+ * (`edgesBetween`, counted before that cap).
  */
-export function graphNote(summary, loaded, graphMax = GRAPH_NODES) {
+export function graphNote(summary, loaded, { graphMax = GRAPH_NODES, edgeMax = GRAPH_EDGES, edgesBetween = 0 } = {}) {
   const shown = [];
   if (summary.network_nodes > loaded) {
     shown.push(`the ${loaded.toLocaleString()} busiest of ${summary.network_nodes.toLocaleString()} providers`);
@@ -43,7 +45,12 @@ export function graphNote(summary, loaded, graphMax = GRAPH_NODES) {
     shown.push(`${summary.shown_edges.toLocaleString()} of ${summary.network_edges.toLocaleString()} relationships`);
   }
   let text = shown.length ? `Showing ${shown.join(' and ')}` : '';
-  if (loaded > graphMax) text += `${text ? '; the' : 'The'} graph draws the busiest ${graphMax}`;
+  const draws = [];
+  if (loaded > graphMax) draws.push(`the busiest ${graphMax}`);
+  if (edgesBetween > edgeMax) {
+    draws.push(`${edgeMax} of ${edgesBetween.toLocaleString()} relationships${loaded > graphMax ? ' between them' : ''}`);
+  }
+  if (draws.length) text += `${text ? '; the' : 'The'} graph draws ${draws.join(' and ')}`;
   return text ? `${text}.` : null;
 }
 
@@ -100,10 +107,11 @@ export default function ReferralNetworkIntelligence() {
 
   // The graph draws the busiest providers; keep the edges between them.
   const graphNodes = useMemo(() => [...filteredNodes].sort((a, b) => b.totalVolume - a.totalVolume).slice(0, GRAPH_NODES), [filteredNodes]);
-  const graphEdges = useMemo(() => {
+  const edgesBetweenDrawn = useMemo(() => {
     const keep = new Set(graphNodes.map((n) => n.npi));
-    return filteredEdges.filter((e) => keep.has(e.source) && keep.has(e.target)).slice(0, GRAPH_EDGES);
+    return filteredEdges.filter((e) => keep.has(e.source) && keep.has(e.target));
   }, [graphNodes, filteredEdges]);
+  const graphEdges = useMemo(() => edgesBetweenDrawn.slice(0, GRAPH_EDGES), [edgesBetweenDrawn]);
 
   const selectedNode = selectedNpi ? nodes.find((n) => n.npi === selectedNpi) || null : null;
   const focusNode = focusNpi ? nodes.find((n) => n.npi === focusNpi) || { label: focusNpi } : null;
@@ -150,8 +158,8 @@ export default function ReferralNetworkIntelligence() {
       <>
         <div className="flex flex-wrap items-center gap-3">
           <AnalysisScopeNote analysis={data} />
-          {data?.summary && graphNote(data.summary, nodes.length) && (
-            <span className="text-xs text-slate-400">{graphNote(data.summary, nodes.length)}</span>
+          {data?.summary && graphNote(data.summary, nodes.length, { edgesBetween: edgesBetweenDrawn.length }) && (
+            <span className="text-xs text-slate-400">{graphNote(data.summary, nodes.length, { edgesBetween: edgesBetweenDrawn.length })}</span>
           )}
           {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
         </div>
