@@ -41,9 +41,13 @@ describe("buildProviderSearchPlan", () => {
     const person = plan.queries.find((q) => q.kind === "person")!;
     expect(person.text).toContain(`${SEARCH_EXPR.lastName} LIKE $1`);
     expect(person.values[0]).toBe("mercy%");
-    const org = plan.queries.find((q) => q.kind === "org")!;
-    expect(org.text).toContain(`organization_name IS NOT NULL AND ${SEARCH_EXPR.orgName} LIKE $1`);
-    expect(org.values).toEqual(["%mercy%", 200]);
+    const [prefix, contains] = plan.queries.filter((q) => q.kind === "org");
+    // Starts-with first, in index order, so exact and prefix matches are never
+    // lost to the unordered contains cap.
+    expect(prefix.text).toContain(`${SEARCH_EXPR.orgName} LIKE $1 ORDER BY ${SEARCH_EXPR.orgName}`);
+    expect(prefix.values).toEqual(["mercy%", 50]);
+    expect(contains.text).toContain(`organization_name IS NOT NULL AND ${SEARCH_EXPR.orgName} LIKE $1`);
+    expect(contains.values).toEqual(["%mercy%", 200]);
   });
 
   it("falls back to organization prefixes without pg_trgm, and for two-letter terms", () => {
@@ -64,7 +68,19 @@ describe("buildProviderSearchPlan", () => {
 
   it("runs only the kinds the entity filter allows", () => {
     expect(buildProviderSearchPlan("mercy", { entityType: "Individual" }, ALL)!.queries.every((q) => q.kind === "person")).toBe(true);
-    expect(buildProviderSearchPlan("mercy", { entityType: "Robot" as any }, ALL)!.queries.map((q) => q.kind)).toEqual(["person", "org"]);
+    expect(buildProviderSearchPlan("mercy", { entityType: "Robot" as any }, ALL)!.queries.map((q) => q.kind)).toEqual(["person", "org", "org"]);
+  });
+
+  it("applies the entity filter to NPI lookups too", () => {
+    const exact = buildProviderSearchPlan("1234567890", { entityType: "Organization" }, ALL)!.queries[0];
+    expect(exact.text).toContain("WHERE npi = $1 AND entity_type = $2 LIMIT 1");
+    expect(exact.values).toEqual(["1234567890", "Organization"]);
+    const range = buildProviderSearchPlan("12345", { entityType: "Individual", limit: 20 }, ALL)!.queries[0];
+    expect(range.text).toContain("npi >= $1 AND npi < $2 AND entity_type = $3 ORDER BY npi LIMIT $4");
+    expect(range.values).toEqual(["12345", "12346", "Individual", 20]);
+    const nines = buildProviderSearchPlan("99", { entityType: "Individual", limit: 20 }, ALL)!.queries[0];
+    expect(nines.text).toContain("npi >= $1 AND entity_type = $2 ORDER BY npi LIMIT $3");
+    expect(nines.values).toEqual(["99", "Individual", 20]);
   });
 
   it("asks for more candidates when a state filter will cut them down", () => {

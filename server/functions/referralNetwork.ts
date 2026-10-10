@@ -64,7 +64,17 @@ async function loadDetails(client: any, npis: string[]) {
   const [providers, taxonomies, locations] = await Promise.all([
     client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [npis]),
     client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
-    client.query("SELECT npi, location_type, city, state FROM provider_locations WHERE npi = ANY($1) LIMIT $2", [npis, npis.length * 4]),
+    // One location per provider, the practice one when there is one (a
+    // provider can have hundreds of rows; each lookup is one index probe).
+    client.query(
+      `SELECT l.npi, l.location_type, l.city, l.state
+         FROM unnest($1::varchar[]) AS n(npi)
+         CROSS JOIN LATERAL (
+           SELECT npi, location_type, city, state FROM provider_locations
+            WHERE npi = n.npi ORDER BY (location_type = 'Practice') DESC NULLS LAST LIMIT 1
+         ) l`,
+      [npis],
+    ),
   ]);
   return buildNodeDetails(npis, { providers: providers.rows, taxonomies: taxonomies.rows, locations: locations.rows });
 }

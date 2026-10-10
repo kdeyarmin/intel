@@ -48,6 +48,13 @@ export const BOOT_INDEXES: BootIndex[] = [
   ...SEARCH_INDEXES.map(idx),
   // Territory samples start from the highest lead scores.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_lead_scores_score ON lead_scores (score DESC) WHERE score IS NOT NULL"),
+  // Recent events of one type, newest first: account activity on Admin
+  // Settings and the maintenance heartbeat. audit_events only grows.
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_type_created ON audit_events (event_type, created_date DESC)"),
+  // Case-insensitive unique emails. Migration 0008 creates it when it can;
+  // while two accounts differ only by case the build fails (and is logged)
+  // at every boot, and succeeds on the first boot after they're merged.
+  idx("CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS users_email_lower_uq ON users (lower(email))"),
 ];
 
 // A CONCURRENTLY build that fails (or is interrupted) leaves an INVALID index
@@ -61,6 +68,8 @@ export const SWEEP_TABLES = [
   "provider_taxonomies",
   "providers",
   "lead_scores",
+  "users",
+  "audit_events",
 ];
 
 // Still-valid indexes whose natural key changed and must be rebuilt under a
@@ -70,27 +79,40 @@ export const OBSOLETE_INDEXES = ["uq_cms_referrals_npi_year"];
 
 type Log = Pick<Console, "log" | "warn">;
 
-async function withClient(pool: any, timeout: string, fn: (client: any) => Promise<void>) {
-  const client = await pool.connect();
-  try {
-    await client.query(`SET statement_timeout = '${timeout}'`);
-    await fn(client);
-  } finally {
-    // Don't hand the pooled connection back with a changed timeout.
-    await client.query("RESET statement_timeout").catch(() => {});
-    client.release();
-  }
+// Held for the whole sweep and build, so only one instance does it. Without
+// it, an instance booting mid-build would see the other's CONCURRENTLY build
+// (invalid until it finishes) as failed and drop it.
+export const BOOT_INDEX_LOCK = 4206918; // arbitrary; distinct from the migration lock
+
+async function run(client: any, timeout: string, sql: string) {
+  await client.query(`SET statement_timeout = '${timeout}'`);
+  await client.query(sql);
 }
 
 /** Drop invalid and obsolete indexes, then build any missing boot indexes. Never throws. */
 export async function runBootIndexes(pool: any, log: Log = console): Promise<void> {
+  let client: any;
   try {
+    client = await pool.connect();
+  } catch (e: any) {
+    log.warn("[DB Index] Background index creation failed:", e.message?.substring(0, 120));
+    return;
+  }
+  let locked = false;
+  try {
+    const { rows: lock } = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [BOOT_INDEX_LOCK]);
+    locked = lock[0]?.locked === true;
+    if (!locked) {
+      log.log("[DB Index] Another instance is building boot indexes; skipping");
+      return;
+    }
+
     // Trigram search needs pg_trgm (migration 0009 also tries). Without it,
     // the trigram index build fails and search uses prefix matching.
-    await pool.query("CREATE EXTENSION IF NOT EXISTS pg_trgm").catch((e: any) => {
+    await client.query("CREATE EXTENSION IF NOT EXISTS pg_trgm").catch((e: any) => {
       log.warn("[DB Index] pg_trgm unavailable; organization search will match name prefixes only:", e.message?.substring(0, 120));
     });
-    const { rows: invalid } = await pool.query(
+    const { rows: invalid } = await client.query(
       `SELECT c2.relname AS indexname
          FROM pg_index i
          JOIN pg_class c ON c.oid = i.indrelid
@@ -98,7 +120,7 @@ export async function runBootIndexes(pool: any, log: Log = console): Promise<voi
         WHERE c.relname = ANY($1) AND NOT i.indisvalid`,
       [SWEEP_TABLES],
     ).catch(() => ({ rows: [] as Array<{ indexname: string }> }));
-    const { rows: obsolete } = await pool.query(
+    const { rows: obsolete } = await client.query(
       `SELECT relname AS indexname FROM pg_class WHERE relkind = 'i' AND relname = ANY($1)`,
       [OBSOLETE_INDEXES],
     ).catch(() => ({ rows: [] as Array<{ indexname: string }> }));
@@ -106,7 +128,8 @@ export async function runBootIndexes(pool: any, log: Log = console): Promise<voi
     const toDrop = new Set([...invalid, ...obsolete].map((r: any) => r.indexname as string));
     for (const name of toDrop) {
       try {
-        await withClient(pool, "120000", (c) => c.query(`DROP INDEX IF EXISTS "${name.replace(/"/g, '""')}"`));
+        // CONCURRENTLY: a plain DROP INDEX locks the whole table against reads and writes.
+        await run(client, "120000", `DROP INDEX CONCURRENTLY IF EXISTS "${name.replace(/"/g, '""')}"`);
         log.log(`[DB Index] Dropped ${OBSOLETE_INDEXES.includes(name) ? "obsolete" : "invalid"} index ${name}`);
       } catch (e: any) {
         log.warn(`[DB Index] Drop ${name} failed:`, e.message?.substring(0, 120));
@@ -115,9 +138,7 @@ export async function runBootIndexes(pool: any, log: Log = console): Promise<voi
 
     for (const { name, ddl } of BOOT_INDEXES) {
       try {
-        await withClient(pool, "0", async (c) => {
-          await c.query(ddl);
-        });
+        await run(client, "0", ddl);
         log.log(`[DB Index] ${name} ready`);
       } catch (e: any) {
         log.warn(`[DB Index] ${name} failed:`, e.message?.substring(0, 200));
@@ -126,5 +147,10 @@ export async function runBootIndexes(pool: any, log: Log = console): Promise<voi
     log.log("[DB Index] Background index creation complete");
   } catch (e: any) {
     log.warn("[DB Index] Background index creation failed:", e.message?.substring(0, 120));
+  } finally {
+    if (locked) await client.query("SELECT pg_advisory_unlock($1)", [BOOT_INDEX_LOCK]).catch(() => {});
+    // Don't hand the pooled connection back with a changed timeout.
+    await client.query("RESET statement_timeout").catch(() => {});
+    client.release();
   }
 }

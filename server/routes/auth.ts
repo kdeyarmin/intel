@@ -217,9 +217,8 @@ export function createAuthRouter(deps: AccountDeps) {
     try {
       const user = (await repo.findByEmail(email)).find((u) => u.status === "active" || u.status === "pending");
       if (!user) return;
-      await repo.revokeTokens(user.id, "reset");
       const token = newToken();
-      await repo.createToken({ user_id: user.id, purpose: "reset", token_hash: token.hash, expires_at: new Date(Date.now() + RESET_TOKEN_TTL_MS), created_by: "self" });
+      await repo.replaceToken({ user_id: user.id, purpose: "reset", token_hash: token.hash, expires_at: new Date(Date.now() + RESET_TOKEN_TTL_MS), created_by: "self" });
       await sendQuietly(deps, resetEmail(user.email, tokenLink(base!, token.raw)), "Password reset");
       await audit(req, "reset_requested", user.email, user);
     } catch (e: any) {

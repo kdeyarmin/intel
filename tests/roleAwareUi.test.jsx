@@ -42,7 +42,7 @@ vi.mock('../src/pages.config.js', () => ({
 
 const listImportBatches = vi.fn(() => Promise.resolve([]));
 const filterAlerts = vi.fn(() => Promise.resolve([]));
-const pendingCount = vi.fn(() => Promise.resolve({ count: 2 }));
+const pendingCount = vi.fn(() => Promise.resolve({ count: 2, latest_id: 7 }));
 vi.mock('@/api/base44Client', () => ({
   base44: {
     entities: {
@@ -56,6 +56,7 @@ vi.mock('@/api/base44Client', () => ({
 import App from '../src/App';
 import PageHeader from '../src/components/shared/PageHeader';
 import NotificationBell from '../src/components/shared/NotificationBell';
+import ProviderImportHistory from '../src/components/providers/ProviderImportHistory';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 function renderAt(path) {
@@ -161,9 +162,60 @@ describe('NotificationBell', () => {
     expect(screen.getByRole('link', { name: /2 accounts awaiting approval/ })).toHaveAttribute('href', '/AdminSettings');
   });
 
+  it('keeps a dismissed approval notice hidden until someone newer signs up', async () => {
+    authState.user = { role: 'admin' };
+    localStorage.setItem('dismissedNotifs', JSON.stringify(['accounts:pending:7']));
+    try {
+      // One of the two was approved: still nothing new.
+      pendingCount.mockImplementationOnce(() => Promise.resolve({ count: 1, latest_id: 5 }));
+      const first = renderBell();
+      fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+      await vi.waitFor(() => expect(pendingCount).toHaveBeenCalled());
+      expect(screen.queryByText(/awaiting approval/)).toBeNull();
+      first.unmount();
+
+      // A new signup (id 9) brings it back.
+      pendingCount.mockImplementationOnce(() => Promise.resolve({ count: 2, latest_id: 9 }));
+      renderBell();
+      fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+      expect(await screen.findByText('2 accounts awaiting approval')).toBeInTheDocument();
+    } finally {
+      localStorage.removeItem('dismissedNotifs');
+    }
+  });
+
   it('requests import batches for an admin', async () => {
     authState.user = { role: 'admin' };
     renderBell();
+    await vi.waitFor(() => expect(listImportBatches).toHaveBeenCalled());
+  });
+});
+
+describe('ProviderImportHistory', () => {
+  function renderHistory() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ProviderImportHistory npi="1234567890" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  beforeEach(() => listImportBatches.mockClear());
+
+  it('does not request admin-only import batches for a regular user', async () => {
+    authState.user = { role: 'user' };
+    const { container } = renderHistory();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(listImportBatches).not.toHaveBeenCalled();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('loads import batches for an admin', async () => {
+    authState.user = { role: 'admin' };
+    renderHistory();
     await vi.waitFor(() => expect(listImportBatches).toHaveBeenCalled());
   });
 });

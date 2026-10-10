@@ -13,7 +13,8 @@ const TAG = "demo-seed";
 
 function assertLocal() {
   const url = new URL(process.env.DATABASE_URL || "postgres://invalid");
-  if (process.env.NODE_ENV === "production" || !["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
+  // URL keeps the brackets on an IPv6 host: postgres://[::1]/db has hostname "[::1]".
+  if (process.env.NODE_ENV === "production" || !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
     console.error(`[seed-demo] Refusing to seed ${url.hostname}: only local databases are allowed.`);
     process.exit(1);
   }

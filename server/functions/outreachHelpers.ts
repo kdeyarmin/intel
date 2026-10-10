@@ -180,6 +180,59 @@ export function shouldAdvanceStatus(current: string | null | undefined, next: st
   return (STATUS_RANK[next] ?? -1) > (STATUS_RANK[current || "pending"] ?? -1);
 }
 
+const TERMINAL_STATUSES = ["bounced", "failed", "suppressed"];
+
+/**
+ * SQL for the status a message should take when `next` arrives, given its
+ * current `current` status: shouldAdvanceStatus, evaluated in the UPDATE
+ * itself so concurrent webhook deliveries can't move a message backwards.
+ */
+export function advancedStatusSql(current: string, next: string): string {
+  const rank = (expr: string) =>
+    `(CASE ${expr} ${Object.entries(STATUS_RANK).map(([s, r]) => `WHEN '${s}' THEN ${r}`).join(" ")} ELSE -1 END)`;
+  return `CASE
+    WHEN ${current} IN (${TERMINAL_STATUSES.map((s) => `'${s}'`).join(", ")}) THEN ${current}
+    WHEN ${next} = 'bounced' THEN 'bounced'
+    WHEN ${next} IS NOT NULL AND ${rank(next)} > ${rank(`COALESCE(${current}, 'pending')`)} THEN ${next}
+    ELSE ${current}
+  END`;
+}
+
+export interface MessageEventSummary {
+  messageId: number;
+  status: string | null;
+  openedAt: Date | null;
+  clickedAt: Date | null;
+  bouncedAt: Date | null;
+  error: string | null;
+}
+
+type FoldableEvent = {
+  messageId: number;
+  status: string | null;
+  timestampColumn: "opened_at" | "clicked_at" | "bounced_at" | null;
+  at: Date;
+  error: string | null;
+};
+
+/** One summary per message: its furthest status, earliest timestamps and last error. */
+export function foldMessageEvents(updates: FoldableEvent[]): MessageEventSummary[] {
+  const byId = new Map<number, MessageEventSummary>();
+  const earliest = (a: Date | null, b: Date) => (a && a <= b ? a : b);
+  for (const u of updates) {
+    const s = byId.get(u.messageId) ?? {
+      messageId: u.messageId, status: null, openedAt: null, clickedAt: null, bouncedAt: null, error: null,
+    };
+    if (u.status && (s.status === null || shouldAdvanceStatus(s.status, u.status))) s.status = u.status;
+    if (u.timestampColumn === "opened_at") s.openedAt = earliest(s.openedAt, u.at);
+    if (u.timestampColumn === "clicked_at") s.clickedAt = earliest(s.clickedAt, u.at);
+    if (u.timestampColumn === "bounced_at") s.bouncedAt = earliest(s.bouncedAt, u.at);
+    if (u.error) s.error = u.error;
+    byId.set(u.messageId, s);
+  }
+  return [...byId.values()];
+}
+
 // SendGrid rejects the whole request on 401/403 (bad key, unverified sender)
 // and 429 (rate limit): nothing went out, so the message can be retried.
 // Other errors (e.g. a 400 for one bad address) belong to that message alone.

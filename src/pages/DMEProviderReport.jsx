@@ -94,6 +94,7 @@ export default function DMEProviderReport() {
   }, [isRunning, queryClient]);
 
   const startMutation = useMutation({
+    // admin-only: the scan controls render only when isAdmin.
     mutationFn: () => base44.functions.invoke('startDMEEmailSearch', { state: selectedState || undefined, rescan }).then((r) => r.data || r),
     onSuccess: (res) => {
       toast[res?.task_id ? 'success' : 'info'](res?.message || 'Email search started');
@@ -103,6 +104,7 @@ export default function DMEProviderReport() {
   });
 
   const stopMutation = useMutation({
+    // admin-only: the scan controls render only when isAdmin.
     mutationFn: () => base44.functions.invoke('stopDMEEmailSearch').then((r) => r.data || r),
     onSuccess: () => {
       toast.info('Email search stopped');

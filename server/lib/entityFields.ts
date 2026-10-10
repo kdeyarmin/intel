@@ -15,6 +15,58 @@ export class UnknownFieldError extends Error {
   }
 }
 
+/** A filter that can't be applied as written (bad operator or operand). */
+export class InvalidFilterError extends Error {
+  status = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidFilterError";
+  }
+}
+
+const SENSITIVE_WRITE_FIELDS = ["password_hash", "role"];
+// Entities whose `role` column is ordinary data (a provider's role at an
+// organization), not an account role, so it isn't stripped.
+const ROLE_IS_DATA = new Set(["ProviderAffiliation"]);
+
+/** Drop fields a generic entity write must never set (account roles, password hashes). */
+export function sanitizeWriteData(entityName: string, data: Record<string, any>): Record<string, any> {
+  const cleaned = { ...data };
+  for (const field of SENSITIVE_WRITE_FIELDS) {
+    if (field === "role" && ROLE_IS_DATA.has(entityName)) continue;
+    delete cleaned[field];
+  }
+  return cleaned;
+}
+
+/** A provider's email verification result; it describes one address. */
+export const EMAIL_VERIFICATION_COLUMNS = [
+  "email_validation_status",
+  "email_validation_reason",
+  "email_quality_score",
+  "email_quality_confidence",
+  "email_quality_reasons",
+  "email_quality_risk_flags",
+  "email_analyzed_at",
+];
+
+/**
+ * When an update sets a provider's email, clear the verification result unless
+ * the address is unchanged (ignoring case) or the update sets those fields
+ * itself. Done in SQL against the stored address, so it holds without a read.
+ */
+export function clearStaleEmailVerification(table: any, data: Record<string, any>): Record<string, any> {
+  if (!("email" in data) || !table.email) return data;
+  const next = { ...data };
+  for (const col of EMAIL_VERIFICATION_COLUMNS) {
+    if (col in next || !table[col]) continue;
+    next[col] = sql`CASE WHEN lower(coalesce(${table.email}, '')) IS DISTINCT FROM lower(coalesce(${data.email ?? null}::text, '')) THEN NULL ELSE ${table[col]} END`;
+  }
+  return next;
+}
+
+const FILTER_OPERATORS = new Set(["$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$ne", "$like", "$exists"]);
+
 export class InvalidFieldValueError extends Error {
   status = 400;
   constructor(field: string, value: unknown) {
@@ -175,8 +227,9 @@ export function buildWhereClause(table: any, filters: Record<string, any>, entit
     }
     if (key === "$or" && Array.isArray(value)) {
       const subConditions = value.map((sub: any) => buildWhereClause(table, sub, entityName));
-      const flat = subConditions.filter(Boolean);
-      if (flat.length > 0) conditions.push(or(...flat));
+      // An empty $or matches nothing; a branch with no conditions matches everything.
+      if (subConditions.length === 0) conditions.push(sql`false`);
+      else if (subConditions.every(Boolean)) conditions.push(or(...subConditions));
       continue;
     }
 
@@ -203,12 +256,29 @@ export function buildWhereClause(table: any, filters: Record<string, any>, entit
     if (value === null) {
       conditions.push(isNull(col));
     } else if (typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+      // Reject what we can't apply rather than dropping it, which would turn
+      // the filter into "match everything".
+      const ops = Object.keys(value);
+      const unsupported = ops.filter((op) => !FILTER_OPERATORS.has(op));
+      if (ops.length === 0 || unsupported.length > 0) {
+        throw new InvalidFilterError(
+          ops.length === 0
+            ? `Empty filter for '${key}' on ${entityName}`
+            : `Unsupported filter operator ${unsupported.join(", ")} for '${key}' on ${entityName}`,
+        );
+      }
+      for (const op of ["$in", "$nin"] as const) {
+        if (op in value && !Array.isArray(value[op])) {
+          throw new InvalidFilterError(`'${op}' for '${key}' on ${entityName} must be an array`);
+        }
+      }
       if ("$in" in value) {
-        const arr = Array.isArray(value.$in) ? value.$in.map(v) : [];
-        if (arr.length > 0) conditions.push(inArray(col, arr));
+        const arr = value.$in.map(v);
+        // An empty $in matches nothing.
+        conditions.push(arr.length > 0 ? inArray(col, arr) : sql`false`);
       }
       if ("$nin" in value) {
-        const arr = Array.isArray(value.$nin) ? value.$nin.map(v) : [];
+        const arr = value.$nin.map(v);
         if (arr.length > 0) {
           conditions.push(sql`${col} NOT IN (${sql.join(arr.map((x: any) => sql`${x}`), sql`, `)})`);
         }

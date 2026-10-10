@@ -72,11 +72,16 @@ export default function NotificationBell() {
       page: 'DataQuality',
     }));
 
-  // Keyed by the count, so dismissing it hides it until someone else signs up.
+  // Keyed by the newest pending account: dismissing hides it until someone
+  // newer signs up (approving one of the waiting accounts doesn't bring it back).
   const pendingCount = pendingAccounts?.count || 0;
-  const accountNotifs = pendingCount > 0 && !dismissed.includes(`accounts:pending:${pendingCount}`)
+  const latestPending = pendingAccounts?.latest_id ?? 0;
+  const seenPending = Math.max(0, ...dismissed
+    .filter(id => id.startsWith('accounts:pending:'))
+    .map(id => Number(id.slice('accounts:pending:'.length)) || 0));
+  const accountNotifs = pendingCount > 0 && latestPending > seenPending
     ? [{
-        id: `accounts:pending:${pendingCount}`,
+        id: `accounts:pending:${latestPending}`,
         type: 'warning',
         icon: UserPlus,
         title: `${pendingCount} account${pendingCount === 1 ? '' : 's'} awaiting approval`,
