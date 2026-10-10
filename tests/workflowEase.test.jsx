@@ -67,6 +67,7 @@ function UrlStateHarness() {
       <span data-testid="search">{location.search}</span>
       <button onClick={() => setState({ state: 'PA', page: 2 })}>filter</button>
       <button onClick={() => setState((cur) => ({ page: cur.page + 1 }))}>next</button>
+      <button onClick={() => { setState({ state: 'all' }); setState((cur) => ({ page: cur.page + 10 })); }}>both</button>
       <button onClick={() => navigate('/other')}>leave</button>
     </div>
   );
@@ -88,6 +89,20 @@ describe('useUrlState', () => {
     fireEvent.click(screen.getByText('leave'));
     fireEvent.click(screen.getByText('back'));
     expect(JSON.parse(screen.getByTestId('state').textContent)).toMatchObject({ state: 'PA', page: 3 });
+  });
+
+  it('keeps every update made in the same event', () => {
+    render(
+      <MemoryRouter initialEntries={['/list?state=PA&page=3']}>
+        <Routes>
+          <Route path="/list" element={<UrlStateHarness />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText('both'));
+    expect(screen.getByTestId('search').textContent).toBe('?page=13');
+    fireEvent.click(screen.getByText('next'));
+    expect(screen.getByTestId('search').textContent).toBe('?page=14');
   });
 });
 
@@ -180,6 +195,18 @@ describe('GlobalSearchDialog', () => {
     expect(invoke).toHaveBeenCalledWith('searchProviders', { q: 'ann car', limit: 20 });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(navigated.at(-1)).toBe('/ProviderDetail?npi=1234567890');
+  });
+
+  it('hides the previous query\'s results until the new search has caught up', async () => {
+    const navigated = renderSearch();
+    const input = screen.getByRole('textbox', { name: 'Search' });
+    fireEvent.change(input, { target: { value: 'ann car' } });
+    expect(await screen.findByText('Ann Cardio')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'zzq' } });
+    expect(screen.queryByText('Ann Cardio')).not.toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(navigated.at(-1)).toBe('/');
   });
 
   it('says it is searching rather than "no results" while waiting', async () => {

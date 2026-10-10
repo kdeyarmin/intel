@@ -6,7 +6,8 @@
 // after their list was created (Providers "Save as Lead List", the List
 // Builder), so creation time is a reliable way to find the owning list. Members
 // added one at a time to an existing list later can't be attributed and are
-// left alone.
+// left alone, and so are members created when two or more lists were created
+// within the window before them: the burst could belong to either.
 
 export interface ListRow {
   id: number;
@@ -26,9 +27,19 @@ export interface OrphanAssignment {
   memberIds: number[];
 }
 
+export interface ExistingMember {
+  list_id: number;
+  npi: string | null;
+}
+
 export interface OrphanPlan {
   assignments: OrphanAssignment[];
+  /** No list was created within the window before them. */
   unmatched: number[];
+  /** More than one list was created within the window before them. */
+  ambiguous: number[];
+  /** Their NPI is already on the list (linked earlier, or another orphan). */
+  duplicates: number[];
 }
 
 const toMs = (d: Date | string | null): number | null => {
@@ -38,14 +49,16 @@ const toMs = (d: Date | string | null): number | null => {
 };
 
 /**
- * Assign each orphan to the most recently created list whose creation time is
- * at or before the orphan's, within `windowMs`. Orphans with no such list are
- * reported as unmatched. A member NPI is assigned to a given list at most once.
+ * Assign each orphan to the one list created at or before it within
+ * `windowMs`. Orphans with no such list are unmatched; orphans with several
+ * are ambiguous and left alone. An NPI is never added to a list that already
+ * has it, whether from `existing` members or an earlier orphan.
  */
 export function planOrphanReassignment(
   lists: ListRow[],
   orphans: OrphanRow[],
   windowMs = 5 * 60 * 1000,
+  existing: ExistingMember[] = [],
 ): OrphanPlan {
   const sortedLists = lists
     .map((l) => ({ id: l.id, at: toMs(l.created_date) }))
@@ -54,7 +67,15 @@ export function planOrphanReassignment(
 
   const byList = new Map<number, number[]>();
   const seenNpi = new Map<number, Set<string>>();
+  for (const m of existing) {
+    if (!m.npi) continue;
+    const npis = seenNpi.get(m.list_id) ?? new Set<string>();
+    npis.add(m.npi);
+    seenNpi.set(m.list_id, npis);
+  }
   const unmatched: number[] = [];
+  const ambiguous: number[] = [];
+  const duplicates: number[] = [];
 
   for (const orphan of orphans) {
     const at = toMs(orphan.created_date);
@@ -62,19 +83,20 @@ export function planOrphanReassignment(
       unmatched.push(orphan.id);
       continue;
     }
-    let owner: { id: number; at: number } | null = null;
-    for (const list of sortedLists) {
-      if (list.at > at) break;
-      owner = list;
-    }
-    if (!owner || at - owner.at > windowMs) {
+    const candidates = sortedLists.filter((l) => l.at <= at && at - l.at <= windowMs);
+    if (candidates.length === 0) {
       unmatched.push(orphan.id);
       continue;
     }
+    if (candidates.length > 1) {
+      ambiguous.push(orphan.id);
+      continue;
+    }
+    const owner = candidates[0];
     const npis = seenNpi.get(owner.id) ?? new Set<string>();
     const npi = orphan.npi ?? "";
     if (npi && npis.has(npi)) {
-      unmatched.push(orphan.id);
+      duplicates.push(orphan.id);
       continue;
     }
     npis.add(npi);
@@ -87,5 +109,7 @@ export function planOrphanReassignment(
   return {
     assignments: [...byList.entries()].map(([listId, memberIds]) => ({ listId, memberIds })),
     unmatched,
+    ambiguous,
+    duplicates,
   };
 }
