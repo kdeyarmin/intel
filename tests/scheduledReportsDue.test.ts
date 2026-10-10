@@ -42,4 +42,24 @@ describe("runDueScheduledReports", () => {
     expect(update?.[1]).toEqual([7, "2026-01-06T13:00:00.000Z", scheduleSignature({ ...weekly, schedule_day: "Tuesday" }), "2026-01-05T13:00:00.000Z"]);
     expect(sendMail).not.toHaveBeenCalled();
   });
+
+  it("counts an edited timing from now, so it doesn't fire for a day that already passed", async () => {
+    vi.setSystemTime(new Date("2026-01-07T12:00:00Z")); // Wednesday, after Monday's run
+    const edited = {
+      ...weekly,
+      schedule_day: "Tuesday",
+      last_run_at: "2026-01-05T13:00:00.000Z",
+      next_run_at: "2026-01-12T13:00:00.000Z",
+      schedule_signature: scheduleSignature(weekly),
+    };
+    query.mockImplementation(async (sql: string, params: any[]) => {
+      if (sql.startsWith("SELECT * FROM scheduled_reports")) return { rows: params[0] === 0 ? [{ id: 8, name: "x", created_date: created, config: edited }] : [] };
+      return { rows: [], rowCount: 1 };
+    });
+    await handleRunDueScheduledReports();
+    const update = query.mock.calls.find(([sql]) => String(sql).startsWith("UPDATE scheduled_reports"));
+    // Next Tuesday, not yesterday's Tuesday (which would have sent immediately).
+    expect(update?.[1]?.[1]).toBe("2026-01-13T13:00:00.000Z");
+    expect(sendMail).not.toHaveBeenCalled();
+  });
 });

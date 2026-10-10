@@ -189,6 +189,14 @@ describe('NotificationBell', () => {
     renderBell();
     await vi.waitFor(() => expect(listImportBatches).toHaveBeenCalled());
   });
+
+  it('says how many notifications are unread in the button name', async () => {
+    authState.user = { role: 'user' };
+    localStorage.removeItem('dismissedNotifs');
+    filterAlerts.mockResolvedValueOnce([{ id: 1, title: 'Missing NPIs', severity: 'high', created_date: new Date().toISOString() }]);
+    renderBell();
+    expect(await screen.findByRole('button', { name: 'Notifications, 1 unread' })).toBeInTheDocument();
+  });
 });
 
 describe('ProviderImportHistory', () => {

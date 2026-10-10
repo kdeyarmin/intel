@@ -375,6 +375,8 @@ export async function handleListFacilities(params: any) {
       );
     } catch (e2: any) {
       console.error(`[facilityDetail] Both queries failed for ${facility_group}:`, e2.message?.substring(0, 200));
+      // An outage isn't "no facilities": let the page show its error state.
+      throw Object.assign(new Error("Couldn't load facilities right now. Try again in a minute."), { status: 503 });
     }
   }
 
