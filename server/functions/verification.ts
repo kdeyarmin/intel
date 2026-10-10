@@ -56,11 +56,15 @@ export async function handleValidateProviderNPI(payload: any) {
     const location = l.rows[0] || null;
     return { provider: p.rows[0] || null, location, primaryTaxonomyCode: t.rows[0]?.taxonomy_code || null };
   });
-  const record = buildNpiValidationRecord(npi, result, payload?.checkDiscrepancies === false ? {} : local);
+  // Always the full comparison: this is the one record everyone sees for the
+  // NPI, so a caller can't save an empty discrepancy list over it.
+  const record = buildNpiValidationRecord(npi, result, local);
 
   // One stored record per NPI (the details live in the jsonb column, which the
   // entity API spreads back onto the row). The update-or-insert runs under a
   // per-NPI transaction lock so two concurrent checks can't both insert.
+  // Older data can hold duplicate rows for an NPI; all of them are updated, so
+  // whichever one a reader picks is current.
   const row = await withClient("10s", async (client) => {
     const values = [npi, record.status, JSON.stringify(record)];
     await client.query("BEGIN");
@@ -68,10 +72,11 @@ export async function handleValidateProviderNPI(payload: any) {
       await client.query("SELECT pg_advisory_xact_lock(hashtext('provider_npi_validation:' || $1))", [npi]);
       const updated = await client.query(
         `UPDATE provider_npi_validations SET validation_status = $2, validation_details = $3::jsonb, validated_at = now(), updated_date = now()
-          WHERE id = (SELECT id FROM provider_npi_validations WHERE npi = $1 ORDER BY id LIMIT 1) RETURNING *`,
+          WHERE npi = $1 RETURNING *`,
         values,
       );
-      const saved = updated.rows[0] ?? (await client.query(
+      const newest = updated.rows.reduce((a: any, b: any) => (a && a.id > b.id ? a : b), null);
+      const saved = newest ?? (await client.query(
         `INSERT INTO provider_npi_validations (npi, validation_status, validation_details, validated_at)
          VALUES ($1, $2, $3::jsonb, now()) RETURNING *`,
         values,
@@ -148,6 +153,7 @@ const BULK_MODES: Record<string, string> = {
   invalid: "email_validation_status = 'invalid'",
 };
 const HAS_EMAIL = "email IS NOT NULL AND email <> ''";
+const MAX_SPECIFIC_NPIS = 100;
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -168,8 +174,11 @@ export async function handleBulkVerifyEmails(payload: any) {
 
   const { candidates, total } = await withClient("15s", async (client) => {
     if (mode === "specific_npis") {
-      const npis = (Array.isArray(payload?.npis) ? payload.npis : []).map(String).filter((n: string) => /^\d{10}$/.test(n)).slice(0, 100);
+      const npis = [...new Set<string>((Array.isArray(payload?.npis) ? payload.npis : []).map(String).filter((n: string) => /^\d{10}$/.test(n)))];
       if (npis.length === 0) throw new HttpError(400, "Choose at least one provider.");
+      // Refused rather than cut short, so a caller never thinks unchecked
+      // providers were done. The page sends larger selections in chunks.
+      if (npis.length > MAX_SPECIFIC_NPIS) throw new HttpError(400, `Verify at most ${MAX_SPECIFIC_NPIS} providers per request.`);
       const { rows } = await client.query(
         `SELECT id, npi, email, first_name, last_name, organization_name FROM providers WHERE npi = ANY($1) AND ${HAS_EMAIL}`,
         [npis],
