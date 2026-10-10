@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,16 +68,18 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
         setCampaign(prev => ({ ...prev, id: campaignId }));
       }
 
-      const result = await base44.functions.invoke('sendCampaignMessages', {
+      // The draft is saved either way; sending reports success: false (e.g.
+      // not configured) rather than throwing, so check before saying it's ready.
+      const result = await invokeOrThrow('sendCampaignMessages', {
         campaign_id: campaignId,
         batch_size: 50,
         send_now: sendNow,
       });
 
-      alert(`Campaign ready! ${result.data?.results?.messages_created ?? 0} messages created.`);
+      alert(`Campaign ready! ${result?.results?.messages_created ?? 0} messages created.`);
       onCampaignCreated?.({ ...campaign, id: campaignId });
     } catch (error) {
-      alert('Failed to send campaign: ' + error.message);
+      toastFunctionError(error, 'Failed to send campaign.');
     } finally {
       setLoading(false);
     }
