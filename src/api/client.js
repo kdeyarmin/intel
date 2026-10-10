@@ -7,16 +7,22 @@ export const AUTH_EXPIRED_EVENT = "auth:expired";
 const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/me", "/auth/logout"];
 
 let authExpiredHandled = false;
+// Bumped whenever a new session starts. A request remembers the generation it
+// was sent under, so a 401 for the old session that arrives after signing in
+// again can't clear the new token.
+let authGeneration = 0;
 
 export function resetAuthExpired() {
   authExpiredHandled = false;
+  authGeneration += 1;
 }
 
 // A 401 from any other endpoint means the session expired mid-use. Clear the
 // stale token and tell the app once (many queries can fail at the same time),
 // so it can send the user to the login page instead of rendering empty tables.
-export function handleUnauthorized(url) {
+export function handleUnauthorized(url, { generation = authGeneration } = {}) {
   if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (generation !== authGeneration) return;
   if (authExpiredHandled) return;
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
@@ -35,9 +41,9 @@ export function buildErrorMessage(data, status) {
   return primary || detail || `Request failed: ${status}`;
 }
 
-async function toApiError(res, url) {
+async function toApiError(res, url, auth) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
-  if (res.status === 401) handleUnauthorized(url);
+  if (res.status === 401) handleUnauthorized(url, auth);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
   err.status = res.status;
@@ -46,6 +52,7 @@ async function toApiError(res, url) {
 }
 
 async function request(url, options = {}) {
+  const generation = authGeneration;
   const token = localStorage.getItem("auth_token");
   const headers = {
     "Content-Type": "application/json",
@@ -59,7 +66,7 @@ async function request(url, options = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) throw await toApiError(res, url);
+  if (!res.ok) throw await toApiError(res, url, { generation });
 
   return res.json();
 }

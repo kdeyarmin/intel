@@ -76,6 +76,22 @@ describe('401 handling', () => {
     expect(localStorage.getItem('auth_token')).toBe('stale');
   });
 
+  it("ignores a 401 for the old session that arrives after signing in again", async () => {
+    let finishOld;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
+    })));
+    const old = base44.entities.Provider.list();
+
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
+    await base44.auth.login('a@b.c', 'right');
+
+    finishOld();
+    await expect(old).rejects.toThrow();
+    expect(events).toEqual([]);
+    expect(localStorage.getItem('auth_token')).toBe('fresh');
+  });
+
   it('does nothing while already on the login page', async () => {
     window.history.pushState({}, '', '/login');
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'nope' })));
@@ -114,6 +130,13 @@ describe('safeReturnUrl', () => {
   it('rejects other origins and protocol-relative URLs', () => {
     expect(safeReturnUrl('https://evil.example/phish', origin)).toBe('/');
     expect(safeReturnUrl('//evil.example/phish', origin)).toBe('/');
+  });
+
+  it('never sends a signed-in user back to the login page', () => {
+    expect(safeReturnUrl('/login', origin)).toBe('/');
+    expect(safeReturnUrl('/Login?returnUrl=%2Flogin', origin)).toBe('/');
+    expect(safeReturnUrl(`${origin}/login#x`, origin)).toBe('/');
+    expect(safeReturnUrl('/LoginHistory', origin)).toBe('/LoginHistory');
   });
 
   it('defaults to the home page', () => {
