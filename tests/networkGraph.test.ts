@@ -18,6 +18,7 @@ describe("network graph", () => {
     expect(g.out.get("A")?.get("HUB")).toBe(50);
     expect(g.out.get("A")?.has("A")).toBe(false);
     expect(g.in.get("HUB")?.size).toBe(3);
+    expect(nodeStats(g).get("A")).toMatchObject({ inDegree: 1, outDegree: 1, partners: 1, outVolume: 50 });
   });
 
   it("ranks the provider everyone refers to highest, and ranks sum to 1", () => {
@@ -28,7 +29,7 @@ describe("network graph", () => {
   });
 
   it("scores influence 0–100 with the hub at 100", () => {
-    const scores = influenceScores(nodeStats(g));
+    const scores = influenceScores(nodeStats(g).values());
     expect(scores.get("HUB")).toBe(100);
     for (const s of scores.values()) {
       expect(s).toBeGreaterThanOrEqual(0);
@@ -41,6 +42,7 @@ describe("network graph", () => {
     const m = networkMetrics(g);
     expect(m).toMatchObject({ node_count: 6, edge_count: 5, total_volume: 106, components: 2 });
     expect(m.reciprocity).toBeCloseTo(0.4, 3); // A↔HUB counted from both sides
+    expect(m.reciprocal_pairs).toBe(1);
     expect(m.largest_component_share).toBeCloseTo(4 / 6, 3);
     expect(m.density).toBeCloseTo(5 / 30, 4);
     expect(m.concentration).toBeCloseTo(100 / 106, 3);

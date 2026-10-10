@@ -699,7 +699,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleCleanProviderData(req.body));
       }
       case "analyzeProviderNetwork": {
-        const { handleAnalyzeProviderNetwork } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`networkAnalysis:${req.user?.id ?? "anon"}`, 10, 60_000)) {
+          return res.status(429).json({ message: "Too many network analyses. Try again in a minute." });
+        }
+        const { handleAnalyzeProviderNetwork } = await import("../functions/networkAnalysis");
         return res.json(await handleAnalyzeProviderNetwork(req.body));
       }
       case "reconcileProviderData": {

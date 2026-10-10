@@ -907,10 +907,6 @@ export async function handleCleanProviderData(_payload: any) {
   return notConfigured("Automatic data cleaning isn't available yet.");
 }
 
-export async function handleAnalyzeProviderNetwork(_payload: any) {
-  return notConfigured("Network analysis isn't available yet.");
-}
-
 export async function handleGenerateHyperPersonalizedMessages(_payload: any) {
   return notConfigured("Personalized message generation isn't available yet.");
 }

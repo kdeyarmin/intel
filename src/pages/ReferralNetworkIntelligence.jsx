@@ -28,6 +28,8 @@ export default function ReferralNetworkIntelligence() {
   const [search, setSearch] = useState('');
   const [entityType, setEntityType] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
+  // The server-side analyses follow the page's state filter.
+  const analysisState = stateFilter && stateFilter !== 'all' ? stateFilter : null;
   const [specialty, setSpecialty] = useState('all');
   const [minVolume, setMinVolume] = useState(0);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -212,19 +214,19 @@ export default function ReferralNetworkIntelligence() {
 
             <TabsContent value="insights" className="mt-4 space-y-5">
               <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} />
-              <AINetworkRecommendations />
+              <AINetworkRecommendations state={analysisState} />
             </TabsContent>
 
             <TabsContent value="influencers" className="mt-4">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <NetworkInfluencerAnalysis onInfluencerSelect={(npi) => {
+                  <NetworkInfluencerAnalysis state={analysisState} onInfluencerSelect={(npi) => {
                     const node = allNodes.find(n => n.npi === npi);
                     setSelectedNode(node);
                   }} />
                 </div>
                 <div>
-                  <NetworkGapAnalysis />
+                  <NetworkGapAnalysis state={analysisState} />
                 </div>
               </div>
             </TabsContent>

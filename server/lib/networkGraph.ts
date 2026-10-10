@@ -69,6 +69,8 @@ export interface NodeStats {
   outDegree: number;
   inVolume: number;
   outVolume: number;
+  /** Distinct providers this one sends to or receives from. */
+  partners: number;
   pageRank: number;
 }
 
@@ -81,7 +83,8 @@ export function nodeStats(g: Graph, ranks = pageRank(g)): Map<string, NodeStats>
     let outVolume = 0;
     for (const w of ins.values()) inVolume += w;
     for (const w of outs.values()) outVolume += w;
-    stats.set(v, { npi: v, inDegree: ins.size, outDegree: outs.size, inVolume, outVolume, pageRank: ranks.get(v) || 0 });
+    const partners = new Set([...ins.keys(), ...outs.keys()]).size;
+    stats.set(v, { npi: v, inDegree: ins.size, outDegree: outs.size, inVolume, outVolume, partners, pageRank: ranks.get(v) || 0 });
   }
   return stats;
 }
@@ -90,17 +93,18 @@ export function nodeStats(g: Graph, ranks = pageRank(g)): Map<string, NodeStats>
  * 0–100 influence: PageRank (where referrals flow) blended with how many
  * distinct partners a provider has, each scaled against the network's max.
  */
-export function influenceScores(stats: Map<string, NodeStats>): Map<string, number> {
+export function influenceScores(stats: Iterable<NodeStats>): Map<string, number> {
+  const list = [...stats];
   let maxRank = 0;
   let maxPartners = 0;
-  for (const s of stats.values()) {
+  for (const s of list) {
     maxRank = Math.max(maxRank, s.pageRank);
-    maxPartners = Math.max(maxPartners, s.inDegree + s.outDegree);
+    maxPartners = Math.max(maxPartners, s.partners);
   }
   const out = new Map<string, number>();
-  for (const s of stats.values()) {
+  for (const s of list) {
     const r = maxRank > 0 ? s.pageRank / maxRank : 0;
-    const p = maxPartners > 0 ? Math.log1p(s.inDegree + s.outDegree) / Math.log1p(maxPartners) : 0;
+    const p = maxPartners > 0 ? Math.log1p(s.partners) / Math.log1p(maxPartners) : 0;
     out.set(s.npi, Math.round(100 * (0.6 * r + 0.4 * p)));
   }
   return out;
@@ -113,6 +117,8 @@ export interface NetworkMetrics {
   density: number;
   avg_degree: number;
   reciprocity: number;
+  /** Pairs of providers that refer to each other. */
+  reciprocal_pairs: number;
   /** Share of referral volume going to the top 10% of receivers. */
   concentration: number;
   components: number;
@@ -161,6 +167,7 @@ export function networkMetrics(g: Graph, stats = nodeStats(g)): NetworkMetrics {
     density: n > 1 ? round(edges / (n * (n - 1)), 4) : 0,
     avg_degree: n > 0 ? round((2 * edges) / n, 2) : 0,
     reciprocity: edges > 0 ? round(mutual / edges) : 0,
+    reciprocal_pairs: mutual / 2,
     concentration: volume > 0 ? round(topVolume / volume) : 0,
     components: sizes.size,
     largest_component_share: n > 0 ? round(largest / n) : 0,
