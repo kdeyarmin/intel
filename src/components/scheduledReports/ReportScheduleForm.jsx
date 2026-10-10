@@ -8,34 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { X, Plus, Save, Clock } from 'lucide-react';
-import { DATASET_CONFIG } from '../customReports/reportConfig';
+import { SCHEDULE_DATASETS as ALL_DATASETS } from '../customReports/reportConfig';
 
-const EXTRA_DATASETS = {
-  providers: {
-    label: 'Providers',
-    metrics: [
-      { key: 'npi', label: 'NPI Count' },
-    ],
-    groupOptions: [
-      { key: 'entity_type', label: 'Entity Type' },
-      { key: 'status', label: 'Status' },
-      { key: 'gender', label: 'Gender' },
-    ],
-  },
-  locations: {
-    label: 'Provider Locations',
-    metrics: [
-      { key: 'npi', label: 'Location Count' },
-    ],
-    groupOptions: [
-      { key: 'state', label: 'State' },
-      { key: 'location_type', label: 'Location Type' },
-      { key: 'city', label: 'City' },
-    ],
-  },
-};
-
-const ALL_DATASETS = { ...DATASET_CONFIG, ...EXTRA_DATASETS };
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function ReportScheduleForm({ initialData, onSave, onCancel, saving }) {
@@ -239,7 +213,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
           {/* Recipients */}
           <div className="border-t pt-3 space-y-2">
             <Label htmlFor={`${uid}-recipient`} id={`${uid}-recipient-label`} className="text-xs font-semibold text-slate-300">Recipients *</Label>
-            <p id={`${uid}-recipient-hint`} className="text-[11px] text-slate-400">Reports are only emailed to people who have an account in this app.</p>
+            <p id={`${uid}-recipient-hint`} className="text-[11px] text-slate-400">Reports are only emailed to people with an active account in this app, or whose address is on a domain an administrator has approved.</p>
             <div className="flex gap-2">
               <Input
                 id={`${uid}-recipient`}

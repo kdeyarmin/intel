@@ -43,7 +43,7 @@ describe("Census parsers", () => {
     const rels = parseZctaCountyRelationship(read("relationship.txt"));
     expect(rels).toHaveLength(7);
     expect(rels.every((r) => /^\d{5}$/.test(r.zcta))).toBe(true);
-    expect(rels.find((r) => r.zcta === "16059" && r.countyFips === "42019")).toEqual({ zcta: "16059", countyFips: "42019", landPart: 63000000, zctaLand: 90000000 });
+    expect(rels.find((r) => r.zcta === "16059" && r.countyFips === "42019")).toMatchObject({ zcta: "16059", countyFips: "42019", landPart: 63000000, zctaLand: 90000000 });
   });
 
   it("names the missing column instead of producing garbage", () => {
@@ -65,8 +65,10 @@ describe("buildGeoTables", () => {
     expect(zcta("00601")).toMatchObject({ primary_county_fips: "72001", state: "PR" });
   });
 
-  it("knows territories the county Gazetteer leaves out", () => {
+  it("knows territories the county Gazetteer leaves out, county records included", () => {
     expect(zcta("00801")).toMatchObject({ primary_county_fips: "78030", state: "VI" });
+    // Named from the relationship file, placed at its ZCTAs.
+    expect(t.counties.find((c) => c.fips === "78030")).toEqual({ fips: "78030", state: "VI", name: "St. Thomas Island", lat: 18.349806, lng: -64.974001 });
   });
 
   it("gives a ZCTA without relationship rows the county of its nearest neighbour", () => {
@@ -108,12 +110,13 @@ describe("bundled CSV", () => {
 });
 
 describe("loadCensusGeography", () => {
-  function fakePool(loadedSha: string | null) {
+  function fakePool(loadedSha: string | null, tablesFilled = true) {
     const statements: string[] = [];
     const client = {
       async query(sql: string) {
         statements.push(sql.split("(")[0].trim());
         if (sql.startsWith("SELECT dataset_sha256")) return { rows: loadedSha ? [{ dataset_sha256: loadedSha }] : [] };
+        if (sql.startsWith("SELECT EXISTS")) return { rows: [{ ok: tablesFilled }] };
         return { rows: [] };
       },
       release() {},
@@ -125,8 +128,14 @@ describe("loadCensusGeography", () => {
     const { pool, statements } = fakePool(null);
     const r = await loadCensusGeography(pool);
     expect(r.status).toBe("loaded");
-    expect(statements[1]).toBe("BEGIN");
-    expect(statements[2]).toBe("TRUNCATE geo_zcta_counties, geo_zctas, geo_counties");
+    // The check runs inside the transaction, under the loader lock.
+    expect(statements.slice(0, 5)).toEqual([
+      "BEGIN",
+      "SELECT pg_advisory_xact_lock",
+      "SELECT dataset_sha256 FROM geo_meta WHERE key = $1",
+      "SELECT EXISTS",
+      "TRUNCATE geo_zcta_counties, geo_zctas, geo_counties",
+    ]);
     expect(statements.filter((s) => s.startsWith("INSERT INTO geo_zctas")).length).toBe(Math.ceil(r.counts.zctas / 1000));
     expect(statements.at(-1)).toBe("COMMIT");
   });
@@ -135,8 +144,14 @@ describe("loadCensusGeography", () => {
     const { manifest } = readCensusBundle();
     const { pool, statements } = fakePool(manifest.dataset_sha256);
     expect((await loadCensusGeography(pool)).status).toBe("unchanged");
-    expect(statements).toEqual(["SELECT dataset_sha256 FROM geo_meta WHERE key = $1"]);
+    expect(statements).not.toContain("TRUNCATE geo_zcta_counties, geo_zctas, geo_counties");
+    expect(statements.at(-1)).toBe("COMMIT");
     expect((await loadCensusGeography(fakePool(manifest.dataset_sha256).pool, { force: true })).status).toBe("loaded");
+  });
+
+  it("reloads when the metadata matches but a table is empty", async () => {
+    const { manifest } = readCensusBundle();
+    expect((await loadCensusGeography(fakePool(manifest.dataset_sha256, false).pool)).status).toBe("loaded");
   });
 });
 

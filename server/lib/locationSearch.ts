@@ -69,7 +69,10 @@ export function buildLocationSearchPlan(input: LocationSearchInput): LocationPla
   const zip = q.match(/^(\d{5})(?:-?(\d{4}))?$/);
   if (zip) {
     const where = `${E.zip5} = ${p(zip[1])}${stateFilter ? ` AND state = ${p(stateFilter)}` : ""}`;
-    return finish("zip", `ZIP ${zip[2] ? `${zip[1]}-${zip[2]}` : zip[1]}`, where);
+    // A ZIP+4 puts exact matches first before the cap applies (sorting just
+    // that ZIP's rows, which the ZIP5 index finds), so none can be cut off.
+    const order = zip[2] ? ` ORDER BY (regexp_replace(coalesce(zip, ''), '[^0-9]', '', 'g') = ${p(`${zip[1]}${zip[2]}`)}) DESC, id` : "";
+    return finish("zip", `ZIP ${zip[2] ? `${zip[1]}-${zip[2]}` : zip[1]}`, where, order);
   }
   const cityState = parseCityState(q);
   if (cityState || (q && stateFilter)) {

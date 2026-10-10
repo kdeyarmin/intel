@@ -36,7 +36,8 @@ const COMPONENTS = {
   p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
   ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 space-y-1">{children}</ol>,
-  h1: ({ children }) => <h3 className="text-base font-semibold text-white mt-3 mb-1.5">{children}</h3>,
+  // One level down: the page's h1 is the assistant itself.
+  h1: ({ children }) => <h2 className="text-base font-semibold text-white mt-3 mb-1.5">{children}</h2>,
   h2: ({ children }) => <h3 className="text-base font-semibold text-white mt-3 mb-1.5">{children}</h3>,
   h3: ({ children }) => <h4 className="text-sm font-semibold text-white mt-3 mb-1">{children}</h4>,
   strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,

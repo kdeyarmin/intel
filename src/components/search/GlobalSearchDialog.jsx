@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -66,7 +66,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   });
 
   // For an exact NPI, also show that provider's locations and CMS records.
-  const { data: npiLocations = [] } = useQuery({
+  const { data: npiLocations = [], isFetching: fetchingNpiLocations } = useQuery({
     queryKey: ['globalSearchLocations', npiQuery],
     queryFn: () => base44.entities.ProviderLocation.filter({ npi: npiQuery }, undefined, 20),
     enabled: !!npiQuery,
@@ -75,7 +75,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
   // A ZIP or "City, ST" finds locations there.
   const placeQuery = hasSearchTerm && !npiQuery && isPlaceQuery(debouncedQuery) ? debouncedQuery : null;
-  const { data: placeLocations = [] } = useQuery({
+  const { data: placeLocations = [], isFetching: fetchingPlaces } = useQuery({
     queryKey: ['globalSearchPlaces', placeQuery],
     queryFn: async () => {
       const res = await base44.functions.invoke('searchLocations', { q: placeQuery, limit: 8 });
@@ -85,8 +85,9 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     staleTime: 60000,
   });
   const locations = npiQuery ? npiLocations : placeLocations;
+  const fetchingLocations = fetchingNpiLocations || fetchingPlaces;
 
-  const { data: utilizations = [] } = useQuery({
+  const { data: utilizations = [], isFetching: fetchingUtil } = useQuery({
     queryKey: ['globalSearchUtil', npiQuery],
     queryFn: async () => {
       const rows = await base44.entities.ProviderServiceUtilization.filter({ npi: npiQuery }, '-data_year', 5);
@@ -96,19 +97,22 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
     staleTime: 60000,
   });
 
-  const { data: referrals = [] } = useQuery({
+  const { data: referrals = [], isFetching: fetchingReferrals } = useQuery({
     queryKey: ['globalSearchRef', npiQuery],
     queryFn: () => base44.entities.CMSReferral.filter({ npi: npiQuery }, undefined, 5),
     enabled: !!npiQuery,
     staleTime: 60000,
   });
 
-  const { data: leadLists = [] } = useQuery({
+  const { data: leadLists = [], isFetching: fetchingLists } = useQuery({
     queryKey: ['globalLeadLists'],
     queryFn: () => base44.entities.LeadList.list('-created_date', 200),
     enabled: hasSearchTerm,
     staleTime: 120000,
   });
+
+  // "No results" only once every search that's running has answered.
+  const searching = searchingProviders || fetchingLocations || fetchingUtil || fetchingReferrals || fetchingLists;
 
   useEffect(() => {
     if (!open) { setQuery(''); setActiveCategory('all'); setHighlightIdx(-1); }
@@ -324,9 +328,9 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Jump to</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_LINKS.map((link) => (
-                    <button type="button" key={link.url} onClick={() => goTo(link.url)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                    <Link key={link.url} to={link.url} onClick={() => onOpenChange(false)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
                       {link.label}
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -334,7 +338,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
             </div>
           ) : filteredResults.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400" role="status">
-              {searchingProviders || debouncedQuery !== normalizedQuery
+              {searching || debouncedQuery !== normalizedQuery
                 ? 'Searching…'
                 : `No results found for "${query}"`}
             </div>

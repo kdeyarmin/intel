@@ -25,6 +25,10 @@ const FACILITY_TYPES = [
   { key: 'community_health', label: 'Community health' },
 ];
 
+// A matching run suggests at most 1,500 pairs (3 for each of 500 providers),
+// so the page loads enough rows to show a whole run.
+const MATCH_LIMIT = 2000;
+
 export default function ProviderLocationMatching() {
   const [matchState, setMatchState] = useState('');
   const [facilityTypes, setFacilityTypes] = useState(['hospital', 'snf', 'home_health', 'hospice']);
@@ -36,7 +40,7 @@ export default function ProviderLocationMatching() {
 
   const { data: matches = [], isLoading } = useQuery({
     queryKey: ['providerLocationMatches'],
-    queryFn: () => base44.entities.ProviderLocationMatch.list('-created_date', 200),
+    queryFn: () => base44.entities.ProviderLocationMatch.list('-created_date', MATCH_LIMIT),
   });
 
   const runMatchingMutation = useMutation({
@@ -309,6 +313,11 @@ export default function ProviderLocationMatching() {
           {filtered.length < matches.length && (
             <p className="text-xs text-slate-400 text-center pt-2">
               Showing {filtered.length} of {matches.length} matches
+            </p>
+          )}
+          {matches.length >= MATCH_LIMIT && (
+            <p className="text-xs text-slate-400 text-center">
+              Only the newest {MATCH_LIMIT.toLocaleString()} matches are loaded, and the totals above count those.
             </p>
           )}
         </div>

@@ -100,15 +100,22 @@ export function renderTranscript(turns: TurnRow[], messages: MessageRow[], actio
   });
 }
 
-/** The system note telling the model what the user did with its proposals. */
+/**
+ * The system note telling the model what the user did with its proposals. It
+ * names each proposal by the model's own tool call id and carries only numbers
+ * the app produced: the list name came from the conversation, so it stays out
+ * of a system-level message.
+ */
 export function decisionNote(actions: ActionRow[]): string | null {
+  const ref = (a: ActionRow) => `the lead list you proposed in tool call ${String(a.tool_use_id || "").replace(/[^\w-]/g, "")}`;
   const lines = actions.map((a) => {
-    const name = a.payload?.name || "the proposed list";
     if (a.status === "confirmed") {
-      const r = a.result || {};
-      return `The user confirmed the proposed lead list "${name}": it was created as lead list ${r.list_id} with ${r.member_count} providers (link: /LeadLists?list=${r.list_id}).`;
+      const listId = Number(a.result?.list_id);
+      const members = Number(a.result?.member_count);
+      if (!Number.isInteger(listId)) return `The user confirmed ${ref(a)}.`;
+      return `The user confirmed ${ref(a)}: it was created as lead list ${listId} with ${Number.isFinite(members) ? members : "its"} providers (link: /LeadLists?list=${listId}).`;
     }
-    if (a.status === "cancelled") return `The user cancelled the proposed lead list "${name}"; it was not created.`;
+    if (a.status === "cancelled") return `The user cancelled ${ref(a)}; it was not created.`;
     return null;
   }).filter(Boolean);
   return lines.length ? `App update since your last answer: ${lines.join(" ")}` : null;

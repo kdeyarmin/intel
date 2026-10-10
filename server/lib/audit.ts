@@ -49,6 +49,9 @@ export function sanitizeClientDetails(details: unknown): Record<string, unknown>
   } catch {
     return {};
   }
-  if (json.length > 8_000) return { truncated: true, action: (details as any).action ?? null };
+  if (json.length > 8_000) {
+    const action = (details as any).action;
+    return { truncated: true, action: typeof action === "string" ? action.slice(0, 200) : null };
+  }
   return JSON.parse(json);
 }

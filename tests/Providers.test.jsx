@@ -10,6 +10,8 @@ import { MemoryRouter } from 'react-router-dom';
 
 afterEach(cleanup);
 
+const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null }));
+
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
 vi.mock('@/api/base44Client', () => ({
@@ -35,11 +37,11 @@ vi.mock('../src/components/providers/AIDuplicateDetector', () => ({ default: () 
 vi.mock('../src/components/providers/AIProfileAugmenter', () => ({ default: () => null }));
 vi.mock('../src/components/filters/TextMatchFilter', () => ({
   default: () => null,
-  applyTextFilters: (arr) => arr,
+  applyTextFilters: (arr, filters) => { applied.textFilters = filters; return arr; },
 }));
 vi.mock('../src/components/filters/DateRangeFilterInline', () => ({
   default: () => null,
-  applyDateRangeFilter: (arr) => arr,
+  applyDateRangeFilter: (arr, _col, range) => { applied.dateRange = range; return arr; },
 }));
 vi.mock('../src/components/filters/FilterPresets', () => ({ default: () => null }));
 vi.mock('../src/components/providers/ProviderComparison', () => ({ default: () => null }));
@@ -191,5 +193,23 @@ describe('Providers page – removed "Org" button for organizations', () => {
     const viewLinks = screen.getAllByRole('link', { name: /^view$/i });
     // One per org = 2; no extra "Org" buttons
     expect(viewLinks).toHaveLength(2);
+  });
+});
+
+describe('Providers page – filters kept in the URL', () => {
+  it('restores text-match and date filters from the URL so Back and shared links keep them', () => {
+    setupMocks({ providers: [makeOrg('1111111111', 'Downtown Clinic')] });
+    const textFilter = { id: 'f1', column: 'organization_name', mode: 'contains', term: 'Downtown' };
+    const tf = encodeURIComponent(JSON.stringify([textFilter]));
+    renderProviders(`/Providers?tf=${tf}&range=custom&from=2026-01-01&to=2026-02-01`);
+    expect(applied.textFilters).toEqual([textFilter]);
+    expect(applied.dateRange).toEqual({ preset: 'custom', startDate: '2026-01-01', endDate: '2026-02-01' });
+  });
+
+  it('ignores a malformed text-filter parameter', () => {
+    setupMocks({ providers: [makeOrg('1111111111', 'Downtown Clinic')] });
+    renderProviders('/Providers?tf=%7Bnot-json');
+    expect(applied.textFilters).toEqual([]);
+    expect(applied.dateRange).toEqual({ preset: 'all', startDate: '', endDate: '' });
   });
 });

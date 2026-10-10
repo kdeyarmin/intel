@@ -72,11 +72,20 @@ export async function loadCensusGeography(pool: any, opts: { force?: boolean; di
   const counts = { counties: bundle.counties.length, zctas: bundle.zctas.length, zcta_counties: bundle.zctaCounties.length };
   const client = await pool.connect();
   try {
+    // One loader at a time: instances booting together wait here, then see the
+    // first one's load and skip. The check runs under the lock, and also
+    // reloads when the metadata matches but a table is empty.
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('census_geography_load'))");
     const { rows: [meta] } = await client.query("SELECT dataset_sha256 FROM geo_meta WHERE key = $1", [META_KEY]);
-    if (!opts.force && meta?.dataset_sha256 === bundle.manifest.dataset_sha256) {
+    const { rows: [filled] } = await client.query(
+      `SELECT EXISTS (SELECT 1 FROM geo_counties) AND EXISTS (SELECT 1 FROM geo_zctas)
+              AND EXISTS (SELECT 1 FROM geo_zcta_counties) AS ok`,
+    );
+    if (!opts.force && meta?.dataset_sha256 === bundle.manifest.dataset_sha256 && filled?.ok) {
+      await client.query("COMMIT");
       return { status: "unchanged", vintage: bundle.manifest.vintage, counts };
     }
-    await client.query("BEGIN");
     await client.query("TRUNCATE geo_zcta_counties, geo_zctas, geo_counties");
     await insertBatches(client, "geo_counties", COUNTY_COLUMNS,
       bundle.counties.map((r) => [r.fips, r.state, r.name, Number(r.lat), Number(r.lng)]));

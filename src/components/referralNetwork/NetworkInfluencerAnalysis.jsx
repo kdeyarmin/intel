@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,27 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Crown, TrendingUp, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
+import { useScopedAnalysis } from './useScopedAnalysis';
 
 export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = null, leadListId = null, leadListName = null }) {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
-  // Results belong to one scope; don't show another state's numbers.
-  useEffect(() => { setData(null); }, [state, leadListId]);
+  // Results belong to one scope (a lead list, else a state); a response for
+  // another scope never shows.
+  const { data, loading, run } = useScopedAnalysis(`${leadListId ?? ''}|${state ?? ''}`);
 
-  const handleAnalyze = async () => {
-    setLoading(true);
-    try {
-      const result = await invokeOrThrow('analyzeProviderNetwork', {
-        analysis_type: 'influencers',
-        ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
-      });
-      setData(result.analysis);
-    } catch (error) {
-      toastFunctionError(error, 'Failed to analyze network');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleAnalyze = () => run(
+    async () => (await invokeOrThrow('analyzeProviderNetwork', {
+      analysis_type: 'influencers',
+      ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
+    })).analysis,
+    (error) => toastFunctionError(error, 'Failed to analyze network'),
+  );
 
   if (!data) {
     return (

@@ -40,7 +40,7 @@ describe("approval", () => {
   it("approves a pending signup, which can then use the app", async () => {
     const browser = h.client();
     await browser.call("POST", "/api/auth/signup", { email: "new@example.com", password: "longenough" });
-    expect((await admin.call("GET", "/api/admin/users/pending-count")).body).toEqual({ count: 1 });
+    expect((await admin.call("GET", "/api/admin/users/pending-count")).body).toEqual({ count: 1, latest_id: expect.any(Number) });
     expect((await browser.call("POST", "/api/audit", { event_type: "export" })).status).toBe(403);
 
     const r = await admin.call("POST", `/api/admin/users/${idOf("new@example.com")}/approve`);

@@ -47,6 +47,16 @@ const clean = (v: unknown): string | null => {
 };
 
 const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// USPS-style abbreviations, so "123 Main Street" and "123 MAIN ST." compare equal.
+const STREET_WORDS: Record<string, string> = {
+  street: "st", avenue: "ave", road: "rd", drive: "dr", boulevard: "blvd", lane: "ln", court: "ct",
+  place: "pl", parkway: "pkwy", highway: "hwy", circle: "cir", terrace: "ter", square: "sq",
+  suite: "ste", floor: "fl", building: "bldg", north: "n", south: "s", east: "e", west: "w",
+};
+const streetKey = (v: unknown) =>
+  String(v ?? "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean)
+    .map((w) => STREET_WORDS[w] ?? w).join(" ");
 const zip5 = (v: unknown) => String(v ?? "").replace(/\D/g, "").slice(0, 5);
 const digits = (v: unknown) => String(v ?? "").replace(/\D/g, "").slice(-10);
 
@@ -145,9 +155,13 @@ function findDiscrepancies(r: NpiValidationRecord, local: LocalProviderData): st
   if (l) {
     const ourAddr = [l.address_1, l.city, l.state].filter(Boolean).join(", ");
     const theirAddr = [r.address, r.city, r.state].filter(Boolean).join(", ");
+    // The registry's first address line, to compare streets (a move within
+    // the same ZIP keeps city, state and ZIP).
+    const registryStreet = (r.address || "").split(",")[0];
     const addrDiffers = (l.city && r.city && norm(l.city) !== norm(r.city))
       || (l.state && r.state && norm(l.state) !== norm(r.state))
-      || (l.zip && r.zip && zip5(l.zip) !== zip5(r.zip));
+      || (l.zip && r.zip && zip5(l.zip) !== zip5(r.zip))
+      || (l.address_1 && registryStreet && streetKey(l.address_1) !== streetKey(registryStreet));
     if (addrDiffers) out.push(`Practice address: "${ourAddr}" here, "${theirAddr}" in the registry.`);
     if (l.phone && r.phone && digits(l.phone) !== digits(r.phone)) {
       out.push(`Practice phone: ${l.phone} here, ${r.phone} in the registry.`);

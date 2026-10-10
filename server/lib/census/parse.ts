@@ -25,6 +25,8 @@ export interface RelationshipRow {
   landPart: number;
   /** Land area of the whole ZCTA (m²). */
   zctaLand: number;
+  /** The county's name ("St. Croix Island"); used for territories the county Gazetteer lacks. */
+  countyName?: string;
 }
 
 export interface ZctaRow {
@@ -107,8 +109,45 @@ export function parseZctaCountyRelationship(text: string): RelationshipRow[] {
       countyFips: need(r, "GEOID_COUNTY_20"),
       landPart: num(need(r, "AREALAND_PART")),
       zctaLand: num(need(r, "AREALAND_ZCTA5_20")),
+      countyName: r.NAMELSAD_COUNTY_20 || undefined,
     }))
     .filter((r) => /^\d{5}$/.test(r.zcta) && /^\d{5}$/.test(r.countyFips));
+}
+
+/**
+ * County equivalents of American Samoa, Guam, the Northern Mariana Islands and
+ * the Virgin Islands, which the county Gazetteer leaves out but ZCTAs point at.
+ * Each one that is some ZCTA's main county is added, named from the
+ * relationship file and placed at the land-weighted centroid of those ZCTAs,
+ * so every ZIP resolves to a county with a real position. The rest (e.g.
+ * American Samoa's smaller districts, which only share a ZCTA with a bigger
+ * one) have nothing of their own to place them by and are left out.
+ */
+function territoryCounties(
+  input: { counties: CountyRow[]; zctas: ZctaGazRow[]; relationships: RelationshipRow[] },
+  primary: Map<string, string>,
+): CountyRow[] {
+  const known = new Set(input.counties.map((c) => c.fips));
+  const names = new Map(input.relationships.map((r) => [r.countyFips, r.countyName]));
+  const acc = new Map<string, { w: number; lat: number; lng: number }>();
+  for (const z of input.zctas) {
+    const fips = primary.get(z.zcta);
+    if (!fips || known.has(fips) || !TERRITORY_BY_STATE_FIPS[fips.slice(0, 2)]) continue;
+    const w = z.aland > 0 ? z.aland : 1;
+    const a = acc.get(fips) || { w: 0, lat: 0, lng: 0 };
+    a.w += w;
+    a.lat += z.lat * w;
+    a.lng += z.lng * w;
+    acc.set(fips, a);
+  }
+  const round = (v: number) => Math.round(v * 1e6) / 1e6;
+  return [...acc].map(([fips, a]) => ({
+    fips,
+    state: TERRITORY_BY_STATE_FIPS[fips.slice(0, 2)],
+    name: names.get(fips) || fips,
+    lat: round(a.lat / a.w),
+    lng: round(a.lng / a.w),
+  }));
 }
 
 /**
@@ -177,7 +216,7 @@ export function buildGeoTables(input: { counties: CountyRow[]; zctas: ZctaGazRow
   }
   zctas.sort((a, b) => a.zcta.localeCompare(b.zcta));
   zctaCounties.sort((a, b) => a.zcta.localeCompare(b.zcta) || a.county_fips.localeCompare(b.county_fips));
-  const counties = [...input.counties].sort((a, b) => a.fips.localeCompare(b.fips));
+  const counties = [...input.counties, ...territoryCounties(input, primary)].sort((a, b) => a.fips.localeCompare(b.fips));
   return { counties, zctas, zctaCounties, inferredCounties: inferred };
 }
 

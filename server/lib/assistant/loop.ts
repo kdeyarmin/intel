@@ -120,16 +120,34 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
   let jsonRetries = 0;
   let rounds = 0;
   const done = (status: TurnStatus, error?: string): TurnResult => ({ status, error, usage, rounds });
+  // Every request is charged once, whether it finished, was stopped or failed:
+  // the API bills what it read and wrote either way.
+  const charge = async (u: Partial<Anthropic.Beta.BetaUsage> | null) => {
+    if (!u) return;
+    usage.requests += 1;
+    usage.input_tokens += u.input_tokens || 0;
+    usage.output_tokens += u.output_tokens || 0;
+    usage.cache_creation_input_tokens += u.cache_creation_input_tokens || 0;
+    usage.cache_read_input_tokens += u.cache_read_input_tokens || 0;
+    await input.onUsage?.(u as Anthropic.Beta.BetaUsage);
+  };
 
   for (;;) {
     if (input.signal.aborted) return done("interrupted");
     const final = toolRounds >= maxToolRounds || now() - started > turnBudgetMs;
     let partialText = "";
     let message: Message;
+    // Usage as the stream reports it, for a request that never completes.
+    let seen: Partial<Anthropic.Beta.BetaUsage> | null = null;
     try {
       const stream = input.createStream(buildParams(messages, { final }), input.signal);
       for await (const event of stream) {
-        if (event.type === "content_block_start") {
+        if (event.type === "message_start") {
+          seen = { ...event.message.usage };
+        } else if (event.type === "message_delta" && event.usage) {
+          seen = { ...(seen || {}) };
+          for (const [k, v] of Object.entries(event.usage)) if (typeof v === "number") (seen as any)[k] = v;
+        } else if (event.type === "content_block_start") {
           const block = event.content_block;
           if (block.type === "text") input.emit("text_start", {});
           else if (block.type === "thinking") input.emit("progress_start", {});
@@ -146,6 +164,7 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
       message = await stream.finalMessage();
       jsonRetries = 0;
     } catch (e) {
+      await Promise.resolve(charge(seen)).catch((err) => console.warn("[assistant] couldn't record usage:", err?.message || err));
       if (input.signal.aborted || e instanceof Anthropic.APIUserAbortError) {
         // Keep what was shown so the user still sees it; the turn is never replayed.
         if (partialText) await input.persist("assistant", [{ type: "text", text: partialText }]);
@@ -166,12 +185,8 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
     }
 
     rounds += 1;
-    usage.requests += 1;
-    usage.input_tokens += message.usage?.input_tokens || 0;
-    usage.output_tokens += message.usage?.output_tokens || 0;
-    usage.cache_creation_input_tokens += message.usage?.cache_creation_input_tokens || 0;
-    usage.cache_read_input_tokens += message.usage?.cache_read_input_tokens || 0;
-    if (message.usage) await input.onUsage?.(message.usage);
+    // The final message's usage is authoritative; fall back to what streamed.
+    await charge(message.usage ?? seen);
 
     // Verbatim, including thinking and fallback blocks: the next request replays it as is.
     await input.persist("assistant", message.content as unknown[]);
