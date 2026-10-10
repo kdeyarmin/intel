@@ -88,6 +88,7 @@ export const assistantActions = pgTable("assistant_actions", {
 }, (table) => [
   index("assistant_actions_conversation_idx").on(table.conversation_id),
   index("assistant_actions_turn_idx").on(table.turn_id),
+  index("assistant_actions_user_idx").on(table.user_id),
 ]);
 
 export const assistantUsage = pgTable("assistant_usage", {

@@ -59,6 +59,8 @@ export interface ToolContext {
   turnId: number;
   toolUseId: string;
   deps: ToolDeps;
+  /** Aborted when the turn is stopped or times out: no side effects after that. */
+  signal?: AbortSignal;
 }
 
 export interface ToolOutcome {
@@ -322,6 +324,8 @@ const TOOL_SPECS = [
     async run(input, ctx) {
       const unique = [...new Set(input.npis)];
       const known = new Set(await ctx.deps.existingNpis(unique));
+      // A stopped or timed-out turn must not leave a proposal behind.
+      if (ctx.signal?.aborted) throw new ToolError("The answer was stopped before the list was proposed.");
       const npis = unique.filter((n) => known.has(n));
       if (npis.length === 0) throw new ToolError("None of those NPIs are in the app's provider data, so there is nothing to propose.");
       const action = await ctx.deps.createProposal({
