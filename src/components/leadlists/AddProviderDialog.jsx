@@ -75,6 +75,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
         <div className="space-y-4">
           <div className="flex gap-2">
             <Input
+              aria-label="Search providers by NPI or name"
               placeholder="Search by NPI or name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

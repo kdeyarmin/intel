@@ -97,8 +97,8 @@ function DisableDialog({ user, onCancel, onConfirm, busy }) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="disable-reason" className="text-slate-300">Reason (optional, visible to admins)</Label>
-          <Textarea id="disable-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className="bg-slate-900 border-slate-700" />
+          <Label htmlFor="disable-reason" id="disable-reason-label" className="text-slate-300">Reason (optional, visible to admins)</Label>
+          <Textarea id="disable-reason" aria-labelledby="disable-reason-label" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} className="bg-slate-900 border-slate-700" />
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancel} className="border-slate-600">Cancel</Button>
@@ -139,12 +139,12 @@ function InviteCard({ onInvited }) {
       <CardContent>
         <form onSubmit={(e) => { e.preventDefault(); invite.mutate(); }} className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="invite-email" className="text-slate-300">Email</Label>
-            <Input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-slate-800 border-slate-700" />
+            <Label htmlFor="invite-email" id="invite-email-label" className="text-slate-300">Email</Label>
+            <Input id="invite-email" aria-labelledby="invite-email-label" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-slate-800 border-slate-700" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="invite-name" className="text-slate-300">Name (optional)</Label>
-            <Input id="invite-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="bg-slate-800 border-slate-700" />
+            <Label htmlFor="invite-name" id="invite-name-label" className="text-slate-300">Name (optional)</Label>
+            <Input id="invite-name" aria-labelledby="invite-name-label" value={fullName} onChange={(e) => setFullName(e.target.value)} className="bg-slate-800 border-slate-700" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="invite-role" className="text-slate-300">Role</Label>

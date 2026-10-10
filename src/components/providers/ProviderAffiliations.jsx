@@ -227,14 +227,14 @@ Only return affiliations you can verify. Be specific with names.`,
                 <Badge className={`text-[8px] shrink-0 ${SOURCE_BADGES[a.source]?.cls || ''}`}>{SOURCE_BADGES[a.source]?.label}</Badge>
               )}
             </div>
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-500 hover:text-slate-300"
-                onClick={() => setEditAff(a)}>
-                <Pencil className="w-3 h-3" />
+                onClick={() => setEditAff(a)} aria-label={`Edit affiliation ${a.organization_name}`}>
+                <Pencil className="w-3 h-3" aria-hidden="true" />
               </Button>
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-slate-500 hover:text-red-400"
-                onClick={() => deleteMut.mutate(a.id)}>
-                <Trash2 className="w-3 h-3" />
+                onClick={() => deleteMut.mutate(a.id)} aria-label={`Delete affiliation ${a.organization_name}`}>
+                <Trash2 className="w-3 h-3" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -247,19 +247,19 @@ Only return affiliations you can verify. Be specific with names.`,
               <DialogTitle className="text-slate-200">Add Affiliation</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="Organization name" value={form.organization_name}
+              <Input placeholder="Organization name" aria-label="Organization name" value={form.organization_name}
                 onChange={e => setForm({ ...form, organization_name: e.target.value })}
                 className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               <Select value={form.affiliation_type} onValueChange={v => setForm({ ...form, affiliation_type: v })}>
-                <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Affiliation type" className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Input placeholder="Role (e.g., Attending, Staff)" value={form.role}
+              <Input placeholder="Role (e.g., Attending, Staff)" aria-label="Role" value={form.role}
                 onChange={e => setForm({ ...form, role: e.target.value })}
                 className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
-              <Input placeholder="Notes" value={form.notes}
+              <Input placeholder="Notes" aria-label="Notes" value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
                 className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
             </div>
@@ -281,16 +281,16 @@ Only return affiliations you can verify. Be specific with names.`,
             </DialogHeader>
             {editAff && (
               <div className="space-y-3">
-                <Input value={editAff.organization_name}
+                <Input aria-label="Organization name" value={editAff.organization_name}
                   onChange={e => setEditAff({ ...editAff, organization_name: e.target.value })}
                   className="bg-slate-800/50 border-slate-700 text-slate-300" />
                 <Select value={editAff.affiliation_type} onValueChange={v => setEditAff({ ...editAff, affiliation_type: v })}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Affiliation type" className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Input placeholder="Role" value={editAff.role || ''}
+                <Input placeholder="Role" aria-label="Role" value={editAff.role || ''}
                   onChange={e => setEditAff({ ...editAff, role: e.target.value })}
                   className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReconciliationAnalyticsPanel from './ReconciliationAnalyticsPanel';
 
 export default function ReconciliationDashboard() {
+  const uid = useId();
   const [runningJob, setRunningJob] = useState(null);
   const [selectedSources, setSelectedSources] = useState(['nppes']);
   const [expandedId, setExpandedId] = useState(null);
@@ -89,12 +90,13 @@ export default function ReconciliationDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-200 mb-2 block">Sources to Reconcile</label>
-            <div className="flex flex-wrap gap-2">
+            <span id={`${uid}-sources-label`} className="text-sm font-medium text-slate-200 mb-2 block">Sources to Reconcile</span>
+            <div role="group" aria-labelledby={`${uid}-sources-label`} className="flex flex-wrap gap-2">
               {['nppes', 'pecos', 'cms'].map(source => (
                 <label key={source} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
+                    aria-label={source.toUpperCase()}
                     checked={selectedSources.includes(source)}
                     onChange={(e) => {
                       if (e.target.checked) {

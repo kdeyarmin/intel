@@ -121,15 +121,15 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
             </TableCell>
             <TableCell>
               <div className="flex gap-1.5">
-                <Link to={createPageUrl('ProviderDetail') + `?npi=${lead.provider.npi}`}>
-                  <Button size="sm" variant="outline">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <Button asChild size="sm" variant="outline">
+                  <Link to={createPageUrl('ProviderDetail') + `?npi=${lead.provider.npi}`} aria-label="View provider">
+                    <Eye className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                </Button>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(lead)}>
-                      <Edit className="w-4 h-4" />
+                    <Button size="sm" variant="outline" onClick={() => setEditingNotes(lead)} aria-label="Edit notes">
+                      <Edit className="w-4 h-4" aria-hidden="true" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -137,6 +137,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                       <DialogTitle>Notes</DialogTitle>
                     </DialogHeader>
                     <Textarea
+                      aria-label="Lead notes"
                       placeholder="Add notes about this lead..."
                       defaultValue={lead.member.notes || ''}
                       rows={5}
@@ -159,7 +160,7 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
                       }
                     }}
                   >
-                    <UserMinus className="w-4 h-4" />
+                    <UserMinus className="w-4 h-4" aria-hidden="true" />
                   </Button>
                 )}
               </div>

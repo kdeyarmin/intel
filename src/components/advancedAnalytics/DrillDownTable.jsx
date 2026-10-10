@@ -92,11 +92,11 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
           <CardTitle className="text-base">Provider Drill-Down</CardTitle>
           <div className="flex gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input placeholder="Search NPI or name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-48" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+              <Input aria-label="Search providers by NPI or name" placeholder="Search NPI or name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-48" />
             </div>
             <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-24 h-8 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by state" className="w-24 h-8 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All States</SelectItem>
                 {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -113,14 +113,22 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
                 <th className="text-left py-2 font-medium">Provider</th>
                 <th className="text-left py-2 font-medium w-12">State</th>
                 {cols.map(c => (
-                  <th key={c.key} className="text-right py-2 font-medium cursor-pointer hover:text-slate-300 select-none" onClick={() => toggleSort(c.key)}>
-                    <span className="flex items-center justify-end gap-1">
+                  <th
+                    key={c.key}
+                    className="text-right py-2 font-medium"
+                    aria-sort={sortKey === c.key ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(c.key)}
+                      className="ml-auto flex items-center justify-end gap-1 hover:text-slate-300 select-none"
+                    >
                       {c.label}
-                      {sortKey === c.key && <ArrowUpDown className="w-3 h-3" />}
-                    </span>
+                      {sortKey === c.key && <ArrowUpDown className="w-3 h-3" aria-hidden="true" />}
+                    </button>
                   </th>
                 ))}
-                <th className="w-8"></th>
+                <th className="w-8"><span className="sr-only">Open</span></th>
               </tr>
             </thead>
             <tbody>
@@ -137,8 +145,8 @@ export default function DrillDownTable({ providers = [], utilization = [], refer
                     <td key={c.key} className="text-right text-slate-400 font-mono">{fv(r[c.key])}</td>
                   ))}
                   <td>
-                    <Link to={createPageUrl(`ProviderDetail?npi=${r.npi}`)}>
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500" />
+                    <Link to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} aria-label={`Open ${r.name || r.npi}`}>
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400 hover:text-blue-500" aria-hidden="true" />
                     </Link>
                   </td>
                 </tr>

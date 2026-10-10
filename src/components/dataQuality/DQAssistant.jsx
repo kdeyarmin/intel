@@ -194,14 +194,15 @@ export default function DQAssistant() {
         {/* Input */}
         <form onSubmit={handleSubmit} className="p-3 pt-2 border-t flex gap-2 flex-shrink-0">
           <Input
+            aria-label="Ask about data quality issues"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about data quality issues..."
             className="text-xs h-8"
             disabled={loading}
           />
-          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="h-8 w-8 bg-indigo-600 hover:bg-indigo-700">
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="h-8 w-8 bg-indigo-600 hover:bg-indigo-700" aria-label="Send message">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
           </Button>
         </form>
       </CardContent>

@@ -29,10 +29,10 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
   };
 
   const statusIcons = {
-    active: <Loader2 className="w-3 h-3 animate-spin" />,
-    completed: <CheckCircle2 className="w-3 h-3" />,
-    failed: <XCircle className="w-3 h-3" />,
-    processing: <Loader2 className="w-3 h-3 animate-spin" />,
+    active: <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />,
+    completed: <CheckCircle2 className="w-3 h-3" aria-hidden="true" />,
+    failed: <XCircle className="w-3 h-3" aria-hidden="true" />,
+    processing: <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />,
     pending: null,
   };
 
@@ -41,7 +41,8 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
       {US_STATES.map(st => {
         const stStatus = getStateStatus(st);
         return (
-          <div
+          <button
+            type="button"
             key={st}
             onClick={() => onStateClick && onStateClick(st)}
             className={`flex items-center justify-center gap-0.5 px-1.5 py-1 rounded border text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-offset-1 hover:ring-teal-500 ${statusStyles[stStatus]}`}
@@ -49,7 +50,7 @@ export default function StateCrawlerGrid({ status, currentState, running, autoMo
           >
             {statusIcons[stStatus]}
             {st}
-          </div>
+          </button>
         );
       })}
     </div>

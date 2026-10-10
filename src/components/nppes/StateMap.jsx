@@ -69,10 +69,11 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
           const count = getProviderCount(st);
 
           return (
-            <div
+            <button
+              type="button"
               key={st}
               onClick={() => onStateClick?.(st)}
-              className="aspect-square rounded-md cursor-pointer flex flex-col items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-lg relative group"
+              className="w-full aspect-square rounded-md cursor-pointer flex flex-col items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-lg relative group"
               style={{ 
                 backgroundColor: colors.bg, 
                 border: `2px solid ${colors.border}`,
@@ -89,7 +90,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               {stStatus === 'active' && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-teal-400 rounded-full animate-ping" />
               )}
-            </div>
+            </button>
           );
         })}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import EmailValidationBadge from '../emailBot/EmailValidationBadge';
 import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function BasicProfile({ provider, taxonomy, locations }) {
+  const uid = useId();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
@@ -187,15 +188,19 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
               {provider.entity_type === 'Individual' ? (
                 <>
                   <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input 
+                    <Label htmlFor={`${uid}-first-name`} id={`${uid}-first-name-label`}>First Name</Label>
+                    <Input
+                      id={`${uid}-first-name`}
+                      aria-labelledby={`${uid}-first-name-label`}
                       value={editForm.first_name} 
                       onChange={(e) => setEditForm({...editForm, first_name: e.target.value})} 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input 
+                    <Label htmlFor={`${uid}-last-name`} id={`${uid}-last-name-label`}>Last Name</Label>
+                    <Input
+                      id={`${uid}-last-name`}
+                      aria-labelledby={`${uid}-last-name-label`}
                       value={editForm.last_name} 
                       onChange={(e) => setEditForm({...editForm, last_name: e.target.value})} 
                     />
@@ -203,8 +208,10 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 </>
               ) : (
                 <div className="col-span-2 space-y-2">
-                  <Label>Organization Name</Label>
-                  <Input 
+                  <Label htmlFor={`${uid}-org-name`} id={`${uid}-org-name-label`}>Organization Name</Label>
+                  <Input
+                    id={`${uid}-org-name`}
+                    aria-labelledby={`${uid}-org-name-label`}
                     value={editForm.organization_name} 
                     onChange={(e) => setEditForm({...editForm, organization_name: e.target.value})} 
                   />
@@ -214,20 +221,22 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
             
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
-                <Label>Credential</Label>
-                <Input 
+                <Label htmlFor={`${uid}-credential`} id={`${uid}-credential-label`}>Credential</Label>
+                <Input
+                  id={`${uid}-credential`}
+                  aria-labelledby={`${uid}-credential-label`}
                   value={editForm.credential} 
                   onChange={(e) => setEditForm({...editForm, credential: e.target.value})} 
                   placeholder="e.g. MD, DO"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label htmlFor={`${uid}-status`}>Status</Label>
                 <Select 
                   value={editForm.status} 
                   onValueChange={(val) => setEditForm({...editForm, status: val})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={`${uid}-status`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -239,8 +248,10 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
             </div>
 
             <div className="space-y-2">
-              <Label>Email Address</Label>
-              <Input 
+              <Label htmlFor={`${uid}-email`} id={`${uid}-email-label`}>Email Address</Label>
+              <Input
+                id={`${uid}-email`}
+                aria-labelledby={`${uid}-email-label`}
                 value={editForm.email} 
                 onChange={(e) => setEditForm({...editForm, email: e.target.value})} 
                 type="email"

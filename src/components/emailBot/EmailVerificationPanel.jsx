@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import EmailVerificationResultRow from './EmailVerificationResultRow';
 import BulkEmailActions from './BulkEmailActions';
 
 export default function EmailVerificationPanel({ providers, onRefresh }) {
+  const uid = useId();
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState('unverified');
   const [batchSize, setBatchSize] = useState(10);
@@ -147,8 +148,9 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-slate-400">Batch size:</label>
+            <label htmlFor={`${uid}-batch-size`} className="text-xs text-slate-400">Batch size:</label>
             <select
+              id={`${uid}-batch-size`}
               value={batchSize}
               onChange={e => setBatchSize(Number(e.target.value))}
               className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1"

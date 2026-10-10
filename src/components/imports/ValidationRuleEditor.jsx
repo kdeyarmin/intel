@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ const OPERATORS = [
 ];
 
 export default function ValidationRuleEditor({ open, onOpenChange, rule, importType, onSaved }) {
+  const uid = useId();
   const isEdit = !!rule;
 
   const [form, setForm] = useState({
@@ -122,8 +123,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
         <div className="space-y-4">
           {/* Name + Description */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Rule Name *</Label>
+            <Label id={`${uid}-rule-name-label`} htmlFor={`${uid}-rule-name`} className="text-xs text-slate-400">Rule Name *</Label>
             <Input
+              id={`${uid}-rule-name`}
+              aria-labelledby={`${uid}-rule-name-label`}
               value={form.rule_name}
               onChange={(e) => setForm(f => ({ ...f, rule_name: e.target.value }))}
               placeholder="e.g. Valid NPI Format"
@@ -131,8 +134,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Description</Label>
+            <Label id={`${uid}-description-label`} htmlFor={`${uid}-description`} className="text-xs text-slate-400">Description</Label>
             <Input
+              id={`${uid}-description`}
+              aria-labelledby={`${uid}-description-label`}
               value={form.description}
               onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="What does this rule check?"
@@ -142,8 +147,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
           {/* Column */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Target Column *</Label>
+            <Label id={`${uid}-column-label`} htmlFor={`${uid}-column`} className="text-xs text-slate-400">Target Column *</Label>
             <Input
+              id={`${uid}-column`}
+              aria-labelledby={`${uid}-column-label`}
               value={form.column}
               onChange={(e) => setForm(f => ({ ...f, column: e.target.value }))}
               placeholder="e.g. npi, state, total_services"
@@ -153,8 +160,9 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
           {/* Rule Type */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Rule Type *</Label>
+            <Label htmlFor={`${uid}-rule-type`} className="text-xs text-slate-400">Rule Type *</Label>
             <select
+              id={`${uid}-rule-type`}
               value={form.rule_type}
               onChange={(e) => setForm(f => ({ ...f, rule_type: e.target.value, config: {} }))}
               className="text-sm border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8 w-full"
@@ -176,8 +184,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
             {form.rule_type === 'regex' && (
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Regex Pattern</Label>
+                <Label id={`${uid}-pattern-label`} htmlFor={`${uid}-pattern`} className="text-xs text-slate-400">Regex Pattern</Label>
                 <Input
+                  id={`${uid}-pattern`}
+                  aria-labelledby={`${uid}-pattern-label`}
                   value={form.config.pattern || ''}
                   onChange={(e) => updateConfig('pattern', e.target.value)}
                   placeholder="e.g. ^\d{10}$ for 10-digit NPI"
@@ -190,8 +200,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
             {form.rule_type === 'numeric_range' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Minimum</Label>
+                  <Label id={`${uid}-min-label`} htmlFor={`${uid}-min`} className="text-xs text-slate-400">Minimum</Label>
                   <Input
+                    id={`${uid}-min`}
+                    aria-labelledby={`${uid}-min-label`}
                     type="number"
                     value={form.config.min ?? ''}
                     onChange={(e) => updateConfig('min', e.target.value === '' ? undefined : Number(e.target.value))}
@@ -200,8 +212,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Maximum</Label>
+                  <Label id={`${uid}-max-label`} htmlFor={`${uid}-max`} className="text-xs text-slate-400">Maximum</Label>
                   <Input
+                    id={`${uid}-max`}
+                    aria-labelledby={`${uid}-max-label`}
                     type="number"
                     value={form.config.max ?? ''}
                     onChange={(e) => updateConfig('max', e.target.value === '' ? undefined : Number(e.target.value))}
@@ -216,14 +230,15 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Input
+                    aria-label="Allowed value"
                     value={enumInput}
                     onChange={(e) => setEnumInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addEnumValue())}
                     placeholder="Add allowed value..."
                     className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 flex-1"
                   />
-                  <Button variant="outline" size="sm" className="h-8 bg-transparent border-slate-700 text-slate-400" onClick={addEnumValue}>
-                    <Plus className="w-3 h-3" />
+                  <Button variant="outline" size="sm" className="h-8 bg-transparent border-slate-700 text-slate-400" onClick={addEnumValue} aria-label="Add allowed value">
+                    <Plus className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 </div>
                 {(form.config.values || []).length > 0 && (
@@ -231,8 +246,8 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                     {form.config.values.map(v => (
                       <Badge key={v} className="bg-slate-700/50 text-slate-300 text-[10px] gap-1">
                         {v}
-                        <button onClick={() => updateConfig('values', form.config.values.filter(x => x !== v))} className="hover:text-red-400">
-                          <X className="w-2.5 h-2.5" />
+                        <button onClick={() => updateConfig('values', form.config.values.filter(x => x !== v))} className="hover:text-red-400" aria-label={`Remove ${v}`}>
+                          <X className="w-2.5 h-2.5" aria-hidden="true" />
                         </button>
                       </Badge>
                     ))}
@@ -243,8 +258,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
             {form.rule_type === 'max_length' && (
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Maximum Length</Label>
+                <Label id={`${uid}-max-length-label`} htmlFor={`${uid}-max-length`} className="text-xs text-slate-400">Maximum Length</Label>
                 <Input
+                  id={`${uid}-max-length`}
+                  aria-labelledby={`${uid}-max-length-label`}
                   type="number"
                   value={form.config.max_length ?? ''}
                   onChange={(e) => updateConfig('max_length', e.target.value === '' ? undefined : Number(e.target.value))}
@@ -257,8 +274,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
             {form.rule_type === 'date_format' && (
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Expected Format</Label>
+                <Label id={`${uid}-date-format-label`} htmlFor={`${uid}-date-format`} className="text-xs text-slate-400">Expected Format</Label>
                 <Input
+                  id={`${uid}-date-format`}
+                  aria-labelledby={`${uid}-date-format-label`}
                   value={form.config.date_format || ''}
                   onChange={(e) => updateConfig('date_format', e.target.value)}
                   placeholder="e.g. YYYY-MM-DD, MM/DD/YYYY"
@@ -270,8 +289,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
             {form.rule_type === 'cross_field' && (
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Compare to column</Label>
+                  <Label id={`${uid}-other-column-label`} htmlFor={`${uid}-other-column`} className="text-xs text-slate-400">Compare to column</Label>
                   <Input
+                    id={`${uid}-other-column`}
+                    aria-labelledby={`${uid}-other-column-label`}
                     value={form.config.other_column || ''}
                     onChange={(e) => updateConfig('other_column', e.target.value)}
                     placeholder="e.g. end_date"
@@ -279,8 +300,9 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-400">Operator</Label>
+                  <Label htmlFor={`${uid}-operator`} className="text-xs text-slate-400">Operator</Label>
                   <select
+                    id={`${uid}-operator`}
                     value={form.config.operator || 'gt'}
                     onChange={(e) => updateConfig('operator', e.target.value)}
                     className="text-sm border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8 w-full"
@@ -302,8 +324,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
             {form.rule_type === 'custom_expression' && (
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Expression</Label>
+                <Label id={`${uid}-expression-label`} htmlFor={`${uid}-expression`} className="text-xs text-slate-400">Expression</Label>
                 <Input
+                  id={`${uid}-expression`}
+                  aria-labelledby={`${uid}-expression-label`}
                   value={form.config.expression || ''}
                   onChange={(e) => updateConfig('expression', e.target.value)}
                   placeholder='e.g. row.total_services > 0 || row.status === "Inactive"'
@@ -318,14 +342,15 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
 
           {/* Severity */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Severity</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <span id={`${uid}-severity-label`} className="text-xs font-medium leading-none text-slate-400">Severity</span>
+            <div role="group" aria-labelledby={`${uid}-severity-label`} className="grid grid-cols-3 gap-2">
               {SEVERITY_OPTIONS.map(s => {
                 const Icon = s.icon;
                 return (
                   <button
                     key={s.id}
                     onClick={() => setForm(f => ({ ...f, severity: s.id }))}
+                    aria-pressed={form.severity === s.id}
                     className={`flex items-center gap-2 p-2 rounded-lg border text-xs transition-colors ${
                       form.severity === s.id
                         ? 'border-cyan-500/40 bg-slate-800/60'
@@ -347,8 +372,10 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
           <div className="flex items-center justify-between border-t border-slate-700/50 pt-3">
             <div className="flex items-center gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-slate-400">Priority Order</Label>
+                <Label id={`${uid}-order-label`} htmlFor={`${uid}-order`} className="text-xs text-slate-400">Priority Order</Label>
                 <Input
+                  id={`${uid}-order`}
+                  aria-labelledby={`${uid}-order-label`}
                   type="number"
                   value={form.order}
                   onChange={(e) => setForm(f => ({ ...f, order: Number(e.target.value) || 0 }))}
@@ -358,8 +385,8 @@ export default function ValidationRuleEditor({ open, onOpenChange, rule, importT
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-sm text-slate-300">Enabled</Label>
-              <Switch checked={form.enabled} onCheckedChange={(v) => setForm(f => ({ ...f, enabled: v }))} />
+              <Label id={`${uid}-enabled-label`} htmlFor={`${uid}-enabled`} className="text-sm text-slate-300">Enabled</Label>
+              <Switch id={`${uid}-enabled`} aria-labelledby={`${uid}-enabled-label`} checked={form.enabled} onCheckedChange={(v) => setForm(f => ({ ...f, enabled: v }))} />
             </div>
           </div>
         </div>

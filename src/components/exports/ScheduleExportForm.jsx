@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function ScheduleExportForm({ dataset, format, selectedColumns, filters, onClose }) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [frequency, setFrequency] = useState('weekly');
@@ -68,8 +69,10 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs text-slate-300">Schedule Name</Label>
+        <Label htmlFor={`${uid}-name`} className="text-xs text-slate-300">Schedule Name</Label>
         <Input
+          id={`${uid}-name`}
+          aria-label="Schedule Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Weekly Provider Export"
@@ -79,9 +82,9 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
 
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1">
-          <Label className="text-xs text-slate-300">Frequency</Label>
+          <Label htmlFor={`${uid}-frequency`} className="text-xs text-slate-300">Frequency</Label>
           <Select value={frequency} onValueChange={setFrequency}>
-            <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
+            <SelectTrigger id={`${uid}-frequency`} className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -93,9 +96,9 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
         </div>
         {frequency === 'weekly' && (
           <div className="space-y-1">
-            <Label className="text-xs text-slate-300">Day</Label>
+            <Label htmlFor={`${uid}-day`} className="text-xs text-slate-300">Day</Label>
             <Select value={scheduleDay} onValueChange={setScheduleDay}>
-              <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
+              <SelectTrigger id={`${uid}-day`} className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,9 +109,9 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
         )}
         {frequency === 'monthly' && (
           <div className="space-y-1">
-            <Label className="text-xs text-slate-300">Day of Month</Label>
+            <Label htmlFor={`${uid}-day-of-month`} className="text-xs text-slate-300">Day of Month</Label>
             <Select value={scheduleDay} onValueChange={setScheduleDay}>
-              <SelectTrigger className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
+              <SelectTrigger id={`${uid}-day-of-month`} className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-200">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -120,8 +123,10 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
           </div>
         )}
         <div className="space-y-1">
-          <Label className="text-xs text-slate-300">Time</Label>
+          <Label htmlFor={`${uid}-time`} className="text-xs text-slate-300">Time</Label>
           <Input
+            id={`${uid}-time`}
+            aria-label="Time"
             type="time"
             value={scheduleTime}
             onChange={(e) => setScheduleTime(e.target.value)}
@@ -131,17 +136,19 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs text-slate-300">Recipients</Label>
+        <Label htmlFor={`${uid}-recipients`} className="text-xs text-slate-300">Recipients</Label>
         <div className="flex gap-2">
           <Input
+            id={`${uid}-recipients`}
+            aria-label="Recipient email"
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             placeholder="email@example.com"
             className="bg-slate-800 border-slate-600 text-slate-100 h-8 text-sm flex-1"
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addRecipient())}
           />
-          <Button variant="outline" size="sm" onClick={addRecipient} className="h-8 border-slate-600 text-slate-300">
-            <Plus className="w-3.5 h-3.5" />
+          <Button variant="outline" size="sm" onClick={addRecipient} className="h-8 border-slate-600 text-slate-300" aria-label="Add recipient">
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
           </Button>
         </div>
         {recipients.length > 0 && (
@@ -150,8 +157,8 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
               <Badge key={email} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-900/10 text-cyan-400 border border-cyan-500/20">
                 <Mail className="w-3 h-3" />
                 {email}
-                <button onClick={() => removeRecipient(email)} className="hover:bg-cyan-900/20 rounded-full p-0.5">
-                  <X className="w-3 h-3" />
+                <button onClick={() => removeRecipient(email)} className="hover:bg-cyan-900/20 rounded-full p-0.5" aria-label={`Remove ${email}`}>
+                  <X className="w-3 h-3" aria-hidden="true" />
                 </button>
               </Badge>
             ))}
@@ -160,8 +167,13 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
       </div>
 
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-slate-300">Include AI summary in email</Label>
-        <Switch checked={includeSummary} onCheckedChange={setIncludeSummary} />
+        <Label htmlFor={`${uid}-include-summary`} className="text-xs text-slate-300">Include AI summary in email</Label>
+        <Switch
+          id={`${uid}-include-summary`}
+          aria-label="Include AI summary in email"
+          checked={includeSummary}
+          onCheckedChange={setIncludeSummary}
+        />
       </div>
 
       <div className="flex gap-2 justify-end">

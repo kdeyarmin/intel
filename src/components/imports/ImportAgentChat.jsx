@@ -104,15 +104,16 @@ export default function ImportAgentChat() {
                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                         className="flex gap-2"
                     >
-                        <Input 
+                        <Input
+                            aria-label="Message the import manager"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask the import manager to check or restart jobs..."
                             className="bg-slate-800 border-slate-700 text-white flex-1"
                             disabled={loading}
                         />
-                        <Button type="submit" disabled={loading || !input.trim()} className="bg-cyan-600 hover:bg-cyan-700">
-                            <Send className="w-4 h-4" />
+                        <Button type="submit" disabled={loading || !input.trim()} className="bg-cyan-600 hover:bg-cyan-700" aria-label="Send message">
+                            <Send className="w-4 h-4" aria-hidden="true" />
                         </Button>
                     </form>
                 </div>

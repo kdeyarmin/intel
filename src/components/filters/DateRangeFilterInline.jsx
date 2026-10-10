@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +27,7 @@ function getQuickDate(preset) {
 }
 
 export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) {
+  const uid = useId();
   const { preset, startDate, endDate } = dateRange || { preset: 'all', startDate: '', endDate: '' };
 
   const handlePresetChange = (value) => {
@@ -42,13 +43,13 @@ export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) 
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-        <CalendarDays className="w-3.5 h-3.5" />
+      <div id={`${uid}-heading`} className="flex items-center gap-1.5 text-xs text-slate-400">
+        <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" />
         Date Range
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <Select value={preset} onValueChange={handlePresetChange}>
-          <SelectTrigger className="h-8 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-300">
+          <SelectTrigger aria-labelledby={`${uid}-heading`} className="h-8 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -60,8 +61,10 @@ export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) 
         {preset === 'custom' && (
           <>
             <div className="space-y-0.5">
-              <Label className="text-[10px] text-slate-500">From</Label>
+              <Label htmlFor={`${uid}-from`} className="text-[10px] text-slate-500">From</Label>
               <Input
+                id={`${uid}-from`}
+                aria-label="From date"
                 type="date"
                 value={startDate}
                 onChange={(e) => onDateRangeChange({ preset: 'custom', startDate: e.target.value, endDate })}
@@ -69,8 +72,10 @@ export default function DateRangeFilterInline({ dateRange, onDateRangeChange }) 
               />
             </div>
             <div className="space-y-0.5">
-              <Label className="text-[10px] text-slate-500">To</Label>
+              <Label htmlFor={`${uid}-to`} className="text-[10px] text-slate-500">To</Label>
               <Input
+                id={`${uid}-to`}
+                aria-label="To date"
                 type="date"
                 value={endDate}
                 onChange={(e) => onDateRangeChange({ preset: 'custom', startDate, endDate: e.target.value })}

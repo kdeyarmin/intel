@@ -36,9 +36,10 @@ export default function ForgotPassword() {
             Enter the email you sign in with. If password reset by email is set up, we'll send you a link.
           </p>
           <div>
-            <label htmlFor="forgot-email" className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+            <label htmlFor="forgot-email" id="forgot-email-label" className="block text-sm font-medium text-slate-300 mb-1">Email</label>
             <input
               id="forgot-email"
+              aria-labelledby="forgot-email-label"
               type="email"
               autoComplete="email"
               required

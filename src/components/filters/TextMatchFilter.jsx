@@ -40,7 +40,7 @@ export default function TextMatchFilter({ columns, activeTextFilters, onFiltersC
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <Select value={column} onValueChange={setColumn}>
-          <SelectTrigger className="h-8 text-xs w-[120px] bg-slate-800/50 border-slate-700 text-slate-300">
+          <SelectTrigger aria-label="Column to match" className="h-8 text-xs w-[120px] bg-slate-800/50 border-slate-700 text-slate-300">
             <SelectValue placeholder="Column" />
           </SelectTrigger>
           <SelectContent>
@@ -50,7 +50,7 @@ export default function TextMatchFilter({ columns, activeTextFilters, onFiltersC
           </SelectContent>
         </Select>
         <Select value={mode} onValueChange={setMode}>
-          <SelectTrigger className="h-8 text-xs w-[130px] bg-slate-800/50 border-slate-700 text-slate-300">
+          <SelectTrigger aria-label="Match mode" className="h-8 text-xs w-[130px] bg-slate-800/50 border-slate-700 text-slate-300">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -63,11 +63,12 @@ export default function TextMatchFilter({ columns, activeTextFilters, onFiltersC
           value={term}
           onChange={(e) => setTerm(e.target.value)}
           placeholder="Value..."
+          aria-label="Text to match"
           className="h-8 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-200"
           onKeyDown={(e) => e.key === 'Enter' && addFilter()}
         />
-        <Button variant="outline" size="sm" onClick={addFilter} className="h-8 text-xs border-slate-700 text-slate-300 hover:text-cyan-400" disabled={!term.trim()}>
-          <Plus className="w-3.5 h-3.5" />
+        <Button variant="outline" size="sm" onClick={addFilter} className="h-8 text-xs border-slate-700 text-slate-300 hover:text-cyan-400" disabled={!term.trim()} aria-label="Add text filter">
+          <Plus className="w-3.5 h-3.5" aria-hidden="true" />
         </Button>
       </div>
       {activeTextFilters.length > 0 && (
@@ -75,8 +76,8 @@ export default function TextMatchFilter({ columns, activeTextFilters, onFiltersC
           {activeTextFilters.map(f => (
             <Badge key={f.id} variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-violet-900/10 text-violet-400 border border-violet-500/20">
               {getColumnLabel(f.column)} {getModeLabel(f.mode)} "{f.term}"
-              <button onClick={() => removeFilter(f.id)} className="hover:bg-violet-900/20 rounded-full p-0.5">
-                <X className="w-3 h-3" />
+              <button onClick={() => removeFilter(f.id)} aria-label={`Remove filter ${getColumnLabel(f.column)} ${getModeLabel(f.mode)} "${f.term}"`} className="hover:bg-violet-900/20 rounded-full p-0.5">
+                <X className="w-3 h-3" aria-hidden="true" />
               </button>
             </Badge>
           ))}

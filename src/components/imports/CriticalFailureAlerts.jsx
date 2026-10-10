@@ -49,8 +49,18 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
             return (
               <div
                 key={batch.id}
+                role="button"
+                tabIndex={0}
                 className="flex items-center gap-3 bg-slate-800/60 border border-red-500/15 rounded-lg p-3 hover:bg-slate-800/80 transition-colors cursor-pointer"
                 onClick={() => onViewErrors?.(batch)}
+                onKeyDown={(e) => {
+                  // Keys pressed on the inner Resume button bubble up here; only the row itself opens the errors.
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onViewErrors?.(batch);
+                  }
+                }}
               >
                 <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">

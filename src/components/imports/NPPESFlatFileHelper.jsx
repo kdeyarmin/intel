@@ -113,10 +113,11 @@ split_nppes_csv("npidata_pfile_20050523-20240107.csv")
               <Button 
                 size="sm" 
                 variant="secondary" 
-                className="absolute top-2 right-2 h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-2 right-2 h-6 px-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                 onClick={copyToClipboard}
+                aria-label={copied ? 'Script copied' : 'Copy Python script'}
               >
-                {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-500" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
               </Button>
             </div>
           </div>
@@ -133,6 +134,7 @@ split_nppes_csv("npidata_pfile_20050523-20240107.csv")
               <input 
                 type="text" 
                 placeholder="https://your-bucket.s3.amazonaws.com/nppes_extracted.csv"
+                aria-label="Extracted NPPES CSV URL"
                 className="w-full p-2 text-xs bg-slate-900 border border-slate-700 rounded text-slate-300 placeholder-slate-600"
                 value={streamUrl}
                 onChange={e => setStreamUrl(e.target.value)}

@@ -223,8 +223,8 @@ export default function DMEProviderReport() {
             )}
             {!isRunning && (
               <div className="flex items-center gap-2 flex-shrink-0">
-                <Switch id="dme-rescan" checked={rescan} onCheckedChange={setRescan} />
-                <label htmlFor="dme-rescan" className="text-xs text-slate-400 cursor-pointer whitespace-nowrap">Re-search found</label>
+                <Switch id="dme-rescan" aria-labelledby="dme-rescan-label" checked={rescan} onCheckedChange={setRescan} />
+                <label htmlFor="dme-rescan" id="dme-rescan-label" className="text-xs text-slate-400 cursor-pointer whitespace-nowrap">Re-search found</label>
               </div>
             )}
             {isRunning ? (
@@ -246,17 +246,18 @@ export default function DMEProviderReport() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
           <Input
             placeholder="Search DME supplier name…"
+            aria-label="Search DME supplier name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-400"
           />
         </div>
         <Select value={selectedState} onValueChange={(v) => { setSelectedState(v === 'all' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-[200px] bg-slate-800/50 border-slate-700/50 text-slate-200">
-            <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
+          <SelectTrigger aria-label="Filter by state" className="w-full sm:w-[200px] bg-slate-800/50 border-slate-700/50 text-slate-200">
+            <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" aria-hidden="true" />
             <SelectValue placeholder="All States" />
           </SelectTrigger>
           <SelectContent className="bg-slate-800 border-slate-700">

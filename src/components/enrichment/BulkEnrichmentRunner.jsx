@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Sparkles, Loader2, CheckCircle2, XCircle, AlertTriangle, Brain, StopCircle, Mail } from 'lucide-react';
 
 export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
+  const uid = useId();
   const [batchSize, setBatchSize] = useState(10);
   const [candidateStats, setCandidateStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -146,8 +147,9 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
         {!isRunning && (
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-slate-400">Batch size (providers per round)</Label>
+              <Label htmlFor={`${uid}-batch-size`} className="text-xs text-slate-400">Batch size (providers per round)</Label>
               <select
+                id={`${uid}-batch-size`}
                 className="w-full mt-1 text-xs bg-slate-800/50 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300"
                 value={batchSize}
                 onChange={e => setBatchSize(Number(e.target.value))}

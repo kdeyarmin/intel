@@ -17,44 +17,58 @@ export default function EmailVerificationResultRow({ result }) {
 
   const hasDetails = result.dns || result.smtp || result.catchAll;
 
+  const header = (
+    <>
+      <Icon className={`w-4 h-4 shrink-0 ${config.color}`} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-slate-200 truncate">{result.name || result.npi}</span>
+          <Badge className={`text-[10px] ${config.bg} ${config.color} border`}>{config.label}</Badge>
+          {result.score != null && (
+            <span className="text-[10px] text-slate-500">Score: {result.score}/100</span>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 truncate">{result.email}</div>
+        {result.recommendation && (
+          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{result.recommendation}</p>
+        )}
+        {result.error && (
+          <p className="text-[10px] text-red-400 mt-0.5">{result.error}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {result.confidence && (
+          <Badge className={`text-[10px] ${
+            result.confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400' :
+            result.confidence === 'medium' ? 'bg-amber-900/15 text-amber-400' :
+            'bg-slate-500/15 text-slate-400'
+          }`}>
+            {result.confidence}
+          </Badge>
+        )}
+        {hasDetails && (
+          expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className={`rounded-lg border ${config.bg}`}>
-      <div
-        className="flex items-center gap-3 p-2.5 cursor-pointer"
-        onClick={() => hasDetails && setExpanded(!expanded)}
-      >
-        <Icon className={`w-4 h-4 shrink-0 ${config.color}`} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-slate-200 truncate">{result.name || result.npi}</span>
-            <Badge className={`text-[10px] ${config.bg} ${config.color} border`}>{config.label}</Badge>
-            {result.score != null && (
-              <span className="text-[10px] text-slate-500">Score: {result.score}/100</span>
-            )}
-          </div>
-          <div className="text-xs text-slate-500 truncate">{result.email}</div>
-          {result.recommendation && (
-            <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{result.recommendation}</p>
-          )}
-          {result.error && (
-            <p className="text-[10px] text-red-400 mt-0.5">{result.error}</p>
-          )}
+      {hasDetails ? (
+        <button
+          type="button"
+          className="flex items-center gap-3 p-2.5 cursor-pointer w-full text-left"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          {header}
+        </button>
+      ) : (
+        <div className="flex items-center gap-3 p-2.5">
+          {header}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {result.confidence && (
-            <Badge className={`text-[10px] ${
-              result.confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400' :
-              result.confidence === 'medium' ? 'bg-amber-900/15 text-amber-400' :
-              'bg-slate-500/15 text-slate-400'
-            }`}>
-              {result.confidence}
-            </Badge>
-          )}
-          {hasDetails && (
-            expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-          )}
-        </div>
-      </div>
+      )}
 
       {expanded && hasDetails && (
         <div className="px-2.5 pb-2.5 pt-0 border-t border-slate-700/30 mt-0">

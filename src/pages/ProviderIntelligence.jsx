@@ -458,7 +458,7 @@ export default function ProviderIntelligence() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={filteredProviders.length > 0 && selectedNpis.size === filteredProviders.length}
-                onChange={toggleSelectAll} className="rounded border-slate-600" />
+                onChange={toggleSelectAll} aria-label="Select all providers" className="rounded border-slate-600" />
               <span className="text-xs text-slate-500">
                 {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} with email
               </span>
@@ -472,10 +472,13 @@ export default function ProviderIntelligence() {
             {filteredProviders.slice(0, 50).map((p) => {
               const loc = allLocations.find(l => l.npi === p.npi && l.location_type === 'Practice') || allLocations.find(l => l.npi === p.npi);
               const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary) || allTaxonomies.find(t => t.npi === p.npi);
+              const name = p.entity_type === 'Individual'
+                ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
+                : p.organization_name || p.npi;
               return (
                 <div key={p.id} className="flex items-start gap-2">
                   <input type="checkbox" checked={selectedNpis.has(p.npi)}
-                    onChange={() => toggleSelectProvider(p.npi)} className="rounded border-slate-600 mt-3.5" />
+                    onChange={() => toggleSelectProvider(p.npi)} aria-label={`Select ${name || p.npi}`} className="rounded border-slate-600 mt-3.5" />
                   <div className="flex-1">
                     <EnrichedProviderCard provider={p} location={loc} taxonomy={tax} />
                   </div>

@@ -215,9 +215,10 @@ function RawDataTable({ rows, facilityType }) {
       {allRawKeys.length > 5 && (
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
             <input
               type="text"
+              aria-label="Search data fields"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search columns..."

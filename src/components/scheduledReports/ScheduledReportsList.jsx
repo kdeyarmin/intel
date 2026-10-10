@@ -109,6 +109,7 @@ export default function ScheduledReportsList({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <Switch
+                  aria-label={`Schedule active for ${report.name}`}
                   checked={report.is_active}
                   onCheckedChange={() => onToggleActive(report)}
                   className="scale-75"

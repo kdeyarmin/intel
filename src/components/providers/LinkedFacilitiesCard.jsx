@@ -56,9 +56,10 @@ export default function LinkedFacilitiesCard({ linkedFacilities }) {
           const label = TYPE_LABELS[f.facility_type] || f.facility_type?.replace(/_/g, ' ');
 
           return (
-            <div
+            <button
+              type="button"
               key={i}
-              className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/30 hover:border-slate-600/50 cursor-pointer transition-colors"
+              className="block w-full text-left bg-slate-900/50 rounded-lg p-3 border border-slate-700/30 hover:border-slate-600/50 cursor-pointer transition-colors"
               onClick={() => {
                 if (group && f.provider_id) {
                   navigate(createPageUrl('FacilityDetail') + `?id=${f.provider_id}&group=${group}`);
@@ -91,10 +92,10 @@ export default function LinkedFacilitiesCard({ linkedFacilities }) {
                       <Star className="w-3 h-3 mr-0.5" />{f.quality_rating}
                     </Badge>
                   )}
-                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                  <ExternalLink className="w-3 h-3 text-slate-400" aria-hidden="true" />
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </CardContent>

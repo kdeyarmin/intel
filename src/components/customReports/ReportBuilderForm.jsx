@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Save, Play, X } from 'lucide-react';
 import { DATASET_CONFIG } from './reportConfig';
 
 export default function ReportBuilderForm({ config, onChange, onRun, onSave, onCancel, saving }) {
+  const uid = useId();
   const dsConfig = DATASET_CONFIG[config.dataset] || null;
 
   const updateConfig = (key, value) => onChange({ ...config, [key]: value });
@@ -28,8 +29,8 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Report Builder</CardTitle>
           {onCancel && (
-            <Button variant="ghost" size="icon" onClick={onCancel} className="h-7 w-7">
-              <X className="w-4 h-4" />
+            <Button variant="ghost" size="icon" onClick={onCancel} className="h-7 w-7" aria-label="Close report builder">
+              <X className="w-4 h-4" aria-hidden="true" />
             </Button>
           )}
         </div>
@@ -37,8 +38,10 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
       <CardContent className="space-y-4">
         {/* Name */}
         <div>
-          <Label className="text-xs">Report Name</Label>
+          <Label htmlFor={`${uid}-name`} className="text-xs">Report Name</Label>
           <Input
+            id={`${uid}-name`}
+            aria-label="Report Name"
             value={config.name || ''}
             onChange={e => updateConfig('name', e.target.value)}
             placeholder="My Custom Report"
@@ -48,9 +51,9 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
 
         {/* Dataset */}
         <div>
-          <Label className="text-xs">Dataset</Label>
+          <Label htmlFor={`${uid}-dataset`} className="text-xs">Dataset</Label>
           <Select value={config.dataset || ''} onValueChange={v => onChange({ ...config, dataset: v, metrics: [], group_by: '', filters: {} })}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Select a dataset" /></SelectTrigger>
+            <SelectTrigger id={`${uid}-dataset`} className="mt-1"><SelectValue placeholder="Select a dataset" /></SelectTrigger>
             <SelectContent>
               {Object.entries(DATASET_CONFIG).map(([key, ds]) => (
                 <SelectItem key={key} value={key}>{ds.label}</SelectItem>
@@ -62,12 +65,13 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
         {dsConfig && (
           <>
             {/* Metrics */}
-            <div>
-              <Label className="text-xs mb-2 block">Metrics (select at least one)</Label>
+            <div role="group" aria-labelledby={`${uid}-metrics`}>
+              <span id={`${uid}-metrics`} className="text-xs font-medium leading-none mb-2 block">Metrics (select at least one)</span>
               <div className="grid grid-cols-2 gap-2">
                 {dsConfig.metrics.map(m => (
                   <label key={m.key} className="flex items-center gap-2 text-xs cursor-pointer">
                     <Checkbox
+                      aria-label={m.label}
                       checked={(config.metrics || []).includes(m.key)}
                       onCheckedChange={() => toggleMetric(m.key)}
                     />
@@ -79,9 +83,9 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
 
             {/* Group By */}
             <div>
-              <Label className="text-xs">Group By</Label>
+              <Label htmlFor={`${uid}-group-by`} className="text-xs">Group By</Label>
               <Select value={config.group_by || ''} onValueChange={v => updateConfig('group_by', v)}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select grouping" /></SelectTrigger>
+                <SelectTrigger id={`${uid}-group-by`} className="mt-1"><SelectValue placeholder="Select grouping" /></SelectTrigger>
                 <SelectContent>
                   {dsConfig.groupOptions.map(g => (
                     <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
@@ -92,9 +96,9 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
 
             {/* Chart Type */}
             <div>
-              <Label className="text-xs">Chart Type</Label>
+              <Label htmlFor={`${uid}-chart-type`} className="text-xs">Chart Type</Label>
               <Select value={config.chart_type || 'bar'} onValueChange={v => updateConfig('chart_type', v)}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={`${uid}-chart-type`} className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="bar">Bar Chart</SelectItem>
                   <SelectItem value="line">Line Chart</SelectItem>
@@ -104,12 +108,14 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
             </div>
 
             {/* Filters */}
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Filters</Label>
+            <div className="space-y-2" role="group" aria-labelledby={`${uid}-filters`}>
+              <span id={`${uid}-filters`} className="text-xs font-semibold leading-none">Filters</span>
               {dsConfig.filters.includes('year') && (
                 <div>
-                  <Label className="text-[11px] text-slate-500">Year</Label>
+                  <Label htmlFor={`${uid}-filter-year`} className="text-[11px] text-slate-500">Year</Label>
                   <Input
+                    id={`${uid}-filter-year`}
+                    aria-label="Year"
                     type="number"
                     placeholder="e.g. 2021"
                     value={config.filters?.year || ''}
@@ -120,8 +126,10 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('state') && (
                 <div>
-                  <Label className="text-[11px] text-slate-500">State (2-letter)</Label>
+                  <Label htmlFor={`${uid}-filter-state`} className="text-[11px] text-slate-500">State (2-letter)</Label>
                   <Input
+                    id={`${uid}-filter-state`}
+                    aria-label="State (2-letter)"
                     placeholder="e.g. FL"
                     value={config.filters?.state || ''}
                     onChange={e => updateFilter('state', e.target.value.toUpperCase())}
@@ -132,8 +140,10 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('hospital_type') && (
                 <div>
-                  <Label className="text-[11px] text-slate-500">Hospital Type</Label>
+                  <Label htmlFor={`${uid}-filter-hospital_type`} className="text-[11px] text-slate-500">Hospital Type</Label>
                   <Input
+                    id={`${uid}-filter-hospital_type`}
+                    aria-label="Hospital Type"
                     placeholder="e.g. Short-Stay"
                     value={config.filters?.hospital_type || ''}
                     onChange={e => updateFilter('hospital_type', e.target.value)}
@@ -143,8 +153,10 @@ export default function ReportBuilderForm({ config, onChange, onRun, onSave, onC
               )}
               {dsConfig.filters.includes('table_name') && (
                 <div>
-                  <Label className="text-[11px] text-slate-500">Table Name</Label>
+                  <Label htmlFor={`${uid}-filter-table_name`} className="text-[11px] text-slate-500">Table Name</Label>
                   <Input
+                    id={`${uid}-filter-table_name`}
+                    aria-label="Table Name"
                     placeholder="e.g. D1, SNF3, HHA2"
                     value={config.filters?.table_name || ''}
                     onChange={e => updateFilter('table_name', e.target.value.toUpperCase())}

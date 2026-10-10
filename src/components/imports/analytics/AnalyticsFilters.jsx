@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Filter } from 'lucide-react';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
@@ -10,6 +10,7 @@ const IMPORT_TYPE_LABELS = buildImportTypeLabels({
 });
 
 export default function AnalyticsFilters({ filters, onChange, importTypes = [] }) {
+  const uid = useId();
   const updateFilter = (key, value) => onChange({ ...filters, [key]: value });
 
   return (
@@ -19,8 +20,10 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
         Filters:
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-[10px] text-slate-500">From:</label>
+        <label htmlFor={`${uid}-from`} className="text-[10px] text-slate-500">From:</label>
         <Input
+          id={`${uid}-from`}
+          aria-label="From date"
           type="date"
           value={filters.dateStart || ''}
           onChange={(e) => updateFilter('dateStart', e.target.value)}
@@ -28,8 +31,10 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
         />
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-[10px] text-slate-500">To:</label>
+        <label htmlFor={`${uid}-to`} className="text-[10px] text-slate-500">To:</label>
         <Input
+          id={`${uid}-to`}
+          aria-label="To date"
           type="date"
           value={filters.dateEnd || ''}
           onChange={(e) => updateFilter('dateEnd', e.target.value)}
@@ -37,6 +42,7 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
         />
       </div>
       <select
+        aria-label="Import type"
         className="text-xs border border-slate-700 rounded-md px-2 py-1 bg-slate-800/50 text-slate-300 h-7"
         value={filters.importType || ''}
         onChange={(e) => updateFilter('importType', e.target.value)}
@@ -47,6 +53,7 @@ export default function AnalyticsFilters({ filters, onChange, importTypes = [] }
         ))}
       </select>
       <select
+        aria-label="Status"
         className="text-xs border border-slate-700 rounded-md px-2 py-1 bg-slate-800/50 text-slate-300 h-7"
         value={filters.status || ''}
         onChange={(e) => updateFilter('status', e.target.value)}

@@ -247,8 +247,9 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                     variant="ghost"
                     className="h-7 w-7 p-0 text-slate-500 hover:text-slate-300"
                     onClick={() => setSelectedCategories(new Set())}
+                    aria-label="Clear selected categories"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 </div>
               )}
@@ -267,16 +268,16 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   const actionedCount = (grouped[cat] || []).filter(e => e.bulk_action).length;
 
                   return (
-                    <div
+                    <label
                       key={cat}
                       className={`flex items-center gap-2.5 p-2 rounded-lg border transition-colors cursor-pointer ${
                         isSelected
                           ? 'bg-cyan-900/5 border-cyan-500/30'
                           : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
                       }`}
-                      onClick={() => toggleCategory(cat)}
                     >
                       <Checkbox
+                        aria-label={`Select ${config.label} errors`}
                         checked={isSelected}
                         onCheckedChange={() => toggleCategory(cat)}
                         className="border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
@@ -293,7 +294,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                           </Badge>
                         )}
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>

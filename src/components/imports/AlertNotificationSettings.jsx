@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +66,7 @@ export function checkAndNotify(batch, previousStatus) {
 }
 
 export default function AlertNotificationSettings() {
+  const uid = useId();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -112,11 +113,11 @@ export default function AlertNotificationSettings() {
           <div className="flex items-center gap-2">
             {settings.enabled ? <Bell className="w-4 h-4 text-cyan-400" /> : <BellOff className="w-4 h-4 text-slate-500" />}
             <div>
-              <p className="text-sm font-medium text-slate-200">Import Alerts</p>
+              <p id={`${uid}-enabled`} className="text-sm font-medium text-slate-200">Import Alerts</p>
               <p className="text-[10px] text-slate-400">Get notified about import job status changes</p>
             </div>
           </div>
-          <Switch checked={settings.enabled} onCheckedChange={(v) => update('enabled', v)} />
+          <Switch aria-labelledby={`${uid}-enabled`} checked={settings.enabled} onCheckedChange={(v) => update('enabled', v)} />
         </div>
 
         {settings.enabled && (
@@ -128,31 +129,33 @@ export default function AlertNotificationSettings() {
                 <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800/30">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-sm text-slate-300">Import completes successfully</span>
+                    <span id={`${uid}-on-success`} className="text-sm text-slate-300">Import completes successfully</span>
                   </div>
-                  <Switch checked={settings.onSuccess} onCheckedChange={(v) => update('onSuccess', v)} />
+                  <Switch aria-labelledby={`${uid}-on-success`} checked={settings.onSuccess} onCheckedChange={(v) => update('onSuccess', v)} />
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800/30">
                   <div className="flex items-center gap-2">
                     <XCircle className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-sm text-slate-300">Import fails</span>
+                    <span id={`${uid}-on-failure`} className="text-sm text-slate-300">Import fails</span>
                   </div>
-                  <Switch checked={settings.onFailure} onCheckedChange={(v) => update('onFailure', v)} />
+                  <Switch aria-labelledby={`${uid}-on-failure`} checked={settings.onFailure} onCheckedChange={(v) => update('onFailure', v)} />
                 </div>
                 <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-800/30">
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-sm text-slate-300">Import stalls (no progress)</span>
+                    <span id={`${uid}-on-stall`} className="text-sm text-slate-300">Import stalls (no progress)</span>
                   </div>
-                  <Switch checked={settings.onStall} onCheckedChange={(v) => update('onStall', v)} />
+                  <Switch aria-labelledby={`${uid}-on-stall`} checked={settings.onStall} onCheckedChange={(v) => update('onStall', v)} />
                 </div>
               </div>
             </div>
 
             {/* Stall threshold */}
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Stall detection threshold (minutes)</Label>
+              <Label htmlFor={`${uid}-stall-threshold`} id={`${uid}-stall-threshold-label`} className="text-xs text-slate-400">Stall detection threshold (minutes)</Label>
               <Input
+                id={`${uid}-stall-threshold`}
+                aria-labelledby={`${uid}-stall-threshold-label`}
                 type="number"
                 min={5}
                 max={120}
@@ -179,14 +182,14 @@ export default function AlertNotificationSettings() {
                 <div className="flex items-center gap-2">
                   <Settings className="w-3.5 h-3.5 text-slate-400" />
                   <div>
-                    <span className="text-sm text-slate-300">Browser push notifications</span>
+                    <span id={`${uid}-browser-push`} className="text-sm text-slate-300">Browser push notifications</span>
                     <p className="text-[10px] text-slate-400">
                       {notifPermission === 'granted' ? 'Enabled' : notifPermission === 'denied' ? 'Blocked by browser' : 'Not yet requested'}
                     </p>
                   </div>
                 </div>
                 {notifPermission === 'granted' ? (
-                  <Switch checked={settings.showBrowserNotifications} onCheckedChange={(v) => update('showBrowserNotifications', v)} />
+                  <Switch aria-labelledby={`${uid}-browser-push`} checked={settings.showBrowserNotifications} onCheckedChange={(v) => update('showBrowserNotifications', v)} />
                 ) : notifPermission !== 'denied' ? (
                   <Button size="sm" variant="outline" className="h-7 text-xs bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800" onClick={requestBrowserPermission}>
                     Enable

@@ -168,6 +168,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           </p>
           <Textarea
             placeholder="Reason for cancellation (optional)"
+            aria-label="Reason for cancellation (optional)"
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
             className="h-20 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
@@ -198,6 +199,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           </div>
           <Textarea
             placeholder="Reason for skipping (optional)"
+            aria-label="Reason for skipping (optional)"
             value={skipReason}
             onChange={(e) => setSkipReason(e.target.value)}
             className="h-16 bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"

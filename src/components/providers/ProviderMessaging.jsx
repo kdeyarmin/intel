@@ -158,6 +158,7 @@ Do NOT include subject line, just the body.`,
             {/* Compose */}
             <div className="space-y-2">
               <Textarea
+                aria-label={`Message to ${providerName}`}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder={`Message to ${providerName}...`}
@@ -201,15 +202,15 @@ Do NOT include subject line, just the body.`,
 
             {showNewEvent && (
               <div className="bg-slate-800/40 rounded-lg p-3 space-y-2 border border-slate-700/30">
-                <Input value={eventForm.title} onChange={(e) => setEventForm(p => ({ ...p, title: e.target.value }))}
+                <Input aria-label="Event title" value={eventForm.title} onChange={(e) => setEventForm(p => ({ ...p, title: e.target.value }))}
                   placeholder="Event title (e.g., Intro Call)" className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={eventForm.date} onChange={(e) => setEventForm(p => ({ ...p, date: e.target.value }))}
+                  <Input type="date" aria-label="Event date" value={eventForm.date} onChange={(e) => setEventForm(p => ({ ...p, date: e.target.value }))}
                     className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
-                  <Input type="time" value={eventForm.time} onChange={(e) => setEventForm(p => ({ ...p, time: e.target.value }))}
+                  <Input type="time" aria-label="Event time" value={eventForm.time} onChange={(e) => setEventForm(p => ({ ...p, time: e.target.value }))}
                     className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 </div>
-                <Input value={eventForm.notes} onChange={(e) => setEventForm(p => ({ ...p, notes: e.target.value }))}
+                <Input aria-label="Event notes" value={eventForm.notes} onChange={(e) => setEventForm(p => ({ ...p, notes: e.target.value }))}
                   placeholder="Notes (optional)" className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 <Button size="sm" onClick={addEvent} disabled={!eventForm.title || !eventForm.date}
                   className="h-7 text-[10px] w-full bg-emerald-600 hover:bg-emerald-700 gap-1">

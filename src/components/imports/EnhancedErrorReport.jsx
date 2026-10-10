@@ -263,8 +263,9 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
         {/* Filters */}
         <div className="flex items-center gap-2 py-1">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
             <Input
+              aria-label="Search errors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by row, NPI, field, or message..."
@@ -272,6 +273,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
             />
           </div>
           <select
+            aria-label="Severity"
             className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}

@@ -129,6 +129,7 @@ export default function ProviderOutreach() {
               <div className="mb-4">
                 <Input
                   placeholder="Search campaigns..."
+                  aria-label="Search campaigns"
                   value={searchCampaign}
                   onChange={(e) => setSearchCampaign(e.target.value)}
                   className="max-w-sm"
@@ -149,13 +150,14 @@ export default function ProviderOutreach() {
               ) : (
                 <div className="space-y-3">
                   {filteredCampaigns.map(campaign => (
-                    <div
+                    <button
+                      type="button"
                       key={campaign.id}
                       onClick={() => {
                         setSelectedCampaign(campaign);
                         setTab('analytics');
                       }}
-                      className="p-4 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 cursor-pointer transition-colors"
+                      className="block w-full text-left p-4 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 cursor-pointer transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
@@ -185,7 +187,7 @@ export default function ProviderOutreach() {
                           <p className="font-bold text-lg text-purple-400 mt-1">{(delivery(campaign).responded || 0).toLocaleString()}</p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

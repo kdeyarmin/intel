@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/shared/PageHeader';
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 
 export default function Utilization() {
+  const uid = useId();
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState('all');
 
@@ -63,8 +64,9 @@ export default function Utilization() {
 
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-4 rounded-xl border">
         <div className="relative flex-1 w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <Input 
+            aria-label="Search by NPI or service type"
             placeholder="Search by NPI or service type..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -73,11 +75,11 @@ export default function Utilization() {
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Year:</span>
+            <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <span id={`${uid}-year`} className="text-sm font-medium">Year:</span>
           </div>
           <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger aria-labelledby={`${uid}-year`} className="w-[120px]">
               <SelectValue placeholder="All Years" />
             </SelectTrigger>
             <SelectContent>

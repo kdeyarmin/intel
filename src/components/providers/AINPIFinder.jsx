@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,7 @@ function ResultCard({ match, importing, imported, onImport }) {
 }
 
 export default function AINPIFinder({ onProviderAdded }) {
+  const uid = useId();
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -210,8 +211,10 @@ Return up to 10 results, ordered by relevance.`,
         <CardContent className="pt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-medium text-slate-300">Provider / Organization Name <span className="text-red-500">*</span></Label>
-              <Input 
+              <Label id={`${uid}-name-label`} htmlFor={`${uid}-name`} className="text-xs font-medium text-slate-300">Provider / Organization Name <span className="text-red-500">*</span></Label>
+              <Input
+                id={`${uid}-name`}
+                aria-labelledby={`${uid}-name-label`}
                 value={name} 
                 onChange={e => setName(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -220,8 +223,10 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">Specialty</Label>
-              <Input 
+              <Label id={`${uid}-specialty-label`} htmlFor={`${uid}-specialty`} className="text-xs font-medium text-slate-300">Specialty</Label>
+              <Input
+                id={`${uid}-specialty`}
+                aria-labelledby={`${uid}-specialty-label`}
                 value={specialty} 
                 onChange={e => setSpecialty(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -230,8 +235,10 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">City</Label>
-              <Input 
+              <Label id={`${uid}-city-label`} htmlFor={`${uid}-city`} className="text-xs font-medium text-slate-300">City</Label>
+              <Input
+                id={`${uid}-city`}
+                aria-labelledby={`${uid}-city-label`}
                 value={city} 
                 onChange={e => setCity(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -240,9 +247,9 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">State</Label>
+              <Label htmlFor={`${uid}-state`} className="text-xs font-medium text-slate-300">State</Label>
               <Select value={state} onValueChange={setState}>
-                <SelectTrigger className="h-9 text-sm mt-1">
+                <SelectTrigger id={`${uid}-state`} className="h-9 text-sm mt-1">
                   <SelectValue placeholder="Any state" />
                 </SelectTrigger>
                 <SelectContent>

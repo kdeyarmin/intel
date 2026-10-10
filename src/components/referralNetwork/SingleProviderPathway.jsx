@@ -103,6 +103,7 @@ export default function SingleProviderPathway() {
         <CardContent>
           <div className="flex gap-3">
             <Input
+              aria-label="Provider NPI"
               placeholder="Enter Provider NPI"
               value={searchNPI}
               onChange={(e) => setSearchNPI(e.target.value)}
@@ -346,9 +347,10 @@ export default function SingleProviderPathway() {
                     : `${provider?.first_name || ''} ${provider?.last_name || ''}`.trim() || analysis.provider_npi;
 
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={analysis.id}
-                      className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 cursor-pointer"
+                      className="flex items-center justify-between w-full text-left p-3 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 cursor-pointer"
                       onClick={() => setSelectedNPI(analysis.provider_npi)}
                     >
                       <div>
@@ -360,7 +362,7 @@ export default function SingleProviderPathway() {
                       <Badge className={analysis.leakage_detected ? 'bg-red-900/20 text-red-400' : 'bg-green-900/20 text-green-400'}>
                         {analysis.leakage_detected ? 'Leakage' : 'Aligned'}
                       </Badge>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

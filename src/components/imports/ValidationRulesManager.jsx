@@ -202,8 +202,9 @@ export default function ValidationRulesManager() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
               <Input
+                aria-label="Search rules"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search rules..."
@@ -313,17 +314,18 @@ export default function ValidationRulesManager() {
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <Switch
+                      aria-label={`Enable ${rule.rule_name}`}
                       checked={rule.enabled !== false}
                       onCheckedChange={() => handleToggle(rule)}
                     />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => { setEditingRule(rule); setEditorOpen(true); }}>
-                      <Pencil className="w-3 h-3" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => { setEditingRule(rule); setEditorOpen(true); }} aria-label={`Edit ${rule.rule_name}`}>
+                      <Pencil className="w-3 h-3" aria-hidden="true" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => handleDuplicate(rule)}>
-                      <Copy className="w-3 h-3" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-200" onClick={() => handleDuplicate(rule)} aria-label={`Duplicate ${rule.rule_name}`}>
+                      <Copy className="w-3 h-3" aria-hidden="true" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => setDeleteRule(rule)}>
-                      <Trash2 className="w-3 h-3" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => setDeleteRule(rule)} aria-label={`Delete ${rule.rule_name}`}>
+                      <Trash2 className="w-3 h-3" aria-hidden="true" />
                     </Button>
                   </div>
                 </div>

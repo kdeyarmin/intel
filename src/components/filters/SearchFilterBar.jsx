@@ -45,6 +45,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
               ) : filter.type === 'text' ? (
                 <Input
                   placeholder={filter.label}
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"
@@ -53,6 +54,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
                 <Input
                   type="number"
                   placeholder={filter.label}
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"
@@ -60,6 +62,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
               ) : filter.type === 'date' ? (
                 <Input
                   type="date"
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"

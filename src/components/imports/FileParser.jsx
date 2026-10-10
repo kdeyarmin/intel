@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useId, useState, useRef, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -17,6 +17,7 @@ function getExtension(name) {
 }
 
 export default function FileParser({ onParsed, selectedType }) {
+  const uid = useId();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState('');
@@ -160,7 +161,7 @@ export default function FileParser({ onParsed, selectedType }) {
 
   return (
     <div className="space-y-3">
-      <Label>Upload File</Label>
+      <Label htmlFor={`${uid}-file`}>Upload File</Label>
       <div className="flex items-center gap-2 mb-1">
         <Badge variant="outline" className="text-[10px]">CSV</Badge>
         <Badge variant="outline" className="text-[10px]">TXT</Badge>
@@ -170,6 +171,8 @@ export default function FileParser({ onParsed, selectedType }) {
         <Badge variant="outline" className="text-[10px]">JSON</Badge>
       </div>
       <Input
+        id={`${uid}-file`}
+        aria-label="Upload File"
         type="file"
         accept=".csv,.txt,.tsv,.xlsx,.xls,.json"
         onChange={handleFileSelect}

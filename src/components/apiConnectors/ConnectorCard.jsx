@@ -99,29 +99,29 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor={`connector-name-${connector.id}`}>Name</Label>
-              <Input id={`connector-name-${connector.id}`} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <Input id={`connector-name-${connector.id}`} aria-label="Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`connector-url-${connector.id}`}>Base URL</Label>
-              <Input id={`connector-url-${connector.id}`} value={formData.api_url} onChange={e => setFormData({...formData, api_url: e.target.value})} />
+              <Input id={`connector-url-${connector.id}`} aria-label="Base URL" value={formData.api_url} onChange={e => setFormData({...formData, api_url: e.target.value})} />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`connector-key-${connector.id}`}>API Key (Optional)</Label>
-              <Input id={`connector-key-${connector.id}`} type="password" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} placeholder="••••••••••••" />
+              <Input id={`connector-key-${connector.id}`} aria-label="API Key (Optional)" type="password" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} placeholder="••••••••••••" />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`connector-header-${connector.id}`}>API key header</Label>
-              <Input id={`connector-header-${connector.id}`} value={formData.api_key_header} onChange={e => setFormData({...formData, api_key_header: e.target.value})} placeholder="Authorization (sent as Bearer token)" />
+              <Input id={`connector-header-${connector.id}`} aria-label="API key header" value={formData.api_key_header} onChange={e => setFormData({...formData, api_key_header: e.target.value})} placeholder="Authorization (sent as Bearer token)" />
               <p className="text-xs text-slate-500">Leave blank to send the key as a Bearer token, or name the header the API expects (e.g. X-API-Key).</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Rate Limit (Reqs)</Label>
-                <Input type="number" value={formData.rate_limit_requests} onChange={e => setFormData({...formData, rate_limit_requests: parseInt(e.target.value)})} />
+                <Label htmlFor={`connector-rate-requests-${connector.id}`}>Rate Limit (Reqs)</Label>
+                <Input id={`connector-rate-requests-${connector.id}`} aria-label="Rate Limit (Reqs)" type="number" value={formData.rate_limit_requests} onChange={e => setFormData({...formData, rate_limit_requests: parseInt(e.target.value)})} />
               </div>
               <div className="space-y-2">
-                <Label>Per Period (Seconds)</Label>
-                <Input type="number" value={formData.rate_limit_period} onChange={e => setFormData({...formData, rate_limit_period: parseInt(e.target.value)})} />
+                <Label htmlFor={`connector-rate-period-${connector.id}`}>Per Period (Seconds)</Label>
+                <Input id={`connector-rate-period-${connector.id}`} aria-label="Per Period (Seconds)" type="number" value={formData.rate_limit_period} onChange={e => setFormData({...formData, rate_limit_period: parseInt(e.target.value)})} />
               </div>
             </div>
           </div>
@@ -172,7 +172,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
               </Button>
             </div>
             <Button variant="ghost" size="icon" aria-label={`Delete ${connector.name}`} className="text-red-500 hover:text-red-600 hover:bg-red-900/20" onClick={() => onDelete(connector.id)}>
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
             </Button>
           </>
         )}

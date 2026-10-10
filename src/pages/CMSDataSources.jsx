@@ -213,8 +213,9 @@ export default function CMSDataSources() {
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[250px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
           <Input
+            aria-label="Search datasets"
             placeholder="Search datasets..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -225,6 +226,7 @@ export default function CMSDataSources() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-500" />
           <select
+            aria-label="Category"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"
@@ -237,6 +239,7 @@ export default function CMSDataSources() {
         </div>
 
         <select
+          aria-label="Priority"
           value={selectedPriority}
           onChange={(e) => setSelectedPriority(e.target.value)}
           className="bg-slate-900 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-500"

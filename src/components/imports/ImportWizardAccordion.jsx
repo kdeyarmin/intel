@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -74,6 +74,7 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
 }
 
 export default function ImportWizardAccordion({ selectedType, onReset, onComplete, _compact = false }) {
+  const uid = useId();
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -370,10 +371,10 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                 <>
                   <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                     <div>
-                      <Label className="text-sm">Dry Run Mode</Label>
+                      <Label htmlFor={`${uid}-dry-run`} id={`${uid}-dry-run-label`} className="text-sm">Dry Run Mode</Label>
                       <p className="text-xs text-slate-500">Validate only — don't write data</p>
                     </div>
-                    <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={processing} />
+                    <Switch id={`${uid}-dry-run`} aria-labelledby={`${uid}-dry-run-label`} checked={dryRun} onCheckedChange={setDryRun} disabled={processing} />
                   </div>
 
                   {/* Summary */}

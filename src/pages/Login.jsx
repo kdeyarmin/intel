@@ -80,9 +80,10 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
               <div>
-                <label htmlFor="login-full-name" className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+                <label id="login-full-name-label" htmlFor="login-full-name" className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
                 <input
                   id="login-full-name"
+                  aria-labelledby="login-full-name-label"
                   autoComplete="name"
                   type="text"
                   value={fullName}
@@ -94,9 +95,10 @@ export default function Login() {
             )}
 
             <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+              <label id="login-email-label" htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-1">Email</label>
               <input
                 id="login-email"
+                aria-labelledby="login-email-label"
                 autoComplete="email"
                 type="email"
                 value={email}
@@ -108,9 +110,10 @@ export default function Login() {
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+              <label id="login-password-label" htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1">Password</label>
               <input
                 id="login-password"
+                aria-labelledby="login-password-label"
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
                 type="password"
                 value={password}

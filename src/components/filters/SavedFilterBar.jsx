@@ -125,6 +125,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Input
+              aria-label="Filter name"
               placeholder="Filter name (e.g. Active MDs in NY)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}

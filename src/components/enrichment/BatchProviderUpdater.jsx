@@ -157,7 +157,7 @@ export default function BatchProviderUpdater() {
             <div key={gc.key} className="border border-slate-700/30 rounded-lg p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Checkbox checked={allSel} onCheckedChange={() => toggleAll(items)} className="border-slate-600" />
+                  <Checkbox checked={allSel} onCheckedChange={() => toggleAll(items)} aria-label={`Select all ${gc.label}`} className="border-slate-600" />
                   <Icon className={`w-3.5 h-3.5 ${gc.color}`} />
                   <span className="text-xs font-medium text-slate-300">{gc.label}</span>
                   <Badge className="bg-slate-700/50 text-slate-400 text-[9px]">{items.length}</Badge>
@@ -168,6 +168,7 @@ export default function BatchProviderUpdater() {
                 {items.slice(0, 10).map(r => (
                   <div key={r.id} className="flex items-center gap-2">
                     <Checkbox checked={selected.has(r.id)}
+                      aria-label={`Select ${r.provider_name || r.npi}`}
                       onCheckedChange={() => setSelected(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })}
                       className="border-slate-600" />
                     <span className="text-[10px] text-slate-400 truncate">{r.provider_name || r.npi}</span>
