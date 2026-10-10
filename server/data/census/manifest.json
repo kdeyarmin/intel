@@ -18,8 +18,8 @@
   "outputs": {
     "geo_counties": {
       "file": "geo_counties.csv.gz",
-      "sha256": "0a667663949f83c53a8299cbbeb17177abfe6a2837fc77c1eeb2439c95e0241b",
-      "rows": 3221
+      "sha256": "aba0becc9a8f5ee4b4107a31db719688e595f98f71efc5f13a2c469467539d4f",
+      "rows": 3229
     },
     "geo_zctas": {
       "file": "geo_zctas.csv.gz",
@@ -33,5 +33,5 @@
     }
   },
   "inferred_counties": 204,
-  "dataset_sha256": "0fe8bfcf4613217d3790bdd20d0feb764198acf19879f099f1118d59e6b43ba4"
+  "dataset_sha256": "298e73f57125b77198c4e680f2642b4d25ec20cd4bc42bba0f1eba495cb43fdc"
 }

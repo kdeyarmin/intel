@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   cmsServiceTypes,
   cmsTopReferred,
   facilityTypes,
+  memoryStaging,
   parseMoney,
   planChunks,
   zipLocationCounts,
@@ -43,7 +44,7 @@ describe("accumulators", () => {
     expect(acc.skipped()).toBe(2);
   });
 
-  it("sums utilization per year and service type, counting each provider once", () => {
+  it("sums utilization per year and service type, counting each provider once", async () => {
     const acc = cmsServiceTypes();
     acc.add([
       { npi: "1000000001", service_type: "Cardiology", data_year: "2023", total_services: "10", total_unique_benes: "5", total_medicare_payment_amt: "$1,000.00", average_medicare_payment_amt: null },
@@ -52,14 +53,15 @@ describe("accumulators", () => {
       { npi: "1000000002", service_type: "Cardiology", data_year: "2022", total_services: "1", total_unique_benes: "1", total_medicare_payment_amt: "1", average_medicare_payment_amt: null },
       { npi: "1000000003", service_type: "", data_year: "2023", total_services: "1", total_unique_benes: "1", total_medicare_payment_amt: "1", average_medicare_payment_amt: null },
     ]);
-    const r = acc.results().find((x) => x.data_year === "2023")!;
+    const results = await acc.results();
+    const r = results.find((x) => x.data_year === "2023")!;
     // 1000 + 25.5 × 4; the unparseable payment adds nothing.
     expect(r).toEqual({ data_year: "2023", service_type: "Cardiology", provider_count: 2, total_services: 14, total_payments: 1102, total_beneficiaries: 8 });
-    expect(acc.results()).toHaveLength(2);
+    expect(results).toHaveLength(2);
     expect(acc.skipped()).toBe(2);
   });
 
-  it("keeps the most-referred-to providers per year", () => {
+  it("keeps the most-referred-to providers per year", async () => {
     const acc = cmsTopReferred(2);
     acc.add([
       { npi: "1", referred_to_npi: "2000000001", total_referrals: 50, data_year: "2023" },
@@ -69,11 +71,31 @@ describe("accumulators", () => {
       { npi: "1", referred_to_npi: null, total_referrals: 999, data_year: "2023" },
       { npi: "1", referred_to_npi: "2000000003", total_referrals: 5, data_year: "2022" },
     ]);
-    expect(acc.results().filter((r) => r.data_year === "2023")).toEqual([
+    expect((await acc.results()).filter((r) => r.data_year === "2023")).toEqual([
       { data_year: "2023", referred_to_npi: "2000000001", total_referrals: 75, referring_providers: 2 },
       { data_year: "2023", referred_to_npi: "2000000002", total_referrals: 70, referring_providers: 1 },
     ]);
     expect(acc.skipped()).toBe(1);
+  });
+
+  it("keeps only one chunk in memory: totals across chunks come from staging", async () => {
+    const staging = memoryStaging();
+    const spy = vi.spyOn(staging, "addDistinct");
+    const acc = cmsServiceTypes(staging);
+    const row = (npi: string) => ({ npi, service_type: "Cardiology", data_year: "2023", total_services: "1", total_unique_benes: "1", total_medicare_payment_amt: "1", average_medicare_payment_amt: null });
+    acc.add([row("1000000001"), row("1000000002")]);
+    await acc.flush!();
+    acc.add([row("1000000002"), row("1000000003")]);
+    await acc.flush!();
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[1][0]).toEqual([["2023|Cardiology", 1000000002], ["2023|Cardiology", 1000000003]]);
+    expect((await acc.results())[0]).toMatchObject({ provider_count: 3, total_services: 4 });
+
+    const top = cmsTopReferred(1, memoryStaging());
+    top.add([{ npi: "1", referred_to_npi: "2000000001", total_referrals: 5, data_year: "2023" }]);
+    await top.flush!();
+    top.add([{ npi: "2", referred_to_npi: "2000000001", total_referrals: 5, data_year: "2023" }, { npi: "3", referred_to_npi: "2000000002", total_referrals: 8, data_year: "2023" }]);
+    expect(await top.results()).toEqual([{ data_year: "2023", referred_to_npi: "2000000001", total_referrals: 10, referring_providers: 2 }]);
   });
 
   it("counts facility records, states and the latest year per dataset", () => {
@@ -200,5 +222,24 @@ describe("getCMSAnalytics from rollups", () => {
     expect(body.tableCounts.medicare_facilities).toBe(0);
     // Never touches the big tables directly.
     expect(queries.some((q) => /FROM (medicare_facilities|cms_referrals|provider_service_utilization)\b/.test(q))).toBe(false);
+  });
+
+  it("serves the cache until a rollup's state changes", async () => {
+    clearCmsAnalyticsCache();
+    let version = "cms_service_types:success:2026-10-10";
+    let built = 0;
+    const pool = {
+      async query(sql: string) {
+        if (sql.includes("AS v FROM rollup_runs")) return { rows: [{ v: version }] };
+        if (sql.includes("FROM rollup_facility_types")) built += 1;
+        return { rows: [] };
+      },
+    };
+    await handleGetCMSAnalytics(pool);
+    await handleGetCMSAnalytics(pool);
+    expect(built).toBe(1);
+    version = "cms_service_types:success:2026-10-11";
+    await handleGetCMSAnalytics(pool);
+    expect(built).toBe(2);
   });
 });

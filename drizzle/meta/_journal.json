@@ -85,6 +85,13 @@
       "when": 1791611727276,
       "tag": "0012_assistant",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791611787276,
+      "tag": "0013_assistant_turn_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -32,7 +32,7 @@ export default function NetworkInsightsDashboard({ nodes = [], edges = [], summa
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {[
             { label: 'Hub concentration', value: `${metrics.concentration}%`, sub: 'of shown volume via hubs', color: metrics.concentration > 70 ? 'text-red-400' : 'text-cyan-400' },
-            { label: 'Avg partners', value: metrics.avgPartners, sub: 'per provider (whole scope)', color: 'text-violet-400' },
+            { label: 'Avg partners', value: metrics.avgPartners, sub: 'per provider shown (all their partners)', color: 'text-violet-400' },
             { label: 'Not linked in view', value: metrics.unlinked, sub: 'partners are outside the view', color: 'text-slate-300' },
             { label: 'Hubs', value: metrics.hubCount, sub: 'among providers shown', color: 'text-amber-400' },
             { label: 'States', value: metrics.stateCount, sub: 'among providers shown', color: 'text-blue-400' },

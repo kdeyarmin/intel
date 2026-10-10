@@ -30,14 +30,34 @@ const URL_DEFAULTS = { tab: 'graph', state: '', list: '', npi: '', q: '', type: 
 const GRAPH_NODES = 60;
 const GRAPH_EDGES = 200;
 
+/**
+ * What the view leaves out: the server returns the busiest providers (and the
+ * heaviest relationships between them), and the graph draws the busiest of those.
+ */
+export function graphNote(summary, loaded, graphMax = GRAPH_NODES) {
+  const shown = [];
+  if (summary.network_nodes > loaded) {
+    shown.push(`the ${loaded.toLocaleString()} busiest of ${summary.network_nodes.toLocaleString()} providers`);
+  }
+  if (summary.network_edges > summary.shown_edges) {
+    shown.push(`${summary.shown_edges.toLocaleString()} of ${summary.network_edges.toLocaleString()} relationships`);
+  }
+  let text = shown.length ? `Showing ${shown.join(' and ')}` : '';
+  if (loaded > graphMax) text += `${text ? '; the' : 'The'} graph draws the busiest ${graphMax}`;
+  return text ? `${text}.` : null;
+}
+
 export default function ReferralNetworkIntelligence() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
   const [selectedNpi, setSelectedNpi] = useState(null);
   const [hubSortKey, setHubSortKey] = useState('hubScore');
   const [hubSortDir, setHubSortDir] = useState('desc');
 
-  const leadListId = url.list ? Number(url.list) : null;
-  const scope = { state: url.state || null, lead_list_id: leadListId, npi: url.npi || null };
+  // Same rules as the server: a positive whole-number list id and a 10-digit
+  // NPI. Anything else in a shared URL is ignored rather than shown as a scope.
+  const leadListId = /^[1-9]\d{0,9}$/.test(url.list) ? Number(url.list) : null;
+  const focusNpi = /^\d{10}$/.test(url.npi) ? url.npi : null;
+  const scope = { state: url.state || null, lead_list_id: leadListId, npi: focusNpi };
 
   const { data: leadLists = [] } = useQuery({
     queryKey: ['leadListsForNetwork'],
@@ -86,7 +106,7 @@ export default function ReferralNetworkIntelligence() {
   }, [graphNodes, filteredEdges]);
 
   const selectedNode = selectedNpi ? nodes.find((n) => n.npi === selectedNpi) || null : null;
-  const focusNode = url.npi ? nodes.find((n) => n.npi === url.npi) || { label: url.npi } : null;
+  const focusNode = focusNpi ? nodes.find((n) => n.npi === focusNpi) || { label: focusNpi } : null;
 
   const toggleHubSort = (key) => {
     if (hubSortKey === key) setHubSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
@@ -130,10 +150,8 @@ export default function ReferralNetworkIntelligence() {
       <>
         <div className="flex flex-wrap items-center gap-3">
           <AnalysisScopeNote analysis={data} />
-          {data?.summary?.display_capped && (
-            <span className="text-xs text-slate-400">
-              Drawing the {data.summary.shown_nodes} busiest of {data.summary.network_nodes.toLocaleString()} providers.
-            </span>
+          {data?.summary && graphNote(data.summary, nodes.length) && (
+            <span className="text-xs text-slate-400">{graphNote(data.summary, nodes.length)}</span>
           )}
           {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
         </div>
@@ -186,7 +204,7 @@ export default function ReferralNetworkIntelligence() {
                         edges={edges}
                         nodes={nodes}
                         onClose={() => setSelectedNpi(null)}
-                        onFocus={selectedNode.npi === url.npi ? null : (n) => changeScope({ npi: n.npi })}
+                        onFocus={selectedNode.npi === focusNpi ? null : (n) => changeScope({ npi: n.npi })}
                       />
                     </div>
                   )}

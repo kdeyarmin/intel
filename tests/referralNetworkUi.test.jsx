@@ -13,7 +13,7 @@ vi.mock('../src/components/compliance/DataSourcesFooter', () => ({ default: () =
 
 import HubAnalysisTable from '../src/components/referralNetwork/HubAnalysisTable';
 import NodeDetailPanel from '../src/components/referralNetwork/NodeDetailPanel';
-import ReferralNetworkIntelligence from '../src/pages/ReferralNetworkIntelligence';
+import ReferralNetworkIntelligence, { graphNote } from '../src/pages/ReferralNetworkIntelligence';
 
 describe('network tables with missing fields', () => {
   it("HubAnalysisTable doesn't crash on providers without volumes or names", () => {
@@ -34,9 +34,30 @@ describe('network tables with missing fields', () => {
         <NodeDetailPanel node={{ npi: '1234567890' }} edges={[{ source: '1234567890', target: '9', volume: undefined }]} nodes={[]} onClose={() => {}} onFocus={onFocus} />
       </MemoryRouter>,
     );
-    expect(screen.getByText('Sends to (1 shown)')).toBeInTheDocument();
+    expect(screen.getByText('Sends to (1)')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Show all of this provider's partners/ }));
     expect(onFocus).toHaveBeenCalledWith({ npi: '1234567890' });
+  });
+
+  it('NodeDetailPanel says when it lists only the top 5 edges', () => {
+    const edges = Array.from({ length: 7 }, (_, i) => ({ source: '1234567890', target: String(i), volume: 10 - i }));
+    render(
+      <MemoryRouter>
+        <NodeDetailPanel node={{ npi: '1234567890' }} edges={edges} nodes={[]} onClose={() => {}} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Sends to (top 5 of 7)')).toBeInTheDocument();
+  });
+});
+
+describe('graphNote', () => {
+  it('says what was left out, and only that', () => {
+    expect(graphNote({ network_nodes: 4, network_edges: 3, shown_edges: 1 }, 2))
+      .toBe('Showing the 2 busiest of 4 providers and 1 of 3 relationships.');
+    expect(graphNote({ network_nodes: 150, network_edges: 300, shown_edges: 200 }, 150))
+      .toBe('Showing 200 of 300 relationships; the graph draws the busiest 60.');
+    expect(graphNote({ network_nodes: 90, network_edges: 100, shown_edges: 100 }, 90)).toBe('The graph draws the busiest 60.');
+    expect(graphNote({ network_nodes: 20, network_edges: 30, shown_edges: 30 }, 20)).toBeNull();
   });
 });
 
@@ -74,7 +95,7 @@ describe('ReferralNetworkIntelligence', () => {
     renderPage('/ReferralNetworkIntelligence?state=PA&tab=hubs');
     expect(await screen.findByText('Providers practicing in PA')).toBeInTheDocument();
     expect(invoke).toHaveBeenCalledWith('getReferralNetworkData', { state: 'PA' });
-    expect(screen.getByText('Drawing the 2 busiest of 4 providers.')).toBeInTheDocument();
+    expect(screen.getByText('Showing the 2 busiest of 4 providers and 1 of 3 relationships.')).toBeInTheDocument();
     const row = screen.getByRole('row', { name: /Ann Chen/ });
     expect(within(row).getByText('150')).toBeInTheDocument();
     expect(within(row).getByText('Cardiology · Pittsburgh · PA')).toBeInTheDocument();
@@ -86,6 +107,13 @@ describe('ReferralNetworkIntelligence', () => {
     await screen.findByRole('row', { name: /Mercy Hospital/ });
     expect(screen.queryByRole('row', { name: /Ann Chen/ })).not.toBeInTheDocument();
     expect(screen.getByTestId('url').textContent).toContain('group=hospital');
+  });
+
+  it('ignores a malformed list id or NPI in a shared URL', async () => {
+    invoke.mockReset().mockResolvedValue(NETWORK);
+    renderPage('/ReferralNetworkIntelligence?state=PA&list=4.5&npi=123');
+    await screen.findByText('Providers practicing in PA');
+    expect(invoke).toHaveBeenCalledWith('getReferralNetworkData', { state: 'PA' });
   });
 
   it('explains when no referral data has been imported', async () => {

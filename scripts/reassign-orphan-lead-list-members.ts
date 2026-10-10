@@ -13,6 +13,11 @@ import { planOrphanReassignment, type ListRow, type OrphanRow } from "../server/
 const apply = process.argv.includes("--apply");
 const windowArg = process.argv.find((a) => a.startsWith("--window-seconds="));
 const windowSeconds = windowArg ? Number(windowArg.split("=")[1]) : 300;
+// NaN would make every age check false and assign orphans regardless of age.
+if (!Number.isFinite(windowSeconds) || windowSeconds <= 0) {
+  console.error(`--window-seconds must be a positive number of seconds (got "${windowArg?.split("=")[1]}").`);
+  process.exit(1);
+}
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");

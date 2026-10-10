@@ -43,9 +43,11 @@ export function applyAssistantEvent(draft, event, data) {
       return { ...draft, items };
     }
     case 'retry': {
-      // The server re-asks the model; drop what it streamed since the last tool.
+      // The server re-asks the model; drop what the failed attempt streamed:
+      // its text, progress notes and tool calls that never got a result.
       let cut = items.length;
-      while (cut > 0 && (items[cut - 1].type === 'text' || items[cut - 1].type === 'progress')) cut -= 1;
+      const fromAttempt = (it) => it.type === 'text' || it.type === 'progress' || (it.type === 'tool' && it.ok == null);
+      while (cut > 0 && fromAttempt(items[cut - 1])) cut -= 1;
       return { ...draft, items: items.slice(0, cut) };
     }
     case 'done':
@@ -73,6 +75,9 @@ export function useAssistantStream({ onSettled } = {}) {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
+    // A request replaced by a newer one may still deliver a queued event or
+    // fail with its abort; none of that may touch the newer draft.
+    const current = () => controllerRef.current === controller;
     let turnId = null;
     let failed = false;
     setDraft({ conversationId, question: text, items: [], status: 'streaming', error: null, turnId: null });
@@ -80,21 +85,29 @@ export function useAssistantStream({ onSettled } = {}) {
       await base44.assistant.streamMessage(conversationId, text, {
         signal: controller.signal,
         onEvent: (event, data) => {
+          if (!current()) return;
           if (event === 'turn') turnId = data.turn_id;
           setDraft((d) => applyAssistantEvent(d, event, data));
         },
       });
-      setDraft((d) => (d && d.status === 'streaming' ? { ...d, status: 'interrupted', error: 'The connection closed before the answer finished.' } : d));
+      if (current()) {
+        setDraft((d) => (d && d.status === 'streaming' ? { ...d, status: 'interrupted', error: 'The connection closed before the answer finished.' } : d));
+      }
     } catch (e) {
-      if (e?.name === 'AbortError') {
-        setDraft((d) => (d ? { ...d, status: 'interrupted', error: null } : d));
-      } else {
-        failed = true;
-        setDraft((d) => (d ? { ...d, status: 'failed', error: e?.message || 'The assistant could not answer.' } : d));
+      if (current()) {
+        if (e?.name === 'AbortError') {
+          setDraft((d) => (d ? { ...d, status: 'interrupted', error: null } : d));
+        } else {
+          failed = true;
+          setDraft((d) => (d ? { ...d, status: 'failed', error: e?.message || 'The assistant could not answer.' } : d));
+        }
       }
     } finally {
-      if (controllerRef.current === controller) controllerRef.current = null;
-      await settledRef.current?.(conversationId, { turnId, failedText: failed ? text : null });
+      // Only the latest request settles: the newer one refreshes the conversation itself.
+      if (current()) {
+        controllerRef.current = null;
+        await settledRef.current?.(conversationId, { turnId, failedText: failed ? text : null });
+      }
     }
   }, []);
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, AlertTriangle, Loader2, Sparkles, User } from 'lucide-react';
+import { Check, AlertTriangle, Loader2, MinusCircle, Sparkles, User } from 'lucide-react';
 import AssistantMarkdown from './AssistantMarkdown';
 import ActionConfirmCard from './ActionConfirmCard';
 
@@ -16,14 +16,19 @@ const TOOL_FALLBACK_LABELS = {
 
 function ToolChip({ item, live }) {
   const running = item.ok == null && live;
+  // A saved tool call with no result was never run (the turn was stopped,
+  // refused or cut off): don't show it as a success.
+  const notRun = item.ok == null && !live;
   const label = item.label || TOOL_FALLBACK_LABELS[item.name] || item.name;
   return (
     <div className="my-1 inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-700/60 bg-slate-800/60 px-2.5 py-1 text-[11px] text-slate-300">
       {running ? <Loader2 className="h-3 w-3 shrink-0 animate-spin text-cyan-400" aria-hidden="true" />
-        : item.ok === false ? <AlertTriangle className="h-3 w-3 shrink-0 text-amber-400" aria-hidden="true" />
-          : <Check className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />}
+        : item.ok === true ? <Check className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
+          : item.ok === false ? <AlertTriangle className="h-3 w-3 shrink-0 text-amber-400" aria-hidden="true" />
+            : <MinusCircle className="h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />}
       <span className="truncate">{label}{running ? '…' : ''}</span>
       {item.ok === false && <span className="sr-only">(failed)</span>}
+      {notRun && <span className="sr-only">(not run)</span>}
     </div>
   );
 }

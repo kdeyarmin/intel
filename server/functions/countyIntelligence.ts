@@ -18,6 +18,10 @@ const LOCATION_SAMPLE = 5000;
 const DETAIL_SAMPLE = 1000;
 // A ZIP area belongs to the county holding at least this share of its land.
 const MIN_ZCTA_SHARE = 0.5;
+// Facility records listed per county (newest data year first).
+const FACILITY_LIMIT = 2000;
+// Referral pairs listed (the heaviest, latest year per pair).
+const TOP_PAIRS = 30;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -61,18 +65,29 @@ export async function handleGetCountyIntelligence(payload: any) {
       const [provs, taxes, referralRows, serviceRows, scores, facilityRows] = await Promise.all([
         npis.length ? client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential, ai_outreach_score FROM providers WHERE npi = ANY($1)", [npis]) : { rows: [] },
         npis.length ? client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]) : { rows: [] },
+        // The latest year of each pair, heaviest first, before the cap (bounded
+        // by the provider list, through the npi index).
         detailNpis.length ? client.query(
-          `SELECT npi, referred_to_npi, total_referrals, total_beneficiaries, data_year FROM cms_referrals
-            WHERE npi = ANY($1) AND referred_to_npi IS NOT NULL LIMIT 20000`, [detailNpis]) : { rows: [] },
+          `SELECT * FROM (
+             SELECT DISTINCT ON (npi, referred_to_npi) npi, referred_to_npi, total_referrals, total_beneficiaries, data_year
+               FROM cms_referrals WHERE npi = ANY($1) AND referred_to_npi IS NOT NULL
+              ORDER BY npi, referred_to_npi, data_year DESC NULLS LAST
+           ) latest ORDER BY total_referrals DESC NULLS LAST LIMIT $2`, [detailNpis, TOP_PAIRS]) : { rows: [] },
+        // Each provider's latest year only, all of its rows (no cap to cut a provider short).
         detailNpis.length ? client.query(
-          `SELECT npi, service_type, hcpcs_code, hcpcs_description, total_services, total_medicare_payment_amt,
-                  average_medicare_payment_amt, data_year
-             FROM provider_service_utilization WHERE npi = ANY($1) LIMIT 30000`, [detailNpis]) : { rows: [] },
+          `WITH latest AS (
+             SELECT npi, max(data_year) AS data_year FROM provider_service_utilization WHERE npi = ANY($1) GROUP BY npi
+           )
+           SELECT u.npi, u.service_type, u.hcpcs_code, u.hcpcs_description, u.total_services, u.total_medicare_payment_amt,
+                  u.average_medicare_payment_amt, u.data_year
+             FROM latest l JOIN provider_service_utilization u ON u.npi = l.npi AND u.data_year = l.data_year`, [detailNpis]) : { rows: [] },
         npis.length ? client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1)", [npis]) : { rows: [] },
+        // idx_medfac_state_zip5 (boot index) serves the state + ZIP predicate.
         zctas.length ? client.query(
           `SELECT id, facility_type, facility_name, provider_id, city, zip, quality_rating, total_payments, total_discharges, data_year
-             FROM medicare_facilities WHERE facility_type = ANY($1) AND state = $2 AND left(zip, 5) = ANY($3) LIMIT 1000`,
-          [facilityTypes, state, zctas]) : { rows: [] },
+             FROM medicare_facilities WHERE facility_type = ANY($1) AND state = $2 AND left(zip, 5) = ANY($3)
+            ORDER BY data_year DESC NULLS LAST, id DESC LIMIT $4`,
+          [facilityTypes, state, zctas, FACILITY_LIMIT + 1]) : { rows: [] },
       ]);
 
       // Providers and specialties.
@@ -112,7 +127,7 @@ export async function handleGetCountyIntelligence(payload: any) {
         const cur = bestPair.get(k);
         if (!cur || String(r.data_year || "") > String(cur.data_year || "")) bestPair.set(k, r);
       }
-      const topPairs = [...bestPair.values()].sort((a, b) => (parseMoney(b.total_referrals) ?? 0) - (parseMoney(a.total_referrals) ?? 0)).slice(0, 30);
+      const topPairs = [...bestPair.values()].sort((a, b) => (parseMoney(b.total_referrals) ?? 0) - (parseMoney(a.total_referrals) ?? 0)).slice(0, TOP_PAIRS);
       const nameNpis = [...new Set(topPairs.flatMap((r) => [r.npi, r.referred_to_npi]))];
       const names = new Map<string, string>();
       if (nameNpis.length) {
@@ -143,6 +158,8 @@ export async function handleGetCountyIntelligence(payload: any) {
         .map((s) => ({ code: s.code, name: s.name, amount: Math.round(s.amount), services: Math.round(s.services) }));
 
       // Facilities by group.
+      const facilitiesCapped = facilityRows.rows.length > FACILITY_LIMIT;
+      if (facilitiesCapped) facilityRows.rows.length = FACILITY_LIMIT;
       const facSummary = new Map<string, { type: string; count: number; totalPayments: number; ratings: number[] }>();
       const facilities = facilityRows.rows.map((f: any) => {
         const group = getFacilityTypeGroup(f.facility_type) || "other";
@@ -184,6 +201,9 @@ export async function handleGetCountyIntelligence(payload: any) {
           sampled,
           detail_limit: DETAIL_SAMPLE,
           details_cover_all: npis.length <= DETAIL_SAMPLE,
+          // Facility totals cover the newest FACILITY_LIMIT records.
+          facilities_capped: facilitiesCapped,
+          facility_limit: FACILITY_LIMIT,
         },
         topSpecialties,
         facilitySummary: [...facSummary.values()]

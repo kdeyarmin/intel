@@ -1,6 +1,7 @@
 // Runs the background rollups. A job scans its source table in primary-key
 // chunks (each its own short query under a statement timeout, so nothing
-// holds a long scan or lock), accumulates in memory, then replaces its result
+// holds a long scan or lock), accumulates (small totals in memory, anything
+// that grows with the table in session temp tables), then replaces its result
 // table and its rollup_runs row in one transaction. An advisory lock per job
 // keeps two instances from computing the same rollup at once.
 import {
@@ -10,11 +11,14 @@ import {
   planChunks,
   zipLocationCounts,
   type Accumulator,
+  type Staging,
 } from "./core";
 
 // Rows held in memory per query; jobs run one at a time to keep this bounded.
 export const CHUNK_ROWS = 100_000;
 const CHUNK_TIMEOUT = "30s";
+// Reading the staged totals back (one GROUP BY / window over a temp table).
+const RESULTS_TIMEOUT = "300s";
 const DAY_MS = 24 * 60 * 60 * 1000;
 // A "running" row older than this belongs to a process that died.
 const STALE_RUN_MS = 3 * 60 * 60 * 1000;
@@ -27,7 +31,7 @@ export interface RollupJob {
   resultTable: string;
   resultColumns: string[];
   intervalMs: number;
-  accumulator: () => Accumulator<any, any>;
+  accumulator: (staging: Staging) => Accumulator<any, any>;
 }
 
 export const ROLLUP_JOBS: RollupJob[] = [
@@ -39,7 +43,7 @@ export const ROLLUP_JOBS: RollupJob[] = [
     resultTable: "rollup_zip_locations",
     resultColumns: ["zip5", "practice_locations", "all_locations"],
     intervalMs: DAY_MS,
-    accumulator: zipLocationCounts,
+    accumulator: () => zipLocationCounts(),
   },
   {
     name: "cms_service_types",
@@ -49,7 +53,7 @@ export const ROLLUP_JOBS: RollupJob[] = [
     resultTable: "rollup_cms_service_types",
     resultColumns: ["data_year", "service_type", "provider_count", "total_services", "total_payments", "total_beneficiaries"],
     intervalMs: DAY_MS,
-    accumulator: cmsServiceTypes,
+    accumulator: (staging) => cmsServiceTypes(staging),
   },
   {
     name: "cms_top_referred",
@@ -59,7 +63,7 @@ export const ROLLUP_JOBS: RollupJob[] = [
     resultTable: "rollup_cms_top_referred",
     resultColumns: ["data_year", "referred_to_npi", "total_referrals", "referring_providers"],
     intervalMs: DAY_MS,
-    accumulator: () => cmsTopReferred(500),
+    accumulator: (staging) => cmsTopReferred(500, staging),
   },
   {
     name: "facility_types",
@@ -69,7 +73,7 @@ export const ROLLUP_JOBS: RollupJob[] = [
     resultTable: "rollup_facility_types",
     resultColumns: ["facility_type", "record_count", "state_count", "latest_year"],
     intervalMs: DAY_MS,
-    accumulator: facilityTypes,
+    accumulator: () => facilityTypes(),
   },
 ];
 
@@ -100,6 +104,68 @@ function lockKey(name: string): number {
   return h;
 }
 
+const STAGE_DISTINCT = "rollup_stage_distinct";
+const STAGE_SUMS = "rollup_stage_sums";
+const STAGE_BATCH = 50_000;
+
+/**
+ * Staging in session temp tables on the job's connection: on disk, gone when
+ * the connection closes, and dropped when the job ends.
+ */
+export function pgStaging(client: any): Staging & { drop(): Promise<void> } {
+  let made = false;
+  const ensure = async () => {
+    if (made) return;
+    await client.query(`CREATE TEMP TABLE IF NOT EXISTS ${STAGE_DISTINCT} (k text NOT NULL, v bigint NOT NULL, PRIMARY KEY (k, v))`);
+    await client.query(`CREATE TEMP TABLE IF NOT EXISTS ${STAGE_SUMS} (k text NOT NULL, id bigint NOT NULL, total double precision NOT NULL, cnt bigint NOT NULL, PRIMARY KEY (k, id))`);
+    await client.query(`TRUNCATE ${STAGE_DISTINCT}, ${STAGE_SUMS}`);
+    made = true;
+  };
+  return {
+    async addDistinct(pairs) {
+      await ensure();
+      for (let i = 0; i < pairs.length; i += STAGE_BATCH) {
+        const part = pairs.slice(i, i + STAGE_BATCH);
+        await client.query(
+          `INSERT INTO ${STAGE_DISTINCT} (k, v) SELECT * FROM unnest($1::text[], $2::bigint[]) ON CONFLICT DO NOTHING`,
+          [part.map((p) => p[0]), part.map((p) => p[1])],
+        );
+      }
+    },
+    async distinctCounts() {
+      await ensure();
+      const { rows } = await client.query(`SELECT k, count(*) AS n FROM ${STAGE_DISTINCT} GROUP BY k`);
+      return new Map(rows.map((r: any) => [r.k as string, Number(r.n)]));
+    },
+    async addSums(rows) {
+      await ensure();
+      for (let i = 0; i < rows.length; i += STAGE_BATCH) {
+        const part = rows.slice(i, i + STAGE_BATCH);
+        await client.query(
+          `INSERT INTO ${STAGE_SUMS} AS s (k, id, total, cnt)
+             SELECT * FROM unnest($1::text[], $2::bigint[], $3::float8[], $4::bigint[])
+           ON CONFLICT (k, id) DO UPDATE SET total = s.total + EXCLUDED.total, cnt = s.cnt + EXCLUDED.cnt`,
+          [part.map((r) => r.key), part.map((r) => r.id), part.map((r) => r.total), part.map((r) => r.count)],
+        );
+      }
+    },
+    async topSums(keep) {
+      await ensure();
+      const { rows } = await client.query(
+        `SELECT k, id, total, cnt FROM (
+           SELECT k, id, total, cnt, row_number() OVER (PARTITION BY k ORDER BY total DESC, id) AS rn FROM ${STAGE_SUMS}
+         ) t WHERE rn <= $1 ORDER BY k, rn`,
+        [keep],
+      );
+      return rows.map((r: any) => ({ key: r.k, id: Number(r.id), total: Number(r.total), count: Number(r.cnt) }));
+    },
+    async drop() {
+      if (made) await client.query(`DROP TABLE IF EXISTS ${STAGE_DISTINCT}, ${STAGE_SUMS}`);
+      made = false;
+    },
+  };
+}
+
 async function insertBatches(client: any, table: string, columns: string[], rows: any[]) {
   for (let i = 0; i < rows.length; i += 1000) {
     const part = rows.slice(i, i + 1000);
@@ -125,6 +191,7 @@ export interface RunResult {
 export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console, "log" | "warn"> = console): Promise<RunResult> {
   const started = Date.now();
   const client = await pool.connect();
+  const staging = pgStaging(client);
   let locked = false;
   try {
     const { rows: [lock] } = await client.query("SELECT pg_try_advisory_lock($1) AS ok", [lockKey(job.name)]);
@@ -140,20 +207,22 @@ export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console,
     await client.query(`SET statement_timeout = '${CHUNK_TIMEOUT}'`);
     const { rows: [bounds] } = await client.query(`SELECT min(id) AS lo, max(id) AS hi FROM ${job.source}`);
     const chunks = planChunks(bounds.lo == null ? null : Number(bounds.lo), bounds.hi == null ? null : Number(bounds.hi), CHUNK_ROWS);
-    const acc = job.accumulator();
+    const acc = job.accumulator(staging);
     let scanned = 0;
     for (let i = 0; i < chunks.length; i += 1) {
       const { lo, hi } = chunks[i];
       const { rows } = await client.query(`SELECT ${job.columns.join(", ")} FROM ${job.source} WHERE id >= $1 AND id < $2`, [lo, hi]);
       acc.add(rows);
+      await acc.flush?.();
       scanned += rows.length;
       if (i % 20 === 19) {
         await client.query("UPDATE rollup_runs SET progress = $2 WHERE job = $1", [job.name, JSON.stringify({ chunk: i + 1, chunks: chunks.length, rows_scanned: scanned })]);
       }
     }
+    await client.query(`SET statement_timeout = '${RESULTS_TIMEOUT}'`);
+    const results = await acc.results();
     await client.query("RESET statement_timeout");
 
-    const results = acc.results();
     await client.query("BEGIN");
     await client.query(`DELETE FROM ${job.resultTable}`);
     await insertBatches(client, job.resultTable, job.resultColumns, results);
@@ -177,6 +246,7 @@ export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console,
     log.warn(`[rollups] ${job.name} failed:`, error);
     return { job: job.name, status: "failed", error };
   } finally {
+    await staging.drop().catch(() => {});
     if (locked) await client.query("SELECT pg_advisory_unlock($1)", [lockKey(job.name)]).catch(() => {});
     client.release();
   }

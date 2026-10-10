@@ -14,7 +14,16 @@ export const AGGREGATE_DATASETS = [
 ];
 
 const CACHE_MS = 2 * 60 * 1000;
-let cache: { at: number; body: any } | null = null;
+// Keyed by the rollups' state, so a refresh that finishes (on any instance)
+// is served at once instead of after the cache expires.
+let cache: { at: number; version: string; body: any } | null = null;
+
+async function rollupVersion(pool: any): Promise<string> {
+  const { rows } = await pool.query(
+    "SELECT coalesce(string_agg(job || ':' || status || ':' || coalesce(last_success_at::text, ''), ',' ORDER BY job), '') AS v FROM rollup_runs",
+  ).catch(() => ({ rows: [] as any[] }));
+  return String(rows[0]?.v ?? "");
+}
 
 export function clearCmsAnalyticsCache() {
   cache = null;
@@ -28,7 +37,8 @@ function personName(p: any): string | null {
 }
 
 export async function handleGetCMSAnalytics(pool: any) {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache.body;
+  const version = await rollupVersion(pool);
+  if (cache && cache.version === version && Date.now() - cache.at < CACHE_MS) return cache.body;
   const q = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows;
 
   const [jobs, estimates, [{ year: serviceYear } = { year: null }], [{ year: referralYear } = { year: null }], facilityRows] = await Promise.all([
@@ -110,6 +120,6 @@ export async function handleGetCMSAnalytics(pool: any) {
         latest_year: r.latest_year || null,
       })),
   };
-  cache = { at: Date.now(), body };
+  cache = { at: Date.now(), version, body };
   return body;
 }
