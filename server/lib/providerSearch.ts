@@ -87,13 +87,16 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
 
   const compact = q.replace(/[\s-]/g, "");
   if (/^\d{2,10}$/.test(compact)) {
+    // The entity filter applies here too, so a prefix's cap isn't spent on the other kind.
+    const entityWhere = (n: number) => (entity ? ` AND entity_type = $${n}` : "");
+    const entityValue = entity ? [entity] : [];
     if (compact.length === 10) {
-      queries.push({ kind: "npi", cap: 1, text: `SELECT ${COLUMNS} FROM providers WHERE npi = $1 LIMIT 1`, values: [compact] });
+      queries.push({ kind: "npi", cap: 1, text: `SELECT ${COLUMNS} FROM providers WHERE npi = $1${entityWhere(2)} LIMIT 1`, values: [compact, ...entityValue] });
     } else {
       const { low, high } = npiPrefixRange(compact);
       queries.push(high
-        ? { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 AND npi < $2 ORDER BY npi LIMIT $3`, values: [low, high, cap] }
-        : { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 ORDER BY npi LIMIT $2`, values: [low, cap] });
+        ? { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 AND npi < $2${entityWhere(3)} ORDER BY npi LIMIT $${entity ? 4 : 3}`, values: [low, high, ...entityValue, cap] }
+        : { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1${entityWhere(2)} ORDER BY npi LIMIT $${entity ? 3 : 2}`, values: [low, ...entityValue, cap] });
     }
     return { queries, mode: caps.trigram ? "contains" : "prefix", degraded: false, term: compact };
   }
@@ -123,7 +126,17 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
 
   let mode: "contains" | "prefix" = "prefix";
   if (entity !== "Individual") {
+    // Names starting with the term, in order (the prefix index), so exact and
+    // starts-with matches always reach the ranking.
+    queries.push({
+      kind: "org",
+      cap,
+      text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1 ORDER BY ${E.orgName} LIMIT $2`,
+      values: [`${escapeLike(lower)}%`, cap],
+    });
+    if (!caps.orgPrefix) degraded = true;
     if (caps.trigram && lower.length >= 3) {
+      // Then names containing it anywhere (the trigram index; unordered, capped).
       mode = "contains";
       const n = Math.max(cap, ORG_CONTAINS_CANDIDATES);
       queries.push({
@@ -132,14 +145,6 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
         text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1 LIMIT $2`,
         values: [`%${escapeLike(lower)}%`, n],
       });
-    } else {
-      queries.push({
-        kind: "org",
-        cap,
-        text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1 ORDER BY ${E.orgName} LIMIT $2`,
-        values: [`${escapeLike(lower)}%`, cap],
-      });
-      if (!caps.orgPrefix) degraded = true;
     }
   }
 
