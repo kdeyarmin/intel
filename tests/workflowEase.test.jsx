@@ -203,4 +203,16 @@ describe('GlobalSearchDialog', () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     expect(screen.getByRole('status')).toHaveTextContent('Searching');
   });
+
+  it('keeps "Searching" until the lead-list search has answered too', async () => {
+    invoke.mockResolvedValue({ data: { providers: [] } });
+    let answerLists;
+    entityList.mockReturnValueOnce(new Promise((resolve) => { answerLists = resolve; }));
+    renderSearch();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: 'zzz' } });
+    await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+    expect(screen.getByRole('status')).toHaveTextContent('Searching');
+    await act(async () => { answerLists([]); });
+    expect(await screen.findByText('No results found for "zzz"')).toBeInTheDocument();
+  });
 });

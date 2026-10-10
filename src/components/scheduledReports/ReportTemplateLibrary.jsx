@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2 } from 'lucide-react';
 
-const TEMPLATES = [
+export const TEMPLATES = [
   {
     id: 'weekly_provider_summary',
     name: 'Weekly Provider Summary',
@@ -38,8 +38,8 @@ const TEMPLATES = [
     description: 'Medicare utilization metrics by year',
     icon: Activity,
     dataset: 'cms_utilization',
-    metrics: ['total_services', 'total_medicare_payment', 'total_medicare_beneficiaries'],
-    group_by: 'year',
+    metrics: ['total_services', 'total_medicare_payment_amt', 'total_unique_benes'],
+    group_by: 'data_year',
     chart_type: 'line',
     frequency: 'weekly',
     schedule_day: 'Friday',
@@ -49,11 +49,11 @@ const TEMPLATES = [
   {
     id: 'monthly_referral_analysis',
     name: 'Monthly Referral Analysis',
-    description: 'Referral volumes by type across providers',
+    description: 'Referral volumes and beneficiaries by year',
     icon: FileBarChart2,
     dataset: 'cms_referrals',
-    metrics: ['total_referrals', 'home_health_referrals', 'hospice_referrals', 'snf_referrals'],
-    group_by: 'year',
+    metrics: ['total_referrals', 'total_beneficiaries'],
+    group_by: 'data_year',
     chart_type: 'bar',
     frequency: 'monthly',
     schedule_day: '1',
@@ -62,12 +62,12 @@ const TEMPLATES = [
   },
   {
     id: 'weekly_ma_inpatient',
-    name: 'MA Inpatient Weekly Brief',
-    description: 'Medicare Advantage hospital utilization by type',
+    name: 'Facility Utilization Weekly Brief',
+    description: 'Medicare facility discharges and days of care by facility type',
     icon: Building2,
     dataset: 'ma_inpatient',
-    metrics: ['total_discharges', 'avg_length_of_stay', 'total_enrollees'],
-    group_by: 'hospital_type',
+    metrics: ['total_discharges', 'total_days_of_care'],
+    group_by: 'facility_type',
     chart_type: 'bar',
     frequency: 'weekly',
     schedule_day: 'Wednesday',

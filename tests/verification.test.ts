@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { isBlockedAddress, safeFetch, SafeFetchError, validateOutboundUrl } from "../server/lib/safeFetch";
+import { headersAfterRedirect, isBlockedAddress, safeFetch, SafeFetchError, validateOutboundUrl } from "../server/lib/safeFetch";
 import { apiKeyHeaders, classifyConnectorResponse } from "../server/lib/connectorCheck";
 import { buildNpiValidationRecord, isValidNpi } from "../server/lib/npiValidation";
 import { clearNppesCache, lookupNpi, NppesUnavailableError, requestNppes } from "../server/lib/nppesClient";
@@ -18,6 +18,15 @@ describe("SSRF guard", () => {
 
   it.each(["8.8.8.8", "52.84.12.3", "172.32.0.1", "2606:4700:4700::1111", "::ffff:8.8.8.8"])("allows public %s", (ip) => {
     expect(isBlockedAddress(ip)).toBe(false);
+  });
+
+  it("drops the caller's headers (API keys) when a redirect leaves the original origin", () => {
+    const key = { "x-api-key": "secret" };
+    const u = (s: string) => new URL(s);
+    expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://api.example.com/b"), key)).toBe(key);
+    expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://evil.example.net/"), key)).toEqual({});
+    expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://api.example.com:8443/"), key)).toEqual({});
+    expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://sub.api.example.com/"), key)).toEqual({});
   });
 
   it("only accepts https URLs without credentials or private hosts", () => {
@@ -117,6 +126,13 @@ describe("NPI validation", () => {
     ]);
   });
 
+  it("compares the street, ignoring USPS abbreviations", () => {
+    const base = { city: "Pittsburgh", state: "PA", zip: "15222" };
+    expect(buildNpiValidationRecord("1234567893", registry, { location: { ...base, address_1: "1 Main Street" } }).discrepancies).toEqual([]);
+    expect(buildNpiValidationRecord("1234567893", registry, { location: { ...base, address_1: "40 Liberty Ave" } }).discrepancies)
+      .toEqual(['Practice address: "40 Liberty Ave, Pittsburgh, PA" here, "1 MAIN ST, PITTSBURGH, PA" in the registry.']);
+  });
+
   it("marks NPIs missing from the registry", () => {
     const r = buildNpiValidationRecord("1234567893", null, { provider: { status: "Active" } });
     expect(r).toMatchObject({ is_valid: false, status: "not_found" });
@@ -156,6 +172,17 @@ describe("NPPES client", () => {
     expect(await lookupNpi("1234567893", { fetchImpl })).toBeNull();
     expect(await lookupNpi("1234567893", { fetchImpl })).toBeNull();
     expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't cache an error body or a garbled response as 'not in the registry'", async () => {
+    clearNppesCache();
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce({ status: 200, ok: true, json: async () => { throw new SyntaxError("Unexpected token <"); } })
+      .mockResolvedValueOnce(ok({ Errors: [{ description: "Service is down" }] }))
+      .mockResolvedValueOnce(ok({ result_count: 1, results: [{ number: "1234567893" }] }));
+    await expect(lookupNpi("1234567893", { fetchImpl })).rejects.toBeInstanceOf(NppesUnavailableError);
+    await expect(lookupNpi("1234567893", { fetchImpl })).rejects.toThrow("Service is down");
+    expect(await lookupNpi("1234567893", { fetchImpl })).toEqual({ number: "1234567893" });
   });
 });
 

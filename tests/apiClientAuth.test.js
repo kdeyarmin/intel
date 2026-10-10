@@ -46,7 +46,6 @@ describe('401 handling', () => {
   beforeEach(() => {
     events = [];
     resetAuthExpired();
-    localStorage.setItem('auth_token', 'stale');
     window.history.pushState({}, '', '/Providers?state=PA');
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
   });
@@ -77,12 +76,42 @@ describe('401 handling', () => {
     expect(init.headers.Authorization).toBeUndefined();
   });
 
-  it('ignores 401s from the auth endpoints themselves', async () => {
+  it('ignores 401s from sign-in and from the startup session probe', async () => {
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'Invalid credentials' })));
     await expect(base44.auth.login('a@b.c', 'wrong')).rejects.toThrow('Invalid credentials');
-    await expect(base44.auth.me()).rejects.toThrow();
+    await expect(base44.auth.me({ probe: true })).rejects.toThrow();
+    await expect(base44.auth.resetPassword('bad-token', 'x')).rejects.toThrow();
     expect(events).toEqual([]);
-    expect(localStorage.getItem('auth_token')).toBe('stale');
+  });
+
+  it('treats a 401 from /auth/me outside the probe as an expired session', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, {})));
+    await expect(base44.auth.me()).rejects.toThrow();
+    expect(events).toEqual(['expired']);
+  });
+
+  it('treats a 401 from the auth endpoints that need a session as an expired session', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, {})));
+    await expect(base44.auth.logoutEverywhere()).rejects.toThrow();
+    expect(events).toEqual(['expired']);
+    resetAuthExpired();
+    await expect(base44.auth.changePassword('a', 'b')).rejects.toThrow();
+    expect(events).toEqual(['expired', 'expired']);
+  });
+
+  it("ignores a 401 for the old session that arrives after signing in again", async () => {
+    let finishOld;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
+    })));
+    const old = base44.entities.Provider.list();
+
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
+    await base44.auth.login('a@b.c', 'right');
+
+    finishOld();
+    await expect(old).rejects.toThrow();
+    expect(events).toEqual([]);
   });
 
   it('does nothing while already on the login page', async () => {
