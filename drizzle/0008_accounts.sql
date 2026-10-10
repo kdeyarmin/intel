@@ -34,12 +34,14 @@ CREATE TABLE IF NOT EXISTS "auth_tokens" (
 CREATE INDEX IF NOT EXISTS "auth_tokens_user_idx" ON "auth_tokens" ("user_id");
 --> statement-breakpoint
 -- Case-insensitive unique emails. Skipped (with a notice) while two accounts
--- differ only by case; login still matches case-insensitively.
+-- differ only by case; login still matches case-insensitively. The boot index
+-- runner (server/lib/bootIndexes.ts) retries it at every boot, so it appears
+-- once the duplicates are merged.
 DO $$
 BEGIN
 	IF NOT EXISTS (SELECT 1 FROM "users" GROUP BY lower("email") HAVING count(*) > 1) THEN
 		CREATE UNIQUE INDEX IF NOT EXISTS "users_email_lower_uq" ON "users" (lower("email"));
 	ELSE
-		RAISE NOTICE 'users has emails that differ only by case; users_email_lower_uq was not created';
+		RAISE NOTICE 'users has emails that differ only by case; users_email_lower_uq will be built at boot once they are merged';
 	END IF;
 END $$;

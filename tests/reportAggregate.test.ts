@@ -131,4 +131,15 @@ describe("partitionRecipients", () => {
     expect(allowed).toEqual(["admin@example.com", "boss@caremetric.ai"]);
     expect(blocked).toEqual(["stranger@gmail.com"]);
   });
+
+  it("blocks a pending or disabled account even on an allowed domain", () => {
+    const { allowed, blocked } = partitionRecipients(
+      ["gone@caremetric.ai", "new@caremetric.ai"],
+      new Set(),
+      ["caremetric.ai"],
+      new Set(["gone@caremetric.ai"]),
+    );
+    expect(allowed).toEqual(["new@caremetric.ai"]);
+    expect(blocked).toEqual(["gone@caremetric.ai"]);
+  });
 });

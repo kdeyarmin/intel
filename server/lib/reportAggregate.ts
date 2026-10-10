@@ -323,14 +323,22 @@ export function summarizeReport(rows: ReportRow[], metrics: Array<{ key: string;
   return `${top.group} leads ${rows.length} ${groupLabel.toLowerCase()} groups on ${first.label.toLowerCase()} with ${formatNumber(top[first.key])} (${share}% of ${formatNumber(total)}).`;
 }
 
-/** Recipients a report may go to: app users, or addresses on an allowed domain. */
-export function partitionRecipients(recipients: unknown, userEmails: Set<string>, allowedDomains: string[]) {
+/** Recipients a report may go to: active app users, or addresses without an account on an allowed domain. */
+export function partitionRecipients(
+  recipients: unknown,
+  userEmails: Set<string>,
+  allowedDomains: string[],
+  inactiveEmails: Set<string> = new Set(),
+) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@"));
   const allowed: string[] = [];
   const blocked: string[] = [];
   for (const email of [...new Set(list)]) {
     const domain = email.split("@")[1];
-    (userEmails.has(email) || allowedDomains.includes(domain) ? allowed : blocked).push(email);
+    // An account awaiting approval or disabled is blocked even on an allowed
+    // domain; the domain rule is for addresses with no account.
+    const ok = userEmails.has(email) || (!inactiveEmails.has(email) && allowedDomains.includes(domain));
+    (ok ? allowed : blocked).push(email);
   }
   return { allowed: allowed.slice(0, 25), blocked };
 }

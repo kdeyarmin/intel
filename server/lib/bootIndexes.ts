@@ -41,6 +41,13 @@ export const BOOT_INDEXES: BootIndex[] = [
   // Bulk email verification picks providers that have an email; only a small
   // share of the ~6M providers do, so a partial index avoids a full scan.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''"),
+  // Recent events of one type, newest first: account activity on Admin
+  // Settings and the maintenance heartbeat. audit_events only grows.
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_type_created ON audit_events (event_type, created_date DESC)"),
+  // Case-insensitive unique emails. Migration 0008 creates it when it can;
+  // while two accounts differ only by case the build fails (and is logged)
+  // at every boot, and succeeds on the first boot after they're merged.
+  idx("CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS users_email_lower_uq ON users (lower(email))"),
 ];
 
 // A CONCURRENTLY build that fails (or is interrupted) leaves an INVALID index
@@ -53,6 +60,8 @@ export const SWEEP_TABLES = [
   "provider_locations",
   "provider_taxonomies",
   "providers",
+  "users",
+  "audit_events",
 ];
 
 // Still-valid indexes whose natural key changed and must be rebuilt under a

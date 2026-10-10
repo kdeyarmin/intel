@@ -49,6 +49,19 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
+      const signedOut = error.status === 401 || error.data?.code === 'account_disabled';
+      if (!signedOut) {
+        // The server couldn't check the session (503 while the database is
+        // unreachable, or no connection at all). That isn't "signed out":
+        // keep any session already loaded and let the person retry.
+        setAuthError({
+          type: 'unavailable',
+          message: error.status === 503
+            ? error.data?.detail || "Couldn't check your session. Try again shortly."
+            : "Couldn't reach the server. Check your connection and try again.",
+        });
+        return;
+      }
       setIsAuthenticated(false);
       setUser(null);
       if (error.status === 401) {

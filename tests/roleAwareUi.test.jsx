@@ -42,7 +42,7 @@ vi.mock('../src/pages.config.js', () => ({
 
 const listImportBatches = vi.fn(() => Promise.resolve([]));
 const filterAlerts = vi.fn(() => Promise.resolve([]));
-const pendingCount = vi.fn(() => Promise.resolve({ count: 2 }));
+const pendingCount = vi.fn(() => Promise.resolve({ count: 2, latest_id: 7 }));
 vi.mock('@/api/base44Client', () => ({
   base44: {
     entities: {
@@ -160,6 +160,28 @@ describe('NotificationBell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
     expect(await screen.findByText('2 accounts awaiting approval')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /2 accounts awaiting approval/ })).toHaveAttribute('href', '/AdminSettings');
+  });
+
+  it('keeps a dismissed approval notice hidden until someone newer signs up', async () => {
+    authState.user = { role: 'admin' };
+    localStorage.setItem('dismissedNotifs', JSON.stringify(['accounts:pending:7']));
+    try {
+      // One of the two was approved: still nothing new.
+      pendingCount.mockImplementationOnce(() => Promise.resolve({ count: 1, latest_id: 5 }));
+      const first = renderBell();
+      fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+      await vi.waitFor(() => expect(pendingCount).toHaveBeenCalled());
+      expect(screen.queryByText(/awaiting approval/)).toBeNull();
+      first.unmount();
+
+      // A new signup (id 9) brings it back.
+      pendingCount.mockImplementationOnce(() => Promise.resolve({ count: 2, latest_id: 9 }));
+      renderBell();
+      fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+      expect(await screen.findByText('2 accounts awaiting approval')).toBeInTheDocument();
+    } finally {
+      localStorage.removeItem('dismissedNotifs');
+    }
   });
 
   it('requests import batches for an admin', async () => {
