@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 function parseParam(raw, fallback) {
@@ -46,13 +46,21 @@ export function writeUrlState(params, defaults, patch) {
 export function useUrlState(defaults) {
   const [params, setParams] = useSearchParams();
   const state = useMemo(() => readUrlState(params, defaults), [params, defaults]);
+  // React Router hands every functional update the query string of the last
+  // render, so two updates in one event would each start from it and the last
+  // would undo the first. Updates made against the same render build on each
+  // other instead.
+  const pending = useRef({ params: null, next: null });
 
   const setState = useCallback((update) => {
     setParams((prev) => {
-      const patch = typeof update === 'function' ? update(readUrlState(prev, defaults)) : update;
-      return writeUrlState(prev, defaults, patch);
+      const base = pending.current.params === params ? pending.current.next : prev;
+      const patch = typeof update === 'function' ? update(readUrlState(base, defaults)) : update;
+      const next = writeUrlState(base, defaults, patch);
+      pending.current = { params, next };
+      return next;
     }, { replace: true });
-  }, [setParams, defaults]);
+  }, [setParams, params, defaults]);
 
   return [state, setState];
 }

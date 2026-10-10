@@ -168,7 +168,9 @@ export function aggregateReport(rows: Record<string, any>[], config: ReportConfi
   }
   const groups = new Map<string, Record<string, any>>();
   for (const r of data) {
-    const g = String(r[groupKey] || "Unknown").substring(0, 30);
+    // Grouped on the full value: truncating first would merge distinct names
+    // that share a prefix (long DRG or service descriptions) and sum them.
+    const g = String(r[groupKey] || "Unknown");
     if (!g || g === "Unknown" || g === "undefined") continue;
     if (!groups.has(g)) groups.set(g, Object.fromEntries([["group", g], ...metrics.map((m) => [m, 0])]));
     add(groups.get(g)!, r);
@@ -323,7 +325,13 @@ export function summarizeReport(rows: ReportRow[], metrics: Array<{ key: string;
   return `${top.group} leads ${rows.length} ${groupLabel.toLowerCase()} groups on ${first.label.toLowerCase()} with ${formatNumber(top[first.key])} (${share}% of ${formatNumber(total)}).`;
 }
 
-/** Recipients a report may go to: app users, or addresses on an allowed domain. */
+export const MAX_REPORT_RECIPIENTS = 25;
+
+/**
+ * Recipients a report may go to: app users, or addresses on an allowed domain.
+ * At most MAX_REPORT_RECIPIENTS are sent to; any further allowed addresses are
+ * returned as `overflow` so callers can say exactly who was skipped.
+ */
 export function partitionRecipients(recipients: unknown, userEmails: Set<string>, allowedDomains: string[]) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase()).filter((e) => e.includes("@"));
   const allowed: string[] = [];
@@ -332,5 +340,5 @@ export function partitionRecipients(recipients: unknown, userEmails: Set<string>
     const domain = email.split("@")[1];
     (userEmails.has(email) || allowedDomains.includes(domain) ? allowed : blocked).push(email);
   }
-  return { allowed: allowed.slice(0, 25), blocked };
+  return { allowed: allowed.slice(0, MAX_REPORT_RECIPIENTS), blocked, overflow: allowed.slice(MAX_REPORT_RECIPIENTS) };
 }

@@ -213,3 +213,19 @@ describe('Providers page – filters kept in the URL', () => {
     expect(applied.dateRange).toEqual({ preset: 'all', startDate: '', endDate: '' });
   });
 });
+
+describe('Providers page – row selection labels', () => {
+  it('names each checkbox after the provider, or its NPI when the name is missing', () => {
+    setupMocks({
+      providers: [
+        makeIndividual('3333333333', 'Ann', 'Lee'),
+        makeIndividual('4444444444', null, null),
+        makeOrg('5555555555', null),
+      ],
+    });
+    renderProviders();
+    expect(screen.getByRole('checkbox', { name: 'Select Ann Lee' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select NPI 4444444444' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select NPI 5555555555' })).toBeInTheDocument();
+  });
+});
