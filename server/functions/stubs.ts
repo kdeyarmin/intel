@@ -567,16 +567,8 @@ export async function handleGenerateScheduledReport(_payload: any) {
   return notConfigured("Emailing scheduled reports isn't available yet. Run the report on this page and export it instead.");
 }
 
-export async function handleTestCMSUrl(_payload: any) {
-  return notConfigured("URL checks aren't available yet.");
-}
-
 export async function handlePredictImportFormat(_payload: any) {
   return notConfigured("Import format prediction isn't available yet.");
-}
-
-export async function handleTestCMSApiConnector(_payload: any) {
-  return notConfigured("Connector tests aren't available yet.");
 }
 
 export async function handleEnrichProviderThirdParty(payload: any) {
@@ -903,20 +895,8 @@ Only return the JSON object.`
   };
 }
 
-export async function handleVerifyProviderEmail(_payload: any) {
-  return notConfigured("Email verification isn't available yet.");
-}
-
-export async function handleBulkVerifyEmails(_payload: any) {
-  return notConfigured("Bulk email verification isn't available yet.");
-}
-
 export async function handleEnrichProviderMedicareData(payload: any) {
   return notConfigured("Medicare data enrichment isn't available yet.", { npi: payload.npi });
-}
-
-export async function handleValidateProviderNPI(payload: any) {
-  return notConfigured("NPI registry validation isn't available yet.", { npi: payload.npi });
 }
 
 export async function handleEnrichProviderDEAData(payload: any) {

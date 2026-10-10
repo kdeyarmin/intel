@@ -258,3 +258,35 @@ describe("migration 0003_entity_field_sync", () => {
     expect(sql).toContain('ALTER TABLE "outreach_messages" ADD COLUMN IF NOT EXISTS "recipient_name" varchar(255)');
   });
 });
+
+// ─── 0004 / 0005: outreach sending and email verification ─────────────────────
+
+describe.each([
+  ["0004_outreach_sending", "0003_entity_field_sync"],
+  ["0005_email_verification", "0004_outreach_sending"],
+])("migration %s", (tag, previous) => {
+  const sql = readMigration(`${tag}.sql`);
+  const schema = readSchema();
+  const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+
+  it(`is registered in the drizzle journal after ${previous}`, () => {
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === tag);
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === previous);
+    expect(entry).toBeTruthy();
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("is idempotent and only adds nullable columns or new tables", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "\w+" [\w()]+;|CREATE TABLE IF NOT EXISTS )/);
+    }
+  });
+
+  it("every added column is declared in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+});

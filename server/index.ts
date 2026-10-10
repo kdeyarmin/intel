@@ -341,6 +341,10 @@ app.listen(PORT, "0.0.0.0", async () => {
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year)",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, COALESCE(location_type,''), left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
           "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, COALESCE(taxonomy_code,''))",
+          // Bulk email verification picks providers that have an email; only a
+          // small share of the ~6M providers do, so a partial index keeps that
+          // lookup from scanning the whole table.
+          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''",
         ];
         for (const ddl of indexes) {
           const idxName = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || "unknown";

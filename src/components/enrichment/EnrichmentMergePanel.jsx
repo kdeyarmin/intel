@@ -11,14 +11,12 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
   const [selectedFields, setSelectedFields] = useState({});
   const [isMerging, setIsMerging] = useState(false);
 
+  // Only fields stored on the provider record. Address differences are listed
+  // under "Discrepancies" above; locations are edited on the location itself.
   const fields = [
     { key: 'first_name', label: 'First Name', externalKey: 'first_name' },
     { key: 'last_name', label: 'Last Name', externalKey: 'last_name' },
     { key: 'organization_name', label: 'Organization Name', externalKey: 'organization_name' },
-    { key: 'address_1', label: 'Address', externalKey: 'address' },
-    { key: 'city', label: 'City', externalKey: 'city' },
-    { key: 'state', label: 'State', externalKey: 'state' },
-    { key: 'zip', label: 'Zip Code', externalKey: 'zip' },
     { key: 'phone', label: 'Phone', externalKey: 'phone' },
     { key: 'credential', label: 'Credential', externalKey: 'credentials', format: (v) => Array.isArray(v) ? v.join(', ') : v },
   ];

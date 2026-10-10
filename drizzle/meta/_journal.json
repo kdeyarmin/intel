@@ -29,6 +29,13 @@
       "when": 1791611247276,
       "tag": "0004_outreach_sending",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791611307276,
+      "tag": "0005_email_verification",
+      "breakpoints": true
     }
   ]
 }

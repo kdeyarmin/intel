@@ -21,8 +21,9 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const handleReverifySingle = async (providerId) => {
     setVerifyingId(providerId);
     try {
-      await invokeOrThrow('verifyProviderEmail', { provider_id: providerId });
-      toast.success('Email re-verified successfully');
+      const data = await invokeOrThrow('verifyProviderEmail', { provider_id: providerId });
+      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Couldn't check the domain right now. Try again later.");
+      else toast.success(`Re-checked: ${data.status}${data.score != null ? ` (score ${data.score})` : ''}.`);
       onRefresh?.();
     } catch (e) {
       toastFunctionError(e, 'Failed to re-verify email');
@@ -34,11 +35,12 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const handleReverifyGroup = async (status) => {
     setIsVerifying(true);
     try {
-      await invokeOrThrow('bulkVerifyEmails', {
+      const data = await invokeOrThrow('bulkVerifyEmails', {
         mode: status, // 'risky' or 'invalid'
         batch_size: 20
       });
-      toast.success(`Re-verification started for ${status} emails`);
+      const s = data.summary || {};
+      toast.success(`Re-checked ${data.batch_processed} ${status} emails: ${s.valid || 0} now valid, ${s.risky || 0} risky, ${s.invalid || 0} invalid.`);
       onRefresh?.();
     } catch (e) {
       toastFunctionError(e, `Failed to re-verify ${status} emails`);

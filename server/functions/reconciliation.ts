@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { providers, providerReconciliations, reconciliationJobs, apiInteractionLogs } from "../db/schema";
 import { sql, eq, and, isNotNull, desc, gt, asc } from "drizzle-orm";
+import { requestNppes } from "../lib/nppesClient";
 
 const NPPES_API_BASE = "https://npiregistry.cms.hhs.gov/api/?version=2.1";
 const DEFAULT_BATCH = 50;
@@ -46,16 +47,13 @@ function normalize(val: string | null, field?: string): string {
 }
 
 async function queryNPPES(npi: string): Promise<{ data: any | null; statusCode: number; durationMs: number; error?: string }> {
-  const url = `${NPPES_API_BASE}&number=${npi}`;
   const start = Date.now();
   try {
-    const resp = await fetch(url);
-    const durationMs = Date.now() - start;
-    const body = await resp.json();
-    if (resp.ok && body.result_count > 0) {
-      return { data: body.results[0], statusCode: resp.status, durationMs };
+    const { status, body, durationMs } = await requestNppes(npi);
+    if (status < 400 && body?.result_count > 0) {
+      return { data: body.results[0], statusCode: status, durationMs };
     }
-    return { data: null, statusCode: resp.status, durationMs, error: body.Errors?.[0]?.description || "No results" };
+    return { data: null, statusCode: status, durationMs, error: body?.Errors?.[0]?.description || "No results" };
   } catch (e: any) {
     return { data: null, statusCode: 0, durationMs: Date.now() - start, error: e.message };
   }

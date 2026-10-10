@@ -608,7 +608,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleGenerateScheduledReport(req.body));
       }
       case "testCMSUrl": {
-        const { handleTestCMSUrl } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`urlCheck:${req.user?.id ?? "anon"}`, 20, 60_000)) {
+          return res.status(429).json({ message: "Too many URL checks. Try again in a minute." });
+        }
+        const { handleTestCMSUrl } = await import("../functions/verification");
         return res.json(await handleTestCMSUrl(req.body));
       }
       case "predictImportFormat": {
@@ -616,7 +620,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handlePredictImportFormat(req.body));
       }
       case "testCMSApiConnector": {
-        const { handleTestCMSApiConnector } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`urlCheck:${req.user?.id ?? "anon"}`, 20, 60_000)) {
+          return res.status(429).json({ message: "Too many connection tests. Try again in a minute." });
+        }
+        const { handleTestCMSApiConnector } = await import("../functions/verification");
         return res.json(await handleTestCMSApiConnector(req.body));
       }
       case "enrichProviderThirdParty": {
@@ -655,11 +663,19 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleGetIntelCandidateCount());
       }
       case "verifyProviderEmail": {
-        const { handleVerifyProviderEmail } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`emailVerify:${req.user?.id ?? "anon"}`, 30, 60_000)) {
+          return res.status(429).json({ message: "Too many email checks. Try again in a minute." });
+        }
+        const { handleVerifyProviderEmail } = await import("../functions/verification");
         return res.json(await handleVerifyProviderEmail(req.body));
       }
       case "bulkVerifyEmails": {
-        const { handleBulkVerifyEmails } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`bulkEmailVerify:${req.user?.id ?? "anon"}`, 10, 60_000)) {
+          return res.status(429).json({ message: "Too many bulk verifications. Try again in a minute." });
+        }
+        const { handleBulkVerifyEmails } = await import("../functions/verification");
         return res.json(await handleBulkVerifyEmails(req.body));
       }
       case "enrichProviderMedicareData": {
@@ -667,7 +683,11 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleEnrichProviderMedicareData(req.body));
       }
       case "validateProviderNPI": {
-        const { handleValidateProviderNPI } = await import("../functions/stubs");
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`npiValidate:${req.user?.id ?? "anon"}`, 30, 60_000)) {
+          return res.status(429).json({ message: "Too many NPI checks. Try again in a minute." });
+        }
+        const { handleValidateProviderNPI } = await import("../functions/verification");
         return res.json(await handleValidateProviderNPI(req.body));
       }
       case "enrichProviderDEAData": {

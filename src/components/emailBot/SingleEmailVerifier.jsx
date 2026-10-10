@@ -9,6 +9,20 @@ const statusConfig = {
   valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/10', label: 'Valid' },
   risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/10', label: 'Risky' },
   invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/10', label: 'Invalid' },
+  unknown: { icon: ShieldAlert, color: 'text-slate-400', bg: 'bg-slate-500/10', label: "Couldn't check" },
+};
+
+const FLAG_LABELS = {
+  role_account: 'Shared mailbox',
+  free_email: 'Free email provider',
+  opted_out: 'Opted out',
+  bounced: 'Bounced before',
+  no_mx: 'No mail servers',
+  null_mx: 'Accepts no mail',
+  no_domain: "Domain doesn't exist",
+  disposable: 'Disposable',
+  no_reply: 'No-reply',
+  bad_syntax: 'Invalid format',
 };
 
 export default function SingleEmailVerifier({ provider, onVerified }) {
@@ -22,7 +36,8 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
         provider_id: provider.id,
       });
       setResult(data);
-      toast.success(`Email verified: ${data.status} (score: ${data.score})`);
+      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Couldn't check the domain right now. Try again later.");
+      else toast.success(`Email ${data.status}${data.score != null ? ` (score ${data.score})` : ''}`);
       onVerified?.(data);
     } catch (err) {
       toastFunctionError(err, 'Verification failed');
@@ -43,6 +58,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
     reasons: provider.email_quality_reasons,
     riskFlags: provider.email_quality_risk_flags,
   } : null);
+  const verifiedAt = result ? new Date() : provider.email_analyzed_at ? new Date(provider.email_analyzed_at) : null;
 
   const config = displayResult ? statusConfig[displayResult.status] || {} : null;
   const Icon = config?.icon;
@@ -59,7 +75,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
         >
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> :
             showReverify ? <RefreshCw className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-          {loading ? 'Verifying...' : showReverify ? 'Re-verify' : hasExisting ? 'Re-verify' : 'Verify Email'}
+          {loading ? 'Verifying…' : hasExisting || result ? 'Re-verify' : 'Verify email'}
         </Button>
 
         {displayResult && Icon && (
@@ -81,9 +97,15 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
       {displayResult?.riskFlags?.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {displayResult.riskFlags.slice(0, 5).map((flag, i) => (
-            <Badge key={i} className="bg-red-900/10 text-red-400 border border-red-500/20 text-[9px]">{flag}</Badge>
+            <Badge key={i} className="bg-red-900/10 text-red-400 border border-red-500/20 text-[9px]">{FLAG_LABELS[flag] || flag}</Badge>
           ))}
         </div>
+      )}
+
+      {displayResult && displayResult.status !== 'unknown' && verifiedAt && (
+        <p className="text-[10px] text-slate-500">
+          {result?.recommendation ? `${result.recommendation} · ` : ''}Checked {verifiedAt.toLocaleDateString()} (DNS only; the mailbox itself isn't probed)
+        </p>
       )}
     </div>
   );

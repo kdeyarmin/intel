@@ -37,6 +37,12 @@ export const providers = pgTable("providers", {
   email_validation_status: varchar("email_validation_status", { length: 20 }),
   email_validation_reason: text("email_validation_reason"),
   email_searched_at: timestamp("email_searched_at"),
+  // DNS/MX verification result (see server/lib/emailVerification.ts).
+  email_quality_score: integer("email_quality_score"),
+  email_quality_confidence: varchar("email_quality_confidence", { length: 20 }),
+  email_quality_reasons: jsonb("email_quality_reasons"),
+  email_quality_risk_flags: jsonb("email_quality_risk_flags"),
+  email_analyzed_at: timestamp("email_analyzed_at"),
   additional_emails: jsonb("additional_emails"),
   ai_enrichment_status: varchar("ai_enrichment_status", { length: 50 }),
   ai_summary: text("ai_summary"),

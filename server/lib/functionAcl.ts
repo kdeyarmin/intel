@@ -27,6 +27,9 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "dmeEmailSearchStatus",
   "searchProviders",
   "calculateOutreachScore",
+  // Rate-limited checks; they only write derived verification fields.
+  "validateProviderNPI",
+  "verifyProviderEmail",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
   "trackCampaignMetrics",

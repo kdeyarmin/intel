@@ -12,16 +12,21 @@ export async function isSuppressed(email: string): Promise<boolean> {
   return rows.length > 0;
 }
 
-/** Which of these addresses are suppressed (normalized, lowercase). */
-export async function loadSuppressed(emails: string[]): Promise<Set<string>> {
+/** Suppressed addresses among these (normalized, lowercase) → why (unsubscribed, bounced, spam_report). */
+export async function loadSuppressionReasons(emails: string[]): Promise<Map<string, string>> {
   const list = [...new Set(emails.map(normalizeEmail).filter(Boolean))];
-  const out = new Set<string>();
+  const out = new Map<string, string>();
   for (let i = 0; i < list.length; i += 1000) {
-    const rows = await db.select({ email: emailSuppressions.email }).from(emailSuppressions)
+    const rows = await db.select({ email: emailSuppressions.email, reason: emailSuppressions.reason }).from(emailSuppressions)
       .where(inArray(emailSuppressions.email, list.slice(i, i + 1000)));
-    rows.forEach((r) => out.add(r.email));
+    rows.forEach((r) => out.set(r.email, r.reason || "suppressed"));
   }
   return out;
+}
+
+/** Which of these addresses are suppressed (normalized, lowercase). */
+export async function loadSuppressed(emails: string[]): Promise<Set<string>> {
+  return new Set((await loadSuppressionReasons(emails)).keys());
 }
 
 export async function addSuppression(email: string, reason: string, source: string): Promise<void> {

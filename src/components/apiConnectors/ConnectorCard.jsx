@@ -17,8 +17,9 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: connector.name || '',
-    api_url: connector.api_url || '',
+    api_url: connector.api_url || connector.api_endpoint || '',
     api_key: connector.api_key || '',
+    api_key_header: connector.api_key_header || '',
     rate_limit_requests: connector.rate_limit_requests || 100,
     rate_limit_period: connector.rate_limit_period || 60,
     is_authorized: connector.is_authorized || false
@@ -29,7 +30,10 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
     try {
       const data = await invokeOrThrow('testCMSApiConnector', { connector_id: connector.id });
       if (data.connector) onUpdate(data.connector);
-      toast.success(data.connector?.test_message || data.message || 'Connection test successful');
+      const message = data.check?.message || 'Connection test finished';
+      if (data.check?.status === 'success') toast.success(message);
+      else if (data.check?.status === 'warning') toast.warning(message);
+      else toast.error(message);
     } catch (error) {
       toastFunctionError(error, 'Connection test failed');
     } finally {
@@ -94,16 +98,21 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
         {isEditing ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
-              <Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <Label htmlFor={`connector-name-${connector.id}`}>Name</Label>
+              <Input id={`connector-name-${connector.id}`} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <Label>Base URL</Label>
-              <Input value={formData.api_url} onChange={e => setFormData({...formData, api_url: e.target.value})} />
+              <Label htmlFor={`connector-url-${connector.id}`}>Base URL</Label>
+              <Input id={`connector-url-${connector.id}`} value={formData.api_url} onChange={e => setFormData({...formData, api_url: e.target.value})} />
             </div>
             <div className="space-y-2">
-              <Label>API Key (Optional)</Label>
-              <Input type="password" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} placeholder="••••••••••••" />
+              <Label htmlFor={`connector-key-${connector.id}`}>API Key (Optional)</Label>
+              <Input id={`connector-key-${connector.id}`} type="password" value={formData.api_key} onChange={e => setFormData({...formData, api_key: e.target.value})} placeholder="••••••••••••" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`connector-header-${connector.id}`}>API key header</Label>
+              <Input id={`connector-header-${connector.id}`} value={formData.api_key_header} onChange={e => setFormData({...formData, api_key_header: e.target.value})} placeholder="Authorization (sent as Bearer token)" />
+              <p className="text-xs text-slate-500">Leave blank to send the key as a Bearer token, or name the header the API expects (e.g. X-API-Key).</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -133,6 +142,7 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
                   {connector.last_tested_at ? formatDistanceToNow(new Date(connector.last_tested_at), { addSuffix: true }) : 'Never tested'}
                 </span>
                 {connector.test_status === 'success' && <Badge className="bg-green-900/30 text-green-300 hover:bg-green-900/30">Success</Badge>}
+                {connector.test_status === 'warning' && <Badge className="bg-amber-900/30 text-amber-300 hover:bg-amber-900/30">Check</Badge>}
                 {connector.test_status === 'failed' && <Badge variant="destructive">Failed</Badge>}
               </div>
               {connector.test_message && <p className="text-xs mt-1 text-slate-500 break-words">{connector.test_message}</p>}
@@ -156,12 +166,12 @@ export default function ConnectorCard({ connector, onUpdate, onDelete }) {
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                 <Settings2 className="w-4 h-4 mr-2" /> Configure
               </Button>
-              <Button variant="outline" size="sm" onClick={handleTestConnection} disabled={isTesting || !connector.is_authorized}>
+              <Button variant="outline" size="sm" onClick={handleTestConnection} disabled={isTesting || !(connector.api_url || connector.api_endpoint)}>
                 {isTesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-                Test API
+                {isTesting ? 'Testing…' : 'Test connection'}
               </Button>
             </div>
-            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-900/20" onClick={() => onDelete(connector.id)}>
+            <Button variant="ghost" size="icon" aria-label={`Delete ${connector.name}`} className="text-red-500 hover:text-red-600 hover:bg-red-900/20" onClick={() => onDelete(connector.id)}>
               <Trash2 className="w-4 h-4" />
             </Button>
           </>

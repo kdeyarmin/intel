@@ -63,6 +63,9 @@ export const JSONB_OVERFLOW: Record<string, string> = {
   LeadScore: "details",
   // Rule parameters written by the validation-rule editor.
   ImportValidationRule: "config",
+  // NPI Registry check details (status, registry name/address, taxonomies,
+  // discrepancies), written by validateProviderNPI.
+  ProviderNPIValidation: "validation_details",
 };
 
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date"]);
