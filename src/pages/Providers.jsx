@@ -488,8 +488,9 @@ export default function Providers() {
 
   const COLORS = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#f43f5e'];
 
-  // Saves the checked rows if any are selected, otherwise everything the
-  // current search/filters matched.
+  // Saves the checked rows if any are selected, otherwise the providers loaded
+  // on this page (the first 100, or up to 300 search results). The button
+  // says how many.
   const saveListNpis = selectedNpis.size > 0
     ? Array.from(selectedNpis)
     : sortedProviders.map(p => p.npi);
@@ -571,7 +572,9 @@ export default function Providers() {
           >
             <Save className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">
-              {selectedNpis.size > 0 ? `Add ${selectedNpis.size} to Lead List` : 'Save as Lead List'}
+              {selectedNpis.size > 0
+                ? `Add ${selectedNpis.size} to Lead List`
+                : `Save ${saveListNpis.length} shown as Lead List`}
             </span>
             <span className="sm:hidden">Save List</span>
           </Button>
