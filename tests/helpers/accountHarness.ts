@@ -107,7 +107,8 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
 let clients = 0;
 
 /** Trivial reversible "hash" so tests don't pay for bcrypt. */
-const fakeHash = (pw: string) => `hashed:${pw}`;
+// Like bcrypt, only the first 72 bytes count.
+const fakeHash = (pw: string) => `hashed:${Buffer.from(pw, "utf8").subarray(0, 72).toString("latin1")}`;
 
 export interface Harness {
   url: string;

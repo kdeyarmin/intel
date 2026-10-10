@@ -14,7 +14,7 @@ describe("planOrphanReassignment", () => {
       { id: 10, npi: "111", created_date: t(1) },
       { id: 11, npi: "222", created_date: t(3) },
       { id: 12, npi: "333", created_date: t(101) },
-    ]);
+    ], 30_000);
     expect(plan.assignments).toEqual([
       { listId: 1, memberIds: [10, 11] },
       { listId: 2, memberIds: [12] },
@@ -41,7 +41,34 @@ describe("planOrphanReassignment", () => {
       { id: 31, npi: "555", created_date: t(2) },
     ]);
     expect(plan.assignments).toEqual([{ listId: 1, memberIds: [30] }]);
-    expect(plan.unmatched).toEqual([31]);
+    expect(plan.duplicates).toEqual([31]);
+  });
+
+  it("skips NPIs the list already has", () => {
+    const plan = planOrphanReassignment(
+      lists,
+      [
+        { id: 32, npi: "555", created_date: t(1) },
+        { id: 33, npi: "666", created_date: t(2) },
+      ],
+      30_000,
+      [{ list_id: 1, npi: "555" }, { list_id: 2, npi: "666" }],
+    );
+    expect(plan.assignments).toEqual([{ listId: 1, memberIds: [33] }]);
+    expect(plan.duplicates).toEqual([32]);
+  });
+
+  it("leaves members alone when several lists were created in the window", () => {
+    // B is created after A, then A's members arrive: they could belong to either.
+    const plan = planOrphanReassignment(
+      [
+        { id: 1, name: "A", created_date: t(0), member_count: 1 },
+        { id: 2, name: "B", created_date: t(2), member_count: 1 },
+      ],
+      [{ id: 34, npi: "777", created_date: t(3) }],
+    );
+    expect(plan.assignments).toEqual([]);
+    expect(plan.ambiguous).toEqual([34]);
   });
 
   it("treats rows without timestamps as unmatched", () => {

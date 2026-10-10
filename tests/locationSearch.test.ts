@@ -9,6 +9,9 @@ describe("buildLocationSearchPlan", () => {
     const p = plan({ q: "1234567890" });
     expect(p).toMatchObject({ interpretation: "npi", label: "NPI 1234567890" });
     expect(p.text).toContain("npi = $1");
+    const inState = plan({ q: "1234567890", state: "oh" });
+    expect(inState.text).toContain("npi = $1 AND state = $2");
+    expect(inState.values.slice(0, 2)).toEqual(["1234567890", "OH"]);
   });
 
   it("matches ZIP5 and ZIP+4 on the 5-digit index expression", () => {

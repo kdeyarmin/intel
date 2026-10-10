@@ -45,13 +45,12 @@ const ADMIN_ONLY_ENTITIES = new Set([
 // Entities that any authenticated user may write/modify (collaborative work product).
 // Anything not in this set requires the admin role for write/delete operations.
 // Campaigns (OutreachCampaign, OutreachMessage, CampaignSequenceStep,
-// CampaignTask) are admin-only to change, like the Campaigns page and sending;
-// everyone can still read them (the dashboard pipeline, a provider's outreach
-// history).
+// CampaignTask) and the shared CampaignTemplate rows are admin-only to change,
+// like the Campaigns page and sending; everyone can still read them (the
+// dashboard pipeline, a provider's outreach history).
 export const USER_WRITABLE_ENTITIES = new Set([
   "LeadList",
   "LeadListMember",
-  "CampaignTemplate",
   "CustomReport",
   "ScheduledReport",
   "ScheduledExport",

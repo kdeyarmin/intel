@@ -35,7 +35,9 @@ function aggregateData(rawData, config) {
   // Group by
   const groups = {};
   for (const row of filtered) {
-    const gv = String(row[groupKey] || 'Unknown').substring(0, 30);
+    // The full value is the key (two long names sharing a prefix are
+    // different groups); only the axis label is shortened.
+    const gv = String(row[groupKey] || 'Unknown');
     if (!gv || gv === 'Unknown' || gv === '' || gv === 'undefined') continue;
     if (!groups[gv]) {
       groups[gv] = { group: gv };
@@ -51,6 +53,11 @@ function aggregateData(rawData, config) {
     })
     .slice(0, 25);
 }
+
+const shortLabel = (s) => {
+  const text = String(s ?? '');
+  return text.length > 30 ? `${text.slice(0, 29)}…` : text;
+};
 
 function fmt(n) {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
@@ -94,7 +101,7 @@ export default function ReportChart({ rawData, config, loading }) {
           {chartType === 'bar' ? (
             <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="group" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
+              <XAxis dataKey="group" tick={{ fontSize: 10 }} tickFormatter={shortLabel} angle={-20} textAnchor="end" height={60} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt} />
               <Tooltip formatter={(v, name) => [fmt(v), metricLabels[name] || name]} />
               <Legend wrapperStyle={{ fontSize: 11 }} formatter={name => metricLabels[name] || name} />
@@ -105,7 +112,7 @@ export default function ReportChart({ rawData, config, loading }) {
           ) : chartType === 'line' ? (
             <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="group" tick={{ fontSize: 10 }} />
+              <XAxis dataKey="group" tick={{ fontSize: 10 }} tickFormatter={shortLabel} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={fmt} />
               <Tooltip formatter={(v, name) => [fmt(v), metricLabels[name] || name]} />
               <Legend wrapperStyle={{ fontSize: 11 }} formatter={name => metricLabels[name] || name} />
@@ -122,7 +129,7 @@ export default function ReportChart({ rawData, config, loading }) {
                 cx="50%"
                 cy="50%"
                 outerRadius={120}
-                label={({ group, value }) => `${group}: ${fmt(value)}`}
+                label={({ group, value }) => `${shortLabel(group)}: ${fmt(value)}`}
               >
                 {chartData.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />

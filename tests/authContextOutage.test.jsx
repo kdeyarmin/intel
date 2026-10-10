@@ -6,7 +6,9 @@ const { me } = vi.hoisted(() => ({ me: vi.fn() }));
 vi.mock('@/api/base44Client', () => ({ base44: { auth: { me } } }));
 vi.mock('@/lib/query-client', () => ({ queryClientInstance: { clear: vi.fn() } }));
 
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../src/lib/AuthContext';
+import PendingApproval from '../src/components/auth/PendingApproval';
 
 const apiError = (status, data = {}) => Object.assign(new Error('x'), { status, data });
 
@@ -39,5 +41,24 @@ describe('AuthContext session check', () => {
     me.mockRejectedValueOnce(apiError(401));
     render(<AuthProvider><Probe /></AuthProvider>);
     await waitFor(() => expect(screen.getByText('out:auth_required')).toBeTruthy());
+  });
+});
+
+describe('PendingApproval during an outage', () => {
+  it('offers a retry instead of sending a pending user to sign in', async () => {
+    me.mockRejectedValueOnce(apiError(503, { detail: "Couldn't check your session." }));
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/pending']}>
+          <Routes>
+            <Route path="/pending" element={<PendingApproval />} />
+            <Route path="/login" element={<p>login screen</p>} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't check your session.");
+    expect(screen.queryByText('login screen')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
   });
 });
