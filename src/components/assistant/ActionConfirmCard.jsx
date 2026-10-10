@@ -17,6 +17,13 @@ const STATUS_NOTE = {
  */
 export default function ActionConfirmCard({ action: initial, conversationId }) {
   const [action, setAction] = useState(initial);
+  // The conversation refetches with the server's latest state (confirmed,
+  // cancelled or expired, maybe in another tab); adopt it when it changes.
+  const [seen, setSeen] = useState(initial);
+  if (initial !== seen) {
+    setSeen(initial);
+    setAction(initial);
+  }
   const [pending, setPending] = useState(null);
   const queryClient = useQueryClient();
   const count = Number(action.count) || 0;

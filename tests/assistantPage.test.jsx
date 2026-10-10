@@ -169,6 +169,16 @@ describe('applyAssistantEvent', () => {
     expect(d.items.map((i) => i.type)).toEqual(['tool', 'action']);
   });
 
+  it("drops a failed attempt's unfinished tool call on retry, keeping completed ones", () => {
+    const d = run([
+      ['tool_start', { id: 't1', name: 'search_providers' }],
+      ['tool_result', { id: 't1', ok: true }],
+      ['tool_start', { id: 't2', name: 'search_providers' }],
+      ['retry', {}],
+    ]);
+    expect(d.items.map((i) => i.id)).toEqual(['t1']);
+  });
+
   it('records the final status', () => {
     expect(run([['done', { status: 'refused', error: 'Declined' }]])).toMatchObject({ status: 'refused', error: 'Declined' });
     expect(run([['done', { status: 'complete' }]]).status).toBe('done');
