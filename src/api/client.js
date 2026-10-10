@@ -3,20 +3,27 @@ const API_BASE = "/api";
 export const AUTH_EXPIRED_EVENT = "auth:expired";
 
 // Endpoints whose 401s are expected and handled by the auth layer itself
-// (bad credentials, the initial session probe, logout).
-const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/me", "/auth/logout"];
+// (bad credentials, logout). The startup session probe opts out per call
+// instead (base44.auth.me({ probe: true })).
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/logout"];
 
 let authExpiredHandled = false;
+// Bumped whenever a new session starts. A request remembers the generation it
+// was sent under, so a 401 for the old session that arrives after signing in
+// again can't clear the new token.
+let authGeneration = 0;
 
 export function resetAuthExpired() {
   authExpiredHandled = false;
+  authGeneration += 1;
 }
 
-// A 401 from any other endpoint means the session expired mid-use. Clear the
+// A 401 from any other request means the session expired mid-use. Clear the
 // stale token and tell the app once (many queries can fail at the same time),
 // so it can send the user to the login page instead of rendering empty tables.
-export function handleUnauthorized(url) {
-  if (AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+export function handleUnauthorized(url, { generation = authGeneration, expected = false } = {}) {
+  if (expected || AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (generation !== authGeneration) return;
   if (authExpiredHandled) return;
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
@@ -35,9 +42,9 @@ export function buildErrorMessage(data, status) {
   return primary || detail || `Request failed: ${status}`;
 }
 
-async function toApiError(res, url) {
+async function toApiError(res, url, auth) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
-  if (res.status === 401) handleUnauthorized(url);
+  if (res.status === 401) handleUnauthorized(url, auth);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
   err.status = res.status;
@@ -45,7 +52,9 @@ async function toApiError(res, url) {
   return err;
 }
 
-async function request(url, options = {}) {
+// `expectUnauthorized`: a 401 is an answer for the caller, not an expired session.
+async function request(url, options = {}, { expectUnauthorized = false } = {}) {
+  const generation = authGeneration;
   const token = localStorage.getItem("auth_token");
   const headers = {
     "Content-Type": "application/json",
@@ -59,7 +68,7 @@ async function request(url, options = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) throw await toApiError(res, url);
+  if (!res.ok) throw await toApiError(res, url, { generation, expected: expectUnauthorized });
 
   return res.json();
 }
@@ -149,8 +158,10 @@ export const base44 = {
   entities: new Proxy({}, entityHandler),
 
   auth: {
-    async me() {
-      return request("/auth/me");
+    // `probe`: checking whether there is a session at all (app startup), so a
+    // 401 just means "signed out". Everywhere else it means the session expired.
+    async me({ probe = false } = {}) {
+      return request("/auth/me", {}, { expectUnauthorized: probe });
     },
 
     async login(email, password) {
@@ -207,6 +218,7 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
+        const generation = authGeneration;
         const token = localStorage.getItem("auth_token");
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
@@ -214,7 +226,7 @@ export const base44 = {
           credentials: "include",
           body: formData,
         });
-        if (!res.ok) throw await toApiError(res, "/integrations/file/upload");
+        if (!res.ok) throw await toApiError(res, "/integrations/file/upload", { generation });
         return res.json();
       },
 
