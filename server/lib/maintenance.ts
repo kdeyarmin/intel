@@ -489,6 +489,56 @@ export async function runCheckCmsCatalog(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: operations alerts ───────────────────────────────────────────────
+// Evaluates the pipeline (datasets behind a newer release, failing schedules,
+// stale rollups, failing workers) and emails the platform admins a digest at
+// most once a day while anything is open. The same evaluation backs the
+// "Needs attention" list on the Import Monitor's Health tab.
+
+export async function runOperationsAlerts(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { pool } = await import("../db");
+    const { evaluateOperationsAlerts, loadOperationsSnapshot, formatAlertDigest, DIGEST_INTERVAL_MS } = await import("./operationsAlerts");
+    const snapshot = await loadOperationsSnapshot(pool);
+    // This runs inside a fan-out, so the heartbeat it would complain about is
+    // the one being written right now; the tab shows that one on demand.
+    const alerts = evaluateOperationsAlerts(snapshot).filter((a) => a.key !== "heartbeat_stale");
+    if (alerts.length === 0) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: 0, emailed: false } };
+
+    const { rows } = await pool.query("SELECT created_date FROM audit_events WHERE event_type = 'operations_alert' ORDER BY created_date DESC LIMIT 1");
+    const lastAt = rows[0]?.created_date ? new Date(rows[0].created_date).getTime() : 0;
+    if (Date.now() - lastAt < DIGEST_INTERVAL_MS) {
+      return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: alerts.length, emailed: false, reason: "digest sent today" } };
+    }
+    const { getMailerStatus, sendMail } = await import("./mailer");
+    const { appBaseUrl } = await import("./accounts");
+    const admins = await pool.query("SELECT email FROM users WHERE is_platform_admin = true AND status = 'active' ORDER BY id");
+    const extra = (process.env.OPERATIONS_ALERT_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const recipients = [...new Set([...admins.rows.map((r: any) => String(r.email)), ...extra])];
+    const digest = formatAlertDigest(alerts, appBaseUrl());
+    let emailed = 0;
+    if (getMailerStatus().configured) {
+      for (const to of recipients) {
+        try {
+          await sendMail({ to, subject: digest.subject, text: digest.text });
+          emailed += 1;
+        } catch (e) {
+          console.warn(`[operationsAlerts] email to ${to} failed:`, (e as { message?: string })?.message);
+        }
+      }
+    }
+    await db.insert(auditEvents).values({
+      event_type: "operations_alert",
+      user_email: "system",
+      details: { alerts: alerts.map((a) => ({ key: a.key, severity: a.severity, subject: a.subject, message: a.message })), recipients, emailed },
+    });
+    return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: alerts.length, emailed: emailed > 0, recipients: recipients.length } };
+  } catch (e) {
+    return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "settleScheduledImports", run: runSettleScheduledImports },
   { name: "checkCmsCatalog", run: runCheckCmsCatalog },
@@ -498,6 +548,7 @@ export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResu
   { name: "cancelStalledImports", run: runCancelStalledImports },
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
   { name: "refreshRollups", run: runRefreshRollupsWorker },
+  { name: "operationsAlerts", run: runOperationsAlerts },
 ];
 
 export async function runMaintenanceFanout(

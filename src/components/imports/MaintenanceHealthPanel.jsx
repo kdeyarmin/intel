@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Wrench, CheckCircle2, AlertCircle, Loader2, Play, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
+import { usePageAccess } from '@/hooks/usePageAccess';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -61,9 +61,62 @@ function summarizeWorkerResult(result) {
   return parts.length > 0 ? parts.join(', ') : (w.ok ? 'ok' : 'failed');
 }
 
+const SEVERITY = {
+  critical: 'bg-red-900/30 text-red-400 border-red-500/30',
+  warning: 'bg-amber-900/30 text-amber-400 border-amber-500/30',
+};
+
+/**
+ * What an operator must look at (getOperationsAlerts, platform admins only):
+ * datasets behind a newer release, failing schedules, a stale heartbeat and
+ * stale rollups. The same list is emailed once a day while anything is open.
+ */
+function NeedsAttention({ enabled }) {
+  const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data: result } = await base44.functions.invoke('getOperationsAlerts', {});
+        if (!cancelled) { setData(result); setFailed(false); }
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    };
+    load();
+    const id = setInterval(load, 5 * POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [enabled]);
+  if (!enabled || failed || !data) return null;
+  const alerts = data.alerts || [];
+  return (
+    <div className="border-t border-slate-700/40 pt-2 space-y-1.5" data-testid="operations-alerts">
+      <p className="text-[11px] uppercase tracking-wide text-slate-400 font-medium">
+        Needs attention {alerts.length > 0 ? `(${alerts.length})` : ''}
+      </p>
+      {alerts.length === 0 ? (
+        <p className="text-[11px] text-emerald-400">Nothing open: datasets are current, schedules and rollups are running.</p>
+      ) : (
+        <ul className="text-[11px] space-y-1">
+          {alerts.map((a) => (
+            <li key={a.key} className="flex items-start gap-2">
+              <span className={`shrink-0 px-1.5 py-0.5 rounded border uppercase tracking-wider text-[9px] ${SEVERITY[a.severity] || SEVERITY.warning}`}>{a.severity}</span>
+              <span className="text-slate-300">{a.subject}:</span>
+              <span className="text-slate-400">{a.message}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[10px] text-slate-400">Platform admins get this list by email at most once a day while something is open.</p>
+    </div>
+  );
+}
+
 export default function MaintenanceHealthPanel() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  // Maintenance controls and alerts are platform-level (shared data), not an organization's.
+  const { isAdmin } = usePageAccess();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -222,6 +275,8 @@ export default function MaintenanceHealthPanel() {
           )}
         </div>
       </div>
+
+      <NeedsAttention enabled={isAdmin} />
 
       {isAdmin && (
         <div className="border-t border-slate-700/40 pt-2 space-y-1.5" data-testid="maintenance-actions">
