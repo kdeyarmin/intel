@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, AlertTriangle, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ReconciliationSettingsPanel from './ReconciliationSettingsPanel';
 import ReconciliationAnalyticsPanel from './ReconciliationAnalyticsPanel';
 
 export default function ReconciliationDashboard() {
@@ -80,7 +79,6 @@ export default function ReconciliationDashboard() {
         <TabsList className="mb-4">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="analytics">Analytics & Reporting</TabsTrigger>
-          <TabsTrigger value="settings">API Settings & Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -265,9 +263,6 @@ export default function ReconciliationDashboard() {
           <ReconciliationAnalyticsPanel />
         </TabsContent>
 
-        <TabsContent value="settings">
-          <ReconciliationSettingsPanel />
-        </TabsContent>
       </Tabs>
     </div>
   );

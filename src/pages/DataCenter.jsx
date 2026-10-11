@@ -7,6 +7,7 @@ import ImportCategoryCards from '../components/dataCenter/ImportCategoryCards';
 import QuickImportFlow from '../components/dataCenter/QuickImportFlow';
 import RecentImportsList from '../components/dataCenter/RecentImportsList';
 import PageHeader from '../components/shared/PageHeader';
+import PageTabs from '@/components/layout/PageTabs';
 
 export default function DataCenter() {
   const [activeCategory, setActiveCategory] = useState(null);
@@ -35,6 +36,7 @@ export default function DataCenter() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+      <PageTabs current="DataCenter" />
       <PageHeader
         title="Data Center"
         subtitle="One place to import all your data — pick a category, upload, and go"

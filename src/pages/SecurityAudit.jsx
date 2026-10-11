@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import { formatDateTimeET } from '../components/utils/dateUtils';
+import PageTabs from '@/components/layout/PageTabs';
 
 const EVENT_TYPE_CONFIG = {
   import: { label: 'Import', color: 'bg-blue-900/15 text-blue-400 border-blue-500/20', Icon: Upload },
@@ -83,6 +84,7 @@ export default function SecurityAudit() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
+      <PageTabs current="SecurityAudit" />
       <PageHeader
         title="Security Audit"
         subtitle="Full audit trail of all system activity, user access, and data operations"

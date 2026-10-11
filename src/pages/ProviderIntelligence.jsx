@@ -21,9 +21,16 @@ import EmailResultFilters from '../components/emailBot/EmailResultFilters';
 import EnrichedProviderCard from '../components/emailBot/EnrichedProviderCard';
 import QuickCampaignLauncher from '../components/emailBot/QuickCampaignLauncher';
 import PageHeader from '../components/shared/PageHeader';
+import { useUrlState } from '@/hooks/useUrlState';
+
+// ?tab= keeps the open tab in the URL (the old Email Search Bot and Enrichment Hub links land on theirs).
+const TABS = ['intelligence', 'email', 'providers', 'verify', 'outreach'];
+const URL_DEFAULTS = { tab: 'intelligence' };
 
 export default function ProviderIntelligence() {
-  const [activeTab, setActiveTab] = useState('intelligence');
+  const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const activeTab = TABS.includes(url.tab) ? url.tab : 'intelligence';
+  const setActiveTab = (tab) => setUrl({ tab });
   const [batchSize, setBatchSize] = useState(5);
   const [skipSearched, setSkipSearched] = useState(true);
   const [singleNpi, setSingleNpi] = useState('');

@@ -1,8 +1,7 @@
 import {
-  LayoutDashboard, Upload, Users, ListCheck, Settings, Shield, BarChart3, MapPin,
-  Activity, GitBranch, Bot, FileBarChart2, TrendingUp, Network, Megaphone, Target,
-  Database, HelpCircle, Server, ShieldCheck, Brain, Building2, Heart, HeartHandshake,
-  Home, HeartPulse, BedDouble, Package, Building, Briefcase, Stethoscope, ClipboardCheck,
+  LayoutDashboard, Upload, Users, ListCheck, Settings, Shield, BarChart3, MapPin, Map as MapIcon,
+  GitBranch, Bot, FileBarChart2, TrendingUp, Network, Megaphone,
+  HelpCircle, Server, Brain, Building2, Briefcase, Stethoscope, ClipboardCheck,
 } from 'lucide-react';
 
 // Single source of truth for the sidebar and for page-level access control.
@@ -23,20 +22,7 @@ export const NAV_SECTIONS = [
       { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
       { name: 'Organizations', icon: Briefcase, page: 'Organizations', roles: ['admin', 'user'] },
       { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
-    ]
-  },
-  {
-    label: 'Facilities',
-    items: [
-      { name: 'Hospitals', icon: Building2, page: 'Hospitals', roles: ['admin', 'user'] },
-      { name: 'Home Health', icon: Heart, page: 'HomeHealthAgencies', roles: ['admin', 'user'] },
-      { name: 'Hospice', icon: HeartHandshake, page: 'Hospices', roles: ['admin', 'user'] },
-      { name: 'Nursing Homes', icon: Home, page: 'NursingHomes', roles: ['admin', 'user'] },
-      { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
-      { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
-      { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
-      { name: 'DME Report', icon: FileBarChart2, page: 'DMEProviderReport', roles: ['admin', 'user'] },
-      { name: 'Community Health', icon: Building, page: 'CommunityHealthCenters', roles: ['admin', 'user'] },
+      { name: 'Facilities', icon: Building2, page: 'Facilities', roles: ['admin', 'user'] },
     ]
   },
   {
@@ -46,8 +32,7 @@ export const NAV_SECTIONS = [
       { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'user'] },
       { name: 'Utilization', icon: Stethoscope, page: 'Utilization', roles: ['admin', 'user'] },
       { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
-      { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
-      { name: 'County Intel', icon: MapPin, page: 'CountyIntelligence', roles: ['admin', 'user'] },
+      { name: 'Territory & County', icon: MapIcon, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
       { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'user'] },
     ]
   },
@@ -60,42 +45,117 @@ export const NAV_SECTIONS = [
     ]
   },
   {
-    label: 'Data Operations',
+    label: 'Administration',
     items: [
       { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
-      { name: 'CMS Catalog', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
       { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
-      { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
       { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
-      { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
       { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Provider Matching', icon: ClipboardCheck, page: 'ProviderLocationMatching', roles: ['admin'] },
-    ]
-  },
-  {
-    label: 'Settings',
-    items: [
-      { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
       { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
     ]
   },
 ];
 
-// Pages without a sidebar entry (detail pages and legacy alias routes). Each
-// inherits access from the nav page it belongs to, and that nav item is
-// highlighted while the secondary page is open.
-export const SECONDARY_PAGES = {
-  ProviderDetail: 'Providers',
-  OrganizationDetail: 'Organizations',
-  LocationDetail: 'Locations',
-  FacilityDetail: 'Hospitals',
-  LeadListBuilder: 'LeadLists',
-  Campaigns: 'ProviderOutreach',
-  EmailSearchBot: 'ProviderIntelligence',
-  EnrichmentHub: 'ProviderIntelligence',
+// Pages that share one sidebar entry (the first page of each group) and are
+// switched with a tab strip at the top of the page (PageTabs). Each keeps its
+// own URL, so bookmarks and links still work.
+export const PAGE_GROUPS = {
+  facilities: {
+    label: 'Facility views',
+    pages: [
+      { page: 'Facilities', label: 'Directory' },
+      { page: 'DMEProviderReport', label: 'DME report' },
+    ],
+  },
+  territory: {
+    label: 'Territory views',
+    pages: [
+      { page: 'TerritoryIntelligence', label: 'Territory map' },
+      { page: 'CountyIntelligence', label: 'County' },
+    ],
+  },
+  dataCenter: {
+    label: 'Data Center sections',
+    pages: [
+      { page: 'DataCenter', label: 'Import' },
+      { page: 'CMSDataSources', label: 'Dataset catalog' },
+      { page: 'ImportMonitoring', label: 'Import monitor' },
+    ],
+  },
+  crawler: {
+    label: 'NPPES Crawler sections',
+    pages: [
+      { page: 'NPPESCrawler', label: 'Crawler' },
+      { page: 'NPPESCrawlerSettings', label: 'Settings' },
+    ],
+  },
+  admin: {
+    label: 'Admin sections',
+    pages: [
+      { page: 'AdminSettings', label: 'Users' },
+      { page: 'ScoringRules', label: 'Scoring rules' },
+      { page: 'SecurityAudit', label: 'Security audit' },
+    ],
+  },
 };
+
+// Facility types served by the Facilities page (?type=), with the page that
+// used to list each type.
+export const FACILITY_TYPES = [
+  { type: 'hospital', label: 'Hospitals', legacyPage: 'Hospitals' },
+  { type: 'home_health', label: 'Home Health', legacyPage: 'HomeHealthAgencies' },
+  { type: 'hospice', label: 'Hospice', legacyPage: 'Hospices' },
+  { type: 'snf', label: 'Nursing Homes', legacyPage: 'NursingHomes' },
+  { type: 'irf', label: 'Inpatient Rehab', legacyPage: 'InpatientRehab' },
+  { type: 'ltch', label: 'Long-Term Care Hospitals', legacyPage: 'LongTermCare' },
+  { type: 'dme', label: 'DME Suppliers', legacyPage: 'DMESuppliers' },
+  { type: 'community_health', label: 'Community Health', legacyPage: 'CommunityHealthCenters' },
+];
+
+// Old page URLs and where they live now. `params` select the right view on
+// the target and win over the same keys in the old URL; every other query
+// parameter is kept, so old bookmarks and shared links still land in place.
+export const LEGACY_REDIRECTS = {
+  ...Object.fromEntries(FACILITY_TYPES.map(({ type, legacyPage }) => [legacyPage, { page: 'Facilities', params: { type } }])),
+  OrganizationDetail: { page: 'ProviderDetail' },
+  Campaigns: { page: 'ProviderOutreach' },
+  EmailSearchBot: { page: 'ProviderIntelligence', params: { tab: 'email' } },
+  EnrichmentHub: { page: 'ProviderIntelligence', params: { tab: 'intelligence' } },
+};
+
+/** Where an old page URL now lives, as a path with query string, or null if `page` isn't a legacy page. */
+export function resolveLegacyRedirect(page, search = '') {
+  const target = LEGACY_REDIRECTS[page];
+  if (!target) return null;
+  const params = new URLSearchParams(search);
+  for (const [key, value] of Object.entries(target.params || {})) params.set(key, value);
+  const query = params.toString();
+  return `/${target.page}${query ? `?${query}` : ''}`;
+}
+
+// Detail pages without a sidebar entry. Each inherits access from the nav
+// page it belongs to, and that nav item is highlighted while it is open.
+const DETAIL_PAGES = {
+  ProviderDetail: 'Providers',
+  LocationDetail: 'Locations',
+  FacilityDetail: 'Facilities',
+  LeadListBuilder: 'LeadLists',
+};
+
+export const SECONDARY_PAGES = {
+  ...DETAIL_PAGES,
+  ...Object.fromEntries(Object.values(PAGE_GROUPS).flatMap((group) => {
+    const [first, ...rest] = group.pages;
+    return rest.map(({ page }) => [page, first.page]);
+  })),
+};
+
+/** The tab group `page` belongs to, if any. */
+export function getPageGroup(page) {
+  return Object.values(PAGE_GROUPS).find((group) => group.pages.some((p) => p.page === page)) || null;
+}
 
 const NAV_ITEMS_BY_PAGE = new Map(
   NAV_SECTIONS.flatMap((section) => section.items.map((item) => [item.page, item])),
@@ -105,18 +165,14 @@ export function normalizeRole(role) {
   return role === 'admin' ? 'admin' : 'user';
 }
 
-// FacilityDetail serves every facility type, so no single sidebar item
-// represents it; it only borrows Hospitals' access rule.
-const UNHIGHLIGHTED_PAGES = new Set(['FacilityDetail']);
-
 function getParentPage(page) {
-  if (NAV_ITEMS_BY_PAGE.has(page)) return page;
-  return SECONDARY_PAGES[page] || null;
+  const current = LEGACY_REDIRECTS[page]?.page || page;
+  if (NAV_ITEMS_BY_PAGE.has(current)) return current;
+  return SECONDARY_PAGES[current] || null;
 }
 
-/** The sidebar item to highlight for `page` (itself, or its parent for detail/alias pages). */
+/** The sidebar item to highlight for `page` (itself, or its parent for detail, grouped and legacy pages). */
 export function getNavPageFor(page) {
-  if (UNHIGHLIGHTED_PAGES.has(page)) return null;
   return getParentPage(page);
 }
 

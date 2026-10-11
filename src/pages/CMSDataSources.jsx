@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import PageTabs from '@/components/layout/PageTabs';
 import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -185,6 +186,7 @@ export default function CMSDataSources() {
   if (catalogLoading) {
     return (
       <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+        <PageTabs current="CMSDataSources" />
         <PageHeader title="CMS Dataset Catalog" icon={Database} breadcrumbs={[{ label: 'Data Center', page: 'DataCenter' }, { label: 'CMS Dataset Catalog' }]} />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -195,6 +197,7 @@ export default function CMSDataSources() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <PageTabs current="CMSDataSources" />
       <PageHeader
         title="CMS Dataset Catalog"
         icon={Database}

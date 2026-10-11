@@ -13,14 +13,14 @@ import AffiliatedProvidersCard from '../components/facilities/AffiliatedProvider
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 
 const FACILITY_LABELS = {
-  hospital: { title: 'Hospital', plural: 'Hospitals', back: 'Hospitals', iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
-  home_health: { title: 'Home Health Agency', plural: 'Home Health Agencies', back: 'HomeHealthAgencies', iconCls: 'text-green-400', badgeCls: 'bg-green-900/30 text-green-400 border-green-500/30' },
-  hospice: { title: 'Hospice', plural: 'Hospices', back: 'Hospices', iconCls: 'text-purple-400', badgeCls: 'bg-purple-900/30 text-purple-400 border-purple-500/30' },
-  snf: { title: 'Nursing Facility', plural: 'Nursing Homes', back: 'NursingHomes', iconCls: 'text-amber-400', badgeCls: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
-  irf: { title: 'Inpatient Rehab Facility', plural: 'Inpatient Rehab Facilities', back: 'InpatientRehab', iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
-  ltch: { title: 'Long-Term Care Hospital', plural: 'Long-Term Care Hospitals', back: 'LongTermCare', iconCls: 'text-orange-400', badgeCls: 'bg-orange-900/30 text-orange-400 border-orange-500/30' },
-  dme: { title: 'DME Supplier', plural: 'DME Suppliers', back: 'DMESuppliers', iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
-  community_health: { title: 'Community Health Center', plural: 'Community Health Centers', back: 'CommunityHealthCenters', iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
+  hospital: { title: 'Hospital', plural: 'Hospitals', back: 'Facilities?type=hospital', iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
+  home_health: { title: 'Home Health Agency', plural: 'Home Health Agencies', back: 'Facilities?type=home_health', iconCls: 'text-green-400', badgeCls: 'bg-green-900/30 text-green-400 border-green-500/30' },
+  hospice: { title: 'Hospice', plural: 'Hospices', back: 'Facilities?type=hospice', iconCls: 'text-purple-400', badgeCls: 'bg-purple-900/30 text-purple-400 border-purple-500/30' },
+  snf: { title: 'Nursing Facility', plural: 'Nursing Homes', back: 'Facilities?type=snf', iconCls: 'text-amber-400', badgeCls: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
+  irf: { title: 'Inpatient Rehab Facility', plural: 'Inpatient Rehab Facilities', back: 'Facilities?type=irf', iconCls: 'text-rose-400', badgeCls: 'bg-rose-900/30 text-rose-400 border-rose-500/30' },
+  ltch: { title: 'Long-Term Care Hospital', plural: 'Long-Term Care Hospitals', back: 'Facilities?type=ltch', iconCls: 'text-orange-400', badgeCls: 'bg-orange-900/30 text-orange-400 border-orange-500/30' },
+  dme: { title: 'DME Supplier', plural: 'DME Suppliers', back: 'Facilities?type=dme', iconCls: 'text-cyan-400', badgeCls: 'bg-cyan-900/30 text-cyan-400 border-cyan-500/30' },
+  community_health: { title: 'Community Health Center', plural: 'Community Health Centers', back: 'Facilities?type=community_health', iconCls: 'text-lime-400', badgeCls: 'bg-lime-900/30 text-lime-400 border-lime-500/30' },
 };
 
 const TYPE_LABELS = {

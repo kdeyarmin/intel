@@ -39,6 +39,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
 
 - **Pages:** `src/pages/*.jsx`. `pages.config.js` is **auto-generated** — only
   `mainPage` is hand-editable; do not add imports or edit the `PAGES` map by hand.
+- **Navigation:** `src/components/layout/navConfig.js` is the one source for
+  the sidebar, page access and nav highlighting. Pages without a sidebar entry
+  must belong to one (`SECONDARY_PAGES` or a `PAGE_GROUPS` tab strip, rendered
+  by `PageTabs`); a test fails on orphan pages. When you merge or rename a
+  page, add the old name to `LEGACY_REDIRECTS` (query string is kept) rather
+  than keeping an alias page.
 - **Frontend API client:** `src/api/client.js` (re-exported as `base44` from
   `src/api/base44Client.js`). It mirrors the Base44 SDK shape
   (`base44.entities.X.list/filter/...`, `base44.functions.invoke(...)`).

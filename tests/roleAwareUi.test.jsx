@@ -33,7 +33,8 @@ vi.mock('../src/pages.config.js', () => ({
       Dashboard: () => <div>dashboard page</div>,
       Providers: () => <div>providers page</div>,
       ImportMonitoring: () => <div>import monitoring page</div>,
-      Campaigns: () => <div>campaigns page</div>,
+      ProviderOutreach: () => <div>campaigns page</div>,
+      Facilities: () => <div>facilities page</div>,
     },
     Layout: ({ children }) => <div data-testid="layout">{children}</div>,
     preloadPage: () => {},
@@ -76,9 +77,19 @@ describe('ProtectedRoute page access', () => {
     expect(screen.queryByText('import monitoring page')).not.toBeInTheDocument();
   });
 
-  it('blocks alias routes of admin pages too', async () => {
+  it('redirects old alias URLs and still blocks admin targets', async () => {
     renderAt('/Campaigns');
     expect(await screen.findByText('Access denied')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/ProviderOutreach');
+  });
+
+  it('redirects old facility pages to Facilities, keeping the query', async () => {
+    renderAt('/Hospices?state=PA&type=wrong#top');
+    expect(await screen.findByText('facilities page')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/Facilities');
+    expect(new URLSearchParams(window.location.search).get('state')).toBe('PA');
+    expect(new URLSearchParams(window.location.search).get('type')).toBe('hospice');
+    expect(window.location.hash).toBe('#top');
   });
 
   it('lets a user open pages their role allows', async () => {

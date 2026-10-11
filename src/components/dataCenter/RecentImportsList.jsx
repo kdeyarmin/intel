@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2, Clock, ExternalLink, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
-import { DATA_DESTINATION_MAP, IMPORT_TYPE_LABELS } from './DataDestinationMap';
+import { DATA_DESTINATION_MAP, IMPORT_TYPE_LABELS, destinationHref } from './DataDestinationMap';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -144,7 +143,7 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
                   </div>
                 </div>
                 {dest && (
-                  <Link to={createPageUrl(dest.page)}>
+                  <Link to={destinationHref(dest)}>
                     <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1 bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 shrink-0">
                       View {dest.label} <ExternalLink className="w-3 h-3" />
                     </Button>
