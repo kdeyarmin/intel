@@ -106,9 +106,30 @@ build** on every pull request (any base branch) and on pushes to `main`.
 ## Deployment
 
 Configured for Replit autoscale (`.replit`): `npm run build` then
-`NODE_ENV=production node --import tsx server/index.ts`. In production the
-Express server serves the built SPA from `dist/` same-origin, so set
-`JWT_SECRET` and (if serving a separate frontend origin) `ALLOWED_ORIGINS`.
+`NODE_ENV=production node --import tsx server/index.ts` (also `npm start`).
+In production the Express server serves the built SPA from `dist/`
+same-origin, so set `JWT_SECRET` and (if serving a separate frontend origin)
+`ALLOWED_ORIGINS`.
+
+### Railway
+
+The repo carries `railpack.json`; a Railway service builds with `npm ci &&
+npm run build` and starts with `npm start`. Add a Postgres plugin
+(`DATABASE_URL`), a volume mounted at `/app/uploads` for file uploads,
+`DB_MIGRATE_ON_BOOT=true`, and the secrets from `.env.example`.
+
+### Keeping the data fresh
+
+Nothing imports or refreshes without a maintenance tick. Either point a cron
+(a Railway cron service, a Replit Scheduled Deployment, system cron) at
+`sh scripts/maintenance-tick.sh` every 10 minutes with `MAINTENANCE_URL` and
+`MAINTENANCE_TOKEN` set, or set `MAINTENANCE_INPROCESS_INTERVAL_MS=600000` on
+the server. Each tick starts the import schedules that are due, settles the
+ones whose batches finished, checks the CMS catalogs once a day for newer
+dataset releases (schedules with frequency *on release* import them
+automatically), retries and resumes imports, sends due reports and refreshes
+the analytics rollups. The Import Monitor's Health tab shows the last tick;
+the Dataset catalog page shows each dataset's data year and import date.
 
 ### Central CareMetric support
 

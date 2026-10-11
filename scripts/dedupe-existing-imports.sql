@@ -31,11 +31,15 @@ WHERE a.id > b.id
   AND a.provider_id IS NULL AND b.provider_id IS NULL
   AND a.facility_name IS NOT DISTINCT FROM b.facility_name;
 
--- cms_referrals: identity is (npi, data_year).
+-- cms_referrals: one directed shared-patient edge per
+-- (npi, referred_to_npi, data_year) — the key the boot index
+-- uq_cms_referrals_npi_referred_year enforces. (The old (npi, data_year) key
+-- would have deleted every edge but one per provider and year.)
 DELETE FROM cms_referrals a
 USING cms_referrals b
 WHERE a.id > b.id
   AND a.npi IS NOT DISTINCT FROM b.npi
+  AND COALESCE(a.referred_to_npi, '') = COALESCE(b.referred_to_npi, '')
   AND a.data_year IS NOT DISTINCT FROM b.data_year;
 
 -- provider_service_utilization: identity is the HCPCS service line

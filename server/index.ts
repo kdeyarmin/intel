@@ -306,6 +306,13 @@ app.listen(PORT, "0.0.0.0", async () => {
       const { runBootIndexes } = await import("./lib/bootIndexes");
       await runBootIndexes(dbPool);
     })();
+
+    // Optional in-process maintenance tick (MAINTENANCE_INPROCESS_INTERVAL_MS)
+    // for hosts without an external cron; see server/lib/maintenanceTicker.ts.
+    {
+      const { startMaintenanceTicker } = await import("./lib/maintenanceTicker");
+      startMaintenanceTicker(dbPool);
+    }
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);
   }
