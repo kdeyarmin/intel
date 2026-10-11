@@ -90,8 +90,8 @@ describe('MaintenanceHealthPanel — admin gating', () => {
     await user.click(await screen.findByRole('button', { name: /Cleanup all imports/i }));
     // Confirm dialog should appear
     const runAnyway = await screen.findByRole('button', { name: /Run anyway/i });
-    // Nothing fired yet
-    expect(invokeMock).not.toHaveBeenCalled();
+    // Nothing fired yet (the panel reads the operations alerts on mount; only the cleanup waits for the confirmation).
+    expect(invokeMock).not.toHaveBeenCalledWith('cleanupAllImports');
     await user.click(runAnyway);
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('cleanupAllImports'));
   });
@@ -102,6 +102,26 @@ describe('MaintenanceHealthPanel — admin gating', () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: /Cleanup all imports/i }));
     await user.click(await screen.findByRole('button', { name: /^Cancel$/ }));
-    expect(invokeMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalledWith('cleanupAllImports');
+  });
+
+  it('lists what needs attention for platform admins, and nothing for others', async () => {
+    useAuthMock.mockReturnValue({ user: { id: 1, role: 'admin', email: 'a@x' } });
+    invokeMock.mockImplementation(async (name) => (name === 'getOperationsAlerts'
+      ? { data: { alerts: [{ key: 'dataset_behind:x', severity: 'critical', subject: 'Hospital Service Area', message: 'A newer release hasn’t been imported.', since: null }], checked_at: '2026-10-11T12:00:00Z' } }
+      : { data: {} }));
+    render(<MaintenanceHealthPanel />);
+    expect(await screen.findByText('Needs attention (1)')).toBeInTheDocument();
+    expect(screen.getByText('Hospital Service Area:')).toBeInTheDocument();
+    expect(screen.getByText('critical')).toBeInTheDocument();
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('getOperationsAlerts', {}));
+  });
+
+  it("does not read or show the operations alerts for an organization's owner", async () => {
+    useAuthMock.mockReturnValue({ user: { id: 2, role: 'user', orgRole: 'owner', email: 'o@x' } });
+    render(<MaintenanceHealthPanel />);
+    await screen.findAllByText(/Maintenance ran|No maintenance runs/);
+    expect(screen.queryByTestId('operations-alerts')).not.toBeInTheDocument();
+    expect(invokeMock).not.toHaveBeenCalledWith('getOperationsAlerts', {});
   });
 });
