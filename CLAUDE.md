@@ -125,6 +125,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   proxy, not transfers), and market *share* is the share of Medicare FFS
   beneficiaries served by providers located in the county. Every market view
   renders `ComplianceDisclaimer variant="market"` and `MarketFreshness`.
+  Units: shares in the rollups are fractions (0.31; format with `fmtShare`),
+  while CMS "percent" columns that are passed through (`*_users_pct`) stay in
+  percent units (`fmtPct`); the county profile counts each post-acute setting
+  at that setting's own latest year, because CMS releases them separately.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through

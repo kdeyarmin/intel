@@ -65,6 +65,20 @@ describe("market rollup jobs", () => {
     expect(jobByName("referral_sources")!.sql).toContain("Bene_CC_PH_HF_NonIHD_V2_Pct");
   });
 
+  it("store chronic-condition shares as fractions, like every other share (CMS publishes percent units)", () => {
+    const sql = jobByName("referral_sources")!.sql;
+    for (const col of ["cc_chf_pct", "cc_copd_pct", "cc_alzheimer_pct", "cc_ckd_pct", "cc_diabetes_pct"]) {
+      expect(sql, col).toMatch(new RegExp(`\\)::float8[^\\n]*\\) / 100\\.0 AS ${col}`));
+    }
+  });
+
+  it("count the county's post-acute providers at each setting's own latest year", () => {
+    const sql = jobByName("county_market_profile")!.sql;
+    expect(sql).toMatch(/latest_pac AS \(SELECT setting, max\(data_year\) AS year FROM rollup_pac_market_share WHERE geo_level = 'county' GROUP BY setting\)/);
+    expect(sql).toMatch(/JOIN latest_pac l ON l\.setting = p\.setting AND l\.year = p\.data_year/);
+    expect(sql).toContain("'pac_utilization_by_setting', py.by_setting");
+  });
+
   it("run as one INSERT … SELECT inside the swap transaction under the results timeout", async () => {
     const statements: string[] = [];
     const client = {

@@ -7,6 +7,7 @@ import { TrendingUp } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { fmtCount, fmtShare, ordinal } from '@/lib/marketFormat';
 import MarketFreshness from './MarketFreshness';
+import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
 /** A post-acute provider's share and rank in its county and state, the competitors around it, and (for agencies) the counties it serves. */
 export default function MarketPositionCard({ ccn, setting }) {
@@ -33,9 +34,10 @@ export default function MarketPositionCard({ ccn, setting }) {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!data.county && <p className="text-xs text-slate-400">This provider has no county in the post-acute file, so only its state position is shown.</p>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-          <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{ordinal(pos.rank)}</p><p className="text-[11px] text-slate-400">of {fmtCount(pos.providers_in_market)} in county</p></div>
-          <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtShare(pos.share, 1)}</p><p className="text-[11px] text-slate-400">county share</p></div>
+          {data.county && <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{ordinal(pos.rank)}</p><p className="text-[11px] text-slate-400">of {fmtCount(pos.providers_in_market)} in county</p></div>}
+          {data.county && <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtShare(pos.share, 1)}</p><p className="text-[11px] text-slate-400">county share</p></div>}
           <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtCount(pos.benes)}</p><p className="text-[11px] text-slate-400">beneficiaries · {fmtCount(pos.stays)} stays</p></div>
           <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{ordinal(pos.state_rank)}</p><p className="text-[11px] text-slate-400">of {fmtCount(pos.state_providers)} in state</p></div>
         </div>
@@ -72,6 +74,7 @@ export default function MarketPositionCard({ ccn, setting }) {
           </div>
         )}
         <MarketFreshness rollups={data.rollups} jobs={['pac_market_share', 'agency_coverage']} />
+        <ComplianceDisclaimer variant="market" />
       </CardContent>
     </Card>
   );

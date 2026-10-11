@@ -320,6 +320,8 @@ export async function handleGetProviderCMSData(params: any) {
     linked_facilities: Object.values(linkedFacilities),
     // Medicare services the provider may order or refer (CMS Order & Referring).
     order_referring: orderReferring,
+    // The clinician's standing as a post-acute referral source (ReferralPotentialCard, the assistant).
+    referral_potential: referralPotential,
     total_records: allRows.length,
   };
 }

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, Download, AlertTriangle, ArrowUpDown } from 'lucide-react';
 import { US_STATES } from '@/lib/usStates';
 import { COUNTY_LAYER_METRICS, LAYER_BY_KEY } from '@/lib/marketLayers';
-import { formatMetric, sortRows, toCsv } from '@/lib/marketFormat';
+import { csvHeader, csvValue, formatMetric, sortRows, toCsv } from '@/lib/marketFormat';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import MarketFreshness from '../components/market/MarketFreshness';
@@ -48,9 +48,10 @@ export default function MarketIntelligence() {
   const removeColumn = (key) => setUrl({ cols: columns.filter((k) => k !== key).join(',') });
 
   const download = () => {
+    // Every metric, one unit per column (shares as percent numbers), headed by what it is.
     const csv = toCsv(
-      [{ key: 'fips', label: 'county_fips' }, { key: 'name', label: 'county' }, ...COUNTY_LAYER_METRICS.map((m) => ({ key: m.key, label: m.key }))],
-      rows,
+      [{ key: 'fips', label: 'County FIPS' }, { key: 'name', label: 'County' }, ...COUNTY_LAYER_METRICS.map((m) => ({ key: m.key, label: csvHeader(m) }))],
+      rows.map((r) => ({ fips: r.fips, name: r.name, ...Object.fromEntries(COUNTY_LAYER_METRICS.map((m) => [m.key, csvValue(r[m.key], m.format)])) })),
     );
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
