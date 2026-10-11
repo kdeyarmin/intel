@@ -215,13 +215,15 @@ export const base44 = {
         const formData = new FormData();
         formData.append("file", actualFile);
         const token = localStorage.getItem("auth_token");
+        // Like request(): a 401 only ends the session this upload was sent under.
+        const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
           body: formData,
         });
-        if (!res.ok) throw await toApiError(res, "/integrations/file/upload");
+        if (!res.ok) throw await toApiError(res, "/integrations/file/upload", { generation });
         return res.json();
       },
 
