@@ -78,12 +78,12 @@ export default function LeadLists() {
         icon={ListCheck}
         breadcrumbs={[{ label: 'Lead Lists' }]}
         actions={
-          <Link to={createPageUrl('LeadListBuilder')}>
-            <Button className="bg-cyan-600 hover:bg-cyan-700">
+          <Button asChild className="bg-cyan-600 hover:bg-cyan-700">
+            <Link to={createPageUrl('LeadListBuilder')}>
               <Plus className="w-4 h-4 mr-2" />
               Create New List
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 

@@ -215,11 +215,11 @@ Be very specific about locations, specialties, and organizational types.`,
                       {p.campaign_subject && (
                         <p className="text-[9px] text-slate-400 mt-0.5 italic">Subject: "{p.campaign_subject}"</p>
                       )}
-                      <Link to={createPageUrl('ProviderOutreach')}>
-                        <Button size="sm" variant="outline" className="h-5 text-[9px] gap-1 mt-1.5 bg-transparent border-slate-600 text-cyan-400 hover:bg-slate-800">
+                      <Button asChild size="sm" variant="outline" className="h-5 text-[9px] gap-1 mt-1.5 bg-transparent border-slate-600 text-cyan-400 hover:bg-slate-800">
+                        <Link to={createPageUrl('ProviderOutreach')}>
                           <Megaphone className="w-2.5 h-2.5" /> Create Campaign
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 </div>
