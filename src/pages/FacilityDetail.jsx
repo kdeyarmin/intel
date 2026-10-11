@@ -190,13 +190,13 @@ function RawDataTable({ rows, facilityType }) {
     <div className="space-y-3">
       {latestRow && summaryCols.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-slate-500 mb-1.5">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
             Summary{latestRow.data_year ? ` — latest reporting year ${latestRow.data_year}` : ''}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {summaryCols.map(col => (
               <div key={col.key} className="p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40">
-                <p className="text-[10px] text-slate-500 font-medium">{col.label}</p>
+                <p className="text-[10px] text-slate-400 font-medium">{col.label}</p>
                 <p className="text-base font-bold text-slate-100">
                   {col.key.includes('payment') || col.key.includes('charge')
                     ? formatCurrency(latestRow[col.key])
@@ -205,7 +205,7 @@ function RawDataTable({ rows, facilityType }) {
               </div>
             ))}
             <div className="p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40">
-              <p className="text-[10px] text-slate-500 font-medium">Records</p>
+              <p className="text-[10px] text-slate-400 font-medium">Records</p>
               <p className="text-base font-bold text-slate-100">{rows.length.toLocaleString()}</p>
             </div>
           </div>
@@ -215,16 +215,17 @@ function RawDataTable({ rows, facilityType }) {
       {allRawKeys.length > 5 && (
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
             <input
               type="text"
+              aria-label="Search data fields"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search columns..."
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-900/50 border border-slate-700/50 rounded-md text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50"
             />
           </div>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-slate-400">
             {filteredRawKeys.length} of {allRawKeys.length} data fields
           </span>
         </div>
@@ -279,7 +280,7 @@ function RawDataTable({ rows, facilityType }) {
           </Button>
         )}
         {rows.length > 50 && (
-          <p className="text-[10px] text-slate-500">Showing 50 of {rows.length} records</p>
+          <p className="text-[10px] text-slate-400">Showing 50 of {rows.length} records</p>
         )}
       </div>
     </div>
@@ -346,7 +347,7 @@ function LinkedProviderCard({ linked, navigate, config }) {
               {!linked.email && (
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
-                  <span className="text-slate-500 italic">No email on file</span>
+                  <span className="text-slate-400 italic">No email on file</span>
                 </div>
               )}
               {linked.phone && (
@@ -378,7 +379,7 @@ function LinkedProviderCard({ linked, navigate, config }) {
               </div>
             )}
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+              className="bg-cyan-700 hover:bg-cyan-800 text-white text-xs"
               onClick={() => navigate(createPageUrl('ProviderDetail') + `?npi=${linked.npi}`)}
             >
               <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Full Provider Profile
@@ -423,7 +424,7 @@ function FacilitySummaryCard({ data, financials, facilityTypes, config }) {
         <CardContent className="py-3 px-4">
           <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Layers className="w-3 h-3" />Data Sources</div>
           <div className="text-lg font-bold text-slate-100">{facilityTypes.length}</div>
-          <div className="text-[10px] text-slate-500">{totalRecords} records</div>
+          <div className="text-[10px] text-slate-400">{totalRecords} records</div>
         </CardContent>
       </Card>
       <Card className="bg-slate-800/50 border-slate-700/50">

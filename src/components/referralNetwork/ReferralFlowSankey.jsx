@@ -27,7 +27,7 @@ export default function ReferralFlowSankey({ edges = [], nodes = [] }) {
     return (
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-slate-300">Top Referral Flows</CardTitle></CardHeader>
-        <CardContent><p className="text-sm text-slate-500 text-center py-6">No referral flows to display</p></CardContent>
+        <CardContent><p className="text-sm text-slate-400 text-center py-6">No referral flows to display</p></CardContent>
       </Card>
     );
   }
@@ -37,7 +37,7 @@ export default function ReferralFlowSankey({ edges = [], nodes = [] }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           Top Referral Flows
-          <Badge variant="outline" className="text-[10px] ml-auto text-slate-500">{flows.length} connections</Badge>
+          <Badge variant="outline" className="text-[10px] ml-auto text-slate-400">{flows.length} connections</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
@@ -47,7 +47,7 @@ export default function ReferralFlowSankey({ edges = [], nodes = [] }) {
             <div key={i} className="flex items-center gap-2 group">
               <div className="w-[38%] text-right">
                 <span className="text-xs font-medium text-slate-300 truncate inline-block max-w-full">{f.sourceLabel}</span>
-                <Badge variant="outline" className="text-[9px] ml-1.5 hidden sm:inline-flex text-slate-500">{f.sourceType === 'Organization' ? 'Org' : 'Ind'}</Badge>
+                <Badge variant="outline" className="text-[9px] ml-1.5 hidden sm:inline-flex text-slate-400">{f.sourceType === 'Organization' ? 'Org' : 'Ind'}</Badge>
               </div>
               <div className="flex-1 relative h-7 flex items-center">
                 <div className="absolute inset-0 flex items-center">

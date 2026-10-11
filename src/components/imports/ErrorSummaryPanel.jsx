@@ -37,7 +37,7 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
             );
           })}
           {sortedCategories.length > 3 && (
-            <span className="text-[10px] text-slate-500">+{sortedCategories.length - 3} more</span>
+            <span className="text-[10px] text-slate-400">+{sortedCategories.length - 3} more</span>
           )}
         </div>
         <Button
@@ -92,10 +92,10 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
                         <Badge className={`${config.badgeColor} text-[10px]`}>{config.label}</Badge>
                         <span className="text-xs font-semibold text-slate-300">{count} ({pct}%)</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mb-1">{config.description}</p>
+                      <p className="text-[11px] text-slate-400 mb-1">{config.description}</p>
                       <div className="bg-slate-900/50 rounded px-2 py-1 text-[11px] text-slate-400 truncate">
-                        <span className="text-slate-500">Sample: </span>
-                        {sample?.row != null && <span className="text-slate-500">Row {sample.row} — </span>}
+                        <span className="text-slate-400">Sample: </span>
+                        {sample?.row != null && <span className="text-slate-400">Row {sample.row} — </span>}
                         {sample?.message || 'No details'}
                       </div>
                       {/* Progress bar */}
@@ -113,8 +113,8 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
                     <Lightbulb className="w-3 h-3 text-yellow-400" />
                     <span className="text-[11px] font-medium text-slate-400">How to fix</span>
                     {isSolutionExpanded
-                      ? <ChevronDown className="w-3 h-3 text-slate-500 ml-auto" />
-                      : <ChevronRight className="w-3 h-3 text-slate-500 ml-auto" />
+                      ? <ChevronDown className="w-3 h-3 text-slate-400 ml-auto" />
+                      : <ChevronRight className="w-3 h-3 text-slate-400 ml-auto" />
                     }
                   </button>
 
@@ -123,7 +123,7 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
                       <ol className="space-y-1.5">
                         {config.solutions.map((step, i) => (
                           <li key={i} className="text-xs text-slate-400 flex gap-2">
-                            <span className="font-semibold text-slate-500 flex-shrink-0">{i + 1}.</span>
+                            <span className="font-semibold text-slate-400 flex-shrink-0">{i + 1}.</span>
                             {step}
                           </li>
                         ))}
@@ -149,7 +149,7 @@ export default function ErrorSummaryPanel({ errors, batchName, compact = false }
           {sortedCategories.length > 3 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mt-2"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 mt-2"
             >
               {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
               {sortedCategories.length - 3} more categor{sortedCategories.length - 3 !== 1 ? 'ies' : 'y'}

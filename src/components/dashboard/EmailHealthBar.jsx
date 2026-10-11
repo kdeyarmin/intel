@@ -40,8 +40,8 @@ export default function EmailHealthBar({ emailStats, totalProviders }) {
               <span>Coverage</span>
               <span className="text-white font-medium">{coveragePct}%</span>
             </div>
-            <Progress value={coveragePct} className="h-1.5" />
-            <p className="text-[10px] text-slate-500 mt-1">{withEmail.toLocaleString()} of {totalProviders.toLocaleString()}</p>
+            <Progress value={coveragePct} className="h-1.5" aria-label="Email coverage" />
+            <p className="text-[10px] text-slate-400 mt-1">{withEmail.toLocaleString()} of {totalProviders.toLocaleString()}</p>
           </div>
           {/* Verification */}
           <div>
@@ -49,8 +49,8 @@ export default function EmailHealthBar({ emailStats, totalProviders }) {
               <span>Verified</span>
               <span className="text-white font-medium">{verifiedPct}%</span>
             </div>
-            <Progress value={verifiedPct} className="h-1.5" />
-            <p className="text-[10px] text-slate-500 mt-1">{totalVerified.toLocaleString()} of {withEmail.toLocaleString()}</p>
+            <Progress value={verifiedPct} className="h-1.5" aria-label="Emails verified" />
+            <p className="text-[10px] text-slate-400 mt-1">{totalVerified.toLocaleString()} of {withEmail.toLocaleString()}</p>
           </div>
         </div>
 

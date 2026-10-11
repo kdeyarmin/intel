@@ -43,7 +43,7 @@ export default function OrgAffiliatedProvidersCard({ npi, locations = [], allPro
           Affiliated Providers
           <Badge variant="outline" className="ml-auto text-xs">{affiliatedProviders.length}</Badge>
         </CardTitle>
-        <p className="text-[11px] text-slate-500">Individual providers practicing at this organization&apos;s address(es)</p>
+        <p className="text-[11px] text-slate-400">Individual providers practicing at this organization&apos;s address(es)</p>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

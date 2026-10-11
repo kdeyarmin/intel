@@ -58,7 +58,7 @@ function VolumeDensityLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.totalVolume.toLocaleString()} Patients</div>
-            <div className="text-slate-500">Across {cluster.count} providers</div>
+            <div className="text-slate-400">Across {cluster.count} providers</div>
           </div>
         </Popup>
       </CircleMarker>
@@ -110,7 +110,7 @@ function HeatmapLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.count} providers</div>
-            <div className="text-slate-500">Avg Score: {cluster.avgScore ?? 'Unscored'}</div>
+            <div className="text-slate-400">Avg Score: {cluster.avgScore ?? 'Unscored'}</div>
           </div>
         </Popup>
       </CircleMarker>
@@ -212,7 +212,7 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <Map className="w-4 h-4 text-teal-600" />
+            <Map className="w-4 h-4 text-teal-400" />
             Provider Map
           </span>
           <div className="flex items-center gap-2">

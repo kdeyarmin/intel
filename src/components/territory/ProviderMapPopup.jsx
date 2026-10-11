@@ -59,7 +59,7 @@ export default function ProviderMapPopup({ item }) {
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 text-[10px] px-2 text-teal-600 hover:text-teal-700"
+          className="h-6 text-[10px] px-2 text-teal-400 hover:text-teal-300"
           onClick={() => navigate(createPageUrl('ProviderDetail') + '?npi=' + provider.npi)}
         >
           View <ExternalLink className="w-3 h-3 ml-1" />

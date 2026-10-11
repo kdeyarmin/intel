@@ -81,7 +81,7 @@ export default function DataQuality() {
         <div />
         <div className="flex items-center gap-3">
           {latestScan?.completed_at && (
-            <span className="text-xs text-slate-500 flex items-center gap-1">
+            <span className="text-xs text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Last scan: {new Date(latestScan.completed_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })} ET
             </span>
@@ -187,7 +187,7 @@ export default function DataQuality() {
                   {latestRuleResults.length > 0 ? (
                     <RuleResultsTable results={latestRuleResults} />
                   ) : (
-                    <p className="text-sm text-slate-500 text-center py-8">Run a scan to see rule results</p>
+                    <p className="text-sm text-slate-400 text-center py-8">Run a scan to see rule results</p>
                   )}
                 </CardContent>
               </Card>

@@ -82,7 +82,7 @@ export default function CrawlerMonitoring({ status }) {
           <h2 className="text-xl font-bold text-white">
             {isLive ? 'Real-Time Telemetry' : 'Processing Telemetry'}
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-400">
             {isLive ? 'Live performance & error monitoring' : 'Historical performance from completed batches'}
           </p>
         </div>
@@ -119,8 +119,8 @@ export default function CrawlerMonitoring({ status }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={metricsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                    <XAxis dataKey="state" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}s`} />
+                    <XAxis dataKey="state" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}s`} />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       formatter={(value, name) => [`${value}s`, name]}
@@ -130,10 +130,10 @@ export default function CrawlerMonitoring({ status }) {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500 text-sm gap-1">
-                  <Clock className="w-5 h-5 text-slate-500" />
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm gap-1">
+                  <Clock className="w-5 h-5 text-slate-400" />
                   <span>No processing data yet</span>
-                  <span className="text-xs text-slate-500">Run the crawler to generate telemetry</span>
+                  <span className="text-xs text-slate-400">Run the crawler to generate telemetry</span>
                 </div>
               )}
             </div>
@@ -159,8 +159,8 @@ export default function CrawlerMonitoring({ status }) {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                    <XAxis dataKey="state" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="state" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#94a3b8' }} />
                     <Area type="monotone" dataKey="rateLimits" name="Rate Limit Hits" stroke="#f59e0b" fillOpacity={1} fill="url(#colorRate)" />
                   </AreaChart>
@@ -171,7 +171,7 @@ export default function CrawlerMonitoring({ status }) {
                     <Zap className="w-4 h-4" />
                     No Rate Limiting
                   </div>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-400">
                     {metricsData.length > 0 ? 'No throttling detected across processed states' : 'Run the crawler to track rate limits'}
                   </span>
                 </div>
@@ -193,8 +193,8 @@ export default function CrawlerMonitoring({ status }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={errorData} layout="vertical" margin={{ top: 10, right: 30, left: 30, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" />
-                    <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                    <YAxis dataKey="message" type="category" tick={{ fontSize: 10, fill: '#64748b' }} width={180} axisLine={false} tickLine={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="message" type="category" tick={{ fontSize: 10, fill: '#94a3b8' }} width={180} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#94a3b8' }} />
                     <Bar dataKey="count" name="Error Count" fill="#ef4444" radius={[0, 4, 4, 0]} maxBarSize={30} />
                   </BarChart>
@@ -205,7 +205,7 @@ export default function CrawlerMonitoring({ status }) {
                     <AlertCircle className="w-4 h-4" />
                     No Errors Detected
                   </div>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-400">
                     {status.completed > 0 ? `${status.completed} states completed without errors` : 'No crawl errors recorded'}
                   </span>
                 </div>

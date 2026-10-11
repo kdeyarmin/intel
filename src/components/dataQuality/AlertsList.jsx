@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,13 +29,14 @@ const statusIcons = {
   new: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   open: <AlertTriangle className="w-4 h-4 text-amber-500" />,
   resolved: <CheckCircle className="w-4 h-4 text-green-500" />,
-  dismissed: <XCircle className="w-4 h-4 text-slate-500" />,
+  dismissed: <XCircle className="w-4 h-4 text-slate-400" />,
   accepted: <CheckCircle className="w-4 h-4 text-green-500" />,
-  rejected: <XCircle className="w-4 h-4 text-slate-500" />,
+  rejected: <XCircle className="w-4 h-4 text-slate-400" />,
   auto_fixed: <CheckCircle className="w-4 h-4 text-blue-500" />,
 };
 
 export default function AlertsList({ alerts = [] }) {
+  const uid = useId();
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [filterStatus, setFilterStatus] = useState('new');
@@ -127,7 +128,7 @@ export default function AlertsList({ alerts = [] }) {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by status" className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="new">Open</SelectItem>
@@ -136,7 +137,7 @@ export default function AlertsList({ alerts = [] }) {
               </SelectContent>
             </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by category" className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="completeness">Completeness</SelectItem>
@@ -146,7 +147,7 @@ export default function AlertsList({ alerts = [] }) {
               </SelectContent>
             </Select>
             <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-              <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Filter by severity" className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Severity</SelectItem>
                 <SelectItem value="critical">Critical</SelectItem>
@@ -168,10 +169,12 @@ export default function AlertsList({ alerts = [] }) {
         {filtered.length > 0 && filtered.some(a => a.status === 'new' || a.status === 'open') && (
           <div className="flex items-center gap-2">
             <Checkbox
+              id={`${uid}-select-all`}
+              aria-labelledby={`${uid}-select-all-label`}
               checked={filtered.filter(a => a.status === 'new' || a.status === 'open').length > 0 && filtered.filter(a => a.status === 'new' || a.status === 'open').every(a => selectedIds.includes(a.id))}
               onCheckedChange={() => toggleAll(filtered)}
             />
-            <span className="text-xs text-slate-500">Select all open alerts</span>
+            <label id={`${uid}-select-all-label`} htmlFor={`${uid}-select-all`} className="text-xs text-slate-400">Select all open alerts</label>
           </div>
         )}
 
@@ -211,6 +214,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
             checked={selected}
             onCheckedChange={onSelect}
             onClick={(e) => e.stopPropagation()}
+            aria-label={`Select alert: ${alert.title || alert.summary || 'untitled'}`}
             className="ml-1"
           />
         )}
@@ -226,7 +230,7 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
             <Badge variant="secondary" className={`text-[10px] ${severityColors[alert.severity] || ''}`}>{alert.severity}</Badge>
           </div>
           {alert.description && (
-            <p className="text-xs text-slate-500 mt-1 truncate">{alert.description}</p>
+            <p className="text-xs text-slate-400 mt-1 truncate">{alert.description}</p>
           )}
         </div>
         {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
@@ -239,18 +243,18 @@ function AlertRow({ alert, expanded, onToggle, onApplyFix, onDismiss, isFixing, 
             {alert.entity_type && <div><span className="text-slate-400">Entity:</span> <span className="font-medium">{alert.entity_type}</span></div>}
             {alert.npi && <div><span className="text-slate-400">NPI:</span> <span className="font-mono">{alert.npi}</span></div>}
             {alert.field_name && <div><span className="text-slate-400">Field:</span> <span className="font-medium">{alert.field_name}</span></div>}
-            {alert.current_value && <div><span className="text-slate-400">Current:</span> <span className="font-mono text-red-600">{alert.current_value}</span></div>}
+            {alert.current_value && <div><span className="text-slate-400">Current:</span> <span className="font-mono text-red-400">{alert.current_value}</span></div>}
           </div>
 
           {alert.suggested_value && (
             <div className="bg-violet-900/20 border border-violet-500/30 rounded-lg p-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
-                <span className="text-xs font-semibold text-violet-700">AI Suggestion</span>
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-xs font-semibold text-violet-400">AI Suggestion</span>
               </div>
               <p className="text-sm font-mono text-violet-400">{alert.suggested_value}</p>
               {alert.suggestion_reason && (
-                <p className="text-xs text-violet-600 mt-1">{alert.suggestion_reason}</p>
+                <p className="text-xs text-violet-400 mt-1">{alert.suggestion_reason}</p>
               )}
             </div>
           )}

@@ -56,15 +56,15 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-slate-300">Referral Network Graph</CardTitle>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => setZoom(z => Math.min(z + 0.2, 3))}><ZoomIn className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => setZoom(z => Math.max(z - 0.2, 0.3))}><ZoomOut className="w-3.5 h-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}><Maximize2 className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => setZoom(z => Math.min(z + 0.2, 3))} aria-label="Zoom in"><ZoomIn className="w-3.5 h-3.5" aria-hidden="true" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => setZoom(z => Math.max(z - 0.2, 0.3))} aria-label="Zoom out"><ZoomOut className="w-3.5 h-3.5" aria-hidden="true" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-200" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }} aria-label="Reset view"><Maximize2 className="w-3.5 h-3.5" aria-hidden="true" /></Button>
           </div>
         </div>
         <div className="flex gap-3 mt-1">
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Individual</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-violet-500" /> Organization</div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500"><div className="w-2.5 h-2.5 rounded-full bg-red-500" /> Hub</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Individual</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400"><div className="w-2.5 h-2.5 rounded-full bg-violet-500" /> Organization</div>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-400"><div className="w-2.5 h-2.5 rounded-full bg-red-500" /> Hub</div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -101,7 +101,7 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
                     </text>
                   )}
                   {isHovered && (
-                    <text x={n.x} y={n.y + r + 22} textAnchor="middle" fontSize="8" fill="#64748b">
+                    <text x={n.x} y={n.y + r + 22} textAnchor="middle" fontSize="8" fill="#94a3b8">
                       {(Number(n.totalVolume) || 0).toLocaleString()} shared patients
                     </text>
                   )}

@@ -764,6 +764,7 @@ export default function Providers() {
             value={searchTerm}
             onChange={setSearchTerm}
             suggestions={searchSuggestions}
+            ariaLabel="Search providers"
             placeholder="Search by name or NPI, e.g. Smith, John Smith, Mercy Hospital, 1234567890"
             onSuggestionSelect={handleSuggestionSelect}
             className="flex-1"
@@ -813,7 +814,7 @@ export default function Providers() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-slate-200">
             <span>Provider Directory</span>
-            <span className="text-sm font-normal text-slate-500">
+            <span className="text-sm font-normal text-slate-400">
               {sortedProviders.length} results
               {selectedNpis.size > 0 && (
                 <Badge className="ml-2 bg-violet-900/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
@@ -871,7 +872,7 @@ export default function Providers() {
                   </TableRow>
                 ) : sortedProviders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-slate-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-slate-400">
                       {debouncedSearch.length >= 2
                         ? `No providers match "${debouncedSearch}" with the current filters.`
                         : 'No providers match the current filters.'}
@@ -898,7 +899,7 @@ export default function Providers() {
                             {provider.entity_type === 'Individual' ? (
                               <div>
                                 <p className="font-medium text-slate-200">{provider.last_name}, {provider.first_name}</p>
-                                {provider.credential && <p className="text-[10px] text-slate-500">{provider.credential}</p>}
+                                {provider.credential && <p className="text-[10px] text-slate-400">{provider.credential}</p>}
                               </div>
                             ) : (
                               <p className="font-medium text-slate-200">{provider.organization_name}</p>
@@ -931,7 +932,7 @@ export default function Providers() {
                                )}
                              </div>
                            ) : (
-                            <span className="text-slate-500 text-xs">—</span>
+                            <span className="text-slate-400 text-xs">—</span>
                            )}
                         </TableCell>
                         <TableCell>
@@ -940,7 +941,7 @@ export default function Providers() {
                               {score.toFixed(0)}
                             </Badge>
                           ) : (
-                            <span className="text-slate-500">—</span>
+                            <span className="text-slate-400">—</span>
                           )}
                         </TableCell>
                         <TableCell>

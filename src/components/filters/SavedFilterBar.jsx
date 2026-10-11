@@ -111,7 +111,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
 
       {/* Save current filter */}
       {hasActiveFilters && (
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 text-blue-600 hover:text-blue-400" onClick={() => setSaveOpen(true)}>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8 text-blue-400 hover:text-blue-400" onClick={() => setSaveOpen(true)}>
           <Plus className="w-3.5 h-3.5" />
           Save Filter
         </Button>
@@ -125,13 +125,14 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Input
+              aria-label="Filter name"
               placeholder="Filter name (e.g. Active MDs in NY)"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               autoFocus
             />
-            <div className="text-xs text-slate-500 space-y-1">
+            <div className="text-xs text-slate-400 space-y-1">
               <p className="font-medium">Current filters:</p>
               {Object.entries(currentFilters)
                 .filter(([, v]) => v && v !== 'all' && v !== '')

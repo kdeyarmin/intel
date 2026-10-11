@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Save, RotateCcw, Zap, Server, Users, Building2, MapPin, ShieldBan, X, Plus } from 'lucide-react';
@@ -81,6 +81,7 @@ const createDefaultForm = () => ({
 });
 
 export default function NPPESCrawlerSettings() {
+  const uid = useId();
   const [form, setForm] = useState(createDefaultForm);
   const [hasChanges, setHasChanges] = useState(false);
   const queryClient = useQueryClient();
@@ -305,10 +306,12 @@ export default function NPPESCrawlerSettings() {
         <CardContent className="space-y-5">
            <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
               <div className="space-y-0.5">
-                <Label className="text-base text-slate-200">Enable Auto-Retry</Label>
-                <p className="text-xs text-slate-500">Automatically re-queue failed states after delay</p>
+                <Label id={`${uid}-auto-retry-label`} htmlFor={`${uid}-auto-retry`} className="text-base text-slate-200">Enable Auto-Retry</Label>
+                <p className="text-xs text-slate-400">Automatically re-queue failed states after delay</p>
               </div>
-              <Switch 
+              <Switch
+                id={`${uid}-auto-retry`}
+                aria-labelledby={`${uid}-auto-retry-label`}
                 checked={form.auto_retry_enabled} 
                 onCheckedChange={(v) => updateField('auto_retry_enabled', v)} 
               />
@@ -331,14 +334,16 @@ export default function NPPESCrawlerSettings() {
                   min={1} max={10}
                 />
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-slate-200">Escalation Tags</Label>
+                  <Label id={`${uid}-escalation-tags-label`} htmlFor={`${uid}-escalation-tags`} className="text-sm font-medium text-slate-200">Escalation Tags</Label>
                   <Input
+                    id={`${uid}-escalation-tags`}
+                    aria-labelledby={`${uid}-escalation-tags-label`}
                     type="text"
                     value={form.escalation_tags?.join(', ') || ''}
                     onChange={(e) => updateField('escalation_tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
                   />
-                  <p className="text-xs text-slate-500">Comma-separated tags to add on escalation</p>
+                  <p className="text-xs text-slate-400">Comma-separated tags to add on escalation</p>
                 </div>
                </div>
             )}
@@ -357,10 +362,12 @@ export default function NPPESCrawlerSettings() {
         <CardContent className="space-y-5">
           <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-800/40 border-slate-700/50">
             <div className="space-y-0.5">
-              <Label className="text-base text-slate-200">Crawl All States</Label>
-              <p className="text-xs text-slate-500">Disable to manually select specific states to crawl</p>
+              <Label id={`${uid}-crawl-all-states-label`} htmlFor={`${uid}-crawl-all-states`} className="text-base text-slate-200">Crawl All States</Label>
+              <p className="text-xs text-slate-400">Disable to manually select specific states to crawl</p>
             </div>
             <Switch
+              id={`${uid}-crawl-all-states`}
+              aria-labelledby={`${uid}-crawl-all-states-label`}
               checked={form.crawl_all_states !== false}
               onCheckedChange={(v) => {
                 updateField('crawl_all_states', v);
@@ -371,15 +378,16 @@ export default function NPPESCrawlerSettings() {
 
           {form.crawl_all_states === false && (
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-slate-200">Selected States</Label>
-              <div className="flex flex-wrap gap-2">
+              <span id={`${uid}-selected-states-label`} className="text-sm font-medium leading-none text-slate-200">Selected States</span>
+              <div role="group" aria-labelledby={`${uid}-selected-states-label`} className="flex flex-wrap gap-2">
                 {ALL_STATES.map(state => {
                   const isSelected = form.selected_states?.includes(state);
                   return (
-                    <Badge
+                    <button
+                      type="button"
                       key={state}
-                      variant={isSelected ? "default" : "outline"}
-                      className={`cursor-pointer ${isSelected ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-slate-200'}`}
+                      aria-pressed={Boolean(isSelected)}
+                      className={`${badgeVariants({ variant: isSelected ? 'default' : 'outline' })} cursor-pointer ${isSelected ? 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-600' : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-slate-200'}`}
                       onClick={() => {
                         const newStates = isSelected
                           ? form.selected_states.filter(s => s !== state)
@@ -388,7 +396,7 @@ export default function NPPESCrawlerSettings() {
                       }}
                     >
                       {state}
-                    </Badge>
+                    </button>
                   );
                 })}
               </div>
@@ -443,7 +451,7 @@ export default function NPPESCrawlerSettings() {
       {existingConfig && (
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="py-4">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Last updated: {new Date(existingConfig.updated_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
               <Badge variant="outline">Config ID: {existingConfig.id}</Badge>
             </div>
@@ -455,10 +463,13 @@ export default function NPPESCrawlerSettings() {
 }
 
 function SettingField({ label, description, value, onChange, min, max }) {
+  const uid = useId();
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-slate-200">{label}</Label>
+      <Label id={`${uid}-field-label`} htmlFor={`${uid}-field`} className="text-sm font-medium text-slate-200">{label}</Label>
       <Input
+        id={`${uid}-field`}
+        aria-labelledby={`${uid}-field-label`}
         type="number"
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value) || min)}
@@ -466,25 +477,26 @@ function SettingField({ label, description, value, onChange, min, max }) {
         max={max}
         className="max-w-48 bg-slate-900 border-slate-700 text-slate-200"
       />
-      <p className="text-xs text-slate-500">{description}</p>
+      <p className="text-xs text-slate-400">{description}</p>
     </div>
   );
 }
 
 function EntityTypeToggle({ type, label, description, icon, enabled, onToggle }) {
+  const uid = useId();
   return (
     <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${enabled ? 'bg-slate-800/40 border-slate-600' : 'bg-slate-800/20 border-dashed border-slate-700'}`}>
       <div className="flex items-center gap-3">
         {icon}
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-slate-200">{label}</p>
+            <p id={`${uid}-label`} className="text-sm font-medium text-slate-200">{label}</p>
             <Badge variant="outline" className="text-[10px]">{type}</Badge>
           </div>
-          <p className="text-xs text-slate-500">{description}</p>
+          <p className="text-xs text-slate-400">{description}</p>
         </div>
       </div>
-      <Switch checked={enabled} onCheckedChange={onToggle} />
+      <Switch checked={enabled} onCheckedChange={onToggle} aria-labelledby={`${uid}-label`} />
     </div>
   );
 }
@@ -553,6 +565,7 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Input
+            aria-label="Credential to exclude"
             placeholder="Add credential (e.g. CRNA, CNS)"
             value={newCred}
             onChange={(e) => setNewCred(e.target.value)}
@@ -601,13 +614,15 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
                   {creds.map(cred => {
                     const isExcluded = normalizedExcluded.has(cred.toUpperCase());
                     return (
-                      <Badge
+                      <button
+                        type="button"
                         key={cred}
-                        variant="outline"
-                        className={`text-xs cursor-pointer transition-colors ${
+                        aria-pressed={isExcluded}
+                        aria-label={isExcluded ? `Stop excluding ${cred}` : `Exclude ${cred}`}
+                        className={`${badgeVariants({ variant: 'outline' })} text-xs cursor-pointer transition-colors ${
                           isExcluded
                             ? 'bg-red-900/30 text-red-400 border-red-500/30 hover:bg-red-900/50'
-                            : 'text-slate-500 border-slate-700/50 border-dashed hover:border-slate-500 hover:text-slate-300'
+                            : 'text-slate-400 border-slate-700/50 border-dashed hover:border-slate-500 hover:text-slate-300'
                         }`}
                         onClick={() => {
                           if (isExcluded) {
@@ -622,8 +637,8 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
                         }}
                       >
                         {cred}
-                        {isExcluded && <X className="w-3 h-3 ml-1" />}
-                      </Badge>
+                        {isExcluded && <X className="w-3 h-3 ml-1" aria-hidden="true" />}
+                      </button>
                     );
                   })}
                 </div>
@@ -634,12 +649,12 @@ function ExcludedCredentialsCard({ excluded, onChange }) {
 
         {excluded.length > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-400">
               {excluded.length} credential{excluded.length !== 1 ? 's' : ''} excluded
             </span>
             <button
               onClick={() => onChange([])}
-              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              className="text-xs text-slate-400 hover:text-slate-300 transition-colors"
             >
               Clear all
             </button>

@@ -120,7 +120,7 @@ export default function ValidationRuleResults({ batch }) {
 
   if (isLoading) {
     return (
-      <div className="text-center py-6 text-slate-500">
+      <div className="text-center py-6 text-slate-400">
         <Loader2 className="w-5 h-5 mx-auto mb-2 animate-spin" />
         <p className="text-xs">Loading validation results...</p>
       </div>
@@ -129,7 +129,7 @@ export default function ValidationRuleResults({ batch }) {
 
   if (!analysis || (analysis.totalErrors === 0 && rules.length === 0)) {
     return (
-      <div className="text-center py-6 text-slate-500">
+      <div className="text-center py-6 text-slate-400">
         <ShieldCheck className="w-8 h-8 mx-auto mb-2 opacity-30" />
         <p className="text-xs">No validation rules applied or no errors found</p>
       </div>
@@ -149,7 +149,7 @@ export default function ValidationRuleResults({ batch }) {
             <div key={key} className={`${style.bg} border ${style.border} rounded-lg p-3 text-center`}>
               <Icon className={`w-4 h-4 mx-auto mb-1 ${style.color}`} />
               <p className={`text-lg font-bold ${style.color}`}>{count}</p>
-              <p className="text-[10px] text-slate-500">{style.label}</p>
+              <p className="text-[10px] text-slate-400">{style.label}</p>
             </div>
           );
         })}
@@ -198,7 +198,7 @@ export default function ValidationRuleResults({ batch }) {
                       <span className={`text-xs font-medium ${passed ? 'text-slate-300' : sev.color}`}>
                         {rule.rule_name}
                       </span>
-                      <Badge className="bg-slate-700/50 text-slate-500 text-[8px]">
+                      <Badge className="bg-slate-700/50 text-slate-400 text-[8px]">
                         {RULE_TYPE_LABELS[rule.rule_type]}
                       </Badge>
                       <code className="text-[10px] text-cyan-400/60">{rule.column}</code>
@@ -209,8 +209,8 @@ export default function ValidationRuleResults({ batch }) {
                   )}
                   {matchingErrors.length > 0 && (
                     isExpanded
-                      ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
-                      : <ChevronRight className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                      ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                   )}
                 </button>
                 {isExpanded && matchingErrors.length > 0 && (
@@ -218,18 +218,18 @@ export default function ValidationRuleResults({ batch }) {
                     {matchingErrors.map((err, i) => (
                       <div key={i} className="text-[11px] bg-slate-800/50 border border-slate-700/30 rounded px-2.5 py-1.5">
                         <div className="flex items-center gap-2">
-                          {err.row != null && <span className="text-slate-500">Row {err.row}</span>}
+                          {err.row != null && <span className="text-slate-400">Row {err.row}</span>}
                           <span className="text-slate-300">{err.message}</span>
                         </div>
                         {err.data && (
-                          <pre className="text-[10px] text-slate-500 mt-1 overflow-x-auto">
+                          <pre className="text-[10px] text-slate-400 mt-1 overflow-x-auto">
                             {JSON.stringify(err.data, null, 1).substring(0, 200)}
                           </pre>
                         )}
                       </div>
                     ))}
                     {errorCount > matchingErrors.length && (
-                      <p className="text-[10px] text-slate-500 pl-2">...and {errorCount - matchingErrors.length} more</p>
+                      <p className="text-[10px] text-slate-400 pl-2">...and {errorCount - matchingErrors.length} more</p>
                     )}
                   </div>
                 )}
@@ -264,20 +264,20 @@ export default function ValidationRuleResults({ batch }) {
                   </div>
                   <Badge className={`${sev.bg} ${sev.color} text-[9px]`}>{group.errors.length}</Badge>
                   {isExpanded
-                    ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                    : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                    ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                   }
                 </button>
                 {isExpanded && (
                   <div className="ml-6 mt-1 space-y-1">
                     {group.errors.slice(0, 5).map((err, j) => (
                       <div key={j} className="text-[11px] bg-slate-800/50 border border-slate-700/30 rounded px-2.5 py-1.5">
-                        {err.row != null && <span className="text-slate-500 mr-2">Row {err.row}</span>}
+                        {err.row != null && <span className="text-slate-400 mr-2">Row {err.row}</span>}
                         <span className="text-slate-300">{err.message}</span>
                       </div>
                     ))}
                     {group.errors.length > 5 && (
-                      <p className="text-[10px] text-slate-500 pl-2">...and {group.errors.length - 5} more</p>
+                      <p className="text-[10px] text-slate-400 pl-2">...and {group.errors.length - 5} more</p>
                     )}
                   </div>
                 )}

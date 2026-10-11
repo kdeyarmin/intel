@@ -100,7 +100,7 @@ export default function LeadLists() {
           ) : isError ? (
             <QueryErrorState title="Couldn't load lead lists" error={loadError} onRetry={refetch} />
           ) : lists.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">No lead lists yet. Create one to get started!</p>
+            <p className="text-slate-400 text-center py-8">No lead lists yet. Create one to get started!</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>

@@ -263,8 +263,9 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
         {/* Filters */}
         <div className="flex items-center gap-2 py-1">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input
+              aria-label="Search errors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by row, NPI, field, or message..."
@@ -272,6 +273,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
             />
           </div>
           <select
+            aria-label="Severity"
             className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
@@ -288,7 +290,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
         <ScrollArea className="flex-1 min-h-0 rounded-md border border-slate-700/50 bg-slate-900/30">
           <div className="p-3 space-y-2">
             {filteredErrors.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-slate-400">
                 <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No errors match your filters</p>
               </div>
@@ -329,7 +331,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                           <Badge className={`${config.badgeColor} text-[9px]`}>{config.label}</Badge>
                           <Badge className={`${severityColors[suggestion.severity]} text-[9px]`}>{suggestion.severity}</Badge>
                           {err.field && (
-                            <span className="text-[9px] text-slate-500">Field: <span className="text-slate-400 font-mono">{err.field}</span></span>
+                            <span className="text-[9px] text-slate-400">Field: <span className="text-slate-400 font-mono">{err.field}</span></span>
                           )}
                           {suggestion.retryable && (
                             <Badge className="bg-emerald-900/15 text-emerald-400 text-[9px]">Retryable</Badge>
@@ -340,8 +342,8 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                         </p>
                       </div>
                       {isExpanded
-                        ? <ChevronDown className="w-4 h-4 text-slate-500 mt-1 flex-shrink-0" />
-                        : <ChevronRight className="w-4 h-4 text-slate-500 mt-1 flex-shrink-0" />
+                        ? <ChevronDown className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                        : <ChevronRight className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
                       }
                     </button>
 
@@ -349,7 +351,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                       <div className="px-3 pb-3 border-t border-slate-700/30 space-y-2 pt-2">
                         {/* Full error message */}
                         <div className="bg-slate-900/50 rounded-md p-2">
-                          <p className="text-[10px] text-slate-500 mb-1">Full Error Message</p>
+                          <p className="text-[10px] text-slate-400 mb-1">Full Error Message</p>
                           <p className="text-[11px] text-slate-300 font-mono break-all whitespace-pre-wrap">
                             {err.message || err.detail || 'No details'}
                           </p>
@@ -365,7 +367,7 @@ export default function EnhancedErrorReport({ batch, open, onOpenChange, onRefre
                         </div>
 
                         {/* Metadata */}
-                        <div className="flex gap-4 text-[10px] text-slate-500 flex-wrap">
+                        <div className="flex gap-4 text-[10px] text-slate-400 flex-wrap">
                           {err.sheet && <span>Sheet: <span className="text-slate-400">{err.sheet}</span></span>}
                           {err.phase && <span>Phase: <span className="text-slate-400">{err.phase}</span></span>}
                           {err.timestamp && <span>Time: <span className="text-slate-400">{new Date(err.timestamp).toLocaleTimeString()}</span></span>}

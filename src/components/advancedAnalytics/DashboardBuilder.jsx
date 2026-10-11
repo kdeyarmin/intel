@@ -106,28 +106,35 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
           <p className="text-xs text-slate-400 text-center py-4">No dashboards yet. Create one to get started.</p>
         ) : (
           dashboards.map(db => (
+            // Selecting the dashboard is its own button; the actions are siblings,
+            // not controls nested inside it.
             <div
               key={db.id}
-              onClick={() => onSelect(db.id)}
-              className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors border ${
+              className={`flex items-center gap-2 p-2.5 rounded-lg transition-colors border ${
                 activeId === db.id ? 'bg-violet-900/30 border-violet-500/40' : 'bg-slate-800/60 border-slate-700/50 hover:bg-slate-800/40'
               }`}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onSelect(db.id)}
+                aria-current={activeId === db.id ? 'true' : undefined}
+                className="flex-1 min-w-0 text-left"
+              >
+                <span className="flex items-center gap-1.5">
                   {db.is_default && <Badge className="text-[9px] bg-amber-900/30 text-amber-400 px-1 py-0">Default</Badge>}
                   <span className="text-sm font-medium text-slate-300 truncate">{db.name}</span>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</p>
-              </div>
+                </span>
+                <span className="block text-[10px] text-slate-400 mt-0.5">{(db.widgets || []).length} widgets</span>
+              </button>
               <div className="flex gap-0.5 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); favMutation.mutate(db); }} className="p-1 hover:text-amber-500 text-slate-300 transition-colors">
-                  <Star className={`w-3.5 h-3.5 ${db.is_favorite ? 'text-amber-500 fill-amber-500' : ''}`} />
+                <button type="button" onClick={(e) => { e.stopPropagation(); favMutation.mutate(db); }} aria-label={db.is_favorite ? `Unfavorite dashboard ${db.name}` : `Favorite dashboard ${db.name}`} className="p-1 hover:text-amber-500 text-slate-300 transition-colors">
+                  <Star className={`w-3.5 h-3.5 ${db.is_favorite ? 'text-amber-500 fill-amber-500' : ''}`} aria-hidden="true" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); defaultMutation.mutate(db); }} className="p-1 hover:text-violet-500 text-slate-300 transition-colors" title="Set default">
-                  <LayoutDashboard className={`w-3.5 h-3.5 ${db.is_default ? 'text-violet-500' : ''}`} />
+                <button type="button" onClick={(e) => { e.stopPropagation(); defaultMutation.mutate(db); }} className="p-1 hover:text-violet-500 text-slate-300 transition-colors" title="Set default" aria-label={`Set ${db.name} as default dashboard`}>
+                  <LayoutDashboard className={`w-3.5 h-3.5 ${db.is_default ? 'text-violet-500' : ''}`} aria-hidden="true" />
                 </button>
                 <button
+                  type="button"
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (await confirm({ title: `Delete dashboard "${db.name}"?`, confirmLabel: 'Delete', destructive: true })) {
@@ -137,7 +144,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
                   aria-label={`Delete dashboard ${db.name}`}
                   className="p-1 hover:text-red-500 text-slate-300 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -148,10 +155,10 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
         {activeDashboard && (
           <div className="pt-3 border-t mt-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">Widgets</span>
+              <span className="text-xs font-medium text-slate-400">Widgets</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-violet-600">
+                  <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-violet-400">
                     <Plus className="w-3 h-3" /> Add Widget
                   </Button>
                 </DropdownMenuTrigger>
@@ -171,8 +178,8 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
               <div key={w.id} className="flex items-center gap-2 text-xs bg-slate-800/40 rounded px-2.5 py-1.5">
                 <GripVertical className="w-3 h-3 text-slate-300" />
                 <span className="flex-1 text-slate-400 capitalize">{w.type.replace('_', ' ')} Analysis</span>
-                <button onClick={() => removeWidget(w.id)} className="text-slate-400 hover:text-red-500">
-                  <Trash2 className="w-3 h-3" />
+                <button onClick={() => removeWidget(w.id)} aria-label={`Remove ${w.type.replace('_', ' ')} widget`} className="text-slate-400 hover:text-red-500">
+                  <Trash2 className="w-3 h-3" aria-hidden="true" />
                 </button>
               </div>
             ))}
@@ -186,8 +193,8 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
             <DialogTitle>New Dashboard</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Input placeholder="Dashboard name" value={dashName} onChange={(e) => setDashName(e.target.value)} autoFocus />
-            <Input placeholder="Description (optional)" value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} />
+            <Input placeholder="Dashboard name" aria-label="Dashboard name" value={dashName} onChange={(e) => setDashName(e.target.value)} autoFocus />
+            <Input placeholder="Description (optional)" aria-label="Dashboard description (optional)" value={dashDesc} onChange={(e) => setDashDesc(e.target.value)} />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setSaveOpen(false)}>Cancel</Button>

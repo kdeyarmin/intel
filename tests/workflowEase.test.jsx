@@ -187,17 +187,18 @@ describe('GlobalSearchDialog', () => {
 
   it('searches providers on the server and opens the first result with Enter', async () => {
     const navigated = renderSearch();
-    const input = screen.getByRole('textbox', { name: 'Search' });
+    const input = screen.getByRole('combobox', { name: 'Search' });
     fireEvent.change(input, { target: { value: 'ann car' } });
     expect(await screen.findByText('Ann Cardio')).toBeInTheDocument();
     expect(invoke).toHaveBeenCalledWith('searchProviders', { q: 'ann car', limit: 20 });
+    expect(screen.getByRole('option', { name: /Ann Cardio/ })).toBeInTheDocument();
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(navigated.at(-1)).toBe('/ProviderDetail?npi=1234567890');
   });
 
   it('hides the previous query\'s results until the new search has caught up', async () => {
     const navigated = renderSearch();
-    const input = screen.getByRole('textbox', { name: 'Search' });
+    const input = screen.getByRole('combobox', { name: 'Search' });
     fireEvent.change(input, { target: { value: 'ann car' } });
     expect(await screen.findByText('Ann Cardio')).toBeInTheDocument();
 
@@ -210,7 +211,7 @@ describe('GlobalSearchDialog', () => {
   it('says it is searching rather than "no results" while waiting', async () => {
     invoke.mockReturnValue(new Promise(() => {}));
     renderSearch();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: 'zzz' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search' }), { target: { value: 'zzz' } });
     expect(screen.getByRole('status')).toHaveTextContent('Searching');
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     expect(screen.getByRole('status')).toHaveTextContent('Searching');
@@ -221,7 +222,7 @@ describe('GlobalSearchDialog', () => {
     let answerLists;
     entityList.mockReturnValueOnce(new Promise((resolve) => { answerLists = resolve; }));
     renderSearch();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: 'zzz' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search' }), { target: { value: 'zzz' } });
     await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
     expect(screen.getByRole('status')).toHaveTextContent('Searching');
     await act(async () => { answerLists([]); });

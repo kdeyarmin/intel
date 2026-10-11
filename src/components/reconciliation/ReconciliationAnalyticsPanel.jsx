@@ -248,7 +248,7 @@ export default function ReconciliationAnalyticsPanel() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[200px] text-slate-500">
+              <div className="flex flex-col items-center justify-center h-[200px] text-slate-400">
                 <CheckCircle2 className="w-8 h-8 mb-2 text-green-500/50" />
                 <p>No recent API errors recorded</p>
               </div>

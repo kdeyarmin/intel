@@ -213,7 +213,7 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
                     )}
                     {npi_val.phone && <p className="text-slate-400 mt-0.5">{npi_val.phone}</p>}
                     {npi_val.registry_last_updated && (
-                      <p className="text-xs text-slate-500 mt-1">Registry record last updated {npi_val.registry_last_updated}</p>
+                      <p className="text-xs text-slate-400 mt-1">Registry record last updated {npi_val.registry_last_updated}</p>
                     )}
                   </div>
                 )}

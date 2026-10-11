@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 const MAX_LIST_MEMBERS = 1000;
 
 export default function LeadListBuilder() {
+  const uid = useId();
   const [filters, setFilters] = useState({
     state: 'PA',
     county: '',
@@ -311,16 +312,20 @@ export default function LeadListBuilder() {
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div>
-                  <Label>List Name</Label>
+                  <Label id={`${uid}-name-label`} htmlFor={`${uid}-name`}>List Name</Label>
                   <Input
+                    id={`${uid}-name`}
+                    aria-labelledby={`${uid}-name-label`}
                     value={listName}
                     onChange={(e) => setListName(e.target.value)}
                     placeholder="e.g., PA Family Medicine High-Volume"
                   />
                 </div>
                 <div>
-                  <Label>Description</Label>
+                  <Label id={`${uid}-description-label`} htmlFor={`${uid}-description`}>Description</Label>
                   <Input
+                    id={`${uid}-description`}
+                    aria-labelledby={`${uid}-description-label`}
                     value={listDescription}
                     onChange={(e) => setListDescription(e.target.value)}
                     placeholder="Optional description"

@@ -14,7 +14,7 @@ export default function LocationsTable({ locations = [] }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-sky-600" />
+          <MapPin className="w-4 h-4 text-sky-400" />
           All Practice Locations
           <Badge variant="outline" className="ml-auto text-xs">{locations.length}</Badge>
         </CardTitle>

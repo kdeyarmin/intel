@@ -67,14 +67,14 @@ export default function RecentCrawlActivity({ nppesImports, loading }) {
                         {isProcessing ? 'processing' : batch.status}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-xs text-slate-400 truncate">
                       {batch.imported_rows != null ? `${batch.imported_rows.toLocaleString()} rows` : ''}
                       {batch.imported_rows != null && batch.valid_rows != null ? ' • ' : ''}
                       {batch.valid_rows != null ? `${batch.valid_rows.toLocaleString()} valid` : ''}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                    <div className="flex items-center gap-1 text-xs text-slate-400">
                       <Clock className="w-3 h-3" />
                       {duration}
                     </div>

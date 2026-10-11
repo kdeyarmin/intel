@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReconciliationAnalyticsPanel from './ReconciliationAnalyticsPanel';
 
 export default function ReconciliationDashboard() {
+  const uid = useId();
   const [runningJob, setRunningJob] = useState(null);
   const [selectedSources, setSelectedSources] = useState(['nppes']);
   const [expandedId, setExpandedId] = useState(null);
@@ -89,12 +90,13 @@ export default function ReconciliationDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-200 mb-2 block">Sources to Reconcile</label>
-            <div className="flex flex-wrap gap-2">
+            <span id={`${uid}-sources-label`} className="text-sm font-medium text-slate-200 mb-2 block">Sources to Reconcile</span>
+            <div role="group" aria-labelledby={`${uid}-sources-label`} className="flex flex-wrap gap-2">
               {['nppes', 'pecos', 'cms'].map(source => (
                 <label key={source} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
+                    aria-label={source.toUpperCase()}
                     checked={selectedSources.includes(source)}
                     onChange={(e) => {
                       if (e.target.checked) {
@@ -145,19 +147,19 @@ export default function ReconciliationDashboard() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-xs text-slate-500">Total Providers</p>
+                <p className="text-xs text-slate-400">Total Providers</p>
                 <p className="text-2xl font-bold text-white">{recentJob.total_providers || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Matched</p>
+                <p className="text-xs text-slate-400">Matched</p>
                 <p className="text-2xl font-bold text-green-400">{recentJob.matched || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Discrepancies</p>
+                <p className="text-xs text-slate-400">Discrepancies</p>
                 <p className="text-2xl font-bold text-red-400">{recentJob.discrepancies_found || 0}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500">AI Suggestions</p>
+                <p className="text-xs text-slate-400">AI Suggestions</p>
                 <p className="text-2xl font-bold text-blue-400">{recentJob.ai_suggestions_generated || 0}</p>
               </div>
             </div>
@@ -196,7 +198,7 @@ export default function ReconciliationDashboard() {
                         <p className="text-sm text-slate-400">{recon.discrepancies?.length || 0} field(s) differ</p>
                       </div>
                     </div>
-                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${expandedId === recon.id ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${expandedId === recon.id ? 'rotate-180' : ''}`} />
                   </button>
 
                   {expandedId === recon.id && (

@@ -43,15 +43,15 @@ export default function SavedReportsList({ reports, loading, onLoad, onDelete, o
                 <p className="text-xs font-medium text-slate-300 truncate">{report.name}</p>
                 <p className="text-[10px] text-slate-400 truncate">{dsLabel} · {report.metrics?.length || 0} metrics</p>
               </div>
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onToggleFavorite(report)}>
-                  <Star className={`w-3 h-3 ${report.is_favorite ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} />
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onToggleFavorite(report)} aria-label={`Favorite ${report.name}`} aria-pressed={!!report.is_favorite}>
+                  <Star className={`w-3 h-3 ${report.is_favorite ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onLoad(report)}>
-                  <Play className="w-3 h-3 text-blue-500" />
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onLoad(report)} aria-label={`Run ${report.name}`}>
+                  <Play className="w-3 h-3 text-blue-400" aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onDelete(report)}>
-                  <Trash2 className="w-3 h-3 text-red-400" />
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onDelete(report)} aria-label={`Delete ${report.name}`}>
+                  <Trash2 className="w-3 h-3 text-red-400" aria-hidden="true" />
                 </Button>
               </div>
             </div>

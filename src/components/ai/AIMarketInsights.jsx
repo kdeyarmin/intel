@@ -13,7 +13,7 @@ const INSIGHT_COLORS = {
   opportunity: 'bg-blue-900/20 border-blue-500/30 text-blue-300',
   action: 'bg-violet-900/20 border-violet-500/30 text-violet-400',
 };
-const PRIORITY_COLORS = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-400' };
+const PRIORITY_COLORS = { high: 'bg-red-900/30 text-red-400', medium: 'bg-amber-900/30 text-amber-400', low: 'bg-slate-700 text-slate-300' };
 
 export default function AIMarketInsights({ provider, location, taxonomies, utilizations = [], referrals = [], score }) {
   const [results, setResults] = useState(null);
@@ -135,7 +135,7 @@ Also provide an overall market position assessment.`,
             {/* Market position header */}
             <div className="bg-gradient-to-r from-slate-800/40 to-emerald-900/20 rounded-lg p-3 border border-emerald-500/30">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-medium text-slate-500 uppercase">Market Position</span>
+                <span className="text-[10px] font-medium text-slate-400 uppercase">Market Position</span>
                 {results.market_score != null && (
                   <Badge className={`text-[10px] ${results.market_score >= 70 ? 'bg-emerald-900/30 text-emerald-400' : results.market_score >= 40 ? 'bg-amber-900/30 text-amber-400' : 'bg-red-900/30 text-red-400'}`}>
                     Score: {results.market_score}/100
@@ -171,17 +171,17 @@ Also provide an overall market position assessment.`,
                 <p className="text-[10px] font-medium text-red-400 uppercase mb-1 flex items-center gap-1">
                   <ShieldAlert className="w-3 h-3" /> Competitive Landscape
                 </p>
-                <p className="text-[10px] text-red-600 leading-relaxed">{results.competitive_landscape}</p>
+                <p className="text-[10px] text-red-400 leading-relaxed">{results.competitive_landscape}</p>
               </div>
             )}
 
             {/* Recommended strategy */}
             {results.recommended_strategy && (
               <div className="bg-violet-900/20 rounded-lg p-3 border border-violet-500/30">
-                <p className="text-[10px] font-medium text-violet-700 uppercase mb-1 flex items-center gap-1">
+                <p className="text-[10px] font-medium text-violet-400 uppercase mb-1 flex items-center gap-1">
                   <Zap className="w-3 h-3" /> Recommended Strategy
                 </p>
-                <p className="text-[10px] text-violet-600 leading-relaxed">{results.recommended_strategy}</p>
+                <p className="text-[10px] text-violet-400 leading-relaxed">{results.recommended_strategy}</p>
               </div>
             )}
           </div>

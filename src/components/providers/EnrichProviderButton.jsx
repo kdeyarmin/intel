@@ -194,7 +194,7 @@ Search the NPI registry and healthcare directories to find accurate data for the
               for <strong>{providers.length}</strong> selected provider{providers.length !== 1 ? 's' : ''}.
             </p>
 
-            <div className="text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 space-y-1">
+            <div className="text-xs text-slate-400 bg-slate-800/60 rounded-lg p-3 space-y-1">
               <p className="font-medium text-slate-300">Fields that will be enriched:</p>
               <p>• Credential (MD, DO, NP, etc.)</p>
               <p>• Organization name</p>
@@ -204,15 +204,15 @@ Search the NPI registry and healthcare directories to find accurate data for the
 
             {loading && (
               <div className="space-y-2">
-                <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" />
-                <p className="text-xs text-slate-500 text-center">
+                <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2" aria-label="Enrichment progress" />
+                <p className="text-xs text-slate-400 text-center">
                   Processing {progress.current} of {progress.total}...
                 </p>
               </div>
             )}
 
             {!results && (
-              <Button onClick={handleEnrich} disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700 gap-2">
+              <Button onClick={handleEnrich} disabled={loading} className="text-white w-full bg-violet-600 hover:bg-violet-700 gap-2">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {loading ? `Enriching... (${progress.current}/${progress.total})` : `Enrich ${providers.length} Provider${providers.length !== 1 ? 's' : ''}`}
               </Button>
@@ -224,15 +224,15 @@ Search the NPI registry and healthcare directories to find accurate data for the
                 <div className="grid grid-cols-3 gap-2">
                   <div className="text-center p-2 rounded-lg bg-green-900/20">
                     <p className="text-lg font-bold text-green-400">{results.filter(r => r.status === 'enriched').length}</p>
-                    <p className="text-[9px] text-green-600">Enriched</p>
+                    <p className="text-[9px] text-green-400">Enriched</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-amber-900/20">
                     <p className="text-lg font-bold text-amber-400">{results.filter(r => r.status === 'skipped' || r.status === 'no_new_data').length}</p>
-                    <p className="text-[9px] text-amber-600">No Changes</p>
+                    <p className="text-[9px] text-amber-400">No Changes</p>
                   </div>
                   <div className="text-center p-2 rounded-lg bg-red-900/20">
                     <p className="text-lg font-bold text-red-400">{results.filter(r => r.status === 'error').length}</p>
-                    <p className="text-[9px] text-red-600">Errors</p>
+                    <p className="text-[9px] text-red-400">Errors</p>
                   </div>
                 </div>
 

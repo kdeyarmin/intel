@@ -42,9 +42,10 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
         <Button
           size="icon"
           variant="ghost"
-          className="h-7 w-7 text-green-600 hover:bg-green-900/20"
+          className="h-7 w-7 text-green-400 hover:bg-green-900/20"
           onClick={() => onAccept(suggestion)}
           disabled={accepting}
+          aria-label="Accept suggestion"
         >
           {accepting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
         </Button>
@@ -53,6 +54,7 @@ function SuggestionRow({ suggestion, onAccept, onReject, accepting }) {
           variant="ghost"
           className="h-7 w-7 text-slate-400 hover:bg-red-900/20 hover:text-red-500"
           onClick={() => onReject(suggestion)}
+          aria-label="Reject suggestion"
         >
           <X className="w-3.5 h-3.5" />
         </Button>
@@ -264,7 +266,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
           size="sm"
           onClick={runEnrichment}
           disabled={loading}
-          className="bg-violet-600 hover:bg-violet-700 h-7 text-xs"
+          className="text-white bg-violet-600 hover:bg-violet-700 h-7 text-xs"
         >
           {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
           {loading ? 'Analyzing...' : suggestions ? 'Re-analyze' : 'Enrich'}
@@ -286,7 +288,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         {showGaps && gaps.length > 0 && (
           <div className="space-y-1 pl-3">
             {gaps.map((g, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-slate-500">
+              <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                 <span>{g.label}</span>
                 <span className="text-slate-300">({g.entity})</span>
@@ -327,11 +329,11 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             )}
 
             {suggestions.summary && (
-              <p className="text-[10px] text-slate-500 italic">{suggestions.summary}</p>
+              <p className="text-[10px] text-slate-400 italic">{suggestions.summary}</p>
             )}
 
             {accepted.size > 0 && (
-              <p className="text-[10px] text-green-600 font-medium">
+              <p className="text-[10px] text-green-400 font-medium">
                 ✓ {accepted.size} suggestion{accepted.size !== 1 ? 's' : ''} applied
               </p>
             )}
@@ -341,7 +343,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-7 text-xs text-violet-700 border-violet-500/30 hover:bg-violet-900/20"
+                className="w-full h-7 text-xs text-violet-400 border-violet-500/30 hover:bg-violet-900/20"
                 onClick={handleAcceptAll}
               >
                 <Check className="w-3 h-3 mr-1" /> Accept All High-Confidence ({visibleSuggestions.filter(s => s.confidence === 'high').length})
@@ -351,7 +353,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
             {/* New field suggestions */}
             {newFieldSuggestions.length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Missing Fields</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Missing Fields</p>
                 <div className="space-y-1.5">
                   {newFieldSuggestions.map(s => (
                     <SuggestionRow

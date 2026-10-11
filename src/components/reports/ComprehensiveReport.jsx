@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,19 +24,29 @@ function formatCurrency(val) {
 
 function SectionCard({ icon: Icon, iconColor, title, children, count, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = useId();
   return (
     <Card className="bg-slate-800/50 border-slate-700/50 print:bg-white print:border-gray-200">
-      <CardHeader className="pb-2 cursor-pointer" onClick={() => setOpen(!open)}>
-        <CardTitle className="text-sm text-slate-200 flex items-center gap-2 print:text-gray-900">
-          <Icon className={`w-4 h-4 ${iconColor}`} />
-          {title}
-          {count != null && (
-            <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/50 text-[10px] ml-auto mr-2">{count}</Badge>
-          )}
-          {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm text-slate-200 print:text-gray-900">
+          {/* The disclosure is a native button, so it works from the keyboard and reports its state. */}
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls={open ? contentId : undefined}
+            className="flex w-full items-center gap-2 text-left cursor-pointer"
+          >
+            <Icon className={`w-4 h-4 ${iconColor}`} aria-hidden="true" />
+            {title}
+            {count != null && (
+              <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/50 text-[10px] ml-auto mr-2">{count}</Badge>
+            )}
+            {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
+          </button>
         </CardTitle>
       </CardHeader>
-      {open && <CardContent>{children}</CardContent>}
+      {open && <CardContent id={contentId}>{children}</CardContent>}
     </Card>
   );
 }
@@ -113,7 +123,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
         </div>
       </div>
 
-      <div className="text-[10px] text-slate-500 print:text-gray-500">
+      <div className="text-[10px] text-slate-400 print:text-gray-500">
         Generated: {new Date(report.generatedAt).toLocaleString()}
       </div>
 
@@ -318,7 +328,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
                   <p className="text-xs text-slate-200 truncate">{f.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Badge className="bg-blue-900/30 text-blue-400 border-blue-500/30 text-[9px]">{f.facilityType}</Badge>
-                    <span className="text-[10px] text-slate-500">{f.city}, {f.state}</span>
+                    <span className="text-[10px] text-slate-400">{f.city}, {f.state}</span>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-3">
@@ -356,7 +366,7 @@ export default function ComprehensiveReport({ npi, providerId }) {
               <div key={i} className="flex items-center justify-between p-2 rounded bg-slate-900/30 border border-slate-700/30 text-xs">
                 <div>
                   <span className="text-slate-300">{e.fieldName}</span>
-                  <span className="text-slate-500 ml-2">from {e.source}</span>
+                  <span className="text-slate-400 ml-2">from {e.source}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {e.confidence && <Badge className="text-[9px] bg-slate-700/50 text-slate-400 border-slate-600/50">{e.confidence}</Badge>}

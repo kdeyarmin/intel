@@ -103,12 +103,13 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
         <div className="flex gap-2 p-2 bg-slate-800/40 rounded-lg border border-slate-700/30">
           <Input
             placeholder="Template name..."
+            aria-label="Template name"
             value={saveName}
             onChange={e => setSaveName(e.target.value)}
             className="h-7 text-xs bg-slate-800/50 border-slate-700 text-slate-200 flex-1"
           />
           <Select value={saveCategory} onValueChange={setSaveCategory}>
-            <SelectTrigger className="h-7 w-[100px] text-[10px] bg-slate-800/50 border-slate-700 text-slate-300">
+            <SelectTrigger aria-label="Template category" className="h-7 w-[100px] text-[10px] bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -130,26 +131,32 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
           {templates.map(t => (
             <div
               key={t.id}
-              className="flex items-center gap-2 p-2 bg-slate-800/30 rounded border border-slate-700/30 hover:border-cyan-500/30 cursor-pointer group transition-all"
-              onClick={() => handleUse(t)}
+              className="flex items-center gap-2 bg-slate-800/30 rounded border border-slate-700/30 hover:border-cyan-500/30 group transition-all"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-slate-200 truncate font-medium">{t.name}</span>
-                  {t.ai_generated && <Sparkles className="w-2.5 h-2.5 text-violet-400 shrink-0" />}
+              <button
+                type="button"
+                onClick={() => handleUse(t)}
+                className="flex-1 min-w-0 flex items-center gap-2 py-2 pl-2 text-left cursor-pointer"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-200 truncate font-medium">{t.name}</span>
+                    {t.ai_generated && <Sparkles className="w-2.5 h-2.5 text-violet-400 shrink-0" />}
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate">{t.subject_template}</p>
                 </div>
-                <p className="text-[10px] text-slate-500 truncate">{t.subject_template}</p>
-              </div>
-              <Badge className={`text-[8px] shrink-0 border ${categoryColors[t.category] || categoryColors.custom}`}>
-                {t.category}
-              </Badge>
+                <Badge className={`text-[8px] shrink-0 border ${categoryColors[t.category] || categoryColors.custom}`}>
+                  {t.category}
+                </Badge>
+              </button>
               <Button
                 onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }}
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400"
+                className="h-5 w-5 p-0 mr-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-slate-400 hover:text-red-400"
+                aria-label={`Delete template ${t.name}`}
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3 h-3" aria-hidden="true" />
               </Button>
             </div>
           ))}
@@ -157,7 +164,7 @@ export default function CampaignTemplatePicker({ onSelect, currentSubject, curre
       )}
 
       {templates.length === 0 && !isLoading && (
-        <p className="text-[10px] text-slate-500 text-center py-2">No saved templates yet</p>
+        <p className="text-[10px] text-slate-400 text-center py-2">No saved templates yet</p>
       )}
     </div>
   );

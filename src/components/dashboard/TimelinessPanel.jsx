@@ -22,7 +22,7 @@ function DatasetRow({ label, lastUpdated, count }) {
         <span className={`text-[10px] font-medium ${isStale ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-emerald-400'}`}>
           {lastUpdated ? `${daysSince}d ago` : 'Never'}
         </span>
-        <span className="text-[10px] text-slate-500 ml-1.5">({count})</span>
+        <span className="text-[10px] text-slate-400 ml-1.5">({count})</span>
       </div>
     </div>
   );
@@ -37,7 +37,7 @@ export default function TimelinessPanel({ datasets = [] }) {
           <DatasetRow key={ds.label} {...ds} />
         ))}
       </div>
-      <div className="flex gap-3 mt-2 text-[10px] text-slate-500">
+      <div className="flex gap-3 mt-2 text-[10px] text-slate-400">
         <span className="flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5 text-emerald-400" /> &lt;14d</span>
         <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5 text-amber-400" /> 14-30d</span>
         <span className="flex items-center gap-0.5"><AlertTriangle className="w-2.5 h-2.5 text-red-400" /> &gt;30d</span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ function ResultCard({ match, importing, imported, onImport }) {
           <Badge className={`text-[9px] border ${confColor[match.confidence] || confColor.low}`}>{match.confidence}</Badge>
           <Badge variant="outline" className="text-[9px]">{match.entity_type}</Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400">
           <span className="font-mono bg-slate-700 px-1.5 py-0.5 rounded text-[11px]">{match.npi}</span>
           {match.credential && <span className="text-slate-400 font-medium">{match.credential}</span>}
           {match.specialty && <span>{match.specialty}</span>}
@@ -52,6 +52,7 @@ function ResultCard({ match, importing, imported, onImport }) {
 }
 
 export default function AINPIFinder({ onProviderAdded }) {
+  const uid = useId();
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -198,7 +199,7 @@ Return up to 10 results, ordered by relevance.`,
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-300">Find Missing Provider NPIs</h3>
-          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
             Search the NPPES registry by name, location, and specialty to discover provider NPI numbers. 
             Import matches directly into your database with location and taxonomy records created automatically.
           </p>
@@ -210,8 +211,10 @@ Return up to 10 results, ordered by relevance.`,
         <CardContent className="pt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-medium text-slate-300">Provider / Organization Name <span className="text-red-500">*</span></Label>
-              <Input 
+              <Label id={`${uid}-name-label`} htmlFor={`${uid}-name`} className="text-xs font-medium text-slate-300">Provider / Organization Name <span className="text-red-500">*</span></Label>
+              <Input
+                id={`${uid}-name`}
+                aria-labelledby={`${uid}-name-label`}
                 value={name} 
                 onChange={e => setName(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -220,8 +223,10 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">Specialty</Label>
-              <Input 
+              <Label id={`${uid}-specialty-label`} htmlFor={`${uid}-specialty`} className="text-xs font-medium text-slate-300">Specialty</Label>
+              <Input
+                id={`${uid}-specialty`}
+                aria-labelledby={`${uid}-specialty-label`}
                 value={specialty} 
                 onChange={e => setSpecialty(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -230,8 +235,10 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">City</Label>
-              <Input 
+              <Label id={`${uid}-city-label`} htmlFor={`${uid}-city`} className="text-xs font-medium text-slate-300">City</Label>
+              <Input
+                id={`${uid}-city`}
+                aria-labelledby={`${uid}-city-label`}
                 value={city} 
                 onChange={e => setCity(e.target.value)} 
                 onKeyDown={handleKeyDown}
@@ -240,9 +247,9 @@ Return up to 10 results, ordered by relevance.`,
               />
             </div>
             <div>
-              <Label className="text-xs font-medium text-slate-300">State</Label>
+              <Label htmlFor={`${uid}-state`} className="text-xs font-medium text-slate-300">State</Label>
               <Select value={state} onValueChange={setState}>
-                <SelectTrigger className="h-9 text-sm mt-1">
+                <SelectTrigger id={`${uid}-state`} className="h-9 text-sm mt-1">
                   <SelectValue placeholder="Any state" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,7 +260,7 @@ Return up to 10 results, ordered by relevance.`,
             </div>
           </div>
 
-          <Button onClick={handleSearch} disabled={loading || !name.trim()} className="w-full bg-blue-600 hover:bg-blue-700 h-9">
+          <Button onClick={handleSearch} disabled={loading || !name.trim()} className="text-white w-full bg-blue-600 hover:bg-blue-700 h-9">
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Searching NPPES Registry...</> : <><Search className="w-4 h-4 mr-2" /> Search for NPI</>}
           </Button>
         </CardContent>
@@ -263,9 +270,9 @@ Return up to 10 results, ordered by relevance.`,
       {loading && (
         <Card className="border-blue-500/30 bg-blue-900/20">
           <CardContent className="py-8 flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
             <p className="text-sm font-medium text-blue-300">Searching the NPPES registry...</p>
-            <p className="text-xs text-blue-600">This uses AI-powered web search to find matching NPIs</p>
+            <p className="text-xs text-blue-400">This uses AI-powered web search to find matching NPIs</p>
           </CardContent>
         </Card>
       )}
@@ -276,7 +283,7 @@ Return up to 10 results, ordered by relevance.`,
           {results.search_summary && (
             <div className="flex items-start gap-2 px-3 py-2 bg-slate-800/60 rounded-lg">
               <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-slate-500">{results.search_summary}</p>
+              <p className="text-xs text-slate-400">{results.search_summary}</p>
             </div>
           )}
 
@@ -294,7 +301,7 @@ Return up to 10 results, ordered by relevance.`,
             <Card className="bg-slate-800/60 border-dashed">
               <CardContent className="py-8 text-center">
                 <Search className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No matching providers found</p>
+                <p className="text-sm text-slate-400">No matching providers found</p>
                 <p className="text-xs text-slate-400 mt-1">Try broadening your search — remove the city or specialty filter</p>
               </CardContent>
             </Card>

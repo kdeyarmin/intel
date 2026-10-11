@@ -27,7 +27,7 @@ export default function QualityScoreCard({ label, score, icon: Icon }) {
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            {Icon && <Icon className="w-3.5 h-3.5 text-slate-500" />}
+            {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
             <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">{label}</span>
           </div>
           <p className="text-lg font-bold text-slate-200 mt-0.5">{score}%</p>

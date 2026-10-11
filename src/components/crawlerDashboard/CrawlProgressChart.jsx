@@ -29,7 +29,7 @@ export default function CrawlProgressChart({ crawlStatus, totalStates, loading }
         <CardDescription>{completed + failed} of {totalStates} states processed ({progressPct}%)</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Progress value={progressPct} className="h-3" />
+        <Progress value={progressPct} className="h-3" aria-label="Overall crawl progress" />
 
         <div className="flex gap-4 text-xs">
           {[

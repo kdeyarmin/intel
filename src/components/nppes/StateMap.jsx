@@ -16,7 +16,7 @@ const STATUS_COLORS = {
   completed:  { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.3)' },
   failed:     { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171', border: 'rgba(239, 68, 68, 0.3)' },
   processing: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.3)' },
-  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#64748b', border: 'rgba(51, 65, 85, 0.5)' },
+  pending:    { bg: 'rgba(30, 41, 59, 0.5)', text: '#94a3b8', border: 'rgba(51, 65, 85, 0.5)' },
 };
 
 export default function StateMap({ status, currentState, running, autoMode, onStateClick }) {
@@ -69,16 +69,18 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
           const count = getProviderCount(st);
 
           return (
-            <div
+            <button
+              type="button"
               key={st}
               onClick={() => onStateClick?.(st)}
-              className="aspect-square rounded-md cursor-pointer flex flex-col items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-lg relative group"
+              className="w-full aspect-square rounded-md cursor-pointer flex flex-col items-center justify-center transition-all hover:scale-110 hover:z-10 hover:shadow-lg relative group"
               style={{ 
                 backgroundColor: colors.bg, 
                 border: `2px solid ${colors.border}`,
                 color: colors.text 
               }}
               title={`${st}: ${stStatus}${count ? ` (${count.toLocaleString()} providers)` : ''}`}
+              aria-label={`${st}: ${stStatus}${count ? `, ${count.toLocaleString()} providers` : ''}`}
             >
               <span className="text-[10px] sm:text-xs font-bold leading-none">{st}</span>
               {count != null && count > 0 && (
@@ -89,7 +91,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               {stStatus === 'active' && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-teal-400 rounded-full animate-ping" />
               )}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -109,7 +111,7 @@ export default function StateMap({ status, currentState, running, autoMode, onSt
               style={{ backgroundColor: STATUS_COLORS[item.key].bg, border: `1px solid ${STATUS_COLORS[item.key].border}` }} 
             />
             <span className="text-slate-400">{item.label}</span>
-            <span className="text-slate-500 font-medium">({item.count})</span>
+            <span className="text-slate-400 font-medium">({item.count})</span>
           </div>
         ))}
       </div>

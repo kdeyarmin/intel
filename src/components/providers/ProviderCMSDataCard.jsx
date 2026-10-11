@@ -48,9 +48,11 @@ function DataTypeSection({ typeName, rows }) {
 
   return (
     <div className="bg-slate-900/50 rounded-lg border border-slate-700/30 overflow-hidden">
-      <div
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-800/50 transition-colors"
+      <button
+        type="button"
+        className="w-full text-left flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-800/50 transition-colors"
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
       >
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={`w-4 h-4 ${config.iconCls} flex-shrink-0`} />
@@ -62,8 +64,8 @@ function DataTypeSection({ typeName, rows }) {
             <span className="text-[10px] text-slate-400">{latestRow.data_year}</span>
           )}
         </div>
-        {expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-      </div>
+        {expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
+      </button>
 
       {expanded && (
         <div className="px-4 pb-3 border-t border-slate-700/30 pt-3">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ function getEventConfig(type) {
 }
 
 export default function SecurityAudit() {
+  const uid = useId();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterUser, setFilterUser] = useState('all');
@@ -112,7 +113,7 @@ export default function SecurityAudit() {
               <Activity className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Total Events</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Total Events</p>
               {isLoading ? <Skeleton className="h-6 w-16 mt-1" /> : (
                 <p className="text-2xl font-bold text-white">{totalEvents.toLocaleString()}</p>
               )}
@@ -126,7 +127,7 @@ export default function SecurityAudit() {
               <Users className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Active Users</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Active Users</p>
               {isLoading ? <Skeleton className="h-6 w-16 mt-1" /> : (
                 <p className="text-2xl font-bold text-white">{uniqueUserCount}</p>
               )}
@@ -140,7 +141,7 @@ export default function SecurityAudit() {
               <Download className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Data Exports</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Data Exports</p>
               {isLoading ? <Skeleton className="h-6 w-16 mt-1" /> : (
                 <p className="text-2xl font-bold text-white">{exportCount}</p>
               )}
@@ -154,7 +155,7 @@ export default function SecurityAudit() {
               <AlertTriangle className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wider">Permission Changes</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider">Permission Changes</p>
               {isLoading ? <Skeleton className="h-6 w-16 mt-1" /> : (
                 <p className="text-2xl font-bold text-white">{permissionChangeCount}</p>
               )}
@@ -179,10 +180,12 @@ export default function SecurityAudit() {
         <CardContent>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[180px]">
-              <label className="text-xs text-slate-500 mb-1 block">Search</label>
+              <label htmlFor={`${uid}-search`} className="text-xs text-slate-400 mb-1 block">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
                 <Input
+                  id={`${uid}-search`}
+                  aria-label="Search events"
                   placeholder="User, action, or details…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -192,9 +195,9 @@ export default function SecurityAudit() {
             </div>
 
             <div className="min-w-[160px]">
-              <label className="text-xs text-slate-500 mb-1 block">Event Type</label>
+              <label htmlFor={`${uid}-event-type`} className="text-xs text-slate-400 mb-1 block">Event Type</label>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="bg-slate-800/60 border-slate-700 text-slate-200">
+                <SelectTrigger id={`${uid}-event-type`} className="bg-slate-800/60 border-slate-700 text-slate-200">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -207,9 +210,9 @@ export default function SecurityAudit() {
             </div>
 
             <div className="min-w-[200px]">
-              <label className="text-xs text-slate-500 mb-1 block">User</label>
+              <label htmlFor={`${uid}-user`} className="text-xs text-slate-400 mb-1 block">User</label>
               <Select value={filterUser} onValueChange={setFilterUser}>
-                <SelectTrigger className="bg-slate-800/60 border-slate-700 text-slate-200">
+                <SelectTrigger id={`${uid}-user`} className="bg-slate-800/60 border-slate-700 text-slate-200">
                   <SelectValue placeholder="All users" />
                 </SelectTrigger>
                 <SelectContent>
@@ -241,7 +244,7 @@ export default function SecurityAudit() {
           <CardTitle className="text-slate-200 flex items-center justify-between">
             <span>Audit Events</span>
             {!isLoading && (
-              <span className="text-sm font-normal text-slate-500">
+              <span className="text-sm font-normal text-slate-400">
                 {filtered.length} of {totalEvents} events
               </span>
             )}
@@ -272,7 +275,7 @@ export default function SecurityAudit() {
                   ))
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                    <TableCell colSpan={5} className="text-center py-12 text-slate-400">
                       {hasActiveFilters ? 'No events match your filters.' : 'No audit events recorded yet.'}
                     </TableCell>
                   </TableRow>
@@ -302,7 +305,7 @@ export default function SecurityAudit() {
                           )}
                           {!event.details?.row_count && !event.details?.message && '—'}
                         </TableCell>
-                        <TableCell className="text-sm text-slate-500 whitespace-nowrap">
+                        <TableCell className="text-sm text-slate-400 whitespace-nowrap">
                           {formatDateTimeET(event.created_date)}
                         </TableCell>
                       </TableRow>

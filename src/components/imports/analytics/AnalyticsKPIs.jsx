@@ -41,7 +41,7 @@ export default function AnalyticsKPIs({ batches = [] }) {
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 mb-1">
                 <Icon className={`w-4 h-4 ${kpi.iconColor}`} />
-                <span className="text-[10px] text-slate-500 uppercase tracking-wide">{kpi.label}</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide">{kpi.label}</span>
               </div>
               <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
             </CardContent>

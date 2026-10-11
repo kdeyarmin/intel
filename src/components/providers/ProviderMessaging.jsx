@@ -135,7 +135,7 @@ Do NOT include subject line, just the body.`,
               {messages.length === 0 ? (
                 <div className="text-center py-6">
                   <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                  <p className="text-xs text-slate-500">No messages yet with {providerName}</p>
+                  <p className="text-xs text-slate-400">No messages yet with {providerName}</p>
                   {!providerEmail && (
                     <p className="text-[10px] text-amber-400 mt-1">No email on file — run email finder first</p>
                   )}
@@ -146,7 +146,7 @@ Do NOT include subject line, just the body.`,
                     <div key={i} className={`flex ${m.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[85%] rounded-xl px-3 py-2 ${m.direction === 'outbound' ? 'bg-cyan-600/20 border border-cyan-500/20' : 'bg-slate-800 border border-slate-700'}`}>
                         <p className="text-xs text-slate-200 whitespace-pre-wrap">{m.content}</p>
-                        <p className="text-[9px] text-slate-500 mt-1">{formatDateTimeET(m.timestamp)}</p>
+                        <p className="text-[9px] text-slate-400 mt-1">{formatDateTimeET(m.timestamp)}</p>
                       </div>
                     </div>
                   ))}
@@ -158,6 +158,7 @@ Do NOT include subject line, just the body.`,
             {/* Compose */}
             <div className="space-y-2">
               <Textarea
+                aria-label={`Message to ${providerName}`}
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder={`Message to ${providerName}...`}
@@ -178,7 +179,7 @@ Do NOT include subject line, just the body.`,
                 ) : providerEmail ? (
                   <a
                     href={`mailto:${providerEmail}?subject=${encodeURIComponent(`Following up — ${providerName}`)}&body=${encodeURIComponent(newMessage)}`}
-                    className="inline-flex h-7 items-center gap-1 rounded-md bg-cyan-600 px-3 text-[10px] font-medium text-white hover:bg-cyan-700"
+                    className="inline-flex h-7 items-center gap-1 rounded-md bg-cyan-700 px-3 text-[10px] font-medium text-white hover:bg-cyan-800"
                   >
                     <Send className="w-3 h-3" /> Open in email app
                   </a>
@@ -201,15 +202,15 @@ Do NOT include subject line, just the body.`,
 
             {showNewEvent && (
               <div className="bg-slate-800/40 rounded-lg p-3 space-y-2 border border-slate-700/30">
-                <Input value={eventForm.title} onChange={(e) => setEventForm(p => ({ ...p, title: e.target.value }))}
+                <Input aria-label="Event title" value={eventForm.title} onChange={(e) => setEventForm(p => ({ ...p, title: e.target.value }))}
                   placeholder="Event title (e.g., Intro Call)" className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input type="date" value={eventForm.date} onChange={(e) => setEventForm(p => ({ ...p, date: e.target.value }))}
+                  <Input type="date" aria-label="Event date" value={eventForm.date} onChange={(e) => setEventForm(p => ({ ...p, date: e.target.value }))}
                     className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
-                  <Input type="time" value={eventForm.time} onChange={(e) => setEventForm(p => ({ ...p, time: e.target.value }))}
+                  <Input type="time" aria-label="Event time" value={eventForm.time} onChange={(e) => setEventForm(p => ({ ...p, time: e.target.value }))}
                     className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 </div>
-                <Input value={eventForm.notes} onChange={(e) => setEventForm(p => ({ ...p, notes: e.target.value }))}
+                <Input aria-label="Event notes" value={eventForm.notes} onChange={(e) => setEventForm(p => ({ ...p, notes: e.target.value }))}
                   placeholder="Notes (optional)" className="h-8 text-xs bg-slate-800 border-slate-700 text-slate-200" />
                 <Button size="sm" onClick={addEvent} disabled={!eventForm.title || !eventForm.date}
                   className="h-7 text-[10px] w-full bg-emerald-600 hover:bg-emerald-700 gap-1">
@@ -222,7 +223,7 @@ Do NOT include subject line, just the body.`,
               {events.length === 0 && !showNewEvent && (
                 <div className="text-center py-6">
                   <Calendar className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                  <p className="text-xs text-slate-500">No scheduled events</p>
+                  <p className="text-xs text-slate-400">No scheduled events</p>
                 </div>
               )}
               {[...events].sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => (
@@ -233,10 +234,10 @@ Do NOT include subject line, just the body.`,
                     <p className="text-[10px] text-slate-400">
                       {formatDateET(e.date)}{e.time ? ` at ${e.time}` : ''}
                     </p>
-                    {e.notes && <p className="text-[9px] text-slate-500">{e.notes}</p>}
+                    {e.notes && <p className="text-[9px] text-slate-400">{e.notes}</p>}
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => removeEvent(e.id)}
-                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400">
+                    className="h-5 w-5 p-0 text-slate-400 hover:text-red-400" aria-label="Remove event">
                     <X className="w-3 h-3" />
                   </Button>
                 </div>

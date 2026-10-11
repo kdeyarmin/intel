@@ -26,7 +26,7 @@ export default function RelatedLocations({ npi }) {
     <Card className="bg-slate-700/40">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-indigo-600" />
+          <MapPin className="w-4 h-4 text-indigo-400" />
           AI-Matched Locations
           {sorted.length > 0 && (
             <Badge variant="outline" className="text-xs ml-auto">{sorted.length} match{sorted.length !== 1 ? 'es' : ''}</Badge>
@@ -39,14 +39,14 @@ export default function RelatedLocations({ npi }) {
             {[1, 2].map(i => <Skeleton key={i} className="h-16" />)}
           </div>
         ) : sorted.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-slate-400 text-center py-4">
             No AI-matched locations for this provider yet
           </p>
         ) : (
           <div className="space-y-2">
             {sorted.map(match => {
               const status = STATUS_CONFIG[match.status] || STATUS_CONFIG.suggested;
-              const confColor = match.confidence_score >= 75 ? 'text-green-600' : match.confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600';
+              const confColor = match.confidence_score >= 75 ? 'text-green-400' : match.confidence_score >= 50 ? 'text-yellow-400' : 'text-red-400';
               return (
                 <div key={match.id} className="bg-slate-800/40 rounded-lg border border-slate-700/50 p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -67,7 +67,7 @@ export default function RelatedLocations({ npi }) {
                       ))}
                     </div>
                   )}
-                  <div className="mt-2 flex gap-3 text-xs text-slate-500">
+                  <div className="mt-2 flex gap-3 text-xs text-slate-400">
                     <span>Spec: {match.specialization_score || 0}</span>
                     <span>Prox: {match.proximity_score || 0}</span>
                     <span>Ref: {match.referral_score || 0}</span>

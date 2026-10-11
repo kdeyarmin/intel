@@ -416,6 +416,7 @@ export default function Organizations() {
                 value={searchTerm}
                 onChange={setSearchTerm}
                 suggestions={searchSuggestions}
+                ariaLabel="Search organizations"
                 placeholder="Search organizations by any part of the name, or NPI"
                 onSuggestionSelect={handleSuggestionSelect}
                 className="flex-1"
@@ -460,7 +461,7 @@ export default function Organizations() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-slate-200">
                 <span>Organization Directory</span>
-                <span className="text-sm font-normal text-slate-500">
+                <span className="text-sm font-normal text-slate-400">
                   {sortedProviders.length} results
                   {selectedNpis.size > 0 && (
                     <Badge className="ml-2 bg-violet-900/15 text-violet-400 text-[10px]">{selectedNpis.size} selected</Badge>
@@ -512,7 +513,7 @@ export default function Organizations() {
                       </TableRow>
                     ) : sortedProviders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-slate-400">
                           {isSearching
                             ? `No organizations match "${debouncedSearch}" with the current filters.`
                             : 'No organizations match the current filters.'}

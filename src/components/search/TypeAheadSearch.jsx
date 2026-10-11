@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Building2, MapPin, Stethoscope } from 'lucide-react';
@@ -15,6 +15,7 @@ export default function TypeAheadSearch({
   onChange,
   suggestions = [],
   placeholder = 'Search...',
+  ariaLabel,
   onSuggestionSelect,
   className = '',
 }) {
@@ -22,6 +23,11 @@ export default function TypeAheadSearch({
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  // A combobox with a listbox popup: focus stays in the input and the
+  // highlighted option is announced through aria-activedescendant.
+  const listId = useId();
+  const optionId = (idx) => `${listId}-option-${idx}`;
+  const label = ariaLabel || placeholder;
 
   const filtered = useMemo(() => {
     if (!value || value.length < 2) return [];
@@ -42,8 +48,17 @@ export default function TypeAheadSearch({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const expanded = open && filtered.length > 0;
+
   const handleKeyDown = (e) => {
-    if (!open || filtered.length === 0) return;
+    if (!expanded) {
+      if (e.key === 'ArrowDown' && filtered.length > 0) {
+        e.preventDefault();
+        setOpen(true);
+        setHighlightIdx(0);
+      }
+      return;
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlightIdx(prev => Math.min(prev + 1, filtered.length - 1));
@@ -63,7 +78,7 @@ export default function TypeAheadSearch({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10" aria-hidden="true" />
       <Input
         ref={inputRef}
         value={value}
@@ -71,15 +86,28 @@ export default function TypeAheadSearch({
         onFocus={() => { if (filtered.length > 0) setOpen(true); }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
+        aria-label={label}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={expanded}
+        aria-controls={expanded ? listId : undefined}
+        aria-activedescendant={expanded && highlightIdx >= 0 ? optionId(highlightIdx) : undefined}
         className="pl-9"
       />
-      {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-slate-800/60 border border-slate-700/50 rounded-lg shadow-lg max-h-64 overflow-auto">
+      {expanded && (
+        <div id={listId} role="listbox" aria-label={`${label} suggestions`} className="absolute top-full left-0 right-0 z-50 mt-1 bg-slate-800/60 border border-slate-700/50 rounded-lg shadow-lg max-h-64 overflow-auto">
           {filtered.map((item, idx) => {
             const Icon = TYPE_ICONS[item.type] || Search;
             return (
               <button
+                type="button"
                 key={idx}
+                id={optionId(idx)}
+                role="option"
+                aria-selected={idx === highlightIdx}
+                tabIndex={-1}
+                // Keep focus in the input when an option is clicked.
+                onMouseDown={(e) => e.preventDefault()}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors ${
                   idx === highlightIdx ? 'bg-slate-700' : 'hover:bg-slate-800/40'
                 }`}
@@ -90,7 +118,7 @@ export default function TypeAheadSearch({
                   setOpen(false);
                 }}
               >
-                <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <span className="text-slate-300 truncate block">{item.label}</span>
                   {item.sublabel && <span className="text-[11px] text-slate-400 truncate block">{item.sublabel}</span>}

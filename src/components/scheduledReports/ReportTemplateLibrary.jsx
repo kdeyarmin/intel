@@ -81,7 +81,7 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <BookTemplate className="w-4 h-4 text-violet-600" />
+          <BookTemplate className="w-4 h-4 text-violet-400" />
           Report Templates
         </CardTitle>
       </CardHeader>
@@ -90,24 +90,25 @@ export default function ReportTemplateLibrary({ onUseTemplate }) {
           {TEMPLATES.map(template => {
             const Icon = template.icon;
             return (
-              <div
+              <button
+                type="button"
                 key={template.id}
-                className="border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-900/20 transition-all cursor-pointer group"
+                className="w-full text-left border rounded-lg p-3 hover:border-blue-300 hover:bg-blue-900/20 transition-all cursor-pointer group"
                 onClick={() => onUseTemplate(template)}
               >
                 <div className="flex items-start gap-2.5">
                   <div className="p-1.5 rounded-md bg-slate-700 group-hover:bg-blue-900/30 transition-colors">
-                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-400" />
+                    <Icon className="w-4 h-4 text-slate-400 group-hover:text-blue-400" aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-semibold text-slate-300 truncate">{template.name}</h4>
                       <Badge variant="outline" className="text-[9px] shrink-0">{template.frequency}</Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{template.description}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{template.description}</p>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

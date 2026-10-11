@@ -50,7 +50,7 @@ export default function ErrorRateTrend({ nppesImports, loading }) {
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-white">{overallErrorRate}%</p>
-            <p className="text-[10px] text-slate-500">Overall error rate</p>
+            <p className="text-[10px] text-slate-400">Overall error rate</p>
           </div>
         </div>
       </CardHeader>

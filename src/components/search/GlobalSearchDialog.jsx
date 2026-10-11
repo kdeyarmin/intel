@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { pagesConfig } from '@/pages.config.js';
@@ -253,8 +253,12 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden">
+        <DialogTitle className="sr-only">Search</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search providers, organizations, NPIs, lead lists and pages. Use the arrow keys to move through results and Enter to open one.
+        </DialogDescription>
         <div className="flex items-center gap-2 px-4 border-b">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <Search className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
           <Input
             ref={inputRef}
             value={query}
@@ -267,10 +271,15 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
             }}
             placeholder="Search providers, organizations, NPIs, lead lists, pages..."
             aria-label="Search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={filteredResults.length > 0}
+            aria-controls="global-search-results"
+            aria-activedescendant={filteredResults.length > 0 && highlightIdx >= 0 ? `global-search-option-${highlightIdx}` : undefined}
             className="border-0 shadow-none focus-visible:ring-0 text-base h-12"
             autoFocus
           />
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0" aria-hidden="true">
             <kbd className="text-[10px] text-slate-400 border rounded px-1 py-0.5"><ArrowUp className="w-2.5 h-2.5 inline" /></kbd>
             <kbd className="text-[10px] text-slate-400 border rounded px-1 py-0.5"><ArrowDown className="w-2.5 h-2.5 inline" /></kbd>
             <span className="text-[10px] text-slate-300 mx-0.5">to navigate</span>
@@ -280,18 +289,22 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
         {/* Category filter pills */}
         {query.length >= 2 && categories.length > 1 && (
-          <div className="flex gap-1.5 px-4 py-2 border-b overflow-x-auto">
+          <div role="group" aria-label="Filter results by type" className="flex gap-1.5 px-4 py-2 border-b overflow-x-auto">
             <button
+              type="button"
+              aria-pressed={activeCategory === 'all'}
               onClick={() => setActiveCategory('all')}
-              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+              className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === 'all' ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-400 border-slate-700 hover:border-slate-500'}`}
             >
               All ({allResults.length})
             </button>
             {categories.map(([cat, count]) => (
               <button
+                type="button"
                 key={cat}
+                aria-pressed={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-500 border-slate-700 hover:border-slate-500'}`}
+                className={`text-xs px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-cyan-900/15 text-cyan-400 border-cyan-500/30' : 'text-slate-400 border-slate-700 hover:border-slate-500'}`}
               >
                 {cat} ({count})
               </button>
@@ -307,7 +320,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Recent Searches</p>
                   <div className="flex flex-wrap gap-1.5">
                     {recentSearches.map((s, i) => (
-                      <button key={i} onClick={() => setQuery(s)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                      <button type="button" key={i} onClick={() => setQuery(s)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
                         {s}
                       </button>
                     ))}
@@ -318,7 +331,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Jump to</p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_LINKS.map((link) => (
-                    <Link key={link.url} to={link.url} onClick={() => onOpenChange(false)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
+                    <Link key={link.url} to={link.url} onClick={() => onOpenChange(false)} className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-colors">
                       {link.label}
                     </Link>
                   ))}
@@ -333,26 +346,31 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
                 : `No results found for "${query}"`}
             </div>
           ) : (
-            <div className="py-1" ref={listRef}>
+            <div className="py-1" ref={listRef} id="global-search-results" role="listbox" aria-label="Search results">
               {filteredResults.map((item, idx) => {
                 const config = CATEGORY_CONFIG[item.type] || CATEGORY_CONFIG.Page;
                 const Icon = config.icon;
                 const isHighlighted = idx === highlightIdx;
                 return (
                   <button
+                    type="button"
                     key={idx}
+                    id={`global-search-option-${idx}`}
+                    role="option"
+                    aria-selected={isHighlighted}
+                    tabIndex={-1}
                     data-highlighted={isHighlighted || undefined}
                     onClick={() => goTo(item.url)}
                     onFocus={() => preloadResultPage(item)}
                     onMouseEnter={() => { setHighlightIdx(idx); preloadResultPage(item); }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${isHighlighted ? 'bg-cyan-900/10' : 'hover:bg-slate-800/50'}`}
                   >
-                    <div className={`p-1.5 rounded-md ${config.color}`}>
+                    <div className={`p-1.5 rounded-md ${config.color}`} aria-hidden="true">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-200 truncate">{item.label}</p>
-                      <p className="text-xs text-slate-500 truncate">{item.sublabel}</p>
+                      <p className="text-xs text-slate-400 truncate">{item.sublabel}</p>
                     </div>
                     <Badge variant="outline" className="text-[10px] shrink-0">{item.type}</Badge>
                   </button>

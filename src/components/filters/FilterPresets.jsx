@@ -57,7 +57,7 @@ const PRESETS = [
 export default function FilterPresets({ onApplyPreset, activePresetId }) {
   return (
     <div className="space-y-1.5">
-      <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">Quick Filters</span>
+      <span className="text-xs text-slate-400 uppercase tracking-wider font-medium">Quick Filters</span>
       <div className="flex flex-wrap gap-1.5">
         {PRESETS.map(preset => {
           const Icon = preset.icon;

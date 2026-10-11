@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ const DATA_POINTS = [
 ];
 
 export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
+  const uid = useId();
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0, currentName: '' });
@@ -73,22 +74,23 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
           AI scans public sources for missing data points like patient volumes, insurance, and telehealth availability.
         </p>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] text-slate-500 uppercase tracking-wide">Data Points to Discover</Label>
+        <div className="space-y-2" role="group" aria-labelledby={`${uid}-data-points`}>
+          <span id={`${uid}-data-points`} className="font-medium leading-none text-[10px] text-slate-400 uppercase tracking-wide">Data Points to Discover</span>
           {DATA_POINTS.map(dp => (
             <div key={dp.key} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <dp.icon className="w-3.5 h-3.5 text-slate-500" />
+                <dp.icon className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
                 <span className="text-xs text-slate-300">{dp.label}</span>
               </div>
-              <Switch checked={enabledPoints.has(dp.key)} onCheckedChange={() => togglePoint(dp.key)} disabled={running} />
+              <Switch aria-label={dp.label} checked={enabledPoints.has(dp.key)} onCheckedChange={() => togglePoint(dp.key)} disabled={running} />
             </div>
           ))}
         </div>
 
         <div>
-          <Label className="text-xs text-slate-400">Scan size</Label>
+          <Label htmlFor={`${uid}-scan-size`} className="text-xs text-slate-400">Scan size</Label>
           <select
+            id={`${uid}-scan-size`}
             className="w-full mt-1 text-xs bg-slate-800/50 border border-slate-700 rounded-md px-2 py-1.5 text-slate-300"
             value={batchSize} onChange={e => setBatchSize(Number(e.target.value))}
             disabled={running}
@@ -104,7 +106,7 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-slate-400">
                 Scanning providers with AI... this may take a moment
               </p>
             </div>
@@ -117,17 +119,17 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
               <div className="bg-emerald-900/10 rounded-lg p-2 text-center">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-emerald-400">{results.enriched}</p>
-                <p className="text-[9px] text-slate-500">Found Data</p>
+                <p className="text-[9px] text-slate-400">Found Data</p>
               </div>
               <div className="bg-slate-500/10 rounded-lg p-2 text-center">
                 <AlertTriangle className="w-4 h-4 text-slate-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-slate-400">{results.no_data}</p>
-                <p className="text-[9px] text-slate-500">No Data</p>
+                <p className="text-[9px] text-slate-400">No Data</p>
               </div>
               <div className="bg-red-900/10 rounded-lg p-2 text-center">
                 <XCircle className="w-4 h-4 text-red-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-red-400">{results.errors}</p>
-                <p className="text-[9px] text-slate-500">Errors</p>
+                <p className="text-[9px] text-slate-400">Errors</p>
               </div>
             </div>
             {results.message && (
@@ -137,7 +139,7 @@ export default function ProactiveEnrichmentScanner({ totalProviders = 0 }) {
         )}
 
         <Button onClick={handleScan} disabled={running || enabledPoints.size === 0}
-          className="w-full bg-violet-600 hover:bg-violet-700 gap-2">
+          className="text-white w-full bg-violet-600 hover:bg-violet-700 gap-2">
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
           {running ? 'Scanning...' : `Scan ${batchSize} Providers`}
         </Button>

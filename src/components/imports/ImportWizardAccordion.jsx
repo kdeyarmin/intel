@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useId, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ const STEP_ERROR = 'error';
 
 function StepHeader({ number, title, subtitle, status, expanded, onClick, badge }) {
   const icons = {
-    [STEP_PENDING]: <Circle className="w-5 h-5 text-slate-500" />,
+    [STEP_PENDING]: <Circle className="w-5 h-5 text-slate-400" />,
     [STEP_ACTIVE]: <div className="w-5 h-5 rounded-full bg-cyan-900/20 flex items-center justify-center text-[10px] font-bold text-white">{number}</div>,
     [STEP_DONE]: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
     [STEP_ERROR]: <XCircle className="w-5 h-5 text-red-400" />,
@@ -63,7 +63,7 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
             <span className="text-sm font-medium text-slate-200">{title}</span>
             {badge}
           </div>
-          {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {status !== STEP_PENDING && (
@@ -74,6 +74,7 @@ function StepHeader({ number, title, subtitle, status, expanded, onClick, badge 
 }
 
 export default function ImportWizardAccordion({ selectedType, onReset, onComplete, _compact = false }) {
+  const uid = useId();
   // Step tracking
   const [fileStep, setFileStep] = useState(STEP_ACTIVE);
   const [mapStep, setMapStep] = useState(STEP_PENDING);
@@ -271,7 +272,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
             fileStep === STEP_DONE 
               ? file?.name 
               : downloadUrl ? (
-                <span className="flex items-center gap-1 text-slate-500">
+                <span className="flex items-center gap-1 text-slate-400">
                   Upload CSV, Excel, or JSON file. <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline" onClick={e => e.stopPropagation()}>Download source data here.</a>
                 </span>
               ) : 'Upload CSV, Excel, or JSON file'
@@ -370,25 +371,25 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                 <>
                   <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                     <div>
-                      <Label className="text-sm">Dry Run Mode</Label>
-                      <p className="text-xs text-slate-500">Validate only — don't write data</p>
+                      <Label htmlFor={`${uid}-dry-run`} id={`${uid}-dry-run-label`} className="text-sm">Dry Run Mode</Label>
+                      <p className="text-xs text-slate-400">Validate only — don't write data</p>
                     </div>
-                    <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={processing} />
+                    <Switch id={`${uid}-dry-run`} aria-labelledby={`${uid}-dry-run-label`} checked={dryRun} onCheckedChange={setDryRun} disabled={processing} />
                   </div>
 
                   {/* Summary */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                       <p className="text-lg font-bold text-slate-200">{csvColumns.length}</p>
-                      <p className="text-[11px] text-slate-500">Columns</p>
+                      <p className="text-[11px] text-slate-400">Columns</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                       <p className="text-lg font-bold text-cyan-400">{mappedCount}</p>
-                      <p className="text-[11px] text-slate-500">Mapped</p>
+                      <p className="text-[11px] text-slate-400">Mapped</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                       <p className="text-lg font-bold text-emerald-400">{requiredMapped}/{requiredTotal}</p>
-                      <p className="text-[11px] text-slate-500">Required</p>
+                      <p className="text-[11px] text-slate-400">Required</p>
                     </div>
                   </div>
 
@@ -407,6 +408,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                                 : liveStatus.status === 'validating' ? 20 : 50
                             }
                             className="h-1.5"
+                            aria-label="Import progress"
                           />
                           <div className="flex gap-4 text-[10px] text-slate-400">
                             {liveStatus.total_rows > 0 && <span>Total: {liveStatus.total_rows.toLocaleString()}</span>}
@@ -416,9 +418,9 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
                           </div>
                         </>
                       ) : (
-                        <Progress value={15} className="h-1.5" />
+                        <Progress value={15} className="h-1.5" aria-label="Import progress" />
                       )}
-                      <p className="text-[10px] text-slate-500">Processing runs in the background — feel free to navigate away</p>
+                      <p className="text-[10px] text-slate-400">Processing runs in the background — feel free to navigate away</p>
                     </div>
                   )}
 
@@ -500,7 +502,7 @@ function Stat({ label, value, color, bg }) {
   return (
     <div className={`text-center p-2.5 rounded-lg border border-slate-700/30 ${bg}`}>
       <p className={`text-lg font-bold ${color}`}>{(value || 0).toLocaleString()}</p>
-      <p className="text-[10px] text-slate-500">{label}</p>
+      <p className="text-[10px] text-slate-400">{label}</p>
     </div>
   );
 }

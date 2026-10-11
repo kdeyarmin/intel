@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
 export default function RetryBatchDialog({ batch, open, onOpenChange, onRetryStarted, presets }) {
+  const uid = useId();
   const [retryMode, setRetryMode] = useState('full');
   const [rowOffset, setRowOffset] = useState('');
   const [rowLimit, setRowLimit] = useState('');
@@ -156,11 +157,11 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           {/* Retry mode tabs */}
           <Tabs value={retryMode} onValueChange={setRetryMode}>
             <TabsList className="grid grid-cols-5 h-8 bg-slate-800/80 border border-slate-700/50">
-              <TabsTrigger value="full" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Full</TabsTrigger>
-              <TabsTrigger value="row_range" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Row Range</TabsTrigger>
-              <TabsTrigger value="criteria" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Criteria</TabsTrigger>
-              <TabsTrigger value="failed_only" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white">Failed Only</TabsTrigger>
-              <TabsTrigger value="resume" className="text-xs text-slate-400 data-[state=active]:bg-cyan-600 data-[state=active]:text-white" disabled={!batch.imported_rows}>Resume</TabsTrigger>
+              <TabsTrigger value="full" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Full</TabsTrigger>
+              <TabsTrigger value="row_range" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Row Range</TabsTrigger>
+              <TabsTrigger value="criteria" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Criteria</TabsTrigger>
+              <TabsTrigger value="failed_only" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white">Failed Only</TabsTrigger>
+              <TabsTrigger value="resume" className="text-xs text-slate-400 data-[state=active]:bg-cyan-700 data-[state=active]:text-white" disabled={!batch.imported_rows}>Resume</TabsTrigger>
             </TabsList>
 
             <TabsContent value="full" className="mt-3">
@@ -177,8 +178,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-300 font-medium">Start from row</Label>
+                  <Label htmlFor={`${uid}-row-offset`} id={`${uid}-row-offset-label`} className="text-xs text-slate-300 font-medium">Start from row</Label>
                   <Input
+                    id={`${uid}-row-offset`}
+                    aria-labelledby={`${uid}-row-offset-label`}
                     type="number"
                     value={rowOffset}
                     onChange={(e) => setRowOffset(e.target.value)}
@@ -189,8 +192,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-300 font-medium">Number of rows</Label>
+                  <Label htmlFor={`${uid}-row-limit`} id={`${uid}-row-limit-label`} className="text-xs text-slate-300 font-medium">Number of rows</Label>
                   <Input
+                    id={`${uid}-row-limit`}
+                    aria-labelledby={`${uid}-row-limit-label`}
                     type="number"
                     value={rowLimit}
                     onChange={(e) => setRowLimit(e.target.value)}
@@ -214,8 +219,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-300 font-medium">NPI Filter (comma-separated)</Label>
+                  <Label htmlFor={`${uid}-npi-filter`} id={`${uid}-npi-filter-label`} className="text-xs text-slate-300 font-medium">NPI Filter (comma-separated)</Label>
                   <Input
+                    id={`${uid}-npi-filter`}
+                    aria-labelledby={`${uid}-npi-filter-label`}
                     value={npiFilter}
                     onChange={(e) => setNpiFilter(e.target.value)}
                     placeholder="1234567890, 0987654321"
@@ -223,8 +230,10 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-slate-300 font-medium">State Filter</Label>
+                  <Label htmlFor={`${uid}-state-filter`} id={`${uid}-state-filter-label`} className="text-xs text-slate-300 font-medium">State Filter</Label>
                   <Input
+                    id={`${uid}-state-filter`}
+                    aria-labelledby={`${uid}-state-filter-label`}
                     value={stateFilter}
                     onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
                     placeholder="NY"
@@ -234,14 +243,16 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-slate-300 font-medium">Sheet Filter</Label>
+                <Label htmlFor={`${uid}-criteria-sheet-filter`} id={`${uid}-criteria-sheet-filter-label`} className="text-xs text-slate-300 font-medium">Sheet Filter</Label>
                 <Input
+                  id={`${uid}-criteria-sheet-filter`}
+                  aria-labelledby={`${uid}-criteria-sheet-filter-label`}
                   value={sheetFilter}
                   onChange={(e) => setSheetFilter(e.target.value)}
                   placeholder="e.g. MA4, Sheet1"
                   className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
                 />
-                <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports</p>
+                <p className="text-[10px] text-slate-400">For multi-sheet ZIP/Excel imports</p>
               </div>
             </TabsContent>
 
@@ -273,29 +284,31 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
           {/* Sheet filter (visible for all modes) */}
           {retryMode !== 'criteria' && (
             <div className="space-y-1">
-              <Label className="text-xs text-slate-300 font-medium">Sheet Filter (optional)</Label>
+              <Label htmlFor={`${uid}-sheet-filter`} id={`${uid}-sheet-filter-label`} className="text-xs text-slate-300 font-medium">Sheet Filter (optional)</Label>
               <Input
+                id={`${uid}-sheet-filter`}
+                aria-labelledby={`${uid}-sheet-filter-label`}
                 value={sheetFilter}
                 onChange={(e) => setSheetFilter(e.target.value)}
                 placeholder="e.g. MA4, Sheet1"
                 className="h-8 text-xs bg-slate-800 border-slate-600 text-slate-100 focus:border-cyan-500"
               />
-              <p className="text-[10px] text-slate-500">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
+              <p className="text-[10px] text-slate-400">For multi-sheet ZIP/Excel imports — leave blank for all sheets</p>
             </div>
           )}
 
           {/* Options */}
           <div className="space-y-2 border-t border-slate-700/50 pt-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-slate-200">Dry run (validate only)</Label>
-              <Switch checked={dryRun} onCheckedChange={setDryRun} />
+              <Label htmlFor={`${uid}-dry-run`} id={`${uid}-dry-run-label`} className="text-sm text-slate-200">Dry run (validate only)</Label>
+              <Switch id={`${uid}-dry-run`} aria-labelledby={`${uid}-dry-run-label`} checked={dryRun} onCheckedChange={setDryRun} />
             </div>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</Button>
-          <Button onClick={handleRetry} disabled={isRetrying || retryLimitReached} className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50">
+          <Button onClick={handleRetry} disabled={isRetrying || retryLimitReached} className="bg-cyan-700 hover:bg-cyan-800 text-white disabled:opacity-50">
             {isRetrying ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
             {retryLimitReached ? 'Retry Limit Reached' : isRetrying ? 'Starting...' : retryMode === 'resume' ? 'Resume Import' : `Start Retry (${currentRetryCount + 1}/${MAX_RETRIES})`}
           </Button>

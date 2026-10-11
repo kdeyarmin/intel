@@ -4,12 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExternalLink, Phone } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 export default function LeadResultsTable({ results, onStatusChange }) {
-  const navigate = useNavigate();
-
   const getScoreColor = (score) => {
     if (score >= 80) return 'bg-green-900/30 text-green-400';
     if (score >= 60) return 'bg-yellow-900/30 text-yellow-400';
@@ -57,13 +55,16 @@ export default function LeadResultsTable({ results, onStatusChange }) {
           ) : (
             results.map((result) => {
               const { provider, score, location, taxonomy, utilization, listMember } = result;
-              
+              const name = provider.entity_type === 'Organization'
+                ? provider.organization_name
+                : `${provider.first_name} ${provider.last_name}`;
+
               return (
                 <TableRow key={provider.npi}>
                   <TableCell className="font-medium">
-                    {provider.entity_type === 'Organization' 
-                      ? provider.organization_name 
-                      : `${provider.first_name} ${provider.last_name}${provider.credential ? ', ' + provider.credential : ''}`
+                    {provider.entity_type === 'Organization'
+                      ? name
+                      : `${name}${provider.credential ? ', ' + provider.credential : ''}`
                     }
                   </TableCell>
                   <TableCell className="text-sm text-slate-400">
@@ -75,7 +76,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                   <TableCell className="text-sm">
                     {location?.phone ? (
                       <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-slate-500" />
+                        <Phone className="h-3 w-3 text-slate-400" />
                         <span>{location.phone}</span>
                       </div>
                     ) : '-'}
@@ -93,7 +94,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                       value={listMember?.status || 'New'}
                       onValueChange={(v) => onStatusChange(provider.npi, v)}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger aria-label={`Status for ${name || provider.npi}`} className="w-32">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -105,12 +106,10 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(createPageUrl('ProviderDetail') + '?npi=' + provider.npi)}
-                    >
-                      <ExternalLink className="h-4 w-4" />
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={createPageUrl('ProviderDetail') + '?npi=' + provider.npi} aria-label={`Open ${name || provider.npi}`}>
+                        <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                      </Link>
                     </Button>
                   </TableCell>
                 </TableRow>

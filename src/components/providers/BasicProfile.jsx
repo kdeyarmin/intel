@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import EmailValidationBadge from '../emailBot/EmailValidationBadge';
 import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function BasicProfile({ provider, taxonomy, locations }) {
+  const uid = useId();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
@@ -65,8 +66,8 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
           <User className="h-5 w-5" />
           Provider Profile
         </CardTitle>
-        <Button variant="ghost" size="sm" onClick={handleEditClick} className="h-8 w-8 p-0">
-          <Edit className="h-4 w-4 text-slate-500" />
+        <Button variant="ghost" size="sm" onClick={handleEditClick} className="h-8 w-8 p-0" aria-label="Edit profile">
+          <Edit className="h-4 w-4 text-slate-400" aria-hidden="true" />
         </Button>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
@@ -87,7 +88,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
         {primaryTaxonomy && (
           <div className="flex items-start gap-2 p-3 bg-teal-900/20 rounded-lg border border-teal-500/30">
-            <Stethoscope className="h-5 w-5 text-teal-600 mt-0.5" />
+            <Stethoscope className="h-5 w-5 text-teal-400 mt-0.5" />
             <div>
               <p className="font-medium text-teal-300 text-sm">Primary Specialty</p>
               <p className="text-sm text-teal-400">
@@ -118,7 +119,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
         {primaryLocation && (
           <div className="space-y-2 pt-3 border-t">
             <div className="flex items-start gap-2">
-              <MapPin className="h-5 w-5 text-slate-500 mt-0.5" />
+              <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-white">Primary Practice Location</p>
                 {primaryLocation.address_1 && <p className="text-sm text-slate-400">{primaryLocation.address_1}</p>}
@@ -130,14 +131,14 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
 
             {primaryLocation.phone && (
               <div className="flex items-center gap-2 ml-7">
-                <Phone className="h-3.5 w-3.5 text-slate-500" />
+                <Phone className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-xs text-slate-400">{primaryLocation.phone}</p>
               </div>
             )}
 
             {primaryLocation.fax && (
               <div className="flex items-center gap-2 ml-7">
-                <Printer className="h-3.5 w-3.5 text-slate-500" />
+                <Printer className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-xs text-slate-400">{primaryLocation.fax}</p>
               </div>
             )}
@@ -187,15 +188,19 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
               {provider.entity_type === 'Individual' ? (
                 <>
                   <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input 
+                    <Label htmlFor={`${uid}-first-name`} id={`${uid}-first-name-label`}>First Name</Label>
+                    <Input
+                      id={`${uid}-first-name`}
+                      aria-labelledby={`${uid}-first-name-label`}
                       value={editForm.first_name} 
                       onChange={(e) => setEditForm({...editForm, first_name: e.target.value})} 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input 
+                    <Label htmlFor={`${uid}-last-name`} id={`${uid}-last-name-label`}>Last Name</Label>
+                    <Input
+                      id={`${uid}-last-name`}
+                      aria-labelledby={`${uid}-last-name-label`}
                       value={editForm.last_name} 
                       onChange={(e) => setEditForm({...editForm, last_name: e.target.value})} 
                     />
@@ -203,8 +208,10 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
                 </>
               ) : (
                 <div className="col-span-2 space-y-2">
-                  <Label>Organization Name</Label>
-                  <Input 
+                  <Label htmlFor={`${uid}-org-name`} id={`${uid}-org-name-label`}>Organization Name</Label>
+                  <Input
+                    id={`${uid}-org-name`}
+                    aria-labelledby={`${uid}-org-name-label`}
                     value={editForm.organization_name} 
                     onChange={(e) => setEditForm({...editForm, organization_name: e.target.value})} 
                   />
@@ -214,20 +221,22 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
             
             <div className="grid grid-cols-2 gap-4">
                <div className="space-y-2">
-                <Label>Credential</Label>
-                <Input 
+                <Label htmlFor={`${uid}-credential`} id={`${uid}-credential-label`}>Credential</Label>
+                <Input
+                  id={`${uid}-credential`}
+                  aria-labelledby={`${uid}-credential-label`}
                   value={editForm.credential} 
                   onChange={(e) => setEditForm({...editForm, credential: e.target.value})} 
                   placeholder="e.g. MD, DO"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label htmlFor={`${uid}-status`}>Status</Label>
                 <Select 
                   value={editForm.status} 
                   onValueChange={(val) => setEditForm({...editForm, status: val})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id={`${uid}-status`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -239,8 +248,10 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
             </div>
 
             <div className="space-y-2">
-              <Label>Email Address</Label>
-              <Input 
+              <Label htmlFor={`${uid}-email`} id={`${uid}-email-label`}>Email Address</Label>
+              <Input
+                id={`${uid}-email`}
+                aria-labelledby={`${uid}-email-label`}
                 value={editForm.email} 
                 onChange={(e) => setEditForm({...editForm, email: e.target.value})} 
                 type="email"

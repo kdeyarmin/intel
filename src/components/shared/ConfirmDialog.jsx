@@ -55,7 +55,7 @@ export function ConfirmProvider({ children }) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => settle(true)}
-              className={options?.destructive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-cyan-600 text-white hover:bg-cyan-700'}
+              className={options?.destructive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-cyan-700 text-white hover:bg-cyan-800'}
             >
               {options?.confirmLabel || 'Confirm'}
             </AlertDialogAction>

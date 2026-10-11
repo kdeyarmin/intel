@@ -31,6 +31,9 @@ export default function AppLayout({ children, currentPageName }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const mainRef = React.useRef(null);
   const asideRef = React.useRef(null);
+  const openButtonRef = React.useRef(null);
+  const closeButtonRef = React.useRef(null);
+  const wasOpen = React.useRef(sidebarOpen);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(prev => {
@@ -50,6 +53,31 @@ export default function AppLayout({ children, currentPageName }) {
   React.useEffect(() => {
     asideRef.current?.toggleAttribute('inert', !sidebarOpen);
   }, [sidebarOpen]);
+
+  // Move focus with the sidebar when it opens or closes (at any width: the
+  // toggle pressed is replaced, and a collapsed sidebar is inert), so keyboard
+  // users aren't left on a control that just disappeared.
+  React.useEffect(() => {
+    if (wasOpen.current === sidebarOpen) return;
+    wasOpen.current = sidebarOpen;
+    if (sidebarOpen) closeButtonRef.current?.focus();
+    else openButtonRef.current?.focus();
+  }, [sidebarOpen]);
+
+  // Escape closes the overlay sidebar on small screens.
+  React.useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape' && window.innerWidth < 1024) setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
+
+  const skipToMain = useCallback((event) => {
+    event.preventDefault();
+    mainRef.current?.focus();
+  }, []);
 
   const toggleSection = useCallback((label) => {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
@@ -84,6 +112,13 @@ export default function AppLayout({ children, currentPageName }) {
 
   return (
     <div className="flex h-screen bg-[#0f1729]">
+      <a
+        href="#main-content"
+        onClick={skipToMain}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-cyan-700 focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+      >
+        Skip to main content
+      </a>
       <style>{`
         .scrollbar-dark::-webkit-scrollbar { width: 6px; }
         .scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
@@ -92,8 +127,9 @@ export default function AppLayout({ children, currentPageName }) {
         .scrollbar-dark { scrollbar-width: thin; scrollbar-color: rgba(99,116,158,0.4) transparent; }
       `}</style>
       {/* Mobile overlay */}
+      {/* Mobile overlay (Escape also closes the sidebar) */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={toggleSidebar} />
+        <div role="presentation" className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={toggleSidebar} />
       )}
 
       {/* Sidebar */}
@@ -103,54 +139,62 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="flex items-center gap-3">
             <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-              alt="CareMetric AI"
+              alt=""
               className="w-10 h-10 rounded-xl flex-shrink-0"
               style={{ background: 'transparent', mixBlendMode: 'screen' }}
             />
             <div>
-              <h1 className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></h1>
-              <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Intelligence</p>
+              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></p>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Intelligence</p>
             </div>
           </div>
           <Button
+            ref={closeButtonRef}
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
             aria-label="Collapse sidebar"
-            className="text-slate-500 hover:text-white hover:bg-slate-800/60 h-7 w-7"
+            aria-expanded="true"
+            className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-7 w-7"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
 
         {/* Search Button */}
         <div className="px-2 py-2 min-w-[14rem]">
           <button
+            type="button"
             onClick={openSearch}
             onMouseEnter={loadGlobalSearchDialog}
             onFocus={loadGlobalSearchDialog}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
           >
-            <Search className="w-4 h-4 shrink-0" />
+            <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="flex-1 text-left">Search...</span>
-            <kbd className="text-[10px] text-slate-500 border border-slate-700 rounded px-1 py-0.5">⌘K</kbd>
+            <kbd className="text-[10px] text-slate-400 border border-slate-700 rounded px-1 py-0.5" aria-hidden="true">⌘K</kbd>
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark min-w-[14rem]">
+        <nav aria-label="Main" className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark min-w-[14rem]">
           {visibleNavSections.map((section) => {
             const isCollapsed = collapsedSections[section.label];
+            const listId = `nav-section-${section.label.replace(/\W+/g, '-').toLowerCase()}`;
 
             return (
               <div key={section.label} className="mb-1">
                 <button
+                  type="button"
                   onClick={() => toggleSection(section.label)}
-                  className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                  aria-expanded={!isCollapsed}
+                  aria-controls={listId}
+                  className="flex items-center justify-between w-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-300 transition-colors"
                 >
                   {section.label}
-                  {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {isCollapsed ? <ChevronRight className="w-3 h-3" aria-hidden="true" /> : <ChevronDown className="w-3 h-3" aria-hidden="true" />}
                 </button>
+                <div id={listId}>
                 {!isCollapsed && section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeNavPage === item.page;
@@ -166,14 +210,15 @@ export default function AppLayout({ children, currentPageName }) {
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
-                          : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/50'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} />
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} aria-hidden="true" />
                       <span className="truncate">{item.name}</span>
                     </Link>
                   );
                 })}
+                </div>
               </div>
             );
           })}
@@ -184,7 +229,7 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="mb-2 px-2 flex items-center justify-between">
             <div>
               {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
-              {user && <p className="text-[10px] text-slate-500 capitalize">{user.role?.replace('_', ' ')}</p>}
+              {user && <p className="text-[10px] text-slate-400 capitalize">{user.role?.replace('_', ' ')}</p>}
             </div>
             <NotificationBell />
           </div>
@@ -192,7 +237,7 @@ export default function AppLayout({ children, currentPageName }) {
             <Button
               variant="ghost"
               onClick={() => setAccountOpen(true)}
-              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+              className="flex-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
             >
               <UserCog className="w-4 h-4" aria-hidden="true" />
               <span className="ml-2">Account</span>
@@ -200,7 +245,7 @@ export default function AppLayout({ children, currentPageName }) {
             <Button
               variant="ghost"
               onClick={logout}
-              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+              className="flex-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
             >
               <LogOut className="w-4 h-4" aria-hidden="true" />
               <span className="ml-2">Sign Out</span>
@@ -220,20 +265,20 @@ export default function AppLayout({ children, currentPageName }) {
       {/* Top bar when sidebar is closed */}
       {!sidebarOpen && (
         <div className="fixed top-0 left-0 right-0 z-20 bg-[#0b1120] border-b border-slate-800/60 px-3 py-2 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open sidebar" className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
-            <PanelLeftOpen className="w-5 h-5" />
+          <Button ref={openButtonRef} variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open sidebar" aria-expanded="false" className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
+            <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
           </Button>
-          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-          <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
-          <button onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
-            <Search className="w-4 h-4" />
+          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
+          <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></p>
+          <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-400 hover:text-cyan-400 transition-colors p-1.5">
+            <Search className="w-4 h-4" aria-hidden="true" />
           </button>
           <NotificationBell />
         </div>
       )}
 
       {/* Main content */}
-      <main ref={mainRef} className={`flex-1 overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col w-full ${!sidebarOpen ? 'pt-12' : ''}`}>
+      <main id="main-content" tabIndex={-1} ref={mainRef} className={`flex-1 focus:outline-none overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col w-full ${!sidebarOpen ? 'pt-12' : ''}`}>
         <div className="flex-1">
           {children}
         </div>
@@ -242,16 +287,16 @@ export default function AppLayout({ children, currentPageName }) {
             <div className="flex items-center gap-2">
               <img
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-                alt="CareMetric AI"
+                alt=""
                 className="w-4 h-4 rounded"
                 style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
-              <span className="text-[11px] text-slate-500 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-500">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-500/70 hover:text-cyan-400 hover:underline">www.CareMetric.ai</a>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-400">•</span>
+              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-500 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
             Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>

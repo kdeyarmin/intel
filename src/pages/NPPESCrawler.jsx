@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,6 +28,7 @@ const US_STATES = [
 ];
 
 export default function NPPESCrawler() {
+  const uid = useId();
   const confirm = useConfirm();
   const [dryRun, setDryRun] = useState(false);
   const [skipCompleted, setSkipCompleted] = useState(true);
@@ -219,14 +220,14 @@ export default function NPPESCrawler() {
                   {isRunning ? 'Running' : isPaused ? 'Paused' : 'Idle'}
                 </Badge>
               </CardTitle>
-              <CardDescription className="text-slate-500">Queue-based architecture guarantees no timeouts and full state completion.</CardDescription>
+              <CardDescription className="text-slate-400">Queue-based architecture guarantees no timeouts and full state completion.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Concurrency (Workers)</Label>
+                  <Label htmlFor={`${uid}-concurrency`} className="text-slate-300">Concurrency (Workers)</Label>
                   <Select value={concurrency} onValueChange={setConcurrency} disabled={isRunning || isPaused}>
-                    <SelectTrigger>
+                    <SelectTrigger id={`${uid}-concurrency`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -238,9 +239,9 @@ export default function NPPESCrawler() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Provider Type (Optional)</Label>
+                  <Label htmlFor={`${uid}-entity-type`} className="text-slate-300">Provider Type (Optional)</Label>
                   <Select value={entityType} onValueChange={setEntityType} disabled={isRunning || isPaused}>
-                    <SelectTrigger>
+                    <SelectTrigger id={`${uid}-entity-type`}>
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -254,12 +255,12 @@ export default function NPPESCrawler() {
 
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="flex items-center gap-3">
-                  <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={isRunning || isPaused} />
+                  <Switch checked={dryRun} onCheckedChange={setDryRun} disabled={isRunning || isPaused} aria-label="Dry run (testing)" />
                   <span className="text-sm text-slate-300">{dryRun ? 'Dry Run (Testing)' : 'Live Import'}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Switch checked={skipCompleted} onCheckedChange={setSkipCompleted} disabled={isRunning || isPaused} />
-                  <span className="text-sm text-slate-300">Skip completed states</span>
+                  <Switch checked={skipCompleted} onCheckedChange={setSkipCompleted} disabled={isRunning || isPaused} aria-labelledby={`${uid}-skip-completed-label`} />
+                  <span id={`${uid}-skip-completed-label`} className="text-sm text-slate-300">Skip completed states</span>
                 </div>
               </div>
 
@@ -316,6 +317,8 @@ export default function NPPESCrawler() {
                       size="sm"
                       onClick={() => setViewMode('map')}
                       className="rounded-none h-7 px-2"
+                      aria-label="Map view"
+                      aria-pressed={viewMode === 'map'}
                     >
                       <Map className="w-3.5 h-3.5" />
                     </Button>
@@ -324,6 +327,8 @@ export default function NPPESCrawler() {
                       size="sm"
                       onClick={() => setViewMode('grid')}
                       className="rounded-none h-7 px-2"
+                      aria-label="Grid view"
+                      aria-pressed={viewMode === 'grid'}
                     >
                       <LayoutGrid className="w-3.5 h-3.5" />
                     </Button>
@@ -343,7 +348,7 @@ export default function NPPESCrawler() {
                   <span>{completedCount + failedCount} / {totalStates} states</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 bg-slate-700" />
+                <Progress value={progress} className="h-3 bg-slate-700" aria-label="States crawled" />
               </div>
 
               {viewMode === 'map' ? (
@@ -437,7 +442,7 @@ export default function NPPESCrawler() {
                     {isRunning ? (estimatedMins > 60 ? `~${Math.round(estimatedMins/60)} hrs` : `~${estimatedMins} mins`) : '-'}
                   </p>
                 </div>
-                <Clock className="w-8 h-8 text-slate-500" />
+                <Clock className="w-8 h-8 text-slate-400" />
               </div>
 
               {failedCount > 0 && (

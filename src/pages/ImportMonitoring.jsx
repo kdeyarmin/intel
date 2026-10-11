@@ -351,9 +351,9 @@ export default function ImportMonitoring() {
       case 'paused':
         return <Pause className="w-5 h-5 text-amber-500" />;
       case 'cancelled':
-        return <XCircle className="w-5 h-5 text-slate-500" />;
+        return <XCircle className="w-5 h-5 text-slate-400" />;
       default:
-        return <Clock className="w-5 h-5 text-slate-500" />;
+        return <Clock className="w-5 h-5 text-slate-400" />;
     }
   };
 
@@ -415,18 +415,19 @@ export default function ImportMonitoring() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Link to={createPageUrl('DataCenter')}>
-            <Button
-              variant="outline"
-              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
-            >
+          <Button
+            asChild
+            variant="outline"
+            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+          >
+            <Link to={createPageUrl('DataCenter')}>
               <Upload className="w-4 h-4 mr-2" />
               Manual Upload
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             onClick={() => setShowNewImport(true)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="bg-cyan-700 hover:bg-cyan-800 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Auto-Import
@@ -549,7 +550,7 @@ export default function ImportMonitoring() {
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span className="text-sm font-medium text-slate-200">{IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}</span>
-                    <span className="text-xs text-slate-500">{batch.file_name}</span>
+                    <span className="text-xs text-slate-400">{batch.file_name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -618,7 +619,7 @@ export default function ImportMonitoring() {
               <Button
                 size="sm"
                 disabled={selectedForRerun.size === 0 || isBulkRetrying}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                className="bg-cyan-700 hover:bg-cyan-800 text-white"
                 onClick={handleBulkRetry}
               >
                 {isBulkRetrying ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
@@ -636,7 +637,7 @@ export default function ImportMonitoring() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-slate-500 hover:text-slate-300"
+                  className="text-xs text-slate-400 hover:text-slate-300"
                   onClick={() => {
                     const retryable = displayedFailedBatches.filter(b => (b.retry_count || 0) < MAX_RETRIES);
                     if (selectedForRerun.size === retryable.length) {
@@ -668,11 +669,12 @@ export default function ImportMonitoring() {
             />
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
+                  aria-label="Search completed jobs"
                   className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
@@ -680,6 +682,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Status"
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed</option>
@@ -690,6 +693,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Category"
               >
                 <option value="all">All Categories</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
@@ -700,6 +704,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={yearFilter}
                 onChange={(e) => setYearFilter(e.target.value)}
+                aria-label="Data year"
               >
                 <option value="all">All Years</option>
                 {allYears.map(y => (
@@ -711,6 +716,7 @@ export default function ImportMonitoring() {
                   className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
+                  aria-label="Tag"
                 >
                   <option value="">All Tags</option>
                   {allTags.map(t => (
@@ -722,6 +728,7 @@ export default function ImportMonitoring() {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={lastNFilter}
                 onChange={(e) => setLastNFilter(Number(e.target.value))}
+                aria-label="Number of imports"
               >
                 <option value={0}>All Imports</option>
                 <option value={5}>Last 5</option>
@@ -734,6 +741,7 @@ export default function ImportMonitoring() {
                   type="checkbox"
                   checked={showOnlyLatest}
                   onChange={(e) => setShowOnlyLatest(e.target.checked)}
+                  aria-label="Latest only"
                   className="rounded bg-slate-800 border-slate-600"
                 />
                 Latest only
@@ -749,12 +757,12 @@ export default function ImportMonitoring() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-slate-400">
               <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin" />
               <p>Loading import jobs...</p>
             </div>
           ) : displayBatches.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-slate-400">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">No completed jobs match filters</p>
               <p className="text-sm mt-1">Try adjusting your filters or start a new import</p>
@@ -769,6 +777,10 @@ export default function ImportMonitoring() {
                       : 'border-slate-700/50 cursor-pointer'
                     : 'border-slate-700/50'
                 }`}
+                  // In bulk-retry mode a click anywhere on the card is a pointer shortcut for the
+                  // row's checkbox below, which is the keyboard/screen-reader control. A button role
+                  // here would hide the card's own action buttons from assistive technology.
+                  role="presentation"
                   onClick={bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES ? () => toggleSelectForRerun(batch.id) : undefined}
                 >
                   {/* Row 1: Title, status, actions */}
@@ -779,6 +791,7 @@ export default function ImportMonitoring() {
                           type="checkbox"
                           checked={selectedForRerun.has(batch.id)}
                           onChange={() => toggleSelectForRerun(batch.id)}
+                          aria-label={`Select ${IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type} ${batch.file_name || ''} for re-run`.trim()}
                           className="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500/30"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -787,9 +800,9 @@ export default function ImportMonitoring() {
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-slate-200">
+                          <h2 className="font-semibold text-slate-200">
                             {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
-                          </h3>
+                          </h2>
                           {batch.retry_of && (
                             <Badge className="text-xs gap-1 bg-amber-900/15 text-amber-400 border border-amber-500/20">
                               <RefreshCw className="w-3 h-3" /> Retry #{batch.retry_count || 1}
@@ -823,8 +836,9 @@ export default function ImportMonitoring() {
                         className="h-7 text-xs text-red-400 border-red-500/30 hover:bg-red-900/10"
                         disabled={deletingBatchId === batch.id}
                         onClick={() => setConfirmDeleteBatch(batch)}
+                        aria-label={`Delete import job ${batch.file_name || IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}`}
                       >
-                        {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                        {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Trash2 className="w-3 h-3" aria-hidden="true" />}
                       </Button>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -921,7 +935,7 @@ export default function ImportMonitoring() {
                         )}
                       </>
                     )}
-                    <div className="ml-auto text-slate-500 text-xs">{formatTimestamp(batch.created_date)}</div>
+                    <div className="ml-auto text-slate-400 text-xs">{formatTimestamp(batch.created_date)}</div>
                   </div>
                 </div>
               ))}
@@ -941,9 +955,9 @@ export default function ImportMonitoring() {
           </DialogHeader>
           {confirmDeleteBatch && (
             <div className="text-sm bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 space-y-1">
-              <p><span className="text-slate-500">Type:</span> <span className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[confirmDeleteBatch.import_type] || confirmDeleteBatch.import_type}</span></p>
-              <p><span className="text-slate-500">File:</span> <span className="font-medium text-slate-200">{confirmDeleteBatch.file_name}</span></p>
-              <p><span className="text-slate-500">Status:</span> <Badge className={statusColors[confirmDeleteBatch.status] || ''}>{confirmDeleteBatch.status}</Badge></p>
+              <p><span className="text-slate-400">Type:</span> <span className="font-medium text-slate-200">{IMPORT_TYPE_LABELS[confirmDeleteBatch.import_type] || confirmDeleteBatch.import_type}</span></p>
+              <p><span className="text-slate-400">File:</span> <span className="font-medium text-slate-200">{confirmDeleteBatch.file_name}</span></p>
+              <p><span className="text-slate-400">Status:</span> <Badge className={statusColors[confirmDeleteBatch.status] || ''}>{confirmDeleteBatch.status}</Badge></p>
             </div>
           )}
           <DialogFooter>
@@ -1074,25 +1088,25 @@ function ImportHistoryView({ batches, formatTimestamp }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500">Total Imports</p>
+            <p className="text-xs text-slate-400">Total Imports</p>
             <p className="text-2xl font-bold text-white">{stats.total}</p>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500">Successful</p>
+            <p className="text-xs text-slate-400">Successful</p>
             <p className="text-2xl font-bold text-emerald-400">{stats.completed}</p>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500">Records Imported</p>
+            <p className="text-xs text-slate-400">Records Imported</p>
             <p className="text-2xl font-bold text-blue-400">{stats.totalImported.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-slate-500">Records Processed</p>
+            <p className="text-xs text-slate-400">Records Processed</p>
             <p className="text-2xl font-bold text-slate-300">{stats.totalRecords.toLocaleString()}</p>
           </CardContent>
         </Card>
@@ -1105,11 +1119,12 @@ function ImportHistoryView({ batches, formatTimestamp }) {
             <CardTitle className="text-slate-200">Import History</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <Input
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   placeholder="Search..."
+                  aria-label="Search import history"
                   className="h-8 w-40 pl-7 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400"
                 />
               </div>
@@ -1117,6 +1132,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
                 className="text-xs border border-slate-700 rounded-md px-2 py-1.5 bg-slate-800/50 text-slate-300 h-8"
                 value={historyType}
                 onChange={(e) => setHistoryType(e.target.value)}
+                aria-label="Import type"
               >
                 <option value="all">All Types</option>
                 {uniqueTypes.map(t => (
@@ -1129,7 +1145,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
         </CardHeader>
         <CardContent>
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-slate-400">
               <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="font-medium">No import history</p>
             </div>
@@ -1137,16 +1153,16 @@ function ImportHistoryView({ batches, formatTimestamp }) {
             <div className="space-y-6">
               {Object.entries(grouped).map(([date, items]) => (
                 <div key={date}>
-                  <p className="text-xs font-semibold text-slate-500 mb-2 sticky top-0 bg-[#141d30] py-1">{date}</p>
+                  <p className="text-xs font-semibold text-slate-400 mb-2 sticky top-0 bg-[#141d30] py-1">{date}</p>
                   <div className="space-y-2">
                     {items.map(b => (
                       <div key={b.id} className="flex items-center gap-3 p-3 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 transition-colors">
                         <Badge className={`${statusColors[b.status] || ''} text-[10px] w-20 justify-center`}>{b.status}</Badge>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-200 truncate">{IMPORT_TYPE_LABELS[b.import_type] || b.import_type}</p>
-                          <p className="text-xs text-slate-500 truncate">{b.file_name}</p>
+                          <p className="text-xs text-slate-400 truncate">{b.file_name}</p>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-slate-500 flex-shrink-0">
+                        <div className="flex items-center gap-4 text-xs text-slate-400 flex-shrink-0">
                           {b.imported_rows > 0 && <span className="text-blue-400">{b.imported_rows.toLocaleString()} new</span>}
                           {b.skipped_rows > 0 && <span className="text-amber-400">{b.skipped_rows.toLocaleString()} dupes</span>}
                           {b.total_rows > 0 && <span>{b.total_rows.toLocaleString()} fetched</span>}

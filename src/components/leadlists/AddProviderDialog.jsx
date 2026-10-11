@@ -78,6 +78,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
         <div className="space-y-4">
           <div className="flex gap-2">
             <Input
+              aria-label="Search providers by NPI or name"
               placeholder="Search by NPI or name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -91,7 +92,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
 
           <div className="max-h-64 overflow-y-auto space-y-1">
             {results.length === 0 && !searching && (
-              <p className="text-sm text-slate-500 text-center py-4">Search for providers to add</p>
+              <p className="text-sm text-slate-400 text-center py-4">Search for providers to add</p>
             )}
             {results.map(p => {
               const name = p.entity_type === 'Individual'

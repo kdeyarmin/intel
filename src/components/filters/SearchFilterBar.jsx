@@ -11,7 +11,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
     <div className="space-y-3">
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" aria-hidden="true" />
           <Input
             placeholder={placeholder}
             aria-label={placeholder}
@@ -32,7 +32,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
             <div key={filter.key} className="min-w-[140px]">
               {filter.type === 'select' ? (
                 <Select value={filter.value || 'all'} onValueChange={(v) => filter.onChange(v)}>
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger aria-label={filter.label} className="h-9 text-sm">
                     <SelectValue placeholder={filter.label} />
                   </SelectTrigger>
                   <SelectContent>
@@ -45,6 +45,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
               ) : filter.type === 'text' ? (
                 <Input
                   placeholder={filter.label}
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"
@@ -53,6 +54,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
                 <Input
                   type="number"
                   placeholder={filter.label}
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"
@@ -60,6 +62,7 @@ export default function SearchFilterBar({ searchTerm, onSearchChange, filters = 
               ) : filter.type === 'date' ? (
                 <Input
                   type="date"
+                  aria-label={filter.label}
                   value={filter.value || ''}
                   onChange={(e) => filter.onChange(e.target.value)}
                   className="h-9 text-sm"

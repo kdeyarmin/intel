@@ -187,14 +187,14 @@ For each email assign:
     <Card className="bg-slate-700/40">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="w-4 h-4 text-blue-600" />
+          <Mail className="w-4 h-4 text-blue-400" />
           AI Email Finder
         </CardTitle>
         <Button
           size="sm"
           onClick={findEmails}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="text-white bg-blue-600 hover:bg-blue-700"
         >
           {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Search className="w-3 h-3 mr-1" />}
           {loading ? 'Searching...' : results ? 'Search Again' : 'Find Emails'}
@@ -202,7 +202,7 @@ For each email assign:
       </CardHeader>
       <CardContent>
         {!results && !loading && (
-          <p className="text-sm text-slate-500 text-center py-4">
+          <p className="text-sm text-slate-400 text-center py-4">
             Click "Find Emails" to search for this provider's contact information
           </p>
         )}
@@ -239,6 +239,7 @@ For each email assign:
                       variant="ghost"
                       className="h-7 w-7 p-0"
                       onClick={() => copyEmail(item.email, idx)}
+                      aria-label={`Copy ${item.email}`}
                     >
                       {copiedIdx === idx ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                     </Button>

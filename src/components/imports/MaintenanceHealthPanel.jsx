@@ -253,7 +253,7 @@ export default function MaintenanceHealthPanel() {
                     <span className={r.ok ? 'text-emerald-400' : 'text-orange-400'}>•</span>
                     <span className="text-slate-300">{t.label}:</span>
                     <span className="text-slate-400">{r.summary}</span>
-                    <span className="text-slate-500 ml-auto">{formatRelative(r.at)}</span>
+                    <span className="text-slate-400 ml-auto">{formatRelative(r.at)}</span>
                   </li>
                 );
               })}

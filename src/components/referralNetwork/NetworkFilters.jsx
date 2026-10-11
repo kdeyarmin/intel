@@ -23,7 +23,7 @@ export default function NetworkFilters({
       <CardContent className="pt-4 pb-3">
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input placeholder="Search NPI or name..." aria-label="Search providers in this network" value={search} onChange={(e) => onSearchChange(e.target.value)} className="pl-8 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
           </div>
           <Select value={entityType} onValueChange={onEntityTypeChange}>
@@ -43,13 +43,13 @@ export default function NetworkFilters({
           </Select>
           <Input type="number" min={0} placeholder="Min volume" aria-label="Minimum referral volume" value={minVolume || ''} onChange={(e) => onMinVolumeChange(Number(e.target.value) || 0)} className="w-28 h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
           {hasFilters && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-slate-500 hover:text-slate-300" onClick={onReset}>
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-slate-400 hover:text-slate-300" onClick={onReset}>
               <RotateCcw className="w-3 h-3" /> Reset
             </Button>
           )}
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <Filter className="w-3 h-3 text-slate-500" />
+          <Filter className="w-3 h-3 text-slate-400" />
           <span className="text-[10px] text-slate-400">Showing {filteredNodes} of the {totalNodes} busiest providers in this network</span>
           {hasFilters && <Badge variant="secondary" className="text-[9px]">Filtered</Badge>}
         </div>

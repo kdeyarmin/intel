@@ -91,7 +91,7 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
       </CardHeader>
       <CardContent>
         {!results && !analyzing && (
-          <p className="text-xs text-slate-500 text-center py-4">Click Analyze to run AI quality check on this provider's data</p>
+          <p className="text-xs text-slate-400 text-center py-4">Click Analyze to run AI quality check on this provider's data</p>
         )}
         {analyzing && (
           <div className="text-center py-4">
@@ -103,7 +103,7 @@ Look for: volume anomalies, address conflicts, missing critical fields, utilizat
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <span className={`text-2xl font-bold ${scoreColor(results.quality_score)}`}>{typeof results.quality_score === 'number' ? results.quality_score : '—'}</span>
-              <span className="text-xs text-slate-500">/ 100</span>
+              <span className="text-xs text-slate-400">/ 100</span>
               <p className="text-xs text-slate-400 flex-1">{results.summary}</p>
             </div>
             {results.issues?.length > 0 ? (

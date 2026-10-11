@@ -97,14 +97,15 @@ export default function ResetPassword() {
       <form onSubmit={submit} className="space-y-4">
         {invite && !info.full_name && (
           <div>
-            <label htmlFor="reset-name" className="block text-sm font-medium text-slate-300 mb-1">Full name</label>
-            <input id="reset-name" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+            <label id="reset-name-label" htmlFor="reset-name" className="block text-sm font-medium text-slate-300 mb-1">Full name</label>
+            <input id="reset-name" aria-labelledby="reset-name-label" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
           </div>
         )}
         <div>
-          <label htmlFor="reset-password" className="block text-sm font-medium text-slate-300 mb-1">New password</label>
+          <label id="reset-password-label" htmlFor="reset-password" className="block text-sm font-medium text-slate-300 mb-1">New password</label>
           <input
             id="reset-password"
+            aria-labelledby="reset-password-label"
             type="password"
             autoComplete="new-password"
             required
@@ -117,9 +118,10 @@ export default function ResetPassword() {
           <p id="reset-password-hint" className="mt-1 text-xs text-slate-400">At least {MIN_PASSWORD_LENGTH} characters.</p>
         </div>
         <div>
-          <label htmlFor="reset-confirm" className="block text-sm font-medium text-slate-300 mb-1">Confirm password</label>
+          <label id="reset-confirm-label" htmlFor="reset-confirm" className="block text-sm font-medium text-slate-300 mb-1">Confirm password</label>
           <input
             id="reset-confirm"
+            aria-labelledby="reset-confirm-label"
             type="password"
             autoComplete="new-password"
             required

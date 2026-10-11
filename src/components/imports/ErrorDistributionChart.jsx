@@ -77,7 +77,7 @@ export default function ErrorDistributionChart({ errors }) {
           <div key={d.name} className="flex items-center gap-1.5 text-[10px]">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.fill }} />
             <span className="text-slate-400">{d.label}</span>
-            <span className="text-slate-500">({d.count})</span>
+            <span className="text-slate-400">({d.count})</span>
           </div>
         ))}
       </div>

@@ -165,7 +165,7 @@ Be specific to healthcare/CMS data patterns. Use plain language.`,
                 onClick={analyze}
                 size="sm"
                 variant="ghost"
-                className="text-xs text-slate-500 hover:text-slate-300"
+                className="text-xs text-slate-400 hover:text-slate-300"
               >
                 Re-analyze
               </Button>

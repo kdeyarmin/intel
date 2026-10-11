@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import AICampaignDrafter from './AICampaignDrafter';
 import CampaignTemplatePicker from './CampaignTemplatePicker';
 
 export default function QuickCampaignLauncher({ selectedProviders = [], open, onOpenChange }) {
+  const uid = useId();
   const [step, setStep] = useState('setup');
   const [loading, setLoading] = useState(false);
   const [aiTips, setAiTips] = useState([]);
@@ -157,8 +158,10 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
             />
 
             <div>
-              <Label className="text-xs text-slate-400">Campaign Name *</Label>
+              <Label id={`${uid}-name-label`} htmlFor={`${uid}-name`} className="text-xs text-slate-400">Campaign Name *</Label>
               <Input
+                id={`${uid}-name`}
+                aria-labelledby={`${uid}-name-label`}
                 placeholder="e.g., Provider Outreach - February 2026"
                 value={campaign.name}
                 onChange={(e) => setCampaign({ ...campaign, name: e.target.value })}
@@ -167,19 +170,23 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
             </div>
 
             <div>
-              <Label className="text-xs text-slate-400">Subject Line *</Label>
+              <Label id={`${uid}-subject-label`} htmlFor={`${uid}-subject`} className="text-xs text-slate-400">Subject Line *</Label>
               <Input
+                id={`${uid}-subject`}
+                aria-labelledby={`${uid}-subject-label`}
                 placeholder="Hello {{first_name}}, partnership opportunity"
                 value={campaign.subject_template}
                 onChange={(e) => setCampaign({ ...campaign, subject_template: e.target.value })}
                 className="mt-1 bg-slate-800/50 border-slate-700 text-slate-200 font-mono text-xs"
               />
-              <p className="text-[10px] text-slate-500 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
+              <p className="text-[10px] text-slate-400 mt-1">Variables: {'{{provider_name}}, {{first_name}}, {{specialty}}, {{location_city}}'}</p>
             </div>
 
             <div>
-              <Label className="text-xs text-slate-400">Message Body *</Label>
+              <Label id={`${uid}-body-label`} htmlFor={`${uid}-body`} className="text-xs text-slate-400">Message Body *</Label>
               <Textarea
+                id={`${uid}-body`}
+                aria-labelledby={`${uid}-body-label`}
                 placeholder={"Dear {{first_name}},\n\nWe recognize your expertise in {{specialty}}..."}
                 value={campaign.body_template}
                 onChange={(e) => setCampaign({ ...campaign, body_template: e.target.value })}
@@ -189,10 +196,12 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
             <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
               <div>
-                <Label className="text-xs text-slate-300">AI Personalization</Label>
-                <p className="text-[10px] text-slate-500">Customize each message with provider context</p>
+                <Label id={`${uid}-ai-personalization-label`} htmlFor={`${uid}-ai-personalization`} className="text-xs text-slate-300">AI Personalization</Label>
+                <p className="text-[10px] text-slate-400">Customize each message with provider context</p>
               </div>
               <Switch
+                id={`${uid}-ai-personalization`}
+                aria-labelledby={`${uid}-ai-personalization-label`}
                 checked={campaign.ai_personalization}
                 onCheckedChange={(val) => setCampaign({ ...campaign, ai_personalization: val })}
               />
@@ -200,10 +209,12 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
             <div className="flex items-center justify-between p-3 bg-slate-800/30 rounded-lg border border-slate-700/30">
               <div>
-                <Label className="text-xs text-slate-300">Schedule for Later</Label>
-                <p className="text-[10px] text-slate-500">Choose a date/time to send</p>
+                <Label id={`${uid}-schedule-label`} htmlFor={`${uid}-schedule`} className="text-xs text-slate-300">Schedule for Later</Label>
+                <p className="text-[10px] text-slate-400">Choose a date/time to send</p>
               </div>
               <Switch
+                id={`${uid}-schedule`}
+                aria-labelledby={`${uid}-schedule-label`}
                 checked={campaign.schedule_send}
                 onCheckedChange={(val) => setCampaign({ ...campaign, schedule_send: val })}
               />
@@ -211,8 +222,10 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
 
             {campaign.schedule_send && (
               <div>
-                <Label className="text-xs text-slate-400">Scheduled Date & Time</Label>
+                <Label id={`${uid}-scheduled-at-label`} htmlFor={`${uid}-scheduled-at`} className="text-xs text-slate-400">Scheduled Date & Time</Label>
                 <Input
+                  id={`${uid}-scheduled-at`}
+                  aria-labelledby={`${uid}-scheduled-at-label`}
                   type="datetime-local"
                   value={campaign.scheduled_at}
                   onChange={(e) => setCampaign({ ...campaign, scheduled_at: e.target.value })}

@@ -73,7 +73,7 @@ export default function BillingStatusWidget({ sidebarOpen }) {
           <span className={`font-semibold ${isLow ? 'text-red-400' : 'text-slate-200'}`}>
             {credits.total - credits.used} left
           </span>
-          <span className="text-slate-500 font-medium">{credits.total} total</span>
+          <span className="text-slate-400 font-medium">{credits.total} total</span>
         </div>
         <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
           <div 

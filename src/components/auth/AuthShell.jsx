@@ -21,7 +21,7 @@ export const inputClass =
   'w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent';
 
 export const primaryButtonClass =
-  'w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors';
+  'w-full py-2.5 bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors';
 
 export function Notice({ tone = 'info', children }) {
   const tones = {

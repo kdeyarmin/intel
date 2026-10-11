@@ -119,11 +119,11 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
       </CardHeader>
       <CardContent>
         {records.length === 0 && (
-          <p className="text-xs text-slate-500 text-center py-4">Approve enrichment records to unlock actionable suggestions.</p>
+          <p className="text-xs text-slate-400 text-center py-4">Approve enrichment records to unlock actionable suggestions.</p>
         )}
 
         {!suggestions && records.length > 0 && !loading && (
-          <p className="text-xs text-slate-500 text-center py-4">
+          <p className="text-xs text-slate-400 text-center py-4">
             {records.length} approved records. Click "Find Actions" to discover outreach opportunities.
           </p>
         )}

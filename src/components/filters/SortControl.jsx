@@ -10,9 +10,9 @@ export default function SortControl({ sortField, sortDir, onSortChange, sortOpti
         value={sortField || 'default'}
         onValueChange={(v) => onSortChange(v, sortDir || 'asc')}
       >
-        <SelectTrigger className="h-8 text-xs w-[130px] bg-slate-800/50 border-slate-700 text-slate-300">
+        <SelectTrigger aria-label="Sort by" className="h-8 text-xs w-[130px] bg-slate-800/50 border-slate-700 text-slate-300">
           <div className="flex items-center gap-1">
-            <ArrowUpDown className="w-3 h-3 text-slate-400" />
+            <ArrowUpDown className="w-3 h-3 text-slate-400" aria-hidden="true" />
             <SelectValue placeholder="Sort by" />
           </div>
         </SelectTrigger>
@@ -29,8 +29,9 @@ export default function SortControl({ sortField, sortDir, onSortChange, sortOpti
           size="icon"
           className="h-8 w-8"
           onClick={() => onSortChange(sortField, sortDir === 'asc' ? 'desc' : 'asc')}
+          aria-label={sortDir === 'asc' ? 'Sorted ascending, switch to descending' : 'Sorted descending, switch to ascending'}
         >
-          {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+          {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" aria-hidden="true" /> : <ArrowDown className="w-3.5 h-3.5" aria-hidden="true" />}
         </Button>
       )}
     </div>

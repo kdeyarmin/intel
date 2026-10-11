@@ -83,18 +83,18 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
                     <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
                     <div>
                       <p className="text-sm font-semibold text-slate-200">{state}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-400">
                         {batch.total_rows != null ? `${batch.total_rows.toLocaleString()} rows found` : 'Fetching data...'}
                         {batch.valid_rows != null ? ` • ${batch.valid_rows.toLocaleString()} valid` : ''}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 text-xs text-blue-600">
+                    <div className="flex items-center gap-1 text-xs text-blue-400">
                       <Timer className="w-3 h-3" />
                       {elapsed < 60 ? `${elapsed}s elapsed` : `${Math.floor(elapsed / 60)}m elapsed`}
                     </div>
-                    <p className="text-[10px] text-slate-500">ETA: {eta}</p>
+                    <p className="text-[10px] text-slate-400">ETA: {eta}</p>
                   </div>
                 </div>
               );
@@ -104,7 +104,7 @@ export default function ProcessingStates({ crawlStatus, nppesImports, loading })
               <div key={st} className="flex items-center gap-3 p-3 bg-blue-900/5 rounded-lg border border-blue-500/10">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                 <span className="text-sm font-medium text-slate-400">{st}</span>
-                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600 ml-auto">queued</Badge>
+                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-400 ml-auto">queued</Badge>
               </div>
             ))}
 

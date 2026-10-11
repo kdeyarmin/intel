@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Filter, X } from 'lucide-react';
 
 export default function LeadListFilters({ filters, onChange, onReset }) {
+  const uid = useId();
   const handleChange = (field, value) => {
     onChange({ ...filters, [field]: value });
   };
@@ -29,9 +30,9 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label>State</Label>
+            <Label htmlFor={`${uid}-state`}>State</Label>
             <Select value={filters.state} onValueChange={(v) => handleChange('state', v)}>
-              <SelectTrigger>
+              <SelectTrigger id={`${uid}-state`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -42,8 +43,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>County</Label>
+            <Label htmlFor={`${uid}-county`}>County</Label>
             <Input
+              id={`${uid}-county`}
+              aria-label="County"
               placeholder="e.g., Allegheny"
               value={filters.county || ''}
               onChange={(e) => handleChange('county', e.target.value)}
@@ -51,8 +54,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>ZIP Code</Label>
+            <Label htmlFor={`${uid}-zip`}>ZIP Code</Label>
             <Input
+              id={`${uid}-zip`}
+              aria-label="ZIP Code"
               placeholder="e.g., 15222"
               value={filters.zip || ''}
               onChange={(e) => handleChange('zip', e.target.value)}
@@ -60,8 +65,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>Radius (miles)</Label>
+            <Label htmlFor={`${uid}-radius`}>Radius (miles)</Label>
             <Input
+              id={`${uid}-radius`}
+              aria-label="Radius (miles)"
               type="number"
               placeholder="e.g., 25"
               value={filters.radius || ''}
@@ -70,8 +77,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>Specialty (contains)</Label>
+            <Label htmlFor={`${uid}-specialty`}>Specialty (contains)</Label>
             <Input
+              id={`${uid}-specialty`}
+              aria-label="Specialty (contains)"
               placeholder="e.g., Family Medicine"
               value={filters.specialty || ''}
               onChange={(e) => handleChange('specialty', e.target.value)}
@@ -79,8 +88,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>Min Score</Label>
+            <Label htmlFor={`${uid}-minScore`}>Min Score</Label>
             <Input
+              id={`${uid}-minScore`}
+              aria-label="Min Score"
               type="number"
               min="0"
               max="100"
@@ -91,8 +102,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>Max Score</Label>
+            <Label htmlFor={`${uid}-maxScore`}>Max Score</Label>
             <Input
+              id={`${uid}-maxScore`}
+              aria-label="Max Score"
               type="number"
               min="0"
               max="100"
@@ -103,8 +116,10 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
           </div>
 
           <div>
-            <Label>Min Patient Volume</Label>
+            <Label htmlFor={`${uid}-minVolume`}>Min Patient Volume</Label>
             <Input
+              id={`${uid}-minVolume`}
+              aria-label="Min Patient Volume"
               type="number"
               placeholder="e.g., 100"
               value={filters.minVolume || ''}
@@ -115,27 +130,30 @@ export default function LeadListFilters({ filters, onChange, onReset }) {
 
         <div className="pt-4 border-t space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="medicare">Medicare Participation Required</Label>
+            <Label htmlFor={`${uid}-medicare`}>Medicare Participation Required</Label>
             <Switch
-              id="medicare"
+              id={`${uid}-medicare`}
+              aria-label="Medicare Participation Required"
               checked={filters.requireMedicare}
               onCheckedChange={(v) => handleChange('requireMedicare', v)}
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="behavioral">Behavioral Health Focus</Label>
+            <Label htmlFor={`${uid}-behavioral`}>Behavioral Health Focus</Label>
             <Switch
-              id="behavioral"
+              id={`${uid}-behavioral`}
+              aria-label="Behavioral Health Focus"
               checked={filters.behavioralHealth}
               onCheckedChange={(v) => handleChange('behavioralHealth', v)}
             />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="geriatric">Geriatric-Heavy Practice</Label>
+            <Label htmlFor={`${uid}-geriatric`}>Geriatric-Heavy Practice</Label>
             <Switch
-              id="geriatric"
+              id={`${uid}-geriatric`}
+              aria-label="Geriatric-Heavy Practice"
               checked={filters.geriatricHeavy}
               onCheckedChange={(v) => handleChange('geriatricHeavy', v)}
             />

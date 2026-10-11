@@ -167,13 +167,13 @@ Be specific and actionable. Reference actual numbers from the data.`,
                   <p className={`text-2xl font-bold ${RISK_COLORS[predictions.overall_risk]}`}>
                     {predictions.overall_risk?.toUpperCase()}
                   </p>
-                  <p className="text-[10px] text-slate-500">Overall Risk</p>
+                  <p className="text-[10px] text-slate-400">Overall Risk</p>
                 </div>
                 <div className="text-center">
                   <p className={`text-xl font-bold ${TREND_COLORS[predictions.risk_trend]}`}>
                     {TREND_ICONS[predictions.risk_trend]} {predictions.risk_trend}
                   </p>
-                  <p className="text-[10px] text-slate-500">Trend</p>
+                  <p className="text-[10px] text-slate-400">Trend</p>
                 </div>
                 <p className="text-xs text-slate-400 flex-1">{predictions.summary}</p>
               </div>
@@ -193,7 +193,7 @@ Be specific and actionable. Reference actual numbers from the data.`,
                           </span>
                         </div>
                         {d.risk_factors?.length > 0 && (
-                          <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">{d.risk_factors[0]}</p>
+                          <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{d.risk_factors[0]}</p>
                         )}
                       </div>
                     );

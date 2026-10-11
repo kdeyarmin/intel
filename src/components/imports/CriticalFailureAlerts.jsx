@@ -47,36 +47,43 @@ export default function CriticalFailureAlerts({ batches, onViewErrors }) {
             const errorConfig = ERROR_CATEGORIES[errorCat];
 
             return (
+              // Opening the errors is one button; Resume is a sibling control,
+              // not nested inside it.
               <div
                 key={batch.id}
-                className="flex items-center gap-3 bg-slate-800/60 border border-red-500/15 rounded-lg p-3 hover:bg-slate-800/80 transition-colors cursor-pointer"
-                onClick={() => onViewErrors?.(batch)}
+                className="flex items-center gap-2 bg-slate-800/60 border border-red-500/15 rounded-lg p-3 hover:bg-slate-800/80 transition-colors"
               >
-                <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium text-slate-200">
-                      {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
+                <button
+                  type="button"
+                  onClick={() => onViewErrors?.(batch)}
+                  className="flex flex-1 min-w-0 items-center gap-3 text-left"
+                >
+                  <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" aria-hidden="true" />
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-medium text-slate-200">
+                        {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type}
+                      </span>
+                      <Badge className={`${errorConfig.badgeColor} text-[9px]`}>{errorConfig.label}</Badge>
                     </span>
-                    <Badge className={`${errorConfig.badgeColor} text-[9px]`}>{errorConfig.label}</Badge>
-                  </div>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {topError?.message || topError?.detail || 'Failed before processing'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatTimeAgo(batch.created_date)}
+                    <span className="block text-[11px] text-slate-400 truncate">
+                      {topError?.message || topError?.detail || 'Failed before processing'}
+                    </span>
                   </span>
-                  {batch.error_samples?.length > 0 && (
-                    <Badge className="bg-red-900/15 text-red-400 text-[9px]">
-                      {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                  <ResumeImportButton batch={batch} onResumed={onViewErrors ? () => onViewErrors(null) : undefined} />
-                  <ChevronRight className="w-4 h-4 text-slate-500" />
-                </div>
+                  <span className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" aria-hidden="true" />
+                      {formatTimeAgo(batch.created_date)}
+                    </span>
+                    {batch.error_samples?.length > 0 && (
+                      <Badge className="bg-red-900/15 text-red-400 text-[9px]">
+                        {batch.error_samples.length} error{batch.error_samples.length !== 1 ? 's' : ''}
+                      </Badge>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                  </span>
+                </button>
+                <ResumeImportButton batch={batch} onResumed={onViewErrors ? () => onViewErrors(null) : undefined} />
               </div>
             );
           })}

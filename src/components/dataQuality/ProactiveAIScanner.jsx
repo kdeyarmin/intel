@@ -184,24 +184,24 @@ Return up to 10 most important issues, prioritized by severity and affected coun
             onClick={runProactiveScan}
             disabled={scanning}
             size="sm"
-            className="bg-violet-600 hover:bg-violet-700 gap-1.5"
+            className="text-white bg-violet-600 hover:bg-violet-700 gap-1.5"
           >
             {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             {scanning ? 'Scanning...' : 'Run AI Scan'}
           </Button>
         </div>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-400 mt-1">
           Uses AI to proactively identify data quality issues across Providers, Locations, and Taxonomies
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         {scanning && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-400">
               <span>{progress.step}</span>
               <span>{progress.pct}%</span>
             </div>
-            <Progress value={progress.pct} className="h-2" />
+            <Progress value={progress.pct} className="h-2" aria-label="Scan progress" />
           </div>
         )}
 

@@ -182,7 +182,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
           <Badge className="bg-cyan-900/15 text-cyan-400 text-[9px]">{selectedErrorCount} selected</Badge>
         )}
         <div className="ml-auto">
-          {showPanel ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+          {showPanel ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
         </div>
       </button>
 
@@ -201,7 +201,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   {selectedCategories.size === sortedCategories.length ? 'Deselect All' : 'Select All'}
                 </Button>
                 {selectedCategories.size > 0 && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     {selectedErrorCount} errors across {selectedCategories.size} categories
                   </span>
                 )}
@@ -214,7 +214,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   {Array.from(selectedCategories).some(c => retryableCategories.has(c)) && (
                     <Button
                       size="sm"
-                      className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700 text-white gap-1"
+                      className="h-7 text-xs bg-cyan-700 hover:bg-cyan-800 text-white gap-1"
                       onClick={handleBulkRetry}
                       disabled={!!actionInProgress}
                     >
@@ -245,10 +245,11 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-300"
+                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-300"
                     onClick={() => setSelectedCategories(new Set())}
+                    aria-label="Clear selected categories"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3" aria-hidden="true" />
                   </Button>
                 </div>
               )}
@@ -267,16 +268,16 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                   const actionedCount = (grouped[cat] || []).filter(e => e.bulk_action).length;
 
                   return (
-                    <div
+                    <label
                       key={cat}
                       className={`flex items-center gap-2.5 p-2 rounded-lg border transition-colors cursor-pointer ${
                         isSelected
                           ? 'bg-cyan-900/5 border-cyan-500/30'
                           : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/20'
                       }`}
-                      onClick={() => toggleCategory(cat)}
                     >
                       <Checkbox
+                        aria-label={`Select ${config.label} errors`}
                         checked={isSelected}
                         onCheckedChange={() => toggleCategory(cat)}
                         className="border-slate-600 data-[state=checked]:bg-cyan-600 data-[state=checked]:border-cyan-600"
@@ -293,7 +294,7 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
                           </Badge>
                         )}
                       </div>
-                    </div>
+                    </label>
                   );
                 })}
               </div>

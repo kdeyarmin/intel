@@ -70,16 +70,16 @@ export default function AccountDialog({ open, onOpenChange }) {
           <h3 className="text-sm font-medium text-slate-200">Change password</h3>
           {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
           <div className="space-y-1">
-            <Label htmlFor="account-current" className="text-slate-300">Current password</Label>
-            <Input id="account-current" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className="bg-slate-900 border-slate-700" />
+            <Label id="account-current-label" htmlFor="account-current" className="text-slate-300">Current password</Label>
+            <Input id="account-current" aria-labelledby="account-current-label" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} className="bg-slate-900 border-slate-700" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="account-new" className="text-slate-300">New password</Label>
-            <Input id="account-new" type="password" autoComplete="new-password" required minLength={MIN_PASSWORD_LENGTH} value={next} onChange={(e) => setNext(e.target.value)} className="bg-slate-900 border-slate-700" />
+            <Label id="account-new-label" htmlFor="account-new" className="text-slate-300">New password</Label>
+            <Input id="account-new" aria-labelledby="account-new-label" type="password" autoComplete="new-password" required minLength={MIN_PASSWORD_LENGTH} value={next} onChange={(e) => setNext(e.target.value)} className="bg-slate-900 border-slate-700" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="account-again" className="text-slate-300">Confirm new password</Label>
-            <Input id="account-again" type="password" autoComplete="new-password" required value={again} onChange={(e) => setAgain(e.target.value)} className="bg-slate-900 border-slate-700" />
+            <Label id="account-again-label" htmlFor="account-again" className="text-slate-300">Confirm new password</Label>
+            <Input id="account-again" aria-labelledby="account-again-label" type="password" autoComplete="new-password" required value={again} onChange={(e) => setAgain(e.target.value)} className="bg-slate-900 border-slate-700" />
           </div>
           <Button type="submit" disabled={saving} className="w-full bg-cyan-600 hover:bg-cyan-700">
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />}Change password

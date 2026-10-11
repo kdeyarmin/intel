@@ -68,13 +68,13 @@ export default function ProviderImportHistory({ _npi }) {
                 <p className="text-xs font-medium text-slate-300 truncate">
                   {IMPORT_TYPE_LABELS[b.import_type] || b.import_type}
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">{b.file_name}</p>
+                <p className="text-[10px] text-slate-400 truncate">{b.file_name}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {b.imported_rows > 0 && (
                   <span className="text-[10px] text-blue-400">{b.imported_rows.toLocaleString()} rows</span>
                 )}
-                <span className="text-[10px] text-slate-500">{formatDate(b.created_date)}</span>
+                <span className="text-[10px] text-slate-400">{formatDate(b.created_date)}</span>
               </div>
             </Link>
           );

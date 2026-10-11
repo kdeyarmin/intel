@@ -87,17 +87,18 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
             <p className="text-sm text-slate-400">No referral relationships were found for these providers.</p>
           )}
           {topInfluencers.map((influencer, idx) => (
-            <div 
-              key={influencer.npi} 
-              className="p-3 border rounded-lg hover:bg-slate-800/50 cursor-pointer transition-colors"
+            <button
+              type="button"
+              key={influencer.npi}
+              className="block w-full text-left p-3 border rounded-lg hover:bg-slate-800/50 cursor-pointer transition-colors"
               onClick={() => onInfluencerSelect?.(influencer.npi)}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-amber-600 w-6">#{idx + 1}</span>
+                  <span className="font-bold text-lg text-amber-400 w-6">#{idx + 1}</span>
                   <div>
                     <p className="font-semibold text-sm">{influencer.name || influencer.npi}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                       NPI {influencer.npi}{influencer.specialty ? ` · ${influencer.specialty}` : ''} · Influence {Number(influencer.influence_score ?? 0).toFixed(0)}/100
                     </p>
                   </div>
@@ -116,7 +117,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = 
                   <span>{influencer.network_size} active partners</span>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </CardContent>
       </Card>

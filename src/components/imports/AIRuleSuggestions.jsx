@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useId, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -170,7 +170,7 @@ export default function AIRuleSuggestions({ importType }) {
     return (
       <div className="text-center py-4">
         <ShieldCheck className="w-6 h-6 mx-auto mb-2 text-emerald-400/40" />
-        <p className="text-xs text-slate-500">No rule suggestions — error patterns are already covered or insufficient data.</p>
+        <p className="text-xs text-slate-400">No rule suggestions — error patterns are already covered or insufficient data.</p>
       </div>
     );
   }
@@ -184,7 +184,7 @@ export default function AIRuleSuggestions({ importType }) {
           {suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}
         </Badge>
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-400">
         Based on {recentBatches.length} recent failed import{recentBatches.length !== 1 ? 's' : ''}, these rules could prevent recurring errors.
       </p>
 
@@ -207,7 +207,7 @@ export default function AIRuleSuggestions({ importType }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-medium text-slate-200">{s.ruleName}</span>
-                      <Badge className="bg-slate-700/50 text-slate-500 text-[8px]">
+                      <Badge className="bg-slate-700/50 text-slate-400 text-[8px]">
                         {RULE_TYPE_LABELS[s.ruleType]}
                       </Badge>
                       <Badge className={`text-[8px] ${
@@ -218,11 +218,11 @@ export default function AIRuleSuggestions({ importType }) {
                         {s.confidence} confidence
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5">
                       {s.errorCount} error{s.errorCount !== 1 ? 's' : ''} across {s.batchCount} batch{s.batchCount !== 1 ? 'es' : ''}
                     </p>
                   </div>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                 </button>
 
                 {isExpanded && (
@@ -231,7 +231,7 @@ export default function AIRuleSuggestions({ importType }) {
                     
                     {/* Sample errors */}
                     <div>
-                      <p className="text-[10px] text-slate-500 mb-1">Sample errors that triggered this suggestion:</p>
+                      <p className="text-[10px] text-slate-400 mb-1">Sample errors that triggered this suggestion:</p>
                       {s.samples.map((sample, i) => (
                         <div key={i} className="text-[11px] text-slate-400 bg-slate-900/50 rounded px-2 py-1 mb-1 truncate">
                           {sample}
@@ -257,7 +257,7 @@ export default function AIRuleSuggestions({ importType }) {
                            </Button>
                            <Button
                              size="sm"
-                             className="h-7 text-xs gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                             className="h-7 text-xs gap-1 bg-cyan-700 hover:bg-cyan-800 text-white"
                              onClick={(e) => { e.stopPropagation(); createRuleMutation.mutate({ suggestion: s }); }}
                              disabled={isAdding}
                            >
@@ -280,7 +280,7 @@ export default function AIRuleSuggestions({ importType }) {
         <DialogContent className="max-w-lg bg-[#141d30] border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-slate-200">Customize Validation Rule</DialogTitle>
-            <DialogDescription className="text-slate-500">
+            <DialogDescription className="text-slate-400">
               Adjust the rule configuration before applying it to future imports.
             </DialogDescription>
           </DialogHeader>
@@ -299,7 +299,7 @@ export default function AIRuleSuggestions({ importType }) {
               Cancel
             </Button>
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              className="bg-cyan-700 hover:bg-cyan-800 text-white"
               onClick={() => {
                 const sug = suggestions.find(s => s.id === customizing);
                 if (sug) {
@@ -319,6 +319,7 @@ export default function AIRuleSuggestions({ importType }) {
         }
 
         function CustomizeRuleForm({ suggestion, config, onConfigChange }) {
+        const uid = useId();
         const ruleType = suggestion.ruleType;
 
         const renderConfig = () => {
@@ -329,14 +330,16 @@ export default function AIRuleSuggestions({ importType }) {
         case 'regex':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Regex Pattern</label>
+            <label id={`${uid}-pattern-label`} htmlFor={`${uid}-pattern`} className="text-xs text-slate-400">Regex Pattern</label>
             <Input
+              id={`${uid}-pattern`}
+              aria-labelledby={`${uid}-pattern-label`}
               value={config.pattern || ''}
               onChange={(e) => onConfigChange({ ...config, pattern: e.target.value })}
               placeholder="e.g., ^\d{10}$"
               className="text-xs bg-slate-800/50 border-slate-700"
             />
-            <p className="text-[10px] text-slate-500">Default: {buildRuleConfig('regex').pattern}</p>
+            <p className="text-[10px] text-slate-400">Default: {buildRuleConfig('regex').pattern}</p>
           </div>
         );
 
@@ -344,8 +347,10 @@ export default function AIRuleSuggestions({ importType }) {
         return (
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-slate-400">Minimum Value</label>
+              <label id={`${uid}-min-label`} htmlFor={`${uid}-min`} className="text-xs text-slate-400">Minimum Value</label>
               <Input
+                id={`${uid}-min`}
+                aria-labelledby={`${uid}-min-label`}
                 type="number"
                 value={config.min ?? ''}
                 onChange={(e) => onConfigChange({ ...config, min: e.target.value ? Number(e.target.value) : undefined })}
@@ -354,8 +359,10 @@ export default function AIRuleSuggestions({ importType }) {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400">Maximum Value</label>
+              <label id={`${uid}-max-label`} htmlFor={`${uid}-max`} className="text-xs text-slate-400">Maximum Value</label>
               <Input
+                id={`${uid}-max`}
+                aria-labelledby={`${uid}-max-label`}
                 type="number"
                 value={config.max ?? ''}
                 onChange={(e) => onConfigChange({ ...config, max: e.target.value ? Number(e.target.value) : undefined })}
@@ -369,8 +376,10 @@ export default function AIRuleSuggestions({ importType }) {
         case 'max_length':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Maximum Length</label>
+            <label id={`${uid}-max-length-label`} htmlFor={`${uid}-max-length`} className="text-xs text-slate-400">Maximum Length</label>
             <Input
+              id={`${uid}-max-length`}
+              aria-labelledby={`${uid}-max-length-label`}
               type="number"
               value={config.max_length || 255}
               onChange={(e) => onConfigChange({ ...config, max_length: Number(e.target.value) })}
@@ -382,22 +391,26 @@ export default function AIRuleSuggestions({ importType }) {
         case 'date_format':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Date Format</label>
+            <label id={`${uid}-date-format-label`} htmlFor={`${uid}-date-format`} className="text-xs text-slate-400">Date Format</label>
             <Input
+              id={`${uid}-date-format`}
+              aria-labelledby={`${uid}-date-format-label`}
               value={config.date_format || 'YYYY-MM-DD'}
               onChange={(e) => onConfigChange({ ...config, date_format: e.target.value })}
               placeholder="e.g., YYYY-MM-DD"
               className="text-xs bg-slate-800/50 border-slate-700"
             />
-            <p className="text-[10px] text-slate-500">Common formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY</p>
+            <p className="text-[10px] text-slate-400">Common formats: YYYY-MM-DD, MM/DD/YYYY, DD-MM-YYYY</p>
           </div>
         );
 
         case 'enum_values':
         return (
           <div className="space-y-2">
-            <label className="text-xs text-slate-400">Allowed Values (comma-separated)</label>
+            <label id={`${uid}-values-label`} htmlFor={`${uid}-values`} className="text-xs text-slate-400">Allowed Values (comma-separated)</label>
             <Input
+              id={`${uid}-values`}
+              aria-labelledby={`${uid}-values-label`}
               value={(config.values || []).join(', ')}
               onChange={(e) => onConfigChange({ ...config, values: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
               placeholder="e.g., active, inactive, pending"

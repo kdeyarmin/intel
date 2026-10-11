@@ -67,7 +67,7 @@ export default function ScheduledReportsList({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-sm font-semibold text-slate-300 truncate">{report.name}</h3>
-                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-700 text-slate-400'}`}>
+                  <Badge className={`text-[10px] ${FREQ_COLORS[report.frequency] || 'bg-slate-700 text-slate-300'}`}>
                     {report.frequency}
                   </Badge>
                   <Badge variant="outline" className="text-[10px]">
@@ -76,10 +76,10 @@ export default function ScheduledReportsList({
                 </div>
 
                 {report.description && (
-                  <p className="text-xs text-slate-500 mb-2 truncate">{report.description}</p>
+                  <p className="text-xs text-slate-400 mb-2 truncate">{report.description}</p>
                 )}
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3 h-3" />
                     {report.recipients?.length || 0} recipient{(report.recipients?.length || 0) !== 1 ? 's' : ''}
@@ -109,6 +109,7 @@ export default function ScheduledReportsList({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <Switch
+                  aria-label={`Schedule active for ${report.name}`}
                   checked={report.is_active}
                   onCheckedChange={() => onToggleActive(report)}
                   className="scale-75"
@@ -125,7 +126,7 @@ export default function ScheduledReportsList({
                   {runningId === report.id ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <Play className="w-3.5 h-3.5 text-green-600" />
+                    <Play className="w-3.5 h-3.5 text-green-400" />
                   )}
                 </Button>
                 {onPreview && (

@@ -114,9 +114,10 @@ export default function AddToLeadListDialog({ open, onOpenChange, npis, defaultN
           {mode === 'new' ? (
             <>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-list-name" className="text-slate-300">List name</Label>
+                <Label id="lead-list-name-label" htmlFor="lead-list-name" className="text-slate-300">List name</Label>
                 <Input
                   id="lead-list-name"
+                  aria-labelledby="lead-list-name-label"
                   value={name}
                   autoFocus
                   onChange={(e) => setName(e.target.value)}
@@ -125,9 +126,10 @@ export default function AddToLeadListDialog({ open, onOpenChange, npis, defaultN
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lead-list-description" className="text-slate-300">Description (optional)</Label>
+                <Label id="lead-list-description-label" htmlFor="lead-list-description" className="text-slate-300">Description (optional)</Label>
                 <Textarea
                   id="lead-list-description"
+                  aria-labelledby="lead-list-description-label"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="h-20"
@@ -150,7 +152,7 @@ export default function AddToLeadListDialog({ open, onOpenChange, npis, defaultN
                 </SelectContent>
               </Select>
               {!loadingLists && lists.length === 0 && (
-                <p className="text-xs text-slate-500">No lists yet — create a new one instead.</p>
+                <p className="text-xs text-slate-400">No lists yet — create a new one instead.</p>
               )}
             </div>
           )}

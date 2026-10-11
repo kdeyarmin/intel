@@ -38,7 +38,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
           <TableBody>
             {runs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-24 text-slate-500">
+                <TableCell colSpan={6} className="text-center h-24 text-slate-400">
                   No run history available
                 </TableCell>
               </TableRow>
@@ -66,7 +66,7 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                         {run.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-slate-500 text-xs">
+                    <TableCell className="text-slate-400 text-xs">
                       {durationSec === 0 ? '—' : durationSec < 60 ? `${durationSec}s` : `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs">

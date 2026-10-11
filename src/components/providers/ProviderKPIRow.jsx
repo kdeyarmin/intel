@@ -10,7 +10,7 @@ function KPI({ title, value, icon: Icon, color, bgColor }) {
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
         <div>
-          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{title}</p>
+          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">{title}</p>
           <p className="text-xl lg:text-2xl font-bold text-white">{value}</p>
         </div>
       </CardContent>

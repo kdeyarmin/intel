@@ -3,6 +3,7 @@ import pluginJs from "@eslint/js";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
+import pluginJsxA11y from "eslint-plugin-jsx-a11y";
 
 export default [
   {
@@ -72,6 +73,43 @@ export default [
         { ignore: ["cmdk-input-wrapper", "toast-close"] },
       ],
       "react-hooks/rules-of-hooks": "error",
+    },
+  },
+  {
+    // Accessibility. The app's own components count as the native elements
+    // they render: form and button components, so unlabeled inputs and
+    // icon-only buttons are caught too, and the Card parts and Badge (divs), so
+    // a click-only `<Card onClick>` fails like a click-only `<div>`. Autofocus
+    // is allowed (dialogs and inline editors the user just opened);
+    // label-has-for is deprecated.
+    files: ["src/components/**/*.jsx", "src/pages/**/*.jsx", "src/App.jsx", "src/Layout.jsx"],
+    ignores: ["src/components/ui/**/*"],
+    plugins: { "jsx-a11y": pluginJsxA11y },
+    settings: {
+      "jsx-a11y": {
+        components: {
+          Input: "input",
+          Textarea: "textarea",
+          Button: "button",
+          Label: "label",
+          SelectTrigger: "button",
+          Checkbox: "input",
+          Switch: "button",
+          Card: "div",
+          CardHeader: "div",
+          CardTitle: "div",
+          CardDescription: "div",
+          CardContent: "div",
+          CardFooter: "div",
+          Badge: "div",
+        },
+      },
+    },
+    rules: {
+      ...Object.fromEntries(Object.keys(pluginJsxA11y.configs.recommended.rules).map((rule) => [rule, "error"])),
+      "jsx-a11y/label-has-for": "off",
+      "jsx-a11y/no-autofocus": "off",
+      "jsx-a11y/control-has-associated-label": ["error", { ignoreElements: ["td", "th", "tr", "li"], depth: 3 }],
     },
   },
 ];

@@ -57,7 +57,7 @@ export default function GeographicHeatmap({ nodes = [] }) {
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
-                className={`text-[10px] px-2 py-0.5 rounded ${metric === m.key ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`text-[10px] px-2 py-0.5 rounded ${metric === m.key ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-400 hover:text-slate-300'}`}
               >
                 {m.label}
               </button>
@@ -72,7 +72,7 @@ export default function GeographicHeatmap({ nodes = [] }) {
             return (
               <div key={s.state} className={`${c.bg} border ${c.border} rounded-lg p-2 text-center group relative cursor-default`}>
                 <p className={`text-xs font-bold ${c.text}`}>{s.state}</p>
-                <p className="text-[9px] text-slate-500">{s.providers}</p>
+                <p className="text-[9px] text-slate-400">{s.providers}</p>
                 {/* Tooltip on hover */}
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 border border-slate-700 rounded-lg p-2 text-left whitespace-nowrap z-10 hidden group-hover:block shadow-xl">
                   <p className="text-[10px] font-semibold text-slate-200">{s.state}</p>
@@ -86,13 +86,13 @@ export default function GeographicHeatmap({ nodes = [] }) {
           })}
         </div>
         <div className="flex items-center justify-center gap-2 mt-3">
-          <span className="text-[9px] text-slate-500">Low</span>
+          <span className="text-[9px] text-slate-400">Low</span>
           <div className="flex gap-0.5">
             {['bg-slate-700/30', 'bg-cyan-900/15', 'bg-amber-900/20', 'bg-orange-900/25', 'bg-red-900/30'].map((c, i) => (
               <div key={i} className={`w-6 h-2 rounded ${c}`} />
             ))}
           </div>
-          <span className="text-[9px] text-slate-500">High</span>
+          <span className="text-[9px] text-slate-400">High</span>
         </div>
       </CardContent>
     </Card>

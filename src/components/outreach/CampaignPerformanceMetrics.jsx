@@ -114,14 +114,14 @@ export default function CampaignPerformanceMetrics({ campaign_id, status }) {
                   </span>
                   <span className="text-sm font-semibold text-slate-100">
                     {metrics[r.key].toLocaleString()}
-                    <span className="ml-2 text-xs font-normal text-slate-500">
+                    <span className="ml-2 text-xs font-normal text-slate-400">
                       {metrics.total_recipients ? `${((metrics[r.key] / metrics.total_recipients) * 100).toFixed(1)}%` : ''}
                     </span>
                   </span>
                 </div>
               ))}
               {metrics.total_recipients === 0 && (
-                <p className="text-sm text-slate-500">No messages yet. Send the campaign to build its recipient list.</p>
+                <p className="text-sm text-slate-400">No messages yet. Send the campaign to build its recipient list.</p>
               )}
             </div>
           </CardContent>

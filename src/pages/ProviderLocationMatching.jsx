@@ -177,7 +177,7 @@ export default function ProviderLocationMatching() {
           <Button
             onClick={() => runMatchingMutation.mutate()}
             disabled={runMatchingMutation.isPending || !matchState || facilityTypes.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 shrink-0"
+            className="text-white bg-blue-600 hover:bg-blue-700 shrink-0"
           >
             {runMatchingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Building2 className="w-4 h-4 mr-2" />}
             {runMatchingMutation.isPending ? 'Matching…' : 'Find matches'}
@@ -230,16 +230,17 @@ export default function ProviderLocationMatching() {
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true" />
               <Input
                 placeholder="Search providers or locations..."
+                aria-label="Search providers or locations"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger aria-label="Filter by status" className="w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -251,7 +252,7 @@ export default function ProviderLocationMatching() {
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger aria-label="Sort by" className="w-40">
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
@@ -293,9 +294,9 @@ export default function ProviderLocationMatching() {
       ) : filtered.length === 0 ? (
         <Card className="bg-slate-800/40">
           <CardContent className="py-16 text-center">
-            <Sparkles className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+            <Sparkles className="w-10 h-10 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-400 font-medium">No matches found</p>
-            <p className="text-sm text-slate-500 mt-1">Choose a state and click &quot;Find matches&quot; to get suggestions.</p>
+            <p className="text-sm text-slate-400 mt-1">Choose a state and click &quot;Find matches&quot; to get suggestions.</p>
           </CardContent>
         </Card>
       ) : (

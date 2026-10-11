@@ -38,14 +38,14 @@ export default function ScanHistoryPanel({ scans = [] }) {
                   <Badge variant="secondary" className="text-[10px]">{scan.status}</Badge>
                 </div>
                 {scan.results_summary?.scores && (
-                  <div className="flex gap-3 text-[10px] text-slate-500">
+                  <div className="flex gap-3 text-[10px] text-slate-400">
                     <span>Overall: <strong className="text-slate-300">{scan.results_summary.scores.overall}%</strong></span>
                     <span>Alerts: <strong className="text-slate-300">{scan.results_summary.alerts_generated || 0}</strong></span>
                     <span>Records: <strong className="text-slate-300">{(scan.total_records || 0).toLocaleString()}</strong></span>
                   </div>
                 )}
                 {scan.results_summary?.summary && (
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{scan.results_summary.summary}</p>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{scan.results_summary.summary}</p>
                 )}
               </div>
             </div>

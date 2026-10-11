@@ -48,7 +48,7 @@ export default function DataCenter() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-3 pb-3">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Active</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Active</p>
             <div className="flex items-center gap-2 mt-1">
               {stats.active > 0 ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <div className="w-4 h-4" />}
               <span className="text-xl font-bold text-blue-400">{stats.active}</span>
@@ -57,7 +57,7 @@ export default function DataCenter() {
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-3 pb-3">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Completed</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Completed</p>
             <div className="flex items-center gap-2 mt-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span className="text-xl font-bold text-emerald-400">{stats.completed}</span>
@@ -66,7 +66,7 @@ export default function DataCenter() {
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-3 pb-3">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Failed</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Failed</p>
             <div className="flex items-center gap-2 mt-1">
               <AlertCircle className="w-4 h-4 text-red-400" />
               <span className="text-xl font-bold text-red-400">{stats.failed}</span>
@@ -75,7 +75,7 @@ export default function DataCenter() {
         </Card>
         <Card className="bg-[#141d30] border-slate-700/50">
           <CardContent className="pt-3 pb-3">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider">Records Imported</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Records Imported</p>
             <div className="flex items-center gap-2 mt-1">
               <Upload className="w-4 h-4 text-cyan-400" />
               <span className="text-xl font-bold text-white">{stats.totalImported.toLocaleString()}</span>

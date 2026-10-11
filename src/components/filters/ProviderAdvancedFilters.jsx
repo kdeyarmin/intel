@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ export default function ProviderAdvancedFilters({
   credentialOptions = [],
 }) {
   const [expanded, setExpanded] = useState(false);
+  const moreId = useId();
 
   const activeCount = Object.entries(filters).filter(
     ([k, v]) => v && v !== 'all' && k !== 'searchTerm' && k !== 'sortField' && k !== 'sortDir'
@@ -59,15 +60,17 @@ export default function ProviderAdvancedFilters({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
-          className="text-slate-500 hover:text-slate-300 h-9 text-xs gap-1"
+          aria-expanded={expanded}
+          aria-controls={expanded ? moreId : undefined}
+          className="text-slate-400 hover:text-slate-300 h-9 text-xs gap-1"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
           More
-          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {expanded ? <ChevronUp className="w-3 h-3" aria-hidden="true" /> : <ChevronDown className="w-3 h-3" aria-hidden="true" />}
         </Button>
 
         {activeCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-400 h-9 text-xs gap-1">
+          <Button variant="ghost" size="sm" onClick={onReset} className="text-slate-400 hover:text-slate-200 h-9 text-xs gap-1">
             <X className="w-3 h-3" /> Clear ({activeCount})
           </Button>
         )}
@@ -75,7 +78,7 @@ export default function ProviderAdvancedFilters({
 
       {/* Expanded row */}
       {expanded && (
-        <div className="flex flex-wrap items-center gap-2 pl-0.5">
+        <div id={moreId} className="flex flex-wrap items-center gap-2 pl-0.5">
           <FilterSelect
             label="Credential"
             value={filters.credentialFilter}
@@ -139,7 +142,7 @@ export default function ProviderAdvancedFilters({
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <Select value={value || 'all'} onValueChange={onChange}>
-      <SelectTrigger className="h-9 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-300">
+      <SelectTrigger aria-label={label} className="h-9 text-xs w-[140px] bg-slate-800/50 border-slate-700 text-slate-300">
         <SelectValue placeholder={label} />
       </SelectTrigger>
       <SelectContent>
@@ -156,8 +159,8 @@ function FilterChip({ label, onRemove }) {
   return (
     <Badge variant="secondary" className="text-xs py-0.5 pl-2 pr-1 gap-1 bg-cyan-900/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-900/15 cursor-default">
       {label}
-      <button onClick={onRemove} className="hover:bg-cyan-900/20 rounded-full p-0.5 transition-colors">
-        <X className="w-3 h-3" />
+      <button type="button" onClick={onRemove} className="hover:bg-cyan-900/20 rounded-full p-0.5 transition-colors" aria-label={`Remove filter ${label}`}>
+        <X className="w-3 h-3" aria-hidden="true" />
       </button>
     </Badge>
   );

@@ -57,7 +57,7 @@ function EnrichmentDetailCard({ details, aiExplanation }) {
       {sections.map(s => (
         <div key={s.label}>
           <div className="flex items-center gap-1.5 mb-1">
-            <s.icon className="w-3.5 h-3.5 text-slate-500" />
+            <s.icon className="w-3.5 h-3.5 text-slate-400" />
             <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{s.label}</span>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -72,8 +72,8 @@ function EnrichmentDetailCard({ details, aiExplanation }) {
           <Star className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-xs text-slate-300">
             {details.review_score}/5
-            {details.review_count && <span className="text-slate-500"> ({details.review_count} reviews)</span>}
-            {details.review_source && <span className="text-slate-500"> via {details.review_source}</span>}
+            {details.review_count && <span className="text-slate-400"> ({details.review_count} reviews)</span>}
+            {details.review_source && <span className="text-slate-400"> via {details.review_source}</span>}
           </span>
         </div>
       )}
@@ -221,7 +221,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
           <div className="flex gap-1">
             {['pending', 'applied', 'approved', 'rejected', 'all'].map(s => (
               <button key={s} onClick={() => { setFilter(s); setSelected(new Set()); }}
-                className={`text-[10px] px-2 py-0.5 rounded ${filter === s ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                className={`text-[10px] px-2 py-0.5 rounded ${filter === s ? 'bg-cyan-900/20 text-cyan-400' : 'text-slate-400 hover:text-slate-300'}`}>
                 {s === 'pending' ? 'Pending' : s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
@@ -234,9 +234,10 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
             <Checkbox
               checked={selected.size === pendingCount && pendingCount > 0}
               onCheckedChange={toggleSelectAll}
+              aria-label="Select all pending records"
               className="border-slate-600"
             />
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               {selected.size > 0 ? `${selected.size} selected` : 'Select all'}
             </span>
             {selected.size > 0 && (
@@ -258,9 +259,9 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="text-center py-8 text-slate-500 text-sm">Loading...</div>
+          <div className="text-center py-8 text-slate-400 text-sm">Loading...</div>
         ) : records.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 text-sm">
+          <div className="text-center py-8 text-slate-400 text-sm">
             No enrichment records {filter !== 'all' ? `with status "${filter}"` : ''}
           </div>
         ) : (
@@ -277,18 +278,19 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                         <Checkbox
                           checked={selected.has(r.id)}
                           onCheckedChange={() => toggleSelect(r.id)}
+                          aria-label={`Select record for ${r.provider_name || r.npi}`}
                           className="border-slate-600 mt-0.5"
                         />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-slate-200 truncate">{r.provider_name || r.npi}</span>
-                          <Badge variant="outline" className="text-[10px] font-mono text-slate-500">{r.npi}</Badge>
+                          <Badge variant="outline" className="text-[10px] font-mono text-slate-400">{r.npi}</Badge>
                         </div>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge className={`text-[10px] border ${sc.color}`}>{sc.label}</Badge>
                           <Badge className={`text-[10px] ${getConfidenceInfo(r.confidence).cls}`}>{getConfidenceInfo(r.confidence).label} confidence</Badge>
-                          <span className="text-[10px] text-slate-500">{r.source}</span>
+                          <span className="text-[10px] text-slate-400">{r.source}</span>
                           {(r.fieldName || r.field_name) && <Badge className="bg-slate-700/40 text-slate-400 text-[9px]">{r.fieldName || r.field_name}</Badge>}
                         </div>
                         {(r.newValue || r.new_value) && (
@@ -299,7 +301,7 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                     <div className="flex items-center gap-1 shrink-0">
                       {isPending && (
                         <>
-                          <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                          <Button size="sm" className="h-7 text-[10px] bg-emerald-700 hover:bg-emerald-800 text-white"
                             disabled={reviewMutation.isPending}
                             onClick={() => reviewMutation.mutate({ id: r.id, status: 'approved', npi: r.npi, enrichment_details: r.enrichmentDetails || r.enrichment_details })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" /> Approve
@@ -312,7 +314,8 @@ export default function EnrichmentReviewQueue({ statusFilter = 'pending' }) {
                         </>
                       )}
                       <Button variant="ghost" size="sm" className="h-7 w-7 text-slate-400"
-                        onClick={() => setExpandedId(isExpanded ? null : r.id)}>
+                        onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                        aria-label={isExpanded ? 'Hide details' : 'Show details'} aria-expanded={isExpanded}>
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </Button>
                     </div>

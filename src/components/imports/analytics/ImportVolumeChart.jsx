@@ -41,8 +41,8 @@ export default function ImportVolumeChart({ batches = [] }) {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ left: 0, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="completed" stackId="a" fill="#34d399" name="Completed" radius={[0, 0, 0, 0]} />

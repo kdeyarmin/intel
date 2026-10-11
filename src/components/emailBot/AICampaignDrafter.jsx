@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +22,7 @@ const GOALS = [
 ];
 
 export default function AICampaignDrafter({ providers = [], onDraftReady }) {
+  const uid = useId();
   const [generating, setGenerating] = useState(false);
   const [tone, setTone] = useState('professional');
   const [goal, setGoal] = useState('partnership');
@@ -111,9 +112,9 @@ REQUIREMENTS:
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] text-slate-400 mb-1 block">Tone</label>
+          <label htmlFor={`${uid}-tone`} className="text-[10px] text-slate-400 mb-1 block">Tone</label>
           <Select value={tone} onValueChange={setTone}>
-            <SelectTrigger className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
+            <SelectTrigger id={`${uid}-tone`} className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -122,9 +123,9 @@ REQUIREMENTS:
           </Select>
         </div>
         <div>
-          <label className="text-[10px] text-slate-400 mb-1 block">Goal</label>
+          <label htmlFor={`${uid}-goal`} className="text-[10px] text-slate-400 mb-1 block">Goal</label>
           <Select value={goal} onValueChange={setGoal}>
-            <SelectTrigger className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
+            <SelectTrigger id={`${uid}-goal`} className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -137,6 +138,7 @@ REQUIREMENTS:
       {goal === 'custom' && (
         <Input
           placeholder="Describe your campaign goal..."
+          aria-label="Custom campaign goal"
           value={customGoal}
           onChange={e => setCustomGoal(e.target.value)}
           className="h-8 text-xs bg-slate-800/50 border-slate-700 text-slate-200"
@@ -147,7 +149,7 @@ REQUIREMENTS:
         onClick={handleGenerate}
         disabled={generating || providers.length === 0 || (goal === 'custom' && !customGoal.trim())}
         size="sm"
-        className="w-full bg-violet-600 hover:bg-violet-700 gap-2 text-xs"
+        className="text-white w-full bg-violet-600 hover:bg-violet-700 gap-2 text-xs"
       >
         {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
         {generating ? 'Drafting...' : 'Generate AI Draft'}

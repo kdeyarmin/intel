@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ const GROUP_OPTIONS = [...SPECIALTY_GROUPS].sort((a, b) => a.label.localeCompare
  * providers already shown.
  */
 export default function TerritoryMapFilters({ filters, onChange, onReset, providerCount, availableStates = [] }) {
+  const uid = useId();
   const update = (patch) => onChange(patch);
   const approxByState = new Map(availableStates.map((s) => [s.state, s.approx]));
   const activeCount = [
@@ -48,9 +49,9 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1">
-          <Label htmlFor="territory-state" className="text-xs">State</Label>
+          <Label htmlFor={`${uid}-state`} className="text-xs">State</Label>
           <Select value={filters.state} onValueChange={(v) => update({ state: v })}>
-            <SelectTrigger id="territory-state" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger id={`${uid}-state`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All states (top-scored sample)</SelectItem>
               {US_STATES.map((st) => {
@@ -66,9 +67,9 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="territory-specialty" className="text-xs">Specialty</Label>
+          <Label htmlFor={`${uid}-specialty`} className="text-xs">Specialty</Label>
           <Select value={filters.group} onValueChange={(v) => update({ group: v })}>
-            <SelectTrigger id="territory-specialty" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger id={`${uid}-specialty`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All specialties</SelectItem>
               {GROUP_OPTIONS.map((g) => <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>)}
@@ -77,9 +78,9 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="territory-type" className="text-xs">Provider type</Label>
+          <Label htmlFor={`${uid}-type`} className="text-xs">Provider type</Label>
           <Select value={filters.type} onValueChange={(v) => update({ type: v })}>
-            <SelectTrigger id="territory-type" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger id={`${uid}-type`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All types</SelectItem>
               <SelectItem value="Individual">Individuals</SelectItem>
@@ -95,28 +96,28 @@ export default function TerritoryMapFilters({ filters, onChange, onReset, provid
             <Input type="number" min={0} max={100} placeholder="Max" aria-label="Maximum score" value={filters.maxScore} onChange={(e) => update({ maxScore: e.target.value })} className="h-8 text-xs" />
           </div>
           <div className="flex items-center justify-between pt-1">
-            <Label htmlFor="territory-unscored" className="text-[11px] text-slate-400">Show unscored providers</Label>
-            <Switch id="territory-unscored" checked={filters.unscored !== 'hide'} onCheckedChange={(v) => update({ unscored: v ? 'show' : 'hide' })} />
+            <Label htmlFor={`${uid}-unscored`} className="text-[11px] text-slate-400">Show unscored providers</Label>
+            <Switch id={`${uid}-unscored`} aria-label="Show unscored providers" checked={filters.unscored !== 'hide'} onCheckedChange={(v) => update({ unscored: v ? 'show' : 'hide' })} />
           </div>
         </fieldset>
 
         <div className="space-y-1">
-          <Label htmlFor="territory-volume" className="text-xs">Minimum Medicare beneficiaries</Label>
-          <Input id="territory-volume" type="number" min={0} placeholder="e.g. 100" value={filters.minVolume} onChange={(e) => update({ minVolume: e.target.value })} className="h-8 text-xs" />
+          <Label htmlFor={`${uid}-volume`} className="text-xs">Minimum Medicare beneficiaries</Label>
+          <Input id={`${uid}-volume`} aria-label="Minimum Medicare beneficiaries" type="number" min={0} placeholder="e.g. 100" value={filters.minVolume} onChange={(e) => update({ minVolume: e.target.value })} className="h-8 text-xs" />
         </div>
 
         <div className="space-y-2 pt-2 border-t border-slate-700/50">
           <div className="flex items-center justify-between">
-            <Label htmlFor="territory-color" className="text-xs">Color by score</Label>
-            <Switch id="territory-color" checked={filters.color} onCheckedChange={(v) => update({ color: v })} />
+            <Label htmlFor={`${uid}-color`} className="text-xs">Color by score</Label>
+            <Switch id={`${uid}-color`} aria-label="Color by score" checked={filters.color} onCheckedChange={(v) => update({ color: v })} />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="territory-heat" className="text-xs">Density heatmap</Label>
-            <Switch id="territory-heat" checked={filters.heat} onCheckedChange={(v) => update({ heat: v })} />
+            <Label htmlFor={`${uid}-heat`} className="text-xs">Density heatmap</Label>
+            <Switch id={`${uid}-heat`} aria-label="Density heatmap" checked={filters.heat} onCheckedChange={(v) => update({ heat: v })} />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="territory-vol" className="text-xs">Patient volume overlay</Label>
-            <Switch id="territory-vol" checked={filters.volume} onCheckedChange={(v) => update({ volume: v })} />
+            <Label htmlFor={`${uid}-vol`} className="text-xs">Patient volume overlay</Label>
+            <Switch id={`${uid}-vol`} aria-label="Patient volume overlay" checked={filters.volume} onCheckedChange={(v) => update({ volume: v })} />
           </div>
         </div>
 

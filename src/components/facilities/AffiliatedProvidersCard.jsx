@@ -81,7 +81,7 @@ export default function AffiliatedProvidersCard({ providerId, facilityNpi, facil
                     </Badge>
                   )}
                   {aff.taxonomy_code && (
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
                       <Stethoscope className="w-2.5 h-2.5" />
                       {aff.taxonomy_description || aff.taxonomy_code}
                     </span>

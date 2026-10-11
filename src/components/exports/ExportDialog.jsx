@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Download, Calendar } from 'lucide-react';
 import { exportCSV, exportExcel, exportPDF, exportJSON, pickFields } from './exportUtils';
 import ExportFormatSelector from './ExportFormatSelector';
@@ -10,6 +9,7 @@ import ScheduleExportForm from './ScheduleExportForm';
 import DateRangeFilterInline, { applyDateRangeFilter } from '../filters/DateRangeFilterInline';
 
 export default function ExportDialog({ data, fields, fileName, title, dateField, trigger, dataset, activeFilters }) {
+  const uid = useId();
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState('csv');
   const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
@@ -59,8 +59,8 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
         <div className="space-y-5 pt-2">
           {/* Format */}
           <div>
-            <Label className="text-xs text-slate-400 uppercase tracking-wider">Format</Label>
-            <div className="mt-2">
+            <span id={`${uid}-format`} className="font-medium leading-none text-xs text-slate-400 uppercase tracking-wider">Format</span>
+            <div className="mt-2" role="group" aria-labelledby={`${uid}-format`}>
               <ExportFormatSelector format={format} onFormatChange={setFormat} />
             </div>
           </div>

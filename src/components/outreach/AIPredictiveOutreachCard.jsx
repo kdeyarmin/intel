@@ -67,7 +67,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
       </CardHeader>
       <CardContent>
         {!hasScore ? (
-          <div className="text-center py-6 text-slate-500 text-sm">
+          <div className="text-center py-6 text-slate-400 text-sm">
             <Target className="w-8 h-8 mx-auto mb-2 opacity-20" />
             <p>Score how reachable and valuable this provider is to contact, from their contact details, Medicare volume, referral network and past outreach.</p>
           </div>
@@ -75,7 +75,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
           <div className="space-y-5">
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center justify-center bg-slate-800/60 rounded-full w-16 h-16 shadow-sm border border-indigo-50">
-                <span className="text-2xl font-bold text-indigo-600">{Math.round(score)}</span>
+                <span className="text-2xl font-bold text-indigo-400">{Math.round(score)}</span>
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
@@ -84,7 +84,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
                     {score > 75 ? 'High' : score > 40 ? 'Medium' : 'Low'}
                   </Badge>
                 </div>
-                <Progress value={score} className="h-2 bg-slate-700" />
+                <Progress value={score} className="h-2 bg-slate-700" aria-label="Engagement likelihood" />
               </div>
             </div>
 
@@ -112,7 +112,7 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
 
             {factors.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <TrendingUp className="w-3.5 h-3.5" /> Key Factors
                 </p>
                 <ul className="space-y-1.5">

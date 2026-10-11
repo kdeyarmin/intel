@@ -15,7 +15,7 @@ export default function AccessDenied() {
         </p>
         <Link
           to={createPageUrl('Dashboard')}
-          className="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700"
+          className="inline-flex items-center rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-800"
         >
           Back to Dashboard
         </Link>

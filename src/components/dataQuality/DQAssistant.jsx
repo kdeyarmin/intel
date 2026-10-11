@@ -130,11 +130,11 @@ export default function DQAssistant() {
     <Card className="border-indigo-200 flex flex-col" style={{ maxHeight: '700px' }}>
       <CardHeader className="pb-2 border-b flex-shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
-          <Bot className="w-5 h-5 text-indigo-600" />
+          <Bot className="w-5 h-5 text-indigo-400" />
           AI Data Quality Assistant
           <Badge variant="outline" className="text-[9px] ml-1">Beta</Badge>
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="text-xs text-slate-400 mt-0.5">
           Ask questions, auto-fix issues, or analyze patterns
         </p>
       </CardHeader>
@@ -194,14 +194,15 @@ export default function DQAssistant() {
         {/* Input */}
         <form onSubmit={handleSubmit} className="p-3 pt-2 border-t flex gap-2 flex-shrink-0">
           <Input
+            aria-label="Ask about data quality issues"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about data quality issues..."
             className="text-xs h-8"
             disabled={loading}
           />
-          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="h-8 w-8 bg-indigo-600 hover:bg-indigo-700">
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          <Button type="submit" size="icon" disabled={loading || !input.trim()} className="text-white h-8 w-8 bg-indigo-600 hover:bg-indigo-700" aria-label="Send message">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Send className="w-3.5 h-3.5" aria-hidden="true" />}
           </Button>
         </form>
       </CardContent>
@@ -246,7 +247,7 @@ function MessageBubble({ message }) {
                 )}
                 <div>
                   <p className="text-[10px] font-semibold text-slate-300">{a.action}</p>
-                  <p className="text-[10px] text-slate-500">{a.description}</p>
+                  <p className="text-[10px] text-slate-400">{a.description}</p>
                 </div>
               </div>
             ))}
@@ -289,20 +290,20 @@ function AutoFixSummary({ data }) {
   return (
     <div className="mt-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-2.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
         <span className="text-[11px] font-semibold text-emerald-300">Auto-Fix Results</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="bg-slate-800/40 rounded p-1.5">
           <p className="text-lg font-bold text-emerald-400">{data.fixed || 0}</p>
-          <p className="text-[9px] text-emerald-600">Fixed</p>
+          <p className="text-[9px] text-emerald-400">Fixed</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
-          <p className="text-lg font-bold text-slate-500">{data.skipped || 0}</p>
-          <p className="text-[9px] text-slate-500">Skipped</p>
+          <p className="text-lg font-bold text-slate-400">{data.skipped || 0}</p>
+          <p className="text-[9px] text-slate-400">Skipped</p>
         </div>
         <div className="bg-slate-800/40 rounded p-1.5">
-          <p className="text-lg font-bold text-blue-600">{data.total_eligible || 0}</p>
+          <p className="text-lg font-bold text-blue-400">{data.total_eligible || 0}</p>
           <p className="text-[9px] text-blue-500">Eligible</p>
         </div>
       </div>
@@ -310,7 +311,7 @@ function AutoFixSummary({ data }) {
         <div className="mt-2 space-y-0.5">
           <p className="text-[9px] text-emerald-400 font-medium">Applied fixes:</p>
           {data.fix_log.filter(f => !f.skipped && !f.error).slice(0, 5).map((f, i) => (
-            <p key={i} className="text-[9px] text-emerald-600">
+            <p key={i} className="text-[9px] text-emerald-400">
               • {f.npi}: {f.field} "{f.old}" → "{f.new}" ({f.confidence}% confidence)
             </p>
           ))}
@@ -326,7 +327,7 @@ function PatternResultsPanel({ result, onClose }) {
   return (
     <div className="border-t max-h-56 overflow-y-auto px-3 py-2 bg-slate-800/30 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1">
           <TrendingUp className="w-3 h-3" /> Pattern Analysis
         </span>
         <Button variant="ghost" size="sm" onClick={onClose} className="h-5 text-[9px] px-1.5">Hide</Button>
@@ -358,13 +359,13 @@ function PatternResultsPanel({ result, onClose }) {
       {/* Action plan */}
       {result.action_plan?.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-semibold text-slate-500 uppercase">Priority Actions</p>
+          <p className="text-[9px] font-semibold text-slate-400 uppercase">Priority Actions</p>
           {result.action_plan.slice(0, 3).map((a, i) => (
             <div key={i} className="flex items-start gap-1.5">
               <Badge className="text-[7px] bg-indigo-900/30 text-indigo-400 shrink-0 mt-0.5 h-4 w-4 flex items-center justify-center p-0 rounded-full">{a.priority}</Badge>
               <div>
                 <p className="text-[9px] font-medium text-slate-300">{a.action}</p>
-                <p className="text-[9px] text-slate-500">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
+                <p className="text-[9px] text-slate-400">{a.impact} <Badge variant="outline" className="text-[7px] ml-1">{a.effort}</Badge></p>
               </div>
             </div>
           ))}
@@ -376,7 +377,7 @@ function PatternResultsPanel({ result, onClose }) {
         <div className="mt-2 bg-amber-900/10 border border-amber-500/20 rounded p-2">
           <p className="text-[9px] font-semibold text-amber-400 mb-0.5">⚠ Predictions</p>
           {result.predictions.slice(0, 2).map((p, i) => (
-            <p key={i} className="text-[9px] text-amber-600">• {p}</p>
+            <p key={i} className="text-[9px] text-amber-400">• {p}</p>
           ))}
         </div>
       )}
