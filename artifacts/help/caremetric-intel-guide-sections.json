@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "c501d0dfe3263d3896fd5645e31b76f041051c6d",
+    "ref": "6eb5b803983938035840111a266fc97eadfee4a1",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 33,
-    "text_character_count": 14571,
-    "canonical_sha256": "c636b83100c166bd3b38e01dc5a7fc2771187b8cd2c9ccf7b1af2ea5d791a7b6"
+    "topic_count": 34,
+    "text_character_count": 15644,
+    "canonical_sha256": "fc1263c717774158b462f80e56695f5aa779002f173f98d089e01566d174e169"
   },
   "sections": [
     {
@@ -121,8 +121,8 @@
         },
         {
           "heading": "Market tab and county table",
-          "text": "Every county view has a **Market** tab: Medicare beneficiaries and the Medicare Advantage share (Medicare Monthly Enrollment), residents aged 85 and over and dual-eligibles, home health, hospice and skilled nursing use and supply (CMS Market Saturation), standardized spend per beneficiary and readmissions (Medicare Geographic Variation), and how many hospitals serve the county's residents. **Market Intelligence** (Territory › Market) puts every county of a state in one sortable table, with a CSV download; the Territory map's county density tab can colour counties by any of the same metrics.\n\nThese figures come from the daily market rollups, which need the enrollment, saturation, variation and Hospital Service Area files imported; each view says which vintage it used and when it was computed.",
-          "sha256": "b87125250c8eee178279c3d10d2059903c7d14e7a9f08a5bd0018d12d0bf979d"
+          "text": "Every county view has a **Market** tab: Medicare beneficiaries and the Medicare Advantage share (Medicare Monthly Enrollment), residents aged 85 and over and dual-eligibles, home health, hospice and skilled nursing use and supply (CMS Market Saturation), standardized spend per beneficiary and readmissions (Medicare Geographic Variation), how many hospitals serve the county's residents, the population aged 65 and over and 85 and over, people 65+ living alone and median household income (Census ACS 5-year estimates, bundled with the app), and the state-licensed personal care and assisted living homes and beds once a licensing export is imported. **Market Intelligence** (Territory › Market) puts every county of a state in one sortable table, with a CSV download; the Territory map's county density tab can colour counties by any of the same metrics.\n\nThese figures come from the daily market rollups, which need the enrollment, saturation, variation and Hospital Service Area files imported; each view says which vintage it used and when it was computed.",
+          "sha256": "e363a698d524a3ae728850ece2b5354d9ecc976943d477519e99bfbd1e30d643"
         },
         {
           "heading": "Hospital sources and competitors",
@@ -192,6 +192,11 @@
       "id": "data",
       "title": "Data Imports (Admin)",
       "topics": [
+        {
+          "heading": "Importing state-licensed homes",
+          "text": "Personal care homes and assisted living residences are licensed by states and never appear in CMS files. Pick **State-Licensed Homes** in the Data Center, upload the state's licensing export as a CSV (or give an https link) and set the state, the license type the file holds (if its rows don't say) and the export's year. Columns are matched by name: name, address, city, ZIP, license number, license type, capacity, status, licensee and phone are recognised under their usual spellings. Each home gets its county from its ZIP; re-importing a newer export updates the same homes. They then show on **Facilities › Licensed Homes**, on County Intel's **Competitors** tab and in the county profile's licensed homes and beds. For Pennsylvania, the DHS personal care home and assisted living directories are the source.",
+          "sha256": "3ede2361b7f80bb7000229c90fabb75f0c21d76228ca7f95e8dd01e3e4142ff9"
+        },
         {
           "heading": "Importing data",
           "text": "Go to **Data Center**, choose a dataset (NPPES, Medicare utilization, shared-patient patterns, facility datasets and more), then either let the app download it from CMS or upload a file. Column mapping is suggested for you. Large imports run in the background and can be paused and resumed.",
