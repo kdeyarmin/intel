@@ -1,10 +1,10 @@
 // Pure summary of getDataFreshness for the footer line (tested in node).
 
-const LOADED = new Set(['current', 'update_available', 'importing']);
-
 export function summarizeFreshness(data) {
   const datasets = Array.isArray(data?.datasets) ? data.datasets : [];
-  const loaded = datasets.filter((d) => LOADED.has(d.status) && d.imported_at);
+  // Loaded means its rows are in the tables, whatever the latest refresh did: a failed
+  // refresh keeps the earlier import (and its year) on the pages, so the footer counts it.
+  const loaded = datasets.filter((d) => d.imported_at);
   const years = loaded.map((d) => Number(d.data_year)).filter((y) => Number.isInteger(y));
   const imports = loaded.map((d) => new Date(d.imported_at).getTime()).filter((t) => Number.isFinite(t));
   const updates = datasets.filter((d) => d.status === 'update_available').length;

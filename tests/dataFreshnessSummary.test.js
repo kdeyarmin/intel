@@ -14,8 +14,9 @@ const data = {
 describe('summarizeFreshness', () => {
   it('counts loaded datasets, their year range, the latest import and pending releases', () => {
     const s = summarizeFreshness(data);
-    expect(s.loadedCount).toBe(2);
-    expect(s.yearRange).toEqual([2024, 2025]);
+    // 'd' failed its latest refresh, but the import before it is still what the pages show.
+    expect(s.loadedCount).toBe(3);
+    expect(s.yearRange).toEqual([2023, 2025]);
     expect(s.lastImportedAt.toISOString()).toBe('2026-09-01T00:00:00.000Z');
     expect(s.updatesAvailable).toBe(1);
     expect(s.censusVintage).toBe('2020');
@@ -29,7 +30,7 @@ describe('summarizeFreshness', () => {
 describe('freshnessSentence', () => {
   it('names the sources with years and the refresh date', () => {
     const text = freshnessSentence(summarizeFreshness(data), (d) => d.toISOString().slice(0, 10));
-    expect(text).toBe('Data sources: 2 CMS datasets loaded (data years 2024–2025, last refreshed 2026-09-01), NPPES registry, U.S. Census 2020 geography. 1 newer release awaiting import.');
+    expect(text).toBe('Data sources: 3 CMS datasets loaded (data years 2023–2025, last refreshed 2026-09-01), NPPES registry, U.S. Census 2020 geography. 1 newer release awaiting import.');
   });
 
   it('falls back to a generic line before the data arrives', () => {

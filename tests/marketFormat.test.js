@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, sortRows, toCsv } from '../src/lib/marketFormat.js';
+import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, referralListNote, sortRows, toCsv } from '../src/lib/marketFormat.js';
 
 describe('market formatting', () => {
   it('formats counts, fractions, percent units, money and rates, with a dash for nothing', () => {
@@ -54,5 +54,24 @@ describe('market formatting', () => {
     expect(csvValue(null, 'percent')).toBe('');
     expect(csvValue('', 'count')).toBe('');
     expect(csvValue('310000', 'count')).toBe(310000);
+  });
+});
+
+describe('referralListNote', () => {
+  it('says nothing when the list is the whole ranked list', () => {
+    expect(referralListNote({ rowCount: 25, truncated: false })).toBeNull();
+    expect(referralListNote()).toBeNull();
+  });
+
+  it('says more are ranked below when an unfiltered list is cut off', () => {
+    expect(referralListNote({ rowCount: 25, truncated: true })).toBe('More clinicians are ranked below these; raise the limit to see them.');
+  });
+
+  it('says how far a specialty search looked, so a short or empty list is not mistaken for all of them', () => {
+    expect(referralListNote({ rowCount: 7, truncated: true, searched: 125, specialty: true }))
+      .toBe('Searched the top 125 ranked clinicians for this specialty; raise the limit to search further.');
+    expect(referralListNote({ rowCount: 0, truncated: true, searched: 1000, specialty: true }))
+      .toBe('None of the top 1,000 ranked clinicians here are in this specialty. Raise the limit to search further.');
+    expect(referralListNote({ rowCount: 7, truncated: false, searched: 60, specialty: true })).toBeNull();
   });
 });

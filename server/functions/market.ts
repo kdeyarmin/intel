@@ -210,7 +210,7 @@ export async function handleGetCountyMarket(payload: any) {
     const [profile, sources, competitors, trends, coverage] = await Promise.all([
       client.query("SELECT * FROM rollup_county_market_profile WHERE county_fips = $1", [fips]).catch(() => ({ rows: [] })),
       client.query(
-        `SELECT s.ccn, s.data_year, s.cases, s.days, s.share_of_county, s.rank
+        `SELECT s.ccn, s.data_year, s.cases, s.days, s.share_of_county, s.rank, count(*) OVER ()::int AS total
            FROM rollup_county_hospital_sources s
            JOIN (SELECT max(data_year) AS y FROM rollup_county_hospital_sources WHERE county_fips = $1) l ON l.y = s.data_year
           WHERE s.county_fips = $1 ORDER BY s.rank LIMIT $2`, [fips, TOP]).catch(() => ({ rows: [] })),
@@ -263,6 +263,8 @@ export async function handleGetCountyMarket(payload: any) {
       profile: p ? { ...p, available: true } : { available: false, county_fips: fips },
       hospital_sources: {
         data_year: sources.rows[0]?.data_year ?? null,
+        // Every hospital the county's residents were discharged from; `rows` holds the top TOP.
+        total: sources.rows[0] ? Number(sources.rows[0].total) : 0,
         rows: sources.rows.map((r: any) => ({
           ccn: r.ccn, ...named(r.ccn), cases: num(r.cases), days: num(r.days), share: num(r.share_of_county), rank: num(r.rank),
           discharge_mix: mixRow(mixBy.get(r.ccn)),
@@ -442,10 +444,13 @@ export async function handleGetReferralSources(payload: any) {
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const where = [county ? "county_fips = $1" : "state = $1"];
     if (setting) where.push(`${setting}_eligible = true`);
-    const { rows } = await client.query(
+    // One row more than the window, to know whether the ranked list goes on past it.
+    const { rows: fetched } = await client.query(
       `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ORDER BY referral_index DESC, benes DESC NULLS LAST, npi LIMIT $2`,
-      [county ? county.fips : state, fetch],
+      [county ? county.fips : state, fetch + 1],
     ).catch(() => ({ rows: [] as any[] }));
+    const rows = fetched.slice(0, fetch);
+    const beyondWindow = fetched.length > fetch;
     const matched = group ? rows.filter((r: any) => specialtyGroupFor(null, r.specialty).key === group) : rows;
     const page = matched.slice(0, limit);
     const names = await providerNames(client, page.map((r: any) => r.npi));
@@ -454,7 +459,10 @@ export async function handleGetReferralSources(payload: any) {
       county: county ? { fips: county.fips, name: county.name, state: county.state } : null,
       setting, specialty_group: group, limit,
       data_year: page[0]?.data_year ?? rows[0]?.data_year ?? null,
-      truncated: group ? rows.length >= fetch && matched.length > limit : rows.length > limit,
+      // More clinicians than shown: more matched within the window, or the ranked list goes on past it
+      // (for a specialty only the top `searched` clinicians were looked at, so a short list can still be partial).
+      truncated: matched.length > limit || beyondWindow,
+      searched: rows.length,
       rows: page.map((r: any) => {
         const n = names.get(r.npi);
         const g = specialtyGroupFor(n?.code ?? null, n?.specialty ?? r.specialty);

@@ -163,7 +163,11 @@ export function fileUrlProblem(importType: string, fileUrl: string | null | unde
   } else if (!isAllowedUrl(fileUrl) && !(uploadable && /^https:\/\//i.test(fileUrl))) {
     return "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)";
   }
-  if (uploadable && (isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv") && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
+  // Any CSV that is read as rows needs the year it describes, whatever the dataset: without it
+  // the rows would be stamped with a guessed year and replace the real one's. (The NPPES files
+  // are zips with their own importers and take their date from the file name.)
+  const readAsCsv = isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv";
+  if (readAsCsv && !/^nppes_/.test(importType) && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
     return "year is required for file imports: the data year the file describes (it is shown with the data)";
   }
   return null;
@@ -310,7 +314,8 @@ export function getCMSDatasetCatalog() {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      available: !!(IMPORT_TYPE_URLS[ds.id] || NPPES_FILE_TYPES[ds.id]),
+      // Upload-capable datasets and the NPPES files have no CMS data-api endpoint; they are available as files.
+      available: !!(IMPORT_TYPE_URLS[ds.id] || NPPES_FILE_TYPES[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
       unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
@@ -362,6 +367,18 @@ function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run
   import("../lib/snapshotRetire")
     .then(({ retiresSnapshot, retireStaleSnapshotRows }) => (retiresSnapshot(importType, opts) ? retireStaleSnapshotRows(importType, batchId) : null))
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
+}
+
+/**
+ * The release date a snapshot import's rows are stamped with (`as_of`): the resumed batch's
+ * own, else the last day the newest release covers, else the day it was published. The Care
+ * Compare catalog gives no coverage dates, only the publication date, so without the last
+ * fallback the ZIP service areas and affiliations would carry no vintage at all.
+ */
+export function importAsOf(o: { inherited?: string | null; temporalEnd?: string | null; stated?: string | null; catalogModified?: Date | string | null }): string | null {
+  const modified = o.catalogModified instanceof Date ? (Number.isNaN(o.catalogModified.getTime()) ? null : o.catalogModified.toISOString().slice(0, 10))
+    : typeof o.catalogModified === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.catalogModified) ? o.catalogModified.slice(0, 10) : null;
+  return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
 }
 
 export async function handleTriggerImport(payload: any, user: any) {
@@ -522,10 +539,10 @@ export async function handleTriggerImport(payload: any, user: any) {
     if (!effLicenseType && typeof prevParams.license_type === "string" && prevParams.license_type.trim()) effLicenseType = prevParams.license_type.trim().slice(0, 60);
     inheritedAsOf = typeof prevParams.as_of === "string" ? prevParams.as_of : null;
   }
-  // The release date: the resumed batch's own, else the newest release's period end,
-  // else the date an upload states (an export has no catalog entry).
+  // The release date: the resumed batch's own, else the newest release's period end, else the date an
+  // upload states (an export has no catalog entry), else the day the catalog says the release was published.
   const statedAsOf = typeof payload.as_of === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.as_of) ? payload.as_of : null;
-  const effAsOf = inheritedAsOf ?? version?.temporalEnd ?? statedAsOf;
+  const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, stated: statedAsOf, catalogModified: version?.catalogModified });
 
   if (batch_id) {
     await db.update(importBatches).set({
@@ -1460,22 +1477,26 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     undefined, `progress ${import_type}`,
   );
 
+  // Whether the user paused or cancelled the batch since it was last looked at (it then stops, keeping its place).
+  const stoppedByUser = async (): Promise<boolean> => {
+    const [current] = await safeImportQuery(
+      () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+      [] as any[], `pause check ${import_type}`,
+    );
+    if (current && (current.status === "paused" || current.status === "cancelled")) {
+      console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
+      await saveProgress();
+      await endedWithoutFinishing(import_type, batch_id, current.status);
+      return true;
+    }
+    return false;
+  };
+
   try {
     const records = csvSourceRecords(file_url, { headers: Array.isArray(headers) && headers.length ? headers : null });
     for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
       pages++;
-      if (pages % PAUSE_CHECK_INTERVAL === 0) {
-        const [current] = await safeImportQuery(
-          () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
-          [] as any[], `pause check ${import_type}`,
-        );
-        if (current && (current.status === "paused" || current.status === "cancelled")) {
-          console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
-          await saveProgress();
-          await endedWithoutFinishing(import_type, batch_id, current.status);
-          return;
-        }
-      }
+      if (pages % PAUSE_CHECK_INTERVAL === 0 && await stoppedByUser()) return;
       let rows = page.rows;
       if (rowFilter) {
         const before = rows.length;
@@ -1497,6 +1518,8 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
       if (pages % PROGRESS_UPDATE_INTERVAL === 0) await saveProgress();
     }
 
+    // A cancel that came in since the last check must not be overwritten by "completed".
+    if (await stoppedByUser()) return;
     await safeImportQuery(
       () => db.update(importBatches).set({
         status: "completed",
