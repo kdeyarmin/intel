@@ -18,10 +18,13 @@ export interface InterruptedBatch {
 export type RecoveryPlan =
   | { action: "cms"; params: Record<string, unknown> }
   | { action: "nppes_flat_file"; params: Record<string, unknown> }
+  | { action: "nppes_file"; params: Record<string, unknown> }
   | { action: "fail"; reason: string };
 
 /** The NPPES flat-file importer resumes itself from a byte offset; it is never read as a CMS CSV. */
 export const NPPES_FLAT_FILE_TYPES: ReadonlySet<string> = new Set(["nppes_flat_file", "nppes_registry_file"]);
+/** The NPPES V.2 dissemination zips (server/functions/importNPPESFile.ts) resume from a row offset, never as a CMS CSV. */
+export const NPPES_ZIP_FILE_TYPES: ReadonlySet<string> = new Set(["nppes_weekly_incremental", "nppes_monthly_full"]);
 
 export function planRecovery(batch: InterruptedBatch, now: Date = new Date()): RecoveryPlan {
   const rp = (batch.retry_params && typeof batch.retry_params === "object" ? batch.retry_params : {}) as Record<string, any>;
@@ -37,6 +40,19 @@ export function planRecovery(batch: InterruptedBatch, now: Date = new Date()): R
         byte_offset: Number(rp.byte_offset) || 0,
         headers: Array.isArray(rp.headers) ? rp.headers : null,
         total_rows: Number(rp.total_rows) || 0,
+      },
+    };
+  }
+
+  if (NPPES_ZIP_FILE_TYPES.has(batch.import_type || "")) {
+    return {
+      action: "nppes_file",
+      params: {
+        batch_id: batch.id,
+        file_url: fileUrl,
+        import_type: batch.import_type,
+        resume_offset: Number(rp.resume_offset) || Number(batch.total_rows) || 0,
+        dry_run: !!batch.dry_run,
       },
     };
   }

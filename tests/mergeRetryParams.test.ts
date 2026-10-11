@@ -4,6 +4,8 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
+import fs from "fs";
+import path from "path";
 
 vi.mock("../server/db", () => ({ db: {}, pool: {} }));
 const registry = vi.hoisted(() => ({ finished: [] as any[], settled: [] as number[] }));
@@ -22,6 +24,15 @@ describe("mergeRetryParams", () => {
     expect(sql).toMatch(/COALESCE\(.*"retry_params".*'\{\}'::jsonb\) \|\| \$1::jsonb/);
     // undefined keys are not sent, so they can't clear what is stored.
     expect(JSON.parse(params[0] as string)).toEqual({ resume_offset: 5000, state_filter: "PA" });
+  });
+});
+
+describe("importers that update an existing batch", () => {
+  it("the NPPES file importer merges into retry_params on every write", () => {
+    const src = fs.readFileSync(path.join(import.meta.dirname, "..", "server", "functions", "importNPPESFile.ts"), "utf8");
+    const writes = src.split("\n").filter((l) => l.includes("retry_params:"));
+    expect(writes.length).toBeGreaterThan(0);
+    for (const line of writes) expect(line).toContain("mergeRetryParams(");
   });
 });
 

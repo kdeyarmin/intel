@@ -11,7 +11,7 @@ import { specialtyGroupFor } from "./specialtyGroups";
 import { recordAudit } from "./audit";
 import {
   normalizeRules,
-  resolveTerritory,
+  territoryFromRows,
   scoreProvider,
   totalWeight,
   type ScoringInput,
@@ -159,7 +159,7 @@ export async function runLeadScoring(
   const now = opts.now ?? (() => new Date());
   const started = Date.now();
   const rules = normalizeRules(ruleRows);
-  const territory = resolveTerritory(rules);
+  const territory = territoryFromRows(ruleRows);
   const base = { territory, candidates: 0, scored: 0 };
   if (territory.states.length === 0) {
     return { status: "failed", ...base, duration_ms: 0, error: "Configure at least one state in the Geographic Priority rule's conditions." };
@@ -259,8 +259,55 @@ export interface LeadScoringStatus {
   scored_total: number | null;
 }
 
+/**
+ * Whether some process holds the scoring lock, i.e. a run is really in
+ * progress. A "running" row alone proves nothing: it outlives a restart that
+ * killed the run, while the lock goes with the connection.
+ */
+async function scoringLockHeld(pool: any): Promise<boolean> {
+  let client: any;
+  try {
+    client = await pool.connect();
+  } catch {
+    return true; // can't tell; don't declare a live run dead
+  }
+  let acquired = false;
+  try {
+    const { rows: [r] } = await client.query("SELECT pg_try_advisory_lock(hashtext($1)) AS ok", [LOCK_KEY]);
+    if (!r?.ok) return true;
+    acquired = true;
+    await client.query("SELECT pg_advisory_unlock(hashtext($1))", [LOCK_KEY]);
+    acquired = false;
+    return false;
+  } catch {
+    return true;
+  } finally {
+    // A connection that may still hold the lock is destroyed, not pooled.
+    client.release(acquired ? true : undefined);
+  }
+}
+
+/**
+ * A run a restart killed leaves its rollup_runs row "running" for good, which
+ * would disable the Recalculate button and keep the weekly refresh from ever
+ * starting. When no process holds the lock the row is marked failed, so the
+ * next run (or the weekly worker) starts normally. Returns whether it changed one.
+ */
+export async function settleInterruptedLeadScoring(pool: any): Promise<boolean> {
+  if (isLeadScoringRunning()) return false;
+  const { rows } = await pool.query("SELECT status FROM rollup_runs WHERE job = $1", [LEAD_SCORING_JOB]).catch(() => ({ rows: [] as any[] }));
+  if (rows[0]?.status !== "running") return false;
+  if (await scoringLockHeld(pool)) return false;
+  const res = await pool.query(
+    "UPDATE rollup_runs SET status = 'failed', finished_at = now(), error = $2 WHERE job = $1 AND status = 'running'",
+    [LEAD_SCORING_JOB, "Interrupted: the server restarted while this run was in progress."],
+  ).catch(() => null);
+  return (res?.rowCount ?? 0) > 0;
+}
+
 /** The last run (rollup_runs) and how many providers currently have a score. */
 export async function leadScoringStatus(pool: any): Promise<LeadScoringStatus> {
+  await settleInterruptedLeadScoring(pool).catch(() => false);
   const { rows } = await pool.query("SELECT * FROM rollup_runs WHERE job = $1", [LEAD_SCORING_JOB]).catch(() => ({ rows: [] as any[] }));
   const r = rows[0];
   const { rows: counts } = await pool.query("SELECT count(*)::int AS n FROM lead_scores WHERE score IS NOT NULL").catch(() => ({ rows: [] as any[] }));

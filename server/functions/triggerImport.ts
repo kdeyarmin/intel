@@ -4,6 +4,7 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, partitionRefresh, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
+import { mergeRetryParams, endedWithoutFinishing } from "../lib/importProgress";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
@@ -14,6 +15,9 @@ import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
 import { recordSourceFile } from "../lib/datasetRegistry";
 import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
+
+// Shared with the NPPES file importer; re-exported for the callers that import them from here.
+export { mergeRetryParams, endedWithoutFinishing };
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -352,28 +356,11 @@ async function insertBatchAtomically(
   });
 }
 
-/**
- * retry_params is shared with other writers: the auto-retry and auto-resume
- * workers keep their attempt counters in it. Progress writes therefore merge
- * into it (a JSONB `||`) instead of replacing it, or every progress write would
- * wipe MAX_AUTO_RETRY_ATTEMPTS' count and the retry cap would never apply.
- * Keys whose value is undefined are dropped by JSON.stringify and so left as is.
- */
-export function mergeRetryParams(patch: Record<string, unknown>) {
-  return sql`COALESCE(${importBatches.retry_params}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`;
-}
-
-/**
- * An import that stops before it finishes (the source kept failing, or it was
- * cancelled) tells the dataset registry and the schedule that started it, so
- * neither waits for a sweep: a dataset left "importing" would hide newer
- * releases, and a schedule left "running" would sit out its whole lease. A
- * paused batch is neither: it is resumed, and keeps its place.
- */
-export async function endedWithoutFinishing(importType: string, batchId: number, status: string, note?: string): Promise<void> {
-  if (status === "paused") return;
-  await markImportFinished(importType, { batchId, ok: false, note: (note || (status === "cancelled" ? "cancelled" : "stopped")).slice(0, 200) }).catch(() => {});
-  await settleBatchCompletion(batchId);
+/** After a complete, unfiltered import of a snapshot dataset, the rows the release no longer lists come out (in the background). */
+function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown }) {
+  import("../lib/snapshotRetire")
+    .then(({ retiresSnapshot, retireStaleSnapshotRows }) => (retiresSnapshot(importType, opts) ? retireStaleSnapshotRows(importType, batchId) : null))
+    .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
 }
 
 export async function handleTriggerImport(payload: any, user: any) {
@@ -470,7 +457,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     if (batch_id) {
       await db.update(importBatches).set({
         status: "processing", cancel_reason: null, cancelled_at: null, error_samples: null,
-        retry_params: { file_url: url, import_type, resume_offset: resume_offset || 0, retry_of, retry_count: (retry_count || 0) + 1, retry_tags },
+        retry_params: mergeRetryParams({ file_url: url, import_type, resume_offset: resume_offset || 0, retry_of, retry_count: (retry_count || 0) + 1, retry_tags }),
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch_id));
       activeBatchId = batch_id;
@@ -1432,7 +1419,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 // A CSV file (an upload, or an https link) through the same page/insert/
 // progress/completion path as the CMS APIs. resume_offset counts data rows.
 async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | null) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null, npi_filter, state_filter } = params;
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
@@ -1505,6 +1492,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     );
     console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
   } catch (e: any) {
     console.error(`[CsvImport] Fatal error:`, e.message);
     await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
@@ -1733,6 +1721,7 @@ export async function handleAutoImportCMSData(params: any) {
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
     if (import_type === "cms_order_referring" && !dry_run) {
       // The eligibility rows that used to land in cms_referrals come out now
       // that the typed table holds this release; long on a big table, so it

@@ -50,6 +50,17 @@ describe("planRecovery", () => {
     expect(plan).toEqual({ action: "nppes_flat_file", params: { batch_id: 9, file_url: "https://download.cms.gov/nppes/npidata.csv", byte_offset: 123456, headers: ["NPI"], total_rows: 800 } });
   });
 
+  it("sends an NPPES weekly or monthly zip back to its own importer, from the row it reached", () => {
+    const weekly = planRecovery({ id: 21, import_type: "nppes_weekly_incremental", dry_run: false, total_rows: 900, retry_params: { file_url: "https://download.cms.gov/nppes/NPPES_Data_Dissemination_092826_100426_Weekly_V2.zip", resume_offset: 1500 } }, now);
+    expect(weekly).toEqual({
+      action: "nppes_file",
+      params: { batch_id: 21, file_url: "https://download.cms.gov/nppes/NPPES_Data_Dissemination_092826_100426_Weekly_V2.zip", import_type: "nppes_weekly_incremental", resume_offset: 1500, dry_run: false },
+    });
+    const monthly: any = planRecovery({ id: 22, import_type: "nppes_monthly_full", dry_run: true, total_rows: 77, retry_params: { file_url: "https://download.cms.gov/nppes/NPPES_Data_Dissemination_September_2026_V2.zip" } }, now);
+    expect(monthly.action).toBe("nppes_file");
+    expect(monthly.params).toMatchObject({ import_type: "nppes_monthly_full", resume_offset: 77, dry_run: true });
+  });
+
   it("fails a batch that never recorded where its data comes from", () => {
     expect(planRecovery({ id: 1, import_type: "x", retry_params: null }, now)).toEqual({ action: "fail", reason: expect.stringMatching(/No file_url/) });
     expect(planRecovery({ id: 1, import_type: "x", retry_params: { file_url: "" } }, now).action).toBe("fail");

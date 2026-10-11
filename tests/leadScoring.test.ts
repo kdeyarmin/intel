@@ -5,6 +5,7 @@ import {
   RULE_TYPES,
   normalizeRules,
   resolveTerritory,
+  territoryFromRows,
   scoreProvider,
   targetGroups,
   totalWeight,
@@ -68,6 +69,29 @@ describe("normalizeRules", () => {
     expect(resolveTerritory(RULES)).toEqual({ states: ["PA"], counties: [] });
     const rules = normalizeRules([{ rule_type: "geographic_priority", weight: 10, conditions: { states: ["Pennsylvania", "pa", "p"], counties: ["42003", "4200", "42-003"] } }]);
     expect(resolveTerritory(rules)).toEqual({ states: ["PA"], counties: ["42003"] });
+  });
+});
+
+describe("territoryFromRows", () => {
+  it("keeps the configured states when the Geographic Priority rule is disabled or weighted 0", () => {
+    const conditions = { states: ["OH"], counties: [] };
+    expect(territoryFromRows([{ rule_type: "geographic_priority", weight: 10, enabled: false, conditions }])).toEqual({ states: ["OH"], counties: [] });
+    expect(territoryFromRows([{ rule_type: "geographic_priority", weight: 0, enabled: true, conditions }])).toEqual({ states: ["OH"], counties: [] });
+    // The scoring rule itself is off, so it adds no points and names no territory...
+    expect(resolveTerritory(normalizeRules([{ rule_type: "geographic_priority", weight: 10, enabled: false, conditions }]))).toEqual({ states: [], counties: [] });
+  });
+
+  it("never falls back to a default state when there is no such row", () => {
+    expect(territoryFromRows([])).toEqual({ states: [], counties: [] });
+    expect(territoryFromRows([{ rule_type: "patient_volume", weight: 20, enabled: true }])).toEqual({ states: [], counties: [] });
+  });
+
+  it("prefers the active row over a disabled duplicate, and keeps the default states for a row saved without conditions", () => {
+    expect(territoryFromRows([
+      { rule_type: "geographic_priority", weight: 10, enabled: false, conditions: { states: ["OH"] } },
+      { rule_type: "geographic_priority", weight: 10, enabled: true, conditions: { states: ["NY"], counties: ["36061"] } },
+    ])).toEqual({ states: ["NY"], counties: ["36061"] });
+    expect(territoryFromRows([{ rule_type: "geographic_priority", weight: 10, enabled: false }])).toEqual({ states: ["PA"], counties: [] });
   });
 });
 

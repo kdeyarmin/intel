@@ -13,10 +13,11 @@ import { importBatches } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { safeFetchStream } from "../lib/safeFetch";
 import { csvRecords, pageRecords } from "../lib/csv";
-import { nppesRowToRecords, writeNppesRecords, type NppesRecords } from "../lib/nppesWrite";
+import { nppesRowToRecords, writeNppesRecords, missingNppesIndexes, type NppesRecords } from "../lib/nppesWrite";
 import { classifyNppesLink, type NppesFileKind } from "../lib/nppesFiles";
 import { markImportFinished } from "../lib/datasetRegistry";
 import { settleBatchCompletion } from "../lib/importCompletion";
+import { mergeRetryParams, endedWithoutFinishing } from "../lib/importProgress";
 import { getExcludedCredentials, isCredentialExcluded } from "./importNPPESFlatFile";
 import { UPLOAD_DIR } from "../lib/importSources";
 import { getTaxonomyIndex } from "../lib/taxonomy";
@@ -80,6 +81,8 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
   let locations = 0;
   let locationsRemoved = 0;
   let taxonomies = 0;
+  let stale = 0;
+  let unmatched = 0;
   let pages = 0;
   let zipPath: string | null = null;
   let close: (() => void) | null = null;
@@ -89,11 +92,19 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
     imported_rows: providersWritten,
     skipped_rows: invalid + excluded,
     total_rows: rowsRead,
-    retry_params: { file_url, import_type, resume_offset: rowsRead, providers_written: providersWritten },
+    retry_params: mergeRetryParams({ file_url, import_type, resume_offset: rowsRead, providers_written: providersWritten }),
     updated_date: new Date(),
   }).where(eq(importBatches.id, batch_id)).catch((e) => console.warn("[importNPPESFile] progress:", e?.message));
 
   try {
+    // Before the (large) download: the location and taxonomy upserts conflict
+    // on unique indexes the server builds in the background after start-up.
+    if (!dry_run) {
+      const missing = await missingNppesIndexes(pool);
+      if (missing.length) {
+        throw new Error(`The unique indexes ${missing.join(", ")} are missing or still building (the server builds them in the background after start-up; see the "[DB Index]" log lines). Retry once they exist; if the build keeps failing, run scripts/dedupe-existing-imports.sql first.`);
+      }
+    }
     zipPath = await downloadNppesZip(file_url);
     const opened = await openNpiDataStream(zipPath);
     close = opened.close;
@@ -110,6 +121,7 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
         const [current] = await db.select({ status: importBatches.status }).from(importBatches).where(eq(importBatches.id, batch_id)).limit(1).catch(() => [] as any[]);
         if (current && (current.status === "paused" || current.status === "cancelled")) {
           await saveProgress();
+          await endedWithoutFinishing(import_type, batch_id, current.status);
           return;
         }
       }
@@ -128,6 +140,8 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
           locations += stats.locations;
           locationsRemoved += stats.locations_removed;
           taxonomies += stats.taxonomies;
+          stale += stats.providers_stale;
+          unmatched += stats.deactivations_unmatched;
         } finally {
           client.release();
         }
@@ -144,10 +158,10 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
       skipped_rows: invalid + excluded,
       total_rows: rowsRead,
       error_samples: null,
-      retry_params: { file_url, import_type, resume_offset: rowsRead, locations, locations_removed: locationsRemoved, taxonomies, invalid_npis: invalid, excluded_credentials: excluded, unknown_taxonomy_codes: [...taxonomy.unknown].slice(0, 50) },
+      retry_params: mergeRetryParams({ file_url, import_type, resume_offset: rowsRead, locations, locations_removed: locationsRemoved, taxonomies, invalid_npis: invalid, excluded_credentials: excluded, stale_rows: stale, unmatched_deactivations: unmatched, unknown_taxonomy_codes: [...taxonomy.unknown].slice(0, 50) }),
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
-    console.log(`[importNPPESFile] Completed ${import_type}: rows=${rowsRead}, providers=${providersWritten}, locations=${locations} (+${locationsRemoved} removed), taxonomies=${taxonomies}, invalid=${invalid}, excluded=${excluded}`);
+    console.log(`[importNPPESFile] Completed ${import_type}: rows=${rowsRead}, providers=${providersWritten}, locations=${locations} (+${locationsRemoved} removed), taxonomies=${taxonomies}, invalid=${invalid}, excluded=${excluded}, stale=${stale}, unmatched deactivations=${unmatched}`);
     if (taxonomy.unknown.size > 0) {
       console.warn(`[importNPPESFile] ${taxonomy.unknown.size} taxonomy code(s) not in the NUCC ${taxonomy.version ?? "?"} code set, e.g. ${[...taxonomy.unknown].slice(0, 10).join(", ")}; rebuild server/data/nucc from the current NUCC release`);
     }
