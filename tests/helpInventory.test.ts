@@ -19,7 +19,7 @@ describe('CareMetric Intel static help inventory', () => {
     expect(manifest).toEqual(buildManifest(source, manifest.source.ref));
     expect(manifest.product.slug).toBe('caremetric-intel');
     expect(manifest.summary.section_count).toBe(9);
-    expect(manifest.summary.topic_count).toBe(29);
+    expect(manifest.summary.topic_count).toBe(30);
     expect(manifest.privacy.runtime_or_entity_data_included).toBe(false);
     expect(manifest.summary.canonical_sha256).toMatch(/^[a-f0-9]{64}$/);
   });
