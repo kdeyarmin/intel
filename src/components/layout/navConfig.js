@@ -176,6 +176,28 @@ export function getNavPageFor(page) {
   return getParentPage(page);
 }
 
+const DETAIL_PAGE_LABELS = {
+  ProviderDetail: 'Provider profile',
+  LocationDetail: 'Location',
+  FacilityDetail: 'Facility',
+  LeadListBuilder: 'Lead Builder',
+};
+
+/**
+ * What to call `page` in links: its sidebar name, "Parent › Tab" for a tab of
+ * a grouped page, or "Parent › Detail" for a detail page.
+ */
+export function getPageLabel(page) {
+  const item = NAV_ITEMS_BY_PAGE.get(page);
+  if (item) return item.name;
+  const parent = getParentPage(page);
+  const parentName = parent ? NAV_ITEMS_BY_PAGE.get(parent)?.name : null;
+  const tab = getPageGroup(page)?.pages.find((p) => p.page === page)?.label;
+  const own = tab || DETAIL_PAGE_LABELS[page];
+  if (parentName && own) return `${parentName} › ${own}`;
+  return own || parentName || page;
+}
+
 /** Whether a user with `role` may open `page`. Unknown pages are admin-only (default-deny). */
 export function canAccessPage(page, role) {
   const navPage = getParentPage(page);

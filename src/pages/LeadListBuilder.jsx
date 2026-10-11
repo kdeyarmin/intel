@@ -22,7 +22,6 @@ export default function LeadListBuilder() {
     state: 'PA',
     county: '',
     zip: '',
-    radius: '',
     specialty: '',
     minScore: '',
     maxScore: '',
@@ -126,7 +125,7 @@ export default function LeadListBuilder() {
         // State filter
         if (filters.state !== 'all' && location?.state !== filters.state) return false;
 
-        // County filter
+        // City filter (the key is still `county`)
         if (filters.county && !location?.city?.toLowerCase().includes(filters.county.toLowerCase())) return false;
 
         // ZIP filter (exact match)
@@ -354,7 +353,6 @@ export default function LeadListBuilder() {
               state: 'PA',
               county: '',
               zip: '',
-              radius: '',
               specialty: '',
               minScore: '',
               maxScore: '',
@@ -380,6 +378,11 @@ export default function LeadListBuilder() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              <p className="text-xs text-slate-400 mb-3">
+                The builder filters the 500 most recently added providers, so it can miss matches.
+                To find a specialty or area across the whole database, ask the AI Assistant. The Territory
+                map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.
+              </p>
               <LeadResultsTable
                 results={filteredResults}
                 onStatusChange={handleStatusChange}

@@ -3,8 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  HelpCircle, Download, Search, LayoutDashboard, Users, Upload, Bot,
-  Megaphone, Zap, TrendingUp, Sparkles
+  HelpCircle, Download, Search, Zap, Brain, MapPin, BarChart3, Target, Upload, Database, Shield,
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import HelpSection from '../components/help/HelpSection';
@@ -22,103 +21,109 @@ const GUIDE_SECTIONS = [
     icon: Zap,
     color: 'text-amber-400',
     content: [
-      { heading: 'Welcome to CareMetric AI', text: 'CareMetric AI is a Medicare provider intelligence platform designed for home health, hospice, and post-acute care organizations. It helps you identify, score, and engage referral sources using public CMS data and AI-powered enrichment.' },
-      { heading: 'First Steps', text: '1. **Dashboard** — Start here to see your system health, database counts, and recent activity.\n2. **Import Data** — Go to Data Operations → Data Center to import NPPES, CMS Utilization, Referral, and other Medicare datasets.\n3. **Browse Providers** — View imported providers under Directory → All Providers.\n4. **Build Lead Lists** — Use Sales & Outreach → Lead Lists to create targeted lists based on specialty, geography, and score.\n5. **Run Outreach** — Create campaigns in Sales & Outreach → Campaigns to engage your top leads.' },
-      { heading: 'User Roles', text: '**Admin** — Full access to all features including data imports, crawler, enrichment, scoring rules, and system configuration.\n\n**Sales Rep** — Access to providers, lead lists, campaigns, analytics, and reports. Cannot access admin-only features like data imports or the NPPES crawler.' },
-    ]
+      { page: 'Dashboard', heading: 'Welcome to CareMetric AI', text: 'CareMetric AI is a provider intelligence app for home health, hospice and post-acute teams. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.' },
+      { page: 'Dashboard', heading: 'Your account', text: 'New accounts need an administrator\'s approval: after signing up you\'ll see a waiting screen until an admin approves you. Admins can also invite people by link.\n\nThere are two roles:\n• **User** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Admin** — everything, plus data imports, the NPPES crawler, campaigns, provider intelligence, scoring rules and user management.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an admin for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.' },
+      { page: 'Dashboard', heading: 'Finding your way', text: 'The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. On the directory pages (Providers, Organizations, Locations, Facilities), Territory & County, Referral Network and Lead Lists, filters and tabs are kept in the page address, so you can bookmark or share the view and Back returns to it. Other pages, such as the Lead Builder, start fresh each visit. Old links to pages that moved still work.' },
+    ],
   },
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    icon: LayoutDashboard,
+    id: 'search-directory',
+    title: 'Search & Directory',
+    icon: Search,
     color: 'text-cyan-400',
     content: [
-      { heading: 'Overview', text: 'The Dashboard is your home base. It displays key metrics including total providers, locations, email coverage, recent imports, and system health indicators.' },
-      { heading: 'Key Sections', text: '• **System Health Strip** — Shows database record counts and system status at a glance.\n• **Database Overview** — Breakdown of providers, locations, taxonomies, and utilization records.\n• **Email Health** — Coverage percentage of providers with verified email addresses.\n• **Proactive Alerts** — AI-generated notifications about data quality issues or opportunities.\n• **Recent Activity** — Audit log of recent imports, exports, and scoring runs.' },
-    ]
-  },
-  {
-    id: 'providers',
-    title: 'Providers & Locations',
-    icon: Users,
-    color: 'text-blue-400',
-    content: [
-      { heading: 'All Providers', text: 'Browse, search, and filter your provider database. Use the search bar to find providers by NPI, name, or specialty. Click any provider to see their full profile including contact info, utilization data, referral patterns, and lead score.' },
-      { heading: 'Provider Detail', text: 'Each provider profile includes:\n• **Basic Profile** — Name, NPI, specialty, credentials, contact info\n• **Score Breakdown** — CareMetric Referral Propensity Score with factor analysis\n• **Utilization Insights** — Medicare claims volume, service intensity\n• **Referral Summary** — Referral patterns and network connections\n• **Locations** — Practice addresses and phone numbers\n• **AI Enrichment** — Website, email, LinkedIn, and other discovered data' },
-      { heading: 'Organizations', text: 'View organization-type providers (NPI-2) like hospitals, clinics, and agencies. Filter by state, type, or search by name.' },
-      { heading: 'Locations', text: 'Browse all practice locations. Filter by state, location type (Practice/Mailing), or primary status. Export to CSV for external use.' },
-      { heading: 'Territory Map', text: 'Interactive geographic visualization of your provider data. Filter by state, specialty, and score to identify market density and gaps.' },
-    ]
-  },
-  {
-    id: 'sales-outreach',
-    title: 'Sales & Outreach',
-    icon: Megaphone,
-    color: 'text-purple-400',
-    content: [
-      { heading: 'Lead Lists', text: 'View and manage saved lead lists. Each list contains providers matching specific criteria with their current status (New, Contacted, Qualified, Not a fit).' },
-      { heading: 'Lead Builder', text: 'Create targeted lead lists by combining filters:\n• **Geography** — State, ZIP code, radius\n• **Specialty** — Taxonomy codes and descriptions\n• **Score Range** — Minimum/maximum CareMetric score\n• **Volume** — Minimum Medicare beneficiaries or referrals\n• **Medicare Status** — Active enrollment filter' },
-      { heading: 'Intelligence', text: '(Admin only) AI-powered email discovery, verification, and provider enrichment — found under Sales & Outreach → Intelligence. Searches the web for provider email addresses, validates deliverability, and tracks quality scores. Run single searches or batch operations.' },
-      { heading: 'Campaigns', text: 'Create and manage outreach campaigns:\n1. Click "New Campaign" and fill in campaign details\n2. Select your target audience from existing lead lists\n3. Design your email template with personalization tokens\n4. Launch and track open rates, responses, and conversions in the Analytics tab' },
-    ]
-  },
-  {
-    id: 'analytics',
-    title: 'Analytics & Reports',
-    icon: TrendingUp,
-    color: 'text-emerald-400',
-    content: [
-      { heading: 'Advanced Analytics', text: 'Deep-dive analytics with trend analysis, comparative panels, predictive models, and drill-down tables. Use the dashboard builder to create custom visualizations.' },
-      { heading: 'CMS Data', text: 'Explore raw CMS datasets including Medicare Advantage Inpatient, HHA Statistics, Inpatient DRG, Utilization, Referrals, and SNF data. Filter by year and dataset type.' },
-      { heading: 'Referral Network', text: 'Visualize referral relationships between providers. Identify hub providers, network gaps, and geographic clustering. Use AI recommendations to find new referral targets.' },
-      { heading: 'Custom Reports', text: 'Build custom reports by selecting data sources, metrics, filters, and chart types. Save reports for reuse and schedule automated delivery.' },
-    ]
-  },
-  {
-    id: 'data-import',
-    title: 'Data Import (Admin)',
-    icon: Upload,
-    color: 'text-orange-400',
-    content: [
-      { heading: 'Data Center', text: 'Central hub for all data imports. Choose from supported import types:\n• **NPPES Registry** — National Provider Identifier data\n• **CMS Utilization** — Medicare claims and service data\n• **CMS Referrals** — Provider-to-provider referral patterns\n• **Medicare HHA Stats** — Home Health Agency statistics\n• **Medicare MA Inpatient** — Medicare Advantage hospital data\n• **Medicare SNF Stats** — Skilled Nursing Facility data\n• And more...' },
-      { heading: 'How to Import', text: '1. Go to Data Operations → Data Center\n2. Select the import category and type\n3. Upload your CSV/Excel file or use the auto-download URL\n4. Review the column mapping (AI-assisted)\n5. Validate the data (dry run recommended first)\n6. Click Import to process the data\n7. Monitor progress in Data Operations → Imports' },
-      { heading: 'Import Monitor', text: 'Track all import batches with real-time progress. View success/failure rates, error samples, and retry failed imports. Filter by status, type, or date range.' },
-    ]
-  },
-  {
-    id: 'nppes-crawler',
-    title: 'NPPES Crawler (Admin)',
-    icon: Bot,
-    color: 'text-teal-400',
-    content: [
-      { heading: 'Overview', text: 'The NPPES Crawler automatically pulls provider data from the National Plan and Provider Enumeration System API, processing one state at a time.' },
-      { heading: 'Manual Mode', text: 'Click "Start Crawl" to begin browser-based crawling. You can pause, resume, or stop at any time. The page must remain open.' },
-      { heading: 'Auto Mode', text: 'Click "Start Auto-Crawler" for server-side crawling that runs independently — you can close the browser. The system processes all states sequentially and handles retries automatically.' },
-      { heading: 'Settings', text: 'Configure crawler parameters in NPPES Crawler → Settings:\n• **API Batch Size** — Records per API request (max 200)\n• **API Delay** — Pause between requests to avoid rate limiting\n• **Concurrency** — Parallel workers for faster processing\n• **Max Crawl Duration** — Time limit per state before saving partial results\n• **Entity Types** — Choose Individual (NPI-1), Organization (NPI-2), or both' },
-    ]
-  },
-  {
-    id: 'enrichment',
-    title: 'Enrichment & Quality (Admin)',
-    icon: Sparkles,
-    color: 'text-pink-400',
-    content: [
-      { heading: 'Enrichment Hub', text: 'Enhance provider records with additional data:\n• **AI Enrichment** — Discovers websites, emails, LinkedIn profiles, and additional practice details\n• **Bulk Operations** — Enrich multiple providers at once\n• **Review Queue** — Review and approve AI-suggested changes before applying' },
-      { heading: 'Data Quality', text: 'Monitor and maintain data integrity:\n• **Quality Score** — Overall data completeness and accuracy rating\n• **Alerts** — Automated detection of quality drops, missing data, and inconsistencies\n• **Cleaning Rules** — Define and apply data standardization rules\n• **Scan History** — Track quality metrics over time' },
-      { heading: 'Scoring Rules', text: 'Configure the CareMetric Referral Propensity Score (0–100):\n• **Specialty Match** — Weight for target specialties\n• **Medicare Participation** — Active enrollment bonus\n• **Patient Volume** — Beneficiary count factor\n• **Geographic Priority** — Location-based weighting\n• **Practice Type** — Solo/small group preference\n\nAdjust weights and recalculate scores for all providers.' },
-    ]
+      { page: 'Providers', heading: 'Searching', text: 'Search (Ctrl+K) and the directory pages search the whole database on the server:\n• **People** by last name — "Smith", "John Smith" or "Smith, John".\n• **Organizations** by any part of the name — "Mercy" finds "Mercy Hospital of Pittsburgh".\n• **NPIs** — the full 10 digits, or the first few.\n• **Places** (Locations page) — a ZIP or ZIP+4, "Pittsburgh, PA", or a state. A city on its own needs a state.\n\nVery common names return the first matches; add a state or more letters to narrow them.' },
+      { page: 'Providers', heading: 'Providers and organizations', text: '**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities, outreach history and a printable report. Organizations also show affiliated providers.' },
+      { page: 'Locations', heading: 'Locations', text: 'Find practice and mailing addresses by NPI, ZIP, "City, ST" or state. Each location opens its provider and nearby details.' },
+      { page: 'Facilities', heading: 'Facilities', text: 'One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility\'s page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.' },
+    ],
   },
   {
     id: 'ai-assistant',
     title: 'AI Assistant',
-    icon: Bot,
+    icon: Brain,
     color: 'text-violet-400',
     content: [
-      { heading: 'Overview', text: 'The AI Assistant helps you interact with your data using natural language. Ask questions about providers, get market insights, or request data analysis.' },
-      { heading: 'Example Queries', text: '• "Show me the top 10 providers in Pennsylvania by score"\n• "How many providers have verified emails?"\n• "What specialties have the highest referral volume?"\n• "Create a lead list of family medicine providers in Philadelphia"\n• "Summarize the data quality for our provider database"' },
-    ]
+      { page: 'AIAssistant', heading: 'What it can do', text: 'Ask questions in plain English. The assistant looks the answer up in the app\'s data — providers and their profiles, counties and states, referral networks, dashboard numbers and your lead lists — and links to the pages it used. It says when a figure is an estimate or comes from a sample, and treats "Unscored" as no score rather than zero.\n\nExamples:\n• "Who are the highest-scored cardiologists in Allegheny County, PA?"\n• "Summarize Franklin County, OH."\n• "Who does NPI 1234567890 share the most patients with?"\n• "What do my lead lists look like?"' },
+      { page: 'AIAssistant', heading: 'Making a lead list', text: 'Ask the assistant to make a list from providers it found. It shows a **proposed lead list** card with the providers; nothing is created until you press **Create list** (or **Cancel**). Proposals expire after 24 hours. The assistant can\'t change or delete anything else.' },
+      { page: 'AIAssistant', heading: 'Conversations and limits', text: 'Conversations are saved for you only; rename or delete them from the list, and use **Load older conversations** at the bottom to see earlier ones. Press **Stop** to end an answer early. The assistant answers one of your questions at a time, so wait for an answer to finish before asking in another conversation. Each person can ask a few questions a minute and has a daily usage limit; an answer that reaches the limit stops early. A conversation holds up to 40 questions. Answers can be wrong — check important figures on the linked pages.\n\nIf the page says the assistant isn\'t set up, an admin needs to add the Anthropic API key to the server.' },
+    ],
+  },
+  {
+    id: 'territory',
+    title: 'Territory & County',
+    icon: MapPin,
+    color: 'text-teal-400',
+    content: [
+      { page: 'TerritoryIntelligence', heading: 'Territory map', text: 'Shows providers in a state on a map, starting with the highest lead scores. Filter by specialty group, entity type, score range and patient volume; color markers by score; switch on the heat map or volume density. Providers without a score are shown as **Unscored**, never as zero, and drop out when you set a score range.\n\nThe **County density** tab ranks counties by practice locations and links to each county.' },
+      { page: 'CountyIntelligence', heading: 'County view', text: 'Pick a state and a county to see providers practicing there, top specialties, the highest-scored providers, Medicare facilities, the strongest shared-patient pairs and top Medicare services. In large counties the page counts **practice locations** instead of providers (a provider with several offices counts more than once) and the details describe a sample; totals marked "≈" are estimates.' },
+      { page: 'TerritoryIntelligence', heading: 'About the geography', text: 'Counties and ZIP areas come from the 2020 U.S. Census. A provider is placed at the center of its ZIP area (or of its 3-digit ZIP region or state when the ZIP isn\'t a Census ZIP area), so map positions are approximate. A ZIP area belongs to the county holding most of its land.' },
+    ],
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics & Networks',
+    icon: BarChart3,
+    color: 'text-blue-400',
+    content: [
+      { page: 'ReferralNetworkIntelligence', heading: 'Referral Network', text: 'Maps Medicare shared-patient patterns — how many patients two providers both saw — for a state, a lead list or one provider. These are patterns, not confirmed referrals. The view shows the busiest providers and their strongest connections; hubs are the most connected providers. Large networks are trimmed to the busiest part, and the page says when it is.' },
+      { page: 'CMSAnalytics', heading: 'CMS Data', text: 'Summaries of Medicare utilization by service type, the providers others share the most Medicare patients with (the **Top Referred-To Providers** chart; shared patients, not confirmed referrals) and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.' },
+      { page: 'CustomReports', heading: 'Reports and analytics', text: '**Reports** builds reports from your data, saves them and emails them on a schedule to up to 25 people with an active account (or an address on a domain an admin has approved); the schedule\'s preview and its last-run note say who was left out. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.' },
+    ],
+  },
+  {
+    id: 'sales',
+    title: 'Lead Lists & Outreach',
+    icon: Target,
+    color: 'text-green-400',
+    content: [
+      { page: 'LeadLists', heading: 'Lead lists', text: 'Lead lists hold the providers you\'re working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; admins can also start a campaign from it.' },
+      { page: 'LeadListBuilder', heading: 'Lead Builder', text: 'Filter providers by state, city, ZIP, specialty text, score range, Medicare patient volume, Medicare participation and behavioral-health or geriatric focus, then save the matches as a list.\n\nThe builder only filters the 500 most recently added providers, so it can miss matches. To list a specialty or area across the whole database, ask the AI Assistant. The Territory map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.' },
+      { page: 'ProviderOutreach', heading: 'Campaigns (admin)', text: 'Create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Sending is admin-only, and every email carries an unsubscribe link that is honoured automatically.' },
+      { page: 'ProviderIntelligence', heading: 'Provider intelligence (admin)', text: 'Finds and checks provider contact details: AI-assisted email search, email verification (by checking the domain\'s mail servers), NPI validation and enrichment of provider records. Suggested changes are reviewed before they\'re applied.' },
+    ],
+  },
+  {
+    id: 'data',
+    title: 'Data Imports (Admin)',
+    icon: Upload,
+    color: 'text-orange-400',
+    content: [
+      { page: 'DataCenter', heading: 'Importing data', text: 'Go to **Data Center**, choose a dataset (NPPES, Medicare utilization, shared-patient patterns, facility datasets and more), then either let the app download it from CMS or upload a file. Column mapping is suggested for you. Large imports run in the background and can be paused and resumed.' },
+      { page: 'ImportMonitoring', heading: 'Import monitor', text: 'Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running.' },
+      { page: 'CMSDataSources', heading: 'Dataset catalog', text: 'Lists the CMS datasets the app knows about, with their sources and how recently each was imported.' },
+    ],
+  },
+  {
+    id: 'crawler',
+    title: 'NPPES Crawler (Admin)',
+    icon: Database,
+    color: 'text-sky-400',
+    content: [
+      { page: 'NPPESCrawler', heading: 'Crawler', text: 'Pulls provider records from the NPPES API one state at a time on the server, so you can close the page while it runs. Start, pause or resume it and watch each state\'s progress.' },
+      { page: 'NPPESCrawlerSettings', heading: 'Settings', text: 'On the **Settings** tab: records per request (up to 200), the pause between requests, parallel workers, the time limit per state, and whether to crawl individuals, organizations or both.' },
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Administration',
+    icon: Shield,
+    color: 'text-red-400',
+    content: [
+      { page: 'AdminSettings', heading: 'Users', text: 'Under **Admin Settings → Users**: approve or remove people waiting for approval, invite people by link, change roles, disable or re-enable accounts, create password reset links and sign someone out everywhere. You can\'t change your own account here, and the last active admin can\'t be removed. Account activity is recorded.' },
+      { page: 'ScoringRules', heading: 'Scoring rules', text: 'The CareMetric score (0–100) weights specialty match, Medicare participation, patient volume, service intensity, geographic priority, practice type and behavioral-health potential. Adjust the weights (they should total 100%) and recalculate scores.' },
+      { page: 'DataQuality', heading: 'Data quality', text: 'Validation rules, quality alerts and scan history for the provider data, with an assistant for investigating issues. **Reconciliation** compares records with external sources, and **Provider Matching** links providers to facilities.' },
+      { page: 'SecurityAudit', heading: 'Security audit', text: 'Under **Admin Settings → Security audit**: sign-ins, account changes, exports and other recorded actions, with filters.' },
+    ],
   },
 ];
+
+// jsPDF's built-in fonts only cover Windows-1252; spell out the symbols the
+// guide uses that it lacks.
+const PDF_REPLACEMENTS = [[/→/g, '>'], [/≈/g, '~'], [/⌘/g, 'Cmd+']];
+function pdfText(text) {
+  return PDF_REPLACEMENTS.reduce((t, [re, to]) => t.replace(re, to), text);
+}
 
 export default function Help() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -146,12 +151,16 @@ export default function Help() {
   const expandAll = () => setExpandedSections(new Set(GUIDE_SECTIONS.map(s => s.id)));
   const collapseAll = () => setExpandedSections(new Set());
 
-  const filteredSections = GUIDE_SECTIONS.filter(section => {
-    if (!searchTerm) return true;
-    const q = searchTerm.toLowerCase();
-    return section.title.toLowerCase().includes(q) ||
-      section.content.some(c => c.heading.toLowerCase().includes(q) || c.text.toLowerCase().includes(q));
-  });
+  // While searching, show only matching topics (all of a section whose title
+  // matches), with their sections open.
+  const query = searchTerm.trim().toLowerCase();
+  const filteredSections = GUIDE_SECTIONS
+    .map(section => {
+      if (!query || section.title.toLowerCase().includes(query)) return { section, topics: section.content };
+      const topics = section.content.filter(c => c.heading.toLowerCase().includes(query) || c.text.toLowerCase().includes(query));
+      return { section, topics };
+    })
+    .filter(({ topics }) => topics.length > 0);
 
   const generatePDF = async () => {
     setGenerating(true);
@@ -210,12 +219,12 @@ export default function Help() {
           checkPage(30);
           doc.setTextColor(15, 23, 41);
           doc.setFontSize(12);
-          doc.text(item.heading, margin, y);
+          doc.text(pdfText(item.heading), margin, y);
           y += 7;
 
           doc.setTextColor(71, 85, 105);
           doc.setFontSize(9.5);
-          const cleanText = item.text.replace(/\*\*/g, '').replace(/\n/g, '\n');
+          const cleanText = pdfText(item.text.replace(/\*\*/g, ''));
           const lines = doc.splitTextToSize(cleanText, contentWidth);
           lines.forEach(line => {
             checkPage(6);
@@ -230,7 +239,7 @@ export default function Help() {
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(8);
       doc.text('CareMetric AI — www.CareMetric.ai', margin, 285);
-      doc.text('Data Sources: CMS Medicare & NPPES National Provider files', margin, 290);
+      doc.text('Data sources: CMS Medicare and NPPES provider files; U.S. Census Bureau geography', margin, 290);
 
       doc.save('CareMetric_AI_User_Guide.pdf');
     } catch (err) {
@@ -248,8 +257,8 @@ export default function Help() {
         icon={HelpCircle}
         breadcrumbs={[{ label: 'Help' }]}
         actions={
-          <Button onClick={generatePDF} disabled={generating} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
-            <Download className="w-4 h-4" />
+          <Button onClick={generatePDF} disabled={generating} className="bg-cyan-700 hover:bg-cyan-600 text-white gap-2">
+            <Download className="w-4 h-4" aria-hidden="true" />
             {generating ? 'Generating...' : 'Download PDF Guide'}
           </Button>
         }
@@ -266,12 +275,13 @@ export default function Help() {
             aria-label="Search help topics"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-[#141d30] border-slate-700/50 text-slate-200 placeholder:text-slate-500"
+            className="pl-10 bg-[#141d30] border-slate-700/50 text-slate-200 placeholder:text-slate-400"
           />
         </div>
+        {/* While searching every matching section is open, so these do nothing. */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={expandAll} className="text-xs">Expand All</Button>
-          <Button variant="outline" size="sm" onClick={collapseAll} className="text-xs">Collapse All</Button>
+          <Button variant="outline" size="sm" onClick={expandAll} disabled={Boolean(query)} className="text-xs">Expand All</Button>
+          <Button variant="outline" size="sm" onClick={collapseAll} disabled={Boolean(query)} className="text-xs">Collapse All</Button>
         </div>
       </div>
 
@@ -281,6 +291,7 @@ export default function Help() {
           const Icon = section.icon;
           return (
             <button
+              type="button"
               key={section.id}
               onClick={() => {
                 setExpandedSections(prev => new Set([...prev, section.id]));
@@ -288,7 +299,7 @@ export default function Help() {
               }}
               className="flex items-center gap-2 p-3 rounded-lg bg-[#141d30] border border-slate-700/50 hover:border-cyan-500/30 transition-colors text-left"
             >
-              <Icon className={`w-4 h-4 ${section.color} shrink-0`} />
+              <Icon className={`w-4 h-4 ${section.color} shrink-0`} aria-hidden="true" />
               <span className="text-xs text-slate-300 truncate">{section.title}</span>
             </button>
           );
@@ -297,11 +308,13 @@ export default function Help() {
 
       {/* Sections */}
       <div className="space-y-3">
-        {filteredSections.map(section => (
+        {filteredSections.map(({ section, topics }) => (
           <HelpSection
             key={section.id}
             section={section}
-            expanded={expandedSections.has(section.id)}
+            topics={topics}
+            expanded={Boolean(query) || expandedSections.has(section.id)}
+            locked={Boolean(query)}
             onToggle={() => toggleSection(section.id)}
             searchTerm={searchTerm}
           />
@@ -309,7 +322,7 @@ export default function Help() {
         {filteredSections.length === 0 && (
           <Card className="bg-[#141d30] border-slate-700/50">
             <CardContent className="py-12 text-center">
-              <Search className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+              <Search className="w-10 h-10 text-slate-400 mx-auto mb-3" aria-hidden="true" />
               <p className="text-slate-400">No topics match "{searchTerm}"</p>
             </CardContent>
           </Card>

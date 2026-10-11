@@ -14,6 +14,8 @@ The system spans three layers: (1) the **React SPA** (`src/`), with pages auto-r
 **Key UI/UX decisions include:**
 - **Dark Theme:** Strict adherence to a dark theme palette: `text-slate-300/400`, `bg-slate-800/900`. Accent colors use `bg-*-900/30 text-*-400 border-*-500/30`.
 - **Responsive Design:** Page wrappers utilize `p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto`, with grids collapsing on smaller screens and tables supporting horizontal overflow.
+- **Accessibility:** The shell has a skip link, `main`/`nav` landmarks, an `inert` collapsed sidebar and Escape-to-close on mobile; global search is a combobox with a listbox of results. Every control is labelled and icon buttons are named; jsx-a11y (lint), `tests/a11yStatic.test.ts` and axe (`tests/a11y.test.jsx`) enforce it. Contrast targets WCAG AA on the dark theme: text slate-400 or lighter, accent text -400, white text only on fills dark enough for it (-700 for cyan/teal/emerald/green).
+- **Help:** `src/pages/Help.jsx` (`GUIDE_SECTIONS`) is the in-app guide and PDF. Each topic names its page and links there for people who may open it; search opens the matching topics. `artifacts/help/caremetric-intel-guide-sections.json` is a generated inventory of the guide (regenerate with `SOURCE_COMMIT=… node scripts/generate-help-inventory.mjs`; `tests/helpInventory.test.ts` checks it).
 
 **Core Technical Implementations and Features:**
 - **Provider Management:** Comprehensive tools for managing providers, locations, and territory mapping.
