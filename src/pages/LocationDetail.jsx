@@ -55,7 +55,7 @@ export default function LocationDetail() {
   const { data: utilizations = [] } = useQuery({
     queryKey: ['locUtil', location?.npi],
     queryFn: async () => {
-      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi: location.npi });
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi: location.npi }, '-data_year', 5000);
       return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
     },
     enabled: !!location?.npi,
@@ -64,7 +64,7 @@ export default function LocationDetail() {
   // Fetch referrals for the main NPI
   const { data: referrals = [] } = useQuery({
     queryKey: ['locRef', location?.npi],
-    queryFn: () => base44.entities.CMSReferral.filter({ npi: location.npi }),
+    queryFn: () => base44.entities.CMSReferral.filter({ npi: location.npi }, '-total_referrals', 5000),
     enabled: !!location?.npi,
   });
 
@@ -233,7 +233,7 @@ export default function LocationDetail() {
                 {latestRef ? (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center p-2.5 bg-slate-800/40 rounded-lg">
-                      <span className="text-sm text-slate-400">Shared patients (data year {latestRef.year})</span>
+                      <span className="text-sm text-slate-400">Shared-patient encounters (data year {latestRef.year})</span>
                       <span className="text-lg font-bold text-white">{latestRef.total_referrals.toLocaleString()}</span>
                     </div>
                     {[

@@ -72,7 +72,7 @@ export default function TerritoryIntelligence() {
 
   // County density tab: provider density (from the territory data) or one
   // market metric for every county (rollup_county_market_profile).
-  const { data: layer } = useQuery({
+  const { data: layer, isLoading: layerLoading, error: layerError, refetch: refetchLayer } = useQuery({
     queryKey: ['countyMarketLayer', filters.state, filters.layer],
     queryFn: () => invokeOrThrow('getCountyMarketLayer', { state: filters.state, metric: filters.layer }),
     enabled: filters.tab === 'density' && filters.layer !== 'density' && filters.state !== 'ALL',
@@ -206,7 +206,7 @@ export default function TerritoryIntelligence() {
                       {filters.layer === 'density' || filters.state === 'ALL' ? (
                         <CountyDensityMap counties={data?.counties || []} providers={filtered} state={filters.state !== 'ALL' ? filters.state : null} />
                       ) : (
-                        <CountyMetricLayer layer={layer} state={filters.state} />
+                        <CountyMetricLayer layer={layer} state={filters.state} loading={layerLoading} error={layerError} onRetry={() => refetchLayer()} />
                       )}
                     </TabsContent>
                   </Tabs>

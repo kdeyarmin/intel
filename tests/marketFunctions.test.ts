@@ -105,6 +105,12 @@ describe("getCountyMarket", () => {
     expect(r.competitors.hospice.rows).toEqual([]);
     expect(r.trends.snf).toEqual([{ data_year: "2023", benes: 7000, stays: 9000, providers: 72 }, { data_year: "2024", benes: 7400, stays: 9500, providers: 70 }]);
     expect(r.coverage.hha[0]).toMatchObject({ ccn: "397001", name: "PAC 397001", share_of_county_zips: 0.8 });
+    expect(r.coverage.hospice[0]).toMatchObject({ ccn: "398001", share_of_county_zips: 0.5 });
+    // One limit across both settings would let a county's many home health agencies push every hospice out.
+    const coverageQuery = h.queries.find((q) => /FROM rollup_agency_coverage/.test(q.sql))!;
+    expect(coverageQuery.sql).toMatch(/row_number\(\) OVER \(PARTITION BY setting ORDER BY share_of_county_zips DESC, ccn\)/);
+    expect(coverageQuery.sql).toMatch(/WHERE rn <= \$2/);
+    expect(coverageQuery.params).toEqual(["42003", 25]);
     expect(r.vintages).toEqual({ enrollment: "2026-06", hospital_service_area: "2025" });
     expect(r.rollups.county_market_profile).toEqual({ status: "success", refreshed_at: "2026-10-10T03:00:00Z", error: null });
     expect(r.rollups.cms_service_types).toBeUndefined();
@@ -126,11 +132,16 @@ describe("getHospitalCatchment", () => {
   it("adds up the hospital's ZIP areas by county, newest year first", async () => {
     h.answers.push(
       [/SELECT DISTINCT data_year FROM rollup_hospital_catchment/, [{ data_year: "2025" }, { data_year: "2024" }]],
-      [/FROM rollup_hospital_catchment\s+WHERE ccn = \$1 AND data_year = \$2/, (p: any[]) => (p[1] === "2025" ? [
+      [/SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment/, (p: any[]) => (p[1] === "2025" ? [
         { zip5: "15213", county_fips: "42003", cases: 600, days: 3000, charges: 9e6, share_of_hospital: 0.3 },
         { zip5: "15212", county_fips: "42003", cases: 300, days: 1500, charges: 4e6, share_of_hospital: 0.15 },
         { zip5: "16001", county_fips: "42019", cases: 100, days: 500, charges: 1e6, share_of_hospital: 0.05 },
       ] : [])],
+      [/AS zips FROM rollup_hospital_catchment WHERE ccn/, [{ cases: "1000", zips: 3 }]],
+      [/GROUP BY county_fips ORDER BY sum\(cases\)/, [
+        { county_fips: "42003", cases: "900", days: "4500", zips: 2 },
+        { county_fips: "42019", cases: "100", days: "500", zips: 1 },
+      ]],
       [/FROM rollup_hospital_discharge_mix WHERE ccn = \$1/, [{ ccn: "390001", data_year: "2024", facility_name: "UPMC PRESBYTERIAN", state: "PA", pct_snf: 12.5 }]],
     );
     const r: any = await handleGetHospitalCatchment({ ccn: " 390001 " });
@@ -142,6 +153,28 @@ describe("getHospitalCatchment", () => {
     expect(r.zips[0]).toMatchObject({ zip5: "15213", county_name: "Allegheny County", share: 0.3 });
     expect(r.discharge_mix.pct_snf).toBe(12.5);
     await expect(handleGetHospitalCatchment({})).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("takes the total and the county split from every ZIP area, not just the ones listed", async () => {
+    h.answers.push(
+      [/SELECT DISTINCT data_year FROM rollup_hospital_catchment/, [{ data_year: "2025" }]],
+      [/SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment/, [
+        { zip5: "15213", county_fips: "42003", cases: 600, days: 3000, charges: 9e6, share_of_hospital: 0.12 },
+        { zip5: "15212", county_fips: "42003", cases: 300, days: 1500, charges: 4e6, share_of_hospital: 0.06 },
+      ]],
+      // The hospital has 800 ZIP areas and 5,000 cases; the list only shows the busiest two.
+      [/AS zips FROM rollup_hospital_catchment WHERE ccn/, [{ cases: "5000", zips: 800 }]],
+      [/GROUP BY county_fips ORDER BY sum\(cases\)/, [{ county_fips: "42003", cases: "3000", days: "15000", zips: 300 }, { county_fips: "42019", cases: "1000", days: "5000", zips: 120 }]],
+    );
+    const r: any = await handleGetHospitalCatchment({ ccn: "390001" });
+    expect(r).toMatchObject({ total_cases: 5000, zips_total: 800, zips_truncated: true });
+    expect(r.zips).toHaveLength(2);
+    expect(r.counties[0]).toMatchObject({ county_fips: "42003", cases: 3000, zips: 300, share: 0.6 });
+    expect(r.counties[1]).toMatchObject({ county_fips: "42019", cases: 1000, share: 0.2 });
+    // The aggregates run in SQL over the hospital's rows, keyed by CCN and year.
+    const agg = h.queries.filter((q) => /sum\(cases\)/.test(q.sql));
+    expect(agg).toHaveLength(2);
+    for (const q of agg) expect(q.params).toEqual(["390001", "2025"]);
   });
 });
 
@@ -176,6 +209,19 @@ describe("getFacilityMarket", () => {
       { data_year: "2024", benes: 900, share: 0.12, rank: 2, market_benes: 7400, market_providers: 70 },
     ]);
     expect(r.coverage).toEqual([]);
+  });
+});
+
+describe("getFacilityMarket without a county", () => {
+  it("doesn't put the state's rank and share in the county position", async () => {
+    h.answers.push(
+      [/FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/, [
+        { setting: "snf", data_year: "2024", geo_level: "state", geo_code: "PA", ccn: "395001", provider_name: "KANE REGIONAL", benes: 900, stays: 1200, share_benes: 0.01, rank: 15, providers_in_market: 680 },
+      ]],
+    );
+    const r: any = await handleGetFacilityMarket({ ccn: "395001", setting: "snf" });
+    expect(r.county).toBeNull();
+    expect(r.position).toMatchObject({ rank: null, share: null, providers_in_market: null, state_rank: 15, state_providers: 680, state_share: 0.01, benes: 900 });
   });
 });
 

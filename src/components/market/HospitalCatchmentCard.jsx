@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 import { fmtCount, fmtShare } from '@/lib/marketFormat';
 import DischargeMixCard from './DischargeMixCard';
 import MarketFreshness from './MarketFreshness';
+import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
 /** Where a hospital's Medicare inpatients live (Hospital Service Area), by county and ZIP area, plus its discharge mix. */
 export default function HospitalCatchmentCard({ ccn }) {
@@ -45,7 +46,10 @@ export default function HospitalCatchmentCard({ ccn }) {
               ))}
             </ul>
           )}
-          <div className="mt-3"><MarketFreshness rollups={data.rollups} jobs={['hospital_catchment']} /></div>
+          <div className="mt-3 space-y-2">
+            <MarketFreshness rollups={data.rollups} jobs={['hospital_catchment']} />
+            <ComplianceDisclaimer variant="market" />
+          </div>
         </CardContent>
       </Card>
       <DischargeMixCard mix={data.discharge_mix} />

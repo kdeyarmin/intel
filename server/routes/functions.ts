@@ -590,12 +590,22 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getDataFreshness": {
         const { handleGetDataFreshness } = await import("../functions/dataFreshness");
-        return res.json(await handleGetDataFreshness());
+        return res.json(await handleGetDataFreshness({ includeNotes: req.user?.role === "admin" }));
       }
 
       case "refreshRollups": {
         const { handleRefreshRollups } = await import("../functions/rollups");
         return res.json(await handleRefreshRollups(req.body, req.user));
+      }
+
+      case "getLeadScoringStatus": {
+        const { handleGetLeadScoringStatus } = await import("../functions/leadScoring");
+        return res.json(await handleGetLeadScoringStatus());
+      }
+
+      case "recalculateLeadScores": {
+        const { handleRecalculateLeadScores } = await import("../functions/leadScoring");
+        return res.json(await handleRecalculateLeadScores(req.body, req.user));
       }
 
       case "getGeoStatus": {

@@ -38,6 +38,14 @@ export interface TypedRoute {
   map: (row: any, ctx: MapContext) => Record<string, unknown> | null;
   /** The mapper wants ctx.countyForZip. */
   needsGeo?: boolean;
+  /**
+   * A snapshot dataset: its key carries no period, so a newer release only adds
+   * and updates rows. After a complete, unfiltered import the rows the batch
+   * didn't write have left the source and are retired
+   * (server/lib/snapshotRetire.ts). `scope` limits that to this route's rows
+   * when several routes share the table. The names are constants, never input.
+   */
+  snapshot?: { table: string; scope?: { column: string; value: string } };
 }
 
 // ─── parsing ─────────────────────────────────────────────────────────────────
@@ -453,10 +461,10 @@ export const TYPED_ROUTES: Record<string, TypedRoute> = {
   market_saturation_cbsa: { table: cmsMarketSaturation, key: ["reference_period", "geo_level", "geo_code", "service"], map: mapMarketSaturation },
   medicare_monthly_enrollment: { table: cmsMonthlyEnrollment, key: ["period", "geo_level", "geo_code"], map: mapMonthlyEnrollment },
   medicare_geographic_variation: { table: cmsGeoVariation, key: ["data_year", "geo_level", "geo_code", "age_level"], map: mapGeoVariation },
-  home_health_zip_data: { table: cmsZipServiceArea, key: ["setting", "ccn", "zip5"], map: mapZipServiceArea("hha") },
-  hospice_zip_data: { table: cmsZipServiceArea, key: ["setting", "ccn", "zip5"], map: mapZipServiceArea("hospice") },
+  home_health_zip_data: { table: cmsZipServiceArea, key: ["setting", "ccn", "zip5"], map: mapZipServiceArea("hha"), snapshot: { table: "cms_zip_service_area", scope: { column: "setting", value: "hha" } } },
+  hospice_zip_data: { table: cmsZipServiceArea, key: ["setting", "ccn", "zip5"], map: mapZipServiceArea("hospice"), snapshot: { table: "cms_zip_service_area", scope: { column: "setting", value: "hospice" } } },
   medicare_physician_by_provider: { table: cmsPhysicianByProvider, key: ["npi", "data_year"], map: mapPhysicianByProvider },
-  facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation },
+  facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation, snapshot: { table: "cms_facility_affiliation" } },
   medicare_dme_by_referring: { table: cmsDmeByReferring, key: ["npi", "data_year"], map: mapDmeByReferring },
   ltc_facility_characteristics: { table: cmsLtcFacilityCharacteristics, key: ["ccn", "period_end"], map: mapLtcFacilityCharacteristics },
   licensed_facilities: { table: licensedFacilities, key: ["state", "license_type", "facility_key"], map: mapLicensedFacility, needsGeo: true },

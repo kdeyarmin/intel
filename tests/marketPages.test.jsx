@@ -25,6 +25,9 @@ import CountyIntelligence from '../src/pages/CountyIntelligence';
 import MarketIntelligence from '../src/pages/MarketIntelligence';
 import TerritoryIntelligence from '../src/pages/TerritoryIntelligence';
 import ReferralPotentialCard from '../src/components/market/ReferralPotentialCard';
+import CountyMetricLayer from '../src/components/market/CountyMetricLayer';
+import MarketPositionCard from '../src/components/market/MarketPositionCard';
+import HospitalCatchmentCard from '../src/components/market/HospitalCatchmentCard';
 import ComplianceDisclaimer from '../src/components/compliance/ComplianceDisclaimer';
 
 function Probe() {
@@ -187,6 +190,83 @@ describe('TerritoryIntelligence county layer', () => {
     expect(link).toHaveTextContent('62.0%');
     expect(screen.queryByRole('link', { name: /Butler County/ })).toBeNull();
     expect(screen.getByText(/Medicare Advantage share by county in PA/)).toBeInTheDocument();
+  });
+});
+
+describe('CountyMetricLayer', () => {
+  const layer = (n) => ({ label: 'Medicare beneficiaries', format: 'count', vintage: '2026-06', counties: Array.from({ length: n }, (_, i) => ({ fips: String(42001 + i * 2).padStart(5, '0'), name: `County ${i + 1}`, value: 1000 - i })), rollups: ROLLUPS });
+
+  it('says it is loading, not that there are no profiles, while the layer loads', () => {
+    render(<MemoryRouter><CountyMetricLayer layer={undefined} state="PA" loading /></MemoryRouter>);
+    expect(screen.getByLabelText('Loading counties')).toBeInTheDocument();
+    expect(screen.queryByText(/No county profiles/)).toBeNull();
+  });
+
+  it('shows the error and a retry, not an empty state, when the layer fails', () => {
+    const retry = vi.fn();
+    render(<MemoryRouter><CountyMetricLayer layer={undefined} state="PA" error={new Error('timeout')} onRetry={retry} /></MemoryRouter>);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Couldn't load this county layer: timeout/);
+    expect(screen.queryByText(/No county profiles/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(retry).toHaveBeenCalled();
+  });
+
+  it('lists the top 30 counties and says so, with a way to see every county', () => {
+    render(<MemoryRouter><CountyMetricLayer layer={layer(45)} state="PA" /></MemoryRouter>);
+    expect(screen.getAllByRole('link')).toHaveLength(30);
+    expect(screen.getByText('Top 30 of 45 counties')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all counties' }));
+    expect(screen.getAllByRole('link')).toHaveLength(45);
+    expect(screen.getByText('All 45 counties')).toBeInTheDocument();
+  });
+
+  it('has no "show all" control when every county already fits', () => {
+    render(<MemoryRouter><CountyMetricLayer layer={layer(12)} state="PA" /></MemoryRouter>);
+    expect(screen.getAllByRole('link')).toHaveLength(12);
+    expect(screen.queryByRole('button', { name: /Show all/ })).toBeNull();
+  });
+});
+
+describe('market cards on a facility page', () => {
+  function wrap(ui) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(<QueryClientProvider client={client}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);
+  }
+
+  it('MarketPositionCard shows county tiles only when the provider has a county, and carries the market disclaimer', async () => {
+    invoke.mockReset().mockResolvedValue({
+      found: true, label: 'Skilled nursing', data_year: '2024', county: { fips: '42003', name: 'Allegheny County', state: 'PA' },
+      position: { rank: 2, providers_in_market: 70, share: 0.12, benes: 900, stays: 1200, state_rank: 15, state_providers: 680 },
+      market: [], trend: [], coverage: [], rollups: ROLLUPS,
+    });
+    wrap(<MarketPositionCard ccn="395001" setting="snf" />);
+    expect(await screen.findByText('county share')).toBeInTheDocument();
+    expect(screen.getByText('of 70 in county')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
+  });
+
+  it('MarketPositionCard labels nothing "county" for a provider without a county', async () => {
+    invoke.mockReset().mockResolvedValue({
+      found: true, label: 'Skilled nursing', data_year: '2024', county: null,
+      position: { rank: null, providers_in_market: null, share: null, benes: 900, stays: 1200, state_rank: 15, state_providers: 680 },
+      market: [], trend: [], coverage: [], rollups: ROLLUPS,
+    });
+    wrap(<MarketPositionCard ccn="395001" setting="snf" />);
+    expect(await screen.findByText(/no county in the post-acute file/)).toBeInTheDocument();
+    expect(screen.queryByText('county share')).toBeNull();
+    expect(screen.queryByText(/in county/)).toBeNull();
+    expect(screen.getByText('of 680 in state')).toBeInTheDocument();
+  });
+
+  it('HospitalCatchmentCard carries the market disclaimer', async () => {
+    invoke.mockReset().mockResolvedValue({
+      ccn: '390001', data_year: '2025', total_cases: 1000, counties: [{ county_fips: '42003', name: 'Allegheny County', state: 'PA', cases: 900, share: 0.9 }], zips: [],
+      discharge_mix: null, rollups: ROLLUPS,
+    });
+    wrap(<HospitalCatchmentCard ccn="390001" />);
+    expect(await screen.findByText(/Where this hospital's patients live/)).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
   });
 });
 
