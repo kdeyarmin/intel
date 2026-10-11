@@ -32,7 +32,8 @@ export async function getAcsStatus() {
     : { loaded: false, message: "The Census ACS demographics aren't loaded yet. They load automatically at start-up when the bundle is shipped, or an admin can run npm run acs:load." };
 }
 
-export async function handleGetDataFreshness() {
+/** `includeNotes`: the import notes carry raw error text and file names, so only platform admins get them. */
+export async function handleGetDataFreshness(opts: { includeNotes?: boolean } = {}) {
   const [rows, rollups, geography, taxonomy, demographics] = await Promise.all([
     listDatasetVersions().catch(() => []),
     handleGetRollupStatus().catch(() => ({ jobs: [] })),
@@ -58,7 +59,7 @@ export async function handleGetDataFreshness() {
       catalog_checked_at: r.catalog_checked_at,
       imported_at: r.imported_at,
       row_count: r.row_count,
-      notes: r.notes,
+      notes: opts.includeNotes ? r.notes : null,
     };
   });
   for (const d of catalog) {

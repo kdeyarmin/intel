@@ -1,4 +1,4 @@
-import { describeReferrals } from '@/lib/referralSummary';
+import { describeSnapshot } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ UTILIZATION (most recent):
 - Drug Services: ${utilization?.drug_services?.toLocaleString() || 'N/A'}
 
 SHARED PATIENTS AND REFERRAL ELIGIBILITY:
-- ${describeReferrals(referral ? [{ data_year: referral.year, total_referrals: referral.total_referrals, total_beneficiaries: referral.total_beneficiaries, referred_to_npi: null }] : [], orderReferring)}${referral?.partners ? ` Partner providers: ${referral.partners}.` : ''}
+- ${describeSnapshot(referral, orderReferring)}
 
 LEAD SCORE: ${score?.score || 'N/A'}/100
 ${score?.reasons?.length ? 'Score Reasons: ' + score.reasons.join('; ') : ''}

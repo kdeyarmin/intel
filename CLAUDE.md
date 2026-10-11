@@ -139,6 +139,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   proxy, not transfers), and market *share* is the share of Medicare FFS
   beneficiaries served by providers located in the county. Every market view
   renders `ComplianceDisclaimer variant="market"` and `MarketFreshness`.
+  Units: shares in the rollups are fractions (0.31; format with `fmtShare`),
+  while CMS "percent" columns that are passed through (`*_users_pct`) stay in
+  percent units (`fmtPct`); the county profile counts each post-acute setting
+  at that setting's own latest year, because CMS releases them separately.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
@@ -150,7 +154,9 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `server/lib/census/acs.ts` loads at boot into `census_acs_*`; the county
   profile rollup joins it. State-licensed homes (personal care, assisted
   living) live in `licensed_facilities`, imported from CSV uploads through
-  the typed route `licensed_facilities` (`mapLicensedFacility`). Browser code gets
+  the typed route `licensed_facilities` (`mapLicensedFacility`); there `state_filter`
+  names the file's own state (rows without a state column take it) and a complete
+  import replaces the (state, licence type) slices it wrote. Browser code gets
   map positions from `getZipCoordinates` (`useProviderCoords`) and a
   provider's county from `getGeoContext`.
 - **Scores are never invented.** Territory and County Intel show a provider's
@@ -159,9 +165,11 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   written only by the scoring job (`server/lib/leadScoringJob.ts`; rules in
   `server/lib/leadScoring.ts`, mirrored by `src/lib/scoringRules.js`): every
   individual provider located in the states named by the Geographic Priority
-  rule's conditions, started from Scoring Rules (`recalculateLeadScores`) or
-  weekly by the `refreshLeadScores` maintenance worker. Don't compute scores
-  in the browser.
+  rule's conditions (read from that row even when the rule is switched off,
+  and never defaulted to a state), started from Scoring Rules
+  (`recalculateLeadScores`) or weekly by the `refreshLeadScores` maintenance
+  worker. A run a restart killed is marked failed once its advisory lock is
+  free, so the next one starts. Don't compute scores in the browser.
 - **Specialty groups:** match specialties by NUCC code with
   `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
   `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by
@@ -214,7 +222,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   schedule (success/failure, backoff, `last_successful_run_at`) from the
   batch's terminal state, called by the importer and by the
   `settleScheduledImports` sweep. `dependencyBlocked` waits for the parent's
-  completion, not its start.
+  completion, not its start. The 6 h run lease only gives up on a run that has
+  gone quiet (`PROGRESS_GRACE_MS`), the due loop skips a schedule whose batch is
+  still validating/processing, and a failed `on_release` schedule retries on the
+  normal backoff instead of waiting for the next release.
 - **Dataset versions are tracked.** `dataset_versions` (registry in
   `server/lib/datasetRegistry.ts`) records, per import type, the newest
   version the CMS catalogs list (`server/lib/cmsCatalog.ts` parses
@@ -224,7 +235,23 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `checkCmsCatalog` worker flags newer releases and wakes schedules whose
   frequency is `on_release`. `getDataFreshness` (public) feeds
   `DataSourcesFooter`, `DataFreshnessPanel` and the Help topic. Facility rows
-  get `data_year` from the row's own year column, else the resolved version.
+  get `data_year` from the row's own year column, else the resolved version
+  (`importDataYear`: the release period's year, never the year of the first
+  import). A new release refreshes the stored facility rows in place
+  (`partitionRefresh`/`refreshFacilityRows`) rather than skipping them, and
+  every way an import can end, including a fetch failure, pause or cancel,
+  closes its registry row (`endedWithoutFinishing`). Snapshot datasets (ZIP
+  service areas, clinician affiliations: `snapshot` on their typed route) are
+  keyed without a period, so after a complete, unfiltered import the rows the
+  release no longer lists are retired (`server/lib/snapshotRetire.ts`).
+- **Import progress is merged, never replaced.** `import_batches.retry_params`
+  is shared by the importers, auto-retry and auto-resume, so write it with
+  `mergeRetryParams` (`triggerImport.ts`) or the attempt counters are lost and
+  the retry cap never applies. A resume inherits the batch's `headers` and
+  `as_of`. After a restart `planRecovery` (`server/lib/importRecovery.ts`)
+  decides, from the batch's own `retry_params`, whether to resume it (with its
+  original year and filters) or fail it; NPPES file batches resume through
+  their own importer, never the CMS CSV one.
 - **Files as import sources.** Uploads (`/api/storage/<name>`, under
   `uploads/`) and https CSV links are accepted only for `UPLOAD_CAPABLE_TYPES`
   (`server/functions/triggerImport.ts`: datasets CMS doesn't serve through its
@@ -240,8 +267,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   (`server/functions/importNPPESFile.ts`) download the CMS zip, stream the
   `npidata_pfile_*.csv` entry and upsert through `server/lib/nppesWrite.ts`,
   which replaces a provider's locations and taxonomies per NPI and never lets
-  a blank cell overwrite a value. Every NPPES importer rejects NPIs that fail
-  the Luhn check (`server/lib/npiValidation.ts`). The crawler and the flat-file
-  importer are for backfills, not for keeping data fresh.
+  a blank cell overwrite a value. A record older than the stored one is skipped
+  (a late monthly file can't revert a weekly one), a deactivation-only row
+  updates a provider we hold and never creates a stub, and the import refuses
+  to start until the `uq_prov_loc_natural` / `uq_prov_tax_natural` boot
+  indexes exist. Every NPPES importer rejects NPIs that fail the Luhn check
+  (`server/lib/npiValidation.ts`). The crawler and the flat-file importer are
+  for backfills, not for keeping data fresh.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top
   of the test file; the default environment is `node`.

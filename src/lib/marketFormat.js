@@ -33,6 +33,21 @@ export function formatMetric(value, format) {
   }
 }
 
+/** The CSV header for a county metric: its label, with the unit when the value is exported in one ("%" for shares, "$" for dollars). */
+export function csvHeader(metric) {
+  const label = metric.label.replace(/\s*\(%[^)]*\)\s*$/, '');
+  if (metric.format === 'percent' || metric.format === 'pct_units') return `${label} (%)`;
+  if (metric.format === 'money') return `${label} ($)`;
+  return label;
+}
+
+/** A metric value as exported: shares are percent numbers (0.62 → 62), dollars and counts stay numbers, missing stays empty. */
+export function csvValue(value, format) {
+  if (value == null || value === '' || Number.isNaN(Number(value))) return '';
+  const n = Number(value);
+  return format === 'percent' ? Math.round(n * 1e6) / 1e4 : n;
+}
+
 /** "1st", "2nd", "3rd", "11th"… */
 export function ordinal(n) {
   if (n == null || Number.isNaN(Number(n))) return '—';
@@ -67,6 +82,18 @@ export function sortRows(rows, key, dir = 'desc', pick = (r, k) => r[k]) {
   });
 }
 
+const PAC_SETTING_NAMES = { snf: 'skilled nursing', hha: 'home health', hospice: 'hospice' };
+
+/** The post-acute utilization year, or each setting's own year when CMS has released them in different years. */
+function pacVintage(vintages) {
+  const by = vintages.pac_utilization_by_setting;
+  const entries = by && typeof by === 'object' ? Object.entries(by).filter(([, year]) => year) : [];
+  if (entries.length > 1 && new Set(entries.map(([, year]) => String(year))).size > 1) {
+    return entries.map(([setting, year]) => `${PAC_SETTING_NAMES[setting] || setting} ${year}`).join(', ');
+  }
+  return vintages.pac_utilization ? String(vintages.pac_utilization).slice(0, 10) : null;
+}
+
 /** One sentence naming the vintages a market view used ("Enrollment June 2026; Hospital Service Area 2025"). */
 export function describeVintages(vintages) {
   if (!vintages || typeof vintages !== 'object') return null;
@@ -75,6 +102,9 @@ export function describeVintages(vintages) {
     hospital_service_area: 'Hospital Service Area', pac_utilization: 'Post-acute utilization',
     acs: 'Census ACS', licensed: 'State licensing',
   };
-  const parts = Object.entries(labels).filter(([k]) => vintages[k]).map(([k, label]) => `${label} ${String(vintages[k]).replace(/ to .*$/, '').slice(0, 10)}`);
+  const parts = Object.entries(labels)
+    .map(([k, label]) => [label, k === 'pac_utilization' ? pacVintage(vintages) : vintages[k] ? String(vintages[k]).replace(/ to .*$/, '').slice(0, 10) : null])
+    .filter(([, value]) => value)
+    .map(([label, value]) => `${label} ${value}`);
   return parts.length ? `Data: ${parts.join('; ')}.` : null;
 }

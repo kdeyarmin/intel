@@ -60,6 +60,9 @@ export const LAYER_METRICS: Record<string, { column: string; label: string; form
 const TIMEOUT = "10s";
 const TOP = 25;
 const MAX_LIMIT = 200;
+/** ZIP areas listed for a hospital's catchment, and counties in its split (totals cover them all). */
+const CATCHMENT_ZIPS = 300;
+const CATCHMENT_COUNTIES = 100;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -221,9 +224,14 @@ export async function handleGetCountyMarket(payload: any, user?: EntitledUser | 
       client.query(
         `SELECT setting, data_year, sum(benes)::bigint AS benes, sum(stays)::bigint AS stays, count(*)::int AS providers
            FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY 1, 2 ORDER BY 1, 2`, [fips]).catch(() => ({ rows: [] })),
+      // The TOP best-covering agencies of each setting (one limit across both settings would let a county with many
+      // home health agencies push every hospice out of the list).
       client.query(
-        `SELECT setting, ccn, zips_served, county_zips, share_of_county_zips FROM rollup_agency_coverage
-          WHERE county_fips = $1 ORDER BY setting, share_of_county_zips DESC, ccn LIMIT 200`, [fips]).catch(() => ({ rows: [] })),
+        `SELECT setting, ccn, zips_served, county_zips, share_of_county_zips FROM (
+           SELECT setting, ccn, zips_served, county_zips, share_of_county_zips,
+                  row_number() OVER (PARTITION BY setting ORDER BY share_of_county_zips DESC, ccn) AS rn
+             FROM rollup_agency_coverage WHERE county_fips = $1) c
+          WHERE rn <= $2 ORDER BY setting, rn`, [fips, TOP]).catch(() => ({ rows: [] })),
     ]);
     const licensed = await licensedHomes(client, fips);
     const snfCensus = await nursingHomeCensus(client, competitors.rows.filter((r: any) => r.setting === "snf").map((r: any) => r.ccn));
@@ -282,27 +290,31 @@ export async function handleGetHospitalCatchment(payload: any) {
     const years = (await client.query("SELECT DISTINCT data_year FROM rollup_hospital_catchment WHERE ccn = $1 ORDER BY data_year DESC", [ccn]).catch(() => ({ rows: [] }))).rows.map((r: any) => String(r.data_year));
     const wanted = payload?.data_year ? String(payload.data_year) : years[0];
     const year = years.includes(wanted) ? wanted : years[0] ?? null;
-    const [zips, mix, names] = await Promise.all([
+    // The ZIP list is the busiest CATCHMENT_ZIPS areas; the totals and the county split
+    // are aggregated over every ZIP area of the hospital, not just the ones listed.
+    const [zips, totals, byCounty, mix, names] = await Promise.all([
       year ? client.query(
         `SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment
-          WHERE ccn = $1 AND data_year = $2 ORDER BY cases DESC NULLS LAST, zip5 LIMIT 300`, [ccn, year]) : { rows: [] },
+          WHERE ccn = $1 AND data_year = $2 ORDER BY cases DESC NULLS LAST, zip5 LIMIT ${CATCHMENT_ZIPS}`, [ccn, year]) : { rows: [] },
+      year ? client.query(
+        "SELECT COALESCE(sum(cases), 0)::bigint AS cases, count(*)::int AS zips FROM rollup_hospital_catchment WHERE ccn = $1 AND data_year = $2", [ccn, year]) : { rows: [] },
+      year ? client.query(
+        `SELECT county_fips, sum(cases)::bigint AS cases, sum(days)::bigint AS days, count(*)::int AS zips FROM rollup_hospital_catchment
+          WHERE ccn = $1 AND data_year = $2 AND county_fips IS NOT NULL
+          GROUP BY county_fips ORDER BY sum(cases) DESC NULLS LAST, county_fips LIMIT ${CATCHMENT_COUNTIES}`, [ccn, year]) : { rows: [] },
       client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]).catch(() => ({ rows: [] })),
       facilityNames(client, [ccn]),
     ]);
-    const counties = new Map<string, { county_fips: string; name: string | null; state: string | null; cases: number; days: number; zips: number }>();
-    let total = 0;
-    const zipRows = zips.rows.map((r: any) => {
+    const total = num(totals.rows[0]?.cases) ?? 0;
+    const zipsTotal = Number(totals.rows[0]?.zips) || 0;
+    const zipRows = zips.rows.map((r: any) => ({
+      zip5: r.zip5, county_fips: r.county_fips, county_name: countyName(index, r.county_fips),
+      cases: num(r.cases) ?? 0, days: num(r.days), charges: num(r.charges), share: num(r.share_of_hospital),
+    }));
+    const counties = byCounty.rows.map((r: any) => {
+      const c = index.counties.get(r.county_fips);
       const cases = num(r.cases) ?? 0;
-      total += cases;
-      if (r.county_fips) {
-        const c = index.counties.get(r.county_fips);
-        const e = counties.get(r.county_fips) || { county_fips: r.county_fips, name: c?.name ?? null, state: c?.state ?? null, cases: 0, days: 0, zips: 0 };
-        e.cases += cases;
-        e.days += num(r.days) ?? 0;
-        e.zips += 1;
-        counties.set(r.county_fips, e);
-      }
-      return { zip5: r.zip5, county_fips: r.county_fips, county_name: countyName(index, r.county_fips), cases, days: num(r.days), charges: num(r.charges), share: num(r.share_of_hospital) };
+      return { county_fips: r.county_fips, name: c?.name ?? null, state: c?.state ?? null, cases, days: num(r.days) ?? 0, zips: Number(r.zips) || 0, share: total ? cases / total : null };
     });
     const n = names.get(ccn);
     return {
@@ -313,8 +325,10 @@ export async function handleGetHospitalCatchment(payload: any) {
       data_year: year,
       years,
       total_cases: total,
+      zips_total: zipsTotal,
+      zips_truncated: zipsTotal > zipRows.length,
       zips: zipRows,
-      counties: [...counties.values()].map((c) => ({ ...c, share: total ? c.cases / total : null })).sort((a, b) => b.cases - a.cases),
+      counties,
       discharge_mix: mixRow(mix.rows[0]),
       rollups: await marketRollupFreshness(),
     };
@@ -356,8 +370,11 @@ export async function handleGetFacilityMarket(payload: any) {
       name: countyRow?.provider_name ?? own[0].provider_name ?? null,
       county: county ? { fips: county.fips, name: county.name, state: county.state } : null,
       data_year: latestYear,
+      // The provider's own volumes come from any level; rank, share and market size are the county's only when it
+      // has a county row (without one they are null, never the state's figures under a county label).
       position: {
-        ...shareRow(countyRow ?? own[0]),
+        ...shareRow(countyRow ?? stateRow ?? own[0]),
+        ...(countyRow ? {} : { rank: null, share: null, providers_in_market: null }),
         state_rank: num(stateRow?.rank), state_providers: num(stateRow?.providers_in_market), state_share: num(stateRow?.share_benes),
       },
       census: census.get(ccn) ?? null,

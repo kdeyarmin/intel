@@ -429,14 +429,14 @@ export async function runRefreshLeadScoresWorker(): Promise<WorkerResult> {
   try {
     const { pool } = await import("../db");
     const { leadScoringStatus, leadScoringDue, startLeadScoring } = await import("./leadScoringJob");
-    const { resolveTerritory, normalizeRules } = await import("./leadScoring");
+    const { territoryFromRows } = await import("./leadScoring");
     const status = await leadScoringStatus(pool);
     if (!leadScoringDue(status)) {
       return { worker: "refreshLeadScores", ok: true, durationMs: Date.now() - started, details: { started: false, reason: status.running ? "running" : "not due", last_success_at: status.last_success_at } };
     }
     const { ensureScoringRules } = await import("../functions/leadScoring");
     const rows = await ensureScoringRules();
-    const territory = resolveTerritory(normalizeRules(rows as any));
+    const territory = territoryFromRows(rows as any);
     if (territory.states.length === 0) {
       return { worker: "refreshLeadScores", ok: true, durationMs: Date.now() - started, details: { started: false, reason: "no states configured" } };
     }
@@ -498,6 +498,7 @@ export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResu
   { name: "cancelStalledImports", run: runCancelStalledImports },
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
   { name: "refreshRollups", run: runRefreshRollupsWorker },
+  { name: "refreshLeadScores", run: runRefreshLeadScoresWorker },
 ];
 
 export async function runMaintenanceFanout(
