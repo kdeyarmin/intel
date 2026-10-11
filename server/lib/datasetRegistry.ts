@@ -190,7 +190,7 @@ export async function resolveImportVersion(importType: string): Promise<ImportVe
   if (!row) return null;
   const id = row.source_dataset_id as string | null;
   const dataUrl = !id ? null : row.source === "cms_data_api" ? dataApiUrl(id) : row.source === "cms_provider_data" ? providerDataUrl(id) : null;
-  const toDay = (v: unknown) => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)) : null);
+  const toDay = dateOnly;
   const temporalEnd = toDay(row.temporal_end);
   const catalogModified = row.catalog_modified ? new Date(row.catalog_modified) : null;
   return {
@@ -227,6 +227,20 @@ export function importDataYear(input: {
 // would flip a current dataset to "failed", or leave it "importing"). The guard sits here, on the batch's own
 // flag, so no importer's call site can forget it.
 const NOT_A_DRY_RUN = (batchParam: number) => `NOT EXISTS (SELECT 1 FROM import_batches WHERE id = $${batchParam} AND dry_run IS TRUE)`;
+
+/**
+ * "YYYY-MM-DD" of a DATE column. The driver builds a Date at local midnight for
+ * those, so the calendar day is read with local getters: toISOString() would
+ * give the previous day on a host east of UTC, and a period ending January 1st
+ * would be labelled with the year before.
+ */
+export function dateOnly(v: unknown): string | null {
+  if (!v) return null;
+  if (!(v instanceof Date)) return String(v).slice(0, 10);
+  if (Number.isNaN(v.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+}
 
 export async function markImportStarted(importType: string, batchId: number, source: string, now = new Date()): Promise<void> {
   await pool.query(
