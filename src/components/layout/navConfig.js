@@ -187,6 +187,12 @@ export function effectiveRole(userOrRole) {
   return 'user';
 }
 
+/** What to call the role a session acts with, for the sidebar and account dialog. */
+export function roleLabel(userOrRole) {
+  const role = effectiveRole(userOrRole);
+  return role === 'admin' ? 'Platform admin' : role === 'owner' ? 'Owner' : 'Member';
+}
+
 // Pages that only name 'admin' are platform-level; everything an owner may
 // open names 'owner' too, and a platform admin may open everything. An owner
 // is a member of their organization as well, so a page for 'user' is theirs.

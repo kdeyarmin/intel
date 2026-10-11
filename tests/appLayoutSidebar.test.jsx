@@ -66,3 +66,13 @@ describe('closed sidebar', () => {
     expect(aside).toHaveAttribute('inert');
   });
 });
+
+describe('sidebar footer', () => {
+  it('names the role the account acts with, not the raw user role', () => {
+    setWidth(1280);
+    const aside = renderLayout();
+    expect(aside).toHaveTextContent('rep@example.com');
+    expect(aside).toHaveTextContent('Member');
+    expect(aside).not.toHaveTextContent(/\buser\b/);
+  });
+});

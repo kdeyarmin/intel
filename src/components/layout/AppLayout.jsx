@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
 import BillingStatusWidget from './BillingStatusWidget';
-import { getNavPageFor, getVisibleNavSections } from './navConfig';
+import { getNavPageFor, getVisibleNavSections, roleLabel } from './navConfig';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
 const GlobalSearchDialog = lazy(loadGlobalSearchDialog);
@@ -232,7 +232,7 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="mb-2 px-2 flex items-center justify-between">
             <div>
               {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
-              {user && <p className="text-[10px] text-slate-400 capitalize">{user.role?.replace('_', ' ')}</p>}
+              {user && <p className="text-[10px] text-slate-400">{roleLabel(user)}</p>}
             </div>
             <NotificationBell />
           </div>

@@ -98,7 +98,7 @@ describe('AccountDialog', () => {
     expect(screen.getByRole('link', { name: 'Plan and billing' })).toHaveAttribute('href', '/Billing');
     cleanup();
     renderDialog(MEMBER);
-    expect(screen.getByText(/Signed in as member@riverbend.org \(user of Riverbend Hospice\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Signed in as member@riverbend.org \(member of Riverbend Hospice\)/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Plan and billing' })).toBeNull();
   });
 });
