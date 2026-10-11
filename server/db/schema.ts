@@ -382,6 +382,8 @@ export const organizations = pgTable("organizations", {
   quotas: jsonb("quotas"),
   sender: jsonb("sender"),
   terms_version: varchar("terms_version", { length: 20 }),
+  /** When the last Stripe event applied to this row happened; an older event is ignored (server/lib/billing.ts). */
+  stripe_event_at: timestamp("stripe_event_at"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
 });

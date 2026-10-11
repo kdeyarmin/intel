@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { client, poolQuery, aiCreate } = vi.hoisted(() => ({
+const { client, poolQuery, aiCreate, consumeQuota } = vi.hoisted(() => ({
   client: { query: vi.fn(), release: vi.fn() },
+  consumeQuota: vi.fn(async () => {}),
   poolQuery: vi.fn(async () => ({ rows: [] })),
   aiCreate: vi.fn(async () => ({ content: [{ type: "text", text: "Call the office manager." }] })),
 }));
 
 vi.mock("../server/db", () => ({ pool: { connect: async () => client, query: poolQuery } }));
+vi.mock("../server/lib/orgQuota", () => ({ consumeQuota }));
 vi.mock("../server/lib/suppressions", () => ({
   isSuppressed: async () => false,
   addSuppression: vi.fn(),
@@ -40,11 +42,34 @@ describe("calculateOutreachScore", () => {
     expect(poolQuery.mock.calls.some(([sql]: any[]) => String(sql).includes("UPDATE providers"))).toBe(false);
   });
 
-  it("gives admins the AI strategy and saves the score", async () => {
+  it("gives platform admins the AI strategy and saves the score", async () => {
     const out = await handleCalculateOutreachScore({ npi: NPI, with_ai: true }, { role: "admin" });
     expect(out).toMatchObject({ saved: true, strategy: "Call the office manager." });
     expect(aiCreate).toHaveBeenCalledTimes(1);
     expect(poolQuery.mock.calls.some(([sql]: any[]) => String(sql).includes("UPDATE providers"))).toBe(true);
+  });
+
+  it("lets an organization's owner have the AI strategy, counted against the organization's allowance, without writing the shared provider", async () => {
+    const owner = { role: "user", orgRole: "owner", orgId: 5 };
+    const out = await handleCalculateOutreachScore({ npi: NPI, with_ai: true }, owner);
+    expect(out).toMatchObject({ saved: false, strategy: "Call the office manager." });
+    expect(consumeQuota).toHaveBeenCalledWith(owner, "ai_calls");
+    expect(aiCreate).toHaveBeenCalledTimes(1);
+    // Providers are shared by every customer: only a platform admin stores the score on one.
+    expect(poolQuery.mock.calls.some(([sql]: any[]) => String(sql).includes("UPDATE providers"))).toBe(false);
+  });
+
+  it("stops at the allowance: no AI call when the organization's day is used up", async () => {
+    consumeQuota.mockRejectedValueOnce(Object.assign(new Error("Today's limit of 100 AI requests for your organization has been reached."), { status: 429 }));
+    await expect(handleCalculateOutreachScore({ npi: NPI, with_ai: true }, { role: "user", orgRole: "owner", orgId: 5 })).rejects.toMatchObject({ status: 429 });
+    expect(aiCreate).not.toHaveBeenCalled();
+  });
+
+  it("counts only the caller's own organization's outreach to the provider", async () => {
+    await handleCalculateOutreachScore({ npi: NPI }, { role: "user", orgRole: "member", orgId: 5 });
+    const call = client.query.mock.calls.find(([sql]: any[]) => String(sql).includes("FROM outreach_messages")) as any[];
+    expect(call[0]).toMatch(/WHERE npi = \$1 AND org_id = \$2/);
+    expect(call[1]).toEqual([NPI, 5]);
   });
 
   it("scores the provider's latest-year volume across all service rows and distinct partners", async () => {

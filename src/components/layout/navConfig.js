@@ -95,13 +95,15 @@ export const PAGE_GROUPS = {
       { page: 'NPPESCrawlerSettings', label: 'Settings' },
     ],
   },
+  // A tab may name its own `roles`; without them it inherits its group's first page.
   admin: {
     label: 'Admin sections',
     pages: [
       { page: 'AdminSettings', label: 'Users' },
-      { page: 'Billing', label: 'Billing' },
-      { page: 'ScoringRules', label: 'Scoring rules' },
-      { page: 'SecurityAudit', label: 'Security audit' },
+      { page: 'Billing', label: 'Billing', roles: ['admin', 'owner'] },
+      // Scoring rules are platform configuration (one scoring job serves every customer).
+      { page: 'ScoringRules', label: 'Scoring rules', roles: ['admin'] },
+      { page: 'SecurityAudit', label: 'Security audit', roles: ['admin', 'owner'] },
     ],
   },
 };
@@ -186,10 +188,18 @@ export function effectiveRole(userOrRole) {
 }
 
 // Pages that only name 'admin' are platform-level; everything an owner may
-// open names 'owner' too, and a platform admin may open everything.
+// open names 'owner' too, and a platform admin may open everything. An owner
+// is a member of their organization as well, so a page for 'user' is theirs.
 function roleAllowed(roles, role) {
-  return role === 'admin' || roles.includes(role);
+  if (role === 'admin') return true;
+  if (role === 'owner') return roles.includes('owner') || roles.includes('user');
+  return roles.includes(role);
 }
+
+// The roles a tab names for itself (PAGE_GROUPS), by page.
+const TAB_ROLES = new Map(
+  Object.values(PAGE_GROUPS).flatMap((group) => group.pages.filter((p) => p.roles).map((p) => [p.page, p.roles])),
+);
 
 function getParentPage(page) {
   const current = LEGACY_REDIRECTS[page]?.page || page;
@@ -226,9 +236,11 @@ export function getPageLabel(page) {
 
 /** Whether `user` (a session user, or a role string) may open `page`. Unknown pages are admin-only (default-deny). */
 export function canAccessPage(page, user) {
+  const role = effectiveRole(user);
+  const own = TAB_ROLES.get(LEGACY_REDIRECTS[page]?.page || page);
+  if (own) return roleAllowed(own, role);
   const navPage = getParentPage(page);
   const item = navPage ? NAV_ITEMS_BY_PAGE.get(navPage) : null;
-  const role = effectiveRole(user);
   if (!item) return role === 'admin';
   return roleAllowed(item.roles, role);
 }

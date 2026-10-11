@@ -1,5 +1,6 @@
 import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { isPlatformAdmin } from "../lib/roles";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { isFunctionAuthorized, isFunctionAllowedFor } from "../lib/functionAcl";
@@ -412,17 +413,17 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       case "trackCampaignMetrics": {
         // Admin-only (not in PUBLIC_FUNCTIONS): writes the rollup to the campaign row.
         const { handleTrackCampaignMetrics } = await import("../functions/outreach");
-        return res.json(await handleTrackCampaignMetrics(req.body));
+        return res.json(await handleTrackCampaignMetrics(req.body, req.user));
       }
       case "saveCampaignOutcomes": {
         // Admin-only (not in PUBLIC_FUNCTIONS), like the rest of campaigns.
         const { handleSaveCampaignOutcomes } = await import("../functions/outreach");
-        return res.json(await handleSaveCampaignOutcomes(req.body));
+        return res.json(await handleSaveCampaignOutcomes(req.body, req.user));
       }
       case "prepareCampaignMessages": {
         // Admin-only (not in PUBLIC_FUNCTIONS): builds the recipient list.
         const { handlePrepareCampaignMessages } = await import("../functions/outreach");
-        return res.json(await handlePrepareCampaignMessages(req.body));
+        return res.json(await handlePrepareCampaignMessages(req.body, req.user));
       }
       case "sendCampaignMessages": {
         // Admin-only (not in PUBLIC_FUNCTIONS): sends real email.
@@ -527,12 +528,12 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getHospitalCatchment": {
         const { handleGetHospitalCatchment } = await import("../functions/market");
-        return res.json(await handleGetHospitalCatchment(req.body));
+        return res.json(await handleGetHospitalCatchment(req.body, req.user));
       }
 
       case "getFacilityMarket": {
         const { handleGetFacilityMarket } = await import("../functions/market");
-        return res.json(await handleGetFacilityMarket(req.body));
+        return res.json(await handleGetFacilityMarket(req.body, req.user));
       }
 
       case "getCountyMarketLayer": {
@@ -590,7 +591,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getDataFreshness": {
         const { handleGetDataFreshness } = await import("../functions/dataFreshness");
-        return res.json(await handleGetDataFreshness({ includeNotes: req.user?.role === "admin" }));
+        return res.json(await handleGetDataFreshness({ includeNotes: isPlatformAdmin(req.user) }));
       }
 
       case "refreshRollups": {

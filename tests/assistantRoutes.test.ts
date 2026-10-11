@@ -15,6 +15,8 @@ import { memoryAssistantStore, scriptedStreams, text, toolCall, type Step } from
 let lastUserId = 0;
 let me = 0;
 let other = 0;
+// Accounts without an organization (the loader gives them no membership).
+const withoutOrg = new Set<number>();
 const emailOf = (id: number) => `user${id}@example.com`;
 
 let server: Server;
@@ -43,7 +45,9 @@ beforeEach(async () => {
   audits = [];
   me = ++lastUserId;
   other = ++lastUserId;
-  setSessionUserLoader(async (id) => (id <= lastUserId ? { id, email: emailOf(id), role: "user", status: "active", token_version: 0, full_name: null } : null));
+  setSessionUserLoader(async (id) => (id <= lastUserId
+    ? { id, email: emailOf(id), role: "user", status: "active", token_version: 0, full_name: null, ...(withoutOrg.has(id) ? {} : { org_id: 2, org_role: "member", org_name: "Riverbend Hospice", org_status: "active" }) }
+    : null));
   const app = express();
   app.use(express.json());
   app.use("/api/assistant", createAssistantRouter({
@@ -246,8 +250,9 @@ describe("assistant routes", () => {
     const ok = await call(me, "POST", `/actions/${actionId}/confirm`);
     expect(ok.status).toBe(200);
     expect(ok.body.action).toMatchObject({ status: "confirmed", result: { list_id: 501, member_count: 2 } });
-    expect(created[0]).toMatchObject({ name: "PA cardiology", npis: ["1000000001", "1000000002"], createdBy: emailOf(me), filterCriteria: { source: "assistant", conversation_id: conv.id } });
-    expect(audits[0]).toMatchObject({ action: "assistant_list_created", entity_id: 501, user_email: emailOf(me) });
+    // The list belongs to the confirming person's organization, and so does the audit event.
+    expect(created[0]).toMatchObject({ name: "PA cardiology", npis: ["1000000001", "1000000002"], createdBy: emailOf(me), orgId: 2, filterCriteria: { source: "assistant", conversation_id: conv.id } });
+    expect(audits[0]).toMatchObject({ action: "assistant_list_created", entity_id: 501, user_email: emailOf(me), org_id: 2 });
 
     const again = await call(me, "POST", `/actions/${actionId}/confirm`);
     expect(again.status).toBe(409);
@@ -262,6 +267,20 @@ describe("assistant routes", () => {
     const last = s.calls.at(-1)!.messages;
     expect(last.at(-1)).toMatchObject({ role: "system", content: [{ type: "text", text: expect.stringContaining("created as lead list 501 with 2 providers") }] });
     expect(store.actions[0].reported_at).not.toBeNull();
+  });
+
+  it("creates no list for an account without an organization, and leaves the proposal open", async () => {
+    const lonely = ++lastUserId;
+    withoutOrg.add(lonely);
+    const conv = (await call(lonely, "POST", "/conversations")).body.conversation;
+    const turn = await store.startTurn(conv.id, "m", 0);
+    const proposal = await store.createAction({ conversationId: conv.id, turnId: turn!.id, userId: lonely, toolUseId: "t1", kind: "create_lead_list", payload: { name: "Orphan", npis: ["1000000001"] }, expiresAt: new Date(Date.now() + 60_000) });
+    const res = await call(lonely, "POST", `/actions/${proposal.id}/confirm`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/isn't part of an organization/);
+    expect(created).toHaveLength(0);
+    expect(store.actions.find((a) => a.id === proposal.id)!.status).toBe("proposed");
+    withoutOrg.delete(lonely);
   });
 
   it("refuses an expired proposal and cancels a live one", async () => {

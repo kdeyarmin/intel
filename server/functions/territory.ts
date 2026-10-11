@@ -5,7 +5,7 @@ import { pool } from "../db";
 import { withTimeoutClient, isStatementTimeout } from "../lib/pgClient";
 import { coordsFor, getGeoIndex, zipToCounty } from "../lib/geo";
 import { normalizeEntityType, specialtyGroupFor, specialtyGroupLabel } from "../lib/specialtyGroups";
-import { assertTerritory, type EntitledUser } from "../lib/entitlements";
+import { assertTerritory, isUnrestricted, TerritoryError, type EntitledUser } from "../lib/entitlements";
 import { ENTITY_FILTER_SQL, PRACTICE_STATE_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
 import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizationByNpi } from "../lib/territory";
 
@@ -108,6 +108,11 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
 export async function handleGetTerritoryData(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state === "ALL" ? null : payload?.state ?? "PA");
   if (state && state !== "ALL") assertTerritory(user, { state });
+  else {
+    // The all-states sample spans the country: a plan that covers chosen places picks a state in them.
+    assertTerritory(user, {});
+    if (!isUnrestricted(user)) throw new TerritoryError("The all-states view is part of the National plan. Pick a state in your plan's territory.");
+  }
   const group = typeof payload?.specialty_group === "string" && payload.specialty_group !== "all" ? payload.specialty_group : null;
   const entity = payload?.entity_type === "Individual" || payload?.entity_type === "Organization" ? payload.entity_type : null;
   const limit = Math.min(Math.max(Math.floor(Number(payload?.limit)) || DEFAULT_LIMIT, 1), MAX_LIMIT);

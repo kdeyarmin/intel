@@ -9,7 +9,7 @@ import { rateLimit } from "../middleware/rateLimit";
 import { appBaseUrl } from "../lib/accounts";
 import { recordAudit } from "../lib/audit";
 import { billingView, buildCheckoutParams, priceIdFor, stripeConfigured, type PlanRow } from "../lib/billing";
-import { stateFipsOf } from "../lib/entitlements";
+import { needsTerritoryChoice, stateFipsOf } from "../lib/entitlements";
 import { getOrg, normalizeTerritory, seatUsage } from "../lib/orgs";
 import { consumeQuota, QuotaError, usageToday } from "../lib/orgQuota";
 
@@ -54,7 +54,9 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) =>
     const [org, plans, seats, usage] = await Promise.all([getOrg(orgId), loadPlans(), seatUsage(orgId), usageToday(orgId).catch(() => null)]);
     if (!org) return res.status(404).json({ message: "Organization not found." });
     const plan = plans.find((p) => p.code === org.plan_code) ?? null;
-    res.json({ ...billingView({ org, plan, plans, seats, usage, stripe: stripeConfigured() }), is_owner: isOrgAdmin(req.user), is_platform_admin: !!req.user?.isPlatformAdmin });
+    // A plan that covers chosen places covers none until an owner chooses: the page says so.
+    const needsChoice = needsTerritoryChoice({ isPlatformAdmin: req.user?.isPlatformAdmin, role: req.user?.role, planCode: org.plan_code, territory: org.territory });
+    res.json({ ...billingView({ org, plan, plans, seats, usage, stripe: stripeConfigured() }), is_owner: isOrgAdmin(req.user), is_platform_admin: !!req.user?.isPlatformAdmin, needs_territory_choice: needsChoice });
   } catch (e: any) {
     console.error("[billing] status failed:", e?.message || e);
     res.status(500).json({ message: "Couldn't load billing status." });
@@ -75,9 +77,25 @@ router.post("/checkout", authMiddleware, rateLimit("billing_checkout", 10, 60_00
     if (!org || !plan) return res.status(400).json({ message: "Pick a plan." });
     const priceId = priceIdFor(plan);
     if (!priceId) return res.status(409).json({ message: `The ${plan.name} plan isn't available for online checkout yet. Contact us.` });
+    // An organization that already pays changes its subscription (prorated) instead of starting a second
+    // one: a second subscription would bill twice, and the old one's events would fight the new one's.
+    if (org.stripe_subscription_id && org.status !== "canceled") {
+      const current = await stripe.subscriptions.retrieve(org.stripe_subscription_id).catch(() => null);
+      if (current && ["active", "trialing", "past_due"].includes(current.status)) {
+        const item = current.items.data[0];
+        if (item?.price?.id === priceId) return res.status(409).json({ message: `You're already on the ${plan.name} plan.` });
+        await stripe.subscriptions.update(current.id, {
+          items: [{ id: item.id, price: priceId }],
+          proration_behavior: "create_prorations",
+          metadata: { org_id: String(orgId), plan_code: plan.code },
+        });
+        await recordAudit({ event_type: "billing", action: "plan_changed", user_email: req.user!.email, entity_type: "Organization", entity_id: orgId, details: { from: org.plan_code, to: plan.code }, org_id: orgId });
+        // The plan, seats and territory follow from Stripe's subscription.updated event.
+        return res.json({ changed: true, plan_code: plan.code });
+      }
+    }
     const session = await stripe.checkout.sessions.create(buildCheckoutParams({
       orgId, orgName: org.name, email: req.user!.email, plan, priceId, customerId: org.stripe_customer_id, baseUrl: base,
-      trialDays: org.status === "trial" && !org.stripe_subscription_id ? undefined : undefined,
     }) as any);
     await recordAudit({ event_type: "billing", action: "checkout_started", user_email: req.user!.email, entity_type: "Organization", entity_id: orgId, details: { plan_code: plan.code }, org_id: orgId });
     res.json({ url: session.url });

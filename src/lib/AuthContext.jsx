@@ -124,11 +124,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   // After a reset or invite link the server has already started a session.
-  const adoptSession = (sessionUser) => {
-    setUser(sessionUser);
+  // That response is the account only, so the session (organization, owner
+  // role, plan, territory) is read from /auth/me, like after signing in:
+  // an invited owner would otherwise open the app as a plain member.
+  const adoptSession = async (account) => {
+    const result = await withSession(account);
+    setUser(result);
     setIsAuthenticated(true);
     setAuthError(null);
     setSessionExpired(false);
+    return result;
   };
 
   const navigateToLogin = () => {

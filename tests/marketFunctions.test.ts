@@ -225,6 +225,113 @@ describe("getFacilityMarket without a county", () => {
   });
 });
 
+describe("territory entitlements", () => {
+  const plan = (planCode: string, territory: { states: string[]; county_fips: string[] }, orgStatus = "active") => ({ role: "user", orgRole: "member", planCode, territory, orgStatus });
+  const alleghenyPack = plan("county_pack", { states: [], county_fips: ["42003"] });
+  const lucasPack = plan("county_pack", { states: [], county_fips: ["39095"] });
+  const paPlan = plan("state", { states: ["PA"], county_fips: [] });
+  const unchosen = plan("county_pack", { states: [], county_fips: [] });
+  const lapsed = plan("state", { states: ["PA"], county_fips: [] }, "canceled");
+  const national = plan("national", { states: [], county_fips: [] });
+
+  // A restricted query carries the plan's counties and state prefixes as $3 and $4; the fake applies them like the SQL does.
+  const inScope = (r: any, p: any[]) => p.length < 4 || p[2].includes(r.county_fips) || p[3].includes(String(r.county_fips).slice(0, 2));
+  const ZIPS = [
+    { zip5: "15213", county_fips: "42003", cases: 600, days: 3000, charges: 9e6, share_of_hospital: 0.6 },
+    { zip5: "15212", county_fips: "42003", cases: 300, days: 1500, charges: 4e6, share_of_hospital: 0.3 },
+    { zip5: "16001", county_fips: "42019", cases: 100, days: 500, charges: 1e6, share_of_hospital: 0.1 },
+  ];
+  const COUNTIES = [{ county_fips: "42003", cases: "900", days: "4500", zips: 2 }, { county_fips: "42019", cases: "100", days: "500", zips: 1 }];
+
+  function hospital(state = "PA") {
+    h.answers.push(
+      [/SELECT DISTINCT data_year FROM rollup_hospital_catchment/, [{ data_year: "2025" }]],
+      [/SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment/, (p: any[]) => ZIPS.filter((r) => inScope(r, p))],
+      [/AS zips FROM rollup_hospital_catchment WHERE ccn/, (p: any[]) => [{ cases: "1000", zips: ZIPS.filter((r) => inScope(r, p)).length }]],
+      [/GROUP BY county_fips ORDER BY sum\(cases\)/, (p: any[]) => COUNTIES.filter((r) => inScope(r, p))],
+      [/FROM rollup_hospital_discharge_mix WHERE ccn = \$1/, [{ ccn: "390001", data_year: "2024", facility_name: "UPMC PRESBYTERIAN", state }]],
+    );
+  }
+
+  it("shows a state plan a hospital in its state with every county its patients come from", async () => {
+    hospital();
+    const r: any = await handleGetHospitalCatchment({ ccn: "390001" }, paPlan);
+    expect(r.counties.map((c: any) => c.county_fips)).toEqual(["42003", "42019"]);
+    expect(r.zips).toHaveLength(3);
+  });
+
+  it("narrows a county pack to its own counties in the query, and keeps the hospital's total as every share's denominator", async () => {
+    hospital();
+    const r: any = await handleGetHospitalCatchment({ ccn: "390001" }, alleghenyPack);
+    expect(r.counties).toEqual([{ county_fips: "42003", name: "Allegheny County", state: "PA", cases: 900, days: 4500, zips: 2, share: 0.9 }]);
+    expect(r.zips.map((z: any) => z.zip5)).toEqual(["15213", "15212"]);
+    expect(r).toMatchObject({ total_cases: 1000, zips_total: 2, zips_truncated: false });
+    // Narrowed in SQL, so the busiest-first limits apply within the plan's places.
+    for (const q of h.queries.filter((x) => /FROM rollup_hospital_catchment/.test(x.sql) && /data_year = \$2/.test(x.sql))) {
+      expect(q.sql).toMatch(/county_fips = ANY\(\$3::text\[\]\)/);
+      expect(q.params).toEqual(["390001", "2025", ["42003"], []]);
+    }
+  });
+
+  it("leaves everything unnarrowed for a plan that covers everything", async () => {
+    hospital();
+    const r: any = await handleGetHospitalCatchment({ ccn: "390001" }, national);
+    expect(r.counties).toHaveLength(2);
+    for (const q of h.queries.filter((x) => /FROM rollup_hospital_catchment/.test(x.sql) && /data_year = \$2/.test(x.sql))) expect(q.params).toEqual(["390001", "2025"]);
+    hospital();
+    expect(((await handleGetHospitalCatchment({ ccn: "390001" }, null)) as any).counties).toHaveLength(2);
+  });
+
+  it("refuses a hospital outside the plan's territory with an upgrade message", async () => {
+    hospital();
+    await expect(handleGetHospitalCatchment({ ccn: "390001" }, lucasPack)).rejects.toMatchObject({ status: 403, code: "outside_territory" });
+    h.answers.length = 0;
+    hospital("OH");
+    await expect(handleGetHospitalCatchment({ ccn: "390001" }, paPlan)).rejects.toMatchObject({ status: 403, message: expect.stringMatching(/outside your plan/) });
+  });
+
+  it("covers nothing for a plan whose owner hasn't chosen places yet, and stops a lapsed subscription", async () => {
+    hospital();
+    await expect(handleGetHospitalCatchment({ ccn: "390001" }, unchosen)).rejects.toMatchObject({ status: 403, message: expect.stringMatching(/places you choose/) });
+    await expect(handleGetHospitalCatchment({ ccn: "390001" }, lapsed)).rejects.toMatchObject({ status: 402, code: "subscription_inactive" });
+  });
+
+  const OWN = (extra: object) => ({ setting: "snf", data_year: "2024", ccn: "395001", provider_name: "KANE REGIONAL", benes: 900, share_benes: 0.12, rank: 2, providers_in_market: 70, ...extra });
+
+  it("answers a provider's market only for a plan that covers its county", async () => {
+    h.answers.push([/FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/, [OWN({ geo_level: "county", geo_code: "42003", state: "PA" }), OWN({ geo_level: "state", geo_code: "PA", state: "PA" })]]);
+    expect(((await handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, alleghenyPack)) as any).found).toBe(true);
+    expect(((await handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, paPlan)) as any).found).toBe(true);
+    await expect(handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, lucasPack)).rejects.toMatchObject({ status: 403, code: "outside_territory" });
+    await expect(handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, unchosen)).rejects.toMatchObject({ status: 403 });
+    await expect(handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, lapsed)).rejects.toMatchObject({ status: 402 });
+  });
+
+  it("refuses a restricted plan a provider whose place can't be told, and still answers a plan that covers everything", async () => {
+    h.answers.push([/FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/, [OWN({ geo_level: "national", geo_code: "US", state: null })]]);
+    await expect(handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, alleghenyPack)).rejects.toMatchObject({ status: 403, message: expect.stringMatching(/location isn't known/) });
+    expect(((await handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, national)) as any).found).toBe(true);
+    expect(((await handleGetFacilityMarket({ ccn: "395001", setting: "snf" }, null)) as any).found).toBe(true);
+  });
+
+  it("leaves out the counties an agency serves beyond the plan's territory", async () => {
+    h.answers.push(
+      [/FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/, [OWN({ setting: "hha", geo_level: "county", geo_code: "42003", state: "PA" })]],
+      [/FROM rollup_agency_coverage WHERE setting = \$1 AND ccn = \$2/, [
+        { county_fips: "42003", zips_served: 40, county_zips: 50, share_of_county_zips: 0.8 },
+        { county_fips: "42019", zips_served: 10, county_zips: 40, share_of_county_zips: 0.25 },
+        { county_fips: "39095", zips_served: 5, county_zips: 30, share_of_county_zips: 0.17 },
+      ]],
+    );
+    const pack: any = await handleGetFacilityMarket({ ccn: "395001", setting: "hha" }, alleghenyPack);
+    expect(pack.coverage.map((c: any) => c.county_fips)).toEqual(["42003"]);
+    const state: any = await handleGetFacilityMarket({ ccn: "395001", setting: "hha" }, paPlan);
+    expect(state.coverage.map((c: any) => c.county_fips)).toEqual(["42003", "42019"]);
+    const all: any = await handleGetFacilityMarket({ ccn: "395001", setting: "hha" }, national);
+    expect(all.coverage.map((c: any) => c.county_fips)).toEqual(["42003", "42019", "39095"]);
+  });
+});
+
 describe("getCountyMarketLayer", () => {
   it("only serves the allowlisted metrics, with the vintage the metric comes from", async () => {
     await expect(handleGetCountyMarketLayer({ state: "PA", metric: "benes; DROP TABLE" })).rejects.toMatchObject({ status: 400 });

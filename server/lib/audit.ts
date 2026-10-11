@@ -28,6 +28,7 @@ export const recordAudit: AuditWriter = async (entry) => {
       entity_id: entry.entity_id == null ? null : String(entry.entity_id),
       details: entry.details ?? {},
       ip_address: entry.ip_address?.slice(0, 50) ?? null,
+      org_id: entry.org_id ?? null,
     });
   } catch (e: any) {
     console.warn(`[audit] Failed to record ${entry.event_type}:`, e?.message || e);

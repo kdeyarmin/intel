@@ -6,6 +6,7 @@ import { CreditCard, Check, ExternalLink, Loader2, MapPin, Users, Gauge } from '
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { US_STATES } from '@/lib/usStates';
+import { stateOfCounty } from '@/lib/stateFips';
 import PageHeader from '@/components/shared/PageHeader';
 import PageTabs from '@/components/layout/PageTabs';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,8 @@ function UsageBar({ kind, used, limit }) {
 
 /** Owners pick the counties of a county pack or the state of a state plan. */
 function TerritoryEditor({ scope, maxCounties, territory, onSaved, canEdit }) {
-  const [state, setState] = useState(territory.states[0] || (territory.county_fips[0] ? null : 'PA'));
+  // A state plan keeps its state; a county pack's state is the one its counties are in (the FIPS prefix).
+  const [state, setState] = useState(territory.states[0] || stateOfCounty(territory.county_fips[0]) || 'PA');
   const [selected, setSelected] = useState(new Set(territory.county_fips));
   const { data: countiesData, isFetching } = useQuery({
     queryKey: ['geoCounties', state],
@@ -57,14 +59,6 @@ function TerritoryEditor({ scope, maxCounties, territory, onSaved, canEdit }) {
     enabled: scope === 'county_pack' && !!state,
     staleTime: 60 * 60 * 1000,
   });
-  // A county pack's state is whichever state its counties are in.
-  useEffect(() => {
-    if (!state && territory.county_fips[0]) {
-      const prefix = territory.county_fips[0].slice(0, 2);
-      const found = countiesData?.counties?.find((c) => c.fips.startsWith(prefix));
-      if (!found) setState('PA');
-    }
-  }, [state, territory.county_fips, countiesData]);
   const counties = countiesData?.counties ?? [];
   const save = useMutation({
     mutationFn: () => base44.billing.setTerritory(scope === 'state' ? { states: [state], county_fips: [] } : { states: [], county_fips: [...selected] }),
@@ -88,7 +82,7 @@ function TerritoryEditor({ scope, maxCounties, territory, onSaved, canEdit }) {
     <div className="space-y-3">
       <div className="space-y-1 max-w-xs">
         <Label htmlFor="territory-state" className="text-slate-300">{scope === 'state' ? 'State' : 'State of the counties'}</Label>
-        <Select value={state || ''} onValueChange={setState} disabled={!canEdit}>
+        <Select value={state || ''} onValueChange={(next) => { if (next !== state) { setSelected(new Set()); setState(next); } }} disabled={!canEdit}>
           <SelectTrigger id="territory-state" className="bg-slate-800 border-slate-700"><SelectValue placeholder="Pick a state" /></SelectTrigger>
           <SelectContent className="max-h-72">
             {US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -144,7 +138,17 @@ export default function Billing() {
 
   const checkout = useMutation({
     mutationFn: (plan_code) => base44.billing.checkout(plan_code),
-    onSuccess: ({ url }) => { window.location.assign(url); },
+    onSuccess: ({ url, changed }) => {
+      if (changed) {
+        // An organization that already pays changes its subscription in place: no Stripe page, and the
+        // new plan arrives with Stripe's next event.
+        toast.success('Plan change submitted. It shows here within a minute; your next invoice is prorated.');
+        queryClient.invalidateQueries({ queryKey: ['billingStatus'] });
+        checkAppState?.();
+        return;
+      }
+      window.location.assign(url);
+    },
     onError: (e) => toast.error(e.message),
   });
   const portal = useMutation({
@@ -195,6 +199,11 @@ export default function Billing() {
                   <div><dt className="text-xs text-slate-400">Seats</dt><dd className="text-slate-200">{data.seats?.used ?? 0} of {data.seats?.limit ?? plan?.seat_limit ?? '—'}</dd></div>
                   <div><dt className="text-xs text-slate-400">Territory</dt><dd className="text-slate-200">{scope === 'national' ? 'National' : territory.states[0] ? territory.states.join(', ') : `${territory.county_fips.length} count${territory.county_fips.length === 1 ? 'y' : 'ies'}`}</dd></div>
                 </dl>
+                {data.needs_territory_choice && (
+                  <p className="text-amber-400 text-xs" role="status">
+                    {isOwner ? 'Choose the places your plan covers below.' : 'An owner needs to choose the places your plan covers.'} Until then, County, Market and Territory views stay locked.
+                  </p>
+                )}
                 {org.status === 'past_due' && (
                   <p className="text-amber-400 text-xs" role="status">A payment failed. Update the payment method in the billing portal to keep access.</p>
                 )}

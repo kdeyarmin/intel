@@ -6,7 +6,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
-import { PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
+import { OWNER_FUNCTIONS, PLATFORM_FUNCTIONS, PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
 
 const root = path.join(import.meta.dirname, "..");
 const dispatcher = fs.readFileSync(path.join(root, "server", "routes", "functions.ts"), "utf8");
@@ -34,6 +34,13 @@ describe("function dispatcher", () => {
     expect(invoked.size).toBeGreaterThan(20);
     const undispatched = [...invoked].filter(([name]) => !cases.has(name)).map(([name, file]) => `${name} (${file})`);
     expect(undispatched).toEqual([]);
+  });
+
+  it("classifies every dispatched function: public, an owner's or the platform's (adding one is a security decision)", () => {
+    const unclassified = [...cases].filter((name) => !PUBLIC_FUNCTIONS.has(name) && !OWNER_FUNCTIONS.has(name) && !PLATFORM_FUNCTIONS.has(name));
+    expect(unclassified).toEqual([]);
+    // Each list names only functions the dispatcher serves (a typo would silently classify nothing).
+    expect([...OWNER_FUNCTIONS, ...PLATFORM_FUNCTIONS].filter((name) => !cases.has(name))).toEqual([]);
   });
 
   it("dispatches the lead scoring functions the Scoring Rules page calls", () => {

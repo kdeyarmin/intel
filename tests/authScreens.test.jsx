@@ -79,6 +79,23 @@ describe('ResetPassword', () => {
     expect(adoptSession).toHaveBeenCalledWith({ id: 5, email: 'ivy@example.com', status: 'active' });
   });
 
+  it('waits for the full session before leaving, so the first page sees the organization and owner role', async () => {
+    auth.tokenInfo.mockResolvedValue({ valid: true, purpose: 'invite', email: 'ola@example.com', full_name: 'Ola' });
+    auth.resetPassword.mockResolvedValue({ id: 6, email: 'ola@example.com', status: 'active' });
+    let finish;
+    adoptSession.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
+    await screen.findByText('Set up your account');
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'ola-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'ola-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await waitFor(() => expect(adoptSession).toHaveBeenCalled());
+    // The session is still loading: the app must not open yet.
+    expect(screen.queryByText('home')).not.toBeInTheDocument();
+    finish({ id: 6, email: 'ola@example.com', status: 'active', orgId: 3, orgRole: 'owner' });
+    expect(await screen.findByText('home')).toBeInTheDocument();
+  });
+
   it('sends someone still awaiting approval to the waiting screen after a reset', async () => {
     auth.tokenInfo.mockResolvedValue({ valid: true, purpose: 'reset', email: 'new@example.com' });
     auth.resetPassword.mockResolvedValue({ id: 2, email: 'new@example.com', status: 'pending' });

@@ -113,7 +113,7 @@ describe("runDueScheduledReports", () => {
       if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 4, name: "weekly", created_date: created, recipients: ["a@example.com"], config: cfg }] };
       return { rows: [], rowCount: 1 };
     });
-    const out: any = await handleGenerateScheduledReport({ action: "run_single", report_id: 4 }, { role: "admin" });
+    const out: any = await handleGenerateScheduledReport({ action: "run_single", report_id: 4 }, { role: "admin", orgId: 1 });
     expect(out.success).toBe(true);
     const saved = query.mock.calls.find(([sql]) => String(sql).startsWith("UPDATE scheduled_reports SET config = COALESCE(config, '{}'::jsonb) || $2"));
     const patch = JSON.parse(saved![1][1]);
@@ -129,7 +129,38 @@ describe("runDueScheduledReports", () => {
       if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 6, name: "weekly", created_date: created, recipients: ["a@example.com"], config: cfg }] };
       return { rows: [], rowCount: 1 };
     });
-    const out: any = await handleGenerateScheduledReport({ action: "preview", report_id: 6 });
+    const out: any = await handleGenerateScheduledReport({ action: "preview", report_id: 6 }, { role: "user", orgId: 1 });
     expect(out.preview.summary).toBeNull();
+  });
+});
+
+describe("generateScheduledReport and organizations", () => {
+  const member = { role: "user", orgId: 2 };
+
+  it("looks a schedule up inside the caller's organization, so another organization's id answers 404 like a missing one", async () => {
+    query.mockResolvedValue({ rows: [] });
+    for (const action of ["preview", "run_single"]) {
+      query.mockClear();
+      await expect(handleGenerateScheduledReport({ action, report_id: 9 }, member), action).rejects.toMatchObject({ status: 404 });
+      const [sql, params] = query.mock.calls.at(-1)!;
+      expect(sql, action).toMatch(/FROM scheduled_reports WHERE id = \$1 AND org_id = \$2/);
+      expect(params, action).toEqual([9, 2]);
+    }
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  it("refuses an account without an organization before reading anything", async () => {
+    await expect(handleGenerateScheduledReport({ action: "preview", report_id: 9 }, { role: "user" })).rejects.toMatchObject({ status: 403 });
+    await expect(handleGenerateScheduledReport({ action: "run_single", report_id: 9 })).rejects.toMatchObject({ status: 403 });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("lets only a platform admin run everything that is due, an organization's owner included", async () => {
+    query.mockResolvedValue({ rows: [], rowCount: 0 });
+    await expect(handleGenerateScheduledReport({ action: "run_all_due" }, { role: "user", orgId: 2 })).rejects.toMatchObject({ status: 403 });
+    await expect(handleGenerateScheduledReport({ action: "run_all_due" }, { role: "user", orgId: 2, isPlatformAdmin: false })).rejects.toMatchObject({ status: 403 });
+    // The admin role and the platform-admin flag are one thing: either runs them.
+    await expect(handleGenerateScheduledReport({ action: "run_all_due" }, { role: "admin" })).resolves.toBeTruthy();
+    await expect(handleGenerateScheduledReport({ action: "run_all_due" }, { role: "user", isPlatformAdmin: true })).resolves.toBeTruthy();
   });
 });

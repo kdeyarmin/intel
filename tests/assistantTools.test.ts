@@ -4,6 +4,8 @@ import { decisionNote, renderTranscript, replayHistory, titleFrom, uiAction } fr
 import { createToolDeps } from "../server/lib/assistant/data";
 import { memoryAssistantStore } from "./helpers/assistantHarness";
 
+const USER = { id: 7, email: "ann@riverbend.org", role: "user", orgId: 2, orgRole: "member", orgName: "Riverbend Hospice", orgStatus: "active", planCode: "county_pack", territory: { states: [], county_fips: ["42003"] } };
+
 function ctx(overrides: Partial<ToolDeps> = {}): ToolContext {
   const deps = {
     searchProviders: vi.fn(async () => ({ providers: [{ npi: "1000000001" }, { npi: "1000000002" }], truncated: true })),
@@ -22,7 +24,7 @@ function ctx(overrides: Partial<ToolDeps> = {}): ToolContext {
     createProposal: vi.fn(async (input: any) => ({ id: "a1", kind: "create_lead_list", status: "proposed", payload: { ...input, preview: [] }, expiresAt: "2030-01-01T00:00:00.000Z" })),
     ...overrides,
   } as unknown as ToolDeps;
-  return { userId: 7, conversationId: 3, turnId: 11, toolUseId: "toolu_x", deps };
+  return { userId: 7, user: USER, conversationId: 3, turnId: 11, toolUseId: "toolu_x", deps };
 }
 
 describe("tool definitions", () => {
@@ -68,10 +70,10 @@ describe("runTool", () => {
   it("get_area_summary lists the state's counties when the county isn't found", async () => {
     const c = ctx({ getCountyIntelligence: vi.fn(async () => ({ needsCounty: true, counties: [{ fips: "42003", name: "Allegheny County" }] })) });
     const out = JSON.parse((await runTool("get_area_summary", { state: "PA", county: "Narnia" }, c)).content);
-    expect(c.deps.getCountyIntelligence).toHaveBeenCalledWith({ state: "PA", county: "Narnia" });
+    expect(c.deps.getCountyIntelligence).toHaveBeenCalledWith({ state: "PA", county: "Narnia" }, USER);
     expect(out).toEqual({ error: 'No county called "Narnia" in PA.', counties_in_state: ["Allegheny County (42003)"] });
     await runTool("get_area_summary", { state: "PA", county: "42003" }, c);
-    expect(c.deps.getCountyIntelligence).toHaveBeenLastCalledWith({ state: "PA", county_fips: "42003" });
+    expect(c.deps.getCountyIntelligence).toHaveBeenLastCalledWith({ state: "PA", county_fips: "42003" }, USER);
   });
 
   it("get_area_summary keeps sample qualifiers and drops unscored providers from the top list", async () => {
@@ -100,8 +102,8 @@ describe("runTool", () => {
       getReferralSources: vi.fn(async () => ({ rows: [{ npi: "1000000001", name: "Ada", specialty: "Internal Medicine", referral_index: 96, benes: 620, eligible: { hha: true, hospice: true, dme: false }, lead_score: 88 }] })),
     });
     const out = JSON.parse((await runTool("get_area_summary", { state: "PA", county: "42003" }, c)).content);
-    expect(c.deps.getCountyMarket).toHaveBeenCalledWith({ state: "PA", county_fips: "42003" });
-    expect(c.deps.getReferralSources).toHaveBeenCalledWith({ state: "PA", county_fips: "42003", limit: 10 });
+    expect(c.deps.getCountyMarket).toHaveBeenCalledWith({ state: "PA", county_fips: "42003" }, USER);
+    expect(c.deps.getReferralSources).toHaveBeenCalledWith({ state: "PA", county_fips: "42003", limit: 10 }, USER);
     expect(out.market.profile).toMatchObject({ medicare_beneficiaries: 310000, medicare_advantage_share_pct: 62, readmission_rate_pct: 15.2 });
     expect(out.market.hospital_sources[0]).toMatchObject({ ccn: "390001", share_of_county_cases_pct: 31, post_discharge_mix_pct: { snf: 12.5 } });
     expect(out.market.post_acute_market_share).toEqual({ snf: { year: "2024", providers_in_county: 70, top: [{ ccn: "395001", name: "KANE", beneficiaries: 900, share_pct: 12, rank: 1 }] } });
@@ -143,8 +145,30 @@ describe("runTool", () => {
     const c = ctx({ getReferralNetwork: vi.fn(async () => ({ nodes: [{ npi: "1", name: "A", totalVolume: 5, outbound: 3, inbound: 2, partners: 1 }], edges: [{ source: "1", target: "2", volume: 3 }], summary: {} })) });
     expect((await runTool("get_referral_network", { npi: "1000000001", state: "PA" }, c)).isError).toBe(true);
     const out = JSON.parse((await runTool("get_referral_network", { state: "PA" }, c)).content);
-    expect(c.deps.getReferralNetwork).toHaveBeenCalledWith(expect.objectContaining({ state: "PA", limit_nodes: 40 }), { id: 7 });
+    expect(c.deps.getReferralNetwork).toHaveBeenCalledWith(expect.objectContaining({ state: "PA", limit_nodes: 40 }), USER);
     expect(out.strongest_connections[0]).toEqual({ from: "A (1)", to: "2 (2)", shared_patients: 3 });
+  });
+
+  it("runs every place, list and network lookup as the signed-in user, so the plan's territory and the organization apply", async () => {
+    const c = ctx({
+      getTerritoryData: vi.fn(async () => ({ providers: [], counties: [], scope: { state: "PA" } })),
+      getLeadList: vi.fn(async () => null),
+    });
+    await runTool("get_area_summary", { state: "PA" }, c);
+    expect(c.deps.getTerritoryData).toHaveBeenCalledWith(expect.objectContaining({ state: "PA" }), USER);
+    await runTool("list_lead_lists", { name_contains: "cardio" }, c);
+    expect(c.deps.listLeadLists).toHaveBeenCalledWith({ nameContains: "cardio", limit: 20 }, USER);
+    await runTool("get_lead_list", { list_id: 4 }, c);
+    expect(c.deps.getLeadList).toHaveBeenCalledWith(4, 50, USER);
+  });
+
+  it("turns a territory or subscription refusal into a short error the model can pass on", async () => {
+    const outside = Object.assign(new Error("OH is outside your plan's territory. Upgrade on the Billing page, or ask an owner to add it."), { status: 403 });
+    const lapsed = Object.assign(new Error("Your organization's subscription isn't active. An owner can reactivate it on the Billing page."), { status: 402 });
+    const a = await runTool("get_area_summary", { state: "OH" }, ctx({ getTerritoryData: vi.fn(async () => { throw outside; }) }));
+    expect(a).toEqual({ content: outside.message, isError: true });
+    const b = await runTool("get_area_summary", { state: "PA", county: "42003" }, ctx({ getCountyIntelligence: vi.fn(async () => { throw lapsed; }) }));
+    expect(b).toEqual({ content: lapsed.message, isError: true });
   });
 
   it("propose_lead_list only records a proposal, with unknown NPIs dropped", async () => {
@@ -206,6 +230,44 @@ describe("runTool", () => {
   it("labels tool calls for the UI", () => {
     expect(toolLabel("get_area_summary", { state: "OH", county: "Franklin" })).toBe("Summarized Franklin, OH");
     expect(toolLabel("search_providers", { specialty_group: "cardiology", state: "PA" })).toBe("Listed Cardiology providers in PA");
+  });
+});
+
+describe("lead lists in the assistant", () => {
+  function fakePool(rows: any[] = [{ id: 4, name: "PA cardiology", description: null, member_count: 2 }]) {
+    const calls: Array<{ sql: string; params: unknown[] }> = [];
+    return { calls, query: vi.fn(async (sql: string, params: unknown[] = []) => { calls.push({ sql, params }); return { rows }; }), connect: vi.fn() };
+  }
+
+  it("lists only the caller's organization's lead lists", async () => {
+    const pool = fakePool([{ id: 4, name: "PA cardiology" }]);
+    const deps = createToolDeps(pool, memoryAssistantStore());
+    await deps.listLeadLists({ limit: 20 }, USER);
+    expect(pool.calls[0].sql).toMatch(/FROM lead_lists WHERE org_id = \$2/);
+    expect(pool.calls[0].params).toEqual([20, 2]);
+    await deps.listLeadLists({ nameContains: "cardio", limit: 5 }, USER);
+    expect(pool.calls[1].sql).toMatch(/WHERE org_id = \$3 AND name ILIKE \$1/);
+    expect(pool.calls[1].params).toEqual(["%cardio%", 5, 2]);
+  });
+
+  it("opens a list only inside the caller's organization, so another organization's list id finds nothing", async () => {
+    const pool = fakePool([]);
+    const deps = createToolDeps(pool, memoryAssistantStore());
+    expect(await deps.getLeadList(99, 50, USER)).toBeNull();
+    expect(pool.calls).toHaveLength(1);
+    expect(pool.calls[0].sql).toMatch(/FROM lead_lists WHERE id = \$1 AND org_id = \$2/);
+    expect(pool.calls[0].params).toEqual([99, 2]);
+    // No members were read for a list that isn't theirs.
+    expect(pool.calls.some((c) => /lead_list_members/.test(c.sql))).toBe(false);
+  });
+
+  it("shows an account without an organization no lists at all, without touching the database", async () => {
+    const pool = fakePool();
+    const deps = createToolDeps(pool, memoryAssistantStore());
+    const lonely = { ...USER, orgId: null };
+    expect(await deps.listLeadLists({ limit: 20 }, lonely)).toEqual([]);
+    expect(await deps.getLeadList(4, 50, lonely)).toBeNull();
+    expect(pool.query).not.toHaveBeenCalled();
   });
 });
 

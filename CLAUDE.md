@@ -105,19 +105,39 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `org_role` owner|member); signup creates it in trial (`server/lib/orgs.ts`).
   Customer-owned tables carry `org_id`, and `server/routes/entities.ts` scopes
   `ORG_SCOPED_ENTITIES` by the session's `orgId` (stamped on create, never
-  trusted from the body). Three roles: platform admin
-  (`users.is_platform_admin`: shared data, every organization, `platformAdminOnly`,
-  `PLATFORM_FUNCTIONS`), owner (`isOrgAdmin`/`adminOnly`: their organization's
-  people, billing, campaigns) and member. The frontend mirrors this with
-  `effectiveRole(user)` in `navConfig.js` (`admin` | `owner` | `user`); pass the
+  trusted from the body; `LeadListMember` and `CampaignSequenceStep` are scoped
+  through their parent). Handlers that take a row id (campaigns, scheduled
+  reports, assistant lead lists) look it up `AND org_id = …`: another
+  organization's id answers 404. Three roles, defined once in
+  `server/lib/roles.ts`: platform admin (the `admin` role **or**
+  `users.is_platform_admin`, kept together by the Users screen, invites and the
+  seed: shared data, every organization, `platformAdminOnly`, `ScoringRule`,
+  imports), owner (`isOrgAdmin`/`adminOnly`: their organization's people,
+  billing, campaigns, its audit events) and member. An owner is never a
+  platform admin: `PLATFORM_ONLY_ENTITIES` are closed to them, and
+  `OWNER_FUNCTIONS` (`server/lib/functionAcl.ts`) is a positive list; every
+  dispatched function is public, an owner's or `PLATFORM_FUNCTIONS`
+  (`tests/functionsDispatch.test.ts`). The frontend mirrors this with
+  `effectiveRole(user)` in `navConfig.js` (`admin` | `owner` | `user`; an owner
+  opens every page a member does, a tab can name its own `roles`); pass the
   session user, not `user.role`, to `canAccessPage`. Plans set the territory
-  (`server/lib/entitlements.ts`, `assertTerritory` in county/market/territory
-  handlers), seats and daily quotas (`server/lib/orgQuota.ts`, `consumeQuota`).
-  Billing is Stripe (`server/lib/billing.ts`, `/api/billing`, `/api/webhooks/stripe`).
+  (`server/lib/entitlements.ts`, `assertTerritory` in the county, market and
+  territory handlers and the assistant tools that call them; a County Pack or
+  State plan with no places chosen covers nothing, never everything), seats and
+  daily quotas (`server/lib/orgQuota.ts`, `consumeQuota`; exports are counted
+  by `countExport()` before a file is built, and every export carries the
+  source line from `exportAttribution()`). Provider search, the referral
+  network and exports of provider data are not territory-limited.
+  Billing is Stripe (`server/lib/billing.ts`, `/api/billing`, `/api/webhooks/stripe`;
+  one subscription per organization, events apply only to the current one and
+  in time order via `stripe_event_at`).
   Public legal pages: `/terms`, `/privacy`, `/data-use`.
-- **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`). The
-  browser records its own actions with `base44.audit.record(type, details)`
-  (`POST /api/audit`, allowlisted types); it can't write `AuditEvent` directly.
+- **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`), passing
+  the `org_id` the event belongs to (an owner reads their organization's events;
+  platform events such as the maintenance heartbeat have none and only platform
+  admins see them). The browser records its own actions with
+  `base44.audit.record(type, details)` (`POST /api/audit`, allowlisted types);
+  it can't write `AuditEvent` directly.
 - **Edge-function helpers are unit-tested from Node:** pure logic lives in
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`

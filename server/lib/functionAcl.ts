@@ -59,10 +59,22 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
 ]);
 
 /**
+ * What an organization's owner may call beyond the public functions: the
+ * campaign work their Campaigns page does (it sends mail and spends their
+ * quota). A positive list, so a function added later is denied to owners until
+ * someone lists it here on purpose.
+ */
+export const OWNER_FUNCTIONS: ReadonlySet<string> = new Set<string>([
+  "generateHyperPersonalizedMessages", "trackCampaignMetrics", "saveCampaignOutcomes", "prepareCampaignMessages", "sendCampaignMessages",
+]);
+
+/**
  * Functions that operate the platform's shared data (imports, the crawler,
  * maintenance, rollups, scoring, token-spending enrichment of shared provider
  * records). Only platform admins may call them; an organization's owner
  * administers their own organization, not the data every customer shares.
+ * Every function the dispatcher serves is public, an owner's or listed here
+ * (tests/functionsDispatch.test.ts), so adding one is an explicit decision.
  */
 export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "triggerImport", "importNPPESFlatFile", "importAgentChat", "predictImportFormat", "analyzeImportedDataset",
@@ -88,14 +100,14 @@ export interface FunctionCaller {
 }
 
 /**
- * With organizations: public functions for everyone, platform functions for
- * platform admins only, and the rest for organization owners (and the
- * legacy admin role).
+ * With organizations: public functions for everyone, the campaign functions
+ * for an organization's owners, and everything else (listed or not) for
+ * platform admins only.
  */
 export function isFunctionAllowedFor(functionName: string, user: FunctionCaller | null | undefined): boolean {
   if (PUBLIC_FUNCTIONS.has(functionName)) return true;
   if (!user) return false;
-  if (user.isPlatformAdmin) return true;
-  if (PLATFORM_FUNCTIONS.has(functionName)) return false;
-  return user.role === "admin" || user.orgRole === "owner";
+  // The admin role and the platform-admin flag are one thing (see isPlatformAdmin in middleware/auth.ts).
+  if (user.isPlatformAdmin || user.role === "admin") return true;
+  return user.orgRole === "owner" && OWNER_FUNCTIONS.has(functionName);
 }

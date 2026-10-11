@@ -63,26 +63,30 @@ export function createToolDeps(pool: any, store: AssistantStore): ToolDeps {
     searchProviders: (payload) => handleSearchProviders(payload),
     describeProviders: (npis) => describeProviders(pool, npis),
     getProviderReport: (npi) => handleGetComprehensiveReport({ npi }),
-    getCountyIntelligence: (payload) => handleGetCountyIntelligence(payload),
-    getCountyMarket: async (payload) => (await import("../../functions/market")).handleGetCountyMarket(payload),
-    getReferralSources: async (payload) => (await import("../../functions/market")).handleGetReferralSources(payload),
+    // The caller goes to every handler that checks the plan's territory and subscription, exactly as the pages' requests do.
+    getCountyIntelligence: (payload, user) => handleGetCountyIntelligence(payload, user),
+    getCountyMarket: async (payload, user) => (await import("../../functions/market")).handleGetCountyMarket(payload, user),
+    getReferralSources: async (payload, user) => (await import("../../functions/market")).handleGetReferralSources(payload, user),
     getProviderCMSData: async (npi) => (await import("../../functions/facilityDetail")).handleGetProviderCMSData({ npi }),
-    getTerritoryData: (payload) => handleGetTerritoryData(payload),
+    getTerritoryData: (payload, user) => handleGetTerritoryData(payload, user),
     getReferralNetwork: (payload, user) => handleGetReferralNetworkData(payload, user),
     getDashboardStats: () => getDashboardStats(),
 
-    async listLeadLists({ nameContains, limit }) {
+    // Lead lists belong to an organization: the assistant sees the caller's, like the Lead Lists page.
+    async listLeadLists({ nameContains, limit }, user) {
+      if (user.orgId == null) return [];
       const { rows } = nameContains
         ? await pool.query(
-          "SELECT id, name, description, member_count, created_by, updated_date FROM lead_lists WHERE name ILIKE $1 ORDER BY updated_date DESC NULLS LAST, id DESC LIMIT $2",
-          [`%${escapeLike(nameContains)}%`, limit],
+          "SELECT id, name, description, member_count, created_by, updated_date FROM lead_lists WHERE org_id = $3 AND name ILIKE $1 ORDER BY updated_date DESC NULLS LAST, id DESC LIMIT $2",
+          [`%${escapeLike(nameContains)}%`, limit, user.orgId],
         )
-        : await pool.query("SELECT id, name, description, member_count, created_by, updated_date FROM lead_lists ORDER BY updated_date DESC NULLS LAST, id DESC LIMIT $1", [limit]);
+        : await pool.query("SELECT id, name, description, member_count, created_by, updated_date FROM lead_lists WHERE org_id = $2 ORDER BY updated_date DESC NULLS LAST, id DESC LIMIT $1", [limit, user.orgId]);
       return rows;
     },
 
-    async getLeadList(id, limit) {
-      const { rows } = await pool.query("SELECT id, name, description, member_count FROM lead_lists WHERE id = $1", [id]);
+    async getLeadList(id, limit, user) {
+      if (user.orgId == null) return null;
+      const { rows } = await pool.query("SELECT id, name, description, member_count FROM lead_lists WHERE id = $1 AND org_id = $2", [id, user.orgId]);
       if (!rows[0]) return null;
       const members = await pool.query(
         "SELECT npi, status FROM lead_list_members WHERE list_id = $1 AND npi IS NOT NULL ORDER BY id LIMIT $2",

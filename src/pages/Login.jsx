@@ -69,7 +69,7 @@ export default function Login() {
 
           {isSignup && !error && (
             <div className="mb-4 p-3 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm" role="status">
-              Your account starts an organization you own, with a free trial. It's reviewed before it's activated; choosing a plan activates it right away.
+              Your account starts an organization you own, with a free trial. An administrator reviews new accounts before they can sign in; you'll be emailed when yours is approved.
             </div>
           )}
 

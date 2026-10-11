@@ -75,7 +75,7 @@ export function publicUser(u: UserRow) {
     full_name: u.full_name,
     role: u.role || "user",
     status: u.status,
-    is_platform_admin: !!u.is_platform_admin,
+    is_platform_admin: !!u.is_platform_admin || u.role === "admin",
   };
 }
 

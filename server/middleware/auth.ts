@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { getSessionUser } from "../lib/sessionUsers";
+import { isOrgAdmin, isPlatformAdmin } from "../lib/roles";
 
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -96,7 +97,8 @@ async function authenticate(req: AuthRequest, res: Response, next: NextFunction,
   }
   req.user = {
     id: user.id, email: user.email, role: user.role, full_name: user.full_name || undefined, status: user.status,
-    isPlatformAdmin: !!user.is_platform_admin,
+    // The admin role and the flag are one thing (the Users screen keeps them together); either grants it.
+    isPlatformAdmin: !!user.is_platform_admin || user.role === "admin",
     orgId: user.org_id ?? null, orgRole: user.org_role ?? null, orgName: user.org_name ?? null, orgStatus: user.org_status ?? null,
     planCode: user.plan_code ?? null, territory: (user.territory as any) ?? null,
     termsAcceptedAt: user.terms_accepted_at ? new Date(user.terms_accepted_at).toISOString() : null,
@@ -114,10 +116,7 @@ export function authAllowPending(req: AuthRequest, res: Response, next: NextFunc
   return authenticate(req, res, next, true);
 }
 
-/** An organization's administrator: its owner, a platform admin, or the legacy admin role. */
-export function isOrgAdmin(user: SessionPrincipal | undefined): boolean {
-  return !!user && (user.isPlatformAdmin === true || user.orgRole === "owner" || user.role === "admin");
-}
+export { isPlatformAdmin, isOrgAdmin };
 
 export function adminOnly(req: AuthRequest, res: Response, next: NextFunction) {
   if (!isOrgAdmin(req.user)) {
@@ -128,7 +127,7 @@ export function adminOnly(req: AuthRequest, res: Response, next: NextFunction) {
 
 /** Operating the shared data (imports, crawler, maintenance, cross-organization administration). */
 export function platformAdminOnly(req: AuthRequest, res: Response, next: NextFunction) {
-  if (!req.user?.isPlatformAdmin && !(req.user?.role === "admin" && req.user?.orgId === 1)) {
+  if (!isPlatformAdmin(req.user)) {
     return res.status(403).json({ message: "Forbidden", detail: "Platform administrator access required." });
   }
   next();

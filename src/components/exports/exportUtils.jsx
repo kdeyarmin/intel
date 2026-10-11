@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { base44 } from '@/api/base44Client';
 
 const CAREMETRIC_LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png';
 const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
@@ -9,13 +10,29 @@ export function exportAttribution(date = new Date()) {
 }
 
 /**
- * Load image as base64 for embedding in PDF.
+ * Counts one export against the organization's daily allowance before a file
+ * is built. `ok: false` carries the message to show when the day's limit is
+ * used up; any other failure (offline, server error) doesn't block the export.
+ */
+export async function countExport() {
+  try {
+    await base44.billing.countExport();
+    return { ok: true };
+  } catch (err) {
+    if (err?.status === 429) return { ok: false, message: err.message || "Today's export limit for your organization has been reached." };
+    return { ok: true };
+  }
+}
+
+/**
+ * Load image as base64 for embedding in PDF. Null when it can't be loaded:
+ * a PDF without the logo is still a PDF.
  */
 async function loadImageAsBase64(url) {
   try {
     const response = await fetch(url);
     const blob = await response.blob();
-    return new Promise((resolve) => {
+    return await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
       reader.onerror = () => resolve(null);
@@ -26,9 +43,13 @@ async function loadImageAsBase64(url) {
   }
 }
 
-// Pre-load the logo at module level
-let _logoBase64Cache = null;
-const _logoPromise = loadImageAsBase64(CAREMETRIC_LOGO_URL).then(b64 => { _logoBase64Cache = b64; });
+// The logo is fetched the first time a PDF is built, not when this module loads:
+// pages that only export CSV (or never export) shouldn't call a third-party host.
+let _logoPromise = null;
+function pdfLogo() {
+  _logoPromise ??= loadImageAsBase64(CAREMETRIC_LOGO_URL);
+  return _logoPromise;
+}
 
 /**
  * Add branded header to a PDF page.
@@ -129,13 +150,14 @@ function escapeCSV(val) {
 /**
  * Export rows to CSV and trigger download.
  */
-export function exportCSV(rows, fields, fileName) {
+export function exportCSV(rows, fields, fileName, { notes = [] } = {}) {
   const header = fields.map(f => escapeCSV(f.label)).join(',');
   const body = rows.map(row =>
     fields.map(f => escapeCSV(row[f.key])).join(',')
   ).join('\n');
-  // The attribution is one last line, quoted so it stays a single cell.
-  const csv = header + '\n' + body + '\n' + escapeCSV(exportAttribution());
+  // Notes (the data vintages a view used) and the attribution are last lines, each quoted so it stays a single cell.
+  const trailer = [...notes.filter(Boolean), exportAttribution()].map(escapeCSV).join('\n');
+  const csv = header + '\n' + body + '\n' + trailer;
   downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }), fileName + '.csv');
 }
 
@@ -157,9 +179,7 @@ export function exportExcel(rows, fields, fileName) {
  * Export rows to PDF and trigger download.
  */
 export async function exportPDF(rows, fields, fileName, title) {
-  // Ensure logo is loaded
-  await _logoPromise;
-  const logoBase64 = _logoBase64Cache;
+  const logoBase64 = await pdfLogo();
 
   const doc = new jsPDF({ orientation: fields.length > 5 ? 'landscape' : 'portrait' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -214,12 +234,13 @@ export async function exportPDF(rows, fields, fileName, title) {
  * Export rows to JSON and trigger download.
  */
 export function exportJSON(rows, fields, fileName) {
-  const filtered = rows.map(row => {
+  const records = rows.map(row => {
     const obj = {};
     fields.forEach(f => { obj[f.key] = row[f.key] ?? null; });
     return obj;
   });
-  const json = JSON.stringify(filtered, null, 2);
+  // The source line travels with the data (a bare array has nowhere to put it).
+  const json = JSON.stringify({ source: exportAttribution(), records }, null, 2);
   downloadBlob(new Blob([json], { type: 'application/json' }), fileName + '.json');
 }
 

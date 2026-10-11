@@ -141,7 +141,7 @@ app.listen(PORT, "0.0.0.0", async () => {
   try {
     const { seedAdmin } = await import("./lib/adminSeed");
     const seed = await safeStartupQuery(
-      () => seedAdmin(accountDeps.repo, { hashPassword: accountDeps.hashPassword, verifyPassword: accountDeps.verifyPassword }),
+      () => seedAdmin(accountDeps.repo, { hashPassword: accountDeps.hashPassword, verifyPassword: accountDeps.verifyPassword, orgs: accountDeps.orgs }),
       null, "seed admin"
     );
     if (seed?.outcome === "seeded") {

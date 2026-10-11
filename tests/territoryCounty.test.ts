@@ -277,4 +277,32 @@ describe("getTerritoryData", () => {
     expect(r.providers.length).toBeGreaterThan(0);
     expect(db.queries.some((q) => q.sql.includes("SELECT DISTINCT npi FROM provider_locations"))).toBe(false);
   });
+
+  describe("with a plan's territory", () => {
+    const plan = (planCode: string, territory: { states: string[]; county_fips: string[] }, orgStatus = "active") => ({ role: "user", orgRole: "member", planCode, territory, orgStatus });
+
+    it("keeps the all-states sample for plans that cover everything (national, platform admins, no user)", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      for (const user of [plan("national", { states: [], county_fips: [] }), { role: "admin" }, { role: "user", isPlatformAdmin: true }, null, undefined]) {
+        expect(((await handleGetTerritoryData({ state: "ALL", limit: 3 }, user as any)) as any).scope.state, JSON.stringify(user)).toBe("ALL");
+      }
+    });
+
+    it("refuses the all-states sample to a county pack or a state plan: it spans places they haven't bought", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      db.queries.length = 0;
+      for (const user of [plan("county_pack", { states: [], county_fips: ["42003"] }), plan("state", { states: ["PA"], county_fips: [] })]) {
+        await expect(handleGetTerritoryData({ state: "ALL", limit: 3 }, user)).rejects.toMatchObject({ status: 403, code: "outside_territory", message: expect.stringMatching(/National plan/) });
+      }
+      // No provider queries ran for the refused requests.
+      expect(db.queries.filter((q) => /FROM provider_locations|FROM providers/.test(q.sql))).toEqual([]);
+    });
+
+    it("still answers a state inside the plan, and refuses one outside it", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      const pack = plan("county_pack", { states: [], county_fips: ["42003"] });
+      expect(((await handleGetTerritoryData({ state: "PA", limit: 2 }, pack)) as any).scope.state).toBe("PA");
+      await expect(handleGetTerritoryData({ state: "OH", limit: 2 }, pack)).rejects.toMatchObject({ status: 403, code: "outside_territory" });
+    });
+  });
 });

@@ -81,19 +81,19 @@ export async function getOrgByStripeCustomer(customerId: string, db: any = pool)
 export async function createOrgWithOwner(client: any, input: { name: string; ownerUserId: number; planCode?: string | null; termsVersion?: string | null }): Promise<OrgSummary> {
   const base = slugify(input.name);
   const trialEnds = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  // A taken slug is not an error to catch: inside the caller's transaction a unique violation would abort
+  // it, and every later statement (the next attempt included) would fail. ON CONFLICT answers "taken" with
+  // no row instead, so the next suffix can be tried in the same transaction.
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     const slug = attempt === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
-    try {
-      const { rows } = await client.query(
-        `INSERT INTO organizations (name, slug, status, plan_code, trial_ends_at, terms_version)
-         VALUES ($1, $2, 'trial', $3, $4, $5) RETURNING *`,
-        [input.name, slug, input.planCode ?? null, trialEnds, input.termsVersion ?? null],
-      );
-      await client.query("INSERT INTO organization_members (org_id, user_id, org_role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING", [rows[0].id, input.ownerUserId]);
-      return rowToSummary(rows[0]);
-    } catch (e: any) {
-      if (e?.code !== "23505" || attempt === 4) throw e;
-    }
+    const { rows } = await client.query(
+      `INSERT INTO organizations (name, slug, status, plan_code, trial_ends_at, terms_version)
+       VALUES ($1, $2, 'trial', $3, $4, $5) ON CONFLICT (slug) DO NOTHING RETURNING *`,
+      [input.name, slug, input.planCode ?? null, trialEnds, input.termsVersion ?? null],
+    );
+    if (!rows[0]) continue;
+    await client.query("INSERT INTO organization_members (org_id, user_id, org_role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING", [rows[0].id, input.ownerUserId]);
+    return rowToSummary(rows[0]);
   }
   throw new Error("Couldn't create the organization");
 }
