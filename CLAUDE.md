@@ -48,7 +48,14 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   applied by `server/db/migrate.ts`. Large-table indexes are built at boot by
   `server/lib/bootIndexes.ts`, not by migrations.
 - **AI models:** centralized in `server/lib/aiModels.ts` — never hardcode model
-  IDs. Overridable via `CLAUDE_MODEL_SONNET` / `_HAIKU` / `_OPUS` env vars.
+  IDs. Overridable via `CLAUDE_MODEL_SONNET` / `_HAIKU` / `_OPUS` /
+  `_ASSISTANT` env vars. The assistant's model is kept out of `/ai/invoke`.
+- **AI Assistant:** `server/lib/assistant/` (tools, streaming loop, store) and
+  `server/routes/assistant.ts` (`/api/assistant`, owner-only, SSE). Its tools
+  call the same handlers the pages use; the only write is `propose_lead_list`,
+  which the user confirms. Conversation history is append-only and replayed
+  verbatim (thinking blocks included), so never edit stored messages, and keep
+  `SYSTEM_PROMPT` and the tool list free of per-request values.
 - **Import health / auto-retry UI:** `src/components/imports/` (`retryStatus.js`,
   `healthMetrics.js`, `MaintenanceHealthPanel.jsx`).
 

@@ -511,3 +511,32 @@ describe("migration 0011_rollups", () => {
     }
   });
 });
+
+describe("migration 0012_assistant", () => {
+  const sql = readMigration("0012_assistant.sql");
+  const schema = readSchema();
+
+  it("only creates assistant tables and indexes, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) expect(stmt).toMatch(/^CREATE (UNIQUE )?(TABLE|INDEX) IF NOT EXISTS "assistant_/);
+  });
+
+  it("declares every assistant table in the Drizzle schema", () => {
+    for (const [, table] of sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+    }
+  });
+
+  it("keeps constraint and index names within Postgres's 63-character limit", () => {
+    // A longer name is silently truncated, so drizzle-kit would see drift forever.
+    for (const [, name] of sql.matchAll(/(?:CONSTRAINT|INDEX IF NOT EXISTS)\s+"([^"]+)"/g)) {
+      expect(name.length, name).toBeLessThanOrEqual(63);
+    }
+  });
+
+  it("removes a user's conversations, proposals and usage with the user", () => {
+    for (const table of ["assistant_conversations", "assistant_actions", "assistant_usage"]) {
+      expect(sql).toContain(`CONSTRAINT "${table}_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade`);
+    }
+  });
+});

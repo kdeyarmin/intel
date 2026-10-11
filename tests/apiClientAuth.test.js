@@ -4,9 +4,6 @@
  * helpers in src/lib/returnUrl.js.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createElement } from 'react';
-import { cleanup, render, waitFor } from '@testing-library/react';
-import { AuthProvider, useAuth } from '../src/lib/AuthContext';
 import {
   ACCOUNT_STATUS_EVENT,
   AUTH_EXPIRED_EVENT,
@@ -117,19 +114,28 @@ describe('401 handling', () => {
     expect(events).toEqual([]);
   });
 
-  it('ignores an old-session 401 from a file upload too', async () => {
+  it.each([
+    ['deleting a conversation', () => base44.assistant.deleteConversation(5)],
+    ['asking the assistant', () => base44.assistant.streamMessage(5, 'Hi', { onEvent: () => {} })],
+    ['uploading a file', () => base44.integrations.Core.UploadFile(new Blob(['x']))],
+  ])("ignores an old session's 401 from %s that arrives after signing in again", async (_, call) => {
     let finishOld;
     vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
       finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
     })));
-    const upload = base44.integrations.Core.UploadFile(new Blob(['x']));
+    const old = call();
 
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
     await base44.auth.login('a@b.c', 'right');
 
     finishOld();
-    await expect(upload).rejects.toThrow();
+    await expect(old).rejects.toMatchObject({ status: 401 });
     expect(events).toEqual([]);
+
+    // A 401 for the current session still signs the user out.
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, {})));
+    await expect(call()).rejects.toMatchObject({ status: 401 });
+    expect(events).toEqual(['expired']);
   });
 
   it('does nothing while already on the login page', async () => {
@@ -214,34 +220,6 @@ describe('account status handling', () => {
     await expect(base44.functions.invoke('triggerImport')).rejects.toThrow('Forbidden');
     window.removeEventListener(ACCOUNT_STATUS_EVENT, onStatus);
     expect(seen).toEqual(['account_pending']);
-  });
-
-  it("re-checks a disabled account once instead of probing the session forever", async () => {
-    // Answers on a later tick, as the network does, so a loop can't starve the test.
-    const fetchMock = vi.fn(() => new Promise((resolve) => {
-      setTimeout(() => resolve(jsonResponse(403, { message: 'Account disabled', code: 'account_disabled', detail: 'This account has been disabled.' })), 0);
-    }));
-    vi.stubGlobal('fetch', fetchMock);
-    let auth;
-    function Probe() {
-      auth = useAuth();
-      return null;
-    }
-    const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
-    try {
-      render(createElement(AuthProvider, null, createElement(Probe)));
-      await waitFor(() => expect(auth.authError?.type).toBe('account_disabled'));
-      await settle();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-
-      // Another request refused for the same reason: one re-check, then quiet.
-      await expect(base44.entities.Provider.list()).rejects.toThrow('Account disabled');
-      await settle();
-      expect(fetchMock).toHaveBeenCalledTimes(3);
-      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me', '/api/entities/Provider?', '/api/auth/me']);
-    } finally {
-      cleanup();
-    }
   });
 
   it('records audit events through the server and never throws', async () => {

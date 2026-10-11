@@ -1,3 +1,5 @@
+import { createSseParser } from "../lib/sseParser.js";
+
 const API_BASE = "/api";
 
 export const AUTH_EXPIRED_EVENT = "auth:expired";
@@ -282,6 +284,58 @@ export const base44 = {
       } catch (e) {
         console.warn("Audit logging failed:", e?.message || e);
       }
+    },
+  },
+
+  // The AI Assistant (server/routes/assistant.ts). Conversations belong to the
+  // signed-in user; answers stream back as server-sent events.
+  assistant: {
+    status: () => request("/assistant/status"),
+    listConversations: (before) => request(`/assistant/conversations${before ? `?before=${encodeURIComponent(before)}` : ""}`),
+    createConversation: (title) => request("/assistant/conversations", { method: "POST", body: JSON.stringify({ title }) }),
+    getConversation: (id) => request(`/assistant/conversations/${id}`),
+    renameConversation: (id, title) => request(`/assistant/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),
+    async deleteConversation(id) {
+      const url = `/assistant/conversations/${id}`;
+      const generation = authGeneration;
+      const res = await fetch(`${API_BASE}${url}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw await toApiError(res, url, { generation });
+    },
+    confirmAction: (id) => request(`/assistant/actions/${id}/confirm`, { method: "POST" }),
+    cancelAction: (id) => request(`/assistant/actions/${id}/cancel`, { method: "POST" }),
+    /**
+     * Sends a question and calls onEvent(name, data) for each streamed event
+     * until the answer ends. Abort with `signal` to stop the answer.
+     */
+    async streamMessage(conversationId, text, { signal, onEvent }) {
+      const url = `/assistant/conversations/${conversationId}/messages`;
+      const generation = authGeneration;
+      const res = await fetch(`${API_BASE}${url}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({ text }),
+        credentials: "include",
+        signal,
+      });
+      if (!res.ok) throw await toApiError(res, url, { generation });
+      const parser = createSseParser(({ event, data }) => {
+        let parsed;
+        try {
+          parsed = JSON.parse(data);
+        } catch {
+          return;
+        }
+        onEvent(event, parsed);
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parser.push(decoder.decode(value, { stream: true }));
+      }
+      parser.push(decoder.decode());
+      parser.end();
     },
   },
 

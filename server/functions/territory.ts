@@ -85,7 +85,7 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
     }
     if (rows.length < SCORED_PAGE) break;
   }
-  const npis = [...top];
+  const npis: string[] = [...top];
   if (npis.length < limit) {
     const { rows } = await client.query(
       `SELECT npi FROM provider_locations WHERE location_type = 'Practice'${state ? " AND state = $2" : ""} LIMIT $1`,

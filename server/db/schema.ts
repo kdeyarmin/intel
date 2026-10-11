@@ -1,4 +1,4 @@
-import { pgTable, text, integer, bigint, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, boolean, timestamp, date, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey, foreignKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -26,6 +26,78 @@ export const users = pgTable("users", {
   // Emails are matched case-insensitively (migration 0008 skips this if
   // existing rows differ only by case).
   uniqueIndex("users_email_lower_uq").on(sql`lower(${table.email})`),
+]);
+
+// AI Assistant (server/lib/assistant, migration 0012). Owner-only; not exposed via tableMap.
+export const assistantConversations = pgTable("assistant_conversations", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 200 }),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("assistant_conversations_user_idx").on(table.user_id, table.updated_at),
+]);
+
+// One row per question: running | complete | interrupted | refused | error.
+// Only complete turns are replayed to the model.
+export const assistantTurns = pgTable("assistant_turns", {
+  id: serial("id").primaryKey(),
+  conversation_id: integer("conversation_id").notNull().references(() => assistantConversations.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).notNull().default("running"),
+  error: text("error"),
+  model: varchar("model", { length: 100 }),
+  usage: jsonb("usage"),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  finished_at: timestamp("finished_at"),
+}, (table) => [
+  index("assistant_turns_conversation_idx").on(table.conversation_id),
+]);
+
+// API message content exactly as sent or received, in order (seq).
+export const assistantMessages = pgTable("assistant_messages", {
+  id: serial("id").primaryKey(),
+  conversation_id: integer("conversation_id").notNull(),
+  turn_id: integer("turn_id").notNull().references(() => assistantTurns.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  role: varchar("role", { length: 10 }).notNull(),
+  content: jsonb("content").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("assistant_messages_conversation_seq_uq").on(table.conversation_id, table.seq),
+  index("assistant_messages_turn_idx").on(table.turn_id),
+  // Named explicitly: the generated name is longer than Postgres's 63-character limit.
+  foreignKey({ name: "assistant_messages_conversation_id_fk", columns: [table.conversation_id], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+]);
+
+// Writes the assistant proposed. Nothing happens until the owner confirms.
+export const assistantActions = pgTable("assistant_actions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  conversation_id: integer("conversation_id").notNull().references(() => assistantConversations.id, { onDelete: "cascade" }),
+  turn_id: integer("turn_id").notNull().references(() => assistantTurns.id, { onDelete: "cascade" }),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tool_use_id: varchar("tool_use_id", { length: 100 }).notNull(),
+  kind: varchar("kind", { length: 40 }).notNull(),
+  payload: jsonb("payload").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("proposed"),
+  result: jsonb("result"),
+  expires_at: timestamp("expires_at").notNull(),
+  decided_at: timestamp("decided_at"),
+  reported_at: timestamp("reported_at"),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("assistant_actions_conversation_idx").on(table.conversation_id),
+  index("assistant_actions_turn_idx").on(table.turn_id),
+  index("assistant_actions_user_idx").on(table.user_id),
+]);
+
+export const assistantUsage = pgTable("assistant_usage", {
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  day: date("day").notNull(),
+  units: bigint("units", { mode: "number" }).notNull().default(0),
+  requests: integer("requests").notNull().default(0),
+}, (table) => [
+  primaryKey({ columns: [table.user_id, table.day] }),
 ]);
 
 // Background rollups (server/lib/rollups). Not exposed via tableMap.

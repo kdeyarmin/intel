@@ -8,6 +8,12 @@ import { importBatches } from "./db/schema";
 import { createAuthRouter } from "./routes/auth";
 import { createAdminUsersRouter } from "./routes/adminUsers";
 import { createAuditRouter } from "./routes/audit";
+import { createAssistantRouter } from "./routes/assistant";
+import { recordAudit } from "./lib/audit";
+import { createLeadListWithMembers } from "./lib/leadLists";
+import { createPgAssistantStore } from "./lib/assistant/store";
+import { createToolDeps } from "./lib/assistant/data";
+import { anthropicStreamFactory } from "./lib/assistant/anthropic";
 import { defaultAccountDeps } from "./lib/accountDeps";
 import { parseTrustProxy } from "./lib/trustProxy";
 import { authMiddleware } from "./middleware/auth";
@@ -60,6 +66,14 @@ const accountDeps = defaultAccountDeps(dbPool);
 app.use("/api/auth", createAuthRouter(accountDeps));
 app.use("/api/admin/users", createAdminUsersRouter(accountDeps));
 app.use("/api/audit", createAuditRouter());
+const assistantStore = createPgAssistantStore(dbPool);
+app.use("/api/assistant", createAssistantRouter({
+  store: assistantStore,
+  toolDeps: createToolDeps(dbPool, assistantStore),
+  createStream: anthropicStreamFactory,
+  createLeadList: createLeadListWithMembers,
+  audit: recordAudit,
+}));
 app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/functions", functionRoutes);
