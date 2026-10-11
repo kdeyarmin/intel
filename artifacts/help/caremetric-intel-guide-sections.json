@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "1cee3a7acef12788f6b23c781d72c8efba8f1354",
+    "ref": "c92d282acdbd296515b052c340513e669fc0196f",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17501,
-    "canonical_sha256": "fbcf62f6eb94998fe873ad7707c1adeb62ecd6c429e27d6d42fa216552cde13a"
+    "text_character_count": 17847,
+    "canonical_sha256": "059c519afb56158622d2b16b6153fce98fe3564be2c95c6a0a1813e8fa892441"
   },
   "sections": [
     {
@@ -204,8 +204,8 @@
         },
         {
           "heading": "Import monitor",
-          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running.",
-          "sha256": "d793709d7fb1a348e8829abc5339cdc9e44a09719a3c5e53994686761817feb9"
+          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running. Its **Needs attention** list (platform admins) names datasets whose newer release hasn't been imported within a week, schedules failing three times in a row, a maintenance run that is overdue or had failing workers, and analytics rollups older than two days; platform admins also get that list by email at most once a day while anything is open.",
+          "sha256": "1067adc82f60e8fe21b386a2fabece9a87826c00015d2062d978fcbe0e6fa84b"
         },
         {
           "heading": "Dataset catalog",
