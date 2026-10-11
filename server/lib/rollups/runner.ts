@@ -86,14 +86,19 @@ export interface RunRow {
   last_success_at: Date | null;
 }
 
-/** Jobs that should start now: never succeeded, or last success older than the interval, and not running. */
+/**
+ * Jobs that should start now: never succeeded, or last success older than the
+ * interval, and not running. A stale run (or one with no start time) died, so
+ * it's due whenever it last succeeded: a forced refresh can die hours after a
+ * success, and its "running" row would otherwise stay until that success is
+ * a day old.
+ */
 export function dueJobs(runs: RunRow[], now = Date.now(), jobs = ROLLUP_JOBS): RollupJob[] {
   const byJob = new Map(runs.map((r) => [r.job, r]));
   return jobs.filter((j) => {
     const r = byJob.get(j.name);
     if (!r) return true;
-    const running = r.status === "running" && r.started_at && now - new Date(r.started_at).getTime() < STALE_RUN_MS;
-    if (running) return false;
+    if (r.status === "running") return !r.started_at || now - new Date(r.started_at).getTime() >= STALE_RUN_MS;
     return !r.last_success_at || now - new Date(r.last_success_at).getTime() >= j.intervalMs;
   });
 }
