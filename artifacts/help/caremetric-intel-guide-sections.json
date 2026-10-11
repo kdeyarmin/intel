@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "9b6ae1f47cb4698413d03cee98aa946406bd8226",
+    "ref": "1cee3a7acef12788f6b23c781d72c8efba8f1354",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17337,
-    "canonical_sha256": "de3c84528505809a7d063d07d606a45ab852980ee09d7b26b1572ea2d0d3fc4e"
+    "text_character_count": 17501,
+    "canonical_sha256": "fbcf62f6eb94998fe873ad7707c1adeb62ecd6c429e27d6d42fa216552cde13a"
   },
   "sections": [
     {
@@ -241,8 +241,8 @@
         },
         {
           "heading": "Plan, billing and territory",
-          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan). New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
-          "sha256": "b09f3529c8c503bded3ca30c04fe8d071608667411eaacd3c64db62d45ebe6d6"
+          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan, and until an owner has chosen the places those views stay locked). Changing plans updates the subscription in place; the difference is prorated on the next invoice. New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
+          "sha256": "6daa45568b0b4668364da54398adab97e68fb656c28d4f0103118727c3a983d3"
         },
         {
           "heading": "Scoring rules",
