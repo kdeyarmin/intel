@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, AlertTriangle, TrendingUp, BarChart, CheckCircle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -12,15 +12,11 @@ export default function AIDatasetAnalysis({ batch }) {
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('analyzeImportedDataset', { batch_id: batch.id });
-      if (res.data.success) {
-        toast.success('Analysis complete');
-        queryClient.invalidateQueries();
-      } else {
-        toast.error(res.data.error || 'Analysis failed');
-      }
+      await invokeOrThrow('analyzeImportedDataset', { batch_id: batch.id });
+      toast.success('Analysis complete');
+      queryClient.invalidateQueries({ queryKey: ['importBatches'] });
     } catch (e) {
-      toast.error(e.response?.data?.error || e.message || 'Error running analysis');
+      toastFunctionError(e, 'Error running analysis');
     } finally {
       setLoading(false);
     }

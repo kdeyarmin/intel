@@ -27,7 +27,7 @@ export default function AIRelatedProviders({ provider, location, taxonomies, ref
       .filter(p => sameCity.includes(p.npi) && p.npi !== provider?.npi)
       .slice(0, 15)
       .map(p => {
-        const tax = allTaxonomies.find(t => t.npi === p.npi && t.primary_flag);
+        const tax = allTaxonomies.find(t => t.npi === p.npi && t.is_primary);
         return `${p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}` : p.organization_name} (NPI:${p.npi}, ${tax?.taxonomy_description || 'Unknown'})`;
       });
 

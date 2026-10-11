@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BrainCircuit, Target, Zap, Loader2, TrendingUp } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 
@@ -13,12 +13,11 @@ export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
   const calculateScore = async () => {
     setLoading(true);
     try {
-      await base44.functions.invoke('calculateOutreachScore', { npi: provider.npi });
+      await invokeOrThrow('calculateOutreachScore', { npi: provider.npi });
       toast.success('Outreach score updated');
       if (onUpdate) onUpdate();
     } catch (error) {
-      toast.error('Failed to calculate score');
-      console.error(error);
+      toastFunctionError(error, 'Failed to calculate score');
     } finally {
       setLoading(false);
     }

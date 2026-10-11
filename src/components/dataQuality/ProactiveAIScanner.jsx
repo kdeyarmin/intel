@@ -56,7 +56,7 @@ export default function ProactiveAIScanner() {
         } else if (cfg.key === 'ProviderLocation') {
           return `NPI:${r.npi} | Addr:${r.address_1||'MISSING'} | City:${r.city||'MISSING'} | State:${r.state||'MISSING'} | ZIP:${r.zip||'MISSING'} | Phone:${r.phone||'MISSING'} | Primary:${r.is_primary||false}`;
         } else {
-          return `NPI:${r.npi} | Code:${r.taxonomy_code||'MISSING'} | Desc:${r.taxonomy_description||'MISSING'} | Primary:${r.primary_flag||false}`;
+          return `NPI:${r.npi} | Code:${r.taxonomy_code||'MISSING'} | Desc:${r.taxonomy_description||'MISSING'} | Primary:${r.is_primary||false}`;
         }
       }).join('\n');
 

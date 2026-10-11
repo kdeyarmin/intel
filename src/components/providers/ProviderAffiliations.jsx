@@ -44,7 +44,7 @@ export default function ProviderAffiliations({ npi, provider, location, taxonomi
   const [showAdd, setShowAdd] = useState(false);
   const [editAff, setEditAff] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
-  const [form, setForm] = useState({ affiliation_name: '', affiliation_type: 'hospital', role: '', is_primary: false, notes: '' });
+  const [form, setForm] = useState({ organization_name: '', affiliation_type: 'hospital', role: '', is_primary: false, notes: '' });
 
   const { data: affiliations = [], isLoading } = useQuery({
     queryKey: ['providerAffiliations', npi],
@@ -70,7 +70,7 @@ export default function ProviderAffiliations({ npi, provider, location, taxonomi
     onError: (err) => alert(`Failed to delete affiliation: ${err.message}`),
   });
 
-  const resetForm = () => setForm({ affiliation_name: '', affiliation_type: 'hospital', role: '', is_primary: false, notes: '' });
+  const resetForm = () => setForm({ organization_name: '', affiliation_type: 'hospital', role: '', is_primary: false, notes: '' });
 
   const handleAdd = () => {
     createMut.mutate({ npi, ...form, source: 'manual', status: 'confirmed', is_active: true });
@@ -82,7 +82,7 @@ export default function ProviderAffiliations({ npi, provider, location, taxonomi
     const provName = provider?.entity_type === 'Individual'
       ? `${provider.first_name || ''} ${provider.last_name || ''}`.trim()
       : provider?.organization_name || npi;
-    const spec = taxonomies?.find(t => t.primary_flag)?.taxonomy_description || '';
+    const spec = taxonomies?.find(t => t.is_primary)?.taxonomy_description || '';
     const loc = location ? `${location.city || ''}, ${location.state || ''}` : '';
 
     const res = await base44.integrations.Core.InvokeLLM({
@@ -123,13 +123,13 @@ Only return affiliations you can verify. Be specific with names.`,
       }
     });
 
-    const existing = affiliations.map(a => (a.affiliation_name || '').toLowerCase());
+    const existing = affiliations.map(a => (a.organization_name || '').toLowerCase());
     const newAffs = (res.affiliations || []).filter(a => a.name && !existing.includes(a.name.toLowerCase()));
 
     for (const aff of newAffs) {
       await base44.entities.ProviderAffiliation.create({
         npi,
-        affiliation_name: aff.name,
+        organization_name: aff.name,
         affiliation_type: aff.type || 'hospital',
         role: aff.role || '',
         city: aff.city || '',
@@ -185,7 +185,7 @@ Only return affiliations you can verify. Be specific with names.`,
               <div key={a.id} className="flex items-center justify-between p-2 rounded-lg border border-amber-500/20 bg-amber-900/5 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <Badge className={`text-[9px] ${TYPE_COLORS[a.affiliation_type] || ''}`}>{TYPE_LABELS[a.affiliation_type]}</Badge>
-                  <span className="text-xs text-slate-300 truncate">{a.affiliation_name}</span>
+                  <span className="text-xs text-slate-300 truncate">{a.organization_name}</span>
                   {a.confidence && <Badge className={`text-[8px] ${a.confidence === 'high' ? 'bg-emerald-900/15 text-emerald-400' : a.confidence === 'medium' ? 'bg-amber-900/15 text-amber-400' : 'bg-red-900/15 text-red-400'}`}>{a.confidence}</Badge>}
                   <Badge className={`text-[8px] ${SOURCE_BADGES[a.source]?.cls || ''}`}>{SOURCE_BADGES[a.source]?.label}</Badge>
                 </div>
@@ -214,7 +214,7 @@ Only return affiliations you can verify. Be specific with names.`,
               <Badge className={`text-[9px] shrink-0 ${TYPE_COLORS[a.affiliation_type] || ''}`}>{TYPE_LABELS[a.affiliation_type]}</Badge>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-slate-200 truncate">{a.affiliation_name}</span>
+                  <span className="text-xs font-medium text-slate-200 truncate">{a.organization_name}</span>
                   {a.is_primary && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
                 </div>
                 {(a.role || a.city) && (
@@ -247,8 +247,8 @@ Only return affiliations you can verify. Be specific with names.`,
               <DialogTitle className="text-slate-200">Add Affiliation</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="Organization name" value={form.affiliation_name}
-                onChange={e => setForm({ ...form, affiliation_name: e.target.value })}
+              <Input placeholder="Organization name" value={form.organization_name}
+                onChange={e => setForm({ ...form, organization_name: e.target.value })}
                 className="bg-slate-800/50 border-slate-700 text-slate-300 placeholder:text-slate-400" />
               <Select value={form.affiliation_type} onValueChange={v => setForm({ ...form, affiliation_type: v })}>
                 <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
@@ -265,7 +265,7 @@ Only return affiliations you can verify. Be specific with names.`,
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAdd(false)} className="bg-transparent border-slate-700 text-slate-400">Cancel</Button>
-              <Button onClick={handleAdd} disabled={!form.affiliation_name || createMut.isPending}
+              <Button onClick={handleAdd} disabled={!form.organization_name || createMut.isPending}
                 className="bg-cyan-600 hover:bg-cyan-700">
                 {createMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
               </Button>
@@ -281,8 +281,8 @@ Only return affiliations you can verify. Be specific with names.`,
             </DialogHeader>
             {editAff && (
               <div className="space-y-3">
-                <Input value={editAff.affiliation_name}
-                  onChange={e => setEditAff({ ...editAff, affiliation_name: e.target.value })}
+                <Input value={editAff.organization_name}
+                  onChange={e => setEditAff({ ...editAff, organization_name: e.target.value })}
                   className="bg-slate-800/50 border-slate-700 text-slate-300" />
                 <Select value={editAff.affiliation_type} onValueChange={v => setEditAff({ ...editAff, affiliation_type: v })}>
                   <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-300"><SelectValue /></SelectTrigger>
@@ -297,7 +297,7 @@ Only return affiliations you can verify. Be specific with names.`,
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditAff(null)} className="bg-transparent border-slate-700 text-slate-400">Cancel</Button>
-              <Button onClick={() => updateMut.mutate({ id: editAff.id, data: { affiliation_name: editAff.affiliation_name, affiliation_type: editAff.affiliation_type, role: editAff.role } })}
+              <Button onClick={() => updateMut.mutate({ id: editAff.id, data: { organization_name: editAff.organization_name, affiliation_type: editAff.affiliation_type, role: editAff.role } })}
                 disabled={updateMut.isPending} className="bg-cyan-600 hover:bg-cyan-700">Save</Button>
             </DialogFooter>
           </DialogContent>

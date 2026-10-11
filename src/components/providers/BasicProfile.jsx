@@ -48,7 +48,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
   };
 
   const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
-  const primaryTaxonomy = taxonomy?.find(t => t.primary_flag) || taxonomy?.[0];
+  const primaryTaxonomy = taxonomy?.find(t => t.is_primary) || taxonomy?.[0];
 
   const formatName = () => {
     if (provider.entity_type === 'Organization') {
@@ -100,14 +100,14 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
           <div>
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Additional Specialties</p>
             <div className="flex flex-wrap gap-2">
-              {taxonomy.filter(t => !t.primary_flag).slice(0, 3).map((t, idx) => (
+              {taxonomy.filter(t => !t.is_primary).slice(0, 3).map((t, idx) => (
                 <Badge key={idx} variant="outline" className="text-xs font-normal">
                   {t.taxonomy_description || t.taxonomy_code}
                 </Badge>
               ))}
-              {taxonomy.filter(t => !t.primary_flag).length > 3 && (
+              {taxonomy.filter(t => !t.is_primary).length > 3 && (
                 <Badge variant="outline" className="text-xs font-normal text-slate-400">
-                  +{taxonomy.filter(t => !t.primary_flag).length - 3} more
+                  +{taxonomy.filter(t => !t.is_primary).length - 3} more
                 </Badge>
               )}
             </div>

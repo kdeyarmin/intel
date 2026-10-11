@@ -92,7 +92,6 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
           batch_id: batch.id,
           categories: Array.from(selectedCategories),
         },
-        timestamp: new Date().toISOString(),
       });
 
       toast.success(`Retry started for ${retryableErrors.length} errors`);
@@ -132,7 +131,6 @@ export default function BulkErrorActions({ errors, batch, onActionComplete }) {
         batch_id: batch.id,
         categories: Array.from(selectedCategories),
       },
-      timestamp: new Date().toISOString(),
     });
 
     toast.success(`${selectedErrorCount} errors marked as skipped`);

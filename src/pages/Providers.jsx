@@ -23,6 +23,7 @@ import TextMatchFilter, { applyTextFilters } from '../components/filters/TextMat
 import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filters/DateRangeFilterInline';
 import FilterPresets from '../components/filters/FilterPresets';
 import ProviderComparison from '../components/providers/ProviderComparison';
+import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -51,6 +52,7 @@ export default function Providers() {
   const [sortField, setSortField] = useState('default');
   const [sortDir, setSortDir] = useState('asc');
   const [selectedNpis, setSelectedNpis] = useState(new Set());
+  const [saveListOpen, setSaveListOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('directory');
   const [textFilters, setTextFilters] = useState([]);
   const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
@@ -425,7 +427,7 @@ export default function Providers() {
   const mapProviders = useMemo(() => {
     return sortedProviders.map(p => {
       const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
-      const tax = (taxonomyByNpi[p.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[p.npi] || [])[0];
+      const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
       return {
         provider: p,
         location: loc,
@@ -437,34 +439,12 @@ export default function Providers() {
 
   const COLORS = ['#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#f43f5e'];
 
-  const handleSaveList = async () => {
-    const user = await base44.auth.me();
-    const listName = prompt('Enter lead list name:');
-    if (!listName) return;
-
-    const newList = await base44.entities.LeadList.create({
-      name: listName,
-      filters: { search: searchTerm },
-      member_count: filteredProviders.length,
-    });
-
-    const memberBatch = filteredProviders.slice(0, 50).map(provider => ({
-      lead_list_id: newList.id,
-      npi: provider.npi,
-    }));
-    for (let i = 0; i < memberBatch.length; i += 25) {
-      await base44.entities.LeadListMember.bulkCreate(memberBatch.slice(i, i + 25));
-    }
-
-    await base44.entities.AuditEvent.create({
-      event_type: 'user_action',
-      user_email: user.email,
-      details: { action: 'Created Lead List', entity: 'LeadList', message: listName },
-      timestamp: new Date().toISOString(),
-    });
-
-    alert('Lead list saved!');
-  };
+  // Saves the checked rows if any are selected, otherwise the providers loaded
+  // on this page (the first 100, or up to 300 search results). The button
+  // says how many.
+  const saveListNpis = selectedNpis.size > 0
+    ? Array.from(selectedNpis)
+    : sortedProviders.map(p => p.npi);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -478,7 +458,7 @@ export default function Providers() {
           <ExportDialog
             data={sortedProviders.map(p => {
               const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
-              const tax = (taxonomyByNpi[p.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[p.npi] || [])[0];
+              const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
               return {
                 npi: p.npi,
                 name: p.entity_type === 'Individual' ? `${p.last_name}, ${p.first_name}` : p.organization_name || '',
@@ -530,9 +510,17 @@ export default function Providers() {
               setSelectedNpis(new Set());
             }}
           />
-          <Button onClick={handleSaveList} className="bg-cyan-600 hover:bg-cyan-700">
+          <Button
+            onClick={() => setSaveListOpen(true)}
+            disabled={saveListNpis.length === 0}
+            className="bg-cyan-600 hover:bg-cyan-700"
+          >
             <Save className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Save as Lead List</span>
+            <span className="hidden sm:inline">
+              {selectedNpis.size > 0
+                ? `Add ${selectedNpis.size} to Lead List`
+                : `Save ${saveListNpis.length} shown as Lead List`}
+            </span>
             <span className="sm:hidden">Save List</span>
           </Button>
         </div>
@@ -775,7 +763,7 @@ export default function Providers() {
                 ) : (
                   sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
-                    const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.primary_flag) || (taxonomyByNpi[provider.npi] || [])[0];
+                    const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[provider.npi] || [])[0];
                     const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
                     return (
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
@@ -856,6 +844,15 @@ export default function Providers() {
 
         </TabsContent>
       </Tabs>
+
+      <AddToLeadListDialog
+        open={saveListOpen}
+        onOpenChange={setSaveListOpen}
+        npis={saveListNpis}
+        defaultName={debouncedSearch ? `Providers: ${debouncedSearch}` : ''}
+        filterCriteria={{ search: debouncedSearch || null, ...filters }}
+        onSaved={() => setSelectedNpis(new Set())}
+      />
     </div>
   );
 }

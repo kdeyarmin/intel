@@ -27,7 +27,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
 
   const npiTaxonomy = useMemo(() => {
     const m = {};
-    taxonomies.forEach(t => { if (t.primary_flag && t.taxonomy_description) m[t.npi] = t.taxonomy_description; });
+    taxonomies.forEach(t => { if (t.is_primary && t.taxonomy_description) m[t.npi] = t.taxonomy_description; });
     return m;
   }, [taxonomies]);
 

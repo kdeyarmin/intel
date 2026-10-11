@@ -3,46 +3,16 @@
  * server/routes/functions.ts and the RECONCILABLE_FIELDS allowlist in
  * server/functions/reconciliation.ts.
  *
- * Both are module-private, so their logic is replicated here verbatim.
- * If the production code changes, update this test accordingly.
+ * PUBLIC_FUNCTIONS / isFunctionAuthorized are imported from
+ * server/lib/functionAcl.ts; RECONCILABLE_FIELDS is module-private, so its
+ * logic is replicated here verbatim.
  */
 import { describe, it, expect } from "vitest";
+import { PUBLIC_FUNCTIONS, isFunctionAuthorized } from "../server/lib/functionAcl";
 
-// ─── PUBLIC_FUNCTIONS (replicated from server/routes/functions.ts) ────────────
+// ─── PUBLIC_FUNCTIONS (imported from the real module) ─────────────────────────
 
-const PUBLIC_FUNCTIONS = new Set<string>([
-  "getDashboardStats",
-  "getDataHealthAlerts",
-  "getCMSAnalytics",
-  "getReferralNetworkData",
-  "getTerritoryData",
-  "getDataHealthMetrics",
-  "getCMSDatasetCatalog",
-  "validateDataQuality",
-  "getEnrichmentCandidateCount",
-  "getIntelCandidateCount",
-  "enrichmentJobStatus",
-  "intelJobStatus",
-  "getFacilityDetail",
-  "listFacilities",
-  "getProviderCMSData",
-  "getCountyIntelligence",
-  "getAvailableStatesCounties",
-  "getComprehensiveReport",
-  "searchProviders",
-  "calculateOutreachScore",
-  "analyzeReferralPathways",
-  "analyzeProviderNetwork",
-  "trackCampaignMetrics",
-]);
-
-/**
- * The authorization gate from the route handler:
- *   if (!PUBLIC_FUNCTIONS.has(fn) && role !== "admin") -> 403
- */
-function isAuthorized(functionName: string, role: string | undefined): boolean {
-  return PUBLIC_FUNCTIONS.has(functionName) || role === "admin";
-}
+const isAuthorized = isFunctionAuthorized;
 
 // ─── FIELDS_TO_COMPARE + RECONCILABLE_FIELDS (replicated from reconciliation.ts) ─
 
@@ -97,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 23 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(23);
+  it("contains exactly the 26 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(26);
   });
 
   it("all listed functions are individually verified", () => {
@@ -108,9 +78,11 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getCMSDatasetCatalog", "validateDataQuality", "getEnrichmentCandidateCount",
       "getIntelCandidateCount", "enrichmentJobStatus", "intelJobStatus",
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
+      "getLeadListMemberDetails",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
       "searchProviders", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "trackCampaignMetrics",
+      "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
+      "dmeEmailSearchStatus",
     ];
     for (const fn of expected) {
       expect(PUBLIC_FUNCTIONS.has(fn), `Expected "${fn}" to be in PUBLIC_FUNCTIONS`).toBe(true);
@@ -125,6 +97,11 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "runProviderIntelligenceBot",
       "sendEmail",
       "reconcileProviderData",
+      "sendCampaignMessages",
+      "bulkVerifyEmails",
+      "matchProvidersToLocations",
+      "runScheduledImports",
+      "cleanupAllImports",
     ];
     for (const fn of adminOnly) {
       expect(PUBLIC_FUNCTIONS.has(fn), `Expected "${fn}" to NOT be in PUBLIC_FUNCTIONS`).toBe(false);

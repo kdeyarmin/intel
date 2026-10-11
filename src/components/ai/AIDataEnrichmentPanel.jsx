@@ -219,7 +219,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
           await base44.entities.ProviderTaxonomy.create({
             npi: provider.npi,
             taxonomy_description: sug.suggested_value,
-            primary_flag: true,
+            is_primary: true,
           });
         }
       }

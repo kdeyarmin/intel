@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { saveProvidersToLeadList } from './leadListService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function AddProviderDialog({ listId, existingNpis = [], onAdded }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -45,11 +48,9 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
   const handleAdd = async (npi) => {
     setAdding(npi);
     try {
-      await base44.entities.LeadListMember.create({
-        lead_list_id: listId,
-        npi,
-        status: 'New',
-      });
+      // Goes through the list service so the list's member_count stays right.
+      await saveProvidersToLeadList({ listId, npis: [npi] });
+      queryClient.invalidateQueries({ queryKey: ['leadLists'] });
       setAdded(prev => new Set([...prev, npi]));
       // Await in case onAdded is async — otherwise its rejection escapes this try/catch.
       await onAdded?.();

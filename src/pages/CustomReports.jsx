@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileBarChart2, Calendar, BookTemplate, Plus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -155,11 +156,10 @@ export default function CustomReports() {
   const handleRunScheduleNow = useCallback(async (report) => {
     setRunningScheduleId(report.id);
     try {
-      const res = await base44.functions.invoke('generateScheduledReport', {
+      const data = await invokeOrThrow('generateScheduledReport', {
         action: 'run_single',
         report_id: report.id,
       });
-      const data = res?.data || {};
       toast.success(
         typeof data.emails_sent === 'number'
           ? `Sent to ${data.emails_sent} recipient(s)`
@@ -167,7 +167,7 @@ export default function CustomReports() {
       );
       queryClient.invalidateQueries({ queryKey: ['scheduledReports'] });
     } catch (err) {
-      toast.error(`Failed: ${err.message}`);
+      toastFunctionError(err);
     } finally {
       setRunningScheduleId(null);
     }

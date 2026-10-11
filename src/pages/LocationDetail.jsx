@@ -264,9 +264,9 @@ export default function LocationDetail() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {locTaxonomies.map(t => (
-                    <Badge key={t.id} variant="outline" className={`text-xs ${t.primary_flag ? 'bg-blue-900/15 border-blue-500/30 text-blue-400' : ''}`}>
+                    <Badge key={t.id} variant="outline" className={`text-xs ${t.is_primary ? 'bg-blue-900/15 border-blue-500/30 text-blue-400' : ''}`}>
                       {t.taxonomy_description || t.taxonomy_code}
-                      {t.primary_flag && <span className="ml-1 text-[9px]">★</span>}
+                      {t.is_primary && <span className="ml-1 text-[9px]">★</span>}
                     </Badge>
                   ))}
                 </div>

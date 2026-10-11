@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Pause, StopCircle, RefreshCw, Loader2, SkipForward } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
 export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -28,7 +29,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
       });
       onAction?.();
     } catch (err) {
-      console.error('Pause failed:', err);
+      toast.error(`Pause failed: ${err.message}`);
     } finally {
       setIsActing(false);
     }
@@ -66,7 +67,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
       
       onAction?.();
     } catch (error) {
-      console.error('Resume failed:', error);
+      toast.error(`Resume failed: ${error.message}`);
     } finally {
       setIsActing(false);
     }
@@ -84,7 +85,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
       setCancelReason('');
       onAction?.();
     } catch (err) {
-      console.error('Cancel failed:', err);
+      toast.error(`Cancel failed: ${err.message}`);
     } finally {
       setIsActing(false);
     }
@@ -107,7 +108,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
       setSkipReason('');
       onAction?.();
     } catch (err) {
-      console.error('Skip failed:', err);
+      toast.error(`Skip failed: ${err.message}`);
     } finally {
       setIsActing(false);
     }

@@ -33,7 +33,7 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
   }
 
   // Specialty-based
-  const primaryTaxonomy = taxonomy?.find(t => t.primary_flag) || taxonomy?.[0];
+  const primaryTaxonomy = taxonomy?.find(t => t.is_primary) || taxonomy?.[0];
   if (primaryTaxonomy) {
     const specialty = primaryTaxonomy.taxonomy_description || 'Primary care';
     const targetSpecialties = ['family medicine', 'internal medicine', 'geriatric', 'cardiology', 'oncology'];

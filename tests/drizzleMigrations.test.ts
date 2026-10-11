@@ -222,3 +222,39 @@ describe("schema.ts — importScheduleConfigs parity with migration 0002", () =>
     expect(schema).toContain('consecutive_failures: integer("consecutive_failures").default(0)');
   });
 });
+// ─── 0003: columns the UI wrote but the schema never had ──────────────────────
+
+describe("migration 0003_entity_field_sync", () => {
+  const sql = readMigration("0003_entity_field_sync.sql");
+  const schema = readSchema();
+
+  it("is registered in the drizzle journal after 0002", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags).toContain("0003_entity_field_sync");
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0003_entity_field_sync");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0002_medicare_facilities_raw");
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("only adds columns, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements.length).toBeGreaterThan(20);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "\w+" [\w()]+( DEFAULT \w+)?;$/);
+    }
+  });
+
+  it("every added column is declared in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+
+  it("adds the fields that made saved state disappear", () => {
+    expect(sql).toContain('ALTER TABLE "saved_filters" ADD COLUMN IF NOT EXISTS "is_default" boolean');
+    expect(sql).toContain('ALTER TABLE "custom_reports" ADD COLUMN IF NOT EXISTS "is_favorite" boolean');
+    expect(sql).toContain('ALTER TABLE "import_batches" ADD COLUMN IF NOT EXISTS "paused_at" timestamp');
+    expect(sql).toContain('ALTER TABLE "outreach_messages" ADD COLUMN IF NOT EXISTS "recipient_name" varchar(255)');
+  });
+});

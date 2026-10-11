@@ -14,6 +14,7 @@ import LeadListTable from '../components/leadlists/LeadListTable';
 import AddProviderDialog from '../components/leadlists/AddProviderDialog';
 import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
 import LeadListStatusExport from '../components/leadlists/LeadListStatusExport';
+import { listMembers } from '../components/leadlists/leadListService';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -34,11 +35,10 @@ export default function LeadLists() {
   const handleDelete = async (listId) => {
     if (!confirm('Delete this lead list?')) return;
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
-      await Promise.all(members.map(member => base44.entities.LeadListMember.delete(member.id)));
-      deleteMutation.mutate(listId);
-    } catch (error) {
-      alert('Failed to delete list: ' + error.message);
+      // The server removes the list's members together with the list.
+      await deleteMutation.mutateAsync(listId);
+    } catch {
+      // Already surfaced by the global mutation error toast.
     }
   };
 
@@ -126,6 +126,29 @@ export default function LeadLists() {
   );
 }
 
+// The server picks each member's detail rows per NPI. A row limit shared by a
+// chunk of NPIs let one NPI with hundreds of rows leave the others blank.
+const DETAIL_CHUNK = 500; // getLeadListMemberDetails' per-call maximum
+async function fetchMemberDetails(npis) {
+  const out = { providers: [], scores: [], locations: [], utilizations: [], referrals: [], taxonomies: [] };
+  for (let i = 0; i < npis.length; i += DETAIL_CHUNK) {
+    const { data } = await base44.functions.invoke('getLeadListMemberDetails', { npis: npis.slice(i, i + DETAIL_CHUNK) });
+    for (const key of Object.keys(out)) out[key].push(...(data?.[key] || []));
+  }
+  return out;
+}
+
+/** First row per NPI, preferring rows that pass `prefer`. */
+function firstByNpi(rows, prefer) {
+  const preferred = new Map();
+  const any = new Map();
+  for (const r of rows) {
+    if (!any.has(r.npi)) any.set(r.npi, r);
+    if (prefer && !preferred.has(r.npi) && prefer(r)) preferred.set(r.npi, r);
+  }
+  return (npi) => preferred.get(npi) || any.get(npi);
+}
+
 function ViewListDialog({ listId, listName }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,27 +161,29 @@ function ViewListDialog({ listId, listName }) {
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const members = await base44.entities.LeadListMember.filter({ lead_list_id: listId }, '-created_date', 5000);
+      // Every member, newest first: a list can outgrow any single page.
+      const members = (await listMembers(listId)).reverse();
       if (members.length === 0) { setLeads([]); return; }
 
-      const npis = members.map(m => m.npi);
-      const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
-        base44.entities.Provider.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.LeadScore.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.ProviderLocation.filter({ npi: { $in: npis } }, undefined, 2000),
-        base44.entities.ProviderServiceUtilization.filter({ npi: { $in: npis } }, undefined, 1000).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
-        base44.entities.CMSReferral.filter({ npi: { $in: npis } }, undefined, 1000),
-        base44.entities.ProviderTaxonomy.filter({ npi: { $in: npis } }, undefined, 2000),
-      ]);
+      const npis = [...new Set(members.map(m => m.npi))];
+      const details = await fetchMemberDetails(npis);
+      const { providers, scores, locations, referrals, taxonomies } = details;
+      const utilizations = details.utilizations.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
 
+      const providerOf = firstByNpi(providers);
+      const scoreOf = firstByNpi(scores);
+      const locationOf = firstByNpi(locations, l => l.is_primary);
+      const utilizationOf = firstByNpi(utilizations);
+      const referralsOf = firstByNpi(referrals);
+      const taxonomyOf = firstByNpi(taxonomies, t => t.is_primary);
       const enriched = members.map(member => ({
         member,
-        provider: providers.find(p => p.npi === member.npi),
-        score: scores.find(s => s.npi === member.npi),
-        location: locations.find(l => l.npi === member.npi && l.is_primary),
-        utilization: utilizations.find(u => u.npi === member.npi),
-        referrals: referrals.find(r => r.npi === member.npi),
-        taxonomy: taxonomies.find(t => t.npi === member.npi && t.primary_flag),
+        provider: providerOf(member.npi),
+        score: scoreOf(member.npi),
+        location: locationOf(member.npi),
+        utilization: utilizationOf(member.npi),
+        referrals: referralsOf(member.npi),
+        taxonomy: taxonomyOf(member.npi),
       }));
 
       setLeads(enriched);

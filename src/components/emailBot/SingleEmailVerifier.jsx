@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,14 +18,14 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
   const verify = async () => {
     setLoading(true);
     try {
-      const resp = await base44.functions.invoke('verifyProviderEmail', {
+      const data = await invokeOrThrow('verifyProviderEmail', {
         provider_id: provider.id,
       });
-      setResult(resp.data);
-      toast.success(`Email verified: ${resp.data.status} (score: ${resp.data.score})`);
-      onVerified?.(resp.data);
+      setResult(data);
+      toast.success(`Email verified: ${data.status} (score: ${data.score})`);
+      onVerified?.(data);
     } catch (err) {
-      toast.error('Verification failed: ' + (err.response?.data?.error || err.message));
+      toastFunctionError(err, 'Verification failed');
     } finally {
       setLoading(false);
     }

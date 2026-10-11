@@ -1,14 +1,25 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { tableMap } from "../db/schema";
-import { eq, desc, asc, sql, and, or, inArray, like, gte, lte, gt, lt, ne, isNull, isNotNull } from "drizzle-orm";
+import { tableMap, leadListMembers } from "../db/schema";
+import { eq, desc, asc, sql, getTableColumns } from "drizzle-orm";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import {
+  InvalidFieldValueError,
+  JSONB_OVERFLOW,
+  UnknownFieldError,
+  InvalidFilterError,
+  buildWhereClause,
+  coerceRowValues,
+  decorateRow,
+  reportDroppedFields,
+  sanitizeWriteData,
+  splitWriteData,
+} from "../lib/entityFields";
 
 const router = Router();
 
 // Entirely off-limits to the entity router (handled via dedicated routes only).
 const BLOCKED_ENTITIES = new Set(["User"]);
-const SENSITIVE_WRITE_FIELDS = new Set(["password_hash", "role"]);
 
 // Sensitive entities that may contain credentials, secrets, audit logs, request payloads,
 // or system configuration. Only admins may read or modify these.
@@ -60,12 +71,27 @@ function getTable(entityName: string) {
   return table;
 }
 
-function sanitizeWriteData(data: Record<string, any>): Record<string, any> {
-  const cleaned = { ...data };
-  for (const field of SENSITIVE_WRITE_FIELDS) {
-    delete cleaned[field];
+const columnCache = new WeakMap<object, Set<string>>();
+function columnsOf(table: any): Set<string> {
+  let cols = columnCache.get(table);
+  if (!cols) {
+    cols = new Set(Object.keys(getTableColumns(table)));
+    columnCache.set(table, cols);
   }
-  return cleaned;
+  return cols;
+}
+
+// Children removed together with their parent row. Without this, deleting a
+// lead list left its members behind (and the UI's own cleanup filtered on a
+// non-existent column, so it deleted members of *every* list).
+const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
+  LeadList: [{ table: leadListMembers, column: "list_id" }],
+};
+
+function sendDroppedFields(res: Response, entityName: string, dropped: string[]) {
+  if (dropped.length === 0) return;
+  reportDroppedFields(entityName, dropped);
+  res.setHeader("X-Dropped-Fields", dropped.join(","));
 }
 
 function isProd() {
@@ -181,57 +207,6 @@ function toCamelKeys(obj: any): any {
   return result;
 }
 
-function buildWhereClause(table: any, filters: Record<string, any>) {
-  const conditions: any[] = [];
-
-  for (const [key, value] of Object.entries(filters)) {
-    if (key === "$and" && Array.isArray(value)) {
-      const subConditions = value.map((sub: any) => buildWhereClause(table, sub));
-      const flat = subConditions.filter(Boolean);
-      if (flat.length > 0) conditions.push(and(...flat));
-      continue;
-    }
-    if (key === "$or" && Array.isArray(value)) {
-      const subConditions = value.map((sub: any) => buildWhereClause(table, sub));
-      const flat = subConditions.filter(Boolean);
-      if (flat.length > 0) conditions.push(or(...flat));
-      continue;
-    }
-
-    const snakeKey = camelToSnake(key);
-    const col = (table as any)[snakeKey] || (table as any)[key];
-    if (!col) continue;
-
-    if (value === null) {
-      conditions.push(isNull(col));
-    } else if (typeof value === "object" && !Array.isArray(value)) {
-      if ("$in" in value) {
-        const arr = Array.isArray(value.$in) ? value.$in : [];
-        if (arr.length > 0) conditions.push(inArray(col, arr));
-      }
-      if ("$nin" in value) {
-        const arr = Array.isArray(value.$nin) ? value.$nin : [];
-        if (arr.length > 0) {
-          conditions.push(sql`${col} NOT IN (${sql.join(arr.map((v: any) => sql`${v}`), sql`, `)})`);
-        }
-      }
-      if ("$gt" in value) conditions.push(gt(col, value.$gt));
-      if ("$gte" in value) conditions.push(gte(col, value.$gte));
-      if ("$lt" in value) conditions.push(lt(col, value.$lt));
-      if ("$lte" in value) conditions.push(lte(col, value.$lte));
-      if ("$ne" in value) conditions.push(ne(col, value.$ne));
-      if ("$like" in value) conditions.push(like(col, value.$like));
-      if ("$exists" in value) conditions.push(value.$exists ? isNotNull(col) : isNull(col));
-    } else {
-      conditions.push(eq(col, value));
-    }
-  }
-
-  if (conditions.length === 0) return undefined;
-  if (conditions.length === 1) return conditions[0];
-  return and(...conditions);
-}
-
 router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const table = getTable(req.params.entity);
@@ -244,7 +219,7 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
 
     const orderBy = buildOrderBy(table, sort, req.params.entity);
     const rows = await db.select().from(table).orderBy(...orderBy).limit(limit).offset(offset);
-    res.json(rows);
+    res.json(rows.map((r: any) => decorateRow(req.params.entity, r)));
   } catch (e: any) {
     return safeError(res, e, `GET /${req.params.entity}`);
   }
@@ -259,14 +234,17 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
 
-    const where = buildWhereClause(table, filters);
+    const where = buildWhereClause(table, filters, req.params.entity);
     const orderBy = buildOrderBy(table, sort, req.params.entity);
 
     let query = db.select().from(table);
     if (where) query = query.where(where) as any;
     const rows = await (query as any).orderBy(...orderBy).limit(limit);
-    res.json(rows);
+    res.json(rows.map((r: any) => decorateRow(req.params.entity, r)));
   } catch (e: any) {
+    if (e instanceof UnknownFieldError || e instanceof InvalidFieldValueError || e instanceof InvalidFilterError) {
+      return res.status(400).json({ message: e.message });
+    }
     return safeError(res, e, `POST /${req.params.entity}/filter`);
   }
 });
@@ -282,7 +260,7 @@ router.get("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
 
     const [row] = await db.select().from(table).where(eq(table.id, idNum)).limit(1);
     if (!row) return res.status(404).json({ message: "Not found" });
-    res.json(row);
+    res.json(decorateRow(req.params.entity, row));
   } catch (e: any) {
     return safeError(res, e, `GET /${req.params.entity}/${req.params.id}`);
   }
@@ -294,14 +272,19 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
 
-    const data = sanitizeWriteData(toSnakeKeys(req.body));
+    const entityName = req.params.entity;
+    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
+    const data = coerceRowValues(table, split.data);
     delete data.id;
     delete data.created_date;
     delete data.updated_date;
+    if (split.overflow) data[JSONB_OVERFLOW[entityName]] = split.overflow;
+    sendDroppedFields(res, entityName, split.dropped);
 
-    const [row] = await db.insert(table).values(data).returning();
-    res.status(201).json(row);
+    const [row] = (await db.insert(table).values(data).returning()) as any[];
+    res.status(201).json(decorateRow(entityName, row));
   } catch (e: any) {
+    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `POST /${req.params.entity}`);
   }
 });
@@ -317,17 +300,25 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     if (items.length === 0) return res.status(400).json({ message: "Empty items array" });
     if (items.length > 5000) return res.status(400).json({ message: "Too many items (max 5000)" });
 
+    const entityName = req.params.entity;
+    const columns = columnsOf(table);
+    const dropped = new Set<string>();
     const cleaned = items.map((item: any) => {
-      const data = sanitizeWriteData(toSnakeKeys(item));
+      const split = splitWriteData(entityName, columns, sanitizeWriteData(entityName, toSnakeKeys(item)));
+      const data = coerceRowValues(table, split.data);
       delete data.id;
       delete data.created_date;
       delete data.updated_date;
+      if (split.overflow) data[JSONB_OVERFLOW[entityName]] = split.overflow;
+      split.dropped.forEach((f) => dropped.add(f));
       return data;
     });
+    sendDroppedFields(res, entityName, [...dropped]);
 
-    const rows = await db.insert(table).values(cleaned).returning();
-    res.status(201).json(rows);
+    const rows = (await db.insert(table).values(cleaned).returning()) as any[];
+    res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
   } catch (e: any) {
+    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `POST /${req.params.entity}/bulk`);
   }
 });
@@ -341,15 +332,25 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
-    const data = sanitizeWriteData(toSnakeKeys(req.body));
+    const entityName = req.params.entity;
+    const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
+    const data: Record<string, any> = coerceRowValues(table, split.data);
     delete data.id;
     delete data.created_date;
     data.updated_date = new Date();
+    if (split.overflow) {
+      // Merge into the stored settings instead of replacing them, so a partial
+      // update (e.g. toggling is_active) doesn't wipe the rest of the config.
+      const overflowCol = JSONB_OVERFLOW[entityName];
+      data[overflowCol] = sql`COALESCE(${(table as any)[overflowCol]}, '{}'::jsonb) || ${JSON.stringify(split.overflow)}::jsonb`;
+    }
+    sendDroppedFields(res, entityName, split.dropped);
 
-    const [row] = await db.update(table).set(data).where(eq(table.id, idNum)).returning();
+    const [row] = (await db.update(table).set(data).where(eq(table.id, idNum)).returning()) as any[];
     if (!row) return res.status(404).json({ message: "Not found" });
-    res.json(row);
+    res.json(decorateRow(entityName, row));
   } catch (e: any) {
+    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `PUT /${req.params.entity}/${req.params.id}`);
   }
 });
@@ -363,7 +364,15 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
-    const [row] = await db.delete(table).where(eq(table.id, idNum)).returning();
+    const children = CASCADE_DELETES[req.params.entity] || [];
+    const row = await db.transaction(async (tx) => {
+      const [deleted] = (await tx.delete(table).where(eq(table.id, idNum)).returning()) as any[];
+      if (!deleted) return null;
+      for (const child of children) {
+        await tx.delete(child.table).where(eq(child.table[child.column], idNum));
+      }
+      return deleted;
+    });
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json({ success: true });
   } catch (e: any) {

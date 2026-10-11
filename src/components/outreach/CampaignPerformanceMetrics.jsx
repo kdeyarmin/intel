@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,12 +36,12 @@ export default function CampaignPerformanceMetrics({ campaign_id }) {
   const handleRefreshMetrics = async () => {
     setLoading(true);
     try {
-      const result = await base44.functions.invoke('trackCampaignMetrics', {
+      const result = await invokeOrThrow('trackCampaignMetrics', {
         campaign_id
       });
-      setMetrics(result.data.metrics);
+      setMetrics(result.metrics);
     } catch (error) {
-      console.error('Failed to refresh metrics:', error);
+      toastFunctionError(error, 'Failed to refresh metrics');
     } finally {
       setLoading(false);
     }

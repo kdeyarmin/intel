@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Zap, RefreshCw, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import EnrichmentMergePanel from './EnrichmentMergePanel';
 
 export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplete }) {
@@ -34,17 +36,25 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
   const handleEnrich = async () => {
     setEnriching(true);
     try {
-      await Promise.all([
-        base44.functions.invoke('enrichProviderMedicareData', { npi }),
-        base44.functions.invoke('validateProviderNPI', { npi, checkDiscrepancies: true }),
-        base44.functions.invoke('enrichProviderDEAData', { npi })
+      // Run each source independently so one unavailable source doesn't hide
+      // the results (or the failure) of the others.
+      const results = await Promise.allSettled([
+        invokeOrThrow('enrichProviderMedicareData', { npi }),
+        invokeOrThrow('validateProviderNPI', { npi, checkDiscrepancies: true }),
+        invokeOrThrow('enrichProviderDEAData', { npi }),
       ]);
-      
+      const failures = results.filter(r => r.status === 'rejected').map(r => r.reason);
+      if (failures.length === results.length) {
+        toastFunctionError(failures[0], 'Enrichment failed');
+      } else if (failures.length > 0) {
+        toast.info(`Some sources were unavailable: ${failures.map(f => f.message).join(' ')}`);
+      }
+
       // Refresh all data
       await Promise.all([refetchMedicare(), refetchNPI(), refetchDEA()]);
       onEnrichmentComplete?.();
     } catch (error) {
-      console.error('Enrichment error:', error);
+      toastFunctionError(error, 'Enrichment failed');
     } finally {
       setEnriching(false);
     }

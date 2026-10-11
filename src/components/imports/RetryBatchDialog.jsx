@@ -108,7 +108,6 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
             entity: batch.import_type,
             message: `Retry mode: ${retryMode}`,
           },
-          timestamp: new Date().toISOString(),
         });
       } catch (_e) { /* audit logging is best-effort */ }
 
