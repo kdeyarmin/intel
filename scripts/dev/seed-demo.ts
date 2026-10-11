@@ -2,7 +2,8 @@
 // practice locations and specialties in PA/OH/WV, referral edges, Medicare
 // utilization, lead scores, facilities and a lead list. Rows are tagged
 // 'demo-seed' (source / import_batch_id / created_by, or via their provider's
-// NPI) and re-running replaces them.
+// NPI) and re-running replaces them. Demo NPIs that other providers use are
+// skipped; rows for a demo NPI with no provider row stop the seed.
 //
 // Refuses to run against anything but a local database.
 // Usage: npm run db:seed-demo
@@ -71,6 +72,7 @@ const FACILITY_TYPES = [
 
 const DEMO_NPI_BASE = 199_000_000;
 const DEMO_PROVIDERS = 160;
+const DEMO_NPI_POOL = 400; // room to skip NPIs other local rows already use
 
 async function insertRows(client: any, table: string, cols: string[], rows: unknown[][]) {
   for (let i = 0; i < rows.length; i += 500) {
@@ -84,23 +86,49 @@ async function insertRows(client: any, table: string, cols: string[], rows: unkn
   }
 }
 
+/**
+ * Demo child rows are found by their provider's NPI. Rows for a pool NPI with
+ * no provider row may not be demo data, and the seed could take that NPI for
+ * a demo provider and delete them on its next run, so stop before changing anything.
+ */
+async function assertNoOrphanRowsInPool() {
+  const npiPool = Array.from({ length: DEMO_NPI_POOL }, (_, k) => npiFrom(DEMO_NPI_BASE + k));
+  const { rows } = await pool.query("SELECT npi FROM providers WHERE npi = ANY($1)", [npiPool]);
+  const withProvider = new Set(rows.map((r: any) => r.npi));
+  const bare = npiPool.filter((n) => !withProvider.has(n));
+  const found: string[] = [];
+  for (const t of ["lead_scores", "provider_taxonomies", "provider_locations", "provider_service_utilization"]) {
+    const { rows: hits } = await pool.query(`SELECT npi FROM ${t} WHERE npi = ANY($1) LIMIT 5`, [bare]);
+    found.push(...hits.map((r: any) => `${r.npi} (${t})`));
+  }
+  if (found.length) {
+    throw new Error(
+      `found rows for demo NPIs that have no provider row: ${found.join(", ")}. ` +
+        "The seed can't tell whether they are demo data, so it changed nothing; remove them and run it again.",
+    );
+  }
+}
+
 async function main() {
   assertLocal();
+  await assertNoOrphanRowsInPool();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    // Replace earlier demo rows. Demo NPIs and facility ids are deterministic,
-    // so every delete goes through an indexed key (npi, provider_id) rather
-    // than scanning the big tables for the batch tag.
-    const demoNpis = Array.from({ length: DEMO_PROVIDERS }, (_, i) => npiFrom(DEMO_NPI_BASE + i));
+    // Replace earlier demo rows. Demo NPIs come from a fixed pool and facility
+    // ids are DEMO0001…, so every lookup and delete goes through an indexed key
+    // (npi, provider_id) rather than scanning the big tables for the batch tag.
+    const npiPool = Array.from({ length: DEMO_NPI_POOL }, (_, k) => npiFrom(DEMO_NPI_BASE + k));
+    const { rows: old } = await client.query("SELECT npi FROM providers WHERE npi = ANY($1) AND source = $2", [npiPool, TAG]);
+    const oldNpis = old.map((r: any) => r.npi);
     await client.query("DELETE FROM lead_list_members WHERE list_id IN (SELECT id FROM lead_lists WHERE created_by = $1)", [TAG]);
     await client.query("DELETE FROM lead_lists WHERE created_by = $1", [TAG]);
     // provider_service_utilization has no batch column; its rows go with their providers.
     for (const t of ["lead_scores", "provider_taxonomies", "provider_locations", "provider_service_utilization"]) {
-      await client.query(`DELETE FROM ${t} WHERE npi = ANY($1)`, [demoNpis]);
+      await client.query(`DELETE FROM ${t} WHERE npi = ANY($1)`, [oldNpis]);
     }
-    await client.query("DELETE FROM providers WHERE npi = ANY($1) AND source = $2", [demoNpis, TAG]);
-    await client.query("DELETE FROM cms_referrals WHERE npi = ANY($1) AND import_batch_id = $2", [demoNpis, TAG]);
+    await client.query("DELETE FROM providers WHERE npi = ANY($1) AND source = $2", [oldNpis, TAG]);
+    await client.query("DELETE FROM cms_referrals WHERE npi = ANY($1) AND import_batch_id = $2", [oldNpis, TAG]);
     // Demo facilities are DEMO0001…; the range uses idx_medfac_provider_id.
     await client.query(
       "DELETE FROM medicare_facilities WHERE provider_id >= 'DEMO' AND provider_id < 'DEMP' AND import_batch_id = $1",
@@ -111,8 +139,14 @@ async function main() {
     const locations: unknown[][] = [];
     const taxonomies: unknown[][] = [];
     const people: Array<{ npi: string; spec: (typeof SPECIALTIES)[number]; city: (typeof CITIES)[number] }> = [];
+    // Skip NPIs another local dataset already uses (the demo rows were deleted above).
+    const { rows: taken } = await client.query("SELECT npi FROM providers WHERE npi = ANY($1)", [npiPool]);
+    const takenSet = new Set(taken.map((r: any) => r.npi));
+    const free = npiPool.filter((n) => !takenSet.has(n));
+    if (free.length < DEMO_PROVIDERS) throw new Error("Too many demo NPIs are already in use by other rows.");
+
     for (let i = 0; i < DEMO_PROVIDERS; i += 1) {
-      const npi = npiFrom(DEMO_NPI_BASE + i);
+      const npi = free[i];
       const city = CITIES[i % CITIES.length];
       const zip = pick(city.zips);
       const isOrg = i % 8 === 7;
