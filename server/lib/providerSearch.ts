@@ -14,9 +14,11 @@ export interface SqlQuery {
   values: unknown[];
 }
 
+// The Providers and Organizations pages filter and sort these rows like entity
+// rows: "Not searched" reads email_searched_at, "Last updated" updated_date.
 const COLUMNS = `id, npi, entity_type, first_name, last_name, organization_name,
        credential, status, email, email_confidence, email_validation_status,
-       email_source, phone, created_date`;
+       email_source, email_searched_at, phone, created_date, updated_date`;
 
 export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (m) => `\\${m}`);

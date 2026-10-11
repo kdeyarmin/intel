@@ -21,7 +21,9 @@ interface StoredToken extends TokenRow {
 export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredToken[] } {
   const users: UserRow[] = [];
   const tokens: StoredToken[] = [];
+  const attempts = new Map<string, { count: number; endsAt: number }>();
   let nextId = 1;
+  const liveToken = (hash: string) => tokens.find((x) => x.token_hash === hash && !x.used_at && x.expires_at > new Date());
   const clone = <T,>(x: T): T => (x ? { ...x } : x);
   const repo = {
     users,
@@ -65,16 +67,20 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
       users.push(row);
       return clone(row);
     },
-    async update(id: number, patch: any, opts: { endSessions?: boolean } = {}) {
+    async update(id: number, patch: any, opts: { endSessions?: boolean; ifStatus?: string[] } = {}) {
       const row = users.find((u) => u.id === id);
-      if (!row) return null;
+      if (!row || (opts.ifStatus && !opts.ifStatus.includes(row.status))) return null;
       for (const [k, v] of Object.entries(patch)) if (v !== undefined) (row as any)[k] = v;
       if (opts.endSessions) row.token_version += 1;
       return clone(row);
     },
-    async delete(id: number) {
+    async delete(id: number, opts: { ifStatus?: string[] } = {}) {
       const i = users.findIndex((u) => u.id === id);
-      if (i >= 0) users.splice(i, 1);
+      if (i < 0 || (opts.ifStatus && !opts.ifStatus.includes(users[i].status))) return false;
+      users.splice(i, 1);
+      // ON DELETE CASCADE
+      for (let t = tokens.length - 1; t >= 0; t -= 1) if (tokens[t].user_id === id) tokens.splice(t, 1);
+      return true;
     },
     async withAdminLock<T>(fn: (n: number, r: UserRepo) => Promise<T>) {
       return fn(users.filter((u) => u.role === "admin" && u.status === "active").length, repo as UserRepo);
@@ -83,14 +89,21 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
       tokens.push({ id: tokens.length + 1, used_at: null, ...data });
     },
     async peekToken(hash: string) {
-      const t = tokens.find((x) => x.token_hash === hash && !x.used_at && x.expires_at > new Date());
+      const t = liveToken(hash);
       return t ? { ...t } : null;
     },
-    async consumeToken(hash: string) {
-      const t = tokens.find((x) => x.token_hash === hash && !x.used_at && x.expires_at > new Date());
-      if (!t) return null;
+    // No await between the checks and the writes, so it is atomic here.
+    async redeemToken(hash: string, patchFor: (token: TokenRow, user: UserRow) => any) {
+      const t = liveToken(hash);
+      const row = t && users.find((u) => u.id === t.user_id);
+      if (!t || !row) return null;
+      const patch = patchFor({ ...t }, clone(row));
+      if (!patch) return null;
       t.used_at = new Date();
-      return { ...t };
+      for (const [k, v] of Object.entries(patch)) if (v !== undefined) (row as any)[k] = v;
+      row.token_version += 1;
+      for (const other of tokens) if (other.user_id === row.id && !other.used_at) other.used_at = new Date();
+      return { token: { ...t }, user: clone(row) };
     },
     async revokeTokens(userId: number, purpose?: string) {
       for (const t of tokens) if (t.user_id === userId && !t.used_at && (!purpose || t.purpose === purpose)) t.used_at = new Date();
@@ -98,6 +111,19 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
     async replaceToken(data: any) {
       await repo.revokeTokens(data.user_id, data.purpose);
       await repo.createToken(data);
+    },
+    async countLoginAttempt(email: string, windowMs: number) {
+      const now = Date.now();
+      let a = attempts.get(email);
+      if (!a || a.endsAt <= now) {
+        a = { count: 0, endsAt: now + windowMs };
+        attempts.set(email, a);
+      }
+      a.count += 1;
+      return { count: a.count, retryMs: a.endsAt - now };
+    },
+    async clearLoginAttempts(email: string) {
+      attempts.delete(email);
     },
   };
   return repo;
@@ -128,8 +154,9 @@ export interface Client {
   call(method: string, path: string, body?: unknown): Promise<{ status: number; body: any; setCookie: string | null }>;
 }
 
-export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | null } = {}): Promise<Harness> {
-  const repo = memoryUserRepo();
+/** `repo`: another harness's store, to act as a second server instance on the same database. */
+export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | null; repo?: Harness["repo"] } = {}): Promise<Harness> {
+  const repo = opts.repo ?? memoryUserRepo();
   const mail: MailMessage[] = [];
   const audits: AuditEntry[] = [];
   const deps: AccountDeps = {

@@ -4,8 +4,11 @@
 // redirect — must be public. Private, loopback, link-local (cloud metadata),
 // CGNAT, multicast and reserved ranges are refused before a connection opens.
 import https from "https";
+import type { IncomingMessage } from "http";
 import dns from "dns";
 import net from "net";
+import { pipeline, Readable } from "stream";
+import zlib from "zlib";
 
 export class SafeFetchError extends Error {
   constructor(public code: "invalid_url" | "blocked_address" | "too_many_redirects" | "timeout" | "network", message: string) {
@@ -200,13 +203,17 @@ function requestOnce(url: URL, opts: Required<Omit<SafeFetchOptions, "headers">>
   });
 }
 
+// Not a credential, and dropping it would restart a resumed download from byte 0.
+const PORTABLE_HEADERS = new Set(["range"]);
+
 /**
  * Headers to send after a redirect. The caller's headers (API keys, tokens)
  * were meant for the original origin, so a redirect to any other origin
- * (host, port or scheme) drops them all.
+ * (host, port or scheme) drops them all except Range.
  */
 export function headersAfterRedirect(from: URL, to: URL, headers: Record<string, string>): Record<string, string> {
-  return from.origin === to.origin ? headers : {};
+  if (from.origin === to.origin) return headers;
+  return Object.fromEntries(Object.entries(headers).filter(([name]) => PORTABLE_HEADERS.has(name.toLowerCase())));
 }
 
 export async function safeFetch(input: string, options: SafeFetchOptions = {}): Promise<SafeFetchResponse> {
@@ -243,6 +250,74 @@ export async function safeFetch(input: string, options: SafeFetchOptions = {}): 
       continue;
     }
     return { ...res, finalUrl: url.toString(), redirects, elapsedMs: Date.now() - started };
+  }
+}
+
+export interface SafeStreamOptions {
+  headers?: Record<string, string>;
+  /** Aborts the request (and the body while it's read). */
+  signal?: AbortSignal;
+  maxRedirects?: number;
+  /** Test seam: replaces DNS resolution. */
+  lookup?: Lookup;
+}
+
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
+function decodedBody(res: IncomingMessage): Readable {
+  const encoding = String(res.headers["content-encoding"] || "").trim().toLowerCase();
+  const decoder = encoding === "gzip" || encoding === "x-gzip" ? zlib.createGunzip()
+    : encoding === "deflate" ? zlib.createInflate()
+      : encoding === "br" ? zlib.createBrotliDecompress()
+        : null;
+  return decoder ? pipeline(res, decoder, () => {}) : res;
+}
+
+/**
+ * safeFetch for imports: the same checks on the URL, on every redirect and on
+ * every address it connects to, but the body streams (decoded, as fetch does)
+ * in a standard Response, so large files aren't buffered. There's no deadline
+ * besides the caller's signal. A refused URL, address or redirect throws
+ * SafeFetchError; network errors and aborts throw the underlying error.
+ */
+export async function safeFetchStream(input: string, options: SafeStreamOptions = {}): Promise<Response> {
+  const lookup = guardedLookup(options.lookup || systemLookup);
+  const maxRedirects = options.maxRedirects ?? 5;
+  let url = validateOutboundUrl(input);
+  let headers = options.headers || {};
+
+  for (let redirects = 0; ; redirects += 1) {
+    const res = await new Promise<IncomingMessage>((resolve, reject) => {
+      const req = https.request(url, {
+        headers: { "user-agent": "CareMetric-Import/1.0", "accept-encoding": "gzip, deflate, br", ...headers },
+        lookup: lookup as any,
+        agent: false,
+        signal: options.signal,
+      }, resolve);
+      req.on("error", reject);
+      req.end();
+    });
+    const status = res.statusCode || 0;
+    const location = res.headers.location;
+    if (REDIRECTS.has(status) && typeof location === "string") {
+      res.resume();
+      if (redirects >= maxRedirects) throw new SafeFetchError("too_many_redirects", "Too many redirects.");
+      const next = validateOutboundUrl(new URL(location, url));
+      headers = headersAfterRedirect(url, next, headers);
+      url = next;
+      continue;
+    }
+    const responseHeaders = new Headers();
+    for (const [name, value] of Object.entries(res.headers)) {
+      if (Array.isArray(value)) value.forEach((v) => responseHeaders.append(name, v));
+      else if (value != null) responseHeaders.set(name, String(value));
+    }
+    if (NULL_BODY_STATUSES.has(status)) {
+      res.resume();
+      return new Response(null, { status, statusText: res.statusMessage, headers: responseHeaders });
+    }
+    const body = Readable.toWeb(decodedBody(res)) as unknown as ReadableStream<Uint8Array>;
+    return new Response(body, { status, statusText: res.statusMessage, headers: responseHeaders });
   }
 }
 

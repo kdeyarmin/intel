@@ -4,7 +4,8 @@
  * admin-only pages, or the call site must be guarded and say so: a comment
  * `// admin-only: <how it's guarded>` on the call or the three lines above it
  * (in a file that does check isAdmin / role). Otherwise regular users get
- * buttons that can only fail.
+ * buttons that can only fail. A call whose function name isn't a literal
+ * counts as admin-only unless its file is listed in DYNAMIC_CALLERS.
  */
 import { describe, it, expect } from "vitest";
 import fs from "fs";
@@ -64,6 +65,37 @@ function annotated(file: string, index: number): boolean {
   return /\/\/\s*admin-only:\s*\S/.test(`${before}\n${line}`) && CHECKS_ROLE.test(text);
 }
 
+/**
+ * A call whose function name isn't a string literal (`invoke(key)`) can't be
+ * checked by name, so it counts as a call to an admin-only function. A file
+ * that picks from a fixed set of functions can be listed here with that set
+ * instead; each name is then checked like a literal call.
+ */
+const DYNAMIC_CALLERS: Record<string, string[]> = {
+  // invokeOrThrow passes its argument through; its callers are scanned by name.
+  "src/api/functionResult.js": [],
+};
+const DYNAMIC = "<dynamic name>";
+
+/** Admin-only functions this file calls (without an admin-only note). */
+function adminCalls(file: string): string[] {
+  const text = source.get(file) || "";
+  const found: string[] = [];
+  const listed = DYNAMIC_CALLERS[path.relative(ROOT, file)];
+  const add = (fn: string, index: number) => {
+    if (!PUBLIC_FUNCTIONS.has(fn) && !annotated(file, index)) found.push(fn);
+  };
+  for (const m of text.matchAll(/\b(functions\.invoke|invokeOrThrow)\b(\s*\(\s*(?:['"](\w+)['"]\s*[,)])?)?/g)) {
+    const [, callee, call, name] = m;
+    if (name) add(name, m.index!);
+    else if (!call && callee === "invokeOrThrow") continue; // an import, not a call
+    else if (/\bfunction\s+$/.test(text.slice(Math.max(0, m.index! - 20), m.index))) continue; // the definition
+    else if (listed) listed.forEach((fn) => add(fn, m.index!));
+    else add(DYNAMIC, m.index!);
+  }
+  return found;
+}
+
 /** Pages a regular user can open that (transitively) render this file. */
 function userReachablePages(file: string, seen = new Set<string>()): string[] {
   if (seen.has(file)) return [];
@@ -76,15 +108,15 @@ function userReachablePages(file: string, seen = new Set<string>()): string[] {
 }
 
 describe("admin-only function call sites", () => {
-  const callSites: Array<{ file: string; fn: string }> = [];
-  for (const [file, text] of source) {
-    for (const m of text.matchAll(/(?:functions\.invoke|invokeOrThrow)\(\s*['"](\w+)['"]/g)) {
-      if (!PUBLIC_FUNCTIONS.has(m[1]) && !annotated(file, m.index!)) callSites.push({ file, fn: m[1] });
-    }
-  }
+  const callSites = [...source.keys()].flatMap((file) => adminCalls(file).map((fn) => ({ file, fn })));
 
   it("finds the call sites", () => {
     expect(callSites.length).toBeGreaterThan(10);
+    const dynamic = callSites.filter((c) => c.fn === DYNAMIC).map((c) => path.relative(ROOT, c.file));
+    expect(dynamic).toEqual(expect.arrayContaining([
+      "src/components/imports/ImportScheduleManager.jsx",
+      "src/components/imports/MaintenanceHealthPanel.jsx",
+    ]));
   });
 
   it("only accepts an admin-only note on the call itself, in a file that checks the role", () => {
@@ -101,6 +133,32 @@ describe("admin-only function call sites", () => {
       expect(annotated("/virtual/b.jsx", b.indexOf("invoke('x')"))).toBe(false);
     } finally {
       for (const f of ["/virtual/a.jsx", "/virtual/b.jsx", "/virtual/c.jsx"]) source.delete(f);
+    }
+  });
+
+  it("counts a call with a non-literal function name as admin-only", () => {
+    const file = path.join(SRC, "components/virtual/Dynamic.jsx");
+    const rel = path.relative(ROOT, file);
+    source.set(file, [
+      "const run = (key) => base44.functions.invoke(key);",
+      "const go = () => invokeOrThrow(`${name}`);",
+      "const alias = base44.functions.invoke;",
+      "base44.functions.invoke('a' + suffix);",
+      "base44.functions.invoke(",
+      "  'searchProviders', {});",
+    ].join("\n"));
+    try {
+      expect(PUBLIC_FUNCTIONS.has("searchProviders")).toBe(true);
+      expect(PUBLIC_FUNCTIONS.has("cleanupAllImports")).toBe(false);
+      expect(adminCalls(file)).toEqual([DYNAMIC, DYNAMIC, DYNAMIC, DYNAMIC]);
+      // A listed file's dynamic calls are checked against the names it lists.
+      DYNAMIC_CALLERS[rel] = ["searchProviders", "cleanupAllImports"];
+      expect(adminCalls(file)).toEqual(Array(4).fill("cleanupAllImports"));
+      DYNAMIC_CALLERS[rel] = ["searchProviders"];
+      expect(adminCalls(file)).toEqual([]);
+    } finally {
+      source.delete(file);
+      delete DYNAMIC_CALLERS[rel];
     }
   });
 

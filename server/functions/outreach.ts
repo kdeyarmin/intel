@@ -55,6 +55,27 @@ export function unsubscribeUrl(email: string): string {
   return `${base}/api/public/unsubscribe?t=${encodeURIComponent(buildUnsubscribeToken(email, unsubscribeSecret()))}`;
 }
 
+/**
+ * The postal-address/unsubscribe footer and one-click unsubscribe headers that
+ * every outreach email carries (campaigns and direct sends). Call only once
+ * sendingRequirements() is empty.
+ */
+export function withComplianceFooter(recipient: string, body: { text: string; html: string }) {
+  const unsubscribe = unsubscribeUrl(normalizeEmail(recipient));
+  const { text, html } = appendComplianceFooter(body, {
+    physicalAddress: process.env.OUTREACH_PHYSICAL_ADDRESS as string,
+    unsubscribeUrl: unsubscribe,
+  });
+  return {
+    text,
+    html,
+    headers: {
+      "List-Unsubscribe": `<${unsubscribe}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  };
+}
+
 async function withClient<T>(timeout: string, fn: (client: any) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
@@ -239,6 +260,13 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
     await loadCampaign(client, campaignId);
     const { rows: [{ count }] } = await client.query(
       "SELECT count(*)::int AS count FROM outreach_messages WHERE campaign_id = $1", [campaignId]);
+    // Preparation never queues more than the cap; refuse a queue that does.
+    if (count > MAX_RECIPIENTS) {
+      throw new HttpError(
+        400,
+        `This campaign has more than ${MAX_RECIPIENTS.toLocaleString()} queued messages, so it won't be sent. Create a new campaign for a smaller lead list.`,
+      );
+    }
     return count > 0;
   });
   // First send on a new campaign builds the message list.
@@ -274,10 +302,23 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
     return rows;
   });
 
-  // Someone may have unsubscribed since the list was prepared.
-  const suppressed = await loadSuppressed(claimed.map((m) => m.recipient_email));
+  // Claimed messages that were never handed to SendGrid go back in the queue.
+  const requeueUnsent = () => pool.query(
+    "UPDATE outreach_messages SET status = 'pending', updated_date = now() WHERE id = ANY($1::int[]) AND status = 'sending'",
+    [claimed.map((m) => m.id)],
+  );
+
+  // Someone may have unsubscribed since the list was prepared. If this check
+  // fails, nothing has been sent yet, so requeue rather than leave the batch
+  // stuck in 'sending' (which later counts as failed).
+  let suppressed: Set<string>;
+  try {
+    suppressed = await loadSuppressed(claimed.map((m) => m.recipient_email));
+  } catch (e) {
+    await requeueUnsent().catch((err: any) => console.error("[sendCampaignMessages] requeue failed:", err?.message));
+    throw e;
+  }
   const outcome = { sent: 0, failed: 0, suppressed: 0 };
-  const physicalAddress = process.env.OUTREACH_PHYSICAL_ADDRESS as string;
   let rejected: string | null = null;
 
   await mapWithConcurrency(claimed, SEND_CONCURRENCY, async (message) => {
@@ -288,10 +329,9 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
       await pool.query("UPDATE outreach_messages SET status = 'suppressed', updated_date = now() WHERE id = $1", [message.id]);
       return;
     }
-    const unsubscribe = unsubscribeUrl(email);
-    const { text, html } = appendComplianceFooter(
+    const { text, html, headers } = withComplianceFooter(
+      email,
       { text: message.body || "", html: textToHtml(message.body || "") },
-      { physicalAddress, unsubscribeUrl: unsubscribe },
     );
     try {
       const { messageId } = await sendMail({
@@ -300,10 +340,7 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
         text,
         html,
         customArgs: { message_id: String(message.id), campaign_id: String(campaignId) },
-        headers: {
-          "List-Unsubscribe": `<${unsubscribe}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
+        headers,
       });
       outcome.sent += 1;
       await pool.query(
@@ -325,10 +362,7 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
 
   if (rejected) {
     // SendGrid refused the request itself, so these were never sent: requeue them.
-    await pool.query(
-      "UPDATE outreach_messages SET status = 'pending', updated_date = now() WHERE id = ANY($1::int[]) AND status = 'sending'",
-      [claimed.map((m) => m.id)],
-    );
+    await requeueUnsent();
   }
 
   // One statement, so a concurrent request that found nothing to send can't
