@@ -395,8 +395,8 @@ export default function UserManagement() {
 
       {/* Keyed by what they show, so a new link or a different user always
           starts fresh ("Copy", empty reason) however the last one closed. */}
-      <LinkDialog key={linkResult?.link ?? 'none'} result={linkResult} onClose={() => setLinkResult(null)} />
-      <DisableDialog key={disabling?.id ?? 'none'} user={disabling} busy={busy} onCancel={() => setDisabling(null)} onConfirm={disable} />
+      <LinkDialog key={linkResult?.link ?? 'link-none'} result={linkResult} onClose={() => setLinkResult(null)} />
+      <DisableDialog key={disabling?.id ?? 'disable-none'} user={disabling} busy={busy} onCancel={() => setDisabling(null)} onConfirm={disable} />
     </div>
   );
 }

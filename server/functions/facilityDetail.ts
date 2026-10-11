@@ -82,6 +82,15 @@ export function getFacilityTypeGroup(facilityType: string): string | null {
   return null;
 }
 
+/** Rows for one facility, limited to its group's facility types when a group is given. */
+export function facilityRowsWhere(providerId: string, groupTypes: string[] | null | undefined) {
+  // inArray, not sql`= ANY(${groupTypes})`: drizzle expands an interpolated
+  // array into a row ($2, $3, …), which Postgres rejects for ANY.
+  return groupTypes
+    ? and(eq(medicareFacilities.provider_id, providerId), inArray(medicareFacilities.facility_type, groupTypes))
+    : eq(medicareFacilities.provider_id, providerId);
+}
+
 export async function handleGetFacilityDetail(params: any) {
   const { provider_id, facility_group } = params;
   if (!provider_id) return { error: "provider_id is required" };
@@ -115,11 +124,7 @@ export async function handleGetFacilityDetail(params: any) {
   })
     .from(medicareFacilities)
     .leftJoin(medicareFacilitiesRaw, eq(medicareFacilitiesRaw.facility_id, medicareFacilities.id))
-    .where(
-      groupTypes
-        ? and(eq(medicareFacilities.provider_id, provider_id), sql`${medicareFacilities.facility_type} = ANY(${groupTypes})`)
-        : eq(medicareFacilities.provider_id, provider_id)
-    )
+    .where(facilityRowsWhere(provider_id, groupTypes))
     .limit(500);
 
   if (facilityRows.length === 0) {
