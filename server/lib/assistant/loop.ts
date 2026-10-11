@@ -210,9 +210,9 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
       case "model_context_window_exceeded":
         return done("error", "This conversation has grown too long. Start a new conversation to continue.");
       case "max_tokens":
-        // A tool call cut off mid-input can still parse; never run it.
-        if (toolUses.length) return done("error", "The answer was cut off. Try asking for less at once.");
-        return done("complete");
+        // Cut off: a tool call that ended mid-input can still parse, so never
+        // run it, and a half-written answer is shown but never replayed.
+        return done("error", "The answer was cut off. Try asking for less at once.");
       case "pause_turn":
         continue;
       case "tool_use":

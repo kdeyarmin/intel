@@ -21,7 +21,8 @@ export interface ToolDeps {
   listLeadLists(opts: { nameContains?: string; limit: number }): Promise<any[]>;
   getLeadList(id: number, limit: number): Promise<{ list: any; members: Array<{ npi: string; status: string | null }> } | null>;
   existingNpis(npis: string[]): Promise<string[]>;
-  createProposal(input: ProposalInput): Promise<ProposedAction>;
+  /** Writes nothing once `signal` is aborted (the turn was stopped or timed out). */
+  createProposal(input: ProposalInput, signal?: AbortSignal): Promise<ProposedAction>;
 }
 
 export interface ProviderBrief {
@@ -331,7 +332,7 @@ const TOOL_SPECS = [
       const action = await ctx.deps.createProposal({
         userId: ctx.userId, conversationId: ctx.conversationId, turnId: ctx.turnId, toolUseId: ctx.toolUseId,
         name: input.name.trim(), description: input.description?.trim() || null, npis, reason: input.reason?.trim() || null,
-      });
+      }, ctx.signal);
       return new Outcome({
         content: JSON.stringify({
           proposal_id: action.id,

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { ASSISTANT_TOOLS, capJson, runTool, toolLabel, type ToolContext, type ToolDeps } from "../server/lib/assistant/tools";
 import { decisionNote, renderTranscript, replayHistory, titleFrom, uiAction } from "../server/lib/assistant/render";
+import { createToolDeps } from "../server/lib/assistant/data";
+import { memoryAssistantStore } from "./helpers/assistantHarness";
 
 function ctx(overrides: Partial<ToolDeps> = {}): ToolContext {
   const deps = {
@@ -96,7 +98,7 @@ describe("runTool", () => {
     const out = await runTool("propose_lead_list", { name: " PA cardiology ", npis: ["1000000001", "1999999999", "1000000001"] }, c);
     expect(out.isError).toBeFalsy();
     expect(out.action?.id).toBe("a1");
-    expect(c.deps.createProposal).toHaveBeenCalledWith(expect.objectContaining({ name: "PA cardiology", npis: ["1000000001"], toolUseId: "toolu_x", turnId: 11 }));
+    expect(c.deps.createProposal).toHaveBeenCalledWith(expect.objectContaining({ name: "PA cardiology", npis: ["1000000001"], toolUseId: "toolu_x", turnId: 11 }), c.signal);
     expect(JSON.parse(out.content)).toMatchObject({ status: "awaiting_user_confirmation", providers: 1, dropped_unknown_npis: 1 });
     const none = await runTool("propose_lead_list", { name: "x", npis: ["1999999999"] }, ctx());
     expect(none.isError).toBe(true);
@@ -105,6 +107,35 @@ describe("runTool", () => {
     const unnamed = await runTool("propose_lead_list", { name: "   ", npis: ["1000000001"] }, blank);
     expect(unnamed.isError).toBe(true);
     expect(blank.deps.createProposal).not.toHaveBeenCalled();
+  });
+
+  it("propose_lead_list writes nothing when the turn is stopped while the card's preview loads", async () => {
+    let reached!: () => void;
+    let release!: () => void;
+    const atPreview = new Promise<void>((r) => { reached = r; });
+    const gate = new Promise<void>((r) => { release = r; });
+    const client = {
+      query: vi.fn(async (sql: string) => {
+        if (/FROM providers WHERE/.test(sql)) { reached(); await gate; }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    const pool = { query: vi.fn(async () => ({ rows: [{ npi: "1000000001" }] })), connect: vi.fn(async () => client) };
+    const store = memoryAssistantStore();
+    const controller = new AbortController();
+    const c = { ...ctx(), deps: createToolDeps(pool, store), signal: controller.signal };
+    const running = runTool("propose_lead_list", { name: "PA cardiology", npis: ["1000000001"] }, c);
+    await atPreview;
+    controller.abort(); // Stop, or the hard timeout, while the preview query runs
+    release();
+    expect(await running).toEqual({ content: "The answer was stopped before the list was proposed.", isError: true });
+    expect(store.actions).toHaveLength(0);
+
+    // Not stopped: the same call records the proposal.
+    const ok = await runTool("propose_lead_list", { name: "PA cardiology", npis: ["1000000001"] }, { ...c, signal: new AbortController().signal });
+    expect(ok.action).toMatchObject({ kind: "create_lead_list", status: "proposed" });
+    expect(store.actions).toHaveLength(1);
   });
 
   it("turns failures into short error results", async () => {

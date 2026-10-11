@@ -12,7 +12,7 @@ import { normalizeEntityType } from "../specialtyGroups";
 import { pickScore, providerName } from "../territory";
 import { ASSISTANT_CONFIG } from "./config";
 import type { AssistantStore } from "./store";
-import type { ProposedAction, ProviderBrief, ToolDeps } from "./tools";
+import { ToolError, type ProposedAction, type ProviderBrief, type ToolDeps } from "./tools";
 
 const PREVIEW_SIZE = 10;
 
@@ -94,8 +94,10 @@ export function createToolDeps(pool: any, store: AssistantStore): ToolDeps {
       return rows.map((r: any) => r.npi);
     },
 
-    async createProposal(input): Promise<ProposedAction> {
+    async createProposal(input, signal): Promise<ProposedAction> {
       const previewMap = await describeProviders(pool, input.npis.slice(0, PREVIEW_SIZE));
+      // The turn may have been stopped while the preview loaded: write nothing then.
+      if (signal?.aborted) throw new ToolError("The answer was stopped before the list was proposed.");
       const preview = input.npis.slice(0, PREVIEW_SIZE).map((npi) => previewMap.get(npi)).filter((b): b is ProviderBrief => Boolean(b));
       const payload = { name: input.name, description: input.description, npis: input.npis, reason: input.reason, preview };
       const row = await store.createAction({

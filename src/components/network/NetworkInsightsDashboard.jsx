@@ -33,7 +33,7 @@ export default function NetworkInsightsDashboard({ nodes = [], edges = [], summa
           {[
             { label: 'Hub concentration', value: `${metrics.concentration}%`, sub: 'of shown volume via hubs', color: metrics.concentration > 70 ? 'text-red-400' : 'text-cyan-400' },
             { label: 'Avg partners', value: metrics.avgPartners, sub: 'per provider shown (all their partners)', color: 'text-violet-400' },
-            { label: 'Not linked in view', value: metrics.unlinked, sub: 'partners are outside the view', color: 'text-slate-300' },
+            { label: 'Not linked in view', value: metrics.unlinked, sub: 'no relationship shown', color: 'text-slate-300' },
             { label: 'Hubs', value: metrics.hubCount, sub: 'among providers shown', color: 'text-amber-400' },
             { label: 'States', value: metrics.stateCount, sub: 'among providers shown', color: 'text-blue-400' },
             { label: 'Outside scope', value: metrics.outsideScope, sub: 'partners from elsewhere', color: 'text-emerald-400' },

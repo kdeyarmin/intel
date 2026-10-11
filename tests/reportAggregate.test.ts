@@ -33,6 +33,12 @@ describe("aggregateReport", () => {
     }
   });
 
+  it("agrees with the browser when filters leave nothing: no rows, not a zero total", () => {
+    const config = { dataset: "cms_utilization", metrics: ["total_services"], group_by: "", filters: { state: "TX" } };
+    expect(aggregateReport(utilRows, config, ds)).toEqual([]);
+    expect(aggregateData(utilRows, config)).toEqual([]);
+  });
+
   it("filters by year (as text) and state", () => {
     const rows = aggregateReport(utilRows, { metrics: ["total_services"], group_by: "state", filters: { year: 2023, state: "oh" } }, ds);
     expect(rows).toEqual([{ group: "OH", total_services: 30 }]);

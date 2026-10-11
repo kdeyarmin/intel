@@ -118,9 +118,12 @@ function requireReadAccess(req: AuthRequest, res: Response, entityName: string):
   return true;
 }
 
+export function canWriteEntity(entityName: string, role: string | undefined): boolean {
+  return role === "admin" || USER_WRITABLE_ENTITIES.has(entityName);
+}
+
 function requireWriteAccess(req: AuthRequest, res: Response, entityName: string): boolean {
-  if (isAdmin(req)) return true;
-  if (USER_WRITABLE_ENTITIES.has(entityName)) return true;
+  if (canWriteEntity(entityName, req.user?.role)) return true;
   res.status(403).json({ message: "Forbidden", detail: "Admin access is required to modify this resource." });
   return false;
 }
