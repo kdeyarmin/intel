@@ -78,9 +78,10 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getCMSDatasetCatalog", "validateDataQuality", "getEnrichmentCandidateCount",
       "getIntelCandidateCount", "enrichmentJobStatus", "intelJobStatus",
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
+      "getLeadListMemberDetails",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
       "searchProviders", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
+      "analyzeProviderNetwork", "getDMEProviders",
       "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail",
     ];
     for (const fn of expected) {
@@ -97,6 +98,9 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "sendEmail",
       "reconcileProviderData",
       "sendCampaignMessages",
+      "prepareCampaignMessages",
+      "trackCampaignMetrics",
+      "saveCampaignOutcomes",
       "bulkVerifyEmails",
       "testCMSUrl",
       "testCMSApiConnector",

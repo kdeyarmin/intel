@@ -45,6 +45,13 @@ describe("buildProviderSearchQuery", () => {
     expect(q.values.at(-1)).toBe(500);
   });
 
+  it("returns the fields the directory pages filter and sort on", () => {
+    const columns = buildProviderSearchQuery("smith")!.text.split("FROM")[0];
+    // "Not searched" email filter and "Last updated" sort.
+    expect(columns).toMatch(/\bemail_searched_at\b/);
+    expect(columns).toMatch(/\bupdated_date\b/);
+  });
+
   it("escapes LIKE wildcards in user input", () => {
     expect(escapeLike("50%_off\\")).toBe("50\\%\\_off\\\\");
     expect(buildProviderSearchQuery("o'neil%")!.values[0]).toBe("o'neil\\%%");
