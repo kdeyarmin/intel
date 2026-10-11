@@ -14,6 +14,9 @@ export const MAX_SCHEDULES_PER_INVOCATION = 5;
 export const FAILURE_BACKOFF_CAP_HOURS = 24;
 // Spread schedules within ±N minutes to avoid a thundering herd.
 export const SCHEDULE_JITTER_MINUTES = 15;
+// An on_release schedule only becomes due when the catalog check finds a newer
+// release of its dataset; between releases it is parked this far out.
+export const ON_RELEASE_PARK_DAYS = 365;
 // Minimum gap between now and the computed next_run_at, so negative jitter can't
 // push a schedule into the immediate past and cause a tight reschedule loop.
 export const NEXT_RUN_MIN_BUFFER_MS = 5 * 60_000;
@@ -43,7 +46,7 @@ export function backoffHours(consecutiveFailures: number): number {
 
 export type Schedule = {
   schedule_time?: string | null;
-  schedule_frequency?: "daily" | "weekly" | "monthly" | "on_completion" | string | null;
+  schedule_frequency?: "daily" | "weekly" | "monthly" | "on_completion" | "on_release" | string | null;
   last_run_at?: string | Date | null;
   last_successful_run_at?: string | Date | null;
   last_run_status?: string | null;
@@ -82,6 +85,10 @@ export function computeNextRun(
   } else if (schedule.schedule_frequency === "on_completion") {
     // No regular cadence — the dependency check handles it. Sentinel ~1h out.
     next.setUTCHours(next.getUTCHours() + 1);
+    return next;
+  } else if (schedule.schedule_frequency === "on_release") {
+    // Due only when checkCmsCatalog sees a newer release (it sets next_run_at).
+    next.setUTCDate(next.getUTCDate() + ON_RELEASE_PARK_DAYS);
     return next;
   }
   next.setUTCHours(hours, minutes, 0, 0);

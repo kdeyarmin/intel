@@ -1,0 +1,159 @@
+{
+ "@type": "dcat:Catalog",
+ "dataset": [
+  {
+   "title": "Hospital Service Area : 2024-01-01",
+   "identifier": "https://data.cms.gov/data-api/v1/dataset/22e11819-48e8-44a8-a036-fd6351f4173a/data-viewer",
+   "modified": "2025-09-10",
+   "issued": null,
+   "temporal": [
+    {
+     "@type": "PeriodOfTime",
+     "startDate": "2024-01-01",
+     "endDate": "2024-12-31"
+    }
+   ],
+   "accrualPeriodicity": "annually",
+   "landingPage": {
+    "@type": "Document",
+    "title": "Hospital Service Area",
+    "accessURL": "https://data.cms.gov/provider-summary-by-type-of-service/medicare-inpatient-hospitals/hospital-service-area"
+   },
+   "distribution": [
+    {
+     "@type": "Distribution",
+     "format": "CSV",
+     "mediaType": "text/csv",
+     "downloadURL": "https://data.cms.gov/sites/default/files/2025-07/8fca1932-adaa-411d-a912-78fb0854a286/Hospital_Service_Area_2024.csv",
+     "title": "Hospital Service Area : 2024-01-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/22e11819-48e8-44a8-a036-fd6351f4173a/data",
+     "title": "Hospital Service Area : 2024-01-01"
+    }
+   ]
+  },
+  {
+   "title": "Hospital Service Area : 2025-01-01",
+   "identifier": "https://data.cms.gov/data-api/v1/dataset/8708ca8b-8636-44ed-8303-724cbfaf78ad/data-viewer",
+   "modified": "2026-07-06",
+   "issued": null,
+   "temporal": [
+    {
+     "@type": "PeriodOfTime",
+     "startDate": "2025-01-01",
+     "endDate": "2025-12-31"
+    }
+   ],
+   "accrualPeriodicity": "annually",
+   "landingPage": {
+    "@type": "Document",
+    "title": "Hospital Service Area",
+    "accessURL": "https://data.cms.gov/provider-summary-by-type-of-service/medicare-inpatient-hospitals/hospital-service-area"
+   },
+   "distribution": [
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/8708ca8b-8636-44ed-8303-724cbfaf78ad/data",
+     "title": "Hospital Service Area : 2025-01-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "CSV",
+     "mediaType": "text/csv",
+     "downloadURL": "https://data.cms.gov/sites/default/files/2026-06/5c0137be-b61d-4493-af6b-63a79b4a314c/Hospital_Service_Area_2025.csv",
+     "title": "Hospital Service Area : 2025-01-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/b53af434-fbf7-44f1-898d-da73c45a767e/data",
+     "title": "Hospital Service Area : 2025-01-01"
+    }
+   ]
+  },
+  {
+   "title": "Medicare Post-Acute Care Utilization - Hospice by Geography and Provider : 2024-01-01",
+   "identifier": "https://data.cms.gov/data-api/v1/dataset/4e73f1b5-82cb-4682-8ad2-28493f0b6840/data-viewer",
+   "modified": "2026-08-11",
+   "issued": null,
+   "temporal": [
+    {
+     "@type": "PeriodOfTime",
+     "startDate": "2024-01-01",
+     "endDate": "2024-12-31"
+    }
+   ],
+   "accrualPeriodicity": "annually",
+   "landingPage": {
+    "@type": "Document",
+    "title": "Medicare Post-Acute Care Utilization - Hospice by Geography and Provider",
+    "accessURL": "https://data.cms.gov/provider-summary-by-type-of-service/medicare-post-acute-care-hospice/medicare-post-acute-care-utilization-hospice-by-geography-and-provider"
+   },
+   "distribution": [
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/4e73f1b5-82cb-4682-8ad2-28493f0b6840/data",
+     "title": "Medicare Post-Acute Care Utilization - Hospice by Geography and Provider : 2024-01-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "CSV",
+     "mediaType": "text/csv",
+     "downloadURL": "https://data.cms.gov/sites/default/files/2026-07/11d13c2a-ceb3-4104-af58-5dea5ef2c28c/RY26_PACPUF_HOS_2024_main_S.csv",
+     "title": "Medicare Post-Acute Care Utilization - Hospice by Geography and Provider : 2024-01-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/a188cf07-b76b-4353-a75c-8fc48bb79655/data",
+     "title": "Medicare Post-Acute Care Utilization - Hospice by Geography and Provider : 2024-01-01"
+    }
+   ]
+  },
+  {
+   "title": "Medicare Monthly Enrollment : 2026-06-01",
+   "identifier": "https://data.cms.gov/data-api/v1/dataset/d7fabe1e-d19b-4333-9eff-e80e0643f2fd/data-viewer",
+   "modified": "2026-09-23",
+   "issued": null,
+   "temporal": [
+    {
+     "@type": "PeriodOfTime",
+     "startDate": "2026-06-01",
+     "endDate": "2026-06-30"
+    }
+   ],
+   "accrualPeriodicity": "monthly",
+   "landingPage": {
+    "@type": "Document",
+    "title": "Medicare Monthly Enrollment",
+    "accessURL": "https://data.cms.gov/summary-statistics-on-beneficiary-enrollment/medicare-and-medicaid-reports/medicare-monthly-enrollment"
+   },
+   "distribution": [
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/d7fabe1e-d19b-4333-9eff-e80e0643f2fd/data",
+     "title": "Medicare Monthly Enrollment : 2026-06-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "CSV",
+     "mediaType": "text/csv",
+     "downloadURL": "https://data.cms.gov/sites/default/files/2026-09/4f178691-06d8-4a77-96ea-43fa911e28b5/Medicare%20Monthly%20Enrollment%20Data_June%202026.csv",
+     "title": "Medicare Monthly Enrollment : 2026-06-01"
+    },
+    {
+     "@type": "Distribution",
+     "format": "API",
+     "accessURL": "https://data.cms.gov/data-api/v1/dataset/a19a905f-8188-4386-96c2-f72c7d388650/data",
+     "title": "Medicare Monthly Enrollment : 2026-06-01"
+    }
+   ]
+  }
+ ]
+}

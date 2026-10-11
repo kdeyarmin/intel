@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 34 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(34);
+  it("contains exactly the 35 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(35);
   });
 
   it("all listed functions are individually verified", () => {
@@ -82,7 +82,7 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
       "searchProviders", "searchLocations", "getGeoCounties",
       "getGeoStatus", "getZipCoordinates", "getGeoContext",
-      "getRollupStatus", "calculateOutreachScore", "analyzeReferralPathways",
+      "getRollupStatus", "getDataFreshness", "calculateOutreachScore", "analyzeReferralPathways",
       "analyzeProviderNetwork", "getDMEProviders", "dmeEmailSearchStatus",
       "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
     ];

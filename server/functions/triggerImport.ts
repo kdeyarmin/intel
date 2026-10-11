@@ -4,15 +4,21 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
+import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
+import { sourceForUrl } from "../lib/cmsCatalog";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
-const IMPORT_TYPE_ALIASES: Record<string, string> = {
+export const IMPORT_TYPE_ALIASES: Record<string, string> = {
   cms_utilization: "provider_service_utilization",
 };
 
-const IMPORT_TYPE_URLS: Record<string, string> = {
+// Pinned endpoints. data.cms.gov gives each yearly release its own dataset id,
+// so these go stale: handleTriggerImport prefers the newest version the
+// registry resolved (server/lib/datasetRegistry.ts) and uses these as the
+// fallback and as the key the catalog check starts from.
+export const IMPORT_TYPE_URLS: Record<string, string> = {
   provider_service_utilization: "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
   cms_order_referring: "https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data",
   home_health_enrollments: "https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data",
@@ -404,12 +410,15 @@ export async function handleTriggerImport(payload: any, user: any) {
     };
   }
 
-  const resolvedUrl = file_url || IMPORT_TYPE_URLS[import_type];
+  // The registry knows the newest release of the dataset and the year it
+  // covers; the pinned URL and the "two years ago" guess are only fallbacks.
+  const version = file_url ? null : await resolveImportVersion(import_type).catch(() => null);
+  const resolvedUrl = file_url || version?.dataUrl || IMPORT_TYPE_URLS[import_type];
   if (!resolvedUrl) {
     throw { status: 400, message: "No URL available for this import type. Please provide a file_url." };
   }
 
-  const resolvedYear = year || new Date().getFullYear() - 2;
+  const resolvedYear = year || (version?.dataYear ? Number(version.dataYear) : 0) || new Date().getFullYear() - 2;
   const resolvedOffset = resume_offset || 0;
 
   let activeBatchId: number;
@@ -452,6 +461,8 @@ export async function handleTriggerImport(payload: any, user: any) {
     if (conflict) throw conflict;
     activeBatchId = batch.id;
   }
+
+  await markImportStarted(import_type, activeBatchId, sourceForUrl(resolvedUrl)).catch((e) => console.warn("[triggerImport] registry:", e?.message));
 
   setTimeout(() => {
     handleAutoImportCMSData({
@@ -888,12 +899,25 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   return null;
 }
 
-function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
+// The year a dataset row describes: the row's own year column when the
+// dataset carries one, else the year the import resolved for the dataset.
+const ROW_YEAR_COLUMNS = ["YEAR", "Year", "year", "data_year", "DATA_YEAR", "Rpt_Year", "RPT_YEAR", "FISCAL_YEAR", "fiscal_year", "Fiscal_Year", "PERFORMANCE_YEAR", "PY"];
+export function rowDataYear(row: any, fallbackYear?: number | string | null): string | null {
+  for (const col of ROW_YEAR_COLUMNS) {
+    const v = row?.[col];
+    const m = v == null ? null : /^\s*(\d{4})/.exec(String(v));
+    if (m) return m[1];
+  }
+  return fallbackYear != null && String(fallbackYear).trim() ? String(fallbackYear).trim().slice(0, 10) : null;
+}
+
+function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
 
   const mapped: any = {
     facility_type: importType,
+    data_year: rowDataYear(row, year),
     provider_id:
       row.cms_certification_number_ccn ||
       row["CMS Certification Number"] || row.CMS_Certification_Number ||
@@ -1103,7 +1127,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     mapped = mapped.filter(r => r.npi && r.referred_to_npi);
     table = cmsReferrals;
   } else {
-    mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId));
+    mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId, year));
     mapped = mapped.filter(r => r.provider_id || r.facility_name);
     table = medicareFacilities;
   }
@@ -1378,6 +1402,7 @@ export async function handleAutoImportCMSData(params: any) {
         }).where(eq(importBatches.id, batch_id)),
         undefined, `safety limit ${import_type}`
       );
+      await markImportFinished(import_type, { batchId: batch_id, ok: false, note: `stopped after ${MAX_PAGES} pages; resume to continue` }).catch(() => {});
       await settleBatchCompletion(batch_id);
       return;
     }
@@ -1395,6 +1420,7 @@ export async function handleAutoImportCMSData(params: any) {
       undefined, `complete ${import_type}`
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
+    await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
     await settleBatchCompletion(batch_id);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);
@@ -1407,6 +1433,7 @@ export async function handleAutoImportCMSData(params: any) {
       }).where(eq(importBatches.id, batch_id)),
       undefined, `fail ${import_type}`
     );
+    await markImportFinished(import_type, { batchId: batch_id, ok: false, note: String(e.message || e).slice(0, 200) }).catch(() => {});
     await settleBatchCompletion(batch_id);
   }
 }

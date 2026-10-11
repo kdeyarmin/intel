@@ -435,8 +435,35 @@ export async function runSettleScheduledImports(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: check the CMS catalogs for newer dataset releases ────────────────
+// At most daily (the registry throttles itself). data.json is ~18 MB, so the
+// check can outlive the fan-out's reporting budget: it keeps running in the
+// background and the next heartbeat shows its result in dataset_versions.
+
+const CATALOG_REPORT_WAIT_MS = 40_000;
+
+export async function runCheckCmsCatalog(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const [{ refreshCatalog }, { IMPORT_TYPE_URLS }] = await Promise.all([import("./datasetRegistry"), import("../functions/triggerImport")]);
+    const refresh = refreshCatalog({ urls: IMPORT_TYPE_URLS });
+    const result = await Promise.race([
+      refresh.then((r) => ({ done: true as const, r })),
+      new Promise<{ done: false }>((resolve) => setTimeout(() => resolve({ done: false }), CATALOG_REPORT_WAIT_MS).unref?.()),
+    ]);
+    if (!result.done) {
+      refresh.catch((e) => console.warn("[checkCmsCatalog] failed:", (e as { message?: string })?.message));
+      return { worker: "checkCmsCatalog", ok: true, durationMs: Date.now() - started, details: { still_running: true } };
+    }
+    return { worker: "checkCmsCatalog", ok: result.r.errors.length === 0, durationMs: Date.now() - started, details: result.r };
+  } catch (e) {
+    return { worker: "checkCmsCatalog", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "settleScheduledImports", run: runSettleScheduledImports },
+  { name: "checkCmsCatalog", run: runCheckCmsCatalog },
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
   { name: "manageCrawlerRetries", run: runManageCrawlerRetries },

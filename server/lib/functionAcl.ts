@@ -36,6 +36,8 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getGeoContext",
   // When each analytics rollup last refreshed (read-only). refreshRollups is admin-only.
   "getRollupStatus",
+  // Which version of each dataset is loaded and how old it is (read-only).
+  "getDataFreshness",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);

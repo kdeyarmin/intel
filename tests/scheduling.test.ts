@@ -66,6 +66,14 @@ describe("computeNextRun", () => {
   });
 });
 
+describe("computeNextRun on_release", () => {
+  it("parks an on_release schedule a year out; only the catalog check makes it due", () => {
+    const now = new Date("2026-10-11T12:00:00.000Z");
+    const next = computeNextRun({ schedule_frequency: "on_release", schedule_time: "02:00" }, now, 0, () => 0.5);
+    expect(next.getTime() - now.getTime()).toBe(365 * 24 * 60 * 60_000);
+  });
+});
+
 describe("dependencyBlocked", () => {
   const parent = { import_type: "parentType", label: "Parent", last_run_at: "2026-05-27T10:00:00.000Z", last_run_status: "success" };
 
