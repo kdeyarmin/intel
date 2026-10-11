@@ -495,3 +495,19 @@ describe("migration 0010_census_geography", () => {
     }
   });
 });
+
+describe("migration 0011_rollups", () => {
+  const sql = readMigration("0011_rollups.sql");
+  const schema = readSchema();
+
+  it("only creates tables, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) expect(stmt).toMatch(/^CREATE TABLE IF NOT EXISTS "rollup_/);
+  });
+
+  it("declares every rollup table in the Drizzle schema", () => {
+    for (const [, table] of sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+    }
+  });
+});

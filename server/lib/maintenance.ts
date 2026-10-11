@@ -373,12 +373,29 @@ export async function runDueScheduledReportsWorker(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: start background rollups that are due ────────────────────────────
+// The fan-out queues the due jobs; the admin refresh (refreshRollups) passes
+// its validated job list and force flag.
+
+export async function runRefreshRollupsWorker(opts: { jobs?: string[]; force?: boolean } = {}): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { pool } = await import("../db");
+    const { startDueRollups } = await import("./rollups/runner");
+    const result = await startDueRollups(pool, opts);
+    return { worker: "refreshRollups", ok: true, durationMs: Date.now() - started, details: result };
+  } catch (e) {
+    return { worker: "refreshRollups", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
   { name: "manageCrawlerRetries", run: runManageCrawlerRetries },
   { name: "cancelStalledImports", run: runCancelStalledImports },
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
+  { name: "refreshRollups", run: runRefreshRollupsWorker },
 ];
 
 export async function runMaintenanceFanout(

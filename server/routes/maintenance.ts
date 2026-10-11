@@ -26,6 +26,11 @@ const TASKS = Object.assign(Object.create(null) as Record<string, (payload: any,
   autoResumePausedImports: () => handleAutoResumePausedImports(),
   cancelStalledImports: () => handleCancelStalledImports(),
   runDueScheduledReports: async () => (await import("../functions/scheduledReports")).handleRunDueScheduledReports(),
+  refreshRollups: async (payload: any) => {
+    const { pool } = await import("../db");
+    const { startDueRollups } = await import("../lib/rollups/runner");
+    return startDueRollups(pool, { jobs: Array.isArray(payload?.jobs) ? payload.jobs : undefined, force: !!payload?.force });
+  },
 });
 
 function timingSafeEqualStr(a: string, b: string): boolean {

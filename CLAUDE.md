@@ -79,6 +79,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
   mirrors `autoRetryFailedImports/helpers.ts`) — keep the two in sync.
+- **Analytics over the big tables come from rollups.** `server/lib/rollups`
+  scans a source table in primary-key chunks (each its own short query under a
+  statement timeout), accumulates small totals in memory and anything that
+  grows with the table (distinct providers, every referral target) in session
+  temp tables (`Staging`), and swaps a small `rollup_*` table in one transaction; `refreshRollups` (fan-out worker, daily per job) queues
+  due jobs one at a time. Add a job there instead of a `GROUP BY` in a request.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
@@ -111,10 +117,15 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `DB_MIGRATE_ON_BOOT=true` makes the server migrate before listening.
 - **Secrets.** `JWT_SECRET` is required in production (server hard-fails without
   it). `ADMIN_EMAIL` + `ADMIN_PASSWORD` seed the first admin.
-- **Maintenance is cron-driven.** `base44/functions/runScheduledImports` fans out
-  the maintenance workers (`autoResumePausedImports`, `autoRetryFailedImports`,
-  `manageCrawlerRetries`, `cancelStalledImports`) each tick and writes a
+- **Maintenance is cron-driven.** Point the scheduler at the Express endpoint
+  `POST /api/maintenance/runScheduledImports` (header `x-maintenance-token`;
+  `server/routes/maintenance.ts`). Each tick it fans out the workers in
+  `FANOUT_WORKERS` (`server/lib/maintenance.ts`: `autoResumePausedImports`,
+  `autoRetryFailedImports`, `manageCrawlerRetries`, `cancelStalledImports`,
+  `runDueScheduledReports`, `refreshRollups`) and writes a
   `maintenance_fanout` `AuditEvent` heartbeat that `MaintenanceHealthPanel`
-  surfaces. If the cron isn't wired, those workers don't run.
+  surfaces. If the cron isn't wired, those workers don't run (and rollups never
+  refresh). The legacy Deno `base44/functions/runScheduledImports` only knows
+  the first four; don't use it as the cron entrypoint.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top
   of the test file; the default environment is `node`.

@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 31 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(31);
+  it("contains exactly the 32 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(32);
   });
 
   it("all listed functions are individually verified", () => {
@@ -81,9 +81,10 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getLeadListMemberDetails",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
       "searchProviders", "searchLocations", "getGeoCounties",
-      "getGeoStatus", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "getDMEProviders", "dmeEmailSearchStatus",
-      "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
+      "getGeoStatus", "getRollupStatus", "calculateOutreachScore",
+      "analyzeReferralPathways", "analyzeProviderNetwork", "getDMEProviders",
+      "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail",
+      "generateScheduledReport",
     ];
     for (const fn of expected) {
       expect(PUBLIC_FUNCTIONS.has(fn), `Expected "${fn}" to be in PUBLIC_FUNCTIONS`).toBe(true);
@@ -106,6 +107,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "testCMSUrl",
       "testCMSApiConnector",
       "runDueScheduledReports",
+      "refreshRollups",
+      "loadCensusGeography",
       "matchProvidersToLocations",
       "runScheduledImports",
       "cleanupAllImports",
