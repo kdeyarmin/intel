@@ -29,6 +29,7 @@ npm run build        # production SPA build
 npm run db:migrate   # apply drizzle/ migrations (baselines a pushed DB first)
 npm run db:status    # list applied / pending migrations
 npm run db:seed-demo # deterministic demo data (local databases only)
+npm run geo:load     # load bundled Census geography (also automatic at boot)
 ```
 
 Before pushing, run `npm run lint && npm run typecheck && npm test && npm run
@@ -78,6 +79,11 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
   mirrors `autoRetryFailedImports/helpers.ts`) — keep the two in sync.
+- **Geography:** counties and ZIP areas come from the bundled 2020 Census
+  files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
+  checked against `manifest.json`), loaded into `geo_*` tables and read through
+  `server/lib/geo.ts` (`resolveCounty`, `countyZctas`, `zipToCounty`,
+  `coordsFor`). Don't hardcode coordinates or county lists.
 - **Specialty groups:** match specialties by NUCC code with
   `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
   `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by

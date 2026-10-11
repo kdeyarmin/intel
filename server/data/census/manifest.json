@@ -1,0 +1,37 @@
+{
+  "vintage": "2020",
+  "description": "U.S. Census Bureau 2020 Gazetteer (counties, ZCTAs) and 2020 ZCTA-to-county relationship file. Public domain.",
+  "sources": {
+    "counties": {
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2020_Gazetteer/2020_Gaz_counties_national.zip",
+      "sha256": "02ef546e4c4f9c032c19616eabb9526caa016f778f41ede3b8c9755dacce20ef"
+    },
+    "zctas": {
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2020_Gazetteer/2020_Gaz_zcta_national.zip",
+      "sha256": "335402fb16b41303a3760f8956d2af005bbd6919b8dc6f4a96048af0005957a6"
+    },
+    "relationships": {
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt",
+      "sha256": "3ed41278d637dc249e0323306f68be8a6c234e3090f4de88ef328dee71aeaaaf"
+    }
+  },
+  "outputs": {
+    "geo_counties": {
+      "file": "geo_counties.csv.gz",
+      "sha256": "aba0becc9a8f5ee4b4107a31db719688e595f98f71efc5f13a2c469467539d4f",
+      "rows": 3229
+    },
+    "geo_zctas": {
+      "file": "geo_zctas.csv.gz",
+      "sha256": "715ee0def35bc2bcda8bb44a5228a673127f043977696348146c893956899963",
+      "rows": 33144
+    },
+    "geo_zcta_counties": {
+      "file": "geo_zcta_counties.csv.gz",
+      "sha256": "ee895498402a839896c9a6ab4a633240a6947bfa451c20c9e4f850182e616467",
+      "rows": 46960
+    }
+  },
+  "inferred_counties": 204,
+  "dataset_sha256": "298e73f57125b77198c4e680f2642b4d25ec20cd4bc42bba0f1eba495cb43fdc"
+}

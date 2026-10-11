@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -27,6 +27,46 @@ export const users = pgTable("users", {
   // existing rows differ only by case).
   uniqueIndex("users_email_lower_uq").on(sql`lower(${table.email})`),
 ]);
+
+// Census geography (2020), loaded from server/data/census. Not exposed via tableMap.
+export const geoCounties = pgTable("geo_counties", {
+  fips: varchar("fips", { length: 5 }).primaryKey(),
+  state: varchar("state", { length: 2 }).notNull(),
+  name: text("name").notNull(),
+  lat: doublePrecision("lat").notNull(),
+  lng: doublePrecision("lng").notNull(),
+}, (table) => [
+  index("geo_counties_state_idx").on(table.state),
+]);
+
+export const geoZctas = pgTable("geo_zctas", {
+  zcta: varchar("zcta", { length: 5 }).primaryKey(),
+  lat: doublePrecision("lat").notNull(),
+  lng: doublePrecision("lng").notNull(),
+  land_sqmi: doublePrecision("land_sqmi"),
+  primary_county_fips: varchar("primary_county_fips", { length: 5 }),
+  state: varchar("state", { length: 2 }),
+}, (table) => [
+  index("geo_zctas_county_idx").on(table.primary_county_fips),
+  index("geo_zctas_state_idx").on(table.state),
+]);
+
+export const geoZctaCounties = pgTable("geo_zcta_counties", {
+  zcta: varchar("zcta", { length: 5 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  land_share: doublePrecision("land_share").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.zcta, table.county_fips] }),
+  index("geo_zcta_counties_county_idx").on(table.county_fips),
+]);
+
+export const geoMeta = pgTable("geo_meta", {
+  key: varchar("key", { length: 50 }).primaryKey(),
+  vintage: varchar("vintage", { length: 20 }),
+  dataset_sha256: varchar("dataset_sha256", { length: 64 }),
+  row_counts: jsonb("row_counts"),
+  loaded_at: timestamp("loaded_at").defaultNow(),
+});
 
 // Single-use password reset and invite links. Only a sha256 of the token is stored.
 export const authTokens = pgTable("auth_tokens", {

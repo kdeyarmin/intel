@@ -252,7 +252,7 @@ export default function AppLayout({ children, currentPageName }) {
             </div>
           </div>
           <p className="text-[9px] text-slate-500 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
-            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files. Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
+            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>
       </main>

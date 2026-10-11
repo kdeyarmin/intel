@@ -280,6 +280,13 @@ app.listen(PORT, "0.0.0.0", async () => {
       console.error(`[CareMetric API] Background task cleanup error:`, e.message);
     }
 
+    // Census geography (counties, ZCTAs) loads from server/data/census when
+    // the tables are empty or the bundled data changed.
+    (async () => {
+      const { autoloadCensusGeography } = await import("./lib/census/load");
+      await autoloadCensusGeography(dbPool);
+    })();
+
     // Large-table indexes build in the background (see server/lib/bootIndexes.ts).
     (async () => {
       const { runBootIndexes } = await import("./lib/bootIndexes");

@@ -29,6 +29,9 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "dmeEmailSearchStatus",
   "searchProviders",
   "searchLocations",
+  // Census geography lookups (read-only). loadCensusGeography stays admin-only.
+  "getGeoCounties",
+  "getGeoStatus",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);
