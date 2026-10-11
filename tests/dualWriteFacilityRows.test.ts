@@ -5,7 +5,8 @@
  * fully mock the Drizzle insert builder.
  */
 import { describe, it, expect, vi } from "vitest";
-import { dualWriteFacilityRows } from "../server/functions/triggerImport";
+import { dualWriteFacilityRows, refreshFacilityRows } from "../server/functions/triggerImport";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { medicareFacilities, medicareFacilitiesRaw } from "../server/db/schema";
 
 type Captured = {
@@ -110,5 +111,47 @@ describe("dualWriteFacilityRows", () => {
     await expect(
       dualWriteFacilityRows(tx as any, [{ provider_id: "x", raw_data: { z: 1 } }]),
     ).rejects.toThrow("FK violation");
+  });
+});
+
+
+describe("refreshFacilityRows", () => {
+  function refreshTx() {
+    const executed: any[] = [];
+    let raw: any = null;
+    const tx = {
+      execute: async (q: any) => { executed.push(new PgDialect().sqlToQuery(q)); },
+      insert: (table: any) => ({
+        values: (v: any) => ({
+          onConflictDoUpdate: async (opts: any) => { raw = { table, values: v, opts }; },
+        }),
+      }),
+    };
+    return { tx, executed, raw: () => raw };
+  }
+
+  it("updates a chunk of stored rows in one statement and moves their raw record along", async () => {
+    const { tx, executed, raw } = refreshTx();
+    await refreshFacilityRows(tx as any, [
+      { id: 10, row: { facility_name: "Acme", address: "1 Main", city: "Pittsburgh", state: "PA", zip: "15201", data_year: "2025", import_batch_id: "7", raw_data: { a: 1 } } },
+      { id: 11, row: { facility_name: null, data_year: "2025", import_batch_id: "7", raw_data: { b: 2 } } },
+    ]);
+    expect(executed).toHaveLength(1);
+    const { sql, params } = executed[0];
+    expect(sql).toMatch(/UPDATE medicare_facilities AS m SET/);
+    // Identity columns keep what is stored when the release leaves them blank.
+    expect(sql).toMatch(/facility_name = COALESCE\(v\.facility_name, m\.facility_name\)/);
+    expect(sql).toMatch(/data_year = v\.data_year,\s+import_batch_id = v\.import_batch_id,\s+raw_data = v\.raw_data/);
+    expect(sql).toMatch(/WHERE m\.id = v\.id/);
+    expect(params).toContain(10);
+    expect(params).toContain(JSON.stringify({ b: 2 }));
+    expect(raw().table).toBe(medicareFacilitiesRaw);
+    expect(raw().values).toEqual([{ facility_id: 10, raw_data: { a: 1 } }, { facility_id: 11, raw_data: { b: 2 } }]);
+  });
+
+  it("does nothing for an empty list", async () => {
+    const { tx, executed } = refreshTx();
+    await refreshFacilityRows(tx as any, []);
+    expect(executed).toHaveLength(0);
   });
 });

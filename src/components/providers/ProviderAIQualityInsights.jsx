@@ -29,7 +29,7 @@ Specialties: ${(taxonomies || []).map(t => t.taxonomy_description).join(', ') ||
 
 Utilization: ${(utilizations || []).slice(0, 3).map(u => `Year ${u.year}: ${u.total_services || 0} services, ${u.total_medicare_beneficiaries || 0} beneficiaries, $${u.total_medicare_payment || 0} payment`).join('; ') || 'N/A'}
 
-Shared patients (CMS shared-patient patterns, not confirmed referrals): ${referralTotalsByYear(referrals).slice(-3).map(r => `Year ${r.year}: ${r.total_referrals} shared patients, ${r.partners} partners`).join('; ') || 'N/A'}
+Shared patients (CMS shared-patient patterns, not confirmed referrals): ${referralTotalsByYear(referrals).slice(-3).map(r => `Year ${r.year}: ${r.total_referrals} shared-patient encounters, ${r.partners} partners`).join('; ') || 'N/A'}
 
 Look for: volume anomalies, address conflicts, missing critical fields, utilization/referral ratio issues, data staleness.`;
 

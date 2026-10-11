@@ -239,36 +239,32 @@ app.listen(PORT, "0.0.0.0", async () => {
     }
 
     if (cmsActive.length > 0) {
-      console.log(`[CareMetric API] Recovering ${cmsActive.length} CMS import batch(es)`);
-      const { handleAutoImportCMSData } = await import("./functions/triggerImport");
+      console.log(`[CareMetric API] Recovering ${cmsActive.length} import batch(es)`);
+      const { handleAutoImportCMSData, endedWithoutFinishing } = await import("./functions/triggerImport");
+      const { handleImportNPPESFlatFile } = await import("./functions/importNPPESFlatFile");
+      const { planRecovery } = await import("./lib/importRecovery");
 
       for (let i = 0; i < cmsActive.length; i++) {
         const batch = cmsActive[i] as any;
-        const resumeOffset = batch.retry_params?.resume_offset || batch.total_rows || 0;
-        const fileUrl = batch.retry_params?.file_url;
-        const year = batch.data_year || 2024;
+        const plan = planRecovery(batch);
 
-        if (fileUrl) {
-          await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-          setTimeout(() => {
-            handleAutoImportCMSData({
-              import_type: batch.import_type,
-              file_url: fileUrl,
-              year,
-              batch_id: batch.id,
-              dry_run: false,
-              resume_offset: resumeOffset,
-            }).catch((e: any) => console.error(`[CareMetric API] CMS batch ${batch.id} resume failed:`, e.message));
-          }, 10000 + i * 5000);
-          console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from offset ${resumeOffset} (delay ${10 + i * 5}s)`);
-        } else {
+        if (plan.action === "fail") {
           await db.update(importBatches).set({
             status: "failed",
-            error_samples: [{ row: 0, message: "No file_url stored — cannot auto-resume" }],
+            error_samples: [{ row: 0, message: plan.reason }],
             updated_date: new Date(),
           }).where(eq(importBatches.id, batch.id));
-          console.log(`  - Batch ${batch.id} (${batch.import_type}) failed — no file_url for resume`);
+          console.log(`  - Batch ${batch.id} (${batch.import_type}) failed — ${plan.reason}`);
+          await endedWithoutFinishing(String(batch.import_type), batch.id, "failed", plan.reason);
+          continue;
         }
+
+        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+        const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : handleAutoImportCMSData;
+        setTimeout(() => {
+          run(plan.params as any).catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message));
+        }, 10000 + i * 5000);
+        console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from ${plan.action === "nppes_flat_file" ? `byte ${plan.params.byte_offset}` : `offset ${plan.params.resume_offset}`} (delay ${10 + i * 5}s)`);
       }
     }
 

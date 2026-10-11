@@ -58,10 +58,24 @@ function toDate(v: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** Pure: the registry status a catalog check leaves a dataset in. */
-export function nextStatus(existing: { status?: string | null; imported_modified?: Date | string | null } | null | undefined, newest: CatalogEntry): string {
-  if (existing?.status === "importing") return "importing";
-  if (!existing?.imported_modified) return existing?.status === "failed" ? "failed" : "never_imported";
+/**
+ * Pure: the registry status a catalog check leaves a dataset in.
+ * `importActive` says whether a batch of this type is really running; a
+ * dataset still flagged "importing" without one is stale (an exit that never
+ * reported, or a restart) and is judged on what was imported instead.
+ */
+export function nextStatus(
+  existing: { status?: string | null; imported_modified?: Date | string | null; imported_at?: Date | string | null } | null | undefined,
+  newest: Pick<CatalogEntry, "modified">,
+  opts: { importActive?: boolean } = {},
+): string {
+  const importing = existing?.status === "importing";
+  if (importing && opts.importActive !== false) return "importing";
+  const everImported = !!existing?.imported_modified || !!existing?.imported_at;
+  if (!everImported) return importing || existing?.status === "failed" ? "failed" : "never_imported";
+  // Imported before the catalog was ever checked, so which release it was is
+  // unknown: take the newest release (once) rather than call it current.
+  if (!existing?.imported_modified) return newest.modified ? "update_available" : "current";
   return isNewer(newest.modified, existing.imported_modified) ? "update_available" : "current";
 }
 
@@ -91,6 +105,11 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   const types = Object.keys(opts.urls);
   const { rows: existingRows } = await pool.query("SELECT * FROM dataset_versions WHERE import_type = ANY($1)", [types]);
   const existing = new Map<string, any>(existingRows.map((r: any) => [r.import_type, r]));
+  const { rows: activeRows } = await pool.query(
+    "SELECT DISTINCT import_type FROM import_batches WHERE status IN ('validating', 'processing') AND import_type = ANY($1)",
+    [types],
+  );
+  const importing = new Set<string>(activeRows.map((r: any) => r.import_type));
 
   for (const importType of types) {
     const resolved = resolveImportUrl(opts.urls[importType], index);
@@ -100,7 +119,7 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
       continue;
     }
     const row = existing.get(importType);
-    const status = nextStatus(row, newest);
+    const status = nextStatus(row, newest, { importActive: importing.has(importType) });
     try {
       await pool.query(
         `INSERT INTO dataset_versions (import_type, source, source_dataset_id, source_title, catalog_modified, catalog_issued,
@@ -111,7 +130,7 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
            catalog_modified = EXCLUDED.catalog_modified, catalog_issued = EXCLUDED.catalog_issued,
            temporal_start = EXCLUDED.temporal_start, temporal_end = EXCLUDED.temporal_end,
            accrual_periodicity = EXCLUDED.accrual_periodicity, catalog_checked_at = EXCLUDED.catalog_checked_at,
-           data_year = COALESCE(dataset_versions.data_year, EXCLUDED.data_year),
+           data_year = CASE WHEN dataset_versions.imported_at IS NULL THEN EXCLUDED.data_year ELSE dataset_versions.data_year END,
            status = EXCLUDED.status, updated_date = EXCLUDED.updated_date`,
         [
           importType, newest.source, newest.datasetId, newest.family, toDate(newest.modified), toDate(newest.issued),
@@ -150,14 +169,45 @@ export interface ImportVersion {
 
 /** The newest known version of an import type's dataset, from the registry. */
 export async function resolveImportVersion(importType: string): Promise<ImportVersion | null> {
-  const { rows } = await pool.query("SELECT source, source_dataset_id, data_year, temporal_end, catalog_modified FROM dataset_versions WHERE import_type = $1", [importType]);
+  const { rows } = await pool.query(
+    "SELECT source, source_dataset_id, data_year, temporal_start, temporal_end, catalog_modified, imported_modified FROM dataset_versions WHERE import_type = $1",
+    [importType],
+  );
   const row = rows[0];
   if (!row) return null;
   const id = row.source_dataset_id as string | null;
   const dataUrl = !id ? null : row.source === "cms_data_api" ? dataApiUrl(id) : row.source === "cms_provider_data" ? providerDataUrl(id) : null;
-  const temporalEnd = row.temporal_end ? (row.temporal_end instanceof Date ? row.temporal_end.toISOString().slice(0, 10) : String(row.temporal_end).slice(0, 10)) : null;
-  const dataYear = row.data_year || dataYearOf({ temporalEnd, temporalStart: null });
-  return { source: row.source, dataUrl, dataYear, temporalEnd, catalogModified: row.catalog_modified ? new Date(row.catalog_modified) : null };
+  const toDay = (v: unknown) => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)) : null);
+  const temporalEnd = toDay(row.temporal_end);
+  const catalogModified = row.catalog_modified ? new Date(row.catalog_modified) : null;
+  return {
+    source: row.source,
+    dataUrl,
+    dataYear: importDataYear({ temporalStart: toDay(row.temporal_start), temporalEnd, loadedYear: row.data_year, catalogModified, importedModified: row.imported_modified }),
+    temporalEnd,
+    catalogModified,
+  };
+}
+
+/**
+ * Pure: the data year an import of the newest release is labelled with. The
+ * release's own period decides it. The year already loaded is reused only when
+ * the catalog doesn't say and nothing newer than what was imported exists (a
+ * re-import of the same release); otherwise null, and the importer guesses.
+ * (Reusing the loaded year for a newer release would stamp it with the old
+ * year and overwrite that vintage's rows.)
+ */
+export function importDataYear(input: {
+  temporalStart: string | null;
+  temporalEnd: string | null;
+  loadedYear: string | number | null | undefined;
+  catalogModified: Date | string | null | undefined;
+  importedModified: Date | string | null | undefined;
+}): string | null {
+  const fromPeriod = dataYearOf({ temporalEnd: input.temporalEnd, temporalStart: input.temporalStart });
+  if (fromPeriod) return fromPeriod;
+  const newerThanLoaded = isNewer(input.catalogModified, input.importedModified);
+  return !newerThanLoaded && input.loadedYear ? String(input.loadedYear) : null;
 }
 
 export async function markImportStarted(importType: string, batchId: number, source: string, now = new Date()): Promise<void> {

@@ -43,7 +43,7 @@ UTILIZATION:
 - Medicare Payment: $${latestUtil?.total_medicare_payment || 0}
 
 SHARED PATIENTS (CMS shared-patient patterns, not confirmed referrals):
-- Shared patients (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
+- Shared-patient encounters (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
 - Partner providers: ${latestRef?.partners || 0}
 
 Provide:

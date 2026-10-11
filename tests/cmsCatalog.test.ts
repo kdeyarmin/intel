@@ -18,7 +18,7 @@ import {
   resolveImportUrl,
   sourceForUrl,
 } from "../server/lib/cmsCatalog";
-import { nextStatus } from "../server/lib/datasetRegistry";
+import { importDataYear, nextStatus } from "../server/lib/datasetRegistry";
 
 const fixtures = path.join(import.meta.dirname, "fixtures", "cms");
 const dcat = JSON.parse(fs.readFileSync(path.join(fixtures, "data_json_slice.json"), "utf8"));
@@ -120,5 +120,45 @@ describe("registry status", () => {
     expect(nextStatus({ status: "failed", imported_modified: null }, newest)).toBe("failed");
     expect(nextStatus({ status: "current", imported_modified: "2025-09-10" }, newest)).toBe("update_available");
     expect(nextStatus({ status: "current", imported_modified: "2026-07-06" }, newest)).toBe("current");
+  });
+
+  it("does not forget an import made before the catalog was first checked", () => {
+    const newest = { modified: "2026-07-06" } as any;
+    // Imported (imported_at set) but which release is unknown: take the newest once.
+    expect(nextStatus({ status: "current", imported_modified: null, imported_at: "2026-06-01" }, newest)).toBe("update_available");
+    // A catalog entry with no modified date can't say anything newer exists.
+    expect(nextStatus({ status: "current", imported_modified: null, imported_at: "2026-06-01" }, { modified: null } as any)).toBe("current");
+    // Never imported stays never imported.
+    expect(nextStatus({ status: "never_imported", imported_modified: null, imported_at: null }, newest)).toBe("never_imported");
+  });
+
+  it("clears an importing flag that no running batch backs", () => {
+    const newest = { modified: "2026-07-06" } as any;
+    // A batch really is running: keep the flag.
+    expect(nextStatus({ status: "importing", imported_modified: "2025-09-10" }, newest, { importActive: true })).toBe("importing");
+    // No running batch (a failure or cancel path never reported, or a restart): judge by what was imported.
+    expect(nextStatus({ status: "importing", imported_modified: "2025-09-10" }, newest, { importActive: false })).toBe("update_available");
+    expect(nextStatus({ status: "importing", imported_modified: "2026-07-06" }, newest, { importActive: false })).toBe("current");
+    // Nothing was ever imported: the attempt failed.
+    expect(nextStatus({ status: "importing", imported_modified: null, imported_at: null }, newest, { importActive: false })).toBe("failed");
+  });
+});
+
+describe("importDataYear", () => {
+  const base = { temporalStart: null, temporalEnd: null, loadedYear: null, catalogModified: null, importedModified: null };
+
+  it("labels a release with its own period, never with the year already loaded", () => {
+    // CY2025 is out; CY2024 is what is loaded.
+    expect(importDataYear({ ...base, temporalStart: "2025-01-01", temporalEnd: "2025-12-31", loadedYear: "2024", catalogModified: "2026-07-06", importedModified: "2025-07-01" })).toBe("2025");
+    expect(importDataYear({ ...base, temporalStart: "2023-01-01", loadedYear: "2022" })).toBe("2023");
+  });
+
+  it("reuses the loaded year only for a re-import of the same release", () => {
+    // The catalog gives no period and nothing newer than the import exists.
+    expect(importDataYear({ ...base, loadedYear: "2024", catalogModified: "2025-07-01", importedModified: "2025-07-01" })).toBe("2024");
+    // A newer release with no period: unknown, so the importer's own guess applies.
+    expect(importDataYear({ ...base, loadedYear: "2024", catalogModified: "2026-07-06", importedModified: "2025-07-01" })).toBeNull();
+    // Never imported and no period: unknown.
+    expect(importDataYear({ ...base, catalogModified: "2026-07-06" })).toBeNull();
   });
 });

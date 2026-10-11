@@ -72,6 +72,19 @@ describe("computeNextRun on_release", () => {
     const next = computeNextRun({ schedule_frequency: "on_release", schedule_time: "02:00" }, now, 0, () => 0.5);
     expect(next.getTime() - now.getTime()).toBe(365 * 24 * 60 * 60_000);
   });
+
+  it("retries a failed on_release run on the usual backoff instead of waiting a year", () => {
+    const now = new Date("2026-10-11T12:00:00.000Z");
+    const hours = (n: number) => n * 60 * 60_000;
+    // random() = 0.5 means no jitter.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 1, () => 0.5).getTime() - now.getTime()).toBe(hours(1));
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 3, () => 0.5).getTime() - now.getTime()).toBe(hours(4));
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 12, () => 0.5).getTime() - now.getTime()).toBe(hours(24));
+    // Never in the immediate past, even with the most negative jitter.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 1, () => 0).getTime() - now.getTime()).toBeGreaterThanOrEqual(5 * 60_000);
+    // A success parks it again.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 0, () => 0.5).getTime() - now.getTime()).toBe(365 * 24 * 60 * 60_000);
+  });
 });
 
 describe("dependencyBlocked", () => {

@@ -13,11 +13,19 @@ import { computeNextRun, extractErrorMessage, type Schedule } from "./scheduling
 
 /** How long a started run may stay "running" before the sweep gives up on it. */
 export const RUN_LEASE_MS = 6 * 60 * 60 * 1000;
+/**
+ * A batch that wrote progress this recently is still working, however long it
+ * has been running: the lease only gives up on runs that have gone quiet. (The
+ * importers touch updated_date every few pages; the stall sweep fails a batch
+ * that stops for good.)
+ */
+export const PROGRESS_GRACE_MS = 30 * 60 * 1000;
 
 export type BatchState = {
   id: number;
   status: string | null;
   completed_at?: Date | string | null;
+  updated_date?: Date | string | null;
   imported_rows?: number | null;
   skipped_rows?: number | null;
   cancel_reason?: string | null;
@@ -52,10 +60,12 @@ export function decideSettlement(batch: BatchState | null | undefined, now: Date
       const why = extractErrorMessage(batch as unknown as Record<string, unknown>);
       return { action: "failed", summary: `Batch #${batch.id} ${batch.status}${why ? `: ${why}` : ""}` };
     }
-    default:
-      return leaseExpired
-        ? { action: "failed", summary: `Batch #${batch.id} was still ${batch.status ?? "open"} when the run lease expired` }
+    default: {
+      const progressing = !!batch.updated_date && now.getTime() - new Date(batch.updated_date).getTime() < PROGRESS_GRACE_MS;
+      return leaseExpired && !progressing
+        ? { action: "failed", summary: `Batch #${batch.id} was still ${batch.status ?? "open"} with no progress when the run lease expired` }
         : { action: "wait", reason: `batch_${batch.status ?? "open"}` };
+    }
   }
 }
 

@@ -171,7 +171,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   schedule (success/failure, backoff, `last_successful_run_at`) from the
   batch's terminal state, called by the importer and by the
   `settleScheduledImports` sweep. `dependencyBlocked` waits for the parent's
-  completion, not its start.
+  completion, not its start. The 6 h run lease only gives up on a run that has
+  gone quiet (`PROGRESS_GRACE_MS`), the due loop skips a schedule whose batch is
+  still validating/processing, and a failed `on_release` schedule retries on the
+  normal backoff instead of waiting for the next release.
 - **Dataset versions are tracked.** `dataset_versions` (registry in
   `server/lib/datasetRegistry.ts`) records, per import type, the newest
   version the CMS catalogs list (`server/lib/cmsCatalog.ts` parses
@@ -181,7 +184,20 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `checkCmsCatalog` worker flags newer releases and wakes schedules whose
   frequency is `on_release`. `getDataFreshness` (public) feeds
   `DataSourcesFooter`, `DataFreshnessPanel` and the Help topic. Facility rows
-  get `data_year` from the row's own year column, else the resolved version.
+  get `data_year` from the row's own year column, else the resolved version
+  (`importDataYear`: the release period's year, never the year of the first
+  import). A new release refreshes the stored facility rows in place
+  (`partitionRefresh`/`refreshFacilityRows`) rather than skipping them, and
+  every way an import can end, including a fetch failure, pause or cancel,
+  closes its registry row (`endedWithoutFinishing`).
+- **Import progress is merged, never replaced.** `import_batches.retry_params`
+  is shared by the importers, auto-retry and auto-resume, so write it with
+  `mergeRetryParams` (`triggerImport.ts`) or the attempt counters are lost and
+  the retry cap never applies. A resume inherits the batch's `headers` and
+  `as_of`. After a restart `planRecovery` (`server/lib/importRecovery.ts`)
+  decides, from the batch's own `retry_params`, whether to resume it (with its
+  original year and filters) or fail it; NPPES file batches resume through
+  their own importer, never the CMS CSV one.
 - **Files as import sources.** Uploads (`/api/storage/<name>`, under
   `uploads/`) and https CSV links are accepted only for `UPLOAD_CAPABLE_TYPES`
   (`server/functions/triggerImport.ts`: datasets CMS doesn't serve through its

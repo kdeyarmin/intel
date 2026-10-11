@@ -15,7 +15,7 @@ export default function ReferralTrendChart({ referrals = [] }) {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <GitBranch className="w-4 h-4 text-violet-400" aria-hidden="true" />
-          Shared Patients by Year
+          Shared-Patient Encounters by Year
         </CardTitle>
         <p className="text-[11px] text-slate-400">CMS shared-patient patterns: patients this provider and a partner both saw. Patterns, not confirmed referrals.</p>
       </CardHeader>
@@ -28,7 +28,7 @@ export default function ReferralTrendChart({ referrals = [] }) {
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
             <Tooltip />
             <Legend />
-            <Bar yAxisId="left" dataKey="total_referrals" fill="#8b5cf6" name="Shared patients" />
+            <Bar yAxisId="left" dataKey="total_referrals" fill="#8b5cf6" name="Shared-patient encounters" />
             <Bar yAxisId="right" dataKey="partners" fill="#06b6d4" name="Partner providers" />
           </BarChart>
         </ResponsiveContainer>
