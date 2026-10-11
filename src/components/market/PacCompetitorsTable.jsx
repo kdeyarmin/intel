@@ -31,7 +31,7 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
             <Button key={s} size="sm" variant={s === setting ? 'default' : 'outline'} aria-pressed={s === setting}
               className={s === setting ? 'bg-cyan-700 hover:bg-cyan-800 text-white h-7 text-xs' : 'border-slate-700 text-slate-300 h-7 text-xs'}
               onClick={() => setSetting(s)}>
-              {labels[s] || s}{competitors[s]?.rows?.length ? ` (${competitors[s].rows.length})` : ''}
+              {labels[s] || s}{competitors[s]?.rows?.length ? ` (${competitors[s].rows[0].providers_in_market ?? competitors[s].rows.length})` : ''}
             </Button>
           ))}
         </div>

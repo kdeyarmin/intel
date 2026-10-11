@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS "rollup_pac_market_share" (
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_rollup_pac_share_ccn" ON "rollup_pac_market_share" ("ccn", "setting", "data_year");
 --> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_rollup_pac_share_geo" ON "rollup_pac_market_share" ("geo_level", "geo_code", "setting", "data_year");
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "rollup_agency_coverage" (
 	"setting" varchar(10) NOT NULL,
 	"county_fips" varchar(5) NOT NULL,
@@ -85,6 +87,8 @@ CREATE TABLE IF NOT EXISTS "rollup_agency_coverage" (
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "idx_rollup_agency_cov_ccn" ON "rollup_agency_coverage" ("setting", "ccn");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_rollup_agency_cov_county" ON "rollup_agency_coverage" ("county_fips", "setting");
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "rollup_referral_sources" (
 	"npi" varchar(10) PRIMARY KEY NOT NULL,

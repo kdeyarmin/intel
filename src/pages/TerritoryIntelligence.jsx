@@ -193,15 +193,17 @@ export default function TerritoryIntelligence() {
                       />
                     </TabsContent>
                     <TabsContent value="density" className="mt-0 space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Label htmlFor="territory-layer" className="text-xs text-slate-400">County layer</Label>
-                        <Select value={filters.layer} onValueChange={(layer) => setFilters({ layer })}>
+                        {/* The market layers are per state: with all states the map is provider density whatever the URL says, and the control says so. */}
+                        <Select value={filters.state === 'ALL' ? 'density' : filters.layer} onValueChange={(layer) => setFilters({ layer })} disabled={filters.state === 'ALL'}>
                           <SelectTrigger id="territory-layer" className="w-72 h-8 text-xs bg-slate-900 border-slate-700"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="density">Provider density (practice locations)</SelectItem>
                             {COUNTY_LAYER_METRICS.map((m) => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                        {filters.state === 'ALL' ? <span className="text-[11px] text-slate-400">Pick a state to map market metrics by county.</span> : null}
                       </div>
                       {filters.layer === 'density' || filters.state === 'ALL' ? (
                         <CountyDensityMap counties={data?.counties || []} providers={filtered} state={filters.state !== 'ALL' ? filters.state : null} />
