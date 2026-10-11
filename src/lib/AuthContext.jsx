@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { AUTH_EXPIRED_EVENT } from '@/api/client';
+import { queryClientInstance } from '@/lib/query-client';
 
 const AuthContext = createContext();
 
@@ -10,16 +12,32 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState({});
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     checkAuth();
+  }, []);
+
+  // The API client fires this when a request comes back 401 mid-session.
+  // Dropping the user makes ProtectedRoute send them to /login (with a
+  // returnUrl), and clearing the cache keeps the next user's session from
+  // seeing stale data.
+  useEffect(() => {
+    const onExpired = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+      setSessionExpired(true);
+      queryClientInstance.clear();
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, []);
 
   const checkAuth = async () => {
     try {
       setIsLoadingAuth(true);
       setAuthError(null);
-      const currentUser = await base44.auth.me();
+      const currentUser = await base44.auth.me({ probe: true });
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
@@ -41,6 +59,7 @@ export const AuthProvider = ({ children }) => {
     setUser(result);
     setIsAuthenticated(true);
     setAuthError(null);
+    setSessionExpired(false);
     return result;
   };
 
@@ -49,6 +68,7 @@ export const AuthProvider = ({ children }) => {
     setUser(result);
     setIsAuthenticated(true);
     setAuthError(null);
+    setSessionExpired(false);
     return result;
   };
 
@@ -72,6 +92,7 @@ export const AuthProvider = ({ children }) => {
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
+      sessionExpired,
       appPublicSettings,
       login,
       signup,

@@ -9,6 +9,9 @@ export default [
     files: [
       "src/components/**/*.{js,mjs,cjs,jsx}",
       "src/pages/**/*.{js,mjs,cjs,jsx}",
+      "src/api/**/*.{js,mjs,cjs,jsx}",
+      "src/hooks/**/*.{js,mjs,cjs,jsx}",
+      "src/App.jsx",
       "src/Layout.jsx",
     ],
     ignores: ["src/lib/**/*", "src/components/ui/**/*"],
@@ -35,6 +38,18 @@ export default [
       "unused-imports": pluginUnusedImports,
     },
     rules: {
+      // The `rules` key replaces the spread recommended rule sets above, so
+      // re-enable the checks that catch runtime ReferenceErrors (e.g. bare
+      // `{{token}}` text in JSX, or reading a const before its declaration).
+      "no-undef": "error",
+      "react/jsx-no-undef": "error",
+      // `variables: false` still reports a const read before its declaration
+      // in the same scope (the render-time TDZ crash); it only skips reads
+      // inside nested functions, which run later.
+      "no-use-before-define": [
+        "error",
+        { functions: false, classes: false, variables: false },
+      ],
       "no-unused-vars": "off",
       "react/jsx-uses-vars": "error",
       "react/jsx-uses-react": "error",

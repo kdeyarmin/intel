@@ -13,8 +13,10 @@ import DataHealthAlerts from '../components/dashboard/DataHealthAlerts';
 import QuickActions from '../components/shared/QuickActions';
 import { LayoutDashboard, AlertTriangle, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function Dashboard() {
+  const { isAdmin } = usePageAccess();
   const { data: stats, isLoading: loadingStats, error: statsError, refetch: refetchStats, isRefetching: refetchingStats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -31,6 +33,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.AuditEvent.list('-created_date', 5),
     staleTime: 60000,
     retry: 1,
+    // The audit log is admin-only; regular users don't get the activity card.
+    enabled: isAdmin,
   });
 
   const proactiveInsights = stats?.proactiveInsights || null;
@@ -90,9 +94,11 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 gap-6">
-        <RecentActivityCard events={auditEvents} loading={loadingEvents} />
-      </div>
+      {isAdmin && (
+        <div className="grid grid-cols-1 gap-6">
+          <RecentActivityCard events={auditEvents} loading={loadingEvents} />
+        </div>
+      )}
 
     </div>
   );

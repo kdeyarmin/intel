@@ -77,7 +77,7 @@ export default function APIConnectors() {
         subtitle="Manage connections, API keys, and rate limits for CMS and external data sources."
         icon={Server}
         breadcrumbs={[
-          { label: "Data Center", path: "/data-center" },
+          { label: "Data Center", page: "DataCenter" },
           { label: "API Connectors" }
         ]}
       >

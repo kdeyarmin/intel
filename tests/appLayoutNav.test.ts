@@ -12,89 +12,20 @@
  *   - New icons added (Briefcase, Stethoscope, ClipboardCheck)
  *   - Territory Map and County Intel moved out of the old Providers section
  *
- * NAV_SECTIONS is not exported from the module; we mirror the expected
- * structure in this file and test the logical constraints.  The tests are
- * deliberately kept import-free so no JSDOM / React render is required.
+ * NAV_SECTIONS lives in src/components/layout/navConfig.js (shared by the
+ * sidebar, route guard and global search), so these tests import the real
+ * config rather than a hand-kept mirror.
  */
 import { describe, it, expect } from 'vitest';
-
-// ---------------------------------------------------------------------------
-// Mirror the expected NAV_SECTIONS structure from AppLayout.jsx
-// ---------------------------------------------------------------------------
-const NAV_SECTIONS = [
-  {
-    label: 'Overview',
-    items: [
-      { name: 'Dashboard', page: 'Dashboard', roles: ['admin', 'user'] },
-      { name: 'AI Assistant', page: 'AIAssistant', roles: ['admin', 'user'] },
-      { name: 'Help', page: 'Help', roles: ['admin', 'user'] },
-    ],
-  },
-  {
-    label: 'Directory',
-    items: [
-      { name: 'All Providers', page: 'Providers', roles: ['admin', 'user'] },
-      { name: 'Organizations', page: 'Organizations', roles: ['admin', 'user'] },
-      { name: 'Locations', page: 'Locations', roles: ['admin', 'user'] },
-    ],
-  },
-  {
-    label: 'Facilities',
-    items: [
-      { name: 'Hospitals', page: 'Hospitals', roles: ['admin', 'user'] },
-      { name: 'Home Health', page: 'HomeHealthAgencies', roles: ['admin', 'user'] },
-      { name: 'Hospice', page: 'Hospices', roles: ['admin', 'user'] },
-      { name: 'Nursing Homes', page: 'NursingHomes', roles: ['admin', 'user'] },
-      { name: 'Inpatient Rehab', page: 'InpatientRehab', roles: ['admin', 'user'] },
-      { name: 'Long Term Hospital', page: 'LongTermCare', roles: ['admin', 'user'] },
-      { name: 'DME Suppliers', page: 'DMESuppliers', roles: ['admin', 'user'] },
-      { name: 'Community Health', page: 'CommunityHealthCenters', roles: ['admin', 'user'] },
-    ],
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { name: 'Analytics', page: 'AdvancedAnalytics', roles: ['admin', 'user'] },
-      { name: 'CMS Data', page: 'CMSAnalytics', roles: ['admin', 'user'] },
-      { name: 'Utilization', page: 'Utilization', roles: ['admin', 'user'] },
-      { name: 'Referral Network', page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
-      { name: 'Territory Map', page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
-      { name: 'County Intel', page: 'CountyIntelligence', roles: ['admin', 'user'] },
-      { name: 'Reports', page: 'CustomReports', roles: ['admin', 'user'] },
-    ],
-  },
-  {
-    label: 'Sales & Outreach',
-    items: [
-      { name: 'Lead Lists', page: 'LeadLists', roles: ['admin', 'user'] },
-      { name: 'Intelligence', page: 'ProviderIntelligence', roles: ['admin'] },
-      { name: 'Campaigns', page: 'Campaigns', roles: ['admin'] },
-      { name: 'Outreach', page: 'ProviderOutreach', roles: ['admin'] },
-    ],
-  },
-  {
-    label: 'Data Operations',
-    items: [
-      { name: 'Data Center', page: 'DataCenter', roles: ['admin'] },
-      { name: 'CMS Catalog', page: 'CMSDataSources', roles: ['admin'] },
-      { name: 'API Connectors', page: 'APIConnectors', roles: ['admin'] },
-      { name: 'Imports', page: 'ImportMonitoring', roles: ['admin'] },
-      { name: 'NPPES Crawler', page: 'NPPESCrawler', roles: ['admin'] },
-      { name: 'Crawler Settings', page: 'NPPESCrawlerSettings', roles: ['admin'] },
-      { name: 'Reconciliation', page: 'ReconciliationDashboard', roles: ['admin'] },
-      { name: 'Data Quality', page: 'DataQuality', roles: ['admin'] },
-      { name: 'Provider Matching', page: 'ProviderLocationMatching', roles: ['admin'] },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { name: 'Scoring Rules', page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Security Audit', page: 'SecurityAudit', roles: ['admin'] },
-      { name: 'Admin Settings', page: 'AdminSettings', roles: ['admin'] },
-    ],
-  },
-];
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import {
+  NAV_SECTIONS,
+  SECONDARY_PAGES,
+  canAccessPage,
+  getNavPageFor,
+  getVisibleNavSections,
+} from '../src/components/layout/navConfig';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -309,5 +240,73 @@ describe('NAV_SECTIONS – role assignments', () => {
       expect(item.roles).toContain('admin');
       expect(item.roles).toContain('user');
     });
+  });
+});
+// ---------------------------------------------------------------------------
+// Page access (route guard + global search)
+// ---------------------------------------------------------------------------
+function registeredPageKeys(): string[] {
+  const src = readFileSync(fileURLToPath(new URL('../src/pages.config.js', import.meta.url)), 'utf8');
+  const block = src.slice(src.indexOf('export const PAGE_LOADERS = {'));
+  const body = block.slice(0, block.indexOf('};'));
+  return [...body.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]);
+}
+
+describe('page access rules', () => {
+  it('every registered page is either a nav item or a declared secondary page', () => {
+    const navPages = new Set(allItems.map((i) => i.page));
+    const keys = registeredPageKeys();
+    expect(keys.length).toBeGreaterThan(30);
+    const uncovered = keys.filter((k) => !navPages.has(k) && !(k in SECONDARY_PAGES));
+    expect(uncovered).toEqual([]);
+  });
+
+  it('every secondary page points at a real nav page', () => {
+    const navPages = new Set(allItems.map((i) => i.page));
+    for (const parent of Object.values(SECONDARY_PAGES)) {
+      expect(navPages.has(parent)).toBe(true);
+    }
+  });
+
+  it('admins can open every page', () => {
+    for (const key of registeredPageKeys()) {
+      expect(canAccessPage(key, 'admin')).toBe(true);
+    }
+  });
+
+  it('regular users can open directory and detail pages but not admin tools', () => {
+    expect(canAccessPage('Providers', 'user')).toBe(true);
+    expect(canAccessPage('ProviderDetail', 'user')).toBe(true);
+    expect(canAccessPage('FacilityDetail', 'user')).toBe(true);
+    expect(canAccessPage('LeadListBuilder', 'user')).toBe(true);
+    expect(canAccessPage('ImportMonitoring', 'user')).toBe(false);
+    expect(canAccessPage('AdminSettings', 'user')).toBe(false);
+    // Alias routes inherit their target's rule.
+    expect(canAccessPage('Campaigns', 'user')).toBe(false);
+    expect(canAccessPage('EnrichmentHub', 'user')).toBe(false);
+  });
+
+  it('treats unknown roles as regular users and unknown pages as admin-only', () => {
+    expect(canAccessPage('ImportMonitoring', undefined)).toBe(false);
+    expect(canAccessPage('Providers', 'viewer')).toBe(true);
+    expect(canAccessPage('NotARealPage', 'user')).toBe(false);
+    expect(canAccessPage('NotARealPage', 'admin')).toBe(true);
+  });
+
+  it('highlights the parent nav item for detail pages', () => {
+    expect(getNavPageFor('ProviderDetail')).toBe('Providers');
+    expect(getNavPageFor('LeadListBuilder')).toBe('LeadLists');
+    expect(getNavPageFor('Providers')).toBe('Providers');
+    // FacilityDetail serves all facility types, so it highlights nothing.
+    expect(getNavPageFor('FacilityDetail')).toBeNull();
+  });
+
+  it('getVisibleNavSections hides admin-only sections from users', () => {
+    const labels = getVisibleNavSections('user').map((s) => s.label);
+    expect(labels).not.toContain('Data Operations');
+    expect(labels).not.toContain('Settings');
+    const userPages = getVisibleNavSections('user').flatMap((s) => s.items.map((i) => i.page));
+    expect(userPages).not.toContain('ProviderOutreach');
+    expect(userPages).toContain('LeadLists');
   });
 });

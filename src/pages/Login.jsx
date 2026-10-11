@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+import { safeReturnUrl } from '@/lib/returnUrl';
 
 export default function Login() {
-  const { login, signup } = useAuth();
+  const { login, signup, isAuthenticated, isLoadingAuth } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const sessionExpired = searchParams.get('reason') === 'expired';
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,23 +25,18 @@ export default function Login() {
       } else {
         await login(email, password);
       }
-      const returnUrlRaw = searchParams.get('returnUrl') || '/';
-      let target = '/';
-      try {
-        const u = new URL(returnUrlRaw, window.location.origin);
-        if (u.origin === window.location.origin) {
-          target = u.pathname + u.search + u.hash;
-        }
-      } catch {
-        if (returnUrlRaw.startsWith('/')) target = returnUrlRaw;
-      }
-      navigate(target, { replace: true });
+      navigate(safeReturnUrl(searchParams.get('returnUrl')), { replace: true });
     } catch (err) {
       setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Hooks above must run unconditionally; only bail out once they have.
+  if (!isLoadingAuth && isAuthenticated && !loading) {
+    return <Navigate to={safeReturnUrl(searchParams.get('returnUrl'))} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -54,6 +51,12 @@ export default function Login() {
             {isSignup ? 'Create Account' : 'Sign In'}
           </h2>
 
+          {sessionExpired && !error && (
+            <div className="mb-4 p-3 bg-amber-900/30 border border-amber-500/30 rounded-lg text-amber-400 text-sm" role="status">
+              Your session expired. Please sign in again to continue where you left off.
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 p-3 bg-red-900/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
               {error}
@@ -63,8 +66,10 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+                <label htmlFor="login-full-name" className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
                 <input
+                  id="login-full-name"
+                  autoComplete="name"
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -75,8 +80,10 @@ export default function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-1">Email</label>
               <input
+                id="login-email"
+                autoComplete="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -87,8 +94,10 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+              <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1">Password</label>
               <input
+                id="login-password"
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -1,6 +1,60 @@
 const API_BASE = "/api";
 
-async function request(url, options = {}) {
+export const AUTH_EXPIRED_EVENT = "auth:expired";
+
+// Endpoints whose 401s are expected and handled by the auth layer itself
+// (bad credentials, logout). The startup session probe opts out per call
+// instead (base44.auth.me({ probe: true })).
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/logout"];
+
+let authExpiredHandled = false;
+// Bumped whenever a new session starts. A request remembers the generation it
+// was sent under, so a 401 for the old session that arrives after signing in
+// again can't clear the new token.
+let authGeneration = 0;
+
+export function resetAuthExpired() {
+  authExpiredHandled = false;
+  authGeneration += 1;
+}
+
+// A 401 from any other request means the session expired mid-use. Clear the
+// stale token and tell the app once (many queries can fail at the same time),
+// so it can send the user to the login page instead of rendering empty tables.
+export function handleUnauthorized(url, { generation = authGeneration, expected = false } = {}) {
+  if (expected || AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (generation !== authGeneration) return;
+  if (authExpiredHandled) return;
+  if (typeof window === "undefined") return;
+  if (window.location.pathname.startsWith("/login")) return;
+  authExpiredHandled = true;
+  localStorage.removeItem("auth_token");
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
+// Server errors carry a short `message` (or `error`) plus an optional
+// human-readable `detail`; show both so users see "Forbidden: Admin access is
+// required..." rather than a bare "Forbidden" or "Request failed: 409".
+export function buildErrorMessage(data, status) {
+  const primary = data?.message || data?.error;
+  const detail = typeof data?.detail === "string" ? data.detail : "";
+  if (primary && detail && detail !== primary) return `${primary}: ${detail}`;
+  return primary || detail || `Request failed: ${status}`;
+}
+
+async function toApiError(res, url, auth) {
+  const data = await res.json().catch(() => ({ message: res.statusText }));
+  if (res.status === 401) handleUnauthorized(url, auth);
+  const err = new Error(buildErrorMessage(data, res.status));
+  err.name = "ApiError";
+  err.status = res.status;
+  err.data = data;
+  return err;
+}
+
+// `expectUnauthorized`: a 401 is an answer for the caller, not an expired session.
+async function request(url, options = {}, { expectUnauthorized = false } = {}) {
+  const generation = authGeneration;
   const token = localStorage.getItem("auth_token");
   const headers = {
     "Content-Type": "application/json",
@@ -14,14 +68,7 @@ async function request(url, options = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({ message: res.statusText }));
-    const err = new Error(data.message || `Request failed: ${res.status}`);
-    err.name = "ApiError";
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
+  if (!res.ok) throw await toApiError(res, url, { generation, expected: expectUnauthorized });
 
   return res.json();
 }
@@ -111,8 +158,10 @@ export const base44 = {
   entities: new Proxy({}, entityHandler),
 
   auth: {
-    async me() {
-      return request("/auth/me");
+    // `probe`: checking whether there is a session at all (app startup), so a
+    // 401 just means "signed out". Everywhere else it means the session expired.
+    async me({ probe = false } = {}) {
+      return request("/auth/me", {}, { expectUnauthorized: probe });
     },
 
     async login(email, password) {
@@ -123,6 +172,7 @@ export const base44 = {
       if (result.token) {
         localStorage.setItem("auth_token", result.token);
       }
+      resetAuthExpired();
       return result;
     },
 
@@ -134,6 +184,7 @@ export const base44 = {
       if (result.token) {
         localStorage.setItem("auth_token", result.token);
       }
+      resetAuthExpired();
       return result;
     },
 
@@ -168,19 +219,15 @@ export const base44 = {
         const formData = new FormData();
         formData.append("file", actualFile);
         const token = localStorage.getItem("auth_token");
+        // Like request(): a 401 only ends the session this upload was sent under.
+        const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
           body: formData,
         });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({ message: res.statusText }));
-          const err = new Error(data.message || `Upload failed: ${res.status}`);
-          err.name = "ApiError";
-          err.status = res.status;
-          throw err;
-        }
+        if (!res.ok) throw await toApiError(res, "/integrations/file/upload", { generation });
         return res.json();
       },
 

@@ -3,94 +3,18 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { pagesConfig } from '@/pages.config.js';
-import { LayoutDashboard, Upload, Users, ListCheck, Settings,
-  Shield, LogOut, BarChart3, MapPin, Activity, GitBranch,
-  Search, Bot, ChevronDown, ChevronRight, FileBarChart2, TrendingUp, Network, Megaphone, Target, Database, HelpCircle, Server, ShieldCheck, Brain,
-  Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, PanelLeftClose, PanelLeftOpen,
-  Building, Briefcase, Stethoscope, ClipboardCheck
-} from 'lucide-react';
+import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
+import { getNavPageFor, getVisibleNavSections } from './navConfig';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
 const GlobalSearchDialog = lazy(loadGlobalSearchDialog);
 
-const NAV_SECTIONS = [
-  {
-    label: 'Overview',
-    items: [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ['admin', 'user'] },
-      { name: 'AI Assistant', icon: Bot, page: 'AIAssistant', roles: ['admin', 'user'] },
-      { name: 'Help', icon: HelpCircle, page: 'Help', roles: ['admin', 'user'] },
-    ]
-  },
-  {
-    label: 'Directory',
-    items: [
-      { name: 'All Providers', icon: Users, page: 'Providers', roles: ['admin', 'user'] },
-      { name: 'Organizations', icon: Briefcase, page: 'Organizations', roles: ['admin', 'user'] },
-      { name: 'Locations', icon: MapPin, page: 'Locations', roles: ['admin', 'user'] },
-    ]
-  },
-  {
-    label: 'Facilities',
-    items: [
-      { name: 'Hospitals', icon: Building2, page: 'Hospitals', roles: ['admin', 'user'] },
-      { name: 'Home Health', icon: Heart, page: 'HomeHealthAgencies', roles: ['admin', 'user'] },
-      { name: 'Hospice', icon: HeartHandshake, page: 'Hospices', roles: ['admin', 'user'] },
-      { name: 'Nursing Homes', icon: Home, page: 'NursingHomes', roles: ['admin', 'user'] },
-      { name: 'Inpatient Rehab', icon: HeartPulse, page: 'InpatientRehab', roles: ['admin', 'user'] },
-      { name: 'Long Term Hospital', icon: BedDouble, page: 'LongTermCare', roles: ['admin', 'user'] },
-      { name: 'DME Suppliers', icon: Package, page: 'DMESuppliers', roles: ['admin', 'user'] },
-      { name: 'DME Report', icon: FileBarChart2, page: 'DMEProviderReport', roles: ['admin', 'user'] },
-      { name: 'Community Health', icon: Building, page: 'CommunityHealthCenters', roles: ['admin', 'user'] },
-    ]
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { name: 'Analytics', icon: TrendingUp, page: 'AdvancedAnalytics', roles: ['admin', 'user'] },
-      { name: 'CMS Data', icon: BarChart3, page: 'CMSAnalytics', roles: ['admin', 'user'] },
-      { name: 'Utilization', icon: Stethoscope, page: 'Utilization', roles: ['admin', 'user'] },
-      { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
-      { name: 'Territory Map', icon: MapPin, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
-      { name: 'County Intel', icon: MapPin, page: 'CountyIntelligence', roles: ['admin', 'user'] },
-      { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'user'] },
-    ]
-  },
-  {
-    label: 'Sales & Outreach',
-    items: [
-      { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
-      { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin'] },
-    ]
-  },
-  {
-    label: 'Data Operations',
-    items: [
-      { name: 'Data Center', icon: Upload, page: 'DataCenter', roles: ['admin'] },
-      { name: 'CMS Catalog', icon: Database, page: 'CMSDataSources', roles: ['admin'] },
-      { name: 'API Connectors', icon: Server, page: 'APIConnectors', roles: ['admin'] },
-      { name: 'Imports', icon: Activity, page: 'ImportMonitoring', roles: ['admin'] },
-      { name: 'NPPES Crawler', icon: Bot, page: 'NPPESCrawler', roles: ['admin'] },
-      { name: 'Crawler Settings', icon: Settings, page: 'NPPESCrawlerSettings', roles: ['admin'] },
-      { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
-      { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
-      { name: 'Provider Matching', icon: ClipboardCheck, page: 'ProviderLocationMatching', roles: ['admin'] },
-    ]
-  },
-  {
-    label: 'Settings',
-    items: [
-      { name: 'Scoring Rules', icon: Target, page: 'ScoringRules', roles: ['admin'] },
-      { name: 'Security Audit', icon: ShieldCheck, page: 'SecurityAudit', roles: ['admin'] },
-      { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
-    ]
-  },
-];
 
 const getInitialSidebarState = () => {
+  // On small screens the sidebar overlays the page, so always start closed.
+  if (!window.matchMedia('(min-width: 1024px)').matches) return false;
   const saved = localStorage.getItem('caremetric_sidebar');
   if (saved !== null) return saved === 'true';
   return window.matchMedia('(min-width: 1024px)').matches;
@@ -104,6 +28,7 @@ export default function AppLayout({ children, currentPageName }) {
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
   const mainRef = React.useRef(null);
+  const asideRef = React.useRef(null);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(prev => {
@@ -118,16 +43,18 @@ export default function AppLayout({ children, currentPageName }) {
     window.scrollTo(0, 0);
   }, [currentPageName]);
 
+  // A closed sidebar is still in the DOM (it animates to zero width): keep its
+  // links out of the tab order and away from screen readers.
+  React.useEffect(() => {
+    asideRef.current?.toggleAttribute('inert', !sidebarOpen);
+  }, [sidebarOpen]);
+
   const toggleSection = useCallback((label) => {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
   }, []);
 
-  const visibleNavSections = useMemo(() => NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: user?.role
-      ? section.items.filter(item => item.roles.includes(user.role))
-      : section.items,
-  })).filter(section => section.items.length > 0), [user?.role]);
+  const visibleNavSections = useMemo(() => getVisibleNavSections(user?.role), [user?.role]);
+  const activeNavPage = getNavPageFor(currentPageName);
 
   const handleMobileNavClick = useCallback(() => {
     if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -168,7 +95,7 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
+      <aside ref={asideRef} aria-label="Sidebar" className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
           <div className="flex items-center gap-3">
@@ -187,6 +114,7 @@ export default function AppLayout({ children, currentPageName }) {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
+            aria-label="Collapse sidebar"
             className="text-slate-500 hover:text-white hover:bg-slate-800/60 h-7 w-7"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -223,7 +151,7 @@ export default function AppLayout({ children, currentPageName }) {
                 </button>
                 {!isCollapsed && section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = currentPageName === item.page;
+                  const isActive = activeNavPage === item.page;
                   return (
                     <Link
                       key={item.name}
@@ -232,6 +160,7 @@ export default function AppLayout({ children, currentPageName }) {
                       onClick={handleMobileNavClick}
                       onMouseEnter={() => preloadRoute(item.page)}
                       onFocus={() => preloadRoute(item.page)}
+                      aria-current={isActive ? 'page' : undefined}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
                         isActive
                           ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
@@ -277,12 +206,12 @@ export default function AppLayout({ children, currentPageName }) {
       {/* Top bar when sidebar is closed */}
       {!sidebarOpen && (
         <div className="fixed top-0 left-0 right-0 z-20 bg-[#0b1120] border-b border-slate-800/60 px-3 py-2 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open sidebar" className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
             <PanelLeftOpen className="w-5 h-5" />
           </Button>
           <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="CareMetric AI" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
           <h1 className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></h1>
-          <button onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
+          <button onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-500 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" />
           </button>
           <NotificationBell />

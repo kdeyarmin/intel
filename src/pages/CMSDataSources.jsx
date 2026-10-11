@@ -185,7 +185,7 @@ export default function CMSDataSources() {
   if (catalogLoading) {
     return (
       <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
-        <PageHeader title="CMS Dataset Catalog" icon={Database} breadcrumbs={[{ label: 'Admin', path: '#' }, { label: 'CMS Dataset Catalog' }]} />
+        <PageHeader title="CMS Dataset Catalog" icon={Database} breadcrumbs={[{ label: 'Data Center', page: 'DataCenter' }, { label: 'CMS Dataset Catalog' }]} />
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -198,7 +198,7 @@ export default function CMSDataSources() {
       <PageHeader
         title="CMS Dataset Catalog"
         icon={Database}
-        breadcrumbs={[{ label: 'Admin', path: '#' }, { label: 'CMS Dataset Catalog' }]}
+        breadcrumbs={[{ label: 'Data Center', page: 'DataCenter' }, { label: 'CMS Dataset Catalog' }]}
       >
         <div className="flex items-center gap-3 text-sm text-slate-400">
           <span>{datasets.length} datasets available</span>

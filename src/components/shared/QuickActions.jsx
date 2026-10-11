@@ -1,29 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
-import { Mail, Target, Shield, Bot, BarChart3, Activity } from 'lucide-react';
+import { Mail, Target, Shield, Bot, BarChart3, Activity, Users, ListChecks } from 'lucide-react';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
+// Shown in order until the row is full; admin-only pages are filtered out
+// for regular users via the shared nav access rules.
 const ACTIONS = [
-  { label: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', color: 'text-cyan-400 bg-cyan-900/10', roles: ['admin'] },
-  { label: 'Find Emails', icon: Mail, page: 'ProviderIntelligence', color: 'text-emerald-400 bg-emerald-900/10', roles: ['admin'] },
-  { label: 'Build Lead List', icon: Target, page: 'LeadListBuilder', color: 'text-violet-400 bg-violet-900/10', roles: ['admin', 'user'] },
-  { label: 'Quality Scan', icon: Shield, page: 'DataQuality', color: 'text-amber-400 bg-amber-900/10', roles: ['admin'] },
-  { label: 'AI Assistant', icon: Bot, page: 'AIAssistant', color: 'text-cyan-400 bg-cyan-900/10', roles: ['admin', 'user'] },
-  { label: 'Analytics', icon: BarChart3, page: 'AdvancedAnalytics', color: 'text-pink-400 bg-pink-900/10', roles: ['admin', 'user'] },
+  { label: 'Import Monitor', icon: Activity, page: 'ImportMonitoring', color: 'text-cyan-400 bg-cyan-900/10' },
+  { label: 'Find Emails', icon: Mail, page: 'ProviderIntelligence', color: 'text-emerald-400 bg-emerald-900/10' },
+  { label: 'Search Providers', icon: Users, page: 'Providers', color: 'text-blue-400 bg-blue-900/10' },
+  { label: 'Build Lead List', icon: Target, page: 'LeadListBuilder', color: 'text-violet-400 bg-violet-900/10' },
+  { label: 'Lead Lists', icon: ListChecks, page: 'LeadLists', color: 'text-amber-400 bg-amber-900/10' },
+  { label: 'Quality Scan', icon: Shield, page: 'DataQuality', color: 'text-amber-400 bg-amber-900/10' },
+  { label: 'AI Assistant', icon: Bot, page: 'AIAssistant', color: 'text-cyan-400 bg-cyan-900/10' },
+  { label: 'Analytics', icon: BarChart3, page: 'AdvancedAnalytics', color: 'text-pink-400 bg-pink-900/10' },
 ];
 
+const MAX_ACTIONS = 6;
+
 export default function QuickActions() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(console.error);
-  }, []);
-
-  const visibleActions = ACTIONS.filter(action => user?.role ? action.roles.includes(user.role) : false);
+  const { canOpen } = usePageAccess();
+  const visibleActions = ACTIONS.filter(action => canOpen(action.page)).slice(0, MAX_ACTIONS);
 
   return (
-    <div className="grid grid-cols-2 min-[400px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+    <div className="grid grid-cols-2 min-[400px]:grid-cols-3 lg:grid-cols-6 gap-2">
       {visibleActions.map(action => {
         const Icon = action.icon;
         return (
