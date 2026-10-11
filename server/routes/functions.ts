@@ -774,6 +774,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleGenerateHyperPersonalizedMessages(req.body));
       }
       case "trackCampaignMetrics": {
+        // Admin-only (not in PUBLIC_FUNCTIONS): writes the rollup to the campaign row.
         const { handleTrackCampaignMetrics } = await import("../functions/outreach");
         return res.json(await handleTrackCampaignMetrics(req.body));
       }

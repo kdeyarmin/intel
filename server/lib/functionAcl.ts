@@ -30,7 +30,6 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "calculateOutreachScore",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
-  "trackCampaignMetrics",
 ]);
 
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */

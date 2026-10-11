@@ -43,11 +43,12 @@ const ADMIN_ONLY_ENTITIES = new Set([
 
 // Entities that any authenticated user may write/modify (collaborative work product).
 // Anything not in this set requires the admin role for write/delete operations.
+// OutreachCampaign and OutreachMessage are deliberately absent: sending is
+// admin-only and emails the campaign's content and queued messages as stored,
+// so only admins and the server may change them.
 const USER_WRITABLE_ENTITIES = new Set([
   "LeadList",
   "LeadListMember",
-  "OutreachCampaign",
-  "OutreachMessage",
   "CampaignTemplate",
   "CampaignSequenceStep",
   "CampaignTask",
@@ -118,9 +119,12 @@ function requireReadAccess(req: AuthRequest, res: Response, entityName: string):
   return true;
 }
 
+export function canWriteEntity(entityName: string, role: string | undefined): boolean {
+  return role === "admin" || USER_WRITABLE_ENTITIES.has(entityName);
+}
+
 function requireWriteAccess(req: AuthRequest, res: Response, entityName: string): boolean {
-  if (isAdmin(req)) return true;
-  if (USER_WRITABLE_ENTITIES.has(entityName)) return true;
+  if (canWriteEntity(entityName, req.user?.role)) return true;
   res.status(403).json({ message: "Forbidden", detail: "Admin access is required to modify this resource." });
   return false;
 }

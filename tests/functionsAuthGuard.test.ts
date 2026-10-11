@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 25 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(25);
+  it("contains exactly the 24 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(24);
   });
 
   it("all listed functions are individually verified", () => {
@@ -80,7 +80,7 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
       "searchProviders", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
+      "analyzeProviderNetwork", "getDMEProviders",
       "dmeEmailSearchStatus",
     ];
     for (const fn of expected) {
@@ -97,6 +97,9 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "sendEmail",
       "reconcileProviderData",
       "sendCampaignMessages",
+      "prepareCampaignMessages",
+      "trackCampaignMetrics",
+      "saveCampaignOutcomes",
       "bulkVerifyEmails",
       "matchProvidersToLocations",
       "runScheduledImports",
