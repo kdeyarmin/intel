@@ -74,6 +74,7 @@ export const PAGE_GROUPS = {
     pages: [
       { page: 'TerritoryIntelligence', label: 'Territory map' },
       { page: 'CountyIntelligence', label: 'County' },
+      { page: 'MarketIntelligence', label: 'Market' },
     ],
   },
   dataCenter: {

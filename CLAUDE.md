@@ -114,6 +114,17 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   grows with the table (distinct providers, every referral target) in session
   temp tables (`Staging`), and swaps a small `rollup_*` table in one transaction; `refreshRollups` (fan-out worker, daily per job) queues
   due jobs one at a time. Add a job there instead of a `GROUP BY` in a request.
+  Query-kind jobs (`server/lib/rollups/market.ts`) fill a result table with one
+  SELECT over the typed CMS tables and `geo_zctas`; they never read the big
+  provider or facility tables.
+- **Market views** (County Intel tabs, Market Intelligence, facility and
+  provider cards under `src/components/market/`) read only the market rollups
+  through `server/functions/market.ts`. Vocabulary matters: hospital
+  *sources* are where a county's residents are hospitalized (Hospital Service
+  Area), the discharge *mix* is post-discharge Medicare spend by setting (a
+  proxy, not transfers), and market *share* is the share of Medicare FFS
+  beneficiaries served by providers located in the county. Every market view
+  renders `ComplianceDisclaimer variant="market"` and `MarketFreshness`.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through

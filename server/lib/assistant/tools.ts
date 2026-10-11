@@ -15,6 +15,11 @@ export interface ToolDeps {
   describeProviders(npis: string[]): Promise<Map<string, ProviderBrief>>;
   getProviderReport(npi: string): Promise<any>;
   getCountyIntelligence(payload: { state: string; county_fips?: string; county?: string }): Promise<any>;
+  /** The county's market rollups (server/functions/market.ts); null when the rollups aren't computed. */
+  getCountyMarket(payload: { state: string; county_fips: string }): Promise<any>;
+  getReferralSources(payload: { state: string; county_fips?: string; setting?: string; limit: number }): Promise<any>;
+  /** CMS files on one provider: ordering eligibility and the referral-source rollup row. */
+  getProviderCMSData(npi: string): Promise<any>;
   getTerritoryData(payload: { state: string; specialty_group?: string }): Promise<any>;
   getReferralNetwork(payload: Record<string, unknown>, user: { id: number }): Promise<any>;
   getDashboardStats(): Promise<any>;
@@ -139,11 +144,13 @@ const TOOL_SPECS = [
   spec({
     name: "get_provider_profile",
     description:
-      "Everything the app holds on one provider by NPI: identity, specialties, practice locations, Medicare utilization totals and top services, the providers they share the most Medicare patients with, lead score, linked facilities and affiliations. Use it before describing or recommending a specific provider.",
+      "Everything the app holds on one provider by NPI: identity, specialties, practice locations, Medicare utilization totals and top services, the providers they share the most Medicare patients with (and who shares patients with them), Medicare ordering eligibility and referral potential, lead score, linked facilities and affiliations. Use it before describing or recommending a specific provider.",
     input: z.object({ npi: NPI }),
     async run({ npi }, ctx) {
       const r = await ctx.deps.getProviderReport(npi);
       if (!r?.provider) return { found: false, npi, note: "No provider with this NPI is in the app's data." };
+      const cms = await ctx.deps.getProviderCMSData(npi).catch(() => null);
+      const potential = cms?.referral_potential ?? null;
       const topServices = [...(r.utilization || [])]
         .sort((a: any, b: any) => (num(b.totalServices) || 0) - (num(a.totalServices) || 0))
         .slice(0, 10)
@@ -163,6 +170,18 @@ const TOOL_SPECS = [
           top_services: topServices,
         },
         shares_patients_with: (r.referralsFrom || []).slice(0, 10).map((x: any) => ({ npi: x.toNpi, name: x.toName || null, shared_patients: num(x.totalReferrals), year: x.dataYear })),
+        receives_patients_from: (r.referralsTo || []).slice(0, 10).map((x: any) => ({ npi: x.fromNpi, name: x.fromName || null, shared_patients: num(x.totalReferrals), year: x.dataYear })),
+        medicare_ordering: cms?.order_referring
+          ? { part_b: Boolean(cms.order_referring.partb), home_health: Boolean(cms.order_referring.hha), hospice: Boolean(cms.order_referring.hospice), dme: Boolean(cms.order_referring.dme), as_of: cms.order_referring.as_of ?? null }
+          : null,
+        referral_potential: potential
+          ? {
+            index: num(potential.referral_index), rank_in_county: num(potential.rank_in_county), county: potential.county_name ?? potential.county_fips ?? null,
+            medicare_beneficiaries: num(potential.benes), avg_risk_score: num(potential.avg_risk_score), hospital_affiliations: Array.isArray(potential.hospital_ccns) ? potential.hospital_ccns.length : 0,
+            year: potential.data_year ?? null,
+            note: "Index: 50 points for Medicare beneficiaries served (full at 500), 25 for patient risk (full at 2.5), 25 for home health and hospice ordering eligibility. Not confirmed referrals.",
+          }
+          : null,
         lead_score: r.leadScore ? { score: num(r.leadScore.score), outreach_potential: num(r.leadScore.outreach_potential), referral_likelihood: num(r.leadScore.referral_likelihood) } : null,
         facilities: (r.facilities || []).slice(0, 5).map((f: any) => ({ name: f.name, type: f.facilityType, city: f.city, state: f.state, rating: f.qualityRating ?? null, year: f.dataYear })),
         affiliations: (r.affiliations || []).slice(0, 5).map((a: any) => ({ organization: a.organization_name, organization_npi: a.organization_npi, type: a.affiliation_type })),
@@ -172,7 +191,7 @@ const TOOL_SPECS = [
   spec({
     name: "get_area_summary",
     description:
-      "Summarize a place. With a county (name or 5-digit FIPS): provider counts, top specialties, the highest-scored providers, Medicare facilities, top shared-patient pairs and top Medicare services in that county. Without a county: a state view with provider density by county and the highest-scored providers (optionally for one specialty_group). Use it for questions about a market, territory, county or state.",
+      "Summarize a place. With a county (name or 5-digit FIPS): provider counts, top specialties, the highest-scored providers, Medicare facilities, top shared-patient pairs, top Medicare services, and the county's market (Medicare beneficiaries and Medicare Advantage share, the hospitals discharging its residents, post-acute market shares by setting, and the clinicians most likely to refer). Without a county: a state view with provider density by county and the highest-scored providers (optionally for one specialty_group). Use it for questions about a market, territory, county or state.",
     input: z.object({
       state: STATE,
       county: z.string().max(100).optional().describe("County name (\"Allegheny\") or 5-digit FIPS (\"42003\")"),
@@ -203,6 +222,7 @@ const TOOL_SPECS = [
           facilities: (r.facilities || []).slice(0, 10).map((f: any) => ({ name: f.name, type: f.group || f.type, city: f.city })),
           top_shared_patient_pairs: (r.referrals || []).slice(0, 10).map((x: any) => ({ from: `${x.fromName} (${x.fromNpi})`, to: `${x.toName} (${x.toNpi})`, shared_patients: x.totalReferrals })),
           top_services: (r.topServices || []).slice(0, 10),
+          market: await marketBlock(ctx, state, r.county?.fips),
         };
       }
       const t = await ctx.deps.getTerritoryData({ state, specialty_group: input.specialty_group });
@@ -426,6 +446,46 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext): P
 }
 
 /** Short labels for the UI's tool chips, from the tool name and input. */
+/**
+ * The county's market in a few numbers (from the market rollups): demand,
+ * hospital sources, post-acute shares and likely referral sources. Null when
+ * the rollups aren't computed yet, so the rest of the summary still answers.
+ */
+async function marketBlock(ctx: ToolContext, state: string, countyFips: string | undefined) {
+  if (!countyFips) return null;
+  const [m, s] = await Promise.all([
+    ctx.deps.getCountyMarket({ state, county_fips: countyFips }).catch(() => null),
+    ctx.deps.getReferralSources({ state, county_fips: countyFips, limit: 10 }).catch(() => null),
+  ]);
+  if (!m && !s) return null;
+  const p = m?.profile?.available ? m.profile : null;
+  const pct = (v: unknown) => (v == null ? null : Math.round(Number(v) * 1000) / 10);
+  const settings = m?.competitors ? Object.entries(m.competitors as Record<string, any>).filter(([, v]) => v?.rows?.length) : [];
+  return {
+    note: "Public CMS data (Medicare FFS). Hospital sources = where residents are hospitalized; discharge mix = post-discharge Medicare spend by setting, a proxy for destinations; market share = share of beneficiaries served by providers located in the county.",
+    vintages: m?.vintages ?? null,
+    profile: p ? {
+      medicare_beneficiaries: num(p.benes), medicare_advantage_share_pct: pct(p.ma_penetration), aged_85_plus: num(p.benes_85_plus), dual_eligible: num(p.dual),
+      home_health: { users: num(p.hha_users), users_pct_of_ffs: num(p.hha_users_pct), providers: num(p.hha_providers), spend_per_beneficiary: num(p.std_per_capita_hha) },
+      hospice: { users: num(p.hospice_users), users_pct_of_ffs: num(p.hospice_users_pct), providers: num(p.hospice_providers), spend_per_beneficiary: num(p.std_per_capita_hospice) },
+      skilled_nursing: { users: num(p.snf_users), users_pct_of_ffs: num(p.snf_users_pct), providers: num(p.snf_providers), spend_per_beneficiary: num(p.std_per_capita_snf) },
+      readmission_rate_pct: pct(p.readmission_rate), hospitals_serving_residents: num(p.hospitals_serving),
+    } : null,
+    hospital_sources: (m?.hospital_sources?.rows || []).slice(0, 5).map((h: any) => ({
+      ccn: h.ccn, name: h.name, share_of_county_cases_pct: pct(h.share), cases: num(h.cases),
+      post_discharge_mix_pct: h.discharge_mix ? { snf: num(h.discharge_mix.pct_snf), home_health: num(h.discharge_mix.pct_hha), hospice: num(h.discharge_mix.pct_hospice) } : null,
+    })),
+    post_acute_market_share: Object.fromEntries(settings.map(([setting, v]: [string, any]) => [setting, {
+      year: v.data_year, providers_in_county: num(v.rows[0]?.providers_in_market),
+      top: v.rows.slice(0, 5).map((r: any) => ({ ccn: r.ccn, name: r.name, beneficiaries: num(r.benes), share_pct: pct(r.share), rank: num(r.rank) })),
+    }])),
+    likely_referral_sources: (s?.rows || []).slice(0, 10).map((r: any) => ({
+      npi: r.npi, name: r.name, specialty: r.specialty, referral_index: num(r.referral_index), medicare_beneficiaries: num(r.benes),
+      can_order: [r.eligible?.hha && "home health", r.eligible?.hospice && "hospice", r.eligible?.dme && "DME"].filter(Boolean), lead_score: num(r.lead_score),
+    })),
+  };
+}
+
 export function toolLabel(name: string, input: any): string {
   const i = input && typeof input === "object" ? input : {};
   switch (name) {

@@ -11,6 +11,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import AffiliatedProvidersCard from '../components/facilities/AffiliatedProvidersCard';
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
+import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
+import MarketPositionCard from '../components/market/MarketPositionCard';
+
+// Facility groups with a post-acute market view (getFacilityMarket setting).
+const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
 
 const FACILITY_LABELS = {
   hospital: { title: 'Hospital', plural: 'Hospitals', back: 'Facilities?type=hospital', iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
@@ -532,6 +537,9 @@ export default function FacilityDetail() {
       </div>
 
       <FacilitySummaryCard data={data} financials={financials} facilityTypes={facilityTypes} config={config} />
+
+      {group === 'hospital' && <HospitalCatchmentCard ccn={providerId} />}
+      {MARKET_SETTING[group] && <MarketPositionCard ccn={providerId} setting={MARKET_SETTING[group]} />}
 
       <LinkedProviderCard linked={linked} navigate={navigate} config={config} />
 

@@ -29,21 +29,22 @@ export const SETTING_FACILITY_GROUP: Record<string, string> = {
 };
 
 /** County-level metrics the Territory map can colour by (rollup_county_market_profile columns). */
-export const LAYER_METRICS: Record<string, { column: string; label: string; format: "count" | "percent" | "money" | "rate"; vintage: string }> = {
+// Formats: count; percent (a fraction, 0.62); pct_units (CMS percent units, 11.05); money; rate.
+export const LAYER_METRICS: Record<string, { column: string; label: string; format: "count" | "percent" | "pct_units" | "money" | "rate"; vintage: string }> = {
   benes: { column: "benes", label: "Medicare beneficiaries", format: "count", vintage: "enrollment" },
   ma_penetration: { column: "ma_penetration", label: "Medicare Advantage share", format: "percent", vintage: "enrollment" },
   benes_85_plus: { column: "benes_85_plus", label: "Beneficiaries aged 85+", format: "count", vintage: "enrollment" },
   dual: { column: "dual", label: "Dual-eligible beneficiaries", format: "count", vintage: "enrollment" },
-  hha_users_pct: { column: "hha_users_pct", label: "Home health use (% of FFS)", format: "rate", vintage: "saturation" },
-  hospice_users_pct: { column: "hospice_users_pct", label: "Hospice use (% of FFS)", format: "rate", vintage: "saturation" },
-  snf_users_pct: { column: "snf_users_pct", label: "Skilled nursing use (% of FFS)", format: "rate", vintage: "saturation" },
+  hha_users_pct: { column: "hha_users_pct", label: "Home health use (% of FFS)", format: "pct_units", vintage: "saturation" },
+  hospice_users_pct: { column: "hospice_users_pct", label: "Hospice use (% of FFS)", format: "pct_units", vintage: "saturation" },
+  snf_users_pct: { column: "snf_users_pct", label: "Skilled nursing use (% of FFS)", format: "pct_units", vintage: "saturation" },
   hha_providers: { column: "hha_providers", label: "Home health agencies", format: "count", vintage: "saturation" },
   hospice_providers: { column: "hospice_providers", label: "Hospices", format: "count", vintage: "saturation" },
   snf_providers: { column: "snf_providers", label: "Skilled nursing facilities", format: "count", vintage: "saturation" },
   std_per_capita_snf: { column: "std_per_capita_snf", label: "SNF spend per beneficiary", format: "money", vintage: "variation" },
   std_per_capita_hha: { column: "std_per_capita_hha", label: "Home health spend per beneficiary", format: "money", vintage: "variation" },
   std_per_capita_hospice: { column: "std_per_capita_hospice", label: "Hospice spend per beneficiary", format: "money", vintage: "variation" },
-  readmission_rate: { column: "readmission_rate", label: "Hospital readmission rate", format: "rate", vintage: "variation" },
+  readmission_rate: { column: "readmission_rate", label: "Hospital readmission rate", format: "percent", vintage: "variation" },
   er_visits_per_1000: { column: "er_visits_per_1000", label: "ER visits per 1,000", format: "rate", vintage: "variation" },
   hospitals_serving: { column: "hospitals_serving", label: "Hospitals serving residents", format: "count", vintage: "hospital_service_area" },
 };
@@ -320,10 +321,28 @@ export async function handleGetFacilityMarket(payload: any) {
   }));
 }
 
-/** One metric for every county in a state, for a choropleth. */
+const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization"];
+
+/** One metric for every county in a state (for a choropleth), or with `all` every metric (for the county table). */
 export async function handleGetCountyMarketLayer(payload: any) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
+  if (payload?.all === true) {
+    return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
+      const cols = Object.values(LAYER_METRICS).map((m) => m.column);
+      const { rows } = await client.query(
+        `SELECT county_fips, county_name, ${cols.join(", ")}, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
+      ).catch(() => ({ rows: [] as any[] }));
+      const vintages: Record<string, unknown> = {};
+      for (const k of VINTAGE_KEYS) vintages[k] = rows.find((r: any) => r.as_of?.[k])?.as_of?.[k] ?? null;
+      return {
+        state, all: true, vintages,
+        metrics: Object.entries(LAYER_METRICS).map(([key, m]) => ({ key, label: m.label, format: m.format })),
+        counties: rows.map((r: any) => ({ fips: r.county_fips, name: r.county_name, values: Object.fromEntries(Object.entries(LAYER_METRICS).map(([key, m]) => [key, num(r[m.column])])) })),
+        rollups: await marketRollupFreshness(),
+      };
+    }));
+  }
   const metric = String(payload?.metric ?? "benes");
   const def = LAYER_METRICS[metric];
   if (!def) throw new HttpError(400, `metric must be one of ${Object.keys(LAYER_METRICS).join(", ")}.`);

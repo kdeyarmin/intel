@@ -17,11 +17,15 @@ import CountyDensityMap from '../components/territory/CountyDensityMap';
 import ProviderClusterList from '../components/territory/ProviderClusterList';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import CountyMetricLayer from '../components/market/CountyMetricLayer';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { COUNTY_LAYER_METRICS } from '@/lib/marketLayers';
 
 // Filters live in the URL so a territory view can be shared and Back restores it.
 const URL_DEFAULTS = {
   state: 'PA', group: 'all', type: 'all', minScore: '', maxScore: '', minVolume: '', unscored: 'show',
-  color: true, heat: false, volume: false, tab: 'map',
+  color: true, heat: false, volume: false, tab: 'map', layer: 'density',
 };
 
 
@@ -65,6 +69,15 @@ export default function TerritoryIntelligence() {
   });
 
   const items = useMemo(() => (data?.providers || []).map(toItem), [data]);
+
+  // County density tab: provider density (from the territory data) or one
+  // market metric for every county (rollup_county_market_profile).
+  const { data: layer } = useQuery({
+    queryKey: ['countyMarketLayer', filters.state, filters.layer],
+    queryFn: () => invokeOrThrow('getCountyMarketLayer', { state: filters.state, metric: filters.layer }),
+    enabled: filters.tab === 'density' && filters.layer !== 'density' && filters.state !== 'ALL',
+    staleTime: 5 * 60 * 1000,
+  });
 
   const filtered = useMemo(() => {
     const min = filters.minScore === '' ? null : Number(filters.minScore);
@@ -179,8 +192,22 @@ export default function TerritoryIntelligence() {
                         colorByScore={filters.color}
                       />
                     </TabsContent>
-                    <TabsContent value="density" className="mt-0">
-                      <CountyDensityMap counties={data?.counties || []} providers={filtered} state={filters.state !== 'ALL' ? filters.state : null} />
+                    <TabsContent value="density" className="mt-0 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="territory-layer" className="text-xs text-slate-400">County layer</Label>
+                        <Select value={filters.layer} onValueChange={(layer) => setFilters({ layer })}>
+                          <SelectTrigger id="territory-layer" className="w-72 h-8 text-xs bg-slate-900 border-slate-700"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="density">Provider density (practice locations)</SelectItem>
+                            {COUNTY_LAYER_METRICS.map((m) => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {filters.layer === 'density' || filters.state === 'ALL' ? (
+                        <CountyDensityMap counties={data?.counties || []} providers={filtered} state={filters.state !== 'ALL' ? filters.state : null} />
+                      ) : (
+                        <CountyMetricLayer layer={layer} state={filters.state} />
+                      )}
                     </TabsContent>
                   </Tabs>
                 </div>

@@ -11,8 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Users, Building2, DollarSign, Activity, ArrowRight, BarChart3, Network, Stethoscope, Info, AlertTriangle } from 'lucide-react';
+import { MapPin, Users, Building2, DollarSign, Activity, ArrowRight, BarChart3, Network, Stethoscope, Info, AlertTriangle, Hospital, Target, LayoutDashboard } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { US_STATES } from '@/lib/usStates';
+import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import CountyMarketProfile from '../components/market/CountyMarketProfile';
+import HospitalSourcesTable from '../components/market/HospitalSourcesTable';
+import PacCompetitorsTable from '../components/market/PacCompetitorsTable';
+import ReferralSourcesTable from '../components/market/ReferralSourcesTable';
 
 function formatCurrency(val) {
   const num = Number(val) || 0;
@@ -34,7 +40,15 @@ const FACILITY_LABELS = {
   other: 'Other',
 };
 
-const URL_DEFAULTS = { state: '', county: '' };
+// The tab is in the URL too, so a market view can be linked to directly.
+const URL_DEFAULTS = { state: '', county: '', tab: 'overview' };
+const TABS = [
+  { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { value: 'market', label: 'Market', icon: BarChart3 },
+  { value: 'hospitals', label: 'Hospital sources', icon: Hospital },
+  { value: 'competitors', label: 'Competitors', icon: Building2 },
+  { value: 'referrals', label: 'Referral sources', icon: Target },
+];
 
 function Kpi({ icon: Icon, label, value, sub, color }) {
   return (
@@ -67,6 +81,15 @@ export default function CountyIntelligence() {
     queryKey: ['countyIntelligence', url.state, url.county],
     queryFn: () => invokeOrThrow('getCountyIntelligence', { state: url.state, county_fips: url.county }),
     enabled: !!url.state && !!url.county,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // The market views come from the daily rollups (server/functions/market.ts).
+  const { data: market, isLoading: loadingMarket, isError: marketError, error: marketErr } = useQuery({
+    queryKey: ['countyMarket', url.state, url.county],
+    queryFn: () => invokeOrThrow('getCountyMarket', { state: url.state, county_fips: url.county }),
+    enabled: !!url.state && !!url.county && url.tab !== 'overview',
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -155,6 +178,14 @@ export default function CountyIntelligence() {
             </p>
           )}
 
+          <Tabs value={url.tab} onValueChange={(tab) => setUrl({ tab })}>
+            <TabsList className="bg-slate-800/50 mb-4 h-auto flex flex-wrap">
+              {TABS.map((t) => (
+                <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs"><t.icon className="w-3.5 h-3.5" aria-hidden="true" /> {t.label}</TabsTrigger>
+              ))}
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-0 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {summary.providersExact ? (
               <Kpi icon={Users} color="text-cyan-400" label="Providers practicing here"
@@ -325,6 +356,27 @@ export default function CountyIntelligence() {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
+
+            {['market', 'hospitals', 'competitors', 'referrals'].map((tab) => (
+              <TabsContent key={tab} value={tab} className="mt-0 space-y-4">
+                <ComplianceDisclaimer variant="market" />
+                {tab === 'referrals' ? (
+                  <ReferralSourcesTable state={url.state} countyFips={data.county.fips} countyName={data.county.name} />
+                ) : marketError ? (
+                  <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
+                ) : loadingMarket || !market ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+                ) : tab === 'market' ? (
+                  <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} />
+                ) : tab === 'hospitals' ? (
+                  <HospitalSourcesTable sources={market.hospital_sources} rollups={market.rollups} countyName={data.county.name} />
+                ) : (
+                  <PacCompetitorsTable competitors={market.competitors} trends={market.trends} coverage={market.coverage} labels={market.labels} rollups={market.rollups} countyName={data.county.name} />
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
         </>
       )}
     </div>
