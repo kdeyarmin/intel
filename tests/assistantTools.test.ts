@@ -130,13 +130,26 @@ describe("runTool", () => {
       })),
       getProviderCMSData: vi.fn(async () => ({
         order_referring: { partb: true, hha: true, hospice: false, dme: false, as_of: "2026-10-03" },
-        referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, avg_risk_score: 2.1, hospital_ccns: ["390001"], data_year: "2024" },
+        referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, avg_risk_score: 2.1, hospital_ccns: ["390001"], affiliations: 2, data_year: "2024" },
       })),
     });
     const out = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, c)).content);
     expect(out.receives_patients_from).toEqual([{ npi: "3", name: "C", shared_patients: 7, year: "2015" }]);
     expect(out.medicare_ordering).toEqual({ part_b: true, home_health: true, hospice: false, dme: false, as_of: "2026-10-03" });
     expect(out.referral_potential).toMatchObject({ index: 96, rank_in_county: 1, county: "Allegheny County", hospital_affiliations: 1, year: "2024" });
+    expect(out.referral_potential.note).not.toMatch(/Facility Affiliation/);
+  });
+
+  it("get_provider_profile says hospital affiliations are unknown, not 0, until the Facility Affiliation file is imported", async () => {
+    const c = ctx({
+      getProviderReport: vi.fn(async () => ({ provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" } })),
+      getProviderCMSData: vi.fn(async () => ({
+        referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, hospital_ccns: null, affiliations: null, data_year: "2024" },
+      })),
+    });
+    const out = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, c)).content);
+    expect(out.referral_potential.hospital_affiliations).toBeNull();
+    expect(out.referral_potential.note).toMatch(/Facility Affiliation file has not been imported/);
   });
 
   it("get_referral_network takes exactly one scope and passes the user for rate limiting", async () => {
