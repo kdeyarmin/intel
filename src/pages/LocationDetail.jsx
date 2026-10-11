@@ -174,11 +174,11 @@ export default function LocationDetail() {
                   <span>{location.fax}</span>
                 </div>
               )}
-              <Link to={createPageUrl(`ProviderDetail?npi=${location.npi}`)}>
-                <Button variant="outline" size="sm" className="mt-2 gap-1.5">
+              <Button asChild variant="outline" size="sm" className="mt-2 gap-1.5">
+                <Link to={createPageUrl(`ProviderDetail?npi=${location.npi}`)}>
                   <ExternalLink className="w-3.5 h-3.5" /> View Provider
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -356,9 +356,9 @@ export default function LocationDetail() {
                       <TableCell><Badge variant="outline" className="text-xs">{p.entity_type}</Badge></TableCell>
                       <TableCell>{p.credential || '-'}</TableCell>
                       <TableCell>
-                        <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>
-                          <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
-                        </Link>
+                        <Button asChild variant="outline" size="sm" className="text-xs h-7">
+                          <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>View</Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -390,9 +390,9 @@ export default function LocationDetail() {
                       <Badge variant="outline" className="text-xs">{m.status}</Badge>
                     </div>
                   </div>
-                  <Link to={createPageUrl(`ProviderDetail?npi=${m.npi}`)}>
-                    <Button variant="outline" size="sm" className="text-xs h-7">View Provider</Button>
-                  </Link>
+                  <Button asChild variant="outline" size="sm" className="text-xs h-7">
+                    <Link to={createPageUrl(`ProviderDetail?npi=${m.npi}`)}>View Provider</Link>
+                  </Button>
                 </div>
               ))}
             </div>

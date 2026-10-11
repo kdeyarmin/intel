@@ -72,6 +72,19 @@ describe('accessible names in source', () => {
     expect(labelledById('id={`${uid}-state`}', '<Label htmlFor={`${uid}-other`}>Other</Label>')).toBe(false);
   });
 
+  it('no Link wraps a Button (a link around a button nests two controls; use <Button asChild><Link>)', () => {
+    const found: string[] = [];
+    for (const file of sourceFiles(SRC)) {
+      const src = fs.readFileSync(file, 'utf8');
+      for (const m of src.matchAll(tag('Link'))) {
+        if (/^\s*<Button\b/.test(src.slice(m.index! + m[0].length))) {
+          found.push(`${path.relative(SRC, file)}:${src.slice(0, m.index).split('\n').length}`);
+        }
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
   it('size="icon" buttons have a name', () => {
     const found: string[] = [];
     for (const file of sourceFiles(SRC)) {

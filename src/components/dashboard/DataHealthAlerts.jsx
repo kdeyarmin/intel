@@ -48,11 +48,11 @@ export default function DataHealthAlerts() {
             <Badge variant="outline" className="ml-2 bg-rose-500/10 text-rose-400 border-rose-500/20">{alerts.length} High-Value Records</Badge>
           </CardTitle>
           {canOpen('DataQuality') && (
-            <Link to={createPageUrl('DataQuality')}>
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-slate-400 hover:text-white">
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-slate-400 hover:text-white">
+              <Link to={createPageUrl('DataQuality')}>
                 View All <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </div>
       </CardHeader>
@@ -77,11 +77,11 @@ export default function DataHealthAlerts() {
                   ))}
                 </div>
               </div>
-              <Link to={`${createPageUrl('ProviderDetail')}?npi=${alert.npi}`}>
-                <Button variant="outline" size="sm" className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 border-slate-700 text-white hover:bg-slate-700">
+              <Button asChild variant="outline" size="sm" className="h-7 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity bg-slate-800 border-slate-700 text-white hover:bg-slate-700">
+                <Link to={`${createPageUrl('ProviderDetail')}?npi=${alert.npi}`}>
                   Enrich
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           ))}
         </div>
