@@ -57,7 +57,9 @@ router.post(
 
     // Message updates: one set-based statement for the whole batch. The
     // status rule runs inside it, so it holds under concurrent deliveries.
-    const summaries = foldMessageEvents(updates);
+    const summaries = foldMessageEvents(
+      updates.filter((u): u is typeof u & { messageId: number } => u.messageId !== null),
+    );
     let applied = 0;
     if (summaries.length > 0) {
       try {

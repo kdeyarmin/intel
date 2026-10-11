@@ -15,6 +15,19 @@ afterEach(async () => {
 
 const idOf = (email: string) => h.repo.users.find((u) => u.email === email)!.id;
 
+/** Lands another admin's change right after this request reads the account. */
+function changeAfterRead(id: number, change: () => void) {
+  const findById = h.repo.findById;
+  h.repo.findById = async (x: number) => {
+    const row = await findById(x);
+    if (x === id) {
+      h.repo.findById = findById;
+      change();
+    }
+    return row;
+  };
+}
+
 describe("access", () => {
   it("is admin-only, and pending accounts can't reach it", async () => {
     await h.seed({ email: "rep@example.com" });
@@ -58,6 +71,50 @@ describe("approval", () => {
     expect((await admin.call("DELETE", `/api/admin/users/${idOf("rep@example.com")}`)).status).toBe(409);
     expect((await admin.call("DELETE", `/api/admin/users/${idOf("wait@example.com")}`)).status).toBe(200);
     expect(h.repo.users.map((u) => u.email)).not.toContain("wait@example.com");
+  });
+
+  it("answers 409, without a second email or audit entry, when another admin approved first", async () => {
+    await h.seed({ email: "wait@example.com", status: "pending" });
+    const id = idOf("wait@example.com");
+    changeAfterRead(id, () => {
+      Object.assign(h.repo.users.find((u) => u.id === id)!, { status: "active", approved_by: "other@example.com" });
+    });
+    const r = await admin.call("POST", `/api/admin/users/${id}/approve`);
+    expect(r.status).toBe(409);
+    expect(h.repo.users.find((u) => u.id === id)!.approved_by).toBe("other@example.com");
+    expect(h.mail.filter((m) => m.to === "wait@example.com")).toHaveLength(0);
+    expect(h.audits.some((a) => a.action === "approve")).toBe(false);
+  });
+
+  it("answers 404, not an error, when the signup is deleted while being approved", async () => {
+    await h.seed({ email: "wait@example.com", status: "pending" });
+    const id = idOf("wait@example.com");
+    changeAfterRead(id, () => {
+      void h.repo.delete(id);
+    });
+    expect((await admin.call("POST", `/api/admin/users/${id}/approve`)).status).toBe(404);
+  });
+
+  it("keeps an account that was approved while being deleted", async () => {
+    await h.seed({ email: "wait@example.com", status: "pending" });
+    const id = idOf("wait@example.com");
+    changeAfterRead(id, () => {
+      h.repo.users.find((u) => u.id === id)!.status = "active";
+    });
+    const r = await admin.call("DELETE", `/api/admin/users/${id}`);
+    expect(r.status).toBe(409);
+    expect(h.repo.users.map((u) => u.email)).toContain("wait@example.com");
+    expect(h.audits.some((a) => a.action === "delete")).toBe(false);
+  });
+
+  it("enables an account once when two admins enable it together", async () => {
+    await h.seed({ email: "rep@example.com", status: "disabled" });
+    const id = idOf("rep@example.com");
+    changeAfterRead(id, () => {
+      h.repo.users.find((u) => u.id === id)!.status = "active";
+    });
+    expect((await admin.call("POST", `/api/admin/users/${id}/enable`)).status).toBe(409);
+    expect(h.audits.some((a) => a.action === "enable")).toBe(false);
   });
 });
 

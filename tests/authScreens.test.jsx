@@ -43,6 +43,23 @@ describe('ResetPassword', () => {
     expect(screen.getByRole('link', { name: /Request a new reset link/ })).toHaveAttribute('href', '/forgot-password');
   });
 
+  it("offers a retry when the link can't be checked, instead of calling it invalid", async () => {
+    auth.tokenInfo.mockRejectedValueOnce(Object.assign(new Error('Service unavailable'), { status: 503 }));
+    auth.tokenInfo.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    auth.tokenInfo.mockResolvedValueOnce({ valid: true, purpose: 'reset', email: 'rep@example.com' });
+    at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
+    expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");
+    expect(screen.queryByText("This link doesn't work")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");
+    expect(auth.tokenInfo).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Choose a new password')).toBeInTheDocument();
+    expect(auth.tokenInfo).toHaveBeenCalledTimes(3);
+  });
+
   it('finishes an invite: asks for a name, checks the passwords match, and signs in', async () => {
     auth.tokenInfo.mockResolvedValue({ valid: true, purpose: 'invite', email: 'ivy@example.com', full_name: null });
     auth.resetPassword.mockResolvedValue({ id: 5, email: 'ivy@example.com', status: 'active' });

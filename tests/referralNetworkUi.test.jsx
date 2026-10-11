@@ -36,7 +36,7 @@ describe('network tables with missing fields', () => {
       </MemoryRouter>,
     );
     expect(screen.getByText('Sends to (1)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Show all of this provider's partners/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Focus on this provider's partners/ }));
     expect(onFocus).toHaveBeenCalledWith({ npi: '1234567890' });
   });
 
@@ -134,6 +134,30 @@ describe('ReferralNetworkIntelligence', () => {
     renderPage('/ReferralNetworkIntelligence?state=PA&list=4.5&npi=123');
     await screen.findByText('Providers practicing in PA');
     expect(invoke).toHaveBeenCalledWith('getReferralNetworkData', { state: 'PA' });
+  });
+
+  it('normalizes the state in a shared URL for both the request and the scope bar', async () => {
+    invoke.mockReset().mockResolvedValue(NETWORK);
+    renderPage('/ReferralNetworkIntelligence?state=pa&tab=hubs');
+    await screen.findByText('Providers practicing in PA');
+    expect(invoke).toHaveBeenCalledWith('getReferralNetworkData', { state: 'PA' });
+    expect(screen.getByRole('combobox', { name: 'Providers practicing in' })).toHaveTextContent('PA');
+  });
+
+  it('ignores a state the scope bar does not offer', async () => {
+    invoke.mockReset().mockResolvedValue({ ...NETWORK, scope: { type: 'sample', label: 'A sample of 2 referring providers', seed_count: 2, truncated: false } });
+    renderPage('/ReferralNetworkIntelligence?state=pennsylvania');
+    await screen.findByText('A sample of 2 referring providers');
+    expect(invoke).toHaveBeenCalledWith('getReferralNetworkData', {});
+    expect(screen.getByRole('combobox', { name: 'Providers practicing in' })).toHaveTextContent('Nationwide sample');
+  });
+
+  it('opens the graph tab when the URL names an unknown tab', async () => {
+    invoke.mockReset().mockResolvedValue(NETWORK);
+    renderPage('/ReferralNetworkIntelligence?state=PA&tab=unknown');
+    const graphTab = await screen.findByRole('tab', { name: /Network graph/ });
+    expect(graphTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument();
   });
 
   it('explains when no referral data has been imported', async () => {

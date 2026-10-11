@@ -13,7 +13,7 @@ import { capabilitiesFrom, NO_CAPABILITIES } from "../server/lib/searchCapabilit
 import { SEARCH_INDEXES, SEARCH_EXPR } from "../server/lib/searchIndexes";
 import { BOOT_INDEXES } from "../server/lib/bootIndexes";
 
-const ALL = { trigram: true, lastName: true, orgPrefix: true, zip5: true, stateCity: true, primaryTaxonomy: true };
+const ALL = { trigram: true, trigramPending: false, lastName: true, orgPrefix: true, zip5: true, stateCity: true, primaryTaxonomy: true };
 
 describe("buildProviderSearchPlan", () => {
   it("ignores queries shorter than two characters", () => {
@@ -62,7 +62,9 @@ describe("buildProviderSearchPlan", () => {
 
   it("matches two-word names in either order", () => {
     const plan = buildProviderSearchPlan("John  Smith", { entityType: "Individual" }, ALL)!;
-    expect(plan.queries.map((q) => q.values.slice(0, -1))).toEqual([["john smith%"], ["smith%", "john%"], ["john%", "smith%"]]);
+    expect(plan.queries.map((q) => q.values.slice(0, -1))).toEqual([
+      ["john smith%", "Individual"], ["smith%", "john%", "Individual"], ["john%", "smith%", "Individual"],
+    ]);
     const comma = buildProviderSearchPlan("Smith, John", { entityType: "Individual" }, ALL)!;
     expect(comma.queries[0].values[0]).toBe("smith john%");
     expect(comma.queries[2].values.slice(0, 2)).toEqual(["smith%", "john%"]);
@@ -85,6 +87,23 @@ describe("buildProviderSearchPlan", () => {
     expect(nines.values).toEqual(["99", "Individual", 20]);
   });
 
+  it("applies the entity filter to name queries, keeping the indexed expression and order", () => {
+    const people = buildProviderSearchPlan("john smith", { entityType: "Individual", limit: 20 }, ALL)!.queries;
+    expect(people[0].text).toContain(`last_name IS NOT NULL AND ${SEARCH_EXPR.lastName} LIKE $1 AND entity_type = $2 ORDER BY ${SEARCH_EXPR.lastName} LIMIT $3`);
+    expect(people[0].values).toEqual(["john smith%", "Individual", 20]);
+    expect(people[1].text).toContain(`${SEARCH_EXPR.firstName} LIKE $2 AND entity_type = $3 ORDER BY ${SEARCH_EXPR.lastName} LIMIT $4`);
+    expect(people[1].values).toEqual(["smith%", "john%", "Individual", 20]);
+
+    const [prefix, contains] = buildProviderSearchPlan("mercy", { entityType: "Organization", limit: 20 }, ALL)!.queries;
+    expect(prefix.text).toContain(`${SEARCH_EXPR.orgName} LIKE $1 AND entity_type = $2 ORDER BY ${SEARCH_EXPR.orgName} LIMIT $3`);
+    expect(prefix.values).toEqual(["mercy%", "Organization", 20]);
+    expect(contains.text).toContain(`${SEARCH_EXPR.orgName} LIKE $1 AND entity_type = $2 LIMIT $3`);
+    expect(contains.values).toEqual(["%mercy%", "Organization", 200]);
+
+    // No filter: no entity predicate.
+    expect(buildProviderSearchPlan("mercy", {}, ALL)!.queries.some((q) => q.text.includes("entity_type ="))).toBe(false);
+  });
+
   it("asks for more candidates when a state filter will cut them down", () => {
     const plan = buildProviderSearchPlan("smith", { entityType: "Individual", state: "PA", limit: 20 }, ALL)!;
     expect(plan.queries[0].cap).toBe(500);
@@ -93,6 +112,28 @@ describe("buildProviderSearchPlan", () => {
   it("reports a degraded search while its index is still building", () => {
     expect(buildProviderSearchPlan("smith", {}, NO_CAPABILITIES)!.degraded).toBe(true);
     expect(buildProviderSearchPlan("smith", {}, ALL)!.degraded).toBe(false);
+  });
+
+  it("reports a degraded organization search while the trigram index is still building", () => {
+    const building = { ...ALL, trigram: false, trigramPending: true };
+    const plan = buildProviderSearchPlan("mercy", { entityType: "Organization" }, building)!;
+    expect(plan.mode).toBe("prefix");
+    expect(plan.degraded).toBe(true);
+    // Two characters never use "contains", so nothing is missing.
+    expect(buildProviderSearchPlan("me", { entityType: "Organization" }, building)!.degraded).toBe(false);
+    // People-only searches don't use the trigram index.
+    expect(buildProviderSearchPlan("mercy", { entityType: "Individual" }, building)!.degraded).toBe(false);
+    // Without pg_trgm, prefix matching is the intended behavior, not a degraded one.
+    expect(buildProviderSearchPlan("mercy", { entityType: "Organization" }, { ...ALL, trigram: false })!.degraded).toBe(false);
+  });
+
+  it("returns the fields the directory pages filter and sort on", () => {
+    // "Not searched" email filter and "Last updated" sort, on every query of the plan.
+    for (const q of buildProviderSearchPlan("smith", {}, ALL)!.queries) {
+      const columns = q.text.split("FROM")[0];
+      expect(columns).toMatch(/\bemail_searched_at\b/);
+      expect(columns).toMatch(/\bupdated_date\b/);
+    }
   });
 
   it("escapes LIKE wildcards in user input", () => {
@@ -179,5 +220,11 @@ describe("search indexes", () => {
     expect(capabilitiesFrom([], ["idx_providers_org_name_trgm"]).trigram).toBe(false);
     expect(capabilitiesFrom(["pg_trgm"], []).trigram).toBe(false);
     expect(capabilitiesFrom([], ["idx_providers_last_name_lower", "idx_provloc_zip5"])).toMatchObject({ lastName: true, zip5: true, stateCity: false });
+  });
+
+  it("tells a trigram index still building apart from no pg_trgm at all", () => {
+    expect(capabilitiesFrom(["pg_trgm"], []).trigramPending).toBe(true);
+    expect(capabilitiesFrom(["pg_trgm"], ["idx_providers_org_name_trgm"]).trigramPending).toBe(false);
+    expect(capabilitiesFrom([], []).trigramPending).toBe(false);
   });
 });

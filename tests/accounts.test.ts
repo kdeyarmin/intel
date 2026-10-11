@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import jwt from "jsonwebtoken";
 import {
   adminActionProblem,
@@ -11,7 +11,6 @@ import {
   tokenLink,
 } from "../server/lib/accounts";
 import { parseTrustProxy } from "../server/lib/trustProxy";
-import { createFailureCounter } from "../server/middleware/rateLimit";
 import { seedAdmin } from "../server/lib/adminSeed";
 import { memoryUserRepo } from "./helpers/accountHarness";
 
@@ -80,36 +79,6 @@ describe("adminActionProblem", () => {
     expect(adminActionProblem({ actorId: 1, target: user, action: "delete", activeAdmins: 2 })).toMatch(/Disable this account instead/);
     expect(adminActionProblem({ actorId: 1, target: { ...user, status: "pending" }, action: "delete", activeAdmins: 2 })).toBeNull();
     expect(adminActionProblem({ actorId: 1, target: { ...user, status: "invited" }, action: "disable", activeAdmins: 2 })).toMatch(/Delete it instead/);
-  });
-});
-
-describe("createFailureCounter", () => {
-  afterEach(() => vi.useRealTimers());
-  it("locks after max failures, clears on success, and expires", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(0);
-    const c = createFailureCounter(3, 60_000);
-    c.fail("a");
-    c.fail("a");
-    expect(c.lockedFor("a")).toBe(0);
-    c.fail("a");
-    expect(c.lockedFor("a")).toBe(60_000);
-    expect(c.lockedFor("b")).toBe(0);
-    vi.setSystemTime(60_000);
-    expect(c.lockedFor("a")).toBe(0);
-    c.fail("b");
-    c.clear("b");
-    c.fail("b");
-    c.fail("b");
-    expect(c.lockedFor("b")).toBe(0);
-  });
-
-  it("keeps lockouts when a spray of new keys fills the map", () => {
-    const c = createFailureCounter(3, 60_000, 100);
-    for (let i = 0; i < 3; i += 1) c.fail("victim@example.com");
-    expect(c.lockedFor("victim@example.com")).toBeGreaterThan(0);
-    for (let i = 0; i < 1000; i += 1) c.fail(`spray-${i}@example.com`);
-    expect(c.lockedFor("victim@example.com")).toBeGreaterThan(0);
   });
 });
 

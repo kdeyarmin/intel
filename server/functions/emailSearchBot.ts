@@ -4,6 +4,7 @@ import { eq, and, isNull, isNotNull, sql, asc, desc, inArray, lt } from "drizzle
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { AI_EMAIL_SOURCE, isValidEmailSyntax, shouldPromoteToPrimary } from "./emailValidation";
+import { unverifiedEmailUpdate } from "../lib/entityFields";
 
 const BATCH_DELAY_MS = 300;
 const CONSECUTIVE_ERROR_LIMIT = 20;
@@ -251,7 +252,7 @@ Be strict: AI-inferred emails without verified domains should be "risky" at best
   }
 }
 
-async function saveEmailToProvider(provider: any, result: any) {
+export async function saveEmailToProvider(provider: any, result: any) {
   // All candidates the model returned, normalized + tagged as AI-inferred so the
   // UI can flag them as unverified. Drop anything not even syntactically valid.
   const candidates = (result.all_emails || [])
@@ -284,9 +285,10 @@ async function saveEmailToProvider(provider: any, result: any) {
     return;
   }
 
+  // A new address drops the old address's DNS check; see unverifiedEmailUpdate.
   await db
     .update(providers)
-    .set({
+    .set(unverifiedEmailUpdate(providers, {
       email: promote.best_email,
       email_confidence: promote.confidence,
       email_source: AI_EMAIL_SOURCE,
@@ -295,7 +297,7 @@ async function saveEmailToProvider(provider: any, result: any) {
       additional_emails: candidates.length > 1 ? candidates.slice(1) : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
-    })
+    }))
     .where(eq(providers.id, provider.id));
 }
 
