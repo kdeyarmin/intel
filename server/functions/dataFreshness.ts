@@ -2,16 +2,31 @@
 // Datasets come from the version registry, analytics from rollup_runs and
 // geography from geo_meta, so the footer, the dataset catalog and the Help
 // page can all say the same thing.
+import { pool } from "../db";
 import { listDatasetVersions } from "../lib/datasetRegistry";
+import { NUCC_META_KEY } from "../lib/nucc/load";
 import { getCMSDatasetCatalog } from "./triggerImport";
 import { handleGetRollupStatus } from "./rollups";
 import { handleGetGeoStatus } from "./geography";
 
+/** Which NUCC taxonomy code set is loaded (server/data/nucc). */
+export async function getTaxonomyStatus() {
+  const { rows } = await pool.query(
+    `SELECT vintage, row_counts, loaded_at, EXISTS (SELECT 1 FROM nucc_taxonomies) AS complete FROM geo_meta WHERE key = $1`,
+    [NUCC_META_KEY],
+  ).catch(() => ({ rows: [] as any[] }));
+  const meta = rows[0];
+  return meta?.complete
+    ? { loaded: true, version: meta.vintage, counts: meta.row_counts, loaded_at: meta.loaded_at, source: "NUCC Health Care Provider Taxonomy code set" }
+    : { loaded: false, message: "The NUCC taxonomy isn't loaded yet. It loads automatically at start-up, or an admin can run npm run nucc:load." };
+}
+
 export async function handleGetDataFreshness() {
-  const [rows, rollups, geography] = await Promise.all([
+  const [rows, rollups, geography, taxonomy] = await Promise.all([
     listDatasetVersions().catch(() => []),
     handleGetRollupStatus().catch(() => ({ jobs: [] })),
     handleGetGeoStatus().catch(() => ({ loaded: false })),
+    getTaxonomyStatus().catch(() => ({ loaded: false })),
   ]);
   const catalog = getCMSDatasetCatalog().datasets;
   const titles = new Map(catalog.map((d) => [d.id, d.title]));

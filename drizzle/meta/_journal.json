@@ -113,6 +113,13 @@
       "when": 1791611967276,
       "tag": "0016_cms_typed_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791612027276,
+      "tag": "0017_nucc_taxonomies",
+      "breakpoints": true
     }
   ]
 }

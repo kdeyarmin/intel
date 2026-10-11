@@ -19,6 +19,7 @@ import { markImportFinished } from "../lib/datasetRegistry";
 import { settleBatchCompletion } from "../lib/importCompletion";
 import { getExcludedCredentials, isCredentialExcluded } from "./importNPPESFlatFile";
 import { UPLOAD_DIR } from "../lib/importSources";
+import { getTaxonomyIndex } from "../lib/taxonomy";
 
 export const NPPES_FILE_TYPES: Record<string, NppesFileKind> = {
   nppes_weekly_incremental: "weekly",
@@ -97,6 +98,11 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
     const opened = await openNpiDataStream(zipPath);
     close = opened.close;
     const excludedSet = await getExcludedCredentials().catch(() => new Set<string>());
+    // The dissemination files carry taxonomy codes only; descriptions come
+    // from the bundled NUCC code set (empty until it is loaded, in which case
+    // the description stays whatever the crawler stored).
+    const taxonomy = await getTaxonomyIndex(pool);
+    const describeTaxonomy = (code: string) => taxonomy.describe(code);
     const records = csvRecords(opened.stream, { normalizeHeaders: false });
     for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
       pages++;
@@ -117,7 +123,7 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
       if (!dry_run && batchRecords.length) {
         const client = await pool.connect();
         try {
-          const stats = await writeNppesRecords(client, batchRecords);
+          const stats = await writeNppesRecords(client, batchRecords, { describeTaxonomy });
           providersWritten += stats.providers;
           locations += stats.locations;
           locationsRemoved += stats.locations_removed;
@@ -138,10 +144,13 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
       skipped_rows: invalid + excluded,
       total_rows: rowsRead,
       error_samples: null,
-      retry_params: { file_url, import_type, resume_offset: rowsRead, locations, locations_removed: locationsRemoved, taxonomies, invalid_npis: invalid, excluded_credentials: excluded },
+      retry_params: { file_url, import_type, resume_offset: rowsRead, locations, locations_removed: locationsRemoved, taxonomies, invalid_npis: invalid, excluded_credentials: excluded, unknown_taxonomy_codes: [...taxonomy.unknown].slice(0, 50) },
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     console.log(`[importNPPESFile] Completed ${import_type}: rows=${rowsRead}, providers=${providersWritten}, locations=${locations} (+${locationsRemoved} removed), taxonomies=${taxonomies}, invalid=${invalid}, excluded=${excluded}`);
+    if (taxonomy.unknown.size > 0) {
+      console.warn(`[importNPPESFile] ${taxonomy.unknown.size} taxonomy code(s) not in the NUCC ${taxonomy.version ?? "?"} code set, e.g. ${[...taxonomy.unknown].slice(0, 10).join(", ")}; rebuild server/data/nucc from the current NUCC release`);
+    }
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: rowsRead, dataYear: file?.periodEnd?.slice(0, 4) ?? null, note: dry_run ? "dry run" : `file ${path.basename(file_url)}` }).catch(() => {});
   } catch (e: any) {
     console.error(`[importNPPESFile] Failed ${import_type}:`, e?.message || e);

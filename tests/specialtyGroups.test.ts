@@ -25,6 +25,20 @@ const CASES: Array<[string | null, string | null, string]> = [
   ["363L00000X", "Nurse Practitioner", "nurse_practitioner"],
   ["251E00000X", "Home Health", "home_health"],
   ["282N00000X", "General Acute Care Hospital", "hospital"],
+  // Long-term care settings outside CMS files (personal care homes, assisted living, memory care).
+  ["310400000X", "Assisted Living Facility", "assisted_living"],
+  ["3104A0625X", "Assisted Living Facility, Assisted Living, Mental Illness", "assisted_living"],
+  ["3104A0630X", "Assisted Living Facility, Assisted Living, Behavioral Disturbances", "assisted_living"],
+  ["311500000X", "Alzheimer Center (Dementia Center)", "alzheimer_center"],
+  ["311ZA0620X", "Custodial Care Facility, Adult Care Home", "adult_care_home"],
+  ["311Z00000X", "Custodial Care Facility", "custodial_care"],
+  ["313M00000X", "Nursing Facility/Intermediate Care Facility", "nursing_facility"],
+  ["314000000X", "Skilled Nursing Facility", "skilled_nursing"],
+  ["3140N1450X", "Skilled Nursing Facility, Nursing Care, Pediatric", "skilled_nursing"],
+  [null, "Personal Care Home", "assisted_living"],
+  [null, "Nursing Facility/Intermediate Care Facility", "nursing_facility"],
+  // A personal care attendant is a person, not a home.
+  [null, "Nursing Service Related Providers, Personal Care Attendant", "other"],
   // No code: the specialization after the comma decides.
   [null, "Psychiatry & Neurology, Neurology", "neurology"],
   [null, "Internal Medicine, Cardiovascular Disease", "cardiology"],

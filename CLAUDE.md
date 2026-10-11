@@ -128,7 +128,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
   `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by
   free text: NPPES says "Internal Medicine, Cardiovascular Disease", never
-  "Cardiology".
+  "Cardiology". The NUCC code set itself is bundled in `server/data/nucc`
+  (built by `scripts/nucc/build-nucc-taxonomy.ts --version NNN` from
+  nucc.org, checksummed by `manifest.json`), loaded into `nucc_taxonomies` at
+  boot by `server/lib/nucc/load.ts` and read through `server/lib/taxonomy.ts`
+  (`getTaxonomyIndex(pool).describe(code)`), which is how file-imported
+  NPPES taxonomies get their descriptions. Rebuild it each January and July.
 
 ## Gotchas
 

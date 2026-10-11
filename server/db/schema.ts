@@ -180,6 +180,20 @@ export const geoZctaCounties = pgTable("geo_zcta_counties", {
   index("geo_zcta_counties_county_idx").on(table.county_fips),
 ]);
 
+// NUCC taxonomy code set (server/data/nucc, loaded by server/lib/nucc/load.ts).
+export const nuccTaxonomies = pgTable("nucc_taxonomies", {
+  code: varchar("code", { length: 10 }).primaryKey(),
+  grouping: text("grouping"),
+  classification: text("classification"),
+  specialization: text("specialization"),
+  display_name: text("display_name"),
+  section: varchar("section", { length: 20 }),
+  definition: text("definition"),
+  version: varchar("version", { length: 10 }),
+}, (table) => [
+  index("nucc_taxonomies_grouping_idx").on(table.grouping),
+]);
+
 export const geoMeta = pgTable("geo_meta", {
   key: varchar("key", { length: 50 }).primaryKey(),
   vintage: varchar("vintage", { length: 20 }),

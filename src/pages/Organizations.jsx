@@ -27,6 +27,7 @@ import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
 import { useUrlState } from '@/hooks/useUrlState';
 import { US_STATES } from '@/lib/usStates';
 import { pickPrimaryLocation } from '@/lib/locations';
+import { SPECIALTY_GROUPS, specialtyGroupFor } from '@/lib/specialtyGroups';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -40,14 +41,15 @@ const SEARCH_LIMIT = 300;
 const RECENT_LIMIT = 200;
 
 // Search, filters, sort and tab live in the URL (Back restores them; links are shareable).
-const URL_DEFAULTS = { q: '', status: 'all', email: 'all', state: 'all', sort: 'default', dir: 'asc', tab: 'directory' };
+const URL_DEFAULTS = { q: '', status: 'all', email: 'all', state: 'all', specialty: 'all', sort: 'default', dir: 'asc', tab: 'directory' };
 
 const filtersFromUrl = (url) => ({
   statusFilter: url.status,
   enrichmentFilter: 'all',
   emailFilter: url.email,
   stateFilter: url.state,
-  specialtyFilter: 'all',
+  // A specialty group key (src/lib/specialtyGroups.js), matched on the NUCC taxonomy code.
+  specialtyFilter: url.specialty,
 });
 
 export default function Organizations() {
@@ -58,6 +60,7 @@ export default function Organizations() {
     status: f.statusFilter || 'all',
     email: f.emailFilter || 'all',
     state: f.stateFilter || 'all',
+    specialty: f.specialtyFilter || 'all',
   }), [setUrl]);
   const sortField = url.sort;
   const sortDir = url.dir;
@@ -180,9 +183,9 @@ export default function Organizations() {
 
   const resetFilters = () => {
     setSearchTerm('');
-    setUrl({ q: '', status: 'all', email: 'all', state: 'all', sort: 'default', dir: 'asc' });
+    setUrl({ q: '', status: 'all', email: 'all', state: 'all', specialty: 'all', sort: 'default', dir: 'asc' });
   };
-  const hasActiveFilters = filters.statusFilter !== 'all' || filters.emailFilter !== 'all' || filters.stateFilter !== 'all';
+  const hasActiveFilters = filters.statusFilter !== 'all' || filters.emailFilter !== 'all' || filters.stateFilter !== 'all' || filters.specialtyFilter !== 'all';
 
   const stateOptions = useMemo(
     () => (isSearching ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort()),
@@ -211,14 +214,28 @@ export default function Organizations() {
     return map;
   }, [locations]);
 
-  const _taxonomyByNpi = useMemo(() => {
+  // Specialty groups per organization, from the NUCC codes of its taxonomies
+  // (an assisted living facility is 310400000X whatever NPPES calls it).
+  const groupsByNpi = useMemo(() => {
     const map = {};
     for (const t of taxonomies) {
-      if (!map[t.npi]) map[t.npi] = [];
-      map[t.npi].push(t);
+      const g = specialtyGroupFor(t.taxonomy_code, t.taxonomy_description);
+      if (g.key === 'other') continue;
+      if (!map[t.npi]) map[t.npi] = new Set();
+      map[t.npi].add(g.key);
     }
     return map;
   }, [taxonomies]);
+
+  // Only the groups present among the loaded organizations, so the list stays short.
+  const specialtyOptions = useMemo(() => {
+    const present = new Set();
+    for (const groups of Object.values(groupsByNpi)) for (const k of groups) present.add(k);
+    if (filters.specialtyFilter !== 'all') present.add(filters.specialtyFilter);
+    return SPECIALTY_GROUPS.filter(g => present.has(g.key))
+      .map(g => ({ value: g.key, label: g.label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [groupsByNpi, filters.specialtyFilter]);
 
   const searchSuggestions = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
@@ -265,9 +282,10 @@ export default function Organizations() {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
+      if (filters.specialtyFilter !== 'all' && !groupsByNpi[p.npi]?.has(filters.specialtyFilter)) return false;
       return true;
     });
-  }, [providers, filters, locationByNpi, searchState]);
+  }, [providers, filters, locationByNpi, groupsByNpi, searchState]);
 
   const sortedProviders = useMemo(() => {
     if (sortField === 'default') return filteredProviders;
@@ -440,6 +458,12 @@ export default function Organizations() {
                     value={filters.stateFilter}
                     onChange={(v) => setFilters({ ...filters, stateFilter: v })}
                     options={stateOptions.map(st => ({ value: st, label: st }))}
+                  />
+                  <FilterSelect
+                    label="Specialty"
+                    value={filters.specialtyFilter}
+                    onChange={(v) => setFilters({ ...filters, specialtyFilter: v })}
+                    options={specialtyOptions}
                   />
                   {(hasActiveFilters || searchTerm) && (
                     <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs text-slate-400 hover:text-slate-200">

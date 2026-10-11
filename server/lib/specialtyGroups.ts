@@ -46,6 +46,12 @@ export const SPECIALTY_GROUPS: SpecialtyGroup[] = [
   { key: "home_health", label: "Home Health", codes: ["251E"], words: /home health/i },
   { key: "hospice", label: "Hospice", codes: ["251G", "315D"], words: /hospice/i },
   { key: "skilled_nursing", label: "Skilled Nursing", codes: ["314000000X", "3140N1450X"], words: /skilled nursing/i },
+  // Long-term care settings that aren't in CMS files (personal care homes, assisted living, memory care).
+  { key: "assisted_living", label: "Assisted Living / Personal Care", codes: ["3104"], words: /assisted living|personal care home/i },
+  { key: "alzheimer_center", label: "Alzheimer / Dementia Center", codes: ["3115"], words: /alzheimer|dementia/i },
+  { key: "adult_care_home", label: "Adult Care Home", codes: ["311ZA0620X"], words: /adult care home/i },
+  { key: "custodial_care", label: "Custodial Care Facility", codes: ["311Z00000X"], words: /custodial care/i },
+  { key: "nursing_facility", label: "Nursing / Intermediate Care Facility", codes: ["313M"], words: /^nursing facility(\/|$)/i },
   { key: "hospital", label: "Hospital", codes: ["282N", "282E", "283X", "273R", "273Y", "281P"], words: /hospital/i },
 ];
 

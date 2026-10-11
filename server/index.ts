@@ -299,6 +299,9 @@ app.listen(PORT, "0.0.0.0", async () => {
     (async () => {
       const { autoloadCensusGeography } = await import("./lib/census/load");
       await autoloadCensusGeography(dbPool);
+      // The NUCC taxonomy code set (server/data/nucc) loads the same way.
+      const { autoloadNuccTaxonomies } = await import("./lib/nucc/load");
+      await autoloadNuccTaxonomies(dbPool);
     })();
 
     // Large-table indexes build in the background (see server/lib/bootIndexes.ts).
