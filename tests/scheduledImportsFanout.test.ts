@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   fanoutCalls: [] as any[],
+  batches: [] as any[],
   schedules: [] as any[],
   updates: [] as any[],
   triggered: [] as any[],
@@ -15,7 +16,8 @@ const h = vi.hoisted(() => ({
 
 vi.mock("../server/db", () => {
   const db = {
-    select: () => ({ from: () => ({ where: async () => h.schedules }) }),
+    // select() reads the schedules; select({ id }) is the lookup of live batches.
+    select: (fields?: unknown) => ({ from: () => ({ where: async () => (fields ? h.batches : h.schedules) }) }),
     update: () => ({
       set: (values: any) => ({
         where: () => {
@@ -53,6 +55,7 @@ import { handleRunScheduledImports } from "../server/functions/scheduledImports"
 
 beforeEach(() => {
   h.fanoutCalls.length = 0;
+  h.batches.length = 0;
   h.schedules.length = 0;
   h.updates.length = 0;
   h.triggered.length = 0;
@@ -84,6 +87,48 @@ describe("handleRunScheduledImports fan-out", () => {
     expect(h.triggered[0]).toMatchObject({ import_type: "hospice_provider_data", dry_run: false });
     expect(h.fanoutCalls[0].opts.schedules).toEqual({ checked: 1, processed: 1, started: 1, skipped: 0 });
     expect(r.results[0]).toMatchObject({ import_type: "hospice_provider_data" });
+  });
+
+  it("leaves a schedule alone while its own batch is still running, even past its lease", async () => {
+    h.schedules.push({
+      id: 5,
+      import_type: "medicare_facilities",
+      label: "Facilities",
+      is_active: true,
+      enabled: true,
+      schedule_frequency: "daily",
+      schedule_time: "02:00",
+      last_run_status: "running",
+      last_batch_id: 77,
+      // The six-hour lease ran out; the batch is still going.
+      next_run_at: new Date(Date.now() - 60_000),
+      consecutive_failures: 0,
+    });
+    h.batches.push({ id: 77 });
+    const r: any = await handleRunScheduledImports();
+    expect(h.triggered).toHaveLength(0);
+    expect(r.skipped).toEqual([expect.objectContaining({ id: 5, reason: expect.stringMatching(/batch #77\) is still in progress/) })]);
+    expect(h.fanoutCalls[0].opts.schedules).toEqual({ checked: 1, processed: 0, started: 0, skipped: 1 });
+  });
+
+  it("starts a schedule again when the batch it was waiting on is gone", async () => {
+    h.schedules.push({
+      id: 6,
+      import_type: "hospice_provider_data",
+      label: "Hospice",
+      is_active: true,
+      enabled: true,
+      schedule_frequency: "daily",
+      schedule_time: "02:00",
+      last_run_status: "running",
+      last_batch_id: 78,
+      next_run_at: new Date(Date.now() - 60_000),
+      consecutive_failures: 0,
+    });
+    // No live batch 78: the process died after the claim, so the schedule is due.
+    const r: any = await handleRunScheduledImports();
+    expect(h.triggered).toHaveLength(1);
+    expect(r.skipped).toEqual([]);
   });
 
   it("no longer exports private maintenance workers", async () => {

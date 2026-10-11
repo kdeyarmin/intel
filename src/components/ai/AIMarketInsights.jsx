@@ -39,7 +39,7 @@ export default function AIMarketInsights({ provider, location, taxonomies, utili
       : 'Insufficient trend data';
 
     const refTrend = refByYear.length >= 2
-      ? `Shared patients changed from ${refByYear[refByYear.length - 2].total_referrals} to ${refByYear[refByYear.length - 1].total_referrals}`
+      ? `Shared-patient encounters changed from ${refByYear[refByYear.length - 2].total_referrals} to ${refByYear[refByYear.length - 1].total_referrals}`
       : 'Insufficient trend data';
 
     try {
@@ -61,7 +61,7 @@ UTILIZATION DATA:
 - Trend: ${utilTrend}
 
 SHARED-PATIENT DATA (CMS shared-patient patterns, not confirmed referrals):
-- Shared patients (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
+- Shared-patient encounters (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
 - Partner providers: ${latestRef?.partners || 0}
 - Trend: ${refTrend}
 

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../server/db", () => ({ db: {}, pool: {} }));
 
-import { decideSettlement, settlementUpdate, shouldApply, RUN_LEASE_MS } from "../server/lib/importCompletion";
+import { decideSettlement, settlementUpdate, shouldApply, RUN_LEASE_MS, PROGRESS_GRACE_MS } from "../server/lib/importCompletion";
 
 const now = new Date("2026-10-11T12:00:00.000Z");
 const lease = new Date(now.getTime() + RUN_LEASE_MS);
@@ -36,6 +36,18 @@ describe("decideSettlement", () => {
     const later = new Date(lease.getTime() + 1);
     expect(decideSettlement({ id: 1, status: "processing" }, later, lease).action).toBe("failed");
     expect(decideSettlement(null, later, lease).action).toBe("failed");
+  });
+
+  it("does not give up on a long run that is still writing progress", () => {
+    const later = new Date(lease.getTime() + 60 * 60_000);
+    const recent = new Date(later.getTime() - PROGRESS_GRACE_MS + 60_000);
+    const quiet = new Date(later.getTime() - PROGRESS_GRACE_MS - 60_000);
+    // Past its lease but touched a few minutes ago: still working, so wait.
+    expect(decideSettlement({ id: 1, status: "processing", updated_date: recent }, later, lease)).toEqual({ action: "wait", reason: "batch_processing" });
+    // Past its lease and quiet for longer than the grace: gone quiet, so fail it.
+    expect(decideSettlement({ id: 1, status: "processing", updated_date: quiet }, later, lease).action).toBe("failed");
+    // A terminal batch is settled whatever its age.
+    expect(decideSettlement({ id: 1, status: "completed", updated_date: quiet }, later, lease).action).toBe("success");
   });
 
   it("never waits forever when no lease is known: open batches just wait", () => {

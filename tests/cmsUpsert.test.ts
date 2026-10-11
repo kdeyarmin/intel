@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { makeKey, partition, distinctValues, deriveLineTotal, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
+import { makeKey, partition, partitionRefresh, isRefreshOf, distinctValues, deriveLineTotal, CMS_NATURAL_KEYS } from "../server/functions/cmsUpsert";
 
 describe("makeKey", () => {
   it("joins normalized key columns", () => {
@@ -10,6 +10,40 @@ describe("makeKey", () => {
   });
   it("treats null/undefined as empty", () => {
     expect(makeKey({ npi: null }, ["npi", "missing"])).toBe("|");
+  });
+});
+
+describe("partitionRefresh", () => {
+  const stored = (id: number, provider_id: string, data_year: string, import_batch_id: string) => ({ id, provider_id, data_year, import_batch_id });
+  const row = (provider_id: string, data_year: string, import_batch_id: string) => ({ provider_id, data_year, import_batch_id });
+
+  it("creates new providers and refreshes existing ones from a later release", () => {
+    const existing = [stored(10, "A", "2024", "1"), stored(11, "B", "2024", "1")];
+    const rows = [row("A", "2025", "2"), row("C", "2025", "2")];
+    const r = partitionRefresh(rows, existing, ["provider_id"]);
+    expect(r.toCreate).toEqual([row("C", "2025", "2")]);
+    expect(r.toRefresh).toEqual([{ id: 10, row: row("A", "2025", "2") }]);
+    expect(r.skipped).toBe(0);
+  });
+
+  it("leaves rows this batch already wrote alone (a resume re-reading its pages)", () => {
+    const r = partitionRefresh([row("A", "2025", "2")], [stored(10, "A", "2025", "2")], ["provider_id"]);
+    expect(r).toEqual({ toCreate: [], toRefresh: [], skipped: 1 });
+  });
+
+  it("never replaces a newer vintage with an older one", () => {
+    const r = partitionRefresh([row("A", "2023", "3")], [stored(10, "A", "2024", "1")], ["provider_id"]);
+    expect(r).toEqual({ toCreate: [], toRefresh: [], skipped: 1 });
+    // An unknown year on either side doesn't block a refresh.
+    expect(isRefreshOf({ data_year: null, import_batch_id: "1" }, { data_year: "2023", import_batch_id: "3" })).toBe(true);
+    expect(isRefreshOf({ data_year: "2024", import_batch_id: "1" }, { data_year: null, import_batch_id: "3" })).toBe(true);
+  });
+
+  it("keeps the first row per provider within a batch, as before", () => {
+    const r = partitionRefresh([row("A", "2025", "2"), row("A", "2025", "2"), row("D", "2025", "2"), row("d", "2025", "2")], [stored(10, "A", "2024", "1")], ["provider_id"]);
+    expect(r.toRefresh).toHaveLength(1);
+    expect(r.toCreate).toEqual([row("D", "2025", "2")]);
+    expect(r.skipped).toBe(2);
   });
 });
 

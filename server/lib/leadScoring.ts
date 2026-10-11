@@ -82,13 +82,37 @@ export interface Territory {
   counties: string[];
 }
 
-/** The states scored and the priority counties, from the geographic_priority rule's conditions. */
-export function resolveTerritory(rules: ScoringRule[]): Territory {
-  const geo = rules.find((r) => r.rule_type === "geographic_priority");
-  const c = geo?.conditions ?? defaultsFor("geographic_priority");
+function territoryOf(c: Record<string, unknown>): Territory {
   const states = [...new Set(listOf(c.states).map((s) => s.toUpperCase()).filter((s) => /^[A-Z]{2}$/.test(s)))];
   const counties = [...new Set(listOf(c.counties).map((s) => s.replace(/\D/g, "")).filter((s) => /^\d{5}$/.test(s)))];
   return { states, counties };
+}
+
+/**
+ * The states scored and the priority counties, from the active
+ * geographic_priority rule's conditions. With no active rule there is no
+ * territory: it never falls back to a default state.
+ */
+export function resolveTerritory(rules: ScoringRule[]): Territory {
+  const geo = rules.find((r) => r.rule_type === "geographic_priority");
+  return geo ? territoryOf(geo.conditions) : { states: [], counties: [] };
+}
+
+/**
+ * The territory a scoring run covers, from the scoring_rules rows. The
+ * territory decides which providers are scored at all, so it is read from the
+ * Geographic Priority row whether or not that rule is enabled or weighted:
+ * turning the rule off stops it adding points, it doesn't change the scope
+ * (and doesn't silently put the scope back to Pennsylvania). A row saved
+ * without conditions keeps the default states; with no such row there is no
+ * territory and the run fails and says so.
+ */
+export function territoryFromRows(rows: ScoringRuleRow[]): Territory {
+  const geo = rows.filter((r) => String(r.rule_type ?? "") === "geographic_priority");
+  const row = geo.find((r) => r.enabled !== false && Number(r.weight) > 0) ?? geo[0];
+  if (!row) return { states: [], counties: [] };
+  const given = row.conditions && typeof row.conditions === "object" && !Array.isArray(row.conditions) ? row.conditions : {};
+  return territoryOf({ ...defaultsFor("geographic_priority"), ...given });
 }
 
 /** The specialty group keys the specialty_match rule targets. */

@@ -1,4 +1,4 @@
-import { describeReferrals } from '@/lib/referralSummary';
+import { describeSnapshot } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,7 @@ CareMetric Score: ${score?.score || 'N/A'}
 
 UTILIZATION: ${utilization ? `${utilization.total_medicare_beneficiaries || 0} beneficiaries, ${utilization.total_services || 0} services, $${utilization.total_medicare_payment?.toLocaleString() || 0} payment` : 'No data'}
 
-SHARED PATIENTS AND ELIGIBILITY: ${describeReferrals(referrals ? [{ data_year: referrals.year, total_referrals: referrals.total_referrals, total_beneficiaries: referrals.total_beneficiaries, referred_to_npi: null }] : [], orderReferring)}${referrals?.partners ? ` Partner providers: ${referrals.partners}.` : ''}
+SHARED PATIENTS AND ELIGIBILITY: ${describeSnapshot(referrals, orderReferring)}
 
 Provide:
 1. Network Fit Score (0-100) — how well this provider fits into a post-acute care referral network

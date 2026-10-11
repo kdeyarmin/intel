@@ -18,7 +18,7 @@ vi.mock("../server/lib/geo", () => ({
 }));
 
 import { DEFAULT_SCORING_RULES } from "../server/lib/leadScoring";
-import { leadScoringDue, runLeadScoring, startLeadScoring, waitForLeadScoring } from "../server/lib/leadScoringJob";
+import { leadScoringDue, leadScoringStatus, runLeadScoring, settleInterruptedLeadScoring, startLeadScoring, waitForLeadScoring } from "../server/lib/leadScoringJob";
 
 const LOCATIONS = [
   { id: 1, npi: "1111111111", state: "PA", zip: "15213-1234", city: "Pittsburgh", location_type: "Practice" },
@@ -104,6 +104,14 @@ describe("runLeadScoring", () => {
     expect(statements).toHaveLength(0);
   });
 
+  it("scores the states named by a Geographic Priority rule that is switched off, not Pennsylvania", async () => {
+    const { pool, statements } = fakePool();
+    const rules = DEFAULT_SCORING_RULES.map((r) => (r.rule_type === "geographic_priority" ? { ...r, enabled: false, conditions: { states: ["OH"], counties: [] } } : r));
+    const r = await runLeadScoring(pool, rules as any, { log: { log: vi.fn(), warn: vi.fn() } });
+    expect(r).toMatchObject({ status: "success", territory: { states: ["OH"], counties: [] } });
+    expect(statements.find((s) => s.sql.includes("FROM provider_locations") && s.sql.includes("id >= $1"))!.params![2]).toEqual(["OH"]);
+  });
+
   it("skips when another instance holds the lock", async () => {
     h.lockOk = false;
     const { pool, statements } = fakePool();
@@ -129,5 +137,70 @@ describe("leadScoringDue", () => {
     expect(leadScoringDue({ running: false, last_success_at: "2026-10-01T00:00:00Z" }, now)).toBe(true);
     expect(leadScoringDue({ running: false, last_success_at: "2026-10-09T00:00:00Z" }, now)).toBe(false);
     expect(leadScoringDue({ running: true, last_success_at: null }, now)).toBe(false);
+  });
+});
+
+describe("a run a restart interrupted", () => {
+  function statusPool(row: { status: string } | null, opts: { lockFree: boolean; unlockFails?: boolean }) {
+    const state = { row: row as any };
+    const released: unknown[] = [];
+    const client = {
+      async query(sql: string) {
+        if (sql.includes("pg_try_advisory_lock")) return { rows: [{ ok: opts.lockFree }] };
+        if (sql.includes("pg_advisory_unlock")) {
+          if (opts.unlockFails) throw new Error("connection lost");
+          return { rows: [{}] };
+        }
+        return { rows: [] };
+      },
+      release(destroy?: unknown) { released.push(destroy); },
+    };
+    const pool = {
+      connect: async () => client,
+      async query(sql: string, params?: any[]) {
+        if (sql.startsWith("SELECT status FROM rollup_runs")) return { rows: state.row ? [{ status: state.row.status }] : [] };
+        if (sql.startsWith("UPDATE rollup_runs")) {
+          if (state.row?.status !== "running") return { rowCount: 0, rows: [] };
+          state.row = { ...state.row, status: "failed", error: params![1] };
+          return { rowCount: 1, rows: [] };
+        }
+        if (sql.startsWith("SELECT * FROM rollup_runs")) return { rows: state.row ? [state.row] : [] };
+        if (sql.includes("FROM lead_scores")) return { rows: [{ n: 12 }] };
+        return { rows: [] };
+      },
+    };
+    return { pool, state, released };
+  }
+
+  it("is marked failed once no process holds the lock, so the weekly refresh can start again", async () => {
+    const { pool, state, released } = statusPool({ status: "running" }, { lockFree: true });
+    const status = await leadScoringStatus(pool);
+    expect(state.row).toMatchObject({ status: "failed", error: expect.stringMatching(/Interrupted/) });
+    expect(status).toMatchObject({ running: false, status: "failed", error: expect.stringMatching(/Interrupted/) });
+    expect(leadScoringDue(status)).toBe(true);
+    expect(released).toEqual([undefined]);
+  });
+
+  it("is left alone while another instance holds the lock", async () => {
+    const { pool, state } = statusPool({ status: "running" }, { lockFree: false });
+    expect(await settleInterruptedLeadScoring(pool)).toBe(false);
+    expect(state.row.status).toBe("running");
+    const status = await leadScoringStatus(pool);
+    expect(status.running).toBe(true);
+    expect(leadScoringDue(status)).toBe(false);
+  });
+
+  it("changes nothing for a finished run, and doesn't probe the lock for one", async () => {
+    const { pool, state, released } = statusPool({ status: "success" }, { lockFree: true });
+    expect(await settleInterruptedLeadScoring(pool)).toBe(false);
+    expect(state.row.status).toBe("success");
+    expect(released).toEqual([]);
+  });
+
+  it("doesn't declare a run dead when the lock can't be released cleanly, and destroys that connection", async () => {
+    const { pool, state, released } = statusPool({ status: "running" }, { lockFree: true, unlockFails: true });
+    expect(await settleInterruptedLeadScoring(pool)).toBe(false);
+    expect(state.row.status).toBe("running");
+    expect(released).toEqual([true]);
   });
 });

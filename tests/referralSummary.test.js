@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeReferrals, eligibilityLabels, latestReferralSnapshot, referralTotalsByYear } from '../src/lib/referralSummary';
+import { describeReferrals, describeSnapshot, eligibilityLabels, latestReferralSnapshot, referralTotalsByYear } from '../src/lib/referralSummary';
 
 const rows = [
   { npi: '1', referred_to_npi: '2', total_referrals: 10, total_beneficiaries: 6, data_year: '2015' },
@@ -35,6 +35,22 @@ describe('eligibility', () => {
   it('lists only the services flagged true', () => {
     expect(eligibilityLabels({ hha: true, hospice: true, dme: false, partb: null, pmd: true })).toEqual(['Home Health', 'Hospice', 'Power Mobility']);
     expect(eligibilityLabels(null)).toEqual([]);
+  });
+});
+
+describe('describeSnapshot', () => {
+  it('states the partner count once, from the snapshot, instead of rebuilding pair rows (which said 0 partners)', () => {
+    const snapshot = latestReferralSnapshot(rows);
+    const text = describeSnapshot(snapshot, null);
+    expect(text).toContain('15 shared-patient encounters with 2 partner providers');
+    expect(text).not.toMatch(/with 0 partner/);
+    // Same sentence as describing the rows themselves.
+    expect(text).toBe(describeReferrals(rows, null));
+  });
+
+  it('copes with a snapshot that lacks a number and never invents one', () => {
+    expect(describeSnapshot({ year: '2015', total_referrals: 3 }, null)).toContain('3 shared-patient encounters with 0 partner providers');
+    expect(describeSnapshot(null, null)).toBe('No shared-patient data on file.');
   });
 });
 
