@@ -771,7 +771,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "refreshRollups": {
         const { handleRefreshRollups } = await import("../functions/rollups");
-        return res.json(await handleRefreshRollups(req.body));
+        return res.json(await handleRefreshRollups(req.body, req.user));
       }
 
       case "getGeoStatus": {
