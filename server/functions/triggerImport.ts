@@ -3,6 +3,7 @@ import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacili
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+import { settleBatchCompletion } from "../lib/importCompletion";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
@@ -1377,6 +1378,7 @@ export async function handleAutoImportCMSData(params: any) {
         }).where(eq(importBatches.id, batch_id)),
         undefined, `safety limit ${import_type}`
       );
+      await settleBatchCompletion(batch_id);
       return;
     }
 
@@ -1393,6 +1395,7 @@ export async function handleAutoImportCMSData(params: any) {
       undefined, `complete ${import_type}`
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
+    await settleBatchCompletion(batch_id);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);
     await safeImportQuery(
@@ -1404,5 +1407,6 @@ export async function handleAutoImportCMSData(params: any) {
       }).where(eq(importBatches.id, batch_id)),
       undefined, `fail ${import_type}`
     );
+    await settleBatchCompletion(batch_id);
   }
 }

@@ -269,7 +269,10 @@ export default function ImportScheduleManager() {
                         {(s.consecutive_failures || 0) > 0 && (
                           <span className="ml-1 text-[10px] text-rose-400">×{s.consecutive_failures}</span>
                         )}
-                        <div className="text-[10px] text-slate-400">{fmt(s.last_run_at)}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {s.last_run_status === 'running' ? `since ${fmt(s.last_run_at)}` : fmt(s.last_run_at)}
+                          {s.last_run_status === 'running' && s.last_batch_id ? ` · batch #${s.last_batch_id}` : ''}
+                        </div>
                       </td>
                       <td className="py-2 px-3">
                         <Switch checked={s.is_active !== false} onCheckedChange={() => toggleActive(s)} aria-label={`Active: ${s.label || s.name || s.import_type}`} />

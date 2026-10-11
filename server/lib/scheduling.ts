@@ -98,10 +98,12 @@ export function computeNextRun(
   return next;
 }
 
-// Whether a schedule's `depends_on_import_type` parent has completed
-// successfully since this schedule's last *successful* run. Tracking the child's
-// last successful run (not last_run_at) lets failed children retry against the
-// same parent run instead of being blocked until the parent runs again.
+// Whether a schedule's `depends_on_import_type` parent has *completed*
+// successfully since this schedule's last successful run. A parent is
+// "running" from the moment its batch starts until the batch settles
+// (server/lib/importCompletion.ts), so a child never starts on a parent that
+// has merely been kicked off. Tracking the child's last successful run (not
+// last_run_at) lets failed children retry against the same parent run.
 export function dependencyBlocked(
   schedule: Schedule,
   allSchedules: Schedule[],
@@ -111,14 +113,19 @@ export function dependencyBlocked(
   if (!parent) {
     return { blocked: true, reason: `Dependency import_type=${schedule.depends_on_import_type} not configured` };
   }
-  if (!parent.last_run_at) {
+  // Rows from before completion tracking only have last_run_at.
+  const parentCompletedAt = parent.last_successful_run_at ?? parent.last_run_at;
+  if (!parentCompletedAt) {
     return { blocked: true, reason: `Waiting for parent ${parent.label} to run at least once` };
+  }
+  if (parent.last_run_status === "running") {
+    return { blocked: true, reason: `Parent ${parent.label} is still running` };
   }
   if (parent.last_run_status && parent.last_run_status !== "success") {
     return { blocked: true, reason: `Parent ${parent.label} last run was ${parent.last_run_status}` };
   }
   const childLastSuccess = schedule.last_successful_run_at ? new Date(schedule.last_successful_run_at) : null;
-  if (childLastSuccess && childLastSuccess > new Date(parent.last_run_at)) {
+  if (childLastSuccess && childLastSuccess > new Date(parentCompletedAt)) {
     return { blocked: true, reason: `Already ran successfully since parent's last completion` };
   }
   return { blocked: false };

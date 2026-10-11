@@ -512,6 +512,42 @@ describe("migration 0011_rollups", () => {
   });
 });
 
+describe("migration 0015_import_completion", () => {
+  const sql = readMigration("0015_import_completion.sql");
+  const schema = readSchema();
+
+  it("is idempotent: only IF NOT EXISTS column adds and table creates", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements).toHaveLength(4);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS|CREATE TABLE IF NOT EXISTS) /);
+    }
+  });
+
+  it("links schedules and batches both ways", () => {
+    expect(sql).toContain('ALTER TABLE "import_schedule_configs" ADD COLUMN IF NOT EXISTS "last_batch_id" integer');
+    expect(sql).toContain('ALTER TABLE "import_batches" ADD COLUMN IF NOT EXISTS "schedule_id" integer');
+    expect(schema).toContain('last_batch_id: integer("last_batch_id")');
+    expect(schema).toContain('schedule_id: integer("schedule_id")');
+  });
+
+  it("declares the registry and Order & Referring tables in the Drizzle schema", () => {
+    for (const [, table] of sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+    }
+    expect(schema).toContain('status: varchar("status", { length: 20 }).notNull().default("never_imported")');
+    expect(schema).toContain('npi: varchar("npi", { length: 10 }).primaryKey()');
+  });
+
+  it("is registered in the drizzle journal after 0014", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0015_import_completion")).toBe(tags.indexOf("0014_assistant_actions_user_idx") + 1);
+    const whens = journal.entries.map((e: { when: number }) => e.when);
+    expect(whens[whens.length - 1]).toBeGreaterThan(whens[whens.length - 2]);
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

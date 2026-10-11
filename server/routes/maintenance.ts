@@ -2,12 +2,12 @@ import { Router, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { AuthRequest, authMiddleware, adminOnly } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
+import { handleRunScheduledImports } from "../functions/scheduledImports";
 import {
-  handleRunScheduledImports,
-  handleAutoRetryFailedImports,
-  handleAutoResumePausedImports,
-  handleCancelStalledImports,
-} from "../functions/scheduledImports";
+  runAutoRetryFailedImports,
+  runAutoResumePausedImports,
+  runCancelStalledImports,
+} from "../lib/maintenance";
 
 const router = Router();
 
@@ -22,9 +22,9 @@ const router = Router();
 // "toString" or "constructor" can't accidentally match a caller's task name.
 const TASKS = Object.assign(Object.create(null) as Record<string, (payload: any, user: any) => Promise<any>>, {
   runScheduledImports: handleRunScheduledImports,
-  autoRetryFailedImports: () => handleAutoRetryFailedImports(),
-  autoResumePausedImports: () => handleAutoResumePausedImports(),
-  cancelStalledImports: () => handleCancelStalledImports(),
+  autoRetryFailedImports: () => runAutoRetryFailedImports(),
+  autoResumePausedImports: () => runAutoResumePausedImports(),
+  cancelStalledImports: () => runCancelStalledImports(),
   runDueScheduledReports: async () => (await import("../functions/scheduledReports")).handleRunDueScheduledReports(),
   refreshRollups: async (payload: any) => {
     const { pool } = await import("../db");

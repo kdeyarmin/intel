@@ -386,6 +386,9 @@ export const importBatches = pgTable("import_batches", {
   completed_at: timestamp("completed_at"),
   retry_params: jsonb("retry_params"),
   dry_run: boolean("dry_run").default(false),
+  // The import schedule that started this batch (null for manual runs); the
+  // completion sweep settles that schedule when the batch finishes.
+  schedule_id: integer("schedule_id"),
   created_by: varchar("created_by", { length: 255 }),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
@@ -994,7 +997,50 @@ export const importScheduleConfigs = pgTable("import_schedule_configs", {
   next_run_at: timestamp("next_run_at"),
   consecutive_failures: integer("consecutive_failures").default(0),
   depends_on_import_type: varchar("depends_on_import_type", { length: 100 }),
+  // The batch the last run started. last_run_status is "running" until that
+  // batch completes or fails (server/lib/importCompletion.ts).
+  last_batch_id: integer("last_batch_id"),
   created_date: timestamp("created_date").defaultNow(),
+  updated_date: timestamp("updated_date").defaultNow(),
+});
+
+// Which version of each source dataset is loaded (server/lib/cmsCatalog.ts
+// fills the catalog_* columns from data.cms.gov; imports fill imported_*).
+export const datasetVersions = pgTable("dataset_versions", {
+  import_type: varchar("import_type", { length: 100 }).primaryKey(),
+  // cms_data_api | cms_provider_data | cms_gov_zip | census_bundle | nppes_file | manual_upload
+  source: varchar("source", { length: 30 }).notNull(),
+  source_dataset_id: text("source_dataset_id"),
+  source_title: text("source_title"),
+  catalog_modified: timestamp("catalog_modified"),
+  catalog_issued: timestamp("catalog_issued"),
+  temporal_start: date("temporal_start"),
+  temporal_end: date("temporal_end"),
+  accrual_periodicity: varchar("accrual_periodicity", { length: 50 }),
+  catalog_checked_at: timestamp("catalog_checked_at"),
+  imported_modified: timestamp("imported_modified"),
+  imported_at: timestamp("imported_at"),
+  imported_batch_id: integer("imported_batch_id"),
+  row_count: bigint("row_count", { mode: "number" }),
+  data_year: varchar("data_year", { length: 10 }),
+  // never_imported | current | update_available | importing | failed
+  status: varchar("status", { length: 20 }).notNull().default("never_imported"),
+  notes: text("notes"),
+  updated_date: timestamp("updated_date").defaultNow(),
+});
+
+// Medicare Order & Referring eligibility, one row per NPI (replaced per release).
+export const cmsOrderReferring = pgTable("cms_order_referring", {
+  npi: varchar("npi", { length: 10 }).primaryKey(),
+  last_name: text("last_name"),
+  first_name: text("first_name"),
+  partb: boolean("partb"),
+  dme: boolean("dme"),
+  hha: boolean("hha"),
+  pmd: boolean("pmd"),
+  hospice: boolean("hospice"),
+  as_of: date("as_of"),
+  import_batch_id: integer("import_batch_id"),
   updated_date: timestamp("updated_date").defaultNow(),
 });
 

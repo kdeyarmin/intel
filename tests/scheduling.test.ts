@@ -91,6 +91,23 @@ describe("dependencyBlocked", () => {
     expect(dependencyBlocked({ import_type: "c", depends_on_import_type: "parentType" }, [parent]).blocked).toBe(false);
   });
 
+  it("blocks while the parent is still running (started but not completed)", () => {
+    const p = { ...parent, last_run_status: "running", last_successful_run_at: "2026-05-26T10:00:00.000Z" };
+    const r = dependencyBlocked({ import_type: "c", depends_on_import_type: "parentType" }, [p]);
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toMatch(/still running/);
+  });
+
+  it("measures the parent's completion, not its start", () => {
+    // Parent started at 10:00 and completed at 12:00; the child succeeded at 11:00,
+    // i.e. before the parent's completion, so it is due again.
+    const p = { ...parent, last_run_at: "2026-05-27T10:00:00.000Z", last_successful_run_at: "2026-05-27T12:00:00.000Z" };
+    const child = { import_type: "c", depends_on_import_type: "parentType", last_successful_run_at: "2026-05-27T11:00:00.000Z" };
+    expect(dependencyBlocked(child, [p]).blocked).toBe(false);
+    const childAfter = { ...child, last_successful_run_at: "2026-05-27T12:30:00.000Z" };
+    expect(dependencyBlocked(childAfter, [p]).blocked).toBe(true);
+  });
+
   it("blocks when the child already ran successfully since the parent's last run", () => {
     const child = { import_type: "c", depends_on_import_type: "parentType", last_successful_run_at: "2026-05-27T11:00:00.000Z" };
     expect(dependencyBlocked(child, [parent]).blocked).toBe(true);
