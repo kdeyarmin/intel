@@ -140,7 +140,9 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `server/lib/census/acs.ts` loads at boot into `census_acs_*`; the county
   profile rollup joins it. State-licensed homes (personal care, assisted
   living) live in `licensed_facilities`, imported from CSV uploads through
-  the typed route `licensed_facilities` (`mapLicensedFacility`). Browser code gets
+  the typed route `licensed_facilities` (`mapLicensedFacility`); there `state_filter`
+  names the file's own state (rows without a state column take it) and a complete
+  import replaces the (state, licence type) slices it wrote. Browser code gets
   map positions from `getZipCoordinates` (`useProviderCoords`) and a
   provider's county from `getGeoContext`.
 - **Scores are never invented.** Territory and County Intel show a provider's

@@ -74,6 +74,7 @@ export function planRecovery(batch: InterruptedBatch, now: Date = new Date()): R
       state_filter: rp.state_filter,
       as_of: typeof rp.as_of === "string" ? rp.as_of : null,
       headers: Array.isArray(rp.headers) && rp.headers.length ? rp.headers.map(String) : undefined,
+      license_type: typeof rp.license_type === "string" && rp.license_type ? rp.license_type : undefined,
     },
   };
 }

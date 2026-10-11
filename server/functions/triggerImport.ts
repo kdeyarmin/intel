@@ -708,7 +708,7 @@ const FILTER_STATE_FIELDS = [
   "Rndrng_Prvdr_State_Abrvtn", "Prvdr_State_Abrvtn", "prvdr_state",
   "Rndrng_Prvdr_State", "Prscrbr_State_Abrvtn", "provider_state",
   "PROVIDER_STATE", "BENE_STATE_ABRVTN", "state_abbreviation",
-  "STATE_ABBREVIATION", "Provider State", "State Code",
+  "STATE_ABBREVIATION", "Provider State", "State Code", "state_code",
   // Keep in sync with mapMedicareFacilityRow's state field list so a
   // state_filter works for supplier/referring/practice-shaped CMS feeds.
   "Suplr_Prvdr_State_Abrvtn", "Rfrg_Prvdr_State_Abrvtn", "practicestate",
@@ -724,10 +724,14 @@ export function parseFilterList(value: unknown): string[] {
 
 // Build a row predicate from the optional npi_filter / state_filter inputs, or
 // null when neither is set (so callers can skip filtering entirely). NPIs are
-// compared digits-only; states case-insensitively. Exported for unit testing.
+// compared digits-only; states case-insensitively. `stateOptional` is for files
+// whose state_filter names the file's own state (a state licensing export has no
+// state column): a row that carries a state must match, a row without one takes
+// the filter's, instead of every such row being dropped. Exported for unit testing.
 export function buildImportRowFilter(
   npiFilter: unknown,
   stateFilter: unknown,
+  opts: { stateOptional?: boolean } = {},
 ): ((row: any) => boolean) | null {
   const npis = new Set(
     parseFilterList(npiFilter).map((s) => s.replace(/\D/g, "")).filter(Boolean),
@@ -741,7 +745,7 @@ export function buildImportRowFilter(
     }
     if (states.size > 0) {
       const st = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim().toUpperCase();
-      if (!st || !states.has(st)) return false;
+      if (st ? !states.has(st) : !opts.stateOptional) return false;
     }
     return true;
   };
@@ -1520,7 +1524,7 @@ export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter, as_of = null } = params;
   // Optional row-level filters from the import dialog. Built once; null when no
   // filter is configured so the common path stays allocation-free.
-  const rowFilter = buildImportRowFilter(npi_filter, state_filter);
+  const rowFilter = buildImportRowFilter(npi_filter, state_filter, { stateOptional: !!TYPED_ROUTES[import_type]?.stateFromParams });
   const sourceKind = sourceKindFor(file_url);
   if (sourceKind === "local_csv" || sourceKind === "remote_csv") {
     return importFromCsv(params, rowFilter);

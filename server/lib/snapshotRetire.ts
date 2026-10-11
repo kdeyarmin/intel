@@ -24,11 +24,29 @@ export function decideRetire(kept: number, stale: number): RetireDecision {
   return { retire: true };
 }
 
-export interface RetireResult { retired: number; kept: number; stale: number; skipped?: string }
-
 /** Whether an import of this type and shape covers the whole dataset (and so can retire rows). */
 export function retiresSnapshot(importType: string, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown }): boolean {
-  return !!TYPED_ROUTES[importType]?.snapshot && !opts.dry_run && !opts.npi_filter && !opts.state_filter;
+  const route = TYPED_ROUTES[importType];
+  // A state_filter narrows most feeds, but on a licensing file it only names the file's own state.
+  return !!route?.snapshot && !opts.dry_run && !opts.npi_filter && (!opts.state_filter || !!route.stateFromParams);
+}
+
+export interface RetireResult { retired: number; kept: number; stale: number; skipped?: string }
+
+type Scope = { sql: string; params: unknown[] };
+
+/** The slices of the table this batch replaces: one fixed scope, one per (state, licence type) it wrote, or all of it. */
+async function scopesFor(snap: NonNullable<(typeof TYPED_ROUTES)[string]["snapshot"]>, batchId: number, db: Pick<typeof pool, "query">): Promise<Scope[]> {
+  if (snap.scope) return [{ sql: ` AND ${snap.scope.column} = $2`, params: [snap.scope.value] }];
+  if (snap.scopeFromBatch?.length) {
+    const cols = snap.scopeFromBatch;
+    const { rows } = await db.query(`SELECT DISTINCT ${cols.join(", ")} FROM ${snap.table} WHERE import_batch_id = $1`, [batchId]);
+    return rows.map((r: any) => ({
+      sql: cols.map((c, i) => ` AND ${c} IS NOT DISTINCT FROM $${i + 2}`).join(""),
+      params: cols.map((c) => r[c] ?? null),
+    }));
+  }
+  return [{ sql: "", params: [] }];
 }
 
 export async function retireStaleSnapshotRows(
@@ -40,40 +58,48 @@ export async function retireStaleSnapshotRows(
   if (!snap) return { retired: 0, kept: 0, stale: 0, skipped: "not a snapshot dataset" };
   const db = opts.db ?? pool;
   const log = opts.log ?? console;
-  const chunk = opts.chunk ?? RETIRE_CHUNK;
-  const scope = snap.scope ? ` AND ${snap.scope.column} = $2` : "";
-  const scopeParams = snap.scope ? [snap.scope.value] : [];
+  const chunk = Math.max(1, Math.floor(opts.chunk ?? RETIRE_CHUNK));
 
-  const { rows: [c] } = await db.query(
-    `SELECT count(*) FILTER (WHERE import_batch_id = $1)::int AS kept,
-            count(*) FILTER (WHERE import_batch_id IS DISTINCT FROM $1)::int AS stale
-       FROM ${snap.table} WHERE true${scope}`,
-    [batchId, ...scopeParams],
-  );
-  const kept = Number(c?.kept) || 0;
-  const stale = Number(c?.stale) || 0;
-  const decision = decideRetire(kept, stale);
-  if (!decision.retire) {
-    if (stale > 0) log.warn(`[snapshotRetire] ${importType}: kept ${stale} older rows (${decision.reason})`);
-    return { retired: 0, kept, stale, skipped: decision.reason };
-  }
-
-  let retired = 0;
-  for (;;) {
-    const res = await db.query(
-      `DELETE FROM ${snap.table} WHERE id IN (
-         SELECT id FROM ${snap.table} WHERE import_batch_id IS DISTINCT FROM $1${scope} LIMIT ${Math.max(1, Math.floor(chunk))}
-       )`,
-      [batchId, ...scopeParams],
+  const total: RetireResult = { retired: 0, kept: 0, stale: 0 };
+  const skipped: string[] = [];
+  for (const scope of await scopesFor(snap, batchId, db)) {
+    const { rows: [c] } = await db.query(
+      `SELECT count(*) FILTER (WHERE import_batch_id = $1)::int AS kept,
+              count(*) FILTER (WHERE import_batch_id IS DISTINCT FROM $1)::int AS stale
+         FROM ${snap.table} WHERE true${scope.sql}`,
+      [batchId, ...scope.params],
     );
-    const n = res.rowCount || 0;
-    retired += n;
-    if (n < chunk) break;
+    const kept = Number(c?.kept) || 0;
+    const stale = Number(c?.stale) || 0;
+    total.kept += kept;
+    total.stale += stale;
+    const decision = decideRetire(kept, stale);
+    if (!decision.retire) {
+      if (stale > 0) {
+        log.warn(`[snapshotRetire] ${importType}: kept ${stale} older rows (${decision.reason})`);
+        skipped.push(decision.reason);
+      }
+      continue;
+    }
+    for (;;) {
+      const res = await db.query(
+        `DELETE FROM ${snap.table} WHERE id IN (
+           SELECT id FROM ${snap.table} WHERE import_batch_id IS DISTINCT FROM $1${scope.sql} LIMIT ${chunk}
+         )`,
+        [batchId, ...scope.params],
+      );
+      const n = res.rowCount || 0;
+      total.retired += n;
+      if (n < chunk) break;
+    }
   }
-  log.log(`[snapshotRetire] ${importType}: removed ${retired} rows that the latest release no longer lists (kept ${kept})`);
-  await db.query(
-    "UPDATE import_batches SET retry_params = COALESCE(retry_params, '{}'::jsonb) || $2::jsonb WHERE id = $1",
-    [batchId, JSON.stringify({ retired_rows: retired })],
-  ).catch(() => {});
-  return { retired, kept, stale };
+  if (total.retired > 0) {
+    log.log(`[snapshotRetire] ${importType}: removed ${total.retired} rows that the latest release no longer lists (kept ${total.kept})`);
+    await db.query(
+      "UPDATE import_batches SET retry_params = COALESCE(retry_params, '{}'::jsonb) || $2::jsonb WHERE id = $1",
+      [batchId, JSON.stringify({ retired_rows: total.retired })],
+    ).catch(() => {});
+  }
+  if (total.retired === 0 && skipped.length) total.skipped = skipped[0];
+  return total;
 }

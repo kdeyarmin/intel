@@ -57,6 +57,18 @@ describe("buildImportRowFilter", () => {
     expect(f({ Suplr_Prvdr_State_Abrvtn: "NJ" })).toBe(false);
   });
 
+  it("keeps rows without a state column when the filter names the file's own state (licensing exports)", () => {
+    // A state licensing export has no state column; state_filter says which state it is.
+    const f = buildImportRowFilter(null, "PA", { stateOptional: true })!;
+    expect(f({ name: "Sunrise Personal Care Home", zip: "15213" })).toBe(true);
+    expect(f({ name: "Elm Court", state: "PA" })).toBe(true);
+    expect(f({ name: "Ohio Home", state_code: "OH" })).toBe(false);
+    expect(f({ name: "Jersey Home", State: "NJ" })).toBe(false);
+    // The default stays strict: a feed row without a state can't be shown to match.
+    const strict = buildImportRowFilter(null, "PA")!;
+    expect(strict({ name: "Sunrise Personal Care Home", zip: "15213" })).toBe(false);
+  });
+
   it("requires BOTH npi and state to match when both are set", () => {
     const f = buildImportRowFilter("1234567890", "PA")!;
     expect(f({ NPI: "1234567890", state: "PA" })).toBe(true);
