@@ -8,13 +8,14 @@ function lines(...parts: Array<string | false | null | undefined>): string {
   return parts.filter((p) => p !== false && p != null).join("\n");
 }
 
-export function signupPendingEmail(to: string, newUser: { email: string; full_name: string | null }, base: string): MailMessage {
+export function signupPendingEmail(to: string, newUser: { email: string; full_name: string | null; organization?: string | null }, base: string): MailMessage {
   const who = newUser.full_name ? `${newUser.full_name} <${newUser.email}>` : newUser.email;
+  const org = newUser.organization ? ` for ${newUser.organization}` : "";
   return {
     to,
     subject: `${PRODUCT}: ${newUser.email} is waiting for approval`,
     text: lines(
-      `${who} created a ${PRODUCT} account and is waiting for approval.`,
+      `${who} created a ${PRODUCT} account${org} and is waiting for approval.`,
       "",
       `Review it under Admin Settings → Users: ${base}/AdminSettings`,
       "",

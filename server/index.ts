@@ -21,6 +21,7 @@ import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
 import functionRoutes from "./routes/functions";
 import maintenanceRoutes from "./routes/maintenance";
+import billingRoutes from "./routes/billing";
 import webhookRoutes from "./routes/webhooks";
 import publicRoutes from "./routes/public";
 
@@ -78,6 +79,7 @@ app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/functions", functionRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
+app.use("/api/billing", billingRoutes);
 app.use("/api/public", express.urlencoded({ extended: false }), publicRoutes);
 
 app.get("/api/health", (_req, res) => {

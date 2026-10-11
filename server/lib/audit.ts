@@ -12,6 +12,8 @@ export interface AuditEntry {
   entity_id?: string | number | null;
   details?: Record<string, unknown>;
   ip_address?: string | null;
+  /** The organization the event belongs to (its owners see it on Security Audit). */
+  org_id?: number | null;
 }
 
 export type AuditWriter = (entry: AuditEntry) => Promise<void>;

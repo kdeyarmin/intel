@@ -7,6 +7,7 @@ import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpe
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
+import BillingStatusWidget from './BillingStatusWidget';
 import { getNavPageFor, getVisibleNavSections } from './navConfig';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
@@ -83,7 +84,7 @@ export default function AppLayout({ children, currentPageName }) {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
   }, []);
 
-  const visibleNavSections = useMemo(() => getVisibleNavSections(user?.role), [user?.role]);
+  const visibleNavSections = useMemo(() => getVisibleNavSections(user), [user]);
   const activeNavPage = getNavPageFor(currentPageName);
 
   const handleMobileNavClick = useCallback(() => {
@@ -223,6 +224,8 @@ export default function AppLayout({ children, currentPageName }) {
             );
           })}
         </nav>
+
+        <BillingStatusWidget sidebarOpen={sidebarOpen} />
 
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60 min-w-[14rem]">

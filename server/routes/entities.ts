@@ -1,8 +1,9 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
 import { tableMap, leadListMembers } from "../db/schema";
-import { eq, desc, asc, sql, getTableColumns } from "drizzle-orm";
-import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
+import { authMiddleware, AuthRequest, isOrgAdmin } from "../middleware/auth";
+import { leadLists } from "../db/schema";
 import {
   InvalidFieldValueError,
   JSONB_OVERFLOW,
@@ -60,6 +61,39 @@ export const USER_WRITABLE_ENTITIES = new Set([
   "AnalyticsDashboard",
 ]);
 
+// Customer-owned entities (migration 0020): every read and write is limited
+// to the caller's organization, and a created row is stamped with it.
+// LeadListMember belongs to its list, so it is scoped through lead_lists.
+export const ORG_SCOPED_ENTITIES = new Set([
+  "LeadList", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard", "ScoringRule",
+  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", "AuditEvent",
+]);
+
+/** The organization a request is scoped to; null when the account has none (then it sees nothing customer-owned). */
+function orgIdOf(req: AuthRequest): number | null {
+  const id = req.user?.orgId;
+  return typeof id === "number" && Number.isInteger(id) ? id : null;
+}
+
+/** The condition that keeps an entity's rows to the caller's organization; undefined for shared entities. */
+function orgCondition(entity: string | string[], table: any, req: AuthRequest) {
+  const entityName = String(entity);
+  if (ORG_SCOPED_ENTITIES.has(entityName)) {
+    const orgId = orgIdOf(req);
+    return orgId == null ? sql`false` : eq(table.org_id, orgId);
+  }
+  if (entityName === "LeadListMember") {
+    const orgId = orgIdOf(req);
+    return orgId == null ? sql`false` : inArray(table.list_id, db.select({ id: leadLists.id }).from(leadLists).where(eq(leadLists.org_id, orgId)));
+  }
+  return undefined;
+}
+
+function withOrg(where: any, scope: any) {
+  if (!scope) return where;
+  return where ? and(where, scope) : scope;
+}
+
 function getTable(entityName: string) {
   if (BLOCKED_ENTITIES.has(entityName)) {
     return null;
@@ -105,8 +139,9 @@ function safeError(res: Response, e: any, label: string) {
   });
 }
 
+/** An organization's owner (or a platform admin, or the legacy admin role) administers its rows. */
 function isAdmin(req: AuthRequest): boolean {
-  return req.user?.role === "admin";
+  return isOrgAdmin(req.user);
 }
 
 function requireReadAccess(req: AuthRequest, res: Response, entityName: string): boolean {
@@ -123,7 +158,7 @@ export function canWriteEntity(entityName: string, role: string | undefined): bo
 }
 
 function requireWriteAccess(req: AuthRequest, res: Response, entityName: string): boolean {
-  if (canWriteEntity(entityName, req.user?.role)) return true;
+  if (canWriteEntity(entityName, isAdmin(req) ? "admin" : req.user?.role)) return true;
   res.status(403).json({ message: "Forbidden", detail: "Admin access is required to modify this resource." });
   return false;
 }
@@ -221,7 +256,10 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     const offset = parseInt(req.query.offset as string) || 0;
 
     const orderBy = buildOrderBy(table, sort, req.params.entity);
-    const rows = await db.select().from(table).orderBy(...orderBy).limit(limit).offset(offset);
+    const scope = orgCondition(req.params.entity, table, req);
+    let query = db.select().from(table);
+    if (scope) query = query.where(scope) as any;
+    const rows = await (query as any).orderBy(...orderBy).limit(limit).offset(offset);
     res.json(rows.map((r: any) => decorateRow(req.params.entity, r)));
   } catch (e: any) {
     return safeError(res, e, `GET /${req.params.entity}`);
@@ -237,7 +275,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
 
-    const where = buildWhereClause(table, filters, req.params.entity);
+    const where = withOrg(buildWhereClause(table, filters, String(req.params.entity)), orgCondition(req.params.entity, table, req));
     const orderBy = buildOrderBy(table, sort, req.params.entity);
 
     let query = db.select().from(table);
@@ -261,7 +299,7 @@ router.get("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
-    const [row] = await db.select().from(table).where(eq(table.id, idNum)).limit(1);
+    const [row] = await db.select().from(table).where(withOrg(eq(table.id, idNum), orgCondition(req.params.entity, table, req))).limit(1);
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json(decorateRow(req.params.entity, row));
   } catch (e: any) {
@@ -283,6 +321,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     delete data.updated_date;
     if (split.overflow) data[JSONB_OVERFLOW[entityName]] = split.overflow;
     sendDroppedFields(res, entityName, split.dropped);
+    if (!(await stampOrg(entityName, data, req, res))) return;
 
     const [row] = (await db.insert(table).values(data).returning()) as any[];
     res.status(201).json(decorateRow(entityName, row));
@@ -317,6 +356,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
       return data;
     });
     sendDroppedFields(res, entityName, [...dropped]);
+    for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res))) return;
 
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
@@ -350,8 +390,10 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
       data[overflowCol] = sql`COALESCE(${(table as any)[overflowCol]}, '{}'::jsonb) || ${JSON.stringify(split.overflow)}::jsonb`;
     }
     sendDroppedFields(res, entityName, split.dropped);
+    // The organization a row belongs to never changes through this route.
+    if (ORG_SCOPED_ENTITIES.has(String(entityName))) delete data.org_id;
 
-    const [row] = (await db.update(table).set(data).where(eq(table.id, idNum)).returning()) as any[];
+    const [row] = (await db.update(table).set(data).where(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req))).returning()) as any[];
     if (!row) return res.status(404).json({ message: "Not found" });
     res.json(decorateRow(entityName, row));
   } catch (e: any) {
@@ -370,8 +412,9 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
     const children = CASCADE_DELETES[req.params.entity] || [];
+    const scope = orgCondition(req.params.entity, table, req);
     const row = await db.transaction(async (tx) => {
-      const [deleted] = (await tx.delete(table).where(eq(table.id, idNum)).returning()) as any[];
+      const [deleted] = (await tx.delete(table).where(withOrg(eq(table.id, idNum), scope)).returning()) as any[];
       if (!deleted) return null;
       for (const child of children) {
         await tx.delete(child.table).where(eq(child.table[child.column], idNum));
@@ -384,5 +427,38 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     return safeError(res, e, `DELETE /${req.params.entity}/${req.params.id}`);
   }
 });
+
+/**
+ * Stamps a new customer-owned row with the caller's organization (a client
+ * can't choose another), and checks a new lead list member's list belongs
+ * to it. Answers 403 and returns false when the account has no organization.
+ */
+async function stampOrg(entity: string | string[], data: Record<string, any>, req: AuthRequest, res: Response): Promise<boolean> {
+  const entityName = String(entity);
+  if (ORG_SCOPED_ENTITIES.has(entityName)) {
+    const orgId = orgIdOf(req);
+    if (orgId == null) {
+      res.status(403).json({ message: "Forbidden", detail: "Your account isn't part of an organization yet." });
+      return false;
+    }
+    data.org_id = orgId;
+    if (!data.created_by && "created_by" in data === false) data.created_by = req.user?.email ?? null;
+    return true;
+  }
+  if (entityName === "LeadListMember") {
+    const orgId = orgIdOf(req);
+    const listId = Number(data.list_id);
+    if (orgId == null || !Number.isInteger(listId)) {
+      res.status(403).json({ message: "Forbidden", detail: "A lead list member needs a list in your organization." });
+      return false;
+    }
+    const [list] = await db.select({ id: leadLists.id }).from(leadLists).where(and(eq(leadLists.id, listId), eq(leadLists.org_id, orgId))).limit(1);
+    if (!list) {
+      res.status(404).json({ message: "Not found", detail: "That lead list isn't in your organization." });
+      return false;
+    }
+  }
+  return true;
+}
 
 export default router;

@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from "express";
 import crypto from "crypto";
-import { AuthRequest, authMiddleware, adminOnly } from "../middleware/auth";
+import { AuthRequest, authMiddleware, platformAdminOnly } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { handleRunScheduledImports } from "../functions/scheduledImports";
 import {

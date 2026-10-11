@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { Link } from 'react-router-dom';
+import { effectiveRole } from '@/components/layout/navConfig';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +65,8 @@ export default function AccountDialog({ open, onOpenChange }) {
         <DialogHeader>
           <DialogTitle className="text-slate-100">Your account</DialogTitle>
           <DialogDescription className="text-slate-400">
-            Signed in as {user?.email} ({user?.role === 'admin' ? 'admin' : 'user'}).
+            Signed in as {user?.email} ({effectiveRole(user) === 'admin' ? 'platform admin' : effectiveRole(user)}{user?.orgName ? ` of ${user.orgName}` : ''}).
+            {user?.orgName && <> <Link to="/Billing" className="text-cyan-400 hover:underline">Plan and billing</Link></>}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">

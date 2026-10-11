@@ -129,7 +129,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   // Only sidebar pages the user can open: detail pages need an id, alias
   // routes duplicate real pages, and admin pages would just say "Access denied".
   const searchablePages = useMemo(() => (
-    getVisibleNavSections(user?.role).flatMap((section) =>
+    getVisibleNavSections(user).flatMap((section) =>
       section.items.map((item) => ({ name: item.name, page: item.page, section: section.label })))
   ), [user?.role]);
 

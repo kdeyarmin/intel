@@ -7,14 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Send, Loader2, Sparkles, Calendar, Plus, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateTimeET, formatDateET } from '../utils/dateUtils';
-import { useAuth } from '@/lib/AuthContext';
 import { pickPrimaryLocation } from '@/lib/locations';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function ProviderMessaging({ provider, locations = [] }) {
-  // Sending email from CareMetric is admin-only; everyone else drafts here and
-  // sends from their own mail client.
-  const { user } = useAuth();
-  const canSendFromApp = user?.role === 'admin';
+  // Sending email from CareMetric is for an organization's owners; everyone
+  // else drafts here and sends from their own mail client.
+  const { isOwner: canSendFromApp } = usePageAccess();
   const [activeTab, setActiveTab] = useState('messages');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');

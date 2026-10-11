@@ -5,6 +5,7 @@ import path from "path";
 import crypto from "crypto";
 import { authMiddleware, adminOnly, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
+import { consumeQuota, QuotaError } from "../lib/orgQuota";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { sendMail } from "../lib/mailer";
 import { isSuppressed } from "../lib/suppressions";
@@ -54,6 +55,14 @@ router.post("/ai/invoke", authMiddleware, rateLimit("ai_invoke", 60, 60_000), as
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return res.status(500).json({ message: "ANTHROPIC_API_KEY not configured" });
+
+    // Each organization has a daily allowance of AI requests (its plan's quota).
+    try {
+      await consumeQuota(req.user, "ai_calls");
+    } catch (e: any) {
+      if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
+      throw e;
+    }
 
     // Reject unknown models rather than silently passing them to the API.
     const resolvedModel = model && ALLOWED_MODELS.has(model) ? model : CLAUDE_MODELS.SONNET;

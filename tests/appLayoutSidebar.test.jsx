@@ -7,6 +7,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 afterEach(cleanup);
 
@@ -27,10 +28,14 @@ function setWidth(width) {
 }
 
 function renderLayout() {
+  // The sidebar's billing widget reads the plan with react-query.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <MemoryRouter initialEntries={['/Dashboard']}>
-      <AppLayout currentPageName="Dashboard"><p>page</p></AppLayout>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/Dashboard']}>
+        <AppLayout currentPageName="Dashboard"><p>page</p></AppLayout>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
   return screen.getByRole('complementary', { name: 'Sidebar', hidden: true });
 }

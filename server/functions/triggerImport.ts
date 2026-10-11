@@ -354,7 +354,7 @@ async function insertBatchAtomically(
 }
 
 export async function handleTriggerImport(payload: any, user: any) {
-  if (!user || user.role !== "admin") {
+  if (!user || !(user.role === "admin" || user.isPlatformAdmin)) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 

@@ -24,6 +24,9 @@ export type UserPatch = Partial<
     | "disabled_at"
     | "disabled_reason"
     | "password_changed_at"
+    | "is_platform_admin"
+    | "terms_accepted_at"
+    | "terms_version"
   >
 >;
 
@@ -36,7 +39,10 @@ export interface UserRepo {
   pendingSummary(): Promise<{ count: number; latest_id: number | null }>;
   activeAdmins(): Promise<UserRow[]>;
   /** Throws an error with code "23505" when the email is taken. */
-  create(data: { email: string; password_hash: string; full_name: string | null; role: string; status: string; approved_at?: Date | null; approved_by?: string | null }): Promise<UserRow>;
+  create(data: {
+    email: string; password_hash: string; full_name: string | null; role: string; status: string;
+    approved_at?: Date | null; approved_by?: string | null; is_platform_admin?: boolean; terms_accepted_at?: Date | null; terms_version?: string | null;
+  }): Promise<UserRow>;
   /**
    * Applies the patch; `endSessions` also bumps token_version. With
    * `ifStatus`, only while the account still has one of those statuses
@@ -83,7 +89,7 @@ export interface UserRepo {
 }
 
 const USER_COLUMNS = `id, email, password_hash, full_name, role, status, token_version, last_login_at, approved_at,
-  approved_by, disabled_at, disabled_reason, password_changed_at, created_date`;
+  approved_by, disabled_at, disabled_reason, password_changed_at, created_date, is_platform_admin, terms_accepted_at, terms_version`;
 
 const PATCHABLE = new Set([
   "full_name",
@@ -96,6 +102,9 @@ const PATCHABLE = new Set([
   "disabled_at",
   "disabled_reason",
   "password_changed_at",
+  "is_platform_admin",
+  "terms_accepted_at",
+  "terms_version",
 ]);
 
 const INSERT_TOKEN = `INSERT INTO auth_tokens (user_id, purpose, token_hash, expires_at, created_by) VALUES ($1, $2, $3, $4, $5)`;
@@ -137,9 +146,10 @@ export function pgUserRepo(pool: any, { inTransaction = false } = {}): UserRepo 
     },
     async create(data) {
       const { rows } = await pool.query(
-        `INSERT INTO users (email, password_hash, full_name, role, status, approved_at, approved_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${USER_COLUMNS}`,
-        [data.email, data.password_hash, data.full_name, data.role, data.status, data.approved_at ?? null, data.approved_by ?? null],
+        `INSERT INTO users (email, password_hash, full_name, role, status, approved_at, approved_by, is_platform_admin, terms_accepted_at, terms_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${USER_COLUMNS}`,
+        [data.email, data.password_hash, data.full_name, data.role, data.status, data.approved_at ?? null, data.approved_by ?? null,
+         data.is_platform_admin ?? false, data.terms_accepted_at ?? null, data.terms_version ?? null],
       );
       return rows[0];
     },

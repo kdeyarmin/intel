@@ -4,6 +4,7 @@
 import crypto from "crypto";
 import { pool } from "../db";
 import { getMailerStatus, sendMail } from "../lib/mailer";
+import { consumeQuota } from "../lib/orgQuota";
 import { addSuppression, isSuppressed, loadSuppressed, normalizeEmail } from "../lib/suppressions";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import {
@@ -318,6 +319,14 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
     await requeueUnsent().catch((err: any) => console.error("[sendCampaignMessages] requeue failed:", err?.message));
     throw e;
   }
+  // The organization's daily email allowance covers the whole batch; over it,
+  // nothing is sent and the batch goes back in the queue.
+  try {
+    await consumeQuota(user as any, "emails_sent", claimed.length);
+  } catch (e) {
+    await requeueUnsent().catch((err: any) => console.error("[sendCampaignMessages] requeue failed:", err?.message));
+    throw e;
+  }
   const outcome = { sent: 0, failed: 0, suppressed: 0 };
   let rejected: string | null = null;
 
@@ -498,7 +507,7 @@ async function aiStrategy(summary: Record<string, unknown>): Promise<string | nu
  * provider.
  */
 export async function handleCalculateOutreachScore(payload: any, user?: { role?: string }) {
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.isPlatformAdmin === true || user?.orgRole === "owner";
   const npi = String(payload?.npi || "").trim();
   if (!/^\d{10}$/.test(npi)) throw new HttpError(400, "A 10-digit npi is required");
 

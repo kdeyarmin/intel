@@ -78,8 +78,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Sign-in answers the account only; the session (organization, plan,
+  // territory) comes from /auth/me.
+  const withSession = async (account) => {
+    try {
+      return await base44.auth.me({ probe: true });
+    } catch {
+      return account;
+    }
+  };
+
   const login = async (email, password) => {
-    const result = await base44.auth.login(email, password);
+    const result = await withSession(await base44.auth.login(email, password));
     setUser(result);
     setIsAuthenticated(true);
     setAuthError(null);
@@ -87,8 +97,8 @@ export const AuthProvider = ({ children }) => {
     return result;
   };
 
-  const signup = async (email, password, full_name) => {
-    const result = await base44.auth.signup(email, password, full_name);
+  const signup = async (email, password, full_name, options) => {
+    const result = await withSession(await base44.auth.signup(email, password, full_name, options));
     setUser(result);
     setIsAuthenticated(true);
     setAuthError(null);

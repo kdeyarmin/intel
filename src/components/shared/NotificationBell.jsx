@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function NotificationBell() {
-  const { isAdmin, canOpen } = usePageAccess();
+  const { isAdmin, isOwner, canOpen } = usePageAccess();
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     try { return JSON.parse(localStorage.getItem('dismissedNotifs') || '[]'); } catch { return []; }
@@ -33,7 +33,8 @@ export default function NotificationBell() {
     queryFn: () => base44.admin.users.pendingCount(),
     staleTime: 60000,
     refetchInterval: 120000,
-    enabled: isAdmin,
+    // Owners approve their organization's signups; platform admins everyone's.
+    enabled: isOwner,
   });
 
   useEffect(() => {

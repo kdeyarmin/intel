@@ -16,6 +16,7 @@ import {
 import { sendQuietly, type AccountDeps } from "../lib/accountDeps";
 import { ACCOUNT_EVENT } from "../lib/audit";
 import { resetEmail, signupPendingEmail } from "../lib/accountEmails";
+import { orgNameFor, TERMS_VERSION } from "../lib/orgs";
 import { authAllowPending, authMiddleware, cookieOptions, generateToken, AuthRequest } from "../middleware/auth";
 import { clientIp, consumeToken, ipRateLimit } from "../middleware/rateLimit";
 
@@ -97,21 +98,32 @@ export function createAuthRouter(deps: AccountDeps) {
       const taken = { message: "An account with this email already exists", detail: "Sign in instead, or reset your password." };
       if (email === deps.reservedEmail()) return res.status(409).json(taken);
       if ((await repo.findByEmail(email)).length > 0) return res.status(409).json(taken);
+      if (req.body?.accept_terms !== true) {
+        return res.status(400).json({ message: "Accept the Terms of Service and Privacy Policy to create an account", code: "terms_required" });
+      }
 
+      const full_name = cleanName(req.body?.full_name);
+      const now = new Date();
       let user: UserRow;
       try {
         user = await repo.create({
           email,
           password_hash: await deps.hashPassword(req.body.password),
-          full_name: cleanName(req.body?.full_name),
+          full_name,
           role: "user",
           status: "pending",
+          terms_accepted_at: now,
+          terms_version: TERMS_VERSION,
         });
       } catch (e: any) {
         if (e?.code === "23505") return res.status(409).json(taken);
         throw e;
       }
-      await audit(req, "signup", email, user);
+      // Each signup starts its own organization (in trial) with this person as
+      // its owner; the account itself still waits for approval or a checkout.
+      const org = await deps.orgs.createWithOwner({ name: orgNameFor({ organization_name: req.body?.organization_name, email, full_name }), ownerUserId: user.id, termsVersion: TERMS_VERSION });
+      deps.onUserChanged(user.id);
+      await audit(req, "signup", email, user, { org_id: org.id, organization: org.name, terms_version: TERMS_VERSION });
       // Signed in so the "awaiting approval" screen can watch for approval.
       setSessionCookie(res, user);
       res.status(201).json(publicUser(user));
@@ -119,7 +131,7 @@ export function createAuthRouter(deps: AccountDeps) {
       const base = deps.baseUrl();
       if (base && deps.mailerConfigured()) {
         const admins = await repo.activeAdmins().catch(() => [] as UserRow[]);
-        for (const admin of admins) await sendQuietly(deps, signupPendingEmail(admin.email, user, base), "Signup notice");
+        for (const admin of admins) await sendQuietly(deps, signupPendingEmail(admin.email, { ...user, organization: org.name }, base), "Signup notice");
       }
     } catch (e: any) {
       if (!res.headersSent) serverError(res, e, "Signup");

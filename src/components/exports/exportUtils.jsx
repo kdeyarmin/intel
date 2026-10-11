@@ -3,6 +3,11 @@ import { jsPDF } from 'jspdf';
 const CAREMETRIC_LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png';
 const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
 
+/** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
+export function exportAttribution(date = new Date()) {
+  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+}
+
 /**
  * Load image as base64 for embedding in PDF.
  */
@@ -82,6 +87,7 @@ function addPDFFooter(doc, pageNum) {
   doc.setFontSize(6);
   doc.setTextColor(150);
   doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);
 }
@@ -128,7 +134,8 @@ export function exportCSV(rows, fields, fileName) {
   const body = rows.map(row =>
     fields.map(f => escapeCSV(row[f.key])).join(',')
   ).join('\n');
-  const csv = header + '\n' + body;
+  // The attribution is one last line, quoted so it stays a single cell.
+  const csv = header + '\n' + body + '\n' + escapeCSV(exportAttribution());
   downloadBlob(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }), fileName + '.csv');
 }
 
@@ -141,6 +148,7 @@ export function exportExcel(rows, fields, fileName) {
   rows.forEach(row => {
     html += '<tr>' + fields.map(f => `<td>${row[f.key] ?? ''}</td>`).join('') + '</tr>';
   });
+  html += `<tr><td colspan="${fields.length}" style="color:#64748b;font-size:10px">${exportAttribution()}</td></tr>`;
   html += '</table></body></html>';
   downloadBlob(new Blob([html], { type: 'application/vnd.ms-excel' }), fileName + '.xls');
 }

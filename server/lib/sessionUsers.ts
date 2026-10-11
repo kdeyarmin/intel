@@ -11,6 +11,15 @@ export interface SessionUser {
   role: string;
   status: string;
   token_version: number;
+  is_platform_admin?: boolean;
+  terms_accepted_at?: string | Date | null;
+  /** The user's organization (migration 0020); null for an account with no membership. */
+  org_id?: number | null;
+  org_role?: string | null;
+  org_name?: string | null;
+  org_status?: string | null;
+  plan_code?: string | null;
+  territory?: { states: string[]; county_fips: string[] } | null;
 }
 
 export const SESSION_CACHE_MS = 30_000;
@@ -21,11 +30,16 @@ type Loader = (id: number) => Promise<SessionUser | null>;
 async function defaultLoader(id: number): Promise<SessionUser | null> {
   const { pool } = await import("../db");
   const { rows } = await pool.query(
-    "SELECT id, email, full_name, role, status, token_version FROM users WHERE id = $1",
+    `SELECT u.id, u.email, u.full_name, u.role, u.status, u.token_version, u.is_platform_admin, u.terms_accepted_at,
+            m.org_id, m.org_role, o.name AS org_name, o.status AS org_status, o.plan_code, o.territory
+       FROM users u
+       LEFT JOIN LATERAL (SELECT org_id, org_role FROM organization_members WHERE user_id = u.id ORDER BY org_id LIMIT 1) m ON true
+       LEFT JOIN organizations o ON o.id = m.org_id
+      WHERE u.id = $1`,
     [id],
   );
   const row = rows[0];
-  return row ? { ...row, role: row.role || "user" } : null;
+  return row ? { ...row, role: row.role || "user", is_platform_admin: !!row.is_platform_admin } : null;
 }
 
 let loader: Loader = defaultLoader;

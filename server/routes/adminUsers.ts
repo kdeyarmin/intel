@@ -1,4 +1,6 @@
-// Admin user management: /api/admin/users. Every route requires an active admin.
+// Admin user management: /api/admin/users. Every route requires an active
+// admin. An organization's owner sees and manages that organization's people;
+// a platform admin sees everyone and may make other platform-wide admins.
 import crypto from "crypto";
 import { Router, Request, Response } from "express";
 import {
@@ -64,7 +66,14 @@ export function createAdminUsersRouter(deps: AccountDeps) {
       entity_id: target?.id ?? null,
       details: { target_email: target?.email ?? null, ...details },
       ip_address: clientIp(req),
+      org_id: req.user!.orgId ?? null,
     });
+
+  // Sentinel for an admin with no organization: nothing is in their scope.
+  const NO_ORG = -1;
+  /** The organization the caller may manage, or null for a platform admin (every organization). */
+  const scopeOf = (req: AuthRequest): number | null => (req.user!.isPlatformAdmin ? null : req.user!.orgId ?? NO_ORG);
+  const orgRoleOf = (value: unknown): "owner" | "member" | null => (value === "owner" || value === "member" ? value : null);
 
   const handle = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
     try {
@@ -76,11 +85,15 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     }
   };
 
-  async function load(r: UserRepo, idParam: string): Promise<UserRow> {
+  /** The target account, which must be in the caller's organization unless they are a platform admin. */
+  async function load(req: AuthRequest, r: UserRepo): Promise<UserRow> {
+    const idParam = req.params.id as string;
     // Plain decimal only: Number() would also read "1e3" or "0x10" as an id.
     const id = /^\d{1,15}$/.test(idParam) ? Number(idParam) : NaN;
     const user = Number.isSafeInteger(id) && id > 0 ? await r.findById(id) : null;
     if (!user) throw new HttpError(404, "User not found");
+    const scope = scopeOf(req);
+    if (scope !== null && (await deps.orgs.membershipOf(user.id))?.org_id !== scope) throw new HttpError(404, "User not found");
     return user;
   }
 
@@ -96,7 +109,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   /** Loads the target and checks the guards while admin rows are locked. */
   async function guarded<T>(req: AuthRequest, action: AdminAction, fn: (target: UserRow, r: UserRepo) => Promise<T>, newRole?: "user" | "admin"): Promise<T> {
     return repo.withAdminLock(async (activeAdmins, r) => {
-      const target = await load(r, req.params.id as string);
+      const target = await load(req, r);
       const problem = adminActionProblem({ actorId: req.user!.id, target, action, newRole, activeAdmins });
       if (problem) throw new HttpError(409, problem);
       return fn(target, r);
@@ -114,25 +127,42 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     return { link: tokenLink(base, token.raw), expires_at };
   }
 
-  router.get("/", handle(async (_req, res) => {
-    const users = await repo.list();
-    res.json({ users: users.map(adminUserView), email_enabled: deps.mailerConfigured() && !!deps.baseUrl() });
+  router.get("/", handle(async (req, res) => {
+    const scope = scopeOf(req);
+    const memberships = await deps.orgs.memberships(scope);
+    const byUser = new Map(memberships.map((m) => [m.user_id, m]));
+    const users = (await repo.list()).filter((u) => scope === null || byUser.has(u.id));
+    const seats = scope === null || scope === NO_ORG ? null : await deps.orgs.seatUsage(scope);
+    res.json({
+      users: users.map((u) => {
+        const m = byUser.get(u.id);
+        return { ...adminUserView(u), org_id: m?.org_id ?? null, org_role: m?.org_role ?? null, org_name: m?.org_name ?? null };
+      }),
+      email_enabled: deps.mailerConfigured() && !!deps.baseUrl(),
+      platform_admin: req.user!.isPlatformAdmin === true,
+      organization: scope === null ? null : { id: scope, name: req.user!.orgName ?? null, seats },
+    });
   }));
 
-  router.get("/pending-count", handle(async (_req, res) => {
+  router.get("/pending-count", handle(async (req, res) => {
     // latest_id lets the notification bell tell a new signup from ones already seen.
-    res.json(await repo.pendingSummary());
+    const scope = scopeOf(req);
+    if (scope === null) return res.json(await repo.pendingSummary());
+    const members = new Set((await deps.orgs.memberships(scope)).map((m) => m.user_id));
+    const pending = (await repo.list()).filter((u) => u.status === "pending" && members.has(u.id));
+    res.json({ count: pending.length, latest_id: pending.length ? Math.max(...pending.map((u) => u.id)) : null });
   }));
 
-  // Recent account activity for the admin screen.
+  // Recent account activity for the admin screen (the caller's organization's, unless a platform admin).
   router.get("/activity", handle(async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const scope = scopeOf(req);
     const { pool } = await import("../db");
     const { rows } = await pool.query(
       `SELECT id, action, user_email, entity_id, details, ip_address, created_date
-         FROM audit_events WHERE event_type = $1 AND action = ANY($2)
+         FROM audit_events WHERE event_type = $1 AND action = ANY($2) AND ($4::int IS NULL OR org_id = $4)
         ORDER BY created_date DESC LIMIT $3`,
-      [ACCOUNT_EVENT, ACCOUNT_ACTIONS, limit],
+      [ACCOUNT_EVENT, ACCOUNT_ACTIONS, limit, scope],
     );
     res.json({ events: rows });
   }));
@@ -142,8 +172,20 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     if (!email) throw new HttpError(400, "Enter a valid email address");
     const role = normalizeRole(req.body?.role ?? "user");
     if (!role) throw new HttpError(400, "Role must be user or admin");
+    if (role === "admin" && !req.user!.isPlatformAdmin) throw new HttpError(403, "Only platform administrators can invite platform admins. Invite them as an owner of your organization instead.");
+    // Platform admins may invite into another organization; everyone else invites into their own.
+    const requestedOrg = req.body?.org_id;
+    const orgId = req.user!.isPlatformAdmin && Number.isInteger(requestedOrg) && requestedOrg > 0 ? Number(requestedOrg) : req.user!.orgId ?? null;
+    if (orgId === null && !req.user!.isPlatformAdmin) throw new HttpError(409, "Your account isn't in an organization, so it can't invite people.");
+    const orgRole = orgRoleOf(req.body?.org_role) ?? (role === "admin" ? "owner" : "member");
     if ((await repo.findByEmail(email)).length) throw new HttpError(409, "An account with this email already exists");
     if (!deps.baseUrl()) throw new HttpError(409, "Set PUBLIC_APP_URL so invite links point at this app.");
+    if (orgId !== null) {
+      const seats = await deps.orgs.seatUsage(orgId);
+      if (seats.used >= seats.limit) {
+        return res.status(409).json({ message: `Seat limit reached (${seats.used} of ${seats.limit})`, code: "seat_limit", detail: "Upgrade the plan under Billing to add more people.", seats });
+      }
+    }
     let user: UserRow;
     try {
       user = await repo.create({
@@ -158,18 +200,24 @@ export function createAdminUsersRouter(deps: AccountDeps) {
       if (e?.code === "23505") throw new HttpError(409, "An account with this email already exists");
       throw e;
     }
+    if (orgId !== null) await deps.orgs.addMember(orgId, user.id, orgRole);
     const { link, expires_at } = await issueLink(req, user, "invite");
     const emailed = await sendQuietly(deps, inviteEmail(user.email, link, req.user!.full_name || req.user!.email), "Invite");
-    await audit(req, "invite", user, { role, emailed });
-    res.status(201).json({ user: adminUserView(user), link, expires_at, emailed });
+    await audit(req, "invite", user, { role, org_id: orgId, org_role: orgId !== null ? orgRole : null, emailed });
+    res.status(201).json({ user: { ...adminUserView(user), org_id: orgId, org_role: orgId !== null ? orgRole : null }, link, expires_at, emailed });
   }));
 
   router.patch("/:id", handle(async (req, res) => {
     const hasRole = req.body?.role !== undefined;
     const hasName = req.body?.full_name !== undefined;
-    if (!hasRole && !hasName) throw new HttpError(400, "Nothing to change");
+    const hasOrgRole = req.body?.org_role !== undefined;
+    if (!hasRole && !hasName && !hasOrgRole) throw new HttpError(400, "Nothing to change");
     const role = hasRole ? normalizeRole(req.body.role) : undefined;
     if (hasRole && !role) throw new HttpError(400, "Role must be user or admin");
+    // The admin role is platform-wide (every organization): only platform admins hand it out or take it away.
+    if (hasRole && !req.user!.isPlatformAdmin) throw new HttpError(403, "Only platform administrators can change roles. Make someone an owner of your organization instead.");
+    const orgRole = hasOrgRole ? orgRoleOf(req.body.org_role) : undefined;
+    if (hasOrgRole && !orgRole) throw new HttpError(400, "Organization role must be owner or member");
 
     const updated = await (hasRole
       ? guarded(req, "role", async (target, r) => {
@@ -179,18 +227,28 @@ export function createAdminUsersRouter(deps: AccountDeps) {
           return u;
         }, role!)
       : (async () => {
-          const target = await load(repo, req.params.id as string);
-          const u = await repo.update(target.id, { full_name: cleanName(req.body.full_name) });
-          await audit(req, "rename", target);
+          const target = await load(req, repo);
+          if (hasOrgRole && target.id === req.user!.id) throw new HttpError(409, "You can't change your own organization role. Ask another owner.");
+          const u = hasName ? await repo.update(target.id, { full_name: cleanName(req.body.full_name) }) : target;
+          if (hasName) await audit(req, "rename", target);
           return u;
         })());
+    if (hasOrgRole) {
+      const membership = await deps.orgs.membershipOf(updated!.id);
+      if (!membership) throw new HttpError(409, "This account isn't in an organization");
+      if (membership.org_role !== orgRole) {
+        await deps.orgs.setMemberRole(membership.org_id, updated!.id, orgRole!);
+        await audit(req, "role_change", updated!, { from: membership.org_role, to: orgRole, org_id: membership.org_id });
+      }
+    }
     deps.onUserChanged(updated!.id);
-    res.json({ user: adminUserView(updated!) });
+    const membership = await deps.orgs.membershipOf(updated!.id);
+    res.json({ user: { ...adminUserView(updated!), org_id: membership?.org_id ?? null, org_role: membership?.org_role ?? null, org_name: membership?.org_name ?? null } });
   }));
 
   router.post("/:id/approve", handle(async (req, res) => {
     const notPending = "Only accounts awaiting approval can be approved";
-    const target = await load(repo, req.params.id as string);
+    const target = await load(req, repo);
     if (target.status !== "pending") throw new HttpError(409, notPending);
     // Still pending is checked in the same statement, so when two admins
     // approve at once only one sends the email and records the approval.
@@ -218,7 +276,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
 
   router.post("/:id/enable", handle(async (req, res) => {
     const notDisabled = "This account isn't disabled";
-    const target = await load(repo, req.params.id as string);
+    const target = await load(req, repo);
     if (target.status !== "disabled") throw new HttpError(409, notDisabled);
     // An account disabled before anyone approved it goes back to awaiting approval.
     const status = target.approved_at ? "active" : "pending";
@@ -231,7 +289,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
 
   // A one-time link the admin passes on (shown once, never stored in clear).
   router.post("/:id/reset-link", handle(async (req, res) => {
-    const target = await load(repo, req.params.id as string);
+    const target = await load(req, repo);
     if (target.status === "disabled") throw new HttpError(409, "Enable the account before sending a reset link");
     if (target.id === req.user!.id) throw new HttpError(409, "Use “Change password” for your own account.");
     const purpose: TokenPurpose = target.status === "invited" ? "invite" : "reset";

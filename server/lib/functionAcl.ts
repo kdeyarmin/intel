@@ -58,7 +58,44 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "analyzeProviderNetwork",
 ]);
 
+/**
+ * Functions that operate the platform's shared data (imports, the crawler,
+ * maintenance, rollups, scoring, token-spending enrichment of shared provider
+ * records). Only platform admins may call them; an organization's owner
+ * administers their own organization, not the data every customer shares.
+ */
+export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
+  "triggerImport", "importNPPESFlatFile", "importAgentChat", "predictImportFormat", "analyzeImportedDataset",
+  "testCMSApiConnector", "testCMSUrl", "nppesCrawler", "manageCrawlerRetries",
+  "runScheduledImports", "runScheduledImportsFanout", "runMaintenanceFanout", "autoResumePausedImports", "autoRetryFailedImports",
+  "cancelStalledImports", "cleanupAllImports", "runDueScheduledReports",
+  "cleanProviderData", "reconcileProviderData", "matchProvidersToLocations", "runDataQualityScan",
+  "loadCensusGeography", "refreshRollups", "getLeadScoringStatus", "recalculateLeadScores",
+  "enrichBulkServerSide", "proactiveScanServerSide", "enrichmentJobStart", "enrichmentJobStop", "intelJobStart", "intelJobStop",
+  "startDMEEmailSearch", "stopDMEEmailSearch", "bulkVerifyEmails", "emailSearchBot",
+  "enrichProviderWithAI", "enrichProviderDEAData", "enrichProviderMedicareData", "enrichProviderThirdParty",
+]);
+
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */
 export function isFunctionAuthorized(functionName: string, role: string | undefined): boolean {
   return PUBLIC_FUNCTIONS.has(functionName) || role === "admin";
+}
+
+export interface FunctionCaller {
+  role?: string;
+  orgRole?: string | null;
+  isPlatformAdmin?: boolean;
+}
+
+/**
+ * With organizations: public functions for everyone, platform functions for
+ * platform admins only, and the rest for organization owners (and the
+ * legacy admin role).
+ */
+export function isFunctionAllowedFor(functionName: string, user: FunctionCaller | null | undefined): boolean {
+  if (PUBLIC_FUNCTIONS.has(functionName)) return true;
+  if (!user) return false;
+  if (user.isPlatformAdmin) return true;
+  if (PLATFORM_FUNCTIONS.has(functionName)) return false;
+  return user.role === "admin" || user.orgRole === "owner";
 }

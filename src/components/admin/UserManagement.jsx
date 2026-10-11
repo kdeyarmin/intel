@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import { Check, Copy, Loader2, MoreHorizontal, Search, UserPlus, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -111,13 +112,22 @@ function DisableDialog({ user, onCancel, onConfirm, busy }) {
   );
 }
 
-function InviteCard({ onInvited }) {
+// Invite roles: a member or an owner of the organization; platform admins may
+// also make platform-wide admins.
+const INVITE_ROLES = {
+  user: { label: 'Member', body: { role: 'user', org_role: 'member' } },
+  owner: { label: 'Owner', body: { role: 'user', org_role: 'owner' } },
+  admin: { label: 'Platform admin', body: { role: 'admin', org_role: 'owner' } },
+};
+
+function InviteCard({ onInvited, platformAdmin, seats }) {
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('user');
   const queryClient = useQueryClient();
+  const seatsFull = !!seats && seats.limit > 0 && seats.used >= seats.limit;
   const invite = useMutation({
-    mutationFn: () => base44.admin.users.invite({ email, full_name: fullName, role }),
+    mutationFn: () => base44.admin.users.invite({ email, full_name: fullName, ...INVITE_ROLES[role].body }),
     onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: USERS_KEY });
       onInvited({ ...r, email: r.user.email, title: 'Invite link' });
@@ -134,7 +144,10 @@ function InviteCard({ onInvited }) {
           <UserPlus className="w-5 h-5 text-emerald-400" aria-hidden="true" />
           Invite someone
         </CardTitle>
-        <CardDescription>They get a link to set a password. Invited accounts don't need approval.</CardDescription>
+        <CardDescription>
+          They get a link to set a password. Invited accounts don't need approval.
+          {seats && seats.limit > 0 && <> {seats.used} of {seats.limit} seats used{seatsFull && <>; <Link to="/Billing" className="text-cyan-400 hover:underline">upgrade the plan</Link> to add people</>}.</>}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={(e) => { e.preventDefault(); invite.mutate(); }} className="space-y-3">
@@ -151,12 +164,13 @@ function InviteCard({ onInvited }) {
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger id="invite-role" className="bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">Member</SelectItem>
+                <SelectItem value="owner">Owner (manages people and billing)</SelectItem>
+                {platformAdmin && <SelectItem value="admin">Platform admin</SelectItem>}
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" disabled={invite.isPending || !email} className="w-full bg-emerald-600 hover:bg-emerald-700">
+          <Button type="submit" disabled={invite.isPending || !email || seatsFull} className="w-full bg-emerald-600 hover:bg-emerald-700">
             {invite.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" /> : <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" />}
             Create invite
           </Button>
@@ -177,6 +191,8 @@ export default function UserManagement() {
 
   const { data, isLoading, error } = useQuery({ queryKey: USERS_KEY, queryFn: () => base44.admin.users.list() });
   const users = useMemo(() => data?.users ?? [], [data]);
+  const platformAdmin = !!data?.platform_admin;
+  const organization = data?.organization ?? null;
 
   const counts = useMemo(() => {
     const c = { all: users.length };
@@ -216,14 +232,26 @@ export default function UserManagement() {
   const changeRole = async (u, role) => {
     if (role === u.role) return;
     const ok = await confirm({
-      title: role === 'admin' ? `Make ${u.email} an admin?` : `Remove admin access from ${u.email}?`,
+      title: role === 'admin' ? `Make ${u.email} a platform admin?` : `Remove platform admin access from ${u.email}?`,
       description: role === 'admin'
-        ? 'Admins can import data, send outreach email, change settings and manage every account.'
-        : 'They keep their account but lose admin pages and actions. This takes effect within 30 seconds.',
-      confirmLabel: role === 'admin' ? 'Make admin' : 'Remove admin',
+        ? 'Platform admins import data, run the crawler and maintenance, and manage every organization’s accounts.'
+        : 'They keep their account and organization but lose the platform pages and actions. This takes effect within 30 seconds.',
+      confirmLabel: role === 'admin' ? 'Make platform admin' : 'Remove platform admin',
       destructive: role !== 'admin',
     });
     if (ok) act.mutate({ fn: () => base44.admin.users.update(u.id, { role }), success: 'Role updated' });
+  };
+  const changeOrgRole = async (u, org_role) => {
+    if (org_role === u.org_role) return;
+    const ok = await confirm({
+      title: org_role === 'owner' ? `Make ${u.email} an owner?` : `Make ${u.email} a member?`,
+      description: org_role === 'owner'
+        ? 'Owners manage the organization’s people, plan and billing, and can send outreach email.'
+        : 'They keep their account but lose the owner pages and actions. This takes effect within 30 seconds.',
+      confirmLabel: org_role === 'owner' ? 'Make owner' : 'Make member',
+      destructive: org_role !== 'owner',
+    });
+    if (ok) act.mutate({ fn: () => base44.admin.users.update(u.id, { org_role }), success: 'Role updated' });
   };
   const enable = (u) => act.mutate({ fn: () => base44.admin.users.enable(u.id), success: `${u.email} enabled` });
   const resetLink = (u) => act.mutate({
@@ -263,7 +291,9 @@ export default function UserManagement() {
             Users
           </CardTitle>
           <CardDescription>
-            New sign-ups wait here until an admin approves them.
+            {organization ? `People in ${organization.name || 'your organization'}. ` : 'Every organization’s people. '}
+            New sign-ups wait here until an owner approves them.
+            {organization?.seats && organization.seats.limit > 0 && ` ${organization.seats.used} of ${organization.seats.limit} seats used.`}
             {data && !data.email_enabled && ' Email isn’t set up, so reset and invite links are shown here for you to pass on.'}
           </CardDescription>
         </CardHeader>
@@ -318,15 +348,33 @@ export default function UserManagement() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <Select value={u.role || 'user'} onValueChange={(role) => changeRole(u, role)} disabled={self || busy || u.status === 'disabled'}>
-                            <SelectTrigger className="h-8 w-24 bg-slate-800 border-slate-700 text-xs" aria-label={`Role for ${u.email}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-col gap-1">
+                            {u.org_id ? (
+                              <Select value={u.org_role || 'member'} onValueChange={(org_role) => changeOrgRole(u, org_role)} disabled={self || busy || u.status === 'disabled'}>
+                                <SelectTrigger className="h-8 w-28 bg-slate-800 border-slate-700 text-xs" aria-label={`Organization role for ${u.email}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="member">Member</SelectItem>
+                                  <SelectItem value="owner">Owner</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-xs text-slate-400">No organization</span>
+                            )}
+                            {platformAdmin && (
+                              <Select value={u.role || 'user'} onValueChange={(role) => changeRole(u, role)} disabled={self || busy || u.status === 'disabled'}>
+                                <SelectTrigger className="h-8 w-28 bg-slate-800 border-slate-700 text-xs" aria-label={`Platform role for ${u.email}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">Customer</SelectItem>
+                                  <SelectItem value="admin">Platform admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                            {platformAdmin && u.org_name && <span className="text-[11px] text-slate-400 truncate max-w-[10rem]" title={u.org_name}>{u.org_name}</span>}
+                          </div>
                         </td>
                         <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
                         <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap hidden md:table-cell">{formatDate(u.last_login_at, true)}</td>
@@ -389,7 +437,7 @@ export default function UserManagement() {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-1 gap-6 content-start">
-        <InviteCard onInvited={setLinkResult} />
+        <InviteCard onInvited={setLinkResult}  platformAdmin={platformAdmin} seats={organization?.seats} />
         <AccountActivity />
       </div>
 

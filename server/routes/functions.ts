@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
-import { isFunctionAuthorized } from "../lib/functionAcl";
+import { isFunctionAuthorized, isFunctionAllowedFor } from "../lib/functionAcl";
 import { publicErrorMessage } from "../lib/publicError";
 
 const router = Router();
@@ -10,7 +10,7 @@ const router = Router();
 router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000), async (req: AuthRequest, res: Response) => {
   const { functionName } = req.params;
 
-  if (!isFunctionAuthorized(functionName, req.user?.role)) {
+  if (!isFunctionAllowedFor(functionName, req.user)) {
     return res.status(403).json({
       message: "Forbidden",
       detail: "Admin access is required to invoke this function.",
@@ -96,7 +96,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
 
       case "getTerritoryData": {
         const { handleGetTerritoryData } = await import("../functions/territory");
-        return res.json(await handleGetTerritoryData(req.body));
+        return res.json(await handleGetTerritoryData(req.body, req.user));
       }
 
       case "getDataHealthMetrics": {
@@ -517,12 +517,12 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getCountyIntelligence": {
         const { handleGetCountyIntelligence } = await import("../functions/countyIntelligence");
-        return res.json(await handleGetCountyIntelligence(req.body));
+        return res.json(await handleGetCountyIntelligence(req.body, req.user));
       }
 
       case "getCountyMarket": {
         const { handleGetCountyMarket } = await import("../functions/market");
-        return res.json(await handleGetCountyMarket(req.body));
+        return res.json(await handleGetCountyMarket(req.body, req.user));
       }
 
       case "getHospitalCatchment": {
@@ -537,17 +537,17 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getCountyMarketLayer": {
         const { handleGetCountyMarketLayer } = await import("../functions/market");
-        return res.json(await handleGetCountyMarketLayer(req.body));
+        return res.json(await handleGetCountyMarketLayer(req.body, req.user));
       }
 
       case "getReferralSources": {
         const { handleGetReferralSources } = await import("../functions/market");
-        return res.json(await handleGetReferralSources(req.body));
+        return res.json(await handleGetReferralSources(req.body, req.user));
       }
 
       case "getServiceAreaOverlap": {
         const { handleGetServiceAreaOverlap } = await import("../functions/market");
-        return res.json(await handleGetServiceAreaOverlap(req.body));
+        return res.json(await handleGetServiceAreaOverlap(req.body, req.user));
       }
 
       case "getAvailableStatesCounties": {

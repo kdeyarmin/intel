@@ -2,6 +2,8 @@ import React, { useId, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
 import { exportCSV, exportExcel, exportPDF, exportJSON, pickFields } from './exportUtils';
 import ExportFormatSelector from './ExportFormatSelector';
 import ColumnSelector from './ColumnSelector';
@@ -25,6 +27,17 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
 
   const handleExport = async () => {
     setExporting(true);
+    // Exports count against the organization's daily quota; a 429 means it is used up.
+    try {
+      await base44.billing.countExport();
+    } catch (err) {
+      setExporting(false);
+      if (err?.status === 429) {
+        toast.error(err.message || "Today's export limit for your organization has been reached.");
+        return;
+      }
+      // Any other failure (offline, server error) doesn't block the export itself.
+    }
     let rows = data;
     if (dateField) {
       rows = applyDateRangeFilter(rows, dateField, dateRange);

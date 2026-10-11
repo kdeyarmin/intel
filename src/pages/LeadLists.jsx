@@ -18,7 +18,6 @@ import { listMembers } from '../components/leadlists/leadListService';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { useUrlState } from '@/hooks/useUrlState';
 import QueryErrorState from '../components/shared/QueryErrorState';
@@ -26,13 +25,13 @@ import QueryErrorState from '../components/shared/QueryErrorState';
 // ?list=<id> opens that list, so a list can be linked to directly.
 const URL_DEFAULTS = { list: '' };
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function LeadLists() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  // Campaigns (and sending) are admin-only.
-  const canStartCampaign = user?.role === 'admin';
+  // Campaigns (and sending) are for an organization's owners.
+  const { isOwner: canStartCampaign } = usePageAccess();
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
 
   const { data: lists = [], isLoading, isError, error: loadError, refetch } = useQuery({

@@ -118,6 +118,23 @@ npm run build` and starts with `npm start`. Add a Postgres plugin
 (`DATABASE_URL`), a volume mounted at `/app/uploads` for file uploads,
 `DB_MIGRATE_ON_BOOT=true`, and the secrets from `.env.example`.
 
+### Selling subscriptions
+
+Every account belongs to an organization (migration 0020): signing up creates
+one in a 14-day trial with the signer as its owner, and the account is
+activated by a platform admin's approval or by checkout. Owners manage their
+organization's people (within the plan's seat limit), campaigns and billing;
+platform admins (`users.is_platform_admin`) operate the shared data and see
+every organization. Plans live in the `plans` table (county pack, state,
+national) and set the territory the County, Market, Territory and
+referral-source views answer for, the seat limit and the daily quotas (AI
+requests, exports, outreach emails) counted in `org_usage`. Billing is Stripe
+Checkout plus the customer portal (`/api/billing`), with subscription events
+on `/api/webhooks/stripe`; set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+and a price id per plan (`STRIPE_PRICE_<CODE>` or `plans.stripe_price_id`).
+The public Terms, Privacy and Data Use pages are at `/terms`, `/privacy` and
+`/data-use`; signup records the accepted terms version.
+
 ### Keeping the data fresh
 
 Nothing imports or refreshes without a maintenance tick. Either point a cron

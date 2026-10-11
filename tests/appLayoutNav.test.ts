@@ -21,6 +21,7 @@ import {
   getPageGroup,
   getVisibleNavSections,
   resolveLegacyRedirect,
+  effectiveRole,
 } from '../src/components/layout/navConfig';
 
 const allItems = NAV_SECTIONS.flatMap((s) => s.items);
@@ -59,10 +60,16 @@ describe('sidebar', () => {
     expect(getVisibleNavSections('user').map((s) => s.label)).not.toContain('Administration');
   });
 
-  it('keeps every Administration entry admin-only', () => {
+  it('keeps every Administration entry admin-only, except Admin Settings which an organization’s owner opens too', () => {
     for (const item of NAV_SECTIONS.find((s) => s.label === 'Administration')!.items) {
-      expect(item.roles).toEqual(['admin']);
+      expect(item.roles, item.page).toEqual(item.page === 'AdminSettings' ? ['admin', 'owner'] : ['admin']);
     }
+  });
+
+  it('shows an organization’s owner the everyday pages plus campaigns and Admin Settings', () => {
+    const ownerPages = getVisibleNavSections('owner').flatMap((s) => s.items.map((i) => i.page));
+    const userPages = getVisibleNavSections('user').flatMap((s) => s.items.map((i) => i.page));
+    expect(ownerPages.filter((p) => !userPages.includes(p))).toEqual(['ProviderOutreach', 'AdminSettings']);
   });
 });
 
@@ -143,6 +150,24 @@ describe('page access', () => {
     expect(canAccessPage('Providers', 'viewer')).toBe(true);
     expect(canAccessPage('NotARealPage', 'user')).toBe(false);
     expect(canAccessPage('NotARealPage', 'admin')).toBe(true);
+    expect(canAccessPage('NotARealPage', 'owner')).toBe(false);
+  });
+
+  it('reads the role from a session user: platform admins, organization owners, everyone else', () => {
+    expect(effectiveRole({ role: 'user', orgRole: 'member' })).toBe('user');
+    expect(effectiveRole({ role: 'user', orgRole: 'owner' })).toBe('owner');
+    expect(effectiveRole({ role: 'user', orgRole: 'member', isPlatformAdmin: true })).toBe('admin');
+    expect(effectiveRole({ role: 'admin' })).toBe('admin');
+    expect(effectiveRole(null)).toBe('user');
+    expect(effectiveRole('owner')).toBe('owner');
+    const owner = { role: 'user', orgRole: 'owner' };
+    expect(canAccessPage('Billing', owner)).toBe(true);
+    expect(canAccessPage('AdminSettings', owner)).toBe(true);
+    expect(canAccessPage('ScoringRules', owner)).toBe(true);
+    expect(canAccessPage('ProviderOutreach', owner)).toBe(true);
+    expect(canAccessPage('DataCenter', owner)).toBe(false);
+    expect(canAccessPage('ProviderIntelligence', owner)).toBe(false);
+    expect(canAccessPage('Billing', { role: 'user', orgRole: 'member' })).toBe(false);
   });
 
   it('highlights the nav entry a page belongs to', () => {

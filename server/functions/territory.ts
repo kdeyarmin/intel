@@ -5,6 +5,7 @@ import { pool } from "../db";
 import { withTimeoutClient, isStatementTimeout } from "../lib/pgClient";
 import { coordsFor, getGeoIndex, zipToCounty } from "../lib/geo";
 import { normalizeEntityType, specialtyGroupFor, specialtyGroupLabel } from "../lib/specialtyGroups";
+import { assertTerritory, type EntitledUser } from "../lib/entitlements";
 import { ENTITY_FILTER_SQL, PRACTICE_STATE_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
 import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizationByNpi } from "../lib/territory";
 
@@ -104,8 +105,9 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
   return { npis, scoredFirst: top.length };
 }
 
-export async function handleGetTerritoryData(payload: any) {
+export async function handleGetTerritoryData(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state === "ALL" ? null : payload?.state ?? "PA");
+  if (state && state !== "ALL") assertTerritory(user, { state });
   const group = typeof payload?.specialty_group === "string" && payload.specialty_group !== "all" ? payload.specialty_group : null;
   const entity = payload?.entity_type === "Individual" || payload?.entity_type === "Organization" ? payload.entity_type : null;
   const limit = Math.min(Math.max(Math.floor(Number(payload?.limit)) || DEFAULT_LIMIT, 1), MAX_LIMIT);

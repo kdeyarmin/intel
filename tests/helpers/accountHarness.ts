@@ -8,6 +8,7 @@ import type { UserRow } from "../../server/lib/accounts";
 import type { AccountDeps } from "../../server/lib/accountDeps";
 import type { AuditEntry } from "../../server/lib/audit";
 import type { MailMessage } from "../../server/lib/mailer";
+import type { Membership, OrgRepo } from "../../server/lib/orgs";
 import type { TokenRow, UserRepo } from "../../server/lib/userRepo";
 import { invalidateSessionUser, setSessionUserLoader } from "../../server/lib/sessionUsers";
 import { createAuthRouter } from "../../server/routes/auth";
@@ -63,6 +64,9 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
         disabled_reason: null,
         password_changed_at: null,
         created_date: new Date(),
+        is_platform_admin: data.is_platform_admin ?? false,
+        terms_accepted_at: data.terms_accepted_at ?? null,
+        terms_version: data.terms_version ?? null,
       };
       users.push(row);
       return clone(row);
@@ -129,6 +133,56 @@ export function memoryUserRepo(): UserRepo & { users: UserRow[]; tokens: StoredT
   return repo;
 }
 
+export interface MemoryOrg {
+  id: number;
+  name: string;
+  status: string;
+  seat_limit: number;
+  plan_code: string | null;
+  territory: { states: string[]; county_fips: string[] };
+}
+
+/** In-memory organizations and memberships. Organization 1 is the default every seeded user joins. */
+export function memoryOrgRepo(users: UserRow[]): OrgRepo & { orgs: MemoryOrg[]; members: { org_id: number; user_id: number; org_role: string }[] } {
+  const orgs: MemoryOrg[] = [{ id: 1, name: "Test organization", status: "active", seat_limit: 100, plan_code: "state", territory: { states: [], county_fips: [] } }];
+  const members: { org_id: number; user_id: number; org_role: string }[] = [];
+  const nameOf = (orgId: number) => orgs.find((o) => o.id === orgId)?.name ?? "";
+  const toMembership = (m: { org_id: number; user_id: number; org_role: string }): Membership => ({ ...m, org_name: nameOf(m.org_id) });
+  return {
+    orgs,
+    members,
+    async createWithOwner(input) {
+      const org: MemoryOrg = { id: orgs.length + 1, name: input.name, status: "trial", seat_limit: 3, plan_code: null, territory: { states: [], county_fips: [] } };
+      orgs.push(org);
+      members.push({ org_id: org.id, user_id: input.ownerUserId, org_role: "owner" });
+      return { id: org.id, name: org.name };
+    },
+    async memberships(orgId) {
+      return members.filter((m) => orgId == null || m.org_id === orgId).map(toMembership);
+    },
+    async membershipOf(userId) {
+      const m = members.filter((x) => x.user_id === userId).sort((a, b) => a.org_id - b.org_id)[0];
+      return m ? toMembership(m) : null;
+    },
+    async addMember(orgId, userId, orgRole) {
+      const existing = members.find((m) => m.org_id === orgId && m.user_id === userId);
+      if (existing) existing.org_role = orgRole;
+      else members.push({ org_id: orgId, user_id: userId, org_role: orgRole });
+    },
+    async setMemberRole(orgId, userId, orgRole) {
+      const existing = members.find((m) => m.org_id === orgId && m.user_id === userId);
+      if (!existing) return false;
+      existing.org_role = orgRole;
+      return true;
+    },
+    async seatUsage(orgId) {
+      const ids = new Set(members.filter((m) => m.org_id === orgId).map((m) => m.user_id));
+      const used = users.filter((u) => ids.has(u.id) && ["active", "invited", "pending"].includes(u.status)).length;
+      return { used, limit: orgs.find((o) => o.id === orgId)?.seat_limit ?? 0 };
+    },
+  };
+}
+
 // Module-wide so every client in a test file gets a distinct address.
 let clients = 0;
 
@@ -139,12 +193,17 @@ const fakeHash = (pw: string) => `hashed:${Buffer.from(pw, "utf8").subarray(0, 7
 export interface Harness {
   url: string;
   repo: ReturnType<typeof memoryUserRepo>;
+  orgs: ReturnType<typeof memoryOrgRepo>;
   mail: MailMessage[];
   audits: AuditEntry[];
   deps: AccountDeps;
   close(): Promise<void>;
-  /** Creates a user directly in the store. */
-  seed(user: Partial<UserRow> & { email: string; password?: string }): Promise<UserRow>;
+  /**
+   * Creates a user directly in the store, as a member of organization 1 (or
+   * `org_id`), an owner when an admin. Admins are platform admins unless
+   * `is_platform_admin: false`, like the accounts migration 0020 backfilled.
+   */
+  seed(user: Partial<UserRow> & { email: string; password?: string; org_id?: number | null; org_role?: "owner" | "member" }): Promise<UserRow>;
   /** A cookie jar per "browser", each from its own IP unless one is given. */
   client(ip?: string): Client;
 }
@@ -155,12 +214,14 @@ export interface Client {
 }
 
 /** `repo`: another harness's store, to act as a second server instance on the same database. */
-export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | null; repo?: Harness["repo"] } = {}): Promise<Harness> {
+export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | null; repo?: Harness["repo"]; orgs?: Harness["orgs"] } = {}): Promise<Harness> {
   const repo = opts.repo ?? memoryUserRepo();
+  const orgs = opts.orgs ?? memoryOrgRepo(repo.users);
   const mail: MailMessage[] = [];
   const audits: AuditEntry[] = [];
   const deps: AccountDeps = {
     repo,
+    orgs,
     audit: async (e) => {
       audits.push(e);
     },
@@ -176,7 +237,15 @@ export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | 
   };
   setSessionUserLoader(async (id) => {
     const u = await repo.findById(id);
-    return u && { id: u.id, email: u.email, full_name: u.full_name, role: u.role || "user", status: u.status, token_version: u.token_version };
+    if (!u) return null;
+    const m = await orgs.membershipOf(u.id);
+    const org = m ? orgs.orgs.find((o) => o.id === m.org_id) : null;
+    return {
+      id: u.id, email: u.email, full_name: u.full_name, role: u.role || "user", status: u.status, token_version: u.token_version,
+      is_platform_admin: !!u.is_platform_admin, terms_accepted_at: u.terms_accepted_at ?? null,
+      org_id: m?.org_id ?? null, org_role: m?.org_role ?? null, org_name: org?.name ?? null, org_status: org?.status ?? null,
+      plan_code: org?.plan_code ?? null, territory: org?.territory ?? null,
+    };
   });
 
   const app = express();
@@ -219,19 +288,26 @@ export async function startHarness(opts: { mailer?: boolean; baseUrl?: string | 
   return {
     url,
     repo,
+    orgs,
     mail,
     audits,
     deps,
     client,
     async seed(u) {
+      const role = u.role ?? "user";
       const row = await repo.create({
         email: u.email,
         password_hash: fakeHash(u.password ?? "password123"),
         full_name: u.full_name ?? null,
-        role: u.role ?? "user",
+        role,
         status: u.status ?? "active",
         approved_at: u.approved_at ?? (u.status === "pending" || u.status === "invited" ? null : new Date()),
+        is_platform_admin: u.is_platform_admin ?? role === "admin",
+        terms_accepted_at: u.terms_accepted_at ?? null,
+        terms_version: u.terms_version ?? null,
       });
+      const orgId = u.org_id === undefined ? 1 : u.org_id;
+      if (orgId !== null) await orgs.addMember(orgId, row.id, u.org_role ?? (role === "admin" ? "owner" : "member"));
       return row;
     },
     async close() {

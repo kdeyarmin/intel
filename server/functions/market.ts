@@ -17,6 +17,7 @@ import { specialtyGroupFor } from "../lib/specialtyGroups";
 import { providerName } from "../lib/territory";
 import { rollupStatus } from "../lib/rollups/runner";
 import { MARKET_JOBS } from "../lib/rollups/market";
+import { assertTerritory, entitledCounties, type EntitledUser } from "../lib/entitlements";
 
 export const PAC_SETTINGS = ["snf", "hha", "hospice", "irf", "ltch"] as const;
 export type PacSetting = (typeof PAC_SETTINGS)[number];
@@ -199,9 +200,10 @@ const mixRow = (r: any) => r ? ({
 }) : null;
 
 /** The county's market: profile, hospital sources, post-acute competitors and trends, agency coverage. */
-export async function handleGetCountyMarket(payload: any) {
+export async function handleGetCountyMarket(payload: any, user?: EntitledUser | null) {
   const { state, index, county, counties } = await resolveCountyArg(payload);
   if (!county) return { state, needsCounty: true, counties };
+  assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const fips = county.fips;
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const [profile, sources, competitors, trends, coverage] = await Promise.all([
@@ -373,15 +375,20 @@ export async function handleGetFacilityMarket(payload: any) {
 const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization", "acs", "licensed"];
 
 /** One metric for every county in a state (for a choropleth), or with `all` every metric (for the county table). */
-export async function handleGetCountyMarketLayer(payload: any) {
+export async function handleGetCountyMarketLayer(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
+  assertTerritory(user, { state });
+  // A county pack sees its counties only; a state or national plan sees them all.
+  const allowed = entitledCounties(user, state);
+  const keep = (rows: any[]) => (allowed ? rows.filter((r: any) => allowed.includes(r.county_fips)) : rows);
   if (payload?.all === true) {
     return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
       const cols = Object.values(LAYER_METRICS).map((m) => m.column);
-      const { rows } = await client.query(
+      const { rows: all } = await client.query(
         `SELECT county_fips, county_name, ${cols.join(", ")}, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
       ).catch(() => ({ rows: [] as any[] }));
+      const rows = keep(all);
       const vintages: Record<string, unknown> = {};
       for (const k of VINTAGE_KEYS) vintages[k] = rows.find((r: any) => r.as_of?.[k])?.as_of?.[k] ?? null;
       return {
@@ -396,9 +403,10 @@ export async function handleGetCountyMarketLayer(payload: any) {
   const def = LAYER_METRICS[metric];
   if (!def) throw new HttpError(400, `metric must be one of ${Object.keys(LAYER_METRICS).join(", ")}.`);
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
-    const { rows } = await client.query(
+    const { rows: all } = await client.query(
       `SELECT county_fips, county_name, ${def.column} AS value, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
     ).catch(() => ({ rows: [] as any[] }));
+    const rows = keep(all);
     const vintage = rows.find((r: any) => r.as_of?.[def.vintage])?.as_of?.[def.vintage] ?? null;
     return {
       state, metric, label: def.label, format: def.format, vintage,
@@ -410,7 +418,7 @@ export async function handleGetCountyMarketLayer(payload: any) {
 }
 
 /** Top likely referral sources (clinicians) in a county or state, with the components behind the index. */
-export async function handleGetReferralSources(payload: any) {
+export async function handleGetReferralSources(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
   const index = await getGeoIndex(pool);
@@ -418,6 +426,8 @@ export async function handleGetReferralSources(payload: any) {
   if ((payload?.county_fips || payload?.county) && (!county || county.state !== state)) {
     return { state, needsCounty: true, counties: countiesForState(index, state).map((c) => ({ fips: c.fips, name: c.name })) };
   }
+  assertTerritory(user, county ? { state, county_fips: county.fips, county_name: county.name } : { state });
+  const stateCounties = county ? null : entitledCounties(user, state);
   const setting = ["hha", "hospice", "dme"].includes(String(payload?.setting)) ? String(payload.setting) : null;
   const group = typeof payload?.specialty_group === "string" && payload.specialty_group !== "all" ? payload.specialty_group : null;
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(payload?.limit) || TOP));
@@ -425,9 +435,14 @@ export async function handleGetReferralSources(payload: any) {
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const where = [county ? "county_fips = $1" : "state = $1"];
     if (setting) where.push(`${setting}_eligible = true`);
+    const params: unknown[] = [county ? county.fips : state, fetch];
+    if (stateCounties) {
+      params.push(stateCounties);
+      where.push(`county_fips = ANY($${params.length})`);
+    }
     const { rows } = await client.query(
       `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ORDER BY referral_index DESC, benes DESC NULLS LAST, npi LIMIT $2`,
-      [county ? county.fips : state, fetch],
+      params,
     ).catch(() => ({ rows: [] as any[] }));
     const matched = group ? rows.filter((r: any) => specialtyGroupFor(null, r.specialty).key === group) : rows;
     const page = matched.slice(0, limit);
@@ -458,9 +473,10 @@ export async function handleGetReferralSources(payload: any) {
 }
 
 /** Home health agencies or hospices serving a county, with how much of it (and how many other counties) each covers. */
-export async function handleGetServiceAreaOverlap(payload: any) {
+export async function handleGetServiceAreaOverlap(payload: any, user?: EntitledUser | null) {
   const { state, index, county, counties } = await resolveCountyArg(payload);
   if (!county) return { state, needsCounty: true, counties };
+  assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const setting = String(payload?.setting ?? "hha").toLowerCase();
   if (setting !== "hha" && setting !== "hospice") throw new HttpError(400, "setting must be hha or hospice.");
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {

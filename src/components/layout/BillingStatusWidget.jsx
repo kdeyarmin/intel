@@ -1,109 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { CreditCard, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
-import { Play, Pause, CreditCard, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 
+const STATUS = {
+  trial: { label: 'Trial', className: 'bg-cyan-500/10 text-cyan-400' },
+  active: { label: 'Active', className: 'bg-emerald-500/10 text-emerald-400' },
+  past_due: { label: 'Payment due', className: 'bg-amber-500/10 text-amber-400' },
+  canceled: { label: 'Canceled', className: 'bg-red-500/10 text-red-400' },
+};
+
+function daysUntil(iso) {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  return Number.isNaN(ms) ? null : Math.max(0, Math.ceil(ms / 86_400_000));
+}
+
+/**
+ * The organization's plan at the bottom of the sidebar: status, trial days
+ * left, and today's AI usage against the plan's quota (from /api/billing/status).
+ */
 export default function BillingStatusWidget({ sidebarOpen }) {
-  const [isActive, setIsActive] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { data } = useQuery({
+    queryKey: ['billingStatus'],
+    queryFn: () => base44.billing.status(),
+    enabled: !!user?.orgId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  if (!user?.orgId || !data?.organization) return null;
 
-  // Mock credits data representing nearing limit
-  const credits = {
-    used: 4950,
-    total: 5000,
-  };
-  const percentage = (credits.used / credits.total) * 100;
-  const isLow = percentage >= 90;
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const configs = await base44.entities.ImportScheduleConfig.filter({});
-        const active = configs.some(c => c.is_active);
-        setIsActive(active);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStatus();
-  }, []);
-
-  const toggleImports = async () => {
-    setLoading(true);
-    try {
-      const configs = await base44.entities.ImportScheduleConfig.filter({});
-      const newState = !isActive;
-      
-      await Promise.all(configs.map(c => 
-        base44.entities.ImportScheduleConfig.update(c.id, { is_active: newState })
-      ));
-      
-      setIsActive(newState);
-      toast.success(newState ? 'Scheduled imports resumed' : 'Scheduled imports paused');
-    } catch (_err) {
-      toast.error('Failed to toggle imports');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const org = data.organization;
+  const status = STATUS[org.status] || { label: org.status, className: 'bg-slate-700 text-slate-300' };
+  const attention = org.status === 'past_due' || org.status === 'canceled';
+  const trialDays = org.status === 'trial' ? daysUntil(org.trial_ends_at) : null;
+  const ai = data.usage ? { used: data.usage.used.ai_calls ?? 0, limit: data.usage.limits.ai_calls ?? 0 } : null;
+  const aiPct = ai && ai.limit > 0 ? Math.min(100, Math.round((ai.used / ai.limit) * 100)) : 0;
+  const aiLow = ai && ai.limit > 0 && aiPct >= 90;
 
   if (!sidebarOpen) {
     return (
       <div className="flex justify-center p-3 border-t border-slate-800/60">
-        <CreditCard className={`w-5 h-5 ${isLow ? 'text-red-400' : 'text-slate-400'}`} />
+        <Link to="/Billing" aria-label="Plan and billing" title="Plan and billing">
+          <CreditCard className={`w-5 h-5 ${attention ? 'text-amber-400' : 'text-slate-400'}`} aria-hidden="true" />
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="mx-2 mb-3 mt-2 p-3 rounded-xl bg-slate-800/30 border border-slate-700/50 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-          <CreditCard className="w-3.5 h-3.5" />
-          API Credits
-        </span>
-        {isLow && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+      <div className="flex items-center justify-between mb-2">
+        <Link to="/Billing" className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
+          <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+          {data.plan?.name || 'Plan'}
+        </Link>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${status.className}`}>{status.label}</span>
       </div>
-      
-      <div className="mb-4">
-        <div className="flex justify-between text-xs mb-1.5">
-          <span className={`font-semibold ${isLow ? 'text-red-400' : 'text-slate-200'}`}>
-            {credits.total - credits.used} left
-          </span>
-          <span className="text-slate-400 font-medium">{credits.total} total</span>
+      <p className="text-[11px] text-slate-400 truncate" title={org.name}>{org.name}</p>
+      {trialDays !== null && (
+        <p className="text-[11px] text-cyan-400 mt-1">{trialDays === 0 ? 'Trial ends today' : `${trialDays} day${trialDays === 1 ? '' : 's'} left in the trial`}</p>
+      )}
+      {attention && (
+        <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" aria-hidden="true" />
+          {org.status === 'past_due' ? 'A payment failed' : 'Subscription ended'}. <Link to="/Billing" className="underline">Fix it</Link>
+        </p>
+      )}
+      {ai && ai.limit > 0 && (
+        <div className="mt-2">
+          <div className="flex justify-between text-[10px] mb-1">
+            <span className={aiLow ? 'text-amber-400' : 'text-slate-400'}>AI requests today</span>
+            <span className="text-slate-400">{ai.used} / {ai.limit}</span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden" role="progressbar" aria-label="AI requests used today" aria-valuemin={0} aria-valuemax={ai.limit} aria-valuenow={ai.used}>
+            <div className={`h-full rounded-full ${aiLow ? 'bg-amber-500' : 'bg-cyan-500'}`} style={{ width: `${aiPct}%` }} />
+          </div>
         </div>
-        <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
-          <div 
-            className={`h-full rounded-full ${isLow ? 'bg-red-500' : 'bg-cyan-500'}`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="pt-3 border-t border-slate-700/50">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-[11px] text-slate-400 font-medium">Auto-Imports</span>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-            {isActive ? 'Running' : 'Paused'}
-          </span>
-        </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className={`w-full h-8 text-[11px] font-medium border-slate-700 hover:bg-slate-700/50 ${isActive ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}`}
-          onClick={toggleImports}
-          disabled={loading}
-        >
-          {isActive ? (
-            <><Pause className="w-3.5 h-3.5 mr-1.5" /> Pause All</>
-          ) : (
-            <><Play className="w-3.5 h-3.5 mr-1.5" /> Resume All</>
-          )}
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

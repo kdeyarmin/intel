@@ -7,6 +7,41 @@ import { addSuppressions } from "../lib/suppressions";
 
 const router = Router();
 
+// Stripe webhook (subscriptions for organizations). Configure the endpoint in
+// Stripe as POST https://<app>/api/webhooks/stripe and set
+// STRIPE_WEBHOOK_SECRET to its signing secret. The signature covers the raw
+// body, so this is mounted before express.json() too.
+router.post(
+  "/stripe",
+  rateLimit("stripe_webhook", 600, 60_000),
+  express.raw({ type: "*/*", limit: "2mb" }),
+  async (req: Request, res: Response) => {
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!secret || !key) return res.status(503).json({ message: "Stripe webhook isn't configured (STRIPE_WEBHOOK_SECRET)." });
+    let event: any;
+    try {
+      const { default: Stripe } = await import("stripe");
+      event = new Stripe(key).webhooks.constructEvent(req.body as Buffer, req.header("stripe-signature") ?? "", secret);
+    } catch (e: any) {
+      return res.status(400).json({ message: `Invalid Stripe signature: ${String(e?.message || e).slice(0, 120)}` });
+    }
+    try {
+      const { applyStripeEvent } = await import("../lib/billing");
+      const result = await applyStripeEvent(event, pool);
+      if (result.handled && result.org_id) {
+        const { publishSessionUserChange } = await import("../lib/sessionUsers");
+        const { rows } = await pool.query("SELECT user_id FROM organization_members WHERE org_id = $1", [result.org_id]);
+        for (const r of rows) publishSessionUserChange(Number(r.user_id));
+      }
+      res.json({ received: true, ...result });
+    } catch (e: any) {
+      console.error("[stripe webhook] failed:", e?.message || e);
+      res.status(500).json({ message: "Failed to apply the event" });
+    }
+  },
+);
+
 // SendGrid Event Webhook. Mounted before express.json() because the signature
 // covers the raw body. Configure in SendGrid: Settings → Mail Settings → Event
 // Webhook → POST https://<app>/api/webhooks/sendgrid with signing enabled, and

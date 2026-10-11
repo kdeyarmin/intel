@@ -101,6 +101,20 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   session. Accounts are managed through `/api/admin/users`
   (`server/routes/adminUsers.ts`), not the entity API. Public auth screens live
   in `src/components/auth/` (anything in `src/pages/` becomes a protected route).
+- **Organizations:** every account belongs to one (`organization_members`,
+  `org_role` owner|member); signup creates it in trial (`server/lib/orgs.ts`).
+  Customer-owned tables carry `org_id`, and `server/routes/entities.ts` scopes
+  `ORG_SCOPED_ENTITIES` by the session's `orgId` (stamped on create, never
+  trusted from the body). Three roles: platform admin
+  (`users.is_platform_admin`: shared data, every organization, `platformAdminOnly`,
+  `PLATFORM_FUNCTIONS`), owner (`isOrgAdmin`/`adminOnly`: their organization's
+  people, billing, campaigns) and member. The frontend mirrors this with
+  `effectiveRole(user)` in `navConfig.js` (`admin` | `owner` | `user`); pass the
+  session user, not `user.role`, to `canAccessPage`. Plans set the territory
+  (`server/lib/entitlements.ts`, `assertTerritory` in county/market/territory
+  handlers), seats and daily quotas (`server/lib/orgQuota.ts`, `consumeQuota`).
+  Billing is Stripe (`server/lib/billing.ts`, `/api/billing`, `/api/webhooks/stripe`).
+  Public legal pages: `/terms`, `/privacy`, `/data-use`.
 - **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`). The
   browser records its own actions with `base44.audit.record(type, details)`
   (`POST /api/audit`, allowlisted types); it can't write `AuditEvent` directly.

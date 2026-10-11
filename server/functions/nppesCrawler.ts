@@ -850,7 +850,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
   }
 
   if (action === "batch_start") {
-    if (user && user.role !== "admin") return { error: "Forbidden" };
+    if (user && !(user.role === "admin" || user.isPlatformAdmin)) return { error: "Forbidden" };
 
     const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
     const config: any = configs[0] || {};
@@ -949,7 +949,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
   }
 
   if (action === "batch_stop") {
-    if (user && user.role !== "admin") return { error: "Forbidden" };
+    if (user && !(user.role === "admin" || user.isPlatformAdmin)) return { error: "Forbidden" };
     try {
       const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
       if (configs[0]) {
@@ -986,7 +986,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
   }
 
   if (action === "batch_pause") {
-    if (user && user.role !== "admin") return { error: "Forbidden" };
+    if (user && !(user.role === "admin" || user.isPlatformAdmin)) return { error: "Forbidden" };
     const activeItems = await db.select().from(nppesQueueItems)
       .where(inArray(nppesQueueItems.status, ["pending", "processing"])).limit(5000);
     let paused = 0;
@@ -1008,7 +1008,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
   }
 
   if (action === "batch_resume") {
-    if (user && user.role !== "admin") return { error: "Forbidden" };
+    if (user && !(user.role === "admin" || user.isPlatformAdmin)) return { error: "Forbidden" };
     const configs = await db.select().from(nppesCrawlerConfigs).where(eq(nppesCrawlerConfigs.config_key, "default"));
     const config: any = configs[0] || {};
     const maxConcurrentBatches = Math.max(1, Number(config.concurrency || 4));
@@ -1058,7 +1058,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
   }
 
   if (action === "retry_errors") {
-    if (user && user.role !== "admin") return { error: "Forbidden" };
+    if (user && !(user.role === "admin" || user.isPlatformAdmin)) return { error: "Forbidden" };
     if (!item_ids || !Array.isArray(item_ids) || item_ids.length === 0) return { error: "No item IDs provided" };
     let retried = 0;
     for (let i = 0; i < item_ids.length; i += 50) {
