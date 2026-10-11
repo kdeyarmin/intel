@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "056cbf28f9639e626f3de8c3cd274b8b78858301",
+    "ref": "940232a9176936d69a2082fbc9916ba0f7858e72",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 29,
-    "text_character_count": 10041,
-    "canonical_sha256": "4498354eed0421b13b387ea6ef1c2f176d9559b32223c849352c645c268a2503"
+    "text_character_count": 10153,
+    "canonical_sha256": "b251b4a33493ab3143ba6bc15105b265ebd52b002bd1d30964288e2881fe95b0"
   },
   "sections": [
     {
@@ -132,8 +132,8 @@
         },
         {
           "heading": "CMS Data",
-          "text": "Summaries of Medicare utilization by service type, the most-referred-to providers and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.",
-          "sha256": "4f20505888ff0ce7b92106e1fc7dd7dcf70b14661a087291e7e446904a5014ae"
+          "text": "Summaries of Medicare utilization by service type, the providers others share the most Medicare patients with (the **Top Referred-To Providers** chart; shared patients, not confirmed referrals) and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.",
+          "sha256": "270300c5be5b5332531b2af99643d0f650b9bd4b69770260e4b0ebf4a8e86524"
         },
         {
           "heading": "Reports and analytics",
