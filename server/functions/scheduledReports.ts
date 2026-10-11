@@ -295,7 +295,7 @@ export async function handleRunDueScheduledReports() {
   };
 }
 
-export async function handleGenerateScheduledReport(payload: any, user?: { role?: string }) {
+export async function handleGenerateScheduledReport(payload: any, user?: { role?: string; isPlatformAdmin?: boolean }) {
   const action = String(payload?.action || "run_single");
   if (action === "run_all_due") {
     if (!(user?.role === "admin" || user?.isPlatformAdmin)) throw new HttpError(403, "Only platform admins can run all due reports.");
