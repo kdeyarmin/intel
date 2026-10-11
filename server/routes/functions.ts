@@ -801,6 +801,10 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const { handleGetProviderCMSData } = await import("../functions/facilityDetail");
         return res.json(await handleGetProviderCMSData(req.body));
       }
+      case "getLeadListMemberDetails": {
+        const { handleGetLeadListMemberDetails } = await import("../functions/leadListDetails");
+        return res.json(await handleGetLeadListMemberDetails(req.body));
+      }
 
       case "importAgentChat": {
         const { message, history } = req.body;

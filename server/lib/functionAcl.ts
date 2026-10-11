@@ -20,6 +20,8 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getFacilityDetail",
   "listFacilities",
   "getProviderCMSData",
+  // Read-only: the rows any user can already read through the entity API.
+  "getLeadListMemberDetails",
   "getCountyIntelligence",
   "getAvailableStatesCounties",
   "getComprehensiveReport",
