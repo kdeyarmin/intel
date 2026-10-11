@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Stethoscope, ListPlus } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
-import { fmtCount, fmtRate, fmtShare } from '@/lib/marketFormat';
+import { fmtCount, fmtRate, fmtShare, referralListNote } from '@/lib/marketFormat';
 import AddToLeadListDialog from '../leadlists/AddToLeadListDialog';
 import MarketFreshness from './MarketFreshness';
 
@@ -40,6 +40,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
     staleTime: 5 * 60 * 1000,
   });
   const rows = data?.rows || [];
+  const listNote = referralListNote({ rowCount: rows.length, truncated: !!data?.truncated, searched: data?.searched, specialty: group !== 'all' });
 
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
@@ -83,6 +84,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
       <CardContent>
         {isLoading ? <p className="text-sm text-slate-400">Loading…</p>
           : isError ? <p className="text-sm text-red-400" role="alert">Couldn't load referral sources: {error?.message}</p>
+          : rows.length === 0 && listNote ? <p className="text-sm text-slate-400">{listNote}</p>
           : rows.length === 0 ? <p className="text-sm text-slate-400">No clinicians match. The Physician &amp; Other Practitioners by Provider file and the market rollups must be loaded first.</p>
           : (
             <div className="overflow-x-auto">
@@ -131,7 +133,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                   ))}
                 </tbody>
               </table>
-              {data?.truncated ? <p className="text-[11px] text-slate-400 mt-1">More clinicians match; raise the limit to see them.</p> : null}
+              {listNote ? <p className="text-[11px] text-slate-400 mt-1">{listNote}</p> : null}
             </div>
           )}
         <div className="mt-3"><MarketFreshness rollups={data?.rollups} jobs={['referral_sources']} /></div>

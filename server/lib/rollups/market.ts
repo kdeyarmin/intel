@@ -9,6 +9,8 @@
 // Every figure is Medicare fee-for-service (and MA where CMS includes it),
 // as published by CMS; counts under 11 are already suppressed in the files.
 
+import { RESIDENTIAL_LICENSE_TYPES } from "../licenseTypes";
+
 export interface MarketJob {
   name: string;
   label: string;
@@ -239,7 +241,7 @@ export const MARKET_JOBS: MarketJob[] = [
       acs_meta AS (SELECT vintage FROM geo_meta WHERE key = 'acs'),
       lic AS (
         SELECT county_fips, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
-          FROM licensed_facilities WHERE county_fips IS NOT NULL GROUP BY 1)
+          FROM licensed_facilities WHERE county_fips IS NOT NULL AND license_type IN (${RESIDENTIAL_LICENSE_TYPES.map((t) => `'${t}'`).join(", ")}) GROUP BY 1)
       SELECT c.fips, c.state, c.name,
              e.period, e.total_benes, e.original_medicare, e.ma_and_other, e.ma_and_other::float8 / NULLIF(e.total_benes, 0), e.aged, e.dual, e.age_85_plus,
              s.reference_period, s.hha_providers, s.hha_users, s.hha_users_pct, s.hospice_providers, s.hospice_users, s.hospice_users_pct, s.snf_providers, s.snf_users, s.snf_users_pct,

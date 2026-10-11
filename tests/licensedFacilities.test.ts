@@ -5,8 +5,9 @@
  * none, the county from the ZIP, and a stable key for homes without a
  * license number.
  */
-import { describe, expect, it } from "vitest";
-import { LICENSE_TYPE_DEFAULT, TYPED_ROUTES, mapLicensedFacility, mapTypedRows, normalizeLicenseType } from "../server/functions/cmsTypedTables";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { LICENSE_TYPE_DEFAULT, TYPED_ROUTES, licensedSnapshotDate, mapLicensedFacility, mapTypedRows, normalizeLicenseType } from "../server/functions/cmsTypedTables";
+import { RESIDENTIAL_LICENSE_TYPES } from "../server/lib/licenseTypes";
 
 const ctx = { year: 2026, asOf: "2026-09-30", batchId: 7, params: { state_filter: "PA", license_type: "Personal Care Home", file_url: "https://www.pa.gov/dhs/pch.csv" }, countyForZip: (zip: string) => (zip === "15213" ? "42003" : null) };
 
@@ -47,7 +48,17 @@ describe("mapLicensedFacility", () => {
   it("drops rows without a name or a usable state", () => {
     expect(mapLicensedFacility({ city: "Erie", state: "PA" }, ctx)).toBeNull();
     expect(mapLicensedFacility({ name: "No State Home" }, { ...ctx, params: {} })).toBeNull();
-    expect(mapLicensedFacility({ name: "Bad State", state: "Pennsylvania" }, { ...ctx, params: {} })).toBeNull();
+    expect(mapLicensedFacility({ name: "Bad State", state: "Narnia" }, { ...ctx, params: {} })).toBeNull();
+    expect(mapLicensedFacility({ name: "Bad State", state: "P" }, { ...ctx, params: {} })).toBeNull();
+  });
+
+  it("reads a state spelled out, as portals export it, with or without a state_filter", () => {
+    // 'Pennsylvania' used to be dropped, so a whole export came in as zero rows with no error.
+    expect(mapLicensedFacility({ name: "Elm Court", state: "Pennsylvania", zip: "15213" }, { ...ctx, params: {} })!.state).toBe("PA");
+    expect(mapLicensedFacility({ name: "Elm Court", state: "pennsylvania" }, ctx)!.state).toBe("PA");
+    expect(mapLicensedFacility({ name: "Elm Court", state: "Pennsylvania" }, { ...ctx, params: { state_filter: "Pennsylvania" } })!.state).toBe("PA");
+    // An unreadable value falls back to the import's state_filter.
+    expect(mapLicensedFacility({ name: "Elm Court", state: "?" }, ctx)!.state).toBe("PA");
   });
 
   it("is a typed route keyed by state, license type and facility key, needing the geography", () => {
@@ -62,5 +73,47 @@ describe("mapLicensedFacility", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].capacity).toBe(20);
     expect(dropped).toBe(1);
+  });
+});
+
+describe("licensedSnapshotDate", () => {
+  const today = new Date("2026-10-11T12:00:00Z");
+
+  it("is the end of the stated year, but never a day that hasn't happened", () => {
+    expect(licensedSnapshotDate(2024, today)).toBe("2024-12-31");
+    expect(licensedSnapshotDate("2025", today)).toBe("2025-12-31");
+    // An export taken this October is not 'as of' December 31.
+    expect(licensedSnapshotDate(2026, today)).toBe("2026-10-11");
+    expect(licensedSnapshotDate(2027, today)).toBe("2026-10-11");
+    expect(licensedSnapshotDate(2026, new Date("2027-01-02T00:00:00Z"))).toBe("2026-12-31");
+  });
+
+  it("is null without a usable year", () => {
+    expect(licensedSnapshotDate(null)).toBeNull();
+    expect(licensedSnapshotDate("later")).toBeNull();
+    expect(licensedSnapshotDate(1999)).toBeNull();
+  });
+
+  describe("on a mapped home", () => {
+    afterEach(() => vi.useRealTimers());
+
+    it("stamps a file that states only its year with a date that has happened", () => {
+      vi.useFakeTimers({ now: new Date("2026-10-11T12:00:00Z") });
+      const row = { name: "Elm Court", license_number: "9" };
+      expect(mapLicensedFacility(row, { ...ctx, asOf: undefined, year: 2026 })!.as_of).toBe("2026-10-11");
+      expect(mapLicensedFacility(row, { ...ctx, asOf: undefined, year: 2025 })!.as_of).toBe("2025-12-31");
+      // A date the file or the import states is used as given.
+      expect(mapLicensedFacility(row, { ...ctx, asOf: "2026-09-30" })!.as_of).toBe("2026-09-30");
+    });
+  });
+});
+
+describe("the county profile's licensed supply", () => {
+  it("counts the residential license types, each one a type the importer produces", () => {
+    expect(RESIDENTIAL_LICENSE_TYPES).toEqual(["personal_care_home", "assisted_living", "memory_care", "domiciliary_care"]);
+    const produced = new Set(["Personal Care Home", "Assisted Living Residence", "Memory Care Unit", "Domiciliary Care Home"].map(normalizeLicenseType));
+    expect([...produced].sort()).toEqual([...RESIDENTIAL_LICENSE_TYPES].sort());
+    // Not residential care supply: nursing homes (CMS counts them), adult day centers, anything unrecognized.
+    for (const other of ["Skilled Nursing", "Adult Day Center", "Residential Hospice"]) expect(RESIDENTIAL_LICENSE_TYPES).not.toContain(normalizeLicenseType(other));
   });
 });

@@ -175,8 +175,14 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   profile rollup joins it. State-licensed homes (personal care, assisted
   living) live in `licensed_facilities`, imported from CSV uploads through
   the typed route `licensed_facilities` (`mapLicensedFacility`); there `state_filter`
-  names the file's own state (rows without a state column take it) and a complete
-  import replaces the (state, licence type) slices it wrote. Browser code gets
+  names the file's own state (rows without a state column take it, and a state
+  spelled out as "Pennsylvania" reads as PA), the import is refused until the
+  Census geography is loaded (a home with no county would vanish from every county
+  view), a file that states only its year is dated no later than today, and a
+  complete import replaces the (state, licence type) slices it wrote. The county
+  profile's licensed homes and beds count only `RESIDENTIAL_LICENSE_TYPES`
+  (`server/lib/licenseTypes.ts`: personal care, assisted living, memory care,
+  domiciliary care), not nursing homes (counted from CMS files) or adult day centers. Browser code gets
   map positions from `getZipCoordinates` (`useProviderCoords`) and a
   provider's county from `getGeoContext`.
 - **Scores are never invented.** Territory and County Intel show a provider's

@@ -80,7 +80,7 @@ describe("getCountyMarket", () => {
   it("returns the profile, hospital sources with discharge mix, competitors by setting, trends and coverage", async () => {
     h.answers.push(
       [/FROM rollup_county_market_profile WHERE county_fips/, [{ county_fips: "42003", state: "PA", county_name: "Allegheny County", benes: 310000, ma_penetration: 0.62, as_of: { enrollment: "2026-06", hospital_service_area: "2025" } }]],
-      [/FROM rollup_county_hospital_sources s/, [{ ccn: "390001", data_year: "2025", cases: 12000, days: 60000, share_of_county: 0.31, rank: 1 }, { ccn: "390002", data_year: "2025", cases: 8000, days: 40000, share_of_county: 0.2, rank: 2 }]],
+      [/FROM rollup_county_hospital_sources s/, [{ ccn: "390001", data_year: "2025", cases: 12000, days: 60000, share_of_county: 0.31, rank: 1, total: 23 }, { ccn: "390002", data_year: "2025", cases: 8000, days: 40000, share_of_county: 0.2, rank: 2, total: 23 }]],
       [/SELECT p\.\* FROM rollup_pac_market_share p/, [
         { setting: "snf", data_year: "2024", geo_level: "county", geo_code: "42003", ccn: "395001", provider_name: "KANE REGIONAL", city: "Pittsburgh", state: "PA", zip5: "15213", benes: 900, stays: 1200, days: 30000, payment: 20000000, dual_pct: 40, risk_score: 2.4, share_benes: 0.12, rank: 1, providers_in_market: 70 },
         { setting: "hha", data_year: "2024", geo_level: "county", geo_code: "42003", ccn: "397001", provider_name: null, city: "Pittsburgh", state: "PA", zip5: "15213", benes: 2500, stays: 4000, days: 90000, payment: 15000000, dual_pct: 20, risk_score: 2.1, share_benes: 0.2, rank: 1, providers_in_market: 40 },
@@ -95,6 +95,9 @@ describe("getCountyMarket", () => {
     expect(r.county).toEqual({ fips: "42003", name: "Allegheny County", state: "PA" });
     expect(r.profile).toMatchObject({ available: true, benes: 310000 });
     expect(r.hospital_sources.data_year).toBe("2025");
+    // The rows are the top TOP of the county's hospitals; the total says how many there are, so the table can say so.
+    expect(r.hospital_sources.total).toBe(23);
+    expect(h.queries.find((q) => /FROM rollup_county_hospital_sources s/.test(q.sql))!.sql).toMatch(/count\(\*\) OVER \(\)::int AS total/);
     expect(r.hospital_sources.rows[0]).toMatchObject({ ccn: "390001", name: "UPMC PRESBYTERIAN", share: 0.31, rank: 1, discharge_mix: { pct_snf: 12.5, state: { pct_snf: 11 }, national: { pct_hha: 6 } } });
     // A hospital the typed files don't name falls back to the facility records.
     expect(r.hospital_sources.rows[1]).toMatchObject({ ccn: "390002", name: "ALLEGHENY GENERAL", city: "Pittsburgh", discharge_mix: null });
@@ -122,7 +125,7 @@ describe("getCountyMarket", () => {
   it("reports an unprofiled county honestly", async () => {
     const r: any = await handleGetCountyMarket({ state: "PA", county: "Butler" });
     expect(r.profile).toEqual({ available: false, county_fips: "42019" });
-    expect(r.hospital_sources).toEqual({ data_year: null, rows: [] });
+    expect(r.hospital_sources).toEqual({ data_year: null, total: 0, rows: [] });
     expect(r.competitors.snf.rows).toEqual([]);
     expect(r.licensed).toEqual({ as_of: null, totals: [], rows: [] });
   });
@@ -375,9 +378,49 @@ describe("getReferralSources", () => {
     h.answers.push([/FROM rollup_referral_sources WHERE state = \$1 AND hospice_eligible = true/, SOURCES]);
     const r: any = await handleGetReferralSources({ state: "PA", setting: "hospice", specialty_group: "internal_medicine", limit: 5 });
     const q = h.queries.find((x) => x.sql.includes("rollup_referral_sources"))!;
-    expect(q.params).toEqual(["PA", 25]);
+    expect(q.params).toEqual(["PA", 26]); // 5 x 5 to search, plus one to see whether the list goes on
     expect(r.county).toBeNull();
     expect(r.rows.map((x: any) => x.npi)).toEqual(["1000000001"]);
+  });
+
+  describe("says when there are more clinicians than it returned", () => {
+    // The rollup holds `total` ranked clinicians in the county; the query honours its LIMIT.
+    const ranked = (total: number, only?: string) => Array.from({ length: total }, (_, i) => ({
+      ...SOURCES[i % 2 === 0 ? 0 : 1], npi: String(1000000100 + i), referral_index: 100 - i, specialty: only ?? (i % 2 === 0 ? "Internal Medicine" : "Cardiology"),
+    }));
+    // Replaces any earlier answer for the rollup (the first match wins).
+    const serve = (total: number, only?: string) => {
+      h.answers = h.answers.filter(([re]) => !/rollup_referral_sources/.test(re.source));
+      h.answers.push([/FROM rollup_referral_sources WHERE county_fips = \$1/, (p: any[]) => ranked(total, only).slice(0, p[1])]);
+    };
+
+    it("without a specialty, from a row past the limit", async () => {
+      serve(30);
+      const r: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 });
+      expect(r.rows).toHaveLength(10);
+      expect(r.truncated).toBe(true);
+      serve(10);
+      expect((await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 })).truncated).toBe(false);
+    });
+
+    it("with a specialty, when the window searched was full even though fewer than the limit matched", async () => {
+      serve(60);
+      // Top 10 asked: 50 are searched, 25 of them cardiologists, so 10 shown and more matched.
+      const more: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", specialty_group: "cardiology", limit: 10 });
+      expect(more.rows).toHaveLength(10);
+      expect(more).toMatchObject({ truncated: true, searched: 50 });
+      // Top 100 asked: the window is the whole 60, so it was exhausted and nothing is hidden.
+      const all: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", specialty_group: "cardiology", limit: 100 });
+      expect(all).toMatchObject({ truncated: false, searched: 60 });
+      expect(all.rows).toHaveLength(30);
+    });
+
+    it("with a specialty nobody in the window has, still reports that the list goes on", async () => {
+      serve(400, "Internal Medicine");
+      const r: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", specialty_group: "cardiology", limit: 10 });
+      expect(r.rows).toHaveLength(0);
+      expect(r).toMatchObject({ truncated: true, searched: 50 });
+    });
   });
 
   it("asks for a real county when the one named isn't in the state", async () => {

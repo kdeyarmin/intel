@@ -617,6 +617,14 @@ describe("migration 0018_market_rollups", () => {
     }
   });
 
+  it("indexes the county-keyed reads of the market share and agency coverage tables, in the migration and the schema", () => {
+    // County Intel reads these by county (geo_level + geo_code, county_fips), which neither primary key leads with.
+    expect(sql).toContain('"idx_rollup_pac_share_geo" ON "rollup_pac_market_share" ("geo_level", "geo_code", "setting", "data_year")');
+    expect(sql).toContain('"idx_rollup_agency_cov_county" ON "rollup_agency_coverage" ("county_fips", "setting")');
+    expect(schema).toContain('index("idx_rollup_pac_share_geo").on(table.geo_level, table.geo_code, table.setting, table.data_year)');
+    expect(schema).toContain('index("idx_rollup_agency_cov_county").on(table.county_fips, table.setting)');
+  });
+
   it("is registered in the drizzle journal after 0017", () => {
     const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
     const tags = journal.entries.map((e: { tag: string }) => e.tag);

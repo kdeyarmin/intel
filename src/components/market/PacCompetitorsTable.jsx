@@ -86,7 +86,8 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
         </p>
         <div className="flex flex-wrap gap-1 pt-1" role="group" aria-label="Setting">
           {ORDER.map((s) => {
-            const n = s === 'licensed' ? licensed?.rows?.length : competitors[s]?.rows?.length;
+            // The county's provider count, not the number of rows listed (the list is capped).
+            const n = s === 'licensed' ? licensed?.rows?.length : (competitors[s]?.rows?.[0]?.providers_in_market ?? competitors[s]?.rows?.length);
             return (
             <Button key={s} size="sm" variant={s === setting ? 'default' : 'outline'} aria-pressed={s === setting}
               className={s === setting ? 'bg-cyan-700 hover:bg-cyan-800 text-white h-7 text-xs' : 'border-slate-700 text-slate-300 h-7 text-xs'}

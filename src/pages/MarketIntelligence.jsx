@@ -23,12 +23,14 @@ import MarketFreshness from '../components/market/MarketFreshness';
 // The columns shown by default; the rest are in the CSV and the metric picker.
 const DEFAULT_COLUMNS = ['benes', 'ma_penetration', 'benes_85_plus', 'hha_users_pct', 'hospice_users_pct', 'snf_users_pct', 'snf_providers', 'hospitals_serving'];
 const URL_DEFAULTS = { state: 'PA', sort: 'benes', dir: 'desc', cols: DEFAULT_COLUMNS.join(',') };
+// An empty value means "the default" in the URL, so "no metric columns" needs a word of its own.
+const NO_COLUMNS = 'none';
 
 /** Every county in a state side by side: demand, Medicare Advantage, post-acute use and supply. */
 export default function MarketIntelligence() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
   const [adding, setAdding] = useState('');
-  const columns = useMemo(() => url.cols.split(',').filter((k) => LAYER_BY_KEY[k]), [url.cols]);
+  const columns = useMemo(() => (url.cols === NO_COLUMNS ? [] : url.cols.split(',').filter((k) => LAYER_BY_KEY[k])), [url.cols]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['countyMarketLayer', url.state, 'all'],
@@ -43,11 +45,12 @@ export default function MarketIntelligence() {
   }, [data, url.sort, url.dir]);
 
   const setSort = (key) => setUrl({ sort: key, dir: url.sort === key && url.dir === 'desc' ? 'asc' : 'desc' });
+  const setColumns = (keys) => setUrl({ cols: keys.length ? keys.join(',') : NO_COLUMNS });
   const addColumn = (key) => {
-    if (key && !columns.includes(key)) setUrl({ cols: [...columns, key].join(',') });
+    if (key && !columns.includes(key)) setColumns([...columns, key]);
     setAdding('');
   };
-  const removeColumn = (key) => setUrl({ cols: columns.filter((k) => k !== key).join(',') });
+  const removeColumn = (key) => setColumns(columns.filter((k) => k !== key));
 
   const download = async () => {
     // Counts against the organization's daily export allowance, like every export.
@@ -86,7 +89,8 @@ export default function MarketIntelligence() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="market-add-col" className="text-xs text-slate-400">Add a column</Label>
-            <Select value={adding || undefined} onValueChange={addColumn}>
+            {/* Controlled with '' so the trigger goes back to its placeholder after each pick (an uncontrolled select keeps showing a metric that is no longer in its list). */}
+            <Select value={adding} onValueChange={addColumn}>
               <SelectTrigger id="market-add-col" className="w-64 bg-slate-900 border-slate-700"><SelectValue placeholder="Pick a metric" /></SelectTrigger>
               <SelectContent>{COUNTY_LAYER_METRICS.filter((m) => !columns.includes(m.key)).map((m) => <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>)}</SelectContent>
             </Select>
