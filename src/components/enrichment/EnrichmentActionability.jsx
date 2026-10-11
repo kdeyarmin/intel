@@ -155,11 +155,11 @@ Suggest 4-5 specific actionable campaigns or engagement strategies using this en
                     </div>
                   </div>
                   <div className="mt-2 ml-9">
-                    <Link to={createPageUrl('ProviderOutreach')}>
-                      <Button size="sm" variant="outline" className="h-6 text-[9px] gap-1 bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400">
+                    <Button asChild size="sm" variant="outline" className="h-6 text-[9px] gap-1 bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400">
+                      <Link to={createPageUrl('ProviderOutreach')}>
                         <Megaphone className="w-3 h-3" /> Create Campaign
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               );
