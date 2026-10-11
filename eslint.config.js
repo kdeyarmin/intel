@@ -76,10 +76,12 @@ export default [
     },
   },
   {
-    // Accessibility. The app's own form and button components count as the
-    // native elements they render, so unlabeled inputs and icon-only buttons
-    // are caught too. Autofocus is allowed (dialogs and inline editors the
-    // user just opened); label-has-for is deprecated.
+    // Accessibility. The app's own components count as the native elements
+    // they render: form and button components, so unlabeled inputs and
+    // icon-only buttons are caught too, and the Card parts and Badge (divs), so
+    // a click-only `<Card onClick>` fails like a click-only `<div>`. Autofocus
+    // is allowed (dialogs and inline editors the user just opened);
+    // label-has-for is deprecated.
     files: ["src/components/**/*.jsx", "src/pages/**/*.jsx", "src/App.jsx", "src/Layout.jsx"],
     ignores: ["src/components/ui/**/*"],
     plugins: { "jsx-a11y": pluginJsxA11y },
@@ -93,6 +95,13 @@ export default [
           SelectTrigger: "button",
           Checkbox: "input",
           Switch: "button",
+          Card: "div",
+          CardHeader: "div",
+          CardTitle: "div",
+          CardDescription: "div",
+          CardContent: "div",
+          CardFooter: "div",
+          Badge: "div",
         },
       },
     },

@@ -26,18 +26,22 @@ export default function PageHeader({ title, subtitle, icon: Icon, breadcrumbs, a
           <Link to={createPageUrl('Dashboard')} className="hover:text-cyan-400 transition-colors" aria-label="Dashboard">
             <Home className="w-3 h-3" aria-hidden="true" />
           </Link>
-          {breadcrumbs.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-1">
-              <ChevronRight className="w-3 h-3 text-slate-400" aria-hidden="true" />
-              {crumb.page ? (
-                <Link to={createPageUrl(crumb.page)} className="hover:text-cyan-400 transition-colors">
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span className="text-slate-400" aria-current={i === breadcrumbs.length - 1 ? 'page' : undefined}>{crumb.label}</span>
-              )}
-            </span>
-          ))}
+          {breadcrumbs.map((crumb, i) => {
+            // The last crumb is the current page, whether or not it links.
+            const current = i === breadcrumbs.length - 1 ? 'page' : undefined;
+            return (
+              <span key={i} className="flex items-center gap-1">
+                <ChevronRight className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                {crumb.page ? (
+                  <Link to={createPageUrl(crumb.page)} className="hover:text-cyan-400 transition-colors" aria-current={current}>
+                    {crumb.label}
+                  </Link>
+                ) : (
+                  <span className="text-slate-400" aria-current={current}>{crumb.label}</span>
+                )}
+              </span>
+            );
+          })}
         </nav>
       )}
 
