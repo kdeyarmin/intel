@@ -8,14 +8,15 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
 import { useScopedAnalysis } from './useScopedAnalysis';
 
-export default function NetworkGapAnalysis({ state = null }) {
-  // Results belong to one scope; a response for another state never shows.
-  const { data, loading, run } = useScopedAnalysis(state);
+export default function NetworkGapAnalysis({ state = null, leadListId = null, leadListName = null }) {
+  // Results belong to one scope (a lead list, else a state); a response for
+  // another scope never shows.
+  const { data, loading, run } = useScopedAnalysis(`${leadListId ?? ''}|${state ?? ''}`);
 
   const handleAnalyze = () => run(
     async () => (await invokeOrThrow('analyzeProviderNetwork', {
       analysis_type: 'gaps',
-      ...(state ? { state } : {}),
+      ...(leadListId ? { lead_list_id: leadListId } : state ? { state } : {}),
     })).analysis,
     (error) => toastFunctionError(error, 'Failed to analyze gaps'),
   );
@@ -31,7 +32,7 @@ export default function NetworkGapAnalysis({ state = null }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-400 mb-4">
-            Find specialties where most providers aren't part of the referral network yet. {scopeHint(state)}
+            Find specialties where most providers aren't part of the referral network yet. {scopeHint(state, leadListName)}
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}

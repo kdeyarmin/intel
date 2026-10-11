@@ -3,75 +3,79 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Crown, ExternalLink, ArrowUpDown } from 'lucide-react';
+import { Crown, ExternalLink, ArrowUp, ArrowDown } from 'lucide-react';
+import { formatVolume } from './NetworkKPIs';
 
-export default function HubAnalysisTable({ hubs = [], sortKey, _sortDir, onSort }) {
-  const fv = (v) => {
-    if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
-    return v.toLocaleString();
-  };
+const COLS = [
+  { key: 'totalVolume', label: 'Total volume', format: formatVolume, className: 'text-slate-300' },
+  { key: 'outbound', label: 'Sends', format: formatVolume, className: 'text-blue-400' },
+  { key: 'inbound', label: 'Receives', format: formatVolume, className: 'text-violet-400' },
+  { key: 'partners', label: 'Partners', format: (v) => (Number(v) || 0).toLocaleString(), className: 'text-slate-300' },
+];
 
-  const cols = [
-    { key: 'totalVolume', label: 'Total Volume' },
-    { key: 'outbound', label: 'Outbound' },
-    { key: 'inbound', label: 'Inbound' },
-    { key: 'connections', label: 'Connections' },
-    { key: 'hubScore', label: 'Hub Score' },
-  ];
+/** The providers shown, ranked by hub score or any volume column. */
+export default function HubAnalysisTable({ hubs = [], sortKey, sortDir, onSort }) {
+  const SortIcon = sortDir === 'asc' ? ArrowUp : ArrowDown;
+  const header = (key, label) => (
+    <th key={key} scope="col" className="text-right py-2 font-medium" aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" onClick={() => onSort(key)} className="inline-flex items-center gap-1 hover:text-slate-200">
+        {label}
+        {sortKey === key && <SortIcon className="w-3 h-3" aria-hidden="true" />}
+      </button>
+    </th>
+  );
 
   return (
     <Card className="bg-[#141d30] border-slate-700/50">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <Crown className="w-4 h-4 text-amber-400" />
-          Network Hubs
-          <Badge variant="outline" className="text-[10px] ml-auto text-slate-500">{hubs.length} identified</Badge>
+          <Crown className="w-4 h-4 text-amber-400" aria-hidden="true" />
+          Network hubs
+          <Badge variant="outline" className="text-[10px] ml-auto text-slate-400">{hubs.length} providers</Badge>
         </CardTitle>
+        <p className="text-xs text-slate-400">
+          Hub score (0–100) blends where referrals flow (PageRank) with how many distinct partners a provider has.
+        </p>
       </CardHeader>
       <CardContent>
         {hubs.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-6">No hub providers identified</p>
+          <p className="text-sm text-slate-400 text-center py-6">No providers match the filters.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-700/50 text-slate-500">
-                  <th className="text-left py-2 font-medium w-6">#</th>
-                  <th className="text-left py-2 font-medium">Provider</th>
-                  <th className="text-left py-2 font-medium w-16">Type</th>
-                  {cols.map(c => (
-                    <th key={c.key} className="text-right py-2 font-medium cursor-pointer hover:text-slate-300 select-none" onClick={() => onSort(c.key)}>
-                      <span className="flex items-center justify-end gap-1">
-                        {c.label}
-                        {sortKey === c.key && <ArrowUpDown className="w-3 h-3" />}
-                      </span>
-                    </th>
-                  ))}
-                  <th className="w-8"></th>
+                <tr className="border-b border-slate-700/50 text-slate-400">
+                  <th scope="col" className="text-left py-2 font-medium w-6">#</th>
+                  <th scope="col" className="text-left py-2 font-medium">Provider</th>
+                  <th scope="col" className="text-left py-2 font-medium w-16">Type</th>
+                  {COLS.map((c) => header(c.key, c.label))}
+                  {header('hubScore', 'Hub score')}
+                  <th scope="col" className="w-8"><span className="sr-only">Profile</span></th>
                 </tr>
               </thead>
               <tbody>
                 {hubs.map((h, i) => (
                   <tr key={h.npi} className="border-b border-slate-700/30 hover:bg-slate-800/30">
-                    <td className="py-2 text-slate-500 font-mono">{i + 1}</td>
+                    <td className="py-2 text-slate-400 font-mono">{i + 1}</td>
                     <td className="py-2">
-                      <span className="font-medium text-slate-200">{h.label}</span>
-                      <span className="text-slate-500 ml-1.5 text-[10px]">{h.npi}</span>
+                      <span className="font-medium text-slate-200">{h.label || h.npi}</span>
+                      <span className="text-slate-400 ml-1.5 text-[10px]">{h.npi}</span>
+                      {(h.specialtyGroupLabel || h.state) && (
+                        <div className="text-[10px] text-slate-400">{[h.specialtyGroupLabel !== 'Other' ? h.specialtyGroupLabel : h.specialty, h.city, h.state].filter(Boolean).join(' · ')}</div>
+                      )}
                     </td>
-                    <td><Badge variant="outline" className="text-[10px] text-slate-400">{h.entityType === 'Organization' ? 'Org' : 'Ind'}</Badge></td>
-                    <td className="text-right font-mono text-slate-400">{fv(h.totalVolume)}</td>
-                    <td className="text-right font-mono text-blue-400">{fv(h.outbound)}</td>
-                    <td className="text-right font-mono text-violet-400">{fv(h.inbound)}</td>
-                    <td className="text-right text-slate-400">{h.connections}</td>
+                    <td><Badge variant="outline" className="text-[10px] text-slate-400">{h.entityType === 'Organization' ? 'Org' : h.entityType === 'Individual' ? 'Ind' : '—'}</Badge></td>
+                    {COLS.map((c) => (
+                      <td key={c.key} className={`text-right font-mono ${c.className}`}>{c.format(h[c.key])}</td>
+                    ))}
                     <td className="text-right">
-                      <Badge className={`text-[10px] ${h.hubScore >= 80 ? 'bg-red-900/15 text-red-400' : h.hubScore >= 50 ? 'bg-amber-900/15 text-amber-400' : 'bg-slate-700/50 text-slate-400'}`}>
-                        {h.hubScore}
+                      <Badge className={`text-[10px] ${h.hubScore >= 80 ? 'bg-red-900/30 text-red-400' : h.hubScore >= 50 ? 'bg-amber-900/30 text-amber-400' : 'bg-slate-700/50 text-slate-300'}`}>
+                        {Math.round(Number(h.hubScore) || 0)}
                       </Badge>
                     </td>
-                    <td>
-                      <Link to={createPageUrl(`ProviderDetail?npi=${h.npi}`)}>
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-500 hover:text-cyan-400" />
+                    <td className="text-right">
+                      <Link to={createPageUrl(`ProviderDetail?npi=${h.npi}`)} aria-label={`Open ${h.label || h.npi}'s profile`}>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400 hover:text-cyan-400 inline" aria-hidden="true" />
                       </Link>
                     </td>
                   </tr>

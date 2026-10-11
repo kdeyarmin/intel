@@ -78,6 +78,11 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
   booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
   mirrors `autoRetryFailedImports/helpers.ts`) — keep the two in sync.
+- **Specialty groups:** match specialties by NUCC code with
+  `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
+  `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by
+  free text: NPPES says "Internal Medicine, Cardiovascular Disease", never
+  "Cardiology".
 
 ## Gotchas
 

@@ -17,13 +17,14 @@ export interface ProviderInfo {
 }
 
 export interface AnalysisScope {
-  type: "lead_list" | "state" | "sample";
+  type: "lead_list" | "state" | "sample" | "provider";
   label: string;
   seed_count: number;
   /** True when the seed set or the edge set hit a size cap. */
   truncated: boolean;
   state?: string;
   lead_list_id?: number;
+  npi?: string;
 }
 
 /** One edge per provider pair; when a pair appears in several data years, keep its largest yearly volume. */

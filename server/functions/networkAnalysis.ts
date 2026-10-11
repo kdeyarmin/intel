@@ -4,6 +4,7 @@
 // never a scan or GROUP BY over the whole table.
 import { pool } from "../db";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { isStatementTimeout, withTimeoutClient } from "../lib/pgClient";
 import {
   buildNetworkAnalysis,
   edgesFromReferrals,
@@ -22,27 +23,18 @@ const MAX_INBOUND_EDGES = 25_000;
 const ANALYSIS_TTL_MS = 10 * 60 * 1000;
 const AI_TTL_MS = 60 * 60 * 1000;
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(public status: number, message: string) {
     super(message);
   }
 }
 
-async function withClient<T>(timeout: string, fn: (client: any) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
-  try {
-    await client.query(`SET statement_timeout = '${timeout}'`);
-    return await fn(client);
-  } finally {
-    await client.query("RESET statement_timeout").catch(() => {});
-    client.release();
-  }
-}
+const withClient = <T,>(timeout: string, fn: (client: any) => Promise<T>) => withTimeoutClient(pool, timeout, fn);
 
-const isTimeout = (e: any) => e?.code === "57014";
+const isTimeout = isStatementTimeout;
 const dedupe = (rows: any[]) => [...new Set(rows.map((r) => r.npi).filter(Boolean))] as string[];
 
-async function loadSeeds(client: any, payload: any): Promise<{ seeds: string[]; scope: AnalysisScope }> {
+export async function loadSeeds(client: any, payload: any): Promise<{ seeds: string[]; scope: AnalysisScope }> {
   const listId = Number(payload?.lead_list_id);
   if (Number.isInteger(listId) && listId > 0) {
     const { rows: [list] } = await client.query("SELECT id, name FROM lead_lists WHERE id = $1", [listId]);
@@ -75,7 +67,7 @@ async function loadSeeds(client: any, payload: any): Promise<{ seeds: string[]; 
   };
 }
 
-async function loadEdges(client: any, seeds: string[], scope: AnalysisScope) {
+export async function loadEdges(client: any, seeds: string[], scope: AnalysisScope) {
   const out = await client.query(
     `SELECT npi, referred_to_npi, total_referrals FROM cms_referrals
       WHERE npi = ANY($1) AND referred_to_npi IS NOT NULL LIMIT $2`,
