@@ -43,8 +43,46 @@ export function localUploadPath(fileUrl: string, uploadDir = UPLOAD_DIR): string
   return full;
 }
 
-/** A byte stream for a CSV source: the uploaded file, or the https response body. */
-export async function openCsvSource(fileUrl: string, opts: { signal?: AbortSignal } = {}): Promise<AsyncIterable<Uint8Array>> {
+/** A remote file that sends nothing for this long (or never answers) is given up on. */
+export const CSV_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
+
+/**
+ * Passes `stream` through, but gives up (aborting `controller`) when the next chunk takes
+ * longer than `idleMs` to arrive, so a server that accepts the connection and then stalls
+ * can't hold an import "processing" for good. Time the consumer spends on a chunk isn't counted.
+ */
+export async function* withIdleTimeout(stream: AsyncIterable<Uint8Array>, controller: AbortController, idleMs: number): AsyncGenerator<Uint8Array> {
+  const iterator = stream[Symbol.asyncIterator]();
+  try {
+    while (true) {
+      let timer: NodeJS.Timeout | undefined;
+      const idle = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          const err = new Error(`No data received for ${Math.max(1, Math.round(idleMs / 1000))} seconds; the transfer was abandoned.`);
+          controller.abort(err);
+          reject(err);
+        }, idleMs);
+      });
+      let step: IteratorResult<Uint8Array>;
+      try {
+        step = await Promise.race([iterator.next(), idle]);
+      } finally {
+        clearTimeout(timer);
+      }
+      if (step.done) return;
+      yield step.value;
+    }
+  } finally {
+    // Not awaited: on a stalled source this would wait behind the read that never finishes.
+    void Promise.resolve(iterator.return?.()).catch(() => {});
+  }
+}
+
+/**
+ * A byte stream for a CSV source: the uploaded file, or the https response body.
+ * `idleMs` bounds both the wait for the response and any later silence on the wire.
+ */
+export async function openCsvSource(fileUrl: string, opts: { signal?: AbortSignal; idleMs?: number } = {}): Promise<AsyncIterable<Uint8Array>> {
   const local = localUploadPath(fileUrl);
   if (local) {
     await fs.promises.access(local, fs.constants.R_OK).catch(() => {
@@ -52,14 +90,26 @@ export async function openCsvSource(fileUrl: string, opts: { signal?: AbortSigna
     });
     return fs.createReadStream(local);
   }
-  const res = await safeFetchStream(fileUrl, { signal: opts.signal });
+  const idleMs = opts.idleMs ?? CSV_IDLE_TIMEOUT_MS;
+  const controller = new AbortController();
+  if (opts.signal) {
+    if (opts.signal.aborted) controller.abort(opts.signal.reason);
+    else opts.signal.addEventListener("abort", () => controller.abort(opts.signal!.reason), { once: true });
+  }
+  const connectTimer = setTimeout(() => controller.abort(new Error(`No response from the server within ${Math.max(1, Math.round(idleMs / 1000))} seconds.`)), idleMs);
+  let res: Awaited<ReturnType<typeof safeFetchStream>>;
+  try {
+    res = await safeFetchStream(fileUrl, { signal: controller.signal });
+  } finally {
+    clearTimeout(connectTimer);
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${fileUrl}`);
   if (!res.body) throw new Error(`Empty response from ${fileUrl}`);
-  return Readable.fromWeb(res.body as any) as unknown as AsyncIterable<Uint8Array>;
+  return withIdleTimeout(Readable.fromWeb(res.body as any) as unknown as AsyncIterable<Uint8Array>, controller, idleMs);
 }
 
 /** Rows of a CSV source (see csvRecords for header handling). */
-export async function* csvSourceRecords(fileUrl: string, opts: CsvRecordOptions & { signal?: AbortSignal } = {}): AsyncGenerator<Record<string, string>> {
-  const stream = await openCsvSource(fileUrl, { signal: opts.signal });
+export async function* csvSourceRecords(fileUrl: string, opts: CsvRecordOptions & { signal?: AbortSignal; idleMs?: number } = {}): AsyncGenerator<Record<string, string>> {
+  const stream = await openCsvSource(fileUrl, { signal: opts.signal, idleMs: opts.idleMs });
   yield* csvRecords(stream, opts);
 }

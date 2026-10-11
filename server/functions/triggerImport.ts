@@ -154,7 +154,11 @@ export function fileUrlProblem(importType: string, fileUrl: string | null | unde
   } else if (!isAllowedUrl(fileUrl) && !(uploadable && /^https:\/\//i.test(fileUrl))) {
     return "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)";
   }
-  if (uploadable && (isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv") && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
+  // Any CSV that is read as rows needs the year it describes, whatever the dataset: without it
+  // the rows would be stamped with a guessed year and replace the real one's. (The NPPES files
+  // are zips with their own importers and take their date from the file name.)
+  const readAsCsv = isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv";
+  if (readAsCsv && !/^nppes_/.test(importType) && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
     return "year is required for file imports: the data year the file describes (it is shown with the data)";
   }
   return null;
@@ -298,7 +302,8 @@ export function getCMSDatasetCatalog() {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      available: !!(IMPORT_TYPE_URLS[ds.id]),
+      // Upload-capable datasets have no CMS endpoint; they are available as files.
+      available: !!(IMPORT_TYPE_URLS[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
       unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
@@ -1377,22 +1382,26 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     undefined, `progress ${import_type}`,
   );
 
+  // Whether the user paused or cancelled the batch since it was last looked at (it then stops, keeping its place).
+  const stoppedByUser = async (): Promise<boolean> => {
+    const [current] = await safeImportQuery(
+      () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+      [] as any[], `pause check ${import_type}`,
+    );
+    if (current && (current.status === "paused" || current.status === "cancelled")) {
+      console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
+      await saveProgress();
+      await endedWithoutFinishing(import_type, batch_id, current.status);
+      return true;
+    }
+    return false;
+  };
+
   try {
     const records = csvSourceRecords(file_url, { headers: Array.isArray(headers) && headers.length ? headers : null });
     for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
       pages++;
-      if (pages % PAUSE_CHECK_INTERVAL === 0) {
-        const [current] = await safeImportQuery(
-          () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
-          [] as any[], `pause check ${import_type}`,
-        );
-        if (current && (current.status === "paused" || current.status === "cancelled")) {
-          console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
-          await saveProgress();
-          await endedWithoutFinishing(import_type, batch_id, current.status);
-          return;
-        }
-      }
+      if (pages % PAUSE_CHECK_INTERVAL === 0 && await stoppedByUser()) return;
       let rows = page.rows;
       if (rowFilter) {
         const before = rows.length;
@@ -1414,6 +1423,8 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
       if (pages % PROGRESS_UPDATE_INTERVAL === 0) await saveProgress();
     }
 
+    // A cancel that came in since the last check must not be overwritten by "completed".
+    if (await stoppedByUser()) return;
     await safeImportQuery(
       () => db.update(importBatches).set({
         status: "completed",

@@ -238,7 +238,7 @@ export default function LocationDetail() {
                     </div>
                     {[
                       { label: 'Partner providers', value: latestRef.partners, color: 'bg-blue-900/20 text-blue-400' },
-                      { label: 'Beneficiaries', value: latestRef.total_beneficiaries, color: 'bg-purple-900/20 text-purple-400' },
+                      { label: 'Beneficiaries (summed across partners)', value: latestRef.total_beneficiaries, color: 'bg-purple-900/20 text-purple-400' },
                     ].filter(r => r.value > 0).map(r => (
                       <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
                         <span className="text-sm text-slate-400">{r.label}</span>

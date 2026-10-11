@@ -31,7 +31,7 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
       ]
     : [
         { key: 'total_referrals', label: 'Shared encounters' },
-        { key: 'total_beneficiaries', label: 'Beneficiaries' },
+        { key: 'total_beneficiaries', label: 'Beneficiaries (summed across partners)' },
       ];
 
   const { chartData, insights, lastActualYear } = useMemo(() => {

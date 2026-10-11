@@ -27,6 +27,17 @@ export const DATA_JSON_URL = "https://data.cms.gov/data.json";
 export const PROVIDER_DATA_ITEMS_URL = "https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items";
 /** The catalogs change at most daily; data.json is ~18 MB. */
 export const CATALOG_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/**
+ * After a failed fetch the next try waits this long. The daily throttle keys off the last
+ * successful check, so without it every tick of a cron would download ~18 MB again while
+ * CMS is down.
+ */
+export const CATALOG_RETRY_AFTER_FAILURE_MS = 60 * 60 * 1000;
+let lastFetchFailure: { at: number; message: string } | null = null;
+/** For tests: forget a failed fetch. */
+export function resetCatalogFetchBackoff() {
+  lastFetchFailure = null;
+}
 const FETCH_TIMEOUT_MS = 120_000;
 
 export type FetchJson = (url: string) => Promise<unknown>;
@@ -94,12 +105,25 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
     if (last && now.getTime() - last < CATALOG_CHECK_INTERVAL_MS) {
       return { ...result, skipped: `checked ${Math.round((now.getTime() - last) / 60000)} minutes ago` };
     }
+    if (lastFetchFailure && now.getTime() - lastFetchFailure.at < CATALOG_RETRY_AFTER_FAILURE_MS) {
+      const minutes = Math.round((now.getTime() - lastFetchFailure.at) / 60000);
+      // Still a failure for the worker to report, but without downloading anything.
+      return { ...result, skipped: `the last catalog fetch failed ${minutes} minutes ago; trying again hourly`, errors: [`catalog fetch: ${lastFetchFailure.message}`] };
+    }
   }
 
-  const [dcat, providerItems] = await Promise.all([
-    fetcher(DATA_JSON_URL).then((j) => parseDcatCatalog(j as { dataset?: unknown[] })),
-    fetcher(PROVIDER_DATA_ITEMS_URL).then((j) => parseProviderDataCatalog(j as unknown[])),
-  ]);
+  let dcat: CatalogEntry[];
+  let providerItems: CatalogEntry[];
+  try {
+    [dcat, providerItems] = await Promise.all([
+      fetcher(DATA_JSON_URL).then((j) => parseDcatCatalog(j as { dataset?: unknown[] })),
+      fetcher(PROVIDER_DATA_ITEMS_URL).then((j) => parseProviderDataCatalog(j as unknown[])),
+    ]);
+  } catch (e: any) {
+    lastFetchFailure = { at: now.getTime(), message: String(e?.message || e).slice(0, 160) };
+    throw e;
+  }
+  lastFetchFailure = null;
   const index = indexCatalog([...dcat, ...providerItems]);
 
   const types = Object.keys(opts.urls);
