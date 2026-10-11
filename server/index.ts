@@ -65,6 +65,20 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
+// Opt-in: apply pending migrations before serving (an advisory lock keeps
+// parallel instances from racing). Refuse to start on failure rather than
+// serve against a half-migrated schema.
+if (process.env.DB_MIGRATE_ON_BOOT === "true") {
+  const { pool } = await import("./db");
+  const { runMigrations } = await import("./db/migrate");
+  try {
+    await runMigrations(pool);
+  } catch (e: any) {
+    console.error("[CareMetric API] Migrations failed; not starting:", e?.message || e);
+    process.exit(1);
+  }
+}
+
 const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`[CareMetric API] Server running on port ${PORT}`);
@@ -259,121 +273,11 @@ app.listen(PORT, "0.0.0.0", async () => {
       console.error(`[CareMetric API] Background task cleanup error:`, e.message);
     }
 
+    // Large-table indexes build in the background (see server/lib/bootIndexes.ts).
     (async () => {
-      try {
-        const { pool: dbPool } = await import("./db");
-        const existingIdx = await dbPool.query(`
-          SELECT c2.relname as indexname, i.indisvalid
-          FROM pg_index i
-          JOIN pg_class c ON c.oid = i.indrelid
-          JOIN pg_class c2 ON c2.oid = i.indexrelid
-          WHERE c.relname = ANY(ARRAY[
-            'medicare_facilities',
-            'cms_referrals',
-            'provider_service_utilization',
-            'provider_locations',
-            'provider_taxonomies'
-          ])
-          AND c2.relname NOT IN (
-            'medicare_facilities_pkey',
-            'cms_referrals_pkey',
-            'provider_service_utilization_pkey',
-            'provider_locations_pkey',
-            'provider_taxonomies_pkey'
-          )
-        `).catch(() => ({ rows: [] }));
-        
-        for (const idx of existingIdx.rows) {
-          if (!idx.indisvalid) {
-            console.log(`[DB Index] Dropping invalid index ${idx.indexname}`);
-            const dropClient = await dbPool.connect();
-            try {
-              await dropClient.query("SET statement_timeout = '120000'");
-              await dropClient.query(`DROP INDEX IF EXISTS ${idx.indexname}`);
-              console.log(`[DB Index] Dropped ${idx.indexname}`);
-            } catch (e: any) {
-              console.warn(`[DB Index] Drop ${idx.indexname} failed:`, e.message?.substring(0, 80));
-            } finally {
-              await dropClient.query("RESET statement_timeout").catch(() => {});
-              dropClient.release();
-            }
-          } else {
-            console.log(`[DB Index] ${idx.indexname} is valid`);
-          }
-        }
-
-        // Obsolete unique indexes whose natural key changed and must be rebuilt
-        // under a new name. cms_referrals moved from a one-row-per-(npi, year)
-        // eligibility model to provider-pair shared-patient rows, so its
-        // uniqueness must include referred_to_npi. The invalid-index sweep above
-        // only drops INvalid indexes, so drop the old (still-valid) one here.
-        const OBSOLETE_INDEXES = ["uq_cms_referrals_npi_year"];
-        for (const idxName of OBSOLETE_INDEXES) {
-          const dropClient = await dbPool.connect();
-          try {
-            await dropClient.query("SET statement_timeout = '120000'");
-            await dropClient.query(`DROP INDEX IF EXISTS ${idxName}`);
-            console.log(`[DB Index] Dropped obsolete ${idxName}`);
-          } catch (e: any) {
-            console.warn(`[DB Index] Drop obsolete ${idxName} failed:`, e.message?.substring(0, 80));
-          } finally {
-            await dropClient.query("RESET statement_timeout").catch(() => {});
-            dropClient.release();
-          }
-        }
-
-        const indexes = [
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_name ON medicare_facilities (facility_type, facility_name)",
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_provider_id ON medicare_facilities (provider_id)",
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_medfac_type_state ON medicare_facilities (facility_type, state)",
-          // Unique backstops enforcing each table's natural key. Built CONCURRENTLY
-          // and best-effort: a build FAILS (and is logged) while duplicate rows
-          // still exist, so run scripts/dedupe-existing-imports.sql once first.
-          // The importers use onConflictDoNothing(), so once these exist re-imports
-          // and resumes become idempotent at the DB level — closing the gap the
-          // capped (20k) in-app dedup lookup can leave open.
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_provider ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL",
-          // Provider-pair shared-patient rows (Physician Shared Patient Patterns)
-          // need uniqueness on (npi, referred_to_npi, data_year). The old
-          // (npi, data_year) index is dropped above as obsolete.
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_referred_year ON cms_referrals (npi, COALESCE(referred_to_npi, ''), data_year)",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year)",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural ON provider_locations (npi, COALESCE(location_type,''), left(coalesce(zip,''),5), md5(lower(btrim(coalesce(address_1,'')))))",
-          "CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, COALESCE(taxonomy_code,''))",
-          // Bulk email verification picks providers that have an email; only a
-          // small share of the ~6M providers do, so a partial index keeps that
-          // lookup from scanning the whole table.
-          // Inbound referral lookups (who refers to these providers) for network analysis.
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cms_referrals_referred_to ON cms_referrals (referred_to_npi) WHERE referred_to_npi IS NOT NULL",
-          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''",
-        ];
-        for (const ddl of indexes) {
-          const idxName = ddl.match(/IF NOT EXISTS (\S+)/)?.[1] || "unknown";
-          try {
-            const client = await dbPool.connect();
-            try {
-              await client.query("SET statement_timeout = '0'");
-              console.log(`[DB Index] Building ${idxName}...`);
-              await client.query(ddl);
-              console.log(`[DB Index] Created ${idxName}`);
-            } finally {
-              // Don't leave this pooled connection with statement_timeout disabled.
-              await client.query("RESET statement_timeout").catch(() => {});
-              client.release();
-            }
-          } catch (e: any) {
-            if (e.message?.includes("already exists")) {
-              console.log(`[DB Index] ${idxName} already exists`);
-            } else {
-              console.warn(`[DB Index] ${idxName} failed:`, e.message?.substring(0, 200));
-            }
-          }
-        }
-        console.log(`[DB Index] Background index creation complete`);
-      } catch (e: any) {
-        console.warn(`[DB Index] Background index creation failed:`, e.message?.substring(0, 100));
-      }
+      const { pool: dbPool } = await import("./db");
+      const { runBootIndexes } = await import("./lib/bootIndexes");
+      await runBootIndexes(dbPool);
     })();
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);

@@ -11,6 +11,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
 import path from "path";
+import { journalProblems, LEGACY_UNJOURNALED, readJournal } from "../server/db/migrationPlan";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -321,6 +322,46 @@ describe("migration 0006_provider_facility_matches", () => {
     for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
       expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
     }
+  });
+});
+
+describe("migration 0007_schema_catchup", () => {
+  const sql = readMigration("0007_schema_catchup.sql");
+  const schema = readSchema();
+
+  it("only adds columns, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements).toHaveLength(17);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^ALTER TABLE "(provider_service_utilization|import_schedule_configs)" ADD COLUMN IF NOT EXISTS "\w+" [\w() ]+;$/);
+    }
+  });
+
+  it("covers every column from the unjournaled 0001 and 0002 files", () => {
+    for (const legacy of ["0001_mute_star_brand.sql", "0002_cynical_hellfire_club.sql"]) {
+      for (const [, column] of readMigration(legacy).matchAll(/ADD COLUMN "(\w+)"/g)) {
+        expect(sql, column).toContain(`ADD COLUMN IF NOT EXISTS "${column}"`);
+      }
+    }
+  });
+
+  it("declares every added column in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+});
+
+describe("migration journal", () => {
+  const folder = path.join(ROOT, "drizzle");
+  const sqlFiles = fs.readdirSync(folder).filter((f) => f.endsWith(".sql"));
+
+  it("is ordered and journals every migration file", () => {
+    expect(journalProblems(readJournal(folder), sqlFiles, LEGACY_UNJOURNALED)).toEqual([]);
+  });
+
+  it("only lists legacy files that still exist", () => {
+    for (const tag of LEGACY_UNJOURNALED) expect(sqlFiles).toContain(`${tag}.sql`);
   });
 });
 
