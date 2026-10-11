@@ -20,6 +20,8 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getFacilityDetail",
   "listFacilities",
   "getProviderCMSData",
+  // Read-only: the rows any user can already read through the entity API.
+  "getLeadListMemberDetails",
   "getCountyIntelligence",
   "getAvailableStatesCounties",
   "getComprehensiveReport",
@@ -38,7 +40,6 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "verifyProviderEmail",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
-  "trackCampaignMetrics",
 ]);
 
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */

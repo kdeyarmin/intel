@@ -35,9 +35,11 @@ export interface ProviderSearchPlan {
   term: string;
 }
 
+// The Providers and Organizations pages filter and sort these rows like entity
+// rows: "Not searched" reads email_searched_at, "Last updated" updated_date.
 export const COLUMNS = `id, npi, entity_type, first_name, last_name, organization_name,
        credential, status, email, email_confidence, email_validation_status,
-       email_source, phone, created_date`;
+       email_source, email_searched_at, phone, created_date, updated_date`;
 
 const MAX_LIMIT = 500;
 const ORG_CONTAINS_CANDIDATES = 200;

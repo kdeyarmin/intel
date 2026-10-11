@@ -26,6 +26,9 @@ import {
 const DEFAULT_ROWS = 500;
 const MAX_ROWS = 5000;
 const RUN_LEASE_MS = 10 * 60 * 1000;
+// Reports one maintenance tick builds and sends, most overdue first; the rest
+// stay due and go out on the next tick.
+export const MAX_RUNS_PER_TICK = 20;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -112,7 +115,7 @@ async function buildReport(row: any) {
     summary,
     manageUrl: appUrl ? `${appUrl}/CustomReports` : null,
   });
-  return { cfg, rows, metrics, groupLabel, email, csv: cfg.include_csv === false ? null : buildReportCsv({ groupLabel, metrics, rows }), sourceRowCount: source.length };
+  return { cfg, rows, metrics, groupLabel, summary, email, csv: cfg.include_csv === false ? null : buildReportCsv({ groupLabel, metrics, rows }), sourceRowCount: source.length };
 }
 
 // Why a recipient was skipped: reports go to active app users, plus any
@@ -138,9 +141,16 @@ async function saveRunState(id: number, patch: Record<string, unknown>) {
   );
 }
 
-/** Run one schedule and email it. Records the outcome on the schedule either way. */
-async function runAndSend(row: any) {
+/**
+ * Run one schedule and email it. Records the outcome on the schedule either
+ * way. Only a scheduled run moves next_run_at on: "Send now" (advance: false)
+ * leaves the next scheduled delivery where it was.
+ */
+async function runAndSend(row: any, { advance = true }: { advance?: boolean } = {}) {
   const now = new Date();
+  const nextRun = (cfg: any) => (advance
+    ? { next_run_at: computeNextReportRun(cfg, now).toISOString(), schedule_signature: scheduleSignature(cfg) }
+    : {});
   try {
     const report = await buildReport(row);
     const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
@@ -176,8 +186,7 @@ async function runAndSend(row: any) {
       last_run_at: now.toISOString(),
       last_run_status: status,
       last_run_summary: parts.join("; ").slice(0, 500),
-      next_run_at: computeNextReportRun(report.cfg, now).toISOString(),
-      schedule_signature: scheduleSignature(report.cfg),
+      ...nextRun(report.cfg),
     });
     return { status, emails_sent: sent, skipped_recipients: blocked, overflow_recipients: overflow, failures, rows: report.rows.length };
   } catch (e: any) {
@@ -186,8 +195,7 @@ async function runAndSend(row: any) {
       last_run_at: now.toISOString(),
       last_run_status: "failed",
       last_run_summary: String(e?.message || e).slice(0, 500),
-      next_run_at: computeNextReportRun(cfg, now).toISOString(),
-      schedule_signature: scheduleSignature(cfg),
+      ...nextRun(cfg),
     });
     throw e;
   }
@@ -212,8 +220,10 @@ function mailerMissing() {
 }
 
 /**
- * Run every active schedule that is due. A compare-and-set on next_run_at
- * claims each one so overlapping ticks can't send it twice.
+ * Run the active schedules that are due, at most MAX_RUNS_PER_TICK of them,
+ * most overdue first. A compare-and-set claims each one so overlapping ticks
+ * can't send it twice, and a schedule edited or switched off since it was
+ * read isn't claimed; the claimed row is what gets sent.
  */
 export async function handleRunDueScheduledReports() {
   if (!getMailerStatus().configured) return { success: true, details: { checked: 0, ran: 0, skipped: "email not configured" } };
@@ -221,7 +231,7 @@ export async function handleRunDueScheduledReports() {
   const rows: any[] = [];
   for (let lastId = 0; ;) {
     const page = await pool.query(
-      "SELECT * FROM scheduled_reports WHERE COALESCE(config->>'is_active', 'true') <> 'false' AND id > $1 ORDER BY id LIMIT 500",
+      "SELECT *, updated_date::text AS updated_stamp FROM scheduled_reports WHERE COALESCE(config->>'is_active', 'true') <> 'false' AND id > $1 ORDER BY id LIMIT 500",
       [lastId],
     );
     rows.push(...page.rows);
@@ -229,7 +239,7 @@ export async function handleRunDueScheduledReports() {
     lastId = page.rows[page.rows.length - 1].id;
   }
   const now = new Date();
-  const results: Array<{ id: number; status: string; error?: string }> = [];
+  const due: Array<{ row: any; cfg: any; next: Date }> = [];
   for (const row of rows) {
     const cfg = settings(row);
     const signatureChanged = cfg.schedule_signature && cfg.schedule_signature !== scheduleSignature(cfg);
@@ -250,16 +260,24 @@ export async function handleRunDueScheduledReports() {
       }
       continue;
     }
+    due.push({ row, cfg, next });
+  }
 
+  due.sort((a, b) => a.next.getTime() - b.next.getTime() || a.row.id - b.row.id);
+  const results: Array<{ id: number; status: string; error?: string }> = [];
+  for (const { row, cfg } of due.slice(0, MAX_RUNS_PER_TICK)) {
     const lease = new Date(now.getTime() + RUN_LEASE_MS).toISOString();
     const claimed = await pool.query(
       `UPDATE scheduled_reports SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('next_run_at', $2::text)
-        WHERE id = $1 AND (config->>'next_run_at') IS NOT DISTINCT FROM $3::text RETURNING id`,
-      [row.id, lease, cfg.next_run_at ?? null],
+        WHERE id = $1 AND (config->>'next_run_at') IS NOT DISTINCT FROM $3::text
+          AND updated_date::text IS NOT DISTINCT FROM $4::text
+          AND COALESCE(config->>'is_active', 'true') <> 'false'
+        RETURNING *`,
+      [row.id, lease, cfg.next_run_at ?? null, row.updated_stamp ?? null],
     );
     if (!claimed.rowCount) continue;
     try {
-      const r = await runAndSend(row);
+      const r = await runAndSend(claimed.rows[0]);
       results.push({ id: row.id, status: r.status });
     } catch (e: any) {
       results.push({ id: row.id, status: "failed", error: String(e?.message || e).slice(0, 200) });
@@ -267,7 +285,13 @@ export async function handleRunDueScheduledReports() {
   }
   return {
     success: true,
-    details: { checked: rows.length, ran: results.length, failed: results.filter((r) => r.status === "failed").length, results },
+    details: {
+      checked: rows.length,
+      ran: results.length,
+      failed: results.filter((r) => r.status === "failed").length,
+      deferred: Math.max(due.length - MAX_RUNS_PER_TICK, 0),
+      results,
+    },
   };
 }
 
@@ -285,7 +309,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
       success: true,
       preview: {
         subject: report.email.subject,
-        summary: report.email.text.split("\n").slice(0, 3).join(" "),
+        summary: report.summary,
         group_label: report.groupLabel,
         metrics: report.metrics,
         rows: report.rows,
@@ -303,7 +327,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
     const missing = mailerMissing();
     if (missing) return missing;
     const row = await loadSchedule(payload?.report_id);
-    const r = await runAndSend(row);
+    const r = await runAndSend(row, { advance: false });
     if (r.emails_sent === 0) {
       return { success: false, error: `The report ran but no email was delivered. ${r.failures.join("; ")}`.trim() };
     }

@@ -127,6 +127,15 @@ describe("buildProviderSearchPlan", () => {
     expect(buildProviderSearchPlan("mercy", { entityType: "Organization" }, { ...ALL, trigram: false })!.degraded).toBe(false);
   });
 
+  it("returns the fields the directory pages filter and sort on", () => {
+    // "Not searched" email filter and "Last updated" sort, on every query of the plan.
+    for (const q of buildProviderSearchPlan("smith", {}, ALL)!.queries) {
+      const columns = q.text.split("FROM")[0];
+      expect(columns).toMatch(/\bemail_searched_at\b/);
+      expect(columns).toMatch(/\bupdated_date\b/);
+    }
+  });
+
   it("escapes LIKE wildcards in user input", () => {
     expect(escapeLike("50%_off\\")).toBe("50\\%\\_off\\\\");
     expect(buildProviderSearchPlan("o'neil%", { entityType: "Individual" }, ALL)!.queries[0].values[0]).toBe("o'neil\\%%");

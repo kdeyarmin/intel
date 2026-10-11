@@ -4,17 +4,19 @@ const { migrate } = vi.hoisted(() => ({ migrate: vi.fn(async () => {}) }));
 vi.mock("drizzle-orm/node-postgres/migrator", () => ({ migrate }));
 vi.mock("drizzle-orm/node-postgres", () => ({ drizzle: () => ({}) }));
 
-import { runMigrations } from "../server/db/migrate";
+import { MIGRATIONS_FOLDER, runMigrations } from "../server/db/migrate";
+import { initialTables } from "../server/db/migrationPlan";
 
 // A database built with drizzle-kit push: tables exist, no migration history.
-function pushedDb({ failInsertAt }: { failInsertAt?: number } = {}) {
+function pushedDb({ failInsertAt, tables }: { failInsertAt?: number; tables?: string[] } = {}) {
   const statements: string[] = [];
   let inserts = 0;
+  const present = tables ?? [...initialTables(MIGRATIONS_FOLDER), "medicare_facilities_raw"];
   const client = {
     query: vi.fn(async (sql: string) => {
       statements.push(sql);
       if (sql.includes("to_regclass")) return { rows: [{ t: null }] };
-      if (sql.includes("pg_tables")) return { rows: [{ tablename: "users" }, { tablename: "medicare_facilities_raw" }] };
+      if (sql.includes("pg_tables")) return { rows: present.map((tablename) => ({ tablename })) };
       if (sql.startsWith("INSERT INTO drizzle.__drizzle_migrations")) {
         inserts += 1;
         if (inserts === failInsertAt) throw new Error("connection lost");
@@ -48,6 +50,15 @@ describe("runMigrations baseline", () => {
     await expect(runMigrations(pool, quiet)).rejects.toThrow("connection lost");
     expect(statements).toContain("ROLLBACK");
     expect(statements).not.toContain("COMMIT");
+    expect(migrate).not.toHaveBeenCalled();
+    expect(statements.at(-1)).toBe("SELECT pg_advisory_unlock($1)");
+    expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops, recording nothing, when a pushed database has only part of 0000's tables", async () => {
+    const { pool, client, statements } = pushedDb({ tables: ["users", "medicare_facilities_raw"] });
+    await expect(runMigrations(pool, quiet)).rejects.toThrow(/Incomplete schema.*medicare_facilities\b/);
+    expect(statements.some((s) => s.startsWith("INSERT INTO drizzle.__drizzle_migrations"))).toBe(false);
     expect(migrate).not.toHaveBeenCalled();
     expect(statements.at(-1)).toBe("SELECT pg_advisory_unlock($1)");
     expect(client.release).toHaveBeenCalledTimes(1);

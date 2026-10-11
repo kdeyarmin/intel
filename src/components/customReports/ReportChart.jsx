@@ -24,6 +24,8 @@ function aggregateData(rawData, config) {
   if (filters.state) filtered = filtered.filter(r => r.state === filters.state);
   if (filters.hospital_type) filtered = filtered.filter(r => (r.hospital_type || '').toLowerCase().includes(filters.hospital_type.toLowerCase()));
   if (filters.table_name) filtered = filtered.filter(r => r.table_name === filters.table_name);
+  // Nothing matched: no rows, as the scheduled email reports it (not a zero total).
+  if (!filtered.length) return [];
 
   if (!groupKey) {
     // No grouping — single total row
