@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { importBatches, importScheduleConfigs } from "../db/schema";
-import { eq, and, lt, or, isNull } from "drizzle-orm";
+import { eq, and, lt, or, isNull, inArray } from "drizzle-orm";
 import { handleTriggerImport } from "./triggerImport";
 import { handleNppesCrawler } from "./nppesCrawler";
 import {
@@ -94,12 +94,31 @@ export async function handleRunScheduledImports(_payload?: any, _user?: any) {
   const results: any[] = [];
   const skipped: any[] = [];
 
+  // A schedule whose own batch is still processing is not due again, even once
+  // its run lease has passed: re-claiming it would only meet the active-import
+  // guard (a 409), record "skipped", and lose the real completion. The settle
+  // sweep owns it until the batch finishes or goes quiet.
+  const runningBatchIds = schedules
+    .filter((s) => s.last_run_status === "running" && s.last_batch_id != null)
+    .map((s) => s.last_batch_id as number);
+  const liveBatchIds = new Set<number>(
+    runningBatchIds.length === 0
+      ? []
+      : (await db.select({ id: importBatches.id }).from(importBatches)
+          .where(and(inArray(importBatches.id, runningBatchIds), inArray(importBatches.status, ["validating", "processing"]))))
+          .map((b) => b.id),
+  );
+
   // Bucket due schedules by family so two same-family imports don't run in parallel.
   const dueByFamily = new Map<string, any[]>();
   for (let i = 0; i < schedules.length; i++) {
     const s = schedules[i];
     const nextRun = s.next_run_at ? new Date(s.next_run_at) : null;
     if (nextRun && nextRun > now) continue;
+    if (s.last_run_status === "running" && s.last_batch_id != null && liveBatchIds.has(s.last_batch_id)) {
+      skipped.push({ id: s.id, label: shapes[i].label, reason: `previous run (batch #${s.last_batch_id}) is still in progress` });
+      continue;
+    }
     const dep = dependencyBlocked(shapes[i], shapes);
     if (dep.blocked) {
       skipped.push({ id: s.id, label: shapes[i].label, reason: dep.reason });

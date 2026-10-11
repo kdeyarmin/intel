@@ -33,7 +33,7 @@ export default function AIRelatedProviders({ provider, location, taxonomies, ref
 
     // `referrals` is the latest year's shared-patient snapshot (patterns, not confirmed referrals).
     const refTypes = [];
-    if (referrals?.total_referrals > 0) refTypes.push(`${referrals.total_referrals.toLocaleString()} shared Medicare patients with ${referrals.partners || 0} partner providers (data year ${referrals.year || 'unknown'})`);
+    if (referrals?.total_referrals > 0) refTypes.push(`${referrals.total_referrals.toLocaleString()} shared-patient encounters with ${referrals.partners || 0} partner providers (data year ${referrals.year || 'unknown'})`);
 
     try {
       const res = await base44.integrations.Core.InvokeLLM({

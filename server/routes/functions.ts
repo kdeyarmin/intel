@@ -560,7 +560,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getDataFreshness": {
         const { handleGetDataFreshness } = await import("../functions/dataFreshness");
-        return res.json(await handleGetDataFreshness());
+        return res.json(await handleGetDataFreshness({ includeNotes: req.user?.role === "admin" }));
       }
 
       case "refreshRollups": {
