@@ -15,6 +15,7 @@ import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
 import { recordSourceFile } from "../lib/datasetRegistry";
 import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
+import { stateCodeOf } from "../lib/stateNames";
 
 // Shared with the NPPES file importer; re-exported for the callers that import them from here.
 export { mergeRetryParams, endedWithoutFinishing };
@@ -188,7 +189,7 @@ const CMS_DATASET_CATALOG = [
   { id: "nppes_weekly_incremental", title: "NPPES Weekly Update (V.2 file)", description: "CMS's weekly NPPES dissemination file: new NPIs, changed records and deactivations for the week. Providers are updated in place, and each NPI's addresses and taxonomies are replaced with the file's. The current file is found on CMS's NPI files page automatically.", category: "Physicians & Clinicians", records: "~100K/week", priority: "high" },
   { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
-  { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts homes and beds.", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
+  { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP (the Census geography must be loaded first) and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts the personal care, assisted living, memory care and domiciliary care homes and beds (nursing homes are counted from the CMS files).", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
@@ -369,6 +370,16 @@ function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
 }
 
+const GEOGRAPHY_MISSING = "The Census geography isn't loaded yet, so ZIP codes can't be placed in counties. It loads when the server starts (or run `npm run geo:load`); retry once it has.";
+
+/** Why a dataset that places ZIP codes in counties can't be imported yet, or null when it can. */
+export async function geographyProblem(importType: string): Promise<string | null> {
+  if (!TYPED_ROUTES[importType]?.needsGeo) return null;
+  const { getGeoIndex } = await import("../lib/geo");
+  const index = await getGeoIndex(pool).catch(() => null);
+  return index && index.counties.size > 0 ? null : GEOGRAPHY_MISSING;
+}
+
 /**
  * The release date a snapshot import's rows are stamped with (`as_of`): the resumed batch's
  * own, else the last day the newest release covers, else the day it was published. The Care
@@ -397,6 +408,10 @@ export async function handleTriggerImport(payload: any, user: any) {
   const urlProblem = fileUrlProblem(import_type, file_url, year);
   if (urlProblem) {
     throw { status: 400, message: urlProblem };
+  }
+  const noGeography = await geographyProblem(import_type);
+  if (noGeography) {
+    throw { status: 409, message: noGeography };
   }
 
   const activeImports = await db.select().from(importBatches)
@@ -753,7 +768,8 @@ export function buildImportRowFilter(
   const npis = new Set(
     parseFilterList(npiFilter).map((s) => s.replace(/\D/g, "")).filter(Boolean),
   );
-  const states = new Set(parseFilterList(stateFilter).map((s) => s.toUpperCase()));
+  // A state may be written as a code or spelled out, in the filter and in the file.
+  const states = new Set(parseFilterList(stateFilter).map((s) => stateCodeOf(s) ?? s.toUpperCase()));
   if (npis.size === 0 && states.size === 0) return null;
   return (row: any) => {
     if (npis.size > 0) {
@@ -761,7 +777,8 @@ export function buildImportRowFilter(
       if (!npi || !npis.has(npi)) return false;
     }
     if (states.size > 0) {
-      const st = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim().toUpperCase();
+      const raw = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim();
+      const st = raw ? stateCodeOf(raw) ?? raw.toUpperCase() : "";
       if (st ? !states.has(st) : !opts.stateOptional) return false;
     }
     return true;
@@ -1282,9 +1299,11 @@ async function insertTypedRows(importType: string, rows: any[], year: number, ba
   let countyForZip: ((zip: string) => string | null) | undefined;
   if (route.needsGeo) {
     // State licensing files carry ZIPs, not counties: the Census geography gives each ZIP its county.
+    // Without it every row would be stored with no county and vanish from every county view.
     const { getGeoIndex, zipToCounty } = await import("../lib/geo");
     const index = await getGeoIndex(pool).catch(() => null);
-    countyForZip = index && index.counties.size > 0 ? (zip) => zipToCounty(index, zip)?.fips ?? null : undefined;
+    if (!index || index.counties.size === 0) throw new Error(GEOGRAPHY_MISSING);
+    countyForZip = (zip) => zipToCounty(index, zip)?.fips ?? null;
   }
   const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId, params: params ?? null, countyForZip });
   if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: dropped };

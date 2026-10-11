@@ -69,6 +69,20 @@ describe("buildImportRowFilter", () => {
     expect(strict({ name: "Sunrise Personal Care Home", zip: "15213" })).toBe(false);
   });
 
+  it("matches a state spelled out in the file (or in the filter) to its postal code", () => {
+    // State portals often export "Pennsylvania", where the filter says PA.
+    const f = buildImportRowFilter(null, "PA", { stateOptional: true })!;
+    expect(f({ name: "Elm Court", state: "Pennsylvania" })).toBe(true);
+    expect(f({ name: "Elm Court", State: "pennsylvania" })).toBe(true);
+    expect(f({ name: "Ohio Home", state: "Ohio" })).toBe(false);
+    expect(f({ name: "DC Home", state: "District of Columbia" })).toBe(false);
+    expect(buildImportRowFilter(null, "Pennsylvania")!({ state: "PA" })).toBe(true);
+    expect(buildImportRowFilter(null, "pa, ohio")!({ state: "Ohio" })).toBe(true);
+    // Names of several words are matched as the file writes them (the filter itself is split on spaces).
+    expect(buildImportRowFilter(null, "NY,DC")!({ state: "New York" })).toBe(true);
+    expect(buildImportRowFilter(null, "NY,DC")!({ state: "District of Columbia" })).toBe(true);
+  });
+
   it("requires BOTH npi and state to match when both are set", () => {
     const f = buildImportRowFilter("1234567890", "PA")!;
     expect(f({ NPI: "1234567890", state: "PA" })).toBe(true);
