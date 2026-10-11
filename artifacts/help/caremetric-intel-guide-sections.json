@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "1cee3a7acef12788f6b23c781d72c8efba8f1354",
+    "ref": "8b968dc716a6f8d4bb6c79796b959ecddddbf441",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17501,
-    "canonical_sha256": "fbcf62f6eb94998fe873ad7707c1adeb62ecd6c429e27d6d42fa216552cde13a"
+    "text_character_count": 17677,
+    "canonical_sha256": "573c3762d2a82603cba18823f5da191374f3795ee92e641a54f8b5e94c3d96f0"
   },
   "sections": [
     {
@@ -43,8 +43,8 @@
         },
         {
           "heading": "Your account",
-          "text": "New accounts need an administrator's approval: after signing up you'll see a waiting screen until an admin approves you. Admins can also invite people by link.\n\nThere are two roles:\n• **User** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Admin** — everything, plus data imports, the NPPES crawler, campaigns, provider intelligence, scoring rules and user management.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an admin for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
-          "sha256": "e7bbc9f8de53d48728937777512fb72c5ba933bb040dc84e8149ec5ddb62cf2e"
+          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners approve and invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
+          "sha256": "007e5fc604a7a8ab6c029b02f747083867bd9d6611ecd56f205068e9f51f9b76"
         },
         {
           "heading": "What data is this and how fresh is it?",
@@ -168,8 +168,8 @@
       "topics": [
         {
           "heading": "Lead lists",
-          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; admins can also start a campaign from it.",
-          "sha256": "e5bf4a7bc75aeee6650c48d285ddc6262982947096b9713e078354a8face6347"
+          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; owners can also start a campaign from it.",
+          "sha256": "ae04cc225d90a1d460d4b98504f43ce6024d6926208a5d6294902928be31fc82"
         },
         {
           "heading": "Lead Builder",
