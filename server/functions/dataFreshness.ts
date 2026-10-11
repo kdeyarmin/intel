@@ -55,5 +55,5 @@ export async function handleGetDataFreshness() {
     }
   }
   datasets.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-  return { datasets, rollups: (rollups as any).jobs || [], geography, generated_at: new Date().toISOString() };
+  return { datasets, rollups: (rollups as any).jobs || [], geography, taxonomy, generated_at: new Date().toISOString() };
 }
