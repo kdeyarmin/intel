@@ -372,6 +372,17 @@ describe("getReferralSources", () => {
     });
     expect(r.rows[1]).toMatchObject({ name: "Bo Hart", specialty_group: "cardiology", lead_score: null, eligible: { hha: false, hospice: false, dme: false } });
     expect(r.index_note).toMatch(/50 points/);
+    // A clinician with no hospital listed is a real 0 once the affiliation file is loaded.
+    expect(r.rows.map((x: any) => x.affiliations)).toEqual([2, 0]);
+  });
+
+  it("passes hospital affiliations on as unknown (null), not 0, when the rollup was built without the affiliation file", async () => {
+    h.answers.push(
+      [/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, SOURCES.map((s) => ({ ...s, hospital_ccns: null, affiliations: null }))],
+      [/FROM providers WHERE npi = ANY/, [{ npi: "1000000001", first_name: "Ada", last_name: "Lovelace", credential: "MD" }]],
+    );
+    const r: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 });
+    expect(r.rows.map((x: any) => [x.affiliations, x.hospital_ccns])).toEqual([[null, []], [null, []]]);
   });
 
   it("filters to a setting's eligible sources and to a specialty group, over-fetching for the group", async () => {
