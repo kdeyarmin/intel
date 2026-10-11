@@ -4,6 +4,7 @@ import { eq, and, isNull, sql, asc, inArray, lt } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { AI_EMAIL_SOURCE, isValidEmailSyntax, shouldPromoteToPrimary } from "./emailValidation";
+import { unverifiedEmailUpdate } from "../lib/entityFields";
 
 const BATCH_DELAY_MS = 300;
 const PARALLEL_CONCURRENCY = 5;
@@ -239,7 +240,7 @@ async function saveEnrichment(npi: string, enrichment: any) {
   return fieldsToSave.length;
 }
 
-async function saveEmail(provider: any, result: any) {
+export async function saveEmail(provider: any, result: any) {
   const candidates = (result.all_emails || [])
     .filter((e: any) => isValidEmailSyntax(e.email))
     .map((e: any) => ({
@@ -267,8 +268,9 @@ async function saveEmail(provider: any, result: any) {
     return;
   }
 
+  // A new address drops the old address's DNS check; see unverifiedEmailUpdate.
   await safeDbQuery(
-    () => db.update(providers).set({
+    () => db.update(providers).set(unverifiedEmailUpdate(providers, {
       email: result.best_email,
       email_confidence: result.email_confidence,
       email_source: AI_EMAIL_SOURCE,
@@ -277,7 +279,7 @@ async function saveEmail(provider: any, result: any) {
       additional_emails: candidates.length > 1 ? candidates.slice(1) : null,
       email_searched_at: new Date(),
       updated_date: new Date(),
-    }).where(eq(providers.id, provider.id)),
+    })).where(eq(providers.id, provider.id)),
     null, `save email ${provider.npi}`
   );
 }

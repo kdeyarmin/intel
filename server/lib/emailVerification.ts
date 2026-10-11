@@ -184,17 +184,25 @@ export function scoreEmail(email: string, dnsCheck: DomainCheck | null, suppress
     reasons.push("Personal mailbox at a free email provider.");
     riskFlags.push("free_email");
   }
-  if (suppression) {
+  // Reasons come from email_suppressions (see sendgridEvents.ts); anything
+  // other than a spam complaint is an opt-out (unsubscribe link or SendGrid).
+  const spamComplaint = suppression === "spam_report";
+  if (spamComplaint) {
+    reasons.push("The recipient marked an earlier email as spam.");
+    riskFlags.push("spam_complaint");
+  } else if (suppression) {
     reasons.push("This address opted out of outreach emails.");
     riskFlags.push("opted_out");
   }
 
   const status: EmailStatus = score >= 70 ? "valid" : score >= 40 ? "risky" : "invalid";
-  const recommendation = suppression
-    ? "Don't email: the recipient opted out."
-    : status === "valid"
-      ? riskFlags.includes("role_account") ? "OK to use; address it to the practice." : "OK to use."
-      : "Use with care; look for a better address if this one bounces.";
+  const recommendation = spamComplaint
+    ? "Don't email: the recipient reported an earlier email as spam."
+    : suppression
+      ? "Don't email: the recipient opted out."
+      : status === "valid"
+        ? riskFlags.includes("role_account") ? "OK to use; address it to the practice." : "OK to use."
+        : "Use with care; look for a better address if this one bounces.";
   // DNS can't confirm the mailbox itself, so a "valid" result is medium confidence.
   return { status, score, confidence: status === "valid" ? "medium" : "low", reasons, riskFlags, recommendation };
 }

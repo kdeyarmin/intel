@@ -3,6 +3,7 @@ import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacili
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -129,10 +130,12 @@ const ALLOWED_URL_DOMAINS = [
   "npiregistry.cms.hhs.gov",
 ];
 
-function isAllowedUrl(url: string): boolean {
+// The import itself downloads through safeFetchStream (the SSRF guard), which
+// also only takes https.
+export function isAllowedUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return ALLOWED_URL_DOMAINS.some((d) => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`));
+    return parsed.protocol === "https:" && ALLOWED_URL_DOMAINS.some((d) => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`));
   } catch {
     return false;
   }
@@ -324,7 +327,7 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
 
   if (file_url && !isAllowedUrl(file_url)) {
-    throw { status: 400, message: "file_url must be a CMS government domain (data.cms.gov, download.cms.gov)" };
+    throw { status: 400, message: "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)" };
   }
 
   const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
@@ -1242,7 +1245,7 @@ export async function handleAutoImportCMSData(params: any) {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), fetchTimeoutMs);
-        response = await fetch(url, { signal: controller.signal });
+        response = await safeFetchStream(url, { signal: controller.signal });
         clearTimeout(timeout);
       } catch (e: any) {
         const isAbort = e.name === 'AbortError' || (e.message && e.message.includes('aborted'));
@@ -1250,7 +1253,8 @@ export async function handleAutoImportCMSData(params: any) {
         const errMsg = `Fetch failed at offset ${offset}: ${e.message}`;
         console.error(`[AutoImportCMS] ${errMsg} (timeout=${fetchTimeoutMs}ms, attempt ${consecutiveErrors}/7)`);
         errors.push({ offset, message: errMsg });
-        const maxRetries = isAbort ? 7 : 5;
+        // A URL or address the SSRF guard refused won't work on a retry.
+        const maxRetries = e instanceof SafeFetchError ? 1 : isAbort ? 7 : 5;
         if (consecutiveErrors >= maxRetries) {
           await safeImportQuery(
             () => db.update(importBatches).set({

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { headersAfterRedirect, isBlockedAddress, safeFetch, SafeFetchError, validateOutboundUrl } from "../server/lib/safeFetch";
+import { headersAfterRedirect, isBlockedAddress, safeFetch, SafeFetchError, safeFetchStream, validateOutboundUrl } from "../server/lib/safeFetch";
 import { apiKeyHeaders, classifyConnectorResponse } from "../server/lib/connectorCheck";
 import { buildNpiValidationRecord, isValidNpi } from "../server/lib/npiValidation";
 import { clearNppesCache, lookupNpi, NppesUnavailableError, requestNppes } from "../server/lib/nppesClient";
@@ -27,6 +27,18 @@ describe("SSRF guard", () => {
     expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://evil.example.net/"), key)).toEqual({});
     expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://api.example.com:8443/"), key)).toEqual({});
     expect(headersAfterRedirect(u("https://api.example.com/a"), u("https://sub.api.example.com/"), key)).toEqual({});
+    // A Range request stays one, so a resumed download doesn't restart from byte 0.
+    expect(headersAfterRedirect(u("https://a.example.com/f"), u("https://cdn.example.net/f"), { ...key, Range: "bytes=10-" }))
+      .toEqual({ Range: "bytes=10-" });
+  });
+
+  it("guards the streaming import downloads the same way", async () => {
+    await expect(safeFetchStream("http://download.cms.gov/nppes.csv")).rejects.toMatchObject({ code: "invalid_url" });
+    await expect(safeFetchStream("https://169.254.169.254/latest/meta-data/")).rejects.toMatchObject({ code: "blocked_address" });
+    const lookup = vi.fn(async () => [{ address: "10.0.0.5", family: 4 }]);
+    await expect(safeFetchStream("https://bucket.example.net/nppes.csv", { lookup, headers: { Range: "bytes=0-" } }))
+      .rejects.toMatchObject({ code: "blocked_address" });
+    expect(lookup).toHaveBeenCalledWith("bucket.example.net");
   });
 
   it("only accepts https URLs without credentials or private hosts", () => {
@@ -249,6 +261,14 @@ describe("email verification", () => {
     expect(scoreEmail("info@clinic.org", mxOk)).toMatchObject({ status: "valid", score: 75, riskFlags: ["role_account"] });
     expect(scoreEmail("ann@gmail.com", { ...mxOk, domain: "gmail.com" }).riskFlags).toContain("free_email");
     expect(scoreEmail("ann@clinic.org", mxOk, "unsubscribed")).toMatchObject({ riskFlags: ["opted_out"], recommendation: expect.stringMatching(/opted out/) });
+  });
+
+  it("reports a spam complaint as a spam complaint, not an opt-out", () => {
+    const r = scoreEmail("ann@clinic.org", mxOk, "spam_report");
+    expect(r.riskFlags).toEqual(["spam_complaint"]);
+    expect(r.reasons).toContain("The recipient marked an earlier email as spam.");
+    expect(r.reasons.join(" ")).not.toMatch(/opted out/);
+    expect(r.recommendation).toBe("Don't email: the recipient reported an earlier email as spam.");
   });
 
   it("marks undeliverable addresses invalid", () => {
