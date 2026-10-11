@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "fe54500d28ef24731ae03eaba85b0643dc6d5ef9",
+    "ref": "9b6ae1f47cb4698413d03cee98aa946406bd8226",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17297,
-    "canonical_sha256": "b4a794bac5f371d610e1b648cb0c61ac92391067995c05b91d25aa1b630e214f"
+    "text_character_count": 17337,
+    "canonical_sha256": "de3c84528505809a7d063d07d606a45ab852980ee09d7b26b1572ea2d0d3fc4e"
   },
   "sections": [
     {
@@ -194,8 +194,8 @@
       "topics": [
         {
           "heading": "Importing state-licensed homes",
-          "text": "Personal care homes and assisted living residences are licensed by states and never appear in CMS files. Pick **State-Licensed Homes** in the Data Center, upload the state's licensing export as a CSV (or give an https link) and set the state, the license type the file holds (if its rows don't say) and the export's year. Columns are matched by name: name, address, city, ZIP, license number, license type, capacity, status, licensee and phone are recognised under their usual spellings. Each home gets its county from its ZIP; re-importing a newer export updates the same homes. They then show on **Facilities › Licensed Homes**, on County Intel's **Competitors** tab and in the county profile's licensed homes and beds. For Pennsylvania, the DHS personal care home and assisted living directories are the source.",
-          "sha256": "3ede2361b7f80bb7000229c90fabb75f0c21d76228ca7f95e8dd01e3e4142ff9"
+          "text": "Personal care homes and assisted living residences are licensed by states and never appear in CMS files. Pick **State-Licensed Homes** in the Data Center, upload the state's licensing export as a CSV (or give an https link) and set the state, the license type the file holds (if its rows don't say) and the export's year. Columns are matched by name: name, address, city, ZIP, license number, license type, capacity, status, licensee and phone are recognised under their usual spellings. Each home gets its county from its ZIP; re-importing a newer export updates the same homes and removes the ones it no longer lists. They then show on **Facilities › Licensed Homes**, on County Intel's **Competitors** tab and in the county profile's licensed homes and beds. For Pennsylvania, the DHS personal care home and assisted living directories are the source.",
+          "sha256": "a4ed9cd254158ce2a403f4c9c29a4dde5f643abe570ae4eff8db855292aa64e2"
         },
         {
           "heading": "Importing data",
