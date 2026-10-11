@@ -25,7 +25,7 @@ export const NEXT_RUN_MIN_BUFFER_MS = 5 * 60_000;
 // sequentially; different families can run in parallel within one invocation.
 export function getImportFamily(importType: string | null | undefined): string {
   if (!importType) return "unknown";
-  if (importType === "nppes_registry") return "nppes";
+  if (importType === "nppes_registry" || importType.startsWith("nppes_")) return "nppes";
   if (importType.startsWith("medicare_")) return "medicare";
   if (importType.startsWith("hospice_")) return "hospice";
   if (importType.startsWith("snf_") || importType.startsWith("nursing_home_")) return "snf";

@@ -9,6 +9,9 @@ import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
 import { pageRecords } from "../lib/csv";
 import { TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
+import { NPPES_FILE_TYPES } from "./importNPPESFile";
+import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
+import { recordSourceFile } from "../lib/datasetRegistry";
 import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
@@ -174,6 +177,8 @@ export function isAllowedUrl(url: string): boolean {
 }
 
 const CMS_DATASET_CATALOG = [
+  { id: "nppes_weekly_incremental", title: "NPPES Weekly Update (V.2 file)", description: "CMS's weekly NPPES dissemination file: new NPIs, changed records and deactivations for the week. Providers are updated in place, and each NPI's addresses and taxonomies are replaced with the file's. The current file is found on CMS's NPI files page automatically.", category: "Physicians & Clinicians", records: "~100K/week", priority: "high" },
+  { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
@@ -300,7 +305,7 @@ export function getCMSDatasetCatalog() {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      available: !!(IMPORT_TYPE_URLS[ds.id]),
+      available: !!(IMPORT_TYPE_URLS[ds.id] || NPPES_FILE_TYPES[ds.id]),
       unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
@@ -426,6 +431,40 @@ export async function handleTriggerImport(payload: any, user: any) {
       batch_id: batch.id,
       file_url,
     };
+  }
+
+  if (NPPES_FILE_TYPES[import_type]) {
+    // NPPES V.2 dissemination zips (server/functions/importNPPESFile.ts). The
+    // current file is read off CMS's NPI files page unless a link is given.
+    const kind = NPPES_FILE_TYPES[import_type];
+    const resolved = file_url ? classifyNppesLink(file_url) : await resolveNppesFile(kind);
+    const url = file_url || resolved?.url;
+    if (!url) throw { status: 502, message: `Couldn't find the current NPPES ${kind} file on CMS's NPI files page; pass file_url.` };
+    if (!isAllowedUrl(url)) throw { status: 400, message: "NPPES files must come from download.cms.gov" };
+    const fileName = url.split("/").pop() || import_type;
+    let activeBatchId: number;
+    if (batch_id) {
+      await db.update(importBatches).set({
+        status: "processing", cancel_reason: null, cancelled_at: null, error_samples: null,
+        retry_params: { file_url: url, import_type, resume_offset: resume_offset || 0, retry_of, retry_count: (retry_count || 0) + 1, retry_tags },
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id));
+      activeBatchId = batch_id;
+    } else {
+      const { batch, conflict } = await insertBatchAtomically(import_type, {
+        import_type, file_name: fileName, status: "processing", dry_run: !!dry_run, total_rows: 0, imported_rows: 0,
+        retry_params: { file_url: url, import_type, resume_offset: 0 },
+      });
+      if (conflict) throw conflict;
+      activeBatchId = batch.id;
+    }
+    if (resolved) await recordSourceFile(import_type, { source: "nppes_file", title: fileName, periodStart: resolved.periodStart, periodEnd: resolved.periodEnd }).catch(() => {});
+    await markImportStarted(import_type, activeBatchId, "nppes_file").catch(() => {});
+    setTimeout(() => {
+      import("./importNPPESFile").then(({ handleImportNPPESFile }) => handleImportNPPESFile({ batch_id: activeBatchId, file_url: url, import_type, resume_offset: resume_offset || 0, dry_run: !!dry_run }))
+        .catch((e) => console.error(`[triggerImport] NPPES file import error:`, e?.message));
+    }, 100);
+    return { success: true, message: `NPPES ${kind} file import started in the background (${fileName}). Check Data Center for progress.`, import_type, batch_id: activeBatchId, file_url: url, resumed: !!batch_id };
   }
 
   const validTypes = Object.keys(IMPORT_TYPE_URLS);

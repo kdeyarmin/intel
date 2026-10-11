@@ -193,5 +193,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   only provider-pair shared-patient rows. Pages summarise those through
   `src/lib/referralSummary.js`; there are no `home_health_referrals`-style
   columns.
+- **NPPES refresh is file-based.** `nppes_weekly_incremental` / `nppes_monthly_full`
+  (`server/functions/importNPPESFile.ts`) download the CMS zip, stream the
+  `npidata_pfile_*.csv` entry and upsert through `server/lib/nppesWrite.ts`,
+  which replaces a provider's locations and taxonomies per NPI and never lets
+  a blank cell overwrite a value. Every NPPES importer rejects NPIs that fail
+  the Luhn check (`server/lib/npiValidation.ts`). The crawler and the flat-file
+  importer are for backfills, not for keeping data fresh.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top
   of the test file; the default environment is `node`.

@@ -139,6 +139,19 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   return result;
 }
 
+/** Record a source file (not from the CMS catalogs) as the version an import type loads. */
+export async function recordSourceFile(importType: string, file: { source: string; title: string; periodStart?: string | null; periodEnd: string | null; modified?: Date | string | null }, now = new Date()): Promise<void> {
+  await pool.query(
+    `INSERT INTO dataset_versions (import_type, source, source_title, catalog_modified, temporal_start, temporal_end, catalog_checked_at, data_year, status, updated_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'never_imported', $7)
+     ON CONFLICT (import_type) DO UPDATE SET source = EXCLUDED.source, source_title = EXCLUDED.source_title,
+       catalog_modified = EXCLUDED.catalog_modified, temporal_start = EXCLUDED.temporal_start, temporal_end = EXCLUDED.temporal_end,
+       catalog_checked_at = EXCLUDED.catalog_checked_at, updated_date = EXCLUDED.updated_date`,
+    [importType, file.source, file.title, file.modified ? new Date(file.modified) : file.periodEnd ? new Date(file.periodEnd) : null,
+      file.periodStart ?? null, file.periodEnd, now, file.periodEnd ? file.periodEnd.slice(0, 4) : null],
+  );
+}
+
 export interface ImportVersion {
   source: string;
   dataUrl: string | null;
